@@ -230,6 +230,7 @@ parameter_types! {
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
+	pub const TradingPathLimit: u32 = 4;
 }
 
 impl module_transaction_payment::Config for Test {
@@ -248,7 +249,7 @@ impl module_transaction_payment::Config for Test {
 	type FeeMultiplierUpdate = ();
 	type DEX = DexModule;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
-	type TradingPathLimit = ConstU32<4>;
+	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Test>;
 	type WeightInfo = ();
 	type PalletId = TransactionPaymentPalletId;
@@ -349,7 +350,7 @@ impl module_dex::Config for Test {
 	type Event = Event;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
-	type TradingPathLimit = ConstU32<4>;
+	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
 	type Erc20InfoMapping = EvmErc20InfoMapping;
 	type WeightInfo = ();

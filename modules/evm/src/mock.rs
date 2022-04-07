@@ -165,11 +165,14 @@ ord_parameter_types! {
 	pub const StorageDepositPerByte: Balance = convert_decimals_to_evm(10);
 }
 
+pub const NEW_CONTRACT_EXTRA_BYTES: u32 = 100;
+pub const DEVELOPER_DEPOSIT: u128 = 1000;
+pub const PUBLICATION_FEE: u128 = 200;
 impl Config for Runtime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
 	type TransferAll = Currencies;
-	type NewContractExtraBytes = ConstU32<100>;
+	type NewContractExtraBytes = ConstU32<NEW_CONTRACT_EXTRA_BYTES>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<20_000_000>;
 
@@ -182,8 +185,8 @@ impl Config for Runtime {
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
-	type DeveloperDeposit = ConstU128<1000>;
-	type PublicationFee = ConstU128<200>;
+	type DeveloperDeposit = ConstU128<DEVELOPER_DEPOSIT>;
+	type PublicationFee = ConstU128<PUBLICATION_FEE>;
 	type TreasuryAccount = TreasuryAccount;
 	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 

@@ -342,6 +342,7 @@ impl pallet_timestamp::Config for Runtime {
 parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(KAR);	// 0.1 KAR
 	pub const MaxReserves: u32 = ReserveIdentifier::Count as u32;
+	pub const MaxLocks: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -350,7 +351,7 @@ impl pallet_balances::Config for Runtime {
 	type Event = Event;
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
-	type MaxLocks = ConstU32<50>;
+	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
@@ -380,6 +381,8 @@ impl pallet_sudo::Config for Runtime {
 
 parameter_types! {
 	pub const GeneralCouncilMotionDuration: BlockNumber = 3 * DAYS;
+	pub const CouncilDefaultMaxProposals: u32 = 20;
+	pub const CouncilDefaultMaxMembers: u32 = 30;
 }
 
 impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
@@ -387,8 +390,8 @@ impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = GeneralCouncilMotionDuration;
-	type MaxProposals = ConstU32<20>;
-	type MaxMembers = ConstU32<30>;
+	type MaxProposals = CouncilDefaultMaxProposals;
+	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
@@ -402,7 +405,7 @@ impl pallet_membership::Config<GeneralCouncilMembershipInstance> for Runtime {
 	type PrimeOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type MembershipInitialized = GeneralCouncil;
 	type MembershipChanged = GeneralCouncil;
-	type MaxMembers = ConstU32<30>;
+	type MaxMembers = CouncilDefaultMaxMembers;
 	type WeightInfo = ();
 }
 
@@ -415,8 +418,8 @@ impl pallet_collective::Config<FinancialCouncilInstance> for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = FinancialCouncilMotionDuration;
-	type MaxProposals = ConstU32<20>;
-	type MaxMembers = ConstU32<30>;
+	type MaxProposals = CouncilDefaultMaxProposals;
+	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
@@ -430,7 +433,7 @@ impl pallet_membership::Config<FinancialCouncilMembershipInstance> for Runtime {
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type MembershipInitialized = FinancialCouncil;
 	type MembershipChanged = FinancialCouncil;
-	type MaxMembers = ConstU32<30>;
+	type MaxMembers = CouncilDefaultMaxMembers;
 	type WeightInfo = ();
 }
 
@@ -443,8 +446,8 @@ impl pallet_collective::Config<HomaCouncilInstance> for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = HomaCouncilMotionDuration;
-	type MaxProposals = ConstU32<20>;
-	type MaxMembers = ConstU32<30>;
+	type MaxProposals = CouncilDefaultMaxProposals;
+	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
@@ -458,7 +461,7 @@ impl pallet_membership::Config<HomaCouncilMembershipInstance> for Runtime {
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type MembershipInitialized = HomaCouncil;
 	type MembershipChanged = HomaCouncil;
-	type MaxMembers = ConstU32<30>;
+	type MaxMembers = CouncilDefaultMaxMembers;
 	type WeightInfo = ();
 }
 
@@ -471,8 +474,8 @@ impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = TechnicalCommitteeMotionDuration;
-	type MaxProposals = ConstU32<20>;
-	type MaxMembers = ConstU32<30>;
+	type MaxProposals = CouncilDefaultMaxProposals;
+	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
@@ -486,7 +489,7 @@ impl pallet_membership::Config<TechnicalCommitteeMembershipInstance> for Runtime
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type MembershipInitialized = TechnicalCommittee;
 	type MembershipChanged = TechnicalCommittee;
-	type MaxMembers = ConstU32<30>;
+	type MaxMembers = CouncilDefaultMaxMembers;
 	type WeightInfo = ();
 }
 
@@ -543,8 +546,7 @@ impl SortedMembers<AccountId> for GeneralCouncilProvider {
 
 impl ContainsLengthBound for GeneralCouncilProvider {
 	fn max_len() -> usize {
-		let r: MemberCount = <Runtime as pallet_collective::Config<GeneralCouncilInstance>>::MaxMembers::get();
-		r as usize
+		CouncilDefaultMaxMembers::get() as usize
 	}
 	fn min_len() -> usize {
 		0
@@ -792,7 +794,7 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, KaruraTreasuryAccount>;
-	type MaxLocks = ConstU32<50>;
+	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = DustRemovalWhitelist;
 }
 
@@ -930,7 +932,8 @@ impl pallet_preimage::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
-	type MaxSize = ConstU32<4_194_304>; // Max size 4MB allowed for a preimage.
+	// Max size 4MB allowed: 4096 * 1024
+	type MaxSize = ConstU32<4_194_304>;
 	type BaseDeposit = PreimageBaseDeposit;
 	type ByteDeposit = PreimageByteDeposit;
 }
@@ -1079,13 +1082,14 @@ impl module_emergency_shutdown::Config for Runtime {
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (3, 1000);	// 0.3%
 	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
+	pub const TradingPathLimit: u32 = 4;
 }
 
 impl module_dex::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
-	type TradingPathLimit = ConstU32<4>;
+	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type DEXIncentives = Incentives;
@@ -1167,7 +1171,7 @@ impl module_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type DEX = Dex;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
-	type TradingPathLimit = ConstU32<4>;
+	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 	type PalletId = TransactionPaymentPalletId;

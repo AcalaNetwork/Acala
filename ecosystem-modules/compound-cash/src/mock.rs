@@ -63,7 +63,7 @@ impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = Moment;
 	type OnTimestampSet = ();
-	type MinimumPeriod = ConstU64<3000>;
+	type MinimumPeriod = ConstU64<3000>; // 6000 / 2
 	type WeightInfo = ();
 }
 

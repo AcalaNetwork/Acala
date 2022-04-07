@@ -166,7 +166,7 @@ fn should_create_and_call_contract() {
 			})
 		}));
 
-		assert_eq!(ContractStorageSizes::<Runtime>::get(&contract_address), code_size + 100);
+		assert_eq!(ContractStorageSizes::<Runtime>::get(&contract_address), code_size + NEW_CONTRACT_EXTRA_BYTES);
 		assert_eq!(CodeInfos::<Runtime>::get(&code_hash), Some(CodeInfo {
 			code_size,
 			ref_count: 1,
@@ -1048,8 +1048,8 @@ fn should_publish() {
 		let code_size = Accounts::<Runtime>::get(contract_address).map_or(0, |account_info| -> u32 {
 			account_info.contract_info.map_or(0, |contract_info| CodeInfos::<Runtime>::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
 		});
-		assert_eq!(balance(alice()), INITIAL_BALANCE -200 - ((100 + code_size) as u128* EVM::get_storage_deposit_per_byte()));
-		assert_eq!(Balances::free_balance(TreasuryAccount::get()), INITIAL_BALANCE + 200);
+		assert_eq!(balance(alice()), INITIAL_BALANCE - PUBLICATION_FEE - ((NEW_CONTRACT_EXTRA_BYTES + code_size) as u128* EVM::get_storage_deposit_per_byte()));
+		assert_eq!(Balances::free_balance(TreasuryAccount::get()), INITIAL_BALANCE + PUBLICATION_FEE);
 
 		// call method `multiply` will work
 		assert_ok!(<Runtime as Config>::Runner::call(
@@ -1142,8 +1142,8 @@ fn should_enable_contract_development() {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		assert_eq!(reserved_balance(alice()), 0);
 		assert_ok!(EVM::enable_contract_development(Origin::signed(alice_account_id)));
-		assert_eq!(reserved_balance(alice()), 1000);
-		assert_eq!(balance(alice()), INITIAL_BALANCE - 1000);
+		assert_eq!(reserved_balance(alice()), DEVELOPER_DEPOSIT);
+		assert_eq!(balance(alice()), INITIAL_BALANCE - DEVELOPER_DEPOSIT);
 	});
 }
 
@@ -1164,10 +1164,10 @@ fn should_disable_contract_development() {
 		assert_ok!(EVM::enable_contract_development(Origin::signed(
 			alice_account_id.clone()
 		)));
-		assert_eq!(reserved_balance(alice()), 1000);
+		assert_eq!(reserved_balance(alice()), DEVELOPER_DEPOSIT);
 
 		// deposit reserved
-		assert_eq!(balance(alice()), INITIAL_BALANCE - 1000);
+		assert_eq!(balance(alice()), INITIAL_BALANCE - DEVELOPER_DEPOSIT);
 
 		// disable contract development
 		assert_ok!(EVM::disable_contract_development(Origin::signed(
@@ -1373,7 +1373,7 @@ fn should_selfdestruct() {
 
 		assert_eq!(
 			ContractStorageSizes::<Runtime>::get(&contract_address),
-			code_size + 100 + STORAGE_SIZE
+			code_size + NEW_CONTRACT_EXTRA_BYTES + STORAGE_SIZE
 		);
 		assert_eq!(
 			CodeInfos::<Runtime>::get(&code_hash),
@@ -1804,7 +1804,7 @@ fn should_update_storage() {
 
 		let code_size = 340u32;
 
-		let mut used_storage = code_size + 100 + STORAGE_SIZE;
+		let mut used_storage = code_size + NEW_CONTRACT_EXTRA_BYTES + STORAGE_SIZE;
 
 		assert_eq!(result.used_storage, used_storage as i32);
 

@@ -179,14 +179,18 @@ impl module_currencies::Config for Runtime {
 parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 }
+pub const CREATE_CLASS_DEPOSIT: u128 = 200;
+pub const CREATE_TOKEN_DEPOSIT: u128 = 100;
+pub const DATA_DEPOSIT_PER_BYTE: u128 = 10;
+pub const MAX_ATTRIBUTES_BYTES: u32 = 10;
 impl Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type CreateClassDeposit = ConstU128<200>;
-	type CreateTokenDeposit = ConstU128<100>;
-	type DataDepositPerByte = ConstU128<10>;
+	type CreateClassDeposit = ConstU128<CREATE_CLASS_DEPOSIT>;
+	type CreateTokenDeposit = ConstU128<CREATE_TOKEN_DEPOSIT>;
+	type DataDepositPerByte = ConstU128<DATA_DEPOSIT_PER_BYTE>;
 	type PalletId = NftPalletId;
-	type MaxAttributesBytes = ConstU32<10>;
+	type MaxAttributesBytes = ConstU32<MAX_ATTRIBUTES_BYTES>;
 	type WeightInfo = ();
 }
 

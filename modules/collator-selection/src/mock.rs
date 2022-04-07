@@ -52,8 +52,6 @@ frame_support::construct_runtime!(
 	}
 );
 
-pub const PERIOD: u64 = 10;
-
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
@@ -155,7 +153,7 @@ impl pallet_session::SessionHandler<u64> for TestSessionHandler {
 	fn on_before_session_ending() {}
 	fn on_disabled(_: u32) {}
 }
-
+pub const PERIOD: u64 = 10;
 impl pallet_session::Config for Test {
 	type Event = Event;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
