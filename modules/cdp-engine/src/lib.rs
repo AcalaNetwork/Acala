@@ -28,6 +28,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
+use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, traits::UnixTime, transactional};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
@@ -76,7 +77,7 @@ pub const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 pub type LoansOf<T> = loans::Pallet<T>;
 
 /// Risk management params
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo, MaxEncodedLen)]
 pub struct RiskManagementParams {
 	/// Maximum total debit value generated from it, when reach the hard
 	/// cap, CDP's owner cannot issue more stablecoin under the collateral
@@ -354,7 +355,6 @@ pub mod module {
 	}
 
 	#[pallet::pallet]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
