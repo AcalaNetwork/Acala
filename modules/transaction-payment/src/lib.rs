@@ -312,7 +312,7 @@ pub mod module {
 		type FeeMultiplierUpdate: MultiplierUpdate;
 
 		/// DEX to exchange currencies.
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
 		/// When swap with DEX, the acceptable max slippage for the price from oracle.
 		#[pallet::constant]

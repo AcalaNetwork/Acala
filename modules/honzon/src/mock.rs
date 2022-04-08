@@ -37,7 +37,7 @@ use sp_runtime::{
 };
 use sp_std::cell::RefCell;
 use support::mocks::MockStableAsset;
-use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio};
+use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio, SpecificJointsDex};
 
 mod honzon {
 	pub use super::super::*;
@@ -222,10 +222,10 @@ impl cdp_treasury::Config for Runtime {
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();
+	type Swap = SpecificJointsDex<(), AlternativeSwapPathJointList>;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
@@ -266,8 +266,8 @@ impl cdp_engine::Config for Runtime {
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type DEX = ();
+	type Swap = SpecificJointsDex<(), AlternativeSwapPathJointList>;
 	type WeightInfo = ();
 }
 

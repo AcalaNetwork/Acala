@@ -58,7 +58,7 @@ use sp_runtime::{
 use sp_std::prelude::*;
 use support::{
 	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
-	RiskManager, SwapLimit,
+	RiskManager, Swap, SwapLimit,
 };
 
 mod mock;
@@ -182,13 +182,11 @@ pub mod module {
 		/// Currency for transfer assets
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		/// The alternative swap path joint list, which can be concated to
-		/// alternative swap path when cdp treasury swap collateral to stable.
-		#[pallet::constant]
-		type AlternativeSwapPathJointList: Get<Vec<Vec<CurrencyId>>>;
-
 		/// Dex
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
+
+		/// Swap
+		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -219,8 +217,6 @@ pub mod module {
 		AlreadyShutdown,
 		/// Must after system shutdown
 		MustAfterShutdown,
-		/// Cannot swap
-		CannotSwap,
 		/// Collateral in CDP is not enough
 		CollateralNotEnough,
 		/// debit value decrement is not enough
@@ -870,26 +866,18 @@ impl<T: Config> Pallet<T> {
 				let stable_for_token_0 = increase_debit_value / 2;
 				let stable_for_token_1 = increase_debit_value.saturating_sub(stable_for_token_0);
 				let stable_currency_id = T::GetStableCurrencyId::get();
-				let stable_to_lp_component = |token: CurrencyId,
-				                              stable_amount: Balance|
-				 -> sp_std::result::Result<Balance, DispatchError> {
-					// do nothing if component token is stable coin
-					if token == stable_currency_id {
-						Ok(stable_amount)
-					} else {
-						// swap compnent token in DEX
-						let limit = SwapLimit::ExactSupply(stable_amount, Zero::zero());
-						let swap_path = T::DEX::get_best_price_swap_path(
-							stable_currency_id,
-							token,
-							limit,
-							T::AlternativeSwapPathJointList::get(),
-						)
-						.ok_or(Error::<T>::CannotSwap)?;
-						let (_, target) = T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
-						Ok(target)
-					}
-				};
+				let stable_to_lp_component =
+					|token: CurrencyId, stable_amount: Balance| -> sp_std::result::Result<Balance, DispatchError> {
+						// do nothing if component token is stable coin
+						if token == stable_currency_id {
+							Ok(stable_amount)
+						} else {
+							// swap compnent token
+							let limit = SwapLimit::ExactSupply(stable_amount, Zero::zero());
+							let (_, target) = T::Swap::swap(&loans_module_account, stable_currency_id, token, limit)?;
+							Ok(target)
+						}
+					};
 
 				// swap stable coin to lp component tokens.
 				let available_0 = stable_to_lp_component(token_0, stable_for_token_0)?;
@@ -917,15 +905,8 @@ impl<T: Config> Pallet<T> {
 			_ => {
 				// swap stable coin to collateral
 				let limit = SwapLimit::ExactSupply(increase_debit_value, min_increase_collateral);
-				let swap_path = T::DEX::get_best_price_swap_path(
-					T::GetStableCurrencyId::get(),
-					currency_id,
-					limit,
-					T::AlternativeSwapPathJointList::get(),
-				)
-				.ok_or(Error::<T>::CannotSwap)?;
 				let (_, actual_increase_collateral) =
-					T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
+					T::Swap::swap(&loans_module_account, T::GetStableCurrencyId::get(), currency_id, limit)?;
 
 				actual_increase_collateral
 			}
@@ -986,26 +967,19 @@ impl<T: Config> Pallet<T> {
 					Zero::zero(),
 					false,
 				)?;
-				let component_to_stable = |token: CurrencyId,
-				                           amount: Balance|
-				 -> sp_std::result::Result<Balance, DispatchError> {
-					// do nothing if component token is stable coin
-					if token == stable_currency_id {
-						Ok(amount)
-					} else {
-						// swap component token to stable coin
-						let limit = SwapLimit::ExactSupply(amount, Zero::zero());
-						let swap_path = T::DEX::get_best_price_swap_path(
-							token,
-							stable_currency_id,
-							limit,
-							T::AlternativeSwapPathJointList::get(),
-						)
-						.ok_or(Error::<T>::CannotSwap)?;
-						let (_, target) = T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
-						Ok(target)
-					}
-				};
+				let component_to_stable =
+					|token: CurrencyId, amount: Balance| -> sp_std::result::Result<Balance, DispatchError> {
+						// do nothing if component token is stable coin
+						if token == stable_currency_id {
+							Ok(amount)
+						} else {
+							// swap component token to stable coin
+							let limit = SwapLimit::ExactSupply(amount, Zero::zero());
+							let (_, target) = T::Swap::swap(&loans_module_account, token, stable_currency_id, limit)?;
+
+							Ok(target)
+						}
+					};
 
 				let stable_0 = component_to_stable(token_0, available_0)?;
 				let stable_1 = component_to_stable(token_1, available_1)?;
@@ -1022,14 +996,7 @@ impl<T: Config> Pallet<T> {
 			_ => {
 				// swap collateral to stable coin
 				let limit = SwapLimit::ExactSupply(decrease_collateral, min_decrease_debit_value);
-				let swap_path = T::DEX::get_best_price_swap_path(
-					currency_id,
-					stable_currency_id,
-					limit,
-					T::AlternativeSwapPathJointList::get(),
-				)
-				.ok_or(Error::<T>::CannotSwap)?;
-				let (_, actual_stable) = T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
+				let (_, actual_stable) = T::Swap::swap(&loans_module_account, currency_id, stable_currency_id, limit)?;
 
 				actual_stable
 			}

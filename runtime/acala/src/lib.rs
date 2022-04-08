@@ -55,7 +55,7 @@ use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask};
+use module_support::{AssetIdMapping, DispatchableTask, SpecificJointsDex};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
@@ -1073,8 +1073,8 @@ impl module_cdp_engine::Config for Runtime {
 	type EmergencyShutdown = EmergencyShutdown;
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type DEX = Dex;
+	type Swap = SpecificJointsDex<Dex, AlternativeSwapPathJointList>;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1143,10 +1143,10 @@ impl module_cdp_treasury::Config for Runtime {
 	type AuctionManagerHandler = AuctionManager;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;
 	type DEX = Dex;
+	type Swap = SpecificJointsDex<Dex, AlternativeSwapPathJointList>;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }

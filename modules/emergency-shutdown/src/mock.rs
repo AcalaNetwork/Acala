@@ -36,7 +36,7 @@ use sp_runtime::{
 	DispatchResult,
 };
 use support::mocks::MockStableAsset;
-use support::{AuctionManager, LockablePrice, RiskManager};
+use support::{AuctionManager, LockablePrice, RiskManager, SpecificJointsDex};
 
 pub type AccountId = u128;
 pub type AuctionId = u32;
@@ -222,10 +222,10 @@ impl cdp_treasury::Config for Runtime {
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();
+	type Swap = SpecificJointsDex<(), AlternativeSwapPathJointList>;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }

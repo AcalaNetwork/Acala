@@ -1411,7 +1411,7 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
+impl<T: Config> DEXManager<T::AccountId, Balance, CurrencyId> for Pallet<T> {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
 		Self::get_liquidity(currency_id_a, currency_id_b)
 	}
@@ -1458,7 +1458,7 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		target_currency_id: CurrencyId,
 		limit: SwapLimit<Balance>,
 		alternative_path_joint_list: Vec<Vec<CurrencyId>>,
-	) -> Option<Vec<CurrencyId>> {
+	) -> Option<(Vec<CurrencyId>, Balance, Balance)> {
 		let default_swap_path = vec![supply_currency_id, target_currency_id];
 		let mut maybe_best = Self::get_swap_amount(&default_swap_path, limit)
 			.map(|(supply_amout, target_amount)| (default_swap_path, supply_amout, target_amount));
@@ -1489,7 +1489,7 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 			}
 		}
 
-		maybe_best.map(|(path, _, _)| path)
+		maybe_best
 	}
 
 	fn swap_with_specific_path(

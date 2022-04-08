@@ -1735,7 +1735,7 @@ fn get_best_price_swap_path_work() {
 
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![]),
-				Some(vec![DOT, AUSD])
+				Some((vec![DOT, AUSD], 10, 29))
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 30), vec![]),
@@ -1747,28 +1747,28 @@ fn get_best_price_swap_path_work() {
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![ACA]]),
-				Some(vec![DOT, AUSD])
+				Some((vec![DOT, AUSD], 10, 29))
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![DOT]]),
-				Some(vec![DOT, AUSD])
+				Some((vec![DOT, AUSD], 10, 29))
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![AUSD]]),
-				Some(vec![DOT, AUSD])
+				Some((vec![DOT, AUSD], 10, 29))
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![BTC]]),
-				Some(vec![DOT, BTC, AUSD])
+				Some((vec![DOT, BTC, AUSD], 10, 44))
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10000, 0), vec![vec![BTC]]),
-				Some(vec![DOT, AUSD])
+				Some((vec![DOT, AUSD], 10000, 27024))
 			);
 
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![]),
-				Some(vec![DOT, AUSD])
+				Some((vec![DOT, AUSD], 11, 30))
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(10, 30), vec![]),
@@ -1780,23 +1780,23 @@ fn get_best_price_swap_path_work() {
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![ACA]]),
-				Some(vec![DOT, AUSD])
+				Some((vec![DOT, AUSD], 11, 30))
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![DOT]]),
-				Some(vec![DOT, AUSD])
+				Some((vec![DOT, AUSD], 11, 30))
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![AUSD]]),
-				Some(vec![DOT, AUSD])
+				Some((vec![DOT, AUSD], 11, 30))
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![BTC]]),
-				Some(vec![DOT, BTC, AUSD])
+				Some((vec![DOT, BTC, AUSD], 8, 30))
 			);
 			assert_eq!(
 				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(100000, 20000), vec![vec![BTC]]),
-				Some(vec![DOT, AUSD])
+				Some((vec![DOT, AUSD], 7216, 20000))
 			);
 		});
 }

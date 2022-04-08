@@ -230,7 +230,7 @@ fn swap_collateral_to_stable_work() {
 
 		assert_noop!(
 			CDPTreasuryModule::swap_collateral_to_stable(BTC, SwapLimit::ExactTarget(200, 399), false),
-			Error::<Runtime>::CannotSwap
+			DispatchError::Other("Cannot swap")
 		);
 		assert_ok!(DEXModule::add_liquidity(
 			Origin::signed(ALICE),
@@ -251,7 +251,7 @@ fn swap_collateral_to_stable_work() {
 
 		assert_noop!(
 			CDPTreasuryModule::swap_collateral_to_stable(DOT, SwapLimit::ExactSupply(1000, 1000), false),
-			Error::<Runtime>::CannotSwap,
+			DispatchError::Other("Cannot swap")
 		);
 
 		assert_eq!(
@@ -585,7 +585,7 @@ fn exchange_collateral_to_stable_work() {
 		);
 		assert_noop!(
 			CDPTreasuryModule::exchange_collateral_to_stable(Origin::signed(1), BTC, SwapLimit::ExactTarget(200, 1000)),
-			Error::<Runtime>::CannotSwap
+			DispatchError::Other("Cannot swap")
 		);
 
 		assert_ok!(CDPTreasuryModule::exchange_collateral_to_stable(

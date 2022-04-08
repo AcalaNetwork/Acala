@@ -50,7 +50,7 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// DEX provide liquidity info.
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
 		/// Time provider
 		type Time: Time;

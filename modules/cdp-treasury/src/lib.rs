@@ -40,7 +40,7 @@ use sp_runtime::{
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
 use sp_std::prelude::*;
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio, SwapLimit};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio, Swap, SwapLimit};
 
 mod mock;
 mod tests;
@@ -71,9 +71,11 @@ pub mod module {
 		/// Auction manager creates auction to handle system surplus and debit
 		type AuctionManagerHandler: AuctionManager<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		/// Dex manager is used to swap confiscated collateral assets to stable
-		/// currency
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+		/// Dex manager
+		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
+
+		/// Swap
+		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
 
 		type StableAsset: StableAsset<
 			AssetId = CurrencyId,
@@ -96,11 +98,6 @@ pub mod module {
 		/// from liquidation.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-
-		/// The alternative swap path joint list, which can be concated to
-		/// alternative swap path when cdp treasury swap collateral to stable.
-		#[pallet::constant]
-		type AlternativeSwapPathJointList: Get<Vec<Vec<CurrencyId>>>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -423,48 +420,39 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 				let RedeemProportionResult { amounts, .. } =
 					T::StableAsset::get_redeem_proportion_amount(&yield_info, supply_limit)
 						.ok_or(Error::<T>::CannotSwap)?;
-				let mut swap_paths = Vec::with_capacity(amounts.len());
-				let mut redeem_limits = Vec::with_capacity(amounts.len());
-				let mut swap_limits = Vec::with_capacity(amounts.len());
 
-				for i in 0..amounts.len() {
-					let currency = pool_info.assets[i];
-					let amount = amounts[i];
-					let swap_limit = SwapLimit::ExactSupply(amount, 0);
-					swap_limits.push(swap_limit);
-					let swap_path = T::DEX::get_best_price_swap_path(
-						currency,
-						T::GetStableCurrencyId::get(),
-						swap_limit,
-						T::AlternativeSwapPathJointList::get(),
-					)
-					.ok_or(Error::<T>::CannotSwap)?;
-					swap_paths.push(swap_path);
-					redeem_limits.push(0);
-				}
-				T::StableAsset::redeem_proportion(&Self::account_id(), stable_asset_id, supply_limit, redeem_limits)?;
+				// redeem stable asset to a basket of assets
+				T::StableAsset::redeem_proportion(
+					&Self::account_id(),
+					stable_asset_id,
+					supply_limit,
+					vec![0; amounts.len()],
+				)?;
 
 				let mut supply_sum: Balance = Zero::zero();
 				let mut target_sum: Balance = Zero::zero();
+
 				for i in 0..amounts.len() {
-					let response =
-						T::DEX::swap_with_specific_path(&Self::account_id(), &swap_paths[i], swap_limits[i])?;
-					supply_sum = supply_sum.checked_add(response.0).ok_or(Error::<T>::CannotSwap)?;
-					target_sum = target_sum.checked_add(response.1).ok_or(Error::<T>::CannotSwap)?;
+					let redemption_currency = pool_info.assets[i];
+					let amount = amounts[i];
+
+					if !amount.is_zero() {
+						let swap_limit = SwapLimit::ExactSupply(amount, 0);
+						let response = T::Swap::swap(
+							&Self::account_id(),
+							redemption_currency,
+							T::GetStableCurrencyId::get(),
+							swap_limit,
+						)?;
+						supply_sum = supply_sum.checked_add(response.0).ok_or(ArithmeticError::Overflow)?;
+						target_sum = target_sum.checked_add(response.1).ok_or(ArithmeticError::Overflow)?;
+					}
 				}
-				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap,);
+
+				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap);
 				Ok((supply_sum, target_sum))
 			}
-			_ => {
-				let swap_path = T::DEX::get_best_price_swap_path(
-					currency_id,
-					T::GetStableCurrencyId::get(),
-					limit,
-					T::AlternativeSwapPathJointList::get(),
-				)
-				.ok_or(Error::<T>::CannotSwap)?;
-				T::DEX::swap_with_specific_path(&Self::account_id(), &swap_path, limit)
-			}
+			_ => T::Swap::swap(&Self::account_id(), currency_id, T::GetStableCurrencyId::get(), limit),
 		}
 	}
 
