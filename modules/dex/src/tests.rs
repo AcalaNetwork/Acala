@@ -1910,3 +1910,35 @@ fn get_liquidity_token_address_work() {
 		);
 	});
 }
+
+#[test]
+fn stable_asset_get_best_route_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_eq!(
+			DexModule::get_best_price_pool(AUSD, DOT, SwapLimit::ExactTarget(300_000, 50_000)),
+			Some((0, 0, 1))
+		);
+		assert_eq!(
+			DexModule::get_best_price_pool(AUSD, DOT, SwapLimit::ExactTarget(300_000, 500_000)),
+			None
+		);
+	});
+}
+
+#[test]
+fn stable_asset_swap_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(DexModule::swap(&BOB, 0, 0, 1, SwapLimit::ExactTarget(300_000, 50_000)));
+		assert_ok!(DexModule::swap(&BOB, 0, 0, 1, SwapLimit::ExactSupply(300_000, 50_000)));
+		assert_noop!(
+			DexModule::swap(&BOB, 0, 0, 1, SwapLimit::ExactTarget(30_000, 50_000)),
+			Error::<Runtime>::InsufficientLiquidity
+		);
+		assert_noop!(
+			DexModule::swap(&BOB, 0, 0, 1, SwapLimit::ExactTarget(30_000, 500_000)),
+			Error::<Runtime>::InsufficientLiquidity
+		);
+	});
+}
