@@ -789,7 +789,7 @@ where
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
 		call: &CallOf<T>,
-	) -> Result<Balance, DispatchError> {
+	) -> Result<(T::AccountId, Balance), DispatchError> {
 		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
 		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
 		match call.is_sub_type() {
@@ -805,19 +805,23 @@ where
 					fee_swap_path,
 					SwapLimit::ExactTarget(Balance::MAX, custom_fee_amount),
 				)
-				.map(|_| custom_fee_surplus)
+				.map(|_| (who.clone(), custom_fee_surplus))
 			}
 			Some(Call::with_fee_currency { currency_id, .. }) => {
 				ensure!(
 					TokenExchangeRate::<T>::contains_key(currency_id),
 					Error::<T>::InvalidToken
 				);
-				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
+				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id)
+					.map(|_| (who.clone(), custom_fee_surplus))
 			}
 			Some(Call::with_fee_paid_by {
 				call: _, payer_addr, ..
-			}) => Self::native_then_alternative_or_default(payer_addr, fee),
-			_ => Self::native_then_alternative_or_default(who, fee),
+			}) => {
+				// validate payer_addr equal to the signer of signature
+				Self::native_then_alternative_or_default(payer_addr, fee).map(|surplus| (payer_addr.clone(), surplus))
+			}
+			_ => Self::native_then_alternative_or_default(who, fee).map(|surplus| (who.clone(), surplus)),
 		}
 	}
 
@@ -1198,6 +1202,7 @@ where
 			PalletBalanceOf<T>,
 			Option<NegativeImbalanceOf<T>>,
 			Option<PalletBalanceOf<T>>,
+			T::AccountId,
 		),
 		TransactionValidityError,
 	> {
@@ -1206,7 +1211,7 @@ where
 
 		// Only mess with balances if fee is not zero.
 		if fee.is_zero() {
-			return Ok((fee, None, None));
+			return Ok((fee, None, None, who.clone()));
 		}
 
 		let reason = if tip.is_zero() {
@@ -1215,12 +1220,12 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		let fee_surplus =
+		let (payer, fee_surplus) =
 			Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call).map_err(|_| InvalidTransaction::Payment)?;
 
 		// withdraw native currency as fee, also consider surplus when swap from dex or pool.
-		match <T as Config>::Currency::withdraw(who, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
-			Ok(imbalance) => Ok((fee + fee_surplus, Some(imbalance), Some(fee_surplus))),
+		match <T as Config>::Currency::withdraw(&payer, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
+			Ok(imbalance) => Ok((fee + fee_surplus, Some(imbalance), Some(fee_surplus), payer)),
 			Err(_) => Err(InvalidTransaction::Payment.into()),
 		}
 	}
@@ -1332,7 +1337,7 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
-		let (final_fee, _, _) = self.withdraw_fee(who, call, info, len)?;
+		let (final_fee, _, _, _) = self.withdraw_fee(who, call, info, len)?;
 		let tip = self.0;
 		Ok(ValidTransaction {
 			priority: Self::get_priority(info, len, tip, final_fee),
@@ -1347,8 +1352,8 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let (fee, imbalance, surplus) = self.withdraw_fee(who, call, info, len)?;
-		Ok((self.0, who.clone(), imbalance, fee, surplus))
+		let (fee, imbalance, surplus, payer) = self.withdraw_fee(who, call, info, len)?;
+		Ok((self.0, payer, imbalance, fee, surplus))
 	}
 
 	fn post_dispatch(
