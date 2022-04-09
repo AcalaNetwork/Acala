@@ -33,7 +33,7 @@ use primitives::{DexShare, TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
-use support::SpecificJointsDex;
+use support::SpecificJointsSwap;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -219,7 +219,7 @@ impl Config for Runtime {
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureOneOf<EnsureRoot<AccountId>, EnsureSignedBy<One, AccountId>>;
 	type DEX = DEXModule;
-	type Swap = SpecificJointsDex<DEXModule, AlternativeSwapPathJointList>;
+	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;

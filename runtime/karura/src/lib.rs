@@ -55,7 +55,9 @@ use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, SpecificJointsDex};
+use module_support::{
+	create_aggregated_swap, AssetIdMapping, DispatchableTask, ExchangeRateProvider, SpecificJointsSwap,
+};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
@@ -1089,7 +1091,7 @@ impl module_cdp_engine::Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = Dex;
-	type Swap = SpecificJointsDex<Dex, AlternativeSwapPathJointList>;
+	type Swap = AcalaSwap;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1134,6 +1136,10 @@ impl module_dex::Config for Runtime {
 	type OnLiquidityPoolUpdated = ();
 }
 
+pub type AcalaSwap = SpecificJointsSwap<Dex, AlternativeSwapPathJointList>;
+
+create_aggregated_swap!(AggregatedSwap, AccountId, Balance, CurrencyId, [AcalaSwap]);
+
 impl module_dex_oracle::Config for Runtime {
 	type DEX = Dex;
 	type Time = Timestamp;
@@ -1157,7 +1163,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type AuctionManagerHandler = AuctionManager;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;
 	type DEX = Dex;
-	type Swap = SpecificJointsDex<Dex, AlternativeSwapPathJointList>;
+	type Swap = AcalaSwap;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;

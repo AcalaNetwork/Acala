@@ -88,7 +88,7 @@ pub trait StableAssetDEX<AccountId, Balance, CurrencyId, StableAssetPoolId, Pool
 }
 
 pub trait Swap<AccountId, Balance, CurrencyId> {
-	fn get_best_swap_amount(
+	fn get_swap_amount(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
 		limit: SwapLimit<Balance>,
@@ -102,16 +102,16 @@ pub trait Swap<AccountId, Balance, CurrencyId> {
 	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
 }
 
-pub struct SpecificJointsDex<Dex, Joints>(sp_std::marker::PhantomData<(Dex, Joints)>);
+pub struct SpecificJointsSwap<Dex, Joints>(sp_std::marker::PhantomData<(Dex, Joints)>);
 
 impl<AccountId, Balance, CurrencyId, Dex, Joints> Swap<AccountId, Balance, CurrencyId>
-	for SpecificJointsDex<Dex, Joints>
+	for SpecificJointsSwap<Dex, Joints>
 where
 	Dex: DEXManager<AccountId, Balance, CurrencyId>,
 	Joints: Get<Vec<Vec<CurrencyId>>>,
 	Balance: Clone,
 {
-	fn get_best_swap_amount(
+	fn get_swap_amount(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
 		limit: SwapLimit<Balance>,
@@ -141,6 +141,91 @@ where
 		.0;
 
 		<Dex as DEXManager<AccountId, Balance, CurrencyId>>::swap_with_specific_path(who, &path, limit)
+	}
+}
+
+#[macro_export]
+macro_rules! create_aggregated_swap {
+	($name:ident, $account_id:ty, $balance:ty, $currency_id:ty, [$( $provider:ty ),*]) => {
+		pub struct $name;
+		impl $crate::Swap<$account_id, $balance, $currency_id> for $name {
+			fn get_swap_amount(
+				supply_currency_id: $currency_id,
+				target_currency_id: $currency_id,
+				limit: $crate::SwapLimit<$balance>,
+			) -> Option<($balance, $balance)> {
+				let mut maybe_best = None;
+
+				$(
+					if let Some((supply_amount, target_amount)) = <$provider as $crate::Swap<$account_id, $balance, $currency_id>>::get_swap_amount(
+						supply_currency_id,
+						target_currency_id,
+						limit,
+					) {
+						if let Some((previous_supply, previous_target)) = maybe_best {
+							if supply_amount > previous_supply || target_amount < previous_target {
+							// do nothing
+							} else {
+								maybe_best = Some((supply_amount, target_amount))
+							}
+						} else {
+							maybe_best = Some((supply_amount, target_amount))
+						}
+					}
+				)*
+
+				maybe_best
+			}
+
+			fn swap(
+				who: &$account_id,
+				supply_currency_id: $currency_id,
+				target_currency_id: $currency_id,
+				limit: $crate::SwapLimit<$balance>,
+			) -> sp_std::result::Result<($balance, $balance), sp_runtime::DispatchError> {
+				let mut maybe_best: Option<(usize, $balance, $balance)> = None;
+				let mut i: usize = 0;
+				$(
+					if let Some((supply_amount, target_amount)) = <$provider as $crate::Swap<$account_id, $balance, $currency_id>>::get_swap_amount(
+						supply_currency_id,
+						target_currency_id,
+						limit,
+					) {
+						if let Some((_, previous_supply, previous_target)) = maybe_best {
+							if supply_amount > previous_supply || target_amount < previous_target {
+							// do nothing
+							} else {
+								maybe_best = Some((i, supply_amount, target_amount))
+							}
+						} else {
+							maybe_best = Some((i, supply_amount, target_amount))
+						}
+					}
+
+					i += 1;
+				)*
+
+				if let Some((best_index, _, _)) = maybe_best {
+					let mut j = 0;
+					$(
+						if j == best_index {
+							let response = <$provider as $crate::Swap<$account_id, $balance, $currency_id>>::swap(
+								who,
+								supply_currency_id,
+								target_currency_id,
+								limit,
+							);
+
+							return response;
+						}
+
+						j += 1;
+					)*
+				}
+
+				Err(sp_runtime::DispatchError::Other("Cannot swap"))
+			}
+    	}
 	}
 }
 

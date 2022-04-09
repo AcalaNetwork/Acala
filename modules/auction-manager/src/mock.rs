@@ -36,7 +36,7 @@ use sp_runtime::{
 };
 use sp_std::cell::RefCell;
 pub use support::Price;
-use support::{mocks::MockStableAsset, SpecificJointsDex};
+use support::{mocks::MockStableAsset, SpecificJointsSwap};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -132,7 +132,7 @@ impl cdp_treasury::Config for Runtime {
 	type AuctionManagerHandler = AuctionManagerModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = DEXModule;
-	type Swap = SpecificJointsDex<DEXModule, AlternativeSwapPathJointList>;
+	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
