@@ -48,10 +48,11 @@ use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, InclusionFee};
 use primitives::{Balance, CurrencyId, ReserveIdentifier};
 use scale_info::TypeInfo;
+use sp_core::crypto::AccountId32;
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion, Saturating,
-		SignedExtension, Zero,
+		SignedExtension, Verify, Zero,
 	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
@@ -381,6 +382,8 @@ pub mod module {
 		DexNotAvailable,
 		/// Charge fee pool is already exist
 		ChargeFeePoolAlreadyExisted,
+		/// The payer signature is invalid
+		InvalidSignature,
 	}
 
 	#[pallet::event]
@@ -604,6 +607,7 @@ pub mod module {
 		pub fn with_fee_paid_by(
 			origin: OriginFor<T>,
 			call: Box<CallOf<T>>,
+			_payload: Vec<u8>,
 			_payer_addr: T::AccountId,
 			_payer_sig: MultiSignature,
 		) -> DispatchResultWithPostInfo {
@@ -816,9 +820,20 @@ where
 					.map(|_| (who.clone(), custom_fee_surplus))
 			}
 			Some(Call::with_fee_paid_by {
-				call: _, payer_addr, ..
+				call: _,
+				payload,
+				payer_addr,
+				payer_sig,
 			}) => {
 				// validate payer_addr equal to the signer of signature
+				let payer_account: [u8; 32] = payer_addr
+					.encode()
+					.as_slice()
+					.try_into()
+					.map_err(|_| Error::<T>::InvalidSignature)?;
+				if !payer_sig.verify(payload.as_slice(), &AccountId32::new(payer_account)) {
+					return Err(DispatchError::Other("verify failed!"));
+				}
 				Self::native_then_alternative_or_default(payer_addr, fee).map(|surplus| (payer_addr.clone(), surplus))
 			}
 			_ => Self::native_then_alternative_or_default(who, fee).map(|surplus| (who.clone(), surplus)),
