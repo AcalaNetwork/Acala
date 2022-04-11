@@ -29,6 +29,7 @@ use frame_support::{
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_evm::EvmTask;
 use module_evm_accounts::EvmAddressMapping;
+use module_support::mocks::MockStableAsset;
 use module_support::DispatchableTask;
 use module_support::{AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider, Rate};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
@@ -199,13 +200,26 @@ define_combined_task! {
 
 parameter_types!(
 	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
+	pub DisableBlockThreshold: BlockNumber = u32::MAX;
 );
+
+pub struct MockBlockNumberProvider;
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = u32;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Zero::zero()
+	}
+}
 
 impl module_idle_scheduler::Config for Test {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
+	type DisableBlockThreshold = DisableBlockThreshold;
 }
 
 parameter_types! {
@@ -391,6 +405,7 @@ impl module_dex::Config for Test {
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 	type OnLiquidityPoolUpdated = ();
 }
 
@@ -563,24 +578,24 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		Oracle: orml_oracle::{Pallet, Storage, Call, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Currencies: module_currencies::{Pallet, Call, Event<T>},
-		EVMBridge: module_evm_bridge::{Pallet},
-		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>},
-		NFTModule: module_nft::{Pallet, Call, Event<T>},
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>},
-		Prices: module_prices::{Pallet, Storage, Call, Event<T>},
-		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
-		Utility: pallet_utility::{Pallet, Call, Event},
-		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
-		DexModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
-		EVMModule: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
-		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>},
-		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		Oracle: orml_oracle,
+		Timestamp: pallet_timestamp,
+		Tokens: orml_tokens exclude_parts { Call },
+		Balances: pallet_balances,
+		Currencies: module_currencies,
+		EVMBridge: module_evm_bridge exclude_parts { Call },
+		AssetRegistry: module_asset_registry,
+		NFTModule: module_nft,
+		TransactionPayment: module_transaction_payment,
+		Prices: module_prices,
+		Proxy: pallet_proxy,
+		Utility: pallet_utility,
+		Scheduler: pallet_scheduler,
+		DexModule: module_dex,
+		EVMModule: module_evm,
+		EvmAccounts: module_evm_accounts,
+		IdleScheduler: module_idle_scheduler,
 	}
 );
 

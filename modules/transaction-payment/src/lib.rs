@@ -463,7 +463,6 @@ pub mod module {
 	pub type SwapBalanceThreshold<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
 	#[pallet::pallet]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -792,7 +791,7 @@ where
 	fn ensure_can_charge_fee_with_call(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
-		tip: PalletBalanceOf<T>,
+		_tip: PalletBalanceOf<T>,
 		call: &CallOf<T>,
 	) -> Result<(T::AccountId, Balance), DispatchError>
 	where
