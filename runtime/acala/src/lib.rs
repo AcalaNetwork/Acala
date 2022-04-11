@@ -1082,6 +1082,7 @@ impl module_dex::Config for Runtime {
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 	type OnLiquidityPoolUpdated = ();
 }
 

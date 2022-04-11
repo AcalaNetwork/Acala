@@ -1096,6 +1096,7 @@ impl module_dex::Config for Runtime {
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
+	type StableAsset = StableAsset;
 	type OnLiquidityPoolUpdated = ();
 }
 
@@ -1653,6 +1654,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type FeePrecision = ConstU128<10_000_000_000>; // 10 decimals
 	type APrecision = ConstU128<100>; // 2 decimals
 	type PoolAssetLimit = ConstU32<5>;
+	type SwapExactOverAmount = ConstU128<100>;
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;

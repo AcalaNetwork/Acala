@@ -1094,6 +1094,7 @@ impl module_dex::Config for Runtime {
 	type PalletId = DEXPalletId;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type DEXIncentives = Incentives;
+	type StableAsset = StableAsset;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
@@ -1527,6 +1528,7 @@ impl module_honzon_bridge::Config for Runtime {
 	type BridgedStableCoinCurrencyId = WormholeAUSDCurrencyId;
 	type PalletId = HonzonBridgePalletId;
 }
+
 pub struct EnsurePoolAssetId;
 impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoolAssetId {
 	fn validate(currency_id: CurrencyId) -> bool {
@@ -1583,6 +1585,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type FeePrecision = ConstU128<10_000_000_000>; // 10 decimals
 	type APrecision = ConstU128<100>; // 2 decimals
 	type PoolAssetLimit = ConstU32<5>;
+	type SwapExactOverAmount = ConstU128<100>;
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;

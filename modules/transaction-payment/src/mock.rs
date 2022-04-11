@@ -39,6 +39,7 @@ use sp_runtime::{
 	Perbill,
 };
 use sp_std::cell::RefCell;
+use support::mocks::MockStableAsset;
 use support::{mocks::MockAddressMapping, Price};
 
 pub type AccountId = AccountId32;
@@ -176,6 +177,7 @@ impl module_dex::Config for Runtime {
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 	type ListingOrigin = frame_system::EnsureSignedBy<Zero, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
 	type OnLiquidityPoolUpdated = ();

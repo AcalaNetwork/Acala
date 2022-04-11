@@ -32,6 +32,7 @@ use frame_support::{
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_evm::EvmTask;
 use module_evm_accounts::EvmAddressMapping;
+use module_support::mocks::MockStableAsset;
 use module_support::DispatchableTask;
 use module_support::{AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider, Rate};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
@@ -370,6 +371,7 @@ impl module_dex::Config for Test {
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU32<0>;
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 	type OnLiquidityPoolUpdated = ();
 }
 

@@ -177,6 +177,7 @@ impl module_dex::Config for Runtime {
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 	type OnLiquidityPoolUpdated = ();
 }
 
