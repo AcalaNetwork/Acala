@@ -33,17 +33,10 @@ use frame_support::{
 };
 use frame_system::{limits, EnsureRoot};
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{evm::is_system_contract, Balance, BlockNumber, CurrencyId, Nonce};
+use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
 use scale_info::TypeInfo;
-use sp_core::{
-	u32_trait::{_1, _2, _3, _4},
-	Bytes, H160,
-};
-use sp_runtime::{
-	traits::{BlockNumberProvider, Convert},
-	transaction_validity::TransactionPriority,
-	FixedPointNumber, Perbill,
-};
+use sp_core::{Bytes, H160};
+use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, FixedPointNumber, Perbill};
 use sp_std::collections::btree_map::BTreeMap;
 use static_assertions::const_assert;
 
@@ -120,7 +113,9 @@ impl Convert<u64, Weight> for GasToWeight {
 pub struct WeightToGas;
 impl Convert<Weight, u64> for WeightToGas {
 	fn convert(weight: Weight) -> u64 {
-		weight.saturating_div(gas_to_weight_ratio::RATIO)
+		weight
+			.checked_div(gas_to_weight_ratio::RATIO)
+			.expect("Compile-time constant is not zero; qed;")
 	}
 }
 
@@ -198,18 +193,6 @@ pub fn calculate_asset_ratio(foreign_asset: (AssetId, u128), native_asset: (Asse
 	Ratio::saturating_from_rational(foreign_asset.1, native_asset.1)
 }
 
-pub struct RelayChainBlockNumberProvider<T>(sp_std::marker::PhantomData<T>);
-
-impl<T: cumulus_pallet_parachain_system::Config> BlockNumberProvider for RelayChainBlockNumberProvider<T> {
-	type BlockNumber = BlockNumber;
-
-	fn current_block_number() -> Self::BlockNumber {
-		cumulus_pallet_parachain_system::Pallet::<T>::validation_data()
-			.map(|d| d.relay_parent_number)
-			.unwrap_or_default()
-	}
-}
-
 pub type GeneralCouncilInstance = pallet_collective::Instance1;
 pub type FinancialCouncilInstance = pallet_collective::Instance2;
 pub type HomaCouncilInstance = pallet_collective::Instance3;
@@ -224,27 +207,27 @@ pub type OperatorMembershipInstanceAcala = pallet_membership::Instance5;
 // General Council
 pub type EnsureRootOrAllGeneralCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, GeneralCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 1, 1>,
 >;
 
 pub type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, GeneralCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 1, 2>,
 >;
 
 pub type EnsureRootOrOneThirdsGeneralCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _3, AccountId, GeneralCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 1, 3>,
 >;
 
 pub type EnsureRootOrTwoThirdsGeneralCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, GeneralCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 2, 3>,
 >;
 
 pub type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 3, 4>,
 >;
 
 pub type EnsureRootOrOneGeneralCouncil =
@@ -253,79 +236,79 @@ pub type EnsureRootOrOneGeneralCouncil =
 // Financial Council
 pub type EnsureRootOrAllFinancialCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, FinancialCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 1, 1>,
 >;
 
 pub type EnsureRootOrHalfFinancialCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, FinancialCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 1, 2>,
 >;
 
 pub type EnsureRootOrOneThirdsFinancialCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _3, AccountId, FinancialCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 1, 3>,
 >;
 
 pub type EnsureRootOrTwoThirdsFinancialCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, FinancialCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 2, 3>,
 >;
 
 pub type EnsureRootOrThreeFourthsFinancialCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, FinancialCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 3, 4>,
 >;
 
 // Homa Council
 pub type EnsureRootOrAllHomaCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, HomaCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 1, 1>,
 >;
 
 pub type EnsureRootOrHalfHomaCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, HomaCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 1, 2>,
 >;
 
 pub type EnsureRootOrOneThirdsHomaCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _3, AccountId, HomaCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 1, 3>,
 >;
 
 pub type EnsureRootOrTwoThirdsHomaCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, HomaCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 2, 3>,
 >;
 
 pub type EnsureRootOrThreeFourthsHomaCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, HomaCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 3, 4>,
 >;
 
 // Technical Committee Council
 pub type EnsureRootOrAllTechnicalCommittee = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, TechnicalCommitteeInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 1, 1>,
 >;
 
 pub type EnsureRootOrHalfTechnicalCommittee = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, TechnicalCommitteeInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 1, 2>,
 >;
 
 pub type EnsureRootOrOneThirdsTechnicalCommittee = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_1, _3, AccountId, TechnicalCommitteeInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 1, 3>,
 >;
 
 pub type EnsureRootOrTwoThirdsTechnicalCommittee = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, TechnicalCommitteeInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 2, 3>,
 >;
 
 pub type EnsureRootOrThreeFourthsTechnicalCommittee = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, TechnicalCommitteeInstance>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 3, 4>,
 >;
 
 /// The type used to represent the kinds of proxying allowed.
@@ -343,11 +326,6 @@ impl Default for ProxyType {
 	fn default() -> Self {
 		Self::Any
 	}
-}
-
-#[repr(u16)]
-pub enum RelayChainSubAccountId {
-	HomaLite = 0,
 }
 
 /// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.

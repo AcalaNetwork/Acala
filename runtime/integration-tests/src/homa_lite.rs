@@ -638,7 +638,7 @@ mod karura_only_tests {
 			set_relaychain_block_number(101_000);
 			run_to_block(5);
 			assert_eq!(
-				RelayChainBlockNumberProvider::<Runtime>::current_block_number(),
+				RelaychainBlockNumberProvider::<Runtime>::current_block_number(),
 				101_000
 			);
 			HomaLite::on_idle(5, 1_000_000_000);

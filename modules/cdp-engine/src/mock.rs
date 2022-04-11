@@ -268,6 +268,7 @@ impl dex::Config for Runtime {
 	type PalletId = DEXPalletId;
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
