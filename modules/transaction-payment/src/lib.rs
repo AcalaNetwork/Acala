@@ -607,7 +607,7 @@ pub mod module {
 		pub fn with_fee_paid_by(
 			origin: OriginFor<T>,
 			call: Box<CallOf<T>>,
-			_payload: Vec<u8>,
+			_payload: Option<Vec<u8>>,
 			_payer_addr: T::AccountId,
 			_payer_sig: MultiSignature,
 		) -> DispatchResultWithPostInfo {
@@ -617,7 +617,7 @@ pub mod module {
 	}
 }
 
-impl<T: Config> Pallet<T>
+impl<T: Config + frame_system::Config> Pallet<T>
 where
 	PalletBalanceOf<T>: FixedPointOperand,
 {
@@ -792,8 +792,13 @@ where
 	fn ensure_can_charge_fee_with_call(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
+		tip: PalletBalanceOf<T>,
 		call: &CallOf<T>,
-	) -> Result<(T::AccountId, Balance), DispatchError> {
+	) -> Result<(T::AccountId, Balance), DispatchError>
+	where
+		T: Send + Sync,
+		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+	{
 		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
 		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
 		match call.is_sub_type() {
@@ -820,7 +825,7 @@ where
 					.map(|_| (who.clone(), custom_fee_surplus))
 			}
 			Some(Call::with_fee_paid_by {
-				call: _,
+				call,
 				payload,
 				payer_addr,
 				payer_sig,
@@ -831,7 +836,42 @@ where
 					.as_slice()
 					.try_into()
 					.map_err(|_| Error::<T>::InvalidSignature)?;
-				if !payer_sig.verify(payload.as_slice(), &AccountId32::new(payer_account)) {
+				let verify = if let Some(payload) = payload {
+					payer_sig.verify(payload.as_slice(), &AccountId32::new(payer_account))
+				} else {
+					let spec_version = frame_system::Pallet::<T>::runtime_version().spec_version;
+					let tx_version = frame_system::Pallet::<T>::runtime_version().transaction_version;
+					let genesis_hash = frame_system::Pallet::<T>::block_hash(T::BlockNumber::zero());
+					let account_data = frame_system::Pallet::<T>::account(who);
+					let nonce = account_data.nonce;
+					let extra = (
+						frame_system::CheckNonZeroSender::<T>::new(),
+						frame_system::CheckSpecVersion::<T>::new(),
+						frame_system::CheckTxVersion::<T>::new(),
+						frame_system::CheckGenesis::<T>::new(),
+						frame_system::CheckEra::<T>::from(sp_runtime::generic::Era::Immortal), // change to mortal
+						frame_system::CheckNonce::<T>::from(nonce),
+						frame_system::CheckWeight::<T>::new(),
+						/* ChargeTransactionPayment::<T>::from(tip),
+						 * module_evm::SetEvmOrigin::<Runtime>::new(), */
+					);
+					let raw_payload = sp_runtime::generic::SignedPayload::from_raw(
+						call,
+						extra,
+						(
+							(),
+							spec_version,
+							tx_version,
+							genesis_hash,
+							genesis_hash,
+							(),
+							(),
+							// (),
+						),
+					);
+					raw_payload.using_encoded(|payload| payer_sig.verify(payload, &AccountId32::new(payer_account)))
+				};
+				if !verify {
 					return Err(DispatchError::Other("verify failed!"));
 				}
 				Self::native_then_alternative_or_default(payer_addr, fee).map(|surplus| (payer_addr.clone(), surplus))
@@ -1186,7 +1226,7 @@ where
 #[scale_info(skip_type_params(T))]
 pub struct ChargeTransactionPayment<T: Config + Send + Sync>(#[codec(compact)] pub PalletBalanceOf<T>);
 
-impl<T: Config + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> {
+impl<T: Config + frame_system::Config + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> {
 	#[cfg(feature = "std")]
 	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
 		write!(f, "ChargeTransactionPayment<{:?}>", self.0)
@@ -1197,7 +1237,7 @@ impl<T: Config + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T>
 	}
 }
 
-impl<T: Config + Send + Sync> ChargeTransactionPayment<T>
+impl<T: Config + frame_system::Config + Send + Sync> ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
@@ -1220,7 +1260,10 @@ where
 			T::AccountId,
 		),
 		TransactionValidityError,
-	> {
+	>
+	where
+		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+	{
 		let tip = self.0;
 		let fee = Pallet::<T>::compute_fee(len as u32, info, tip);
 
@@ -1235,8 +1278,8 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		let (payer, fee_surplus) =
-			Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call).map_err(|_| InvalidTransaction::Payment)?;
+		let (payer, fee_surplus) = Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, tip, call)
+			.map_err(|_| InvalidTransaction::Payment)?;
 
 		// withdraw native currency as fee, also consider surplus when swap from dex or pool.
 		match <T as Config>::Currency::withdraw(&payer, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
@@ -1325,9 +1368,10 @@ where
 	}
 }
 
-impl<T: Config + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
+impl<T: Config + frame_system::Config + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
+	<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;
@@ -1422,8 +1466,8 @@ where
 	}
 }
 
-impl<T: Config + Send + Sync> TransactionPayment<T::AccountId, PalletBalanceOf<T>, NegativeImbalanceOf<T>>
-	for ChargeTransactionPayment<T>
+impl<T: Config + frame_system::Config + Send + Sync>
+	TransactionPayment<T::AccountId, PalletBalanceOf<T>, NegativeImbalanceOf<T>> for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
