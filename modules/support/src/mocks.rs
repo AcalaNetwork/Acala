@@ -20,14 +20,16 @@
 use crate::{AddressMapping, CurrencyId, Erc20InfoMapping};
 use codec::Encode;
 use nutsfinance_stable_asset::traits::StableAsset;
-use nutsfinance_stable_asset::{PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo};
+use nutsfinance_stable_asset::{
+	PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo, SwapResult,
+};
 use primitives::{
 	currency::TokenInfo,
 	evm::{EvmAddress, H160_POSITION_TOKEN},
 };
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
-use sp_runtime::DispatchResult;
+use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::vec::Vec;
 
 pub struct MockAddressMapping;
@@ -153,7 +155,7 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 		_dx: Self::Balance,
 		_min_dy: Self::Balance,
 		_asset_length: u32,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Self::Balance, Self::Balance), DispatchError> {
 		unimplemented!()
 	}
 
@@ -263,6 +265,31 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 		>,
 		_amount_bal: Self::Balance,
 	) -> Option<RedeemProportionResult<Self::Balance>> {
+		unimplemented!()
+	}
+
+	fn get_best_route(
+		_input_asset: Self::AssetId,
+		_output_asset: Self::AssetId,
+		_limit: Self::Balance,
+	) -> Option<
+		StableAssetPoolInfo<
+			Self::AssetId,
+			Self::AtLeast64BitUnsigned,
+			Self::Balance,
+			Self::AccountId,
+			Self::BlockNumber,
+		>,
+	> {
+		unimplemented!()
+	}
+
+	fn get_swap_amount_exact(
+		_pool_id: StableAssetPoolId,
+		_input_index: PoolTokenIndex,
+		_output_index: PoolTokenIndex,
+		_dy_bal: Self::Balance,
+	) -> Option<SwapResult<Self::Balance>> {
 		unimplemented!()
 	}
 }

@@ -30,6 +30,7 @@ pub enum SwapLimit<Balance> {
 	/// swap to get exact amount target. (maximum_supply_amount, exact_target_amount)
 	ExactTarget(Balance, Balance),
 }
+
 pub trait DEXManager<AccountId, Balance, CurrencyId> {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance);
 
@@ -68,22 +69,6 @@ pub trait DEXManager<AccountId, Balance, CurrencyId> {
 		min_withdrawn_a: Balance,
 		min_withdrawn_b: Balance,
 		by_unstake: bool,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
-}
-
-pub trait StableAssetDEX<AccountId, Balance, CurrencyId, StableAssetPoolId, PoolTokenIndex> {
-	fn get_best_price_pool(
-		supply_currency_id: CurrencyId,
-		target_currency_id: CurrencyId,
-		limit: SwapLimit<Balance>,
-	) -> Option<(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex, Balance, Balance)>;
-
-	fn swap(
-		who: &AccountId,
-		pool_id: StableAssetPoolId,
-		supply_asset_index: PoolTokenIndex,
-		target_asset_index: PoolTokenIndex,
-		limit: SwapLimit<Balance>,
 	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
 }
 

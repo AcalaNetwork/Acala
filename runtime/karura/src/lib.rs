@@ -55,9 +55,7 @@ use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{
-	create_aggregated_swap, AssetIdMapping, DispatchableTask, ExchangeRateProvider, SpecificJointsSwap,
-};
+use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, SpecificJointsSwap};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
@@ -115,6 +113,7 @@ mod integration_tests_config;
 mod authority;
 mod benchmarking;
 pub mod constants;
+mod stable_asset_swap;
 /// Weights for pallets used in the runtime.
 mod weights;
 pub mod xcm_config;
@@ -1138,8 +1137,6 @@ impl module_dex::Config for Runtime {
 
 pub type AcalaSwap = SpecificJointsSwap<Dex, AlternativeSwapPathJointList>;
 
-create_aggregated_swap!(AggregatedSwap, AccountId, Balance, CurrencyId, [AcalaSwap]);
-
 impl module_dex_oracle::Config for Runtime {
 	type DEX = Dex;
 	type Time = Timestamp;
@@ -1584,6 +1581,7 @@ parameter_types! {
 	pub const FeePrecision: u128 = 10_000_000_000u128; // 10 decimals
 	pub const APrecision: u128 = 100u128; // 2 decimals
 	pub const PoolAssetLimit: u32 = 5u32;
+	pub const SwapExactOverAmount: u128 = 100u128;
 }
 
 pub struct EnsurePoolAssetId;
@@ -1642,6 +1640,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type FeePrecision = FeePrecision;
 	type APrecision = APrecision;
 	type PoolAssetLimit = PoolAssetLimit;
+	type SwapExactOverAmount = SwapExactOverAmount;
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;

@@ -54,7 +54,9 @@ use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, SpecificJointsSwap};
+use module_support::{
+	create_aggregated_swap, AssetIdMapping, DispatchableTask, ExchangeRateProvider, SpecificJointsSwap,
+};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 use scale_info::TypeInfo;
 
@@ -115,9 +117,12 @@ pub use xcm::latest::prelude::*;
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
 
+use stable_asset_swap::StableAssetSwapAdaptor;
+
 mod authority;
 mod benchmarking;
 pub mod constants;
+mod stable_asset_swap;
 /// Weights for pallets used in the runtime.
 mod weights;
 pub mod xcm_config;
@@ -1084,7 +1089,7 @@ impl module_cdp_engine::Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = Dex;
-	type Swap = AcalaSwap;
+	type Swap = AggregatedSwap;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1137,6 +1142,15 @@ impl module_dex::Config for Runtime {
 }
 
 pub type AcalaSwap = SpecificJointsSwap<Dex, AlternativeSwapPathJointList>;
+pub type StableAssetSwap = StableAssetSwapAdaptor<StableAsset>;
+
+create_aggregated_swap!(
+	AggregatedSwap,
+	AccountId,
+	Balance,
+	CurrencyId,
+	[AcalaSwap, StableAssetSwapAdaptor<StableAsset>]
+);
 
 impl module_dex_oracle::Config for Runtime {
 	type DEX = Dex;
@@ -1158,7 +1172,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type AuctionManagerHandler = AuctionManager;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;
 	type DEX = Dex;
-	type Swap = AcalaSwap;
+	type Swap = AggregatedSwap;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
@@ -1644,6 +1658,7 @@ parameter_types! {
 	pub const FeePrecision: u128 = 10000000000u128; // 10 decimals
 	pub const APrecision: u128 = 100u128; // 2 decimals
 	pub const PoolAssetLimit: u32 = 5u32;
+	pub const SwapExactOverAmount: u128 = 100u128;
 	pub const GetStableAssetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 }
 
@@ -1709,6 +1724,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type FeePrecision = FeePrecision;
 	type APrecision = APrecision;
 	type PoolAssetLimit = PoolAssetLimit;
+	type SwapExactOverAmount = SwapExactOverAmount;
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;

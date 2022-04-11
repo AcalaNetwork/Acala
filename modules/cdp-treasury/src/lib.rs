@@ -450,6 +450,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 				}
 
 				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap);
+
 				Ok((supply_sum, target_sum))
 			}
 			_ => T::Swap::swap(&Self::account_id(), currency_id, T::GetStableCurrencyId::get(), limit),
