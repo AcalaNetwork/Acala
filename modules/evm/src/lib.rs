@@ -996,10 +996,7 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
-			ensure!(
-				Pallet::<T>::is_account_empty(&target),
-				Error::<T>::ContractAlreadyExisted
-			);
+			ensure!(Self::accounts(target).is_none(), Error::<T>::ContractAlreadyExisted);
 
 			let source = T::NetworkContractSource::get();
 			let source_account = T::AddressMapping::get_account_id(&source);

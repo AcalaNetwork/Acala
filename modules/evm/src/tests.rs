@@ -1407,7 +1407,7 @@ fn should_selfdestruct() {
 			287 * EVM::get_storage_deposit_per_byte()
 		);
 
-		// can't publish at the same address until everything is wiped out
+		// can't publish at the same address
 		assert_noop!(
 			EVM::create_predeploy_contract(
 				Origin::signed(NetworkContractAccount::get()),
@@ -1436,18 +1436,8 @@ fn should_selfdestruct() {
 
 		assert_eq!(System::providers(&contract_account_id), 0);
 		assert!(!System::account_exists(&contract_account_id));
-		assert!(!Accounts::<Runtime>::contains_key(&contract_address));
+		assert!(Accounts::<Runtime>::contains_key(&contract_address));
 		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 0);
-
-		assert_ok!(EVM::create_predeploy_contract(
-			Origin::signed(NetworkContractAccount::get()),
-			contract_address,
-			vec![0x01],
-			0,
-			1000000,
-			1000000,
-			vec![],
-		));
 	});
 }
 
