@@ -33,14 +33,10 @@ use frame_support::{
 };
 use frame_system::{limits, EnsureRoot};
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{evm::is_system_contract, Balance, BlockNumber, CurrencyId, Nonce};
+use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
-use sp_runtime::{
-	traits::{BlockNumberProvider, Convert},
-	transaction_validity::TransactionPriority,
-	FixedPointNumber, Perbill,
-};
+use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, FixedPointNumber, Perbill};
 use sp_std::collections::btree_map::BTreeMap;
 use static_assertions::const_assert;
 
@@ -195,18 +191,6 @@ pub fn microcent(currency_id: CurrencyId) -> Balance {
 
 pub fn calculate_asset_ratio(foreign_asset: (AssetId, u128), native_asset: (AssetId, u128)) -> Ratio {
 	Ratio::saturating_from_rational(foreign_asset.1, native_asset.1)
-}
-
-pub struct RelayChainBlockNumberProvider<T>(sp_std::marker::PhantomData<T>);
-
-impl<T: cumulus_pallet_parachain_system::Config> BlockNumberProvider for RelayChainBlockNumberProvider<T> {
-	type BlockNumber = BlockNumber;
-
-	fn current_block_number() -> Self::BlockNumber {
-		cumulus_pallet_parachain_system::Pallet::<T>::validation_data()
-			.map(|d| d.relay_parent_number)
-			.unwrap_or_default()
-	}
 }
 
 pub type GeneralCouncilInstance = pallet_collective::Instance1;

@@ -31,6 +31,7 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::{Decode, Encode};
+use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
@@ -106,9 +107,8 @@ pub use runtime_common::{
 	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
 	OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate,
-	Ratio, RelayChainBlockNumberProvider, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter,
-	TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD,
-	DOT, KSM, LDOT, RENBTC,
+	Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT, RENBTC,
 };
 pub use xcm::latest::prelude::*;
 
@@ -836,7 +836,7 @@ impl module_prices::Config for Runtime {
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
-	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type PricingPegged = PricingPegged;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
@@ -892,7 +892,7 @@ impl orml_vesting::Config for Runtime {
 	type VestedTransferOrigin = EnsureRootOrTreasury;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 	type MaxVestingSchedules = ConstU32<100>;
-	type BlockNumberProvider = RelayChainBlockNumberProvider<Runtime>;
+	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
 }
 
 parameter_types! {
@@ -1289,7 +1289,7 @@ impl module_homa::Config for Runtime {
 	type BondingDuration = ConstU32<28>;
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
-	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
@@ -1675,6 +1675,10 @@ impl module_idle_scheduler::Config for Runtime {
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type RelayChainBlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	// Number of relay chain blocks produced with no parachain blocks finalized,
+	// once this number is reached idle scheduler is disabled as block production is slow
+	type DisableBlockThreshold = ConstU32<6>;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
@@ -1828,6 +1832,7 @@ construct_runtime!(
 		Multisig: pallet_multisig = 31,
 		Recovery: pallet_recovery = 32,
 		Proxy: pallet_proxy = 33,
+		// NOTE: IdleScheduler must be put before ParachainSystem in order to read relaychain blocknumber
 		IdleScheduler: module_idle_scheduler = 34,
 
 		Indices: pallet_indices = 40,
@@ -1957,6 +1962,7 @@ mod benches {
 		[orml_authority, benchmarking::authority]
 		[orml_oracle, benchmarking::oracle]
 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
+		[module_idle_scheduler, benchmarking::idle_scheduler]
 	);
 }
 

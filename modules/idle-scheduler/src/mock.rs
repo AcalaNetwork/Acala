@@ -28,11 +28,14 @@ use frame_support::{
 	traits::{ConstU32, ConstU64, Everything},
 };
 use module_support::DispatchableTask;
+pub use sp_runtime::offchain::storage::StorageValueRef;
 
+use super::*;
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
 pub const BASE_WEIGHT: Weight = 1_000_000;
+pub const RELAY_BLOCK_KEY: [u8; 32] = [0; 32];
 
 pub type AccountId = u32;
 impl frame_system::Config for Runtime {
@@ -62,11 +65,24 @@ impl frame_system::Config for Runtime {
 	type MaxConsumers = ConstU32<16>;
 }
 
+pub struct MockBlockNumberProvider;
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = u32;
+
+	fn current_block_number() -> Self::BlockNumber {
+		// gets a local mock storage value
+		u32::decode(&mut &sp_io::storage::get(&RELAY_BLOCK_KEY).unwrap()[..]).unwrap()
+	}
+}
+
 impl module_idle_scheduler::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = ConstU64<100_000_000_000>;
+	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
+	type DisableBlockThreshold = ConstU32<6>;
 }
 
 // Mock dispatachable tasks
@@ -132,6 +148,7 @@ impl ExtBuilder {
 
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
+		ext.execute_with(|| sp_io::storage::set(&RELAY_BLOCK_KEY, &0_u32.encode()));
 		ext
 	}
 }

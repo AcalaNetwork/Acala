@@ -32,7 +32,7 @@ use primitives::{define_combined_task, Amount, BlockNumber, CurrencyId, ReserveI
 use sp_core::{H160, H256};
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup},
 	AccountId32,
 };
 use std::{collections::BTreeMap, str::FromStr};
@@ -127,11 +127,23 @@ define_combined_task! {
 	}
 }
 
+pub struct MockBlockNumberProvider;
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = u32;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Zero::zero()
+	}
+}
+
 impl module_idle_scheduler::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = ConstU64<0>;
+	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
+	type DisableBlockThreshold = ConstU32<6>;
 }
 
 pub struct GasToWeight;
