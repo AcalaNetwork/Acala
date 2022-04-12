@@ -37,7 +37,7 @@ use sp_runtime::traits::Convert;
 pub use sp_runtime::AccountId32;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup, Zero},
 };
 use std::str::FromStr;
 
@@ -148,13 +148,26 @@ define_combined_task! {
 
 parameter_types!(
 	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
+	pub DisableBlockThreshold: BlockNumber = u32::MAX;
 );
+
+pub struct MockBlockNumberProvider;
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = u32;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Zero::zero()
+	}
+}
 
 impl module_idle_scheduler::Config for TestRuntime {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
+	type DisableBlockThreshold = DisableBlockThreshold;
 }
 
 pub struct GasToWeight;
@@ -235,13 +248,13 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
-		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call, Event<T>},
-		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		EVM: module_evm,
+		EvmAccounts: module_evm_accounts,
+		Tokens: orml_tokens exclude_parts { Call },
+		Balances: pallet_balances,
+		Currencies: orml_currencies,
+		IdleScheduler: module_idle_scheduler,
 	}
 );
 

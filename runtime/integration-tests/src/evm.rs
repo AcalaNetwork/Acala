@@ -32,6 +32,7 @@ use primitives::{
 };
 use sp_core::{H256, U256};
 use sp_runtime::traits::SignedExtension;
+use sp_runtime::Percent;
 use std::str::FromStr;
 
 pub fn erc20_address_0() -> EvmAddress {
@@ -884,11 +885,6 @@ fn transaction_payment_module_works_with_evm_contract() {
 				2200 * dollar(NATIVE_CURRENCY)
 			);
 
-			// set_global_fee_swap_path
-			assert_ok!(TransactionPayment::set_global_fee_swap_path(
-				Origin::root(),
-				vec![CurrencyId::Erc20(erc20_address_0()), NATIVE_CURRENCY]
-			));
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(TreasuryAccount::get()),
@@ -905,6 +901,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			assert_ok!(TransactionPayment::enable_charge_fee_pool(
 				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
+				vec![CurrencyId::Erc20(erc20_address_0()), NATIVE_CURRENCY],
 				5 * dollar(NATIVE_CURRENCY),
 				Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
 			));
@@ -1006,6 +1003,10 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-acala-runtime")]
 			assert_eq!(fee, 2500000800);
 
+			let surplus_perc = Percent::from_percent(25);
+			let fee_surplus = surplus_perc.mul_ceil(fee);
+			let fee = fee + fee_surplus;
+
 			// empty_account
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account),
@@ -1021,11 +1022,12 @@ fn transaction_payment_module_works_with_evm_contract() {
 			);
 			let erc20_fee = Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account);
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(erc20_fee, 11612667389);
+			assert_eq!(erc20_fee, 12013104212);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(erc20_fee, 10281777315);
+			assert_eq!(erc20_fee, 10344471099);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(erc20_fee, 10281777315);
+			assert_eq!(erc20_fee, 10344471099);
+
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
 				5 * dollar(NATIVE_CURRENCY) - (fee + NativeTokenExistentialDeposit::get())

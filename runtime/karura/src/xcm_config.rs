@@ -20,7 +20,7 @@ use super::{
 	constants::{fee::*, parachains},
 	AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event, ExistentialDeposits,
 	GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, RuntimeBlockWeights, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM,
+	PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -30,7 +30,7 @@ pub use frame_support::{
 	weights::Weight,
 };
 use module_support::HomaSubAccountXcm;
-use orml_traits::{parameter_type_with_key, MultiCurrency};
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
@@ -212,7 +212,7 @@ impl xcm_executor::Config for XcmConfig {
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = LocalAssetTransactor;
 	type OriginConverter = XcmOriginToCallOrigin;
-	type IsReserve = MultiNativeAsset;
+	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	// Teleporting is disabled.
 	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;
@@ -230,10 +230,6 @@ impl xcm_executor::Config for XcmConfig {
 	>;
 	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
-}
-
-parameter_types! {
-	pub MaxDownwardMessageWeight: Weight = RuntimeBlockWeights::get().max_block / 10;
 }
 
 pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNetwork>;
@@ -277,6 +273,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ControllerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ControllerOriginConverter = XcmOriginToCallOrigin;
+	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -328,6 +325,8 @@ impl orml_xtokens::Config for Runtime {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
+	type MultiLocationsFilter = Everything;
+	type ReserveProvider = AbsoluteReserveProvider;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<

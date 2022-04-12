@@ -19,8 +19,8 @@
 //! The Dev runtime. This can be compiled with `#[no_std]`, ready for Wasm.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
-#![recursion_limit = "256"]
+// `construct_runtime!` does a lot of recursion and requires us to increase the limit.
+#![recursion_limit = "512"]
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::from_over_into)]
@@ -57,6 +57,8 @@ use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
+
+use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
 };
@@ -79,6 +81,7 @@ pub use sp_runtime::BuildStorage;
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
+use module_support::mocks::MockStableAsset;
 pub use primitives::{
 	define_combined_task,
 	evm::{AccessListItem, EstimateResourcesRequest},
@@ -96,9 +99,8 @@ pub use runtime_common::{
 	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
 	OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate,
-	Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, RENBTC,
+	Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, RENBTC,
 };
 pub use xcm::latest::prelude::*;
 
@@ -115,7 +117,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2041,
+	spec_version: 2042,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -844,7 +846,7 @@ impl module_prices::Config for Runtime {
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
-	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type PricingPegged = PricingPegged;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
@@ -916,7 +918,7 @@ impl orml_vesting::Config for Runtime {
 	type VestedTransferOrigin = EnsureAcalaFoundation;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 	type MaxVestingSchedules = MaxVestingSchedules;
-	type BlockNumberProvider = RelayChainBlockNumberProvider<Runtime>;
+	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
 }
 
 parameter_types! {
@@ -1114,6 +1116,7 @@ impl module_dex::Config for Runtime {
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 	type OnLiquidityPoolUpdated = ();
 }
 
@@ -1146,6 +1149,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type TreasuryAccount = HonzonTreasuryAccount;
 	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
 
 impl module_transaction_pause::Config for Runtime {
@@ -1155,12 +1159,9 @@ impl module_transaction_pause::Config for Runtime {
 }
 
 parameter_types! {
-	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![AUSD, ACA],
-		vec![LCDOT, AUSD, ACA],
-		vec![DOT, LCDOT, AUSD, ACA]
-	];
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, LCDOT, DOT];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1179,8 +1180,8 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
@@ -1199,6 +1200,9 @@ impl module_transaction_payment::Config for Runtime {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = AcalaTreasuryAccount;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1229,12 +1233,15 @@ impl orml_rewards::Config for Runtime {
 
 parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = MINUTES;
+	pub const EarnShareBooster: Permill = Permill::from_percent(30);
 }
 
 impl module_incentives::Config for Runtime {
 	type Event = Event;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
 	type StableCurrencyId = GetStableCurrencyId;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type EarnShareBooster = EarnShareBooster;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type CDPTreasury = CdpTreasury;
@@ -1446,7 +1453,9 @@ impl cumulus_pallet_aura_ext::Config for Runtime {}
 parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
-	pub ActiveSubAccountsIndexList: Vec<u16> = vec![RelayChainSubAccountId::HomaLite as u16];
+	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
+		0,  // 15sr8Dvq3AT3Z2Z1y8FnQ4VipekAHhmQnrkgzegUr1tNgbcn
+	];
 	pub BondingDuration: EraIndex = 28;
 	pub MintThreshold: Balance = 5 * dollar(DOT);
 	pub RedeemThreshold: Balance = 50 * dollar(LDOT);
@@ -1465,7 +1474,7 @@ impl module_homa::Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
-	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
@@ -1522,6 +1531,9 @@ define_combined_task! {
 parameter_types!(
 	// At least 2% of max block weight should remain before idle tasks are dispatched.
 	pub MinimumWeightRemainInBlock: Weight = RuntimeBlockWeights::get().max_block / 50;
+	// Number of relay chain blocks produced with no parachain blocks finalized,
+	// once this number is reached idle scheduler is disabled as block production is slow
+	pub DisableBlockThreshold: BlockNumber = 6;
 );
 
 impl module_idle_scheduler::Config for Runtime {
@@ -1529,6 +1541,8 @@ impl module_idle_scheduler::Config for Runtime {
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type RelayChainBlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	type DisableBlockThreshold = DisableBlockThreshold;
 }
 
 construct_runtime!(
@@ -1538,103 +1552,104 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		// Core & Utility
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
-		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 2,
-		Utility: pallet_utility::{Pallet, Call, Event} = 3,
-		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
-		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 5,
-		TransactionPause: module_transaction_pause::{Pallet, Call, Storage, Event<T>} = 6,
-		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>} = 7,
-		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 8,
+		System: frame_system = 0,
+		Timestamp: pallet_timestamp = 1,
+		Scheduler: pallet_scheduler = 2,
+		Utility: pallet_utility = 3,
+		Multisig: pallet_multisig = 4,
+		Proxy: pallet_proxy = 5,
+		TransactionPause: module_transaction_pause = 6,
+		// NOTE: IdleScheduler must be put before ParachainSystem in order to read relaychain blocknumber
+		IdleScheduler: module_idle_scheduler = 7,
+		Preimage: pallet_preimage = 8,
 
 		// Tokens & Related
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 11,
-		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
-		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
+		Balances: pallet_balances = 10,
+		Tokens: orml_tokens exclude_parts { Call } = 11,
+		Currencies: module_currencies = 12,
+		Vesting: orml_vesting = 13,
+		TransactionPayment: module_transaction_payment = 14,
 
 		// Treasury
-		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,
-		Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 21,
-		Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 22,
+		Treasury: pallet_treasury = 20,
+		Bounties: pallet_bounties = 21,
+		Tips: pallet_tips = 22,
 
 		// Parachain
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 31,
+		ParachainInfo: parachain_info exclude_parts { Call } = 31,
 
 		// Collator. The order of the 4 below are important and shall not change.
-		Authorship: pallet_authorship::{Pallet, Storage} = 40,
-		CollatorSelection: module_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 41,
-		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 42,
-		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 43,
-		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 44,
-		SessionManager: module_session_manager::{Pallet, Call, Storage, Event<T>, Config<T>} = 45,
+		Authorship: pallet_authorship = 40,
+		CollatorSelection: module_collator_selection = 41,
+		Session: pallet_session = 42,
+		Aura: pallet_aura = 43,
+		AuraExt: cumulus_pallet_aura_ext exclude_parts { Call } = 44,
+		SessionManager: module_session_manager = 45,
 
 		// XCM
-		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 50,
-		PolkadotXcm: pallet_xcm::{Pallet, Storage, Call, Event<T>, Origin, Config} = 51,
-		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 52,
-		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 53,
-		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 54,
-		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 55,
-		OrmlXcm: orml_xcm::{Pallet, Call, Event<T>} = 56,
+		XcmpQueue: cumulus_pallet_xcmp_queue = 50,
+		PolkadotXcm: pallet_xcm = 51,
+		CumulusXcm: cumulus_pallet_xcm exclude_parts { Call } = 52,
+		DmpQueue: cumulus_pallet_dmp_queue = 53,
+		XTokens: orml_xtokens = 54,
+		UnknownTokens: orml_unknown_tokens exclude_parts { Call } = 55,
+		OrmlXcm: orml_xcm = 56,
 
 		// Governance
-		Authority: orml_authority::{Pallet, Call, Storage, Event<T>, Origin<T>} = 60,
-		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 61,
-		GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 62,
-		FinancialCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 63,
-		FinancialCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 64,
-		HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 65,
-		HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 66,
-		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 67,
-		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
-		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 69,
+		Authority: orml_authority = 60,
+		GeneralCouncil: pallet_collective::<Instance1> = 61,
+		GeneralCouncilMembership: pallet_membership::<Instance1> = 62,
+		FinancialCouncil: pallet_collective::<Instance2> = 63,
+		FinancialCouncilMembership: pallet_membership::<Instance2> = 64,
+		HomaCouncil: pallet_collective::<Instance3> = 65,
+		HomaCouncilMembership: pallet_membership::<Instance3> = 66,
+		TechnicalCommittee: pallet_collective::<Instance4> = 67,
+		TechnicalCommitteeMembership: pallet_membership::<Instance4> = 68,
+		Democracy: pallet_democracy = 69,
 
 		// Oracle
 		//
 		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Event<T>} = 70,
-		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
+		AcalaOracle: orml_oracle::<Instance1> = 70,
+		OperatorMembershipAcala: pallet_membership::<Instance5> = 71,
 
 		// ORML Core
-		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 80,
-		Rewards: orml_rewards::{Pallet, Storage, Call} = 81,
-		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 82,
+		Auction: orml_auction = 80,
+		Rewards: orml_rewards = 81,
+		OrmlNFT: orml_nft exclude_parts { Call } = 82,
 
 		// Acala Core
-		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 90,
-		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 91,
-		DexOracle: module_dex_oracle::{Pallet, Storage, Call} = 92,
+		Prices: module_prices = 90,
+		Dex: module_dex = 91,
+		DexOracle: module_dex_oracle = 92,
 
 		// Honzon
-		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 100,
-		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 101,
-		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 102,
-		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 103,
-		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 104,
-		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 105,
+		AuctionManager: module_auction_manager = 100,
+		Loans: module_loans = 101,
+		Honzon: module_honzon = 102,
+		CdpTreasury: module_cdp_treasury = 103,
+		CdpEngine: module_cdp_engine = 104,
+		EmergencyShutdown: module_emergency_shutdown = 105,
 
 		// Homa
-		Homa: module_homa::{Pallet, Call, Storage, Event<T>} = 116,
-		XcmInterface: module_xcm_interface::{Pallet, Call, Storage, Event<T>} = 117,
+		Homa: module_homa = 116,
+		XcmInterface: module_xcm_interface = 117,
 
 		// Acala Other
-		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
-		NFT: module_nft::{Pallet, Call, Event<T>} = 121,
-		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 122,
+		Incentives: module_incentives = 120,
+		NFT: module_nft = 121,
+		AssetRegistry: module_asset_registry = 122,
 
 		// Smart contracts
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 130,
-		EVMBridge: module_evm_bridge::{Pallet} = 131,
-		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 132,
+		EVM: module_evm = 130,
+		EVMBridge: module_evm_bridge exclude_parts { Call } = 131,
+		EvmAccounts: module_evm_accounts = 132,
 
 		// Parachain System, always put it at the end
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 30,
+		ParachainSystem: cumulus_pallet_parachain_system = 30,
 
 		// Temporary
-		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
+		Sudo: pallet_sudo = 255,
 	}
 );
 
@@ -1665,8 +1680,38 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	TransactionPaymentMigration,
+>;
+
+pub struct TransactionPaymentMigration;
+
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(ACA);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(ACA));
+}
+
+impl OnRuntimeUpgrade for TransactionPaymentMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let poo_size = FeePoolSize::get();
+		let threshold = SwapBalanceThreshold::get();
+		let tokens = vec![
+			(AUSD, vec![AUSD, ACA]),
+			(LCDOT, vec![LCDOT, AUSD, ACA]),
+			(DOT, vec![DOT, LCDOT, AUSD, ACA]),
+		];
+		for (token, path) in tokens {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
+			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, path, poo_size, threshold);
+		}
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -1698,6 +1743,7 @@ mod benches {
 		[orml_auction, benchmarking::auction]
 		[orml_authority, benchmarking::authority]
 		[orml_oracle, benchmarking::oracle]
+		[module_idle_scheduler, benchmarking::idle_scheduler]
 	);
 }
 

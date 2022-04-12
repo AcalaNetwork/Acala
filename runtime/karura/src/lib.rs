@@ -19,8 +19,8 @@
 //! The Dev runtime. This can be compiled with `#[no_std]`, ready for Wasm.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
-#![recursion_limit = "256"]
+// `construct_runtime!` does a lot of recursion and requires us to increase the limit.
+#![recursion_limit = "512"]
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::from_over_into)]
@@ -59,6 +59,7 @@ use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 
+use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
 };
@@ -84,7 +85,7 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	define_combined_task,
-	evm::{AccessListItem, EstimateResourcesRequest, EthereumTransactionMessage},
+	evm::{AccessListItem, EstimateResourcesRequest, EthereumTransactionMessage, EvmAddress},
 	task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
@@ -99,10 +100,9 @@ pub use runtime_common::{
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
 	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
-	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
-	RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
+	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength,
+	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
 };
 pub use xcm::latest::prelude::*;
 
@@ -125,7 +125,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2041,
+	spec_version: 2042,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -159,6 +159,7 @@ parameter_types! {
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
+	pub const HonzonBridgePalletId: PalletId = PalletId(*b"aca/hzbg");
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
@@ -185,6 +186,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryReservePalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
+		HonzonBridgePalletId::get().into_account(),
 	]
 }
 
@@ -206,6 +208,15 @@ impl Contains<Call> for BaseCallFilter {
 		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
 		if is_paused {
 			// no paused call
+			return false;
+		}
+
+		let is_honzon_bridge = matches!(
+			call,
+			Call::HonzonBridge(_) // HonzonBridge isn't enabled until wAUSD is created. Issue #1967
+		);
+		if is_honzon_bridge {
+			// no honzon_bridge
 			return false;
 		}
 
@@ -749,8 +760,8 @@ parameter_type_with_key! {
 				TokenSymbol::KUSD => cent(*currency_id),
 				TokenSymbol::KSM => 10 * millicent(*currency_id),
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
-				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
-				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
+				TokenSymbol::BNC => 800 * millicent(*currency_id), // 80BNC = 1KSM
+				TokenSymbol::VSKSM => 10 * millicent(*currency_id), // 1VSKSM = 1KSM
 				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
 				TokenSymbol::KINT => 13333 * microcent(*currency_id), // 1.33 KINT = 1 KSM
 				TokenSymbol::KBTC => 66 * microcent(*currency_id), // 1KBTC = 150 KSM
@@ -850,7 +861,7 @@ impl module_prices::Config for Runtime {
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
-	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type PricingPegged = PricingPegged;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
@@ -922,7 +933,7 @@ impl orml_vesting::Config for Runtime {
 	type VestedTransferOrigin = EnsureKaruraFoundation;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 	type MaxVestingSchedules = MaxVestingSchedules;
-	type BlockNumberProvider = RelayChainBlockNumberProvider<Runtime>;
+	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
 }
 
 parameter_types! {
@@ -1118,6 +1129,7 @@ impl module_dex::Config for Runtime {
 	type PalletId = DEXPalletId;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type DEXIncentives = Incentives;
+	type StableAsset = StableAsset;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
@@ -1152,6 +1164,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type TreasuryAccount = HonzonTreasuryAccount;
 	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
+	type StableAsset = StableAsset;
 }
 
 impl module_transaction_pause::Config for Runtime {
@@ -1161,13 +1174,9 @@ impl module_transaction_pause::Config for Runtime {
 }
 
 parameter_types! {
-	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![KUSD, KSM, KAR],
-		vec![KSM, KAR],
-		vec![LKSM, KSM, KAR],
-		vec![BNC, KUSD, KSM, KAR],
-	];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![KUSD, KSM, LKSM];
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1186,8 +1195,8 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
@@ -1206,6 +1215,9 @@ impl module_transaction_payment::Config for Runtime {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1236,12 +1248,15 @@ impl orml_rewards::Config for Runtime {
 
 parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = MINUTES;
+	pub const EarnShareBooster: Permill = Permill::from_percent(30);
 }
 
 impl module_incentives::Config for Runtime {
 	type Event = Event;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
 	type StableCurrencyId = GetStableCurrencyId;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type EarnShareBooster = EarnShareBooster;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type CDPTreasury = CdpTreasury;
@@ -1453,7 +1468,11 @@ impl cumulus_pallet_aura_ext::Config for Runtime {}
 parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
-	pub ActiveSubAccountsIndexList: Vec<u16> = vec![RelayChainSubAccountId::HomaLite as u16];
+	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
+		0,  // HTAeD1dokCVs9MwnC1q9s2a7d2kQ52TAjrxE1y5mj5MFLLA
+		1,  // FDVu3RdH5WsE2yTdXN3QMq6v1XVDK8GKjhq5oFjXe8wZYpL
+		2,  // EMrKvFy7xLgzzdgruXT9oXERt553igEScqgSjoDm3GewPSA
+	];
 	pub BondingDuration: EraIndex = 28;
 	pub MintThreshold: Balance = dollar(KSM);
 	pub RedeemThreshold: Balance = 10 * dollar(LKSM);
@@ -1472,7 +1491,7 @@ impl module_homa::Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
-	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
@@ -1529,6 +1548,9 @@ define_combined_task! {
 parameter_types!(
 	// At least 2% of max block weight should remain before idle tasks are dispatched.
 	pub MinimumWeightRemainInBlock: Weight = RuntimeBlockWeights::get().max_block / 50;
+	// Number of relay chain blocks produced with no parachain blocks finalized,
+	// once this number is reached idle scheduler is disabled as block production is slow
+	pub DisableBlockThreshold: BlockNumber = 6;
 );
 
 impl module_idle_scheduler::Config for Runtime {
@@ -1536,12 +1558,29 @@ impl module_idle_scheduler::Config for Runtime {
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type RelayChainBlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	type DisableBlockThreshold = DisableBlockThreshold;
+}
+
+parameter_types! {
+	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["0000000000000000000100000000000000000001"]));
+	pub const StableCoinCurrencyId: CurrencyId = KUSD;
+}
+
+impl module_honzon_bridge::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
+	type Currency = Currencies;
+	type StablecoinCurrencyId = StableCoinCurrencyId;
+	type BridgedStableCoinCurrencyId = WormholeAUSDCurrencyId;
+	type PalletId = HonzonBridgePalletId;
 }
 
 parameter_types! {
 	pub const FeePrecision: u128 = 10_000_000_000u128; // 10 decimals
 	pub const APrecision: u128 = 100u128; // 2 decimals
 	pub const PoolAssetLimit: u32 = 5u32;
+	pub const SwapExactOverAmount: u128 = 100u128;
 }
 
 pub struct EnsurePoolAssetId;
@@ -1600,6 +1639,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type FeePrecision = FeePrecision;
 	type APrecision = APrecision;
 	type PoolAssetLimit = PoolAssetLimit;
+	type SwapExactOverAmount = SwapExactOverAmount;
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
@@ -1612,106 +1652,108 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		// Core & Utility
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
-		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 2,
-		Utility: pallet_utility::{Pallet, Call, Event} = 3,
-		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
-		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 5,
-		TransactionPause: module_transaction_pause::{Pallet, Call, Storage, Event<T>} = 6,
-		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>} = 7,
-		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 8,
+		System: frame_system = 0,
+		Timestamp: pallet_timestamp = 1,
+		Scheduler: pallet_scheduler = 2,
+		Utility: pallet_utility = 3,
+		Multisig: pallet_multisig = 4,
+		Proxy: pallet_proxy = 5,
+		TransactionPause: module_transaction_pause = 6,
+		// NOTE: IdleScheduler must be put before ParachainSystem in order to read relaychain blocknumber
+		IdleScheduler: module_idle_scheduler = 7,
+		Preimage: pallet_preimage = 8,
 
 		// Tokens & Related
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 11,
-		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
-		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
+		Balances: pallet_balances = 10,
+		Tokens: orml_tokens exclude_parts { Call } = 11,
+		Currencies: module_currencies = 12,
+		Vesting: orml_vesting = 13,
+		TransactionPayment: module_transaction_payment = 14,
 
 		// Treasury
-		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,
-		Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 21,
-		Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 22,
+		Treasury: pallet_treasury = 20,
+		Bounties: pallet_bounties = 21,
+		Tips: pallet_tips = 22,
 
 		// Parachain
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 31,
+		ParachainInfo: parachain_info exclude_parts { Call } = 31,
 
 		// Collator. The order of the 4 below are important and shall not change.
-		Authorship: pallet_authorship::{Pallet, Storage} = 40,
-		CollatorSelection: module_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 41,
-		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 42,
-		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 43,
-		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 44,
-		SessionManager: module_session_manager::{Pallet, Call, Storage, Event<T>, Config<T>} = 45,
+		Authorship: pallet_authorship = 40,
+		CollatorSelection: module_collator_selection = 41,
+		Session: pallet_session = 42,
+		Aura: pallet_aura = 43,
+		AuraExt: cumulus_pallet_aura_ext exclude_parts { Call } = 44,
+		SessionManager: module_session_manager = 45,
 
 		// XCM
-		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 50,
-		PolkadotXcm: pallet_xcm::{Pallet, Storage, Call, Event<T>, Origin, Config} = 51,
-		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 52,
-		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 53,
-		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 54,
-		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 55,
-		OrmlXcm: orml_xcm::{Pallet, Call, Event<T>} = 56,
+		XcmpQueue: cumulus_pallet_xcmp_queue = 50,
+		PolkadotXcm: pallet_xcm = 51,
+		CumulusXcm: cumulus_pallet_xcm exclude_parts { Call } = 52,
+		DmpQueue: cumulus_pallet_dmp_queue = 53,
+		XTokens: orml_xtokens = 54,
+		UnknownTokens: orml_unknown_tokens exclude_parts { Call } = 55,
+		OrmlXcm: orml_xcm = 56,
 
 		// Governance
-		Authority: orml_authority::{Pallet, Call, Storage, Event<T>, Origin<T>} = 60,
-		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 61,
-		GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 62,
-		FinancialCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 63,
-		FinancialCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 64,
-		HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 65,
-		HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 66,
-		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 67,
-		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
-		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 69,
+		Authority: orml_authority = 60,
+		GeneralCouncil: pallet_collective::<Instance1> = 61,
+		GeneralCouncilMembership: pallet_membership::<Instance1> = 62,
+		FinancialCouncil: pallet_collective::<Instance2> = 63,
+		FinancialCouncilMembership: pallet_membership::<Instance2> = 64,
+		HomaCouncil: pallet_collective::<Instance3> = 65,
+		HomaCouncilMembership: pallet_membership::<Instance3> = 66,
+		TechnicalCommittee: pallet_collective::<Instance4> = 67,
+		TechnicalCommitteeMembership: pallet_membership::<Instance4> = 68,
+		Democracy: pallet_democracy = 69,
 
 		// Oracle
 		//
 		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Event<T>} = 70,
-		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
+		AcalaOracle: orml_oracle::<Instance1> = 70,
+		OperatorMembershipAcala: pallet_membership::<Instance5> = 71,
 
 		// ORML Core
-		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 80,
-		Rewards: orml_rewards::{Pallet, Storage, Call} = 81,
-		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 82,
+		Auction: orml_auction = 80,
+		Rewards: orml_rewards = 81,
+		OrmlNFT: orml_nft exclude_parts { Call } = 82,
 
 		// Karura Core
-		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 90,
-		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 91,
-		DexOracle: module_dex_oracle::{Pallet, Storage, Call} = 92,
+		Prices: module_prices = 90,
+		Dex: module_dex = 91,
+		DexOracle: module_dex_oracle = 92,
 
 		// Honzon
-		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 100,
-		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 101,
-		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 102,
-		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 103,
-		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 104,
-		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 105,
+		AuctionManager: module_auction_manager = 100,
+		Loans: module_loans = 101,
+		Honzon: module_honzon = 102,
+		CdpTreasury: module_cdp_treasury = 103,
+		CdpEngine: module_cdp_engine = 104,
+		EmergencyShutdown: module_emergency_shutdown = 105,
+		HonzonBridge: module_honzon_bridge = 106,
 
 		// Homa
-		Homa: module_homa::{Pallet, Call, Storage, Event<T>} = 116,
-		XcmInterface: module_xcm_interface::{Pallet, Call, Storage, Event<T>} = 117,
+		Homa: module_homa = 116,
+		XcmInterface: module_xcm_interface = 117,
 
 		// Karura Other
-		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
-		NFT: module_nft::{Pallet, Call, Event<T>} = 121,
-		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 122,
+		Incentives: module_incentives = 120,
+		NFT: module_nft = 121,
+		AssetRegistry: module_asset_registry = 122,
 
 		// Smart contracts
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 130,
-		EVMBridge: module_evm_bridge::{Pallet} = 131,
-		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 132,
+		EVM: module_evm = 130,
+		EVMBridge: module_evm_bridge exclude_parts { Call } = 131,
+		EvmAccounts: module_evm_accounts = 132,
 
 		// Stable asset
-		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>} = 200,
+		StableAsset: nutsfinance_stable_asset = 200,
 
 		// Parachain System, always put it at the end
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 30,
+		ParachainSystem: cumulus_pallet_parachain_system = 30,
 
 		// Temporary
-		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
+		Sudo: pallet_sudo = 255,
 	}
 );
 
@@ -1749,24 +1791,31 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	XcmInterfaceMigration,
+	TransactionPaymentMigration,
 >;
 
-// init Statemine location to its weight and fee, used by ParachainMinFee
-pub struct XcmInterfaceMigration;
-impl OnRuntimeUpgrade for XcmInterfaceMigration {
+pub struct TransactionPaymentMigration;
+
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(KAR);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(KAR));
+}
+
+impl OnRuntimeUpgrade for TransactionPaymentMigration {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		// update_xcm_dest_weight_and_fee
-		let _ = <module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
-			Origin::root(),
-			vec![(
-				module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new(
-					(1, Parachain(parachains::statemine::ID)).into(),
-				)),
-				Some(4_000_000_000),
-				Some(4_000_000_000),
-			)],
-		);
+		let poo_size = FeePoolSize::get();
+		let threshold = SwapBalanceThreshold::get();
+		let tokens = vec![
+			(KUSD, vec![KUSD, KSM, KAR]),
+			(KSM, vec![KSM, KAR]),
+			(LKSM, vec![LKSM, KSM, KAR]),
+			(BNC, vec![BNC, KUSD, KSM, KAR]),
+			(CurrencyId::ForeignAsset(0), vec![CurrencyId::ForeignAsset(0), KSM, KAR]),
+		];
+		for (token, path) in tokens {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
+			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, path, poo_size, threshold);
+		}
 		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 }
@@ -1796,12 +1845,14 @@ mod benches {
 		[module_evm_accounts, benchmarking::evm_accounts]
 		[module_currencies, benchmarking::currencies]
 		[module_session_manager, benchmarking::session_manager]
+		[module_honzon_bridge, benchmarking::honzon_bridge]
 		[orml_tokens, benchmarking::tokens]
 		[orml_vesting, benchmarking::vesting]
 		[orml_auction, benchmarking::auction]
 		[orml_authority, benchmarking::authority]
 		[orml_oracle, benchmarking::oracle]
 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
+		[module_idle_scheduler, benchmarking::idle_scheduler]
 	);
 }
 
@@ -2274,7 +2325,7 @@ mod tests {
 	#[test]
 	fn check_call_size() {
 		assert!(
-			core::mem::size_of::<Call>() <= 260,
+			core::mem::size_of::<Call>() <= 280,
 			"size of Call is more than 260 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",

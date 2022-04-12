@@ -32,6 +32,7 @@ pub struct TestNodeBuilder {
 	storage_update_func_relay_chain: Option<Box<dyn Fn()>>,
 	consensus: Consensus,
 	seal_mode: SealMode,
+	relay_chain_full_node_url: Option<Url>,
 }
 
 impl TestNodeBuilder {
@@ -55,6 +56,7 @@ impl TestNodeBuilder {
 			storage_update_func_relay_chain: None,
 			consensus: Consensus::Aura,
 			seal_mode: SealMode::ParaSeal,
+			relay_chain_full_node_url: None,
 		}
 	}
 
@@ -149,6 +151,12 @@ impl TestNodeBuilder {
 		self
 	}
 
+	/// Connect to full node via RPC.
+	pub fn use_external_relay_chain_node_at_url(mut self, network_address: Url) -> Self {
+		self.relay_chain_full_node_url = Some(network_address);
+		self
+	}
+
 	/// Build the [`TestNode`].
 	pub async fn build(self) -> TestNode {
 		let parachain_config = node_config(
@@ -172,6 +180,10 @@ impl TestNodeBuilder {
 
 		relay_chain_config.network.node_name = format!("{} (relay chain)", relay_chain_config.network.node_name);
 
+		let collator_options = CollatorOptions {
+			relay_chain_rpc_url: self.relay_chain_full_node_url,
+		};
+
 		let multiaddr = parachain_config.network.listen_addresses[0].clone();
 		let (task_manager, client, network, rpc_handlers, transaction_pool, backend, seal_sink) = match self.seal_mode {
 			SealMode::DevInstantSeal | SealMode::DevAuraSeal => {
@@ -186,6 +198,7 @@ impl TestNodeBuilder {
 					parachain_config,
 					self.collator_key,
 					relay_chain_config,
+					collator_options,
 					self.para_id,
 					self.wrap_announce_block,
 					|_| Ok(Default::default()),
@@ -283,7 +296,6 @@ pub fn node_config(
 		state_cache_child_ratio: None,
 		state_pruning: PruningMode::ArchiveAll,
 		keep_blocks: KeepBlocks::All,
-		transaction_storage: TransactionStorageMode::BlockBody,
 		chain_spec: spec,
 		wasm_method: WasmExecutionMethod::Interpreted,
 		// NOTE: we enforce the use of the native runtime to make the errors more debuggable

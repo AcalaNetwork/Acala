@@ -20,7 +20,7 @@ use crate::setup::*;
 use frame_support::weights::{DispatchClass, DispatchInfo, Pays, Weight};
 use sp_runtime::{
 	traits::{AccountIdConversion, SignedExtension, UniqueSaturatedInto},
-	MultiAddress,
+	MultiAddress, Percent,
 };
 use xcm_executor::{traits::*, Assets, Config};
 
@@ -28,12 +28,26 @@ fn fee_pool_size() -> Balance {
 	5 * dollar(NATIVE_CURRENCY)
 }
 
-fn init_charge_fee_pool(currency_id: CurrencyId) -> DispatchResult {
+fn init_charge_fee_pool(currency_id: CurrencyId, path: Vec<CurrencyId>) -> DispatchResult {
 	TransactionPayment::enable_charge_fee_pool(
 		Origin::root(),
 		currency_id,
+		path,
 		fee_pool_size(),
 		Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
+	)
+}
+
+fn init_charge_fee_pool_relay() -> DispatchResult {
+	init_charge_fee_pool(RELAY_CHAIN_CURRENCY, vec![RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY])
+}
+fn init_charge_fee_pool_usd() -> DispatchResult {
+	init_charge_fee_pool(USD_CURRENCY, vec![USD_CURRENCY, RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY])
+}
+fn init_charge_fee_pool_liquid() -> DispatchResult {
+	init_charge_fee_pool(
+		LIQUID_CURRENCY,
+		vec![LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY],
 	)
 }
 
@@ -143,21 +157,21 @@ fn initial_charge_fee_pool_works() {
 			#[cfg(feature = "with-acala-runtime")]
 			add_liquidity_for_lcdot();
 
-			vec![RELAY_CHAIN_CURRENCY, USD_CURRENCY].iter().for_each(|token| {
-				assert_ok!(init_charge_fee_pool(*token));
-			});
+			assert_ok!(init_charge_fee_pool_relay());
+			assert_ok!(init_charge_fee_pool_usd());
 			// balance lt ED
 			assert_noop!(
 				TransactionPayment::enable_charge_fee_pool(
 					Origin::root(),
 					LIQUID_CURRENCY,
+					vec![LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY],
 					NativeTokenExistentialDeposit::get() - 1,
 					Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY))
 				),
 				module_transaction_payment::Error::<Runtime>::InvalidBalance
 			);
 			assert_noop!(
-				init_charge_fee_pool(LIQUID_CURRENCY),
+				init_charge_fee_pool_liquid(),
 				module_transaction_payment::Error::<Runtime>::DexNotAvailable
 			);
 			assert_eq!(
@@ -196,15 +210,6 @@ fn initial_charge_fee_pool_works() {
 				),
 				0
 			);
-
-			// set_swap_balance_threshold should gt pool_size
-			let pool_size: Balance = module_transaction_payment::Pallet::<Runtime>::pool_size(RELAY_CHAIN_CURRENCY);
-			let swap_threshold = module_transaction_payment::Pallet::<Runtime>::set_swap_balance_threshold(
-				Origin::signed(treasury_account),
-				RELAY_CHAIN_CURRENCY,
-				pool_size.saturating_add(1),
-			);
-			assert!(swap_threshold.is_err());
 		});
 }
 
@@ -315,7 +320,7 @@ fn trader_works() {
 			#[cfg(feature = "with-acala-runtime")]
 			add_liquidity_for_lcdot();
 
-			assert_ok!(init_charge_fee_pool(RELAY_CHAIN_CURRENCY));
+			assert_ok!(init_charge_fee_pool_relay());
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &treasury_account), ed);
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &fee_account1), pool_size);
 			assert_eq!(Currencies::free_balance(RELAY_CHAIN_CURRENCY, &fee_account1), relay_ed);
@@ -364,7 +369,7 @@ fn charge_transaction_payment_and_threshold_works() {
 		])
 		.build()
 		.execute_with(|| {
-			// treasury account for on_runtime_upgrade
+			// before update, treasury account has native_ed amount of native token
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(treasury_account.clone()),
@@ -378,14 +383,18 @@ fn charge_transaction_payment_and_threshold_works() {
 				relay_ed.unique_saturated_into(),
 			));
 
-			vec![RELAY_CHAIN_CURRENCY, USD_CURRENCY, LIQUID_CURRENCY]
-				.iter()
-				.for_each(|token| {
-					assert_noop!(
-						init_charge_fee_pool(*token),
-						module_transaction_payment::Error::<Runtime>::DexNotAvailable
-					);
-				});
+			assert_noop!(
+				init_charge_fee_pool_relay(),
+				module_transaction_payment::Error::<Runtime>::DexNotAvailable
+			);
+			assert_noop!(
+				init_charge_fee_pool_usd(),
+				module_transaction_payment::Error::<Runtime>::DexNotAvailable
+			);
+			assert_noop!(
+				init_charge_fee_pool_liquid(),
+				module_transaction_payment::Error::<Runtime>::DexNotAvailable
+			);
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(ALICE)),
 				RELAY_CHAIN_CURRENCY,
@@ -399,7 +408,9 @@ fn charge_transaction_payment_and_threshold_works() {
 			#[cfg(feature = "with-acala-runtime")]
 			add_liquidity_for_lcdot();
 
-			assert_ok!(init_charge_fee_pool(RELAY_CHAIN_CURRENCY));
+			// before init_charge_fee_pool, treasury account has native_ed+pool_size of native token
+			assert_ok!(init_charge_fee_pool_relay());
+			// init_charge_fee_pool will transfer pool_size to sub_account
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &treasury_account), native_ed);
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &sub_account1), pool_size);
 			assert_eq!(Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1), relay_ed);
@@ -434,6 +445,9 @@ fn charge_transaction_payment_and_threshold_works() {
 				pays_fee: Pays::Yes,
 			};
 			let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(len, &info, 0);
+			let fee_alternative_surplus_percent: Percent = ALTERNATIVE_SURPLUS;
+			let surplus = fee_alternative_surplus_percent.mul_ceil(fee);
+			let fee = fee + surplus;
 
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
@@ -459,7 +473,7 @@ fn charge_transaction_payment_and_threshold_works() {
 			assert_eq!(fee, balance1 - balance2);
 			assert_eq!(relay_exchange_rate.saturating_mul_int(fee), relay2 - relay1);
 
-			for _ in 0..38 {
+			for i in 0..38 {
 				assert_ok!(
 					<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
 						&AccountId::from(BOB),
@@ -468,19 +482,22 @@ fn charge_transaction_payment_and_threshold_works() {
 						len as usize,
 					)
 				);
+				assert_eq!(
+					pool_size - fee * (i + 3),
+					Currencies::free_balance(NATIVE_CURRENCY, &sub_account1)
+				);
 			}
 			let balance1 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
 			let relay1 = Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1);
 
 			// set swap balance trigger, next tx will trigger swap from dex
-			assert_ok!(
-				<module_transaction_payment::Pallet<Runtime>>::set_swap_balance_threshold(
-					Origin::root(),
-					RELAY_CHAIN_CURRENCY,
-					pool_size - fee * 40,
-				)
+			module_transaction_payment::SwapBalanceThreshold::<Runtime>::insert(
+				RELAY_CHAIN_CURRENCY,
+				pool_size - fee * 40,
 			);
 
+			// 5 000 000 000 000
+			//   350 000 000 000
 			// before execute this tx, the balance of fee pool is equal to threshold,
 			// so it wouldn't trigger swap from dex.
 			assert_ok!(
