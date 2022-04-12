@@ -1804,26 +1804,24 @@ pub struct PayerSignatureVerification;
 
 impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSignatureVerification {
 	fn convert((call, extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
-		match call.clone() {
-			Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
-				call: _,
-				payload: _,
-				payer_addr,
-				payer_sig,
-			}) => {
-				let payer_account: [u8; 32] = payer_addr
-					.encode()
-					.as_slice()
-					.try_into()
-					.map_err(|_| InvalidTransaction::Custom(0))?;
-				let raw_payload = SignedPayload::new(call, extra.clone());
-				if !raw_payload.using_encoded(|payload| {
-					payer_sig.verify(payload, &sp_core::crypto::AccountId32::new(payer_account))
-				}) {
-					return Err(InvalidTransaction::BadProof);
-				}
+		if let Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+			call: _,
+			payload: _,
+			payer_addr,
+			payer_sig,
+		}) = call.clone()
+		{
+			let payer_account: [u8; 32] = payer_addr
+				.encode()
+				.as_slice()
+				.try_into()
+				.map_err(|_| InvalidTransaction::Custom(0))?;
+			let raw_payload = SignedPayload::new(call, extra);
+			if !raw_payload
+				.using_encoded(|payload| payer_sig.verify(payload, &sp_core::crypto::AccountId32::new(payer_account)))
+			{
+				return Err(InvalidTransaction::BadProof);
 			}
-			_ => {}
 		}
 		Ok(())
 	}
