@@ -19,13 +19,13 @@
 use crate::{
 	AccountId, Address, Amount, Balance, CdpEngine, CdpTreasury, CollateralCurrencyIds, CurrencyId,
 	DefaultDebitExchangeRate, Dex, EmergencyShutdown, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId,
-	GetStableCurrencyId, GetStakingCurrencyId, MaxAuctionsCount, MinimumDebitValue, NativeTokenExistentialDeposit,
-	Price, Rate, Ratio, Runtime, Timestamp, MILLISECS_PER_BLOCK,
+	GetStableCurrencyId, GetStakingCurrencyId, MinimumDebitValue, NativeTokenExistentialDeposit, Price, Rate, Ratio,
+	Runtime, Timestamp, MILLISECS_PER_BLOCK,
 };
 
 use super::utils::{dollar, feed_price, set_balance};
 use frame_benchmarking::account;
-use frame_support::traits::OnInitialize;
+use frame_support::traits::{Get, OnInitialize};
 use frame_system::RawOrigin;
 use module_support::DEXManager;
 use orml_benchmarking::runtime_benchmarks;
@@ -144,7 +144,7 @@ runtime_benchmarks! {
 
 	// `liquidate` by_auction
 	liquidate_by_auction {
-		let b in 1 .. MaxAuctionsCount::get();
+		let b in 1 .. <Runtime as module_cdp_treasury::Config>::MaxAuctionsCount::get();
 
 		let owner: AccountId = account("owner", 0, SEED);
 		let owner_lookup = AccountIdLookup::unlookup(owner.clone());

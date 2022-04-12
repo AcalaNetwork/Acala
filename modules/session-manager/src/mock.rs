@@ -21,12 +21,12 @@
 #![cfg(test)]
 
 use crate as session_manager;
-use frame_support::{construct_runtime, pallet_prelude::GenesisBuild, parameter_types, traits::Everything};
+use frame_support::{
+	construct_runtime,
+	pallet_prelude::GenesisBuild,
+	traits::{ConstU32, ConstU64, Everything},
+};
 use sp_runtime::{testing::UintAuthorityId, traits::OpaqueKeys, RuntimeAppPublic};
-
-parameter_types!(
-	pub const BlockHashCount: u32 = 250;
-);
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
@@ -40,7 +40,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
 	type Header = sp_runtime::testing::Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
@@ -52,7 +52,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 sp_runtime::impl_opaque_keys! {
