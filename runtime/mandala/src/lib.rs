@@ -1854,9 +1854,9 @@ pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<
 	Call,
 	SignedExtra,
 	ConvertEthereumTx,
-	PayerSignatureVerification,
 	StorageDepositPerByte,
 	TxFeePerGas,
+	PayerSignatureVerification,
 >;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
