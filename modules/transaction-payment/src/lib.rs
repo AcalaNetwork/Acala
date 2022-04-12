@@ -381,8 +381,6 @@ pub mod module {
 		DexNotAvailable,
 		/// Charge fee pool is already exist
 		ChargeFeePoolAlreadyExisted,
-		/// The payer signature is invalid
-		InvalidSignature,
 	}
 
 	#[pallet::event]
@@ -790,7 +788,6 @@ where
 	fn ensure_can_charge_fee_with_call(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
-		_tip: PalletBalanceOf<T>,
 		call: &CallOf<T>,
 	) -> Result<(T::AccountId, Balance), DispatchError>
 	where
@@ -827,8 +824,8 @@ where
 				payer_addr,
 				payer_sig: _,
 			}) => {
-				// validate payer signature is in runtime side, because SignedExtension between different runtime
-				// may be unlikely.
+				// validate payer signature in runtime side, because `SignedExtension` between different runtime
+				// may be different.
 				Self::native_then_alternative_or_default(payer_addr, fee).map(|surplus| (payer_addr.clone(), surplus))
 			}
 			_ => Self::native_then_alternative_or_default(who, fee).map(|surplus| (who.clone(), surplus)),
@@ -1230,8 +1227,8 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		let (payer, fee_surplus) = Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, tip, call)
-			.map_err(|_| InvalidTransaction::Payment)?;
+		let (payer, fee_surplus) =
+			Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call).map_err(|_| InvalidTransaction::Payment)?;
 
 		// withdraw native currency as fee, also consider surplus when swap from dex or pool.
 		match <T as Config>::Currency::withdraw(&payer, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
