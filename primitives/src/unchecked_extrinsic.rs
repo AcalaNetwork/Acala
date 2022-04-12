@@ -131,125 +131,125 @@ where
 			PayerTx::convert((function.clone(), extra))?;
 		}
 
-		if EnableEvmSignature::value() {
-			match self.0.signature {
-				Some((addr, AcalaMultiSignature::Ethereum(sig), extra)) => {
-					let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
-					log::trace!(
-						target: "evm", "Ethereum eth_msg: {:?}", eth_msg
-					);
+		if !EnableEvmSignature::value() {
+			return self.0.check(lookup);
+		}
 
-					if !eth_msg.tip.is_zero() {
-						// Not yet supported, require zero tip
-						return Err(InvalidTransaction::BadProof.into());
-					}
+		match self.0.signature {
+			Some((addr, AcalaMultiSignature::Ethereum(sig), extra)) => {
+				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "Ethereum eth_msg: {:?}", eth_msg
+				);
 
-					if !eth_msg.access_list.len().is_zero() {
-						// Not yet supported, require empty
-						return Err(InvalidTransaction::BadProof.into());
-					}
-
-					let (tx_gas_price, tx_gas_limit) =
-						recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
-							.ok_or(InvalidTransaction::BadProof)?;
-
-					let msg = LegacyTransactionMessage {
-						nonce: eth_msg.nonce.into(),
-						gas_price: tx_gas_price.into(),
-						gas_limit: tx_gas_limit.into(),
-						action: eth_msg.action,
-						value: eth_msg.value.into(),
-						input: eth_msg.input,
-						chain_id: Some(eth_msg.chain_id),
-					};
-					log::trace!(
-						target: "evm", "tx msg: {:?}", msg
-					);
-
-					let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
-
-					let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
-
-					let account_id = lookup.lookup(Address::Address20(signer.into()))?;
-					let expected_account_id = lookup.lookup(addr)?;
-
-					if account_id != expected_account_id {
-						return Err(InvalidTransaction::BadProof.into());
-					}
-
-					Ok(CheckedExtrinsic {
-						signed: Some((account_id, eth_extra)),
-						function,
-					})
+				if !eth_msg.tip.is_zero() {
+					// Not yet supported, require zero tip
+					return Err(InvalidTransaction::BadProof.into());
 				}
-				Some((addr, AcalaMultiSignature::Eip1559(sig), extra)) => {
-					let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
-					log::trace!(
-						target: "evm", "Eip1559 eth_msg: {:?}", eth_msg
-					);
 
-					let (tx_gas_price, tx_gas_limit) =
-						recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
-							.ok_or(InvalidTransaction::BadProof)?;
-
-					// tip = priority_fee * gas_limit
-					let priority_fee = eth_msg.tip.checked_div(eth_msg.gas_limit.into()).unwrap_or_default();
-
-					let msg = EIP1559TransactionMessage {
-						chain_id: eth_msg.chain_id,
-						nonce: eth_msg.nonce.into(),
-						max_priority_fee_per_gas: priority_fee.into(),
-						max_fee_per_gas: tx_gas_price.into(),
-						gas_limit: tx_gas_limit.into(),
-						action: eth_msg.action,
-						value: eth_msg.value.into(),
-						input: eth_msg.input,
-						access_list: eth_msg.access_list,
-					};
-					log::trace!(
-						target: "evm", "tx msg: {:?}", msg
-					);
-
-					let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
-
-					let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
-
-					let account_id = lookup.lookup(Address::Address20(signer.into()))?;
-					let expected_account_id = lookup.lookup(addr)?;
-
-					if account_id != expected_account_id {
-						return Err(InvalidTransaction::BadProof.into());
-					}
-
-					Ok(CheckedExtrinsic {
-						signed: Some((account_id, eth_extra)),
-						function,
-					})
+				if !eth_msg.access_list.len().is_zero() {
+					// Not yet supported, require empty
+					return Err(InvalidTransaction::BadProof.into());
 				}
-				Some((addr, AcalaMultiSignature::AcalaEip712(sig), extra)) => {
-					let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
-					log::trace!(
-						target: "evm", "AcalaEip712 eth_msg: {:?}", eth_msg
-					);
 
-					let signer = verify_eip712_signature(eth_msg, sig).ok_or(InvalidTransaction::BadProof)?;
+				let (tx_gas_price, tx_gas_limit) =
+					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
+						.ok_or(InvalidTransaction::BadProof)?;
 
-					let account_id = lookup.lookup(Address::Address20(signer.into()))?;
-					let expected_account_id = lookup.lookup(addr)?;
+				let msg = LegacyTransactionMessage {
+					nonce: eth_msg.nonce.into(),
+					gas_price: tx_gas_price.into(),
+					gas_limit: tx_gas_limit.into(),
+					action: eth_msg.action,
+					value: eth_msg.value.into(),
+					input: eth_msg.input,
+					chain_id: Some(eth_msg.chain_id),
+				};
+				log::trace!(
+					target: "evm", "tx msg: {:?}", msg
+				);
 
-					if account_id != expected_account_id {
-						return Err(InvalidTransaction::BadProof.into());
-					}
+				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
 
-					Ok(CheckedExtrinsic {
-						signed: Some((account_id, eth_extra)),
-						function,
-					})
+				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
+
+				let account_id = lookup.lookup(Address::Address20(signer.into()))?;
+				let expected_account_id = lookup.lookup(addr)?;
+
+				if account_id != expected_account_id {
+					return Err(InvalidTransaction::BadProof.into());
 				}
-				_ => self.0.check(lookup),
+
+				Ok(CheckedExtrinsic {
+					signed: Some((account_id, eth_extra)),
+					function,
+				})
 			}
-		} else {
-			self.0.check(lookup)
+			Some((addr, AcalaMultiSignature::Eip1559(sig), extra)) => {
+				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "Eip1559 eth_msg: {:?}", eth_msg
+				);
+
+				let (tx_gas_price, tx_gas_limit) =
+					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
+						.ok_or(InvalidTransaction::BadProof)?;
+
+				// tip = priority_fee * gas_limit
+				let priority_fee = eth_msg.tip.checked_div(eth_msg.gas_limit.into()).unwrap_or_default();
+
+				let msg = EIP1559TransactionMessage {
+					chain_id: eth_msg.chain_id,
+					nonce: eth_msg.nonce.into(),
+					max_priority_fee_per_gas: priority_fee.into(),
+					max_fee_per_gas: tx_gas_price.into(),
+					gas_limit: tx_gas_limit.into(),
+					action: eth_msg.action,
+					value: eth_msg.value.into(),
+					input: eth_msg.input,
+					access_list: eth_msg.access_list,
+				};
+				log::trace!(
+					target: "evm", "tx msg: {:?}", msg
+				);
+
+				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
+
+				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
+
+				let account_id = lookup.lookup(Address::Address20(signer.into()))?;
+				let expected_account_id = lookup.lookup(addr)?;
+
+				if account_id != expected_account_id {
+					return Err(InvalidTransaction::BadProof.into());
+				}
+
+				Ok(CheckedExtrinsic {
+					signed: Some((account_id, eth_extra)),
+					function,
+				})
+			}
+			Some((addr, AcalaMultiSignature::AcalaEip712(sig), extra)) => {
+				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "AcalaEip712 eth_msg: {:?}", eth_msg
+				);
+
+				let signer = verify_eip712_signature(eth_msg, sig).ok_or(InvalidTransaction::BadProof)?;
+
+				let account_id = lookup.lookup(Address::Address20(signer.into()))?;
+				let expected_account_id = lookup.lookup(addr)?;
+
+				if account_id != expected_account_id {
+					return Err(InvalidTransaction::BadProof.into());
+				}
+
+				Ok(CheckedExtrinsic {
+					signed: Some((account_id, eth_extra)),
+					function,
+				})
+			}
+			_ => self.0.check(lookup),
 		}
 	}
 }

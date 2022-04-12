@@ -615,7 +615,7 @@ pub mod module {
 	}
 }
 
-impl<T: Config + frame_system::Config> Pallet<T>
+impl<T: Config> Pallet<T>
 where
 	PalletBalanceOf<T>: FixedPointOperand,
 {
@@ -795,7 +795,6 @@ where
 	) -> Result<(T::AccountId, Balance), DispatchError>
 	where
 		T: Send + Sync,
-		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 	{
 		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
 		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
@@ -1182,7 +1181,7 @@ where
 #[scale_info(skip_type_params(T))]
 pub struct ChargeTransactionPayment<T: Config + Send + Sync>(#[codec(compact)] pub PalletBalanceOf<T>);
 
-impl<T: Config + frame_system::Config + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> {
+impl<T: Config + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> {
 	#[cfg(feature = "std")]
 	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
 		write!(f, "ChargeTransactionPayment<{:?}>", self.0)
@@ -1193,7 +1192,7 @@ impl<T: Config + frame_system::Config + Send + Sync> sp_std::fmt::Debug for Char
 	}
 }
 
-impl<T: Config + frame_system::Config + Send + Sync> ChargeTransactionPayment<T>
+impl<T: Config + Send + Sync> ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
@@ -1216,10 +1215,7 @@ where
 			T::AccountId,
 		),
 		TransactionValidityError,
-	>
-	where
-		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
-	{
+	> {
 		let tip = self.0;
 		let fee = Pallet::<T>::compute_fee(len as u32, info, tip);
 
@@ -1324,10 +1320,9 @@ where
 	}
 }
 
-impl<T: Config + frame_system::Config + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
+impl<T: Config + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
-	<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;
@@ -1422,8 +1417,8 @@ where
 	}
 }
 
-impl<T: Config + frame_system::Config + Send + Sync>
-	TransactionPayment<T::AccountId, PalletBalanceOf<T>, NegativeImbalanceOf<T>> for ChargeTransactionPayment<T>
+impl<T: Config + Send + Sync> TransactionPayment<T::AccountId, PalletBalanceOf<T>, NegativeImbalanceOf<T>>
+	for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
