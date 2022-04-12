@@ -31,13 +31,14 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
-use support::mocks::MockErc20InfoMapping;
+use support::{create_aggregated_swap, mocks::MockErc20InfoMapping, SpecificJointsSwap};
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const CAROL: AccountId = 3;
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
@@ -153,6 +154,22 @@ impl Config for Runtime {
 	type OnLiquidityPoolUpdated = MockOnLiquidityPoolUpdated;
 }
 
+parameter_types! {
+	pub AUSDJoint: Vec<Vec<CurrencyId>> = vec![vec![AUSD]];
+	pub ACAJoint: Vec<Vec<CurrencyId>> = vec![vec![ACA]];
+}
+
+pub type AUSDJointSwap = SpecificJointsSwap<DexModule, AUSDJoint>;
+pub type ACAJointSwap = SpecificJointsSwap<DexModule, ACAJoint>;
+
+create_aggregated_swap!(
+	AggregatedSwap,
+	AccountId,
+	Balance,
+	CurrencyId,
+	[AUSDJointSwap, ACAJointSwap]
+);
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -179,6 +196,8 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			balances: vec![
+				(ALICE, ACA, 1_000_000_000_000_000_000u128),
+				(BOB, ACA, 1_000_000_000_000_000_000u128),
 				(ALICE, AUSD, 1_000_000_000_000_000_000u128),
 				(BOB, AUSD, 1_000_000_000_000_000_000u128),
 				(ALICE, BTC, 1_000_000_000_000_000_000u128),

@@ -87,6 +87,17 @@ pub trait Swap<AccountId, Balance, CurrencyId> {
 	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
 }
 
+#[derive(Eq, PartialEq, RuntimeDebug)]
+pub enum SwapError {
+	CannotSwap,
+}
+
+impl Into<DispatchError> for SwapError {
+	fn into(self) -> DispatchError {
+		DispatchError::Other("Cannot swap")
+	}
+}
+
 pub struct SpecificJointsSwap<Dex, Joints>(sp_std::marker::PhantomData<(Dex, Joints)>);
 
 impl<AccountId, Balance, CurrencyId, Dex, Joints> Swap<AccountId, Balance, CurrencyId>
@@ -122,7 +133,7 @@ where
 			limit.clone(),
 			Joints::get(),
 		)
-		.ok_or(DispatchError::Other("Cannot swap"))?
+		.ok_or(Into::<DispatchError>::into(SwapError::CannotSwap))?
 		.0;
 
 		<Dex as DEXManager<AccountId, Balance, CurrencyId>>::swap_with_specific_path(who, &path, limit)
@@ -208,7 +219,7 @@ macro_rules! create_aggregated_swap {
 					)*
 				}
 
-				Err(sp_runtime::DispatchError::Other("Cannot swap"))
+				Err(Into::<sp_runtime::DispatchError>::into($crate::SwapError::CannotSwap))
 			}
     	}
 	}

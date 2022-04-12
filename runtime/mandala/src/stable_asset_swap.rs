@@ -20,7 +20,7 @@
 
 use crate::{AccountId, Balance, BlockNumber, CurrencyId};
 use frame_support::ensure;
-use module_support::{Swap, SwapLimit};
+use module_support::{Swap, SwapError, SwapLimit};
 use nutsfinance_stable_asset::traits::StableAsset as StableAssetT;
 use sp_runtime::DispatchError;
 
@@ -72,20 +72,21 @@ where
 			SwapLimit::ExactTarget(_, exact_target_amount) => exact_target_amount,
 		};
 		let result = StableAsset::get_best_route(supply_currency_id, target_currency_id, target_limit)
-			.ok_or(DispatchError::Other("Cannot swap"))?;
+			.ok_or(Into::<DispatchError>::into(SwapError::CannotSwap))?;
 		let supply_index = result
 			.assets
 			.iter()
 			.position(|&r| r == supply_currency_id)
-			.ok_or(DispatchError::Other("Cannot swap"))?;
+			.ok_or(Into::<DispatchError>::into(SwapError::CannotSwap))?;
 		let target_index = result
 			.assets
 			.iter()
 			.position(|&r| r == target_currency_id)
-			.ok_or(DispatchError::Other("Cannot swap"))?;
+			.ok_or(Into::<DispatchError>::into(SwapError::CannotSwap))?;
 		match result.pool_asset {
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
-				let pool_info = StableAsset::pool(stable_asset_id).ok_or(DispatchError::Other("Cannot swap"))?;
+				let pool_info =
+					StableAsset::pool(stable_asset_id).ok_or(Into::<DispatchError>::into(SwapError::CannotSwap))?;
 				let asset_length = pool_info.assets.len() as u32;
 
 				match limit {
@@ -105,8 +106,8 @@ where
 							target_index as u32,
 							exact_target_amount,
 						)
-						.ok_or(DispatchError::Other("Cannot swap"))?;
-						ensure!(max_supply_amount >= result.dx, DispatchError::Other("Cannot swap"));
+						.ok_or(Into::<DispatchError>::into(SwapError::CannotSwap))?;
+						ensure!(max_supply_amount >= result.dx, SwapError::CannotSwap);
 						StableAsset::swap(
 							who,
 							stable_asset_id,
@@ -119,7 +120,7 @@ where
 					}
 				}
 			}
-			_ => Err(DispatchError::Other("Cannot swap")),
+			_ => Err(Into::<DispatchError>::into(SwapError::CannotSwap)),
 		}
 	}
 }

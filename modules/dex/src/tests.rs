@@ -23,13 +23,14 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	AUSDBTCPair, AUSDDOTPair, DOTBTCPair, DexModule, Event, ExtBuilder, ListingOrigin, Origin, Runtime, System, Tokens,
-	ACA, ALICE, AUSD, AUSD_DOT_POOL_RECORD, BOB, BTC, DOT,
+	ACAJointSwap, AUSDBTCPair, AUSDDOTPair, AUSDJointSwap, AggregatedSwap, DOTBTCPair, DexModule, Event, ExtBuilder,
+	ListingOrigin, Origin, Runtime, System, Tokens, ACA, ALICE, AUSD, AUSD_DOT_POOL_RECORD, BOB, BTC, CAROL, DOT,
 };
 use orml_traits::MultiReservableCurrency;
 use sp_core::H160;
 use sp_runtime::traits::BadOrigin;
 use std::str::FromStr;
+use support::{Swap, SwapError};
 
 #[test]
 fn list_provisioning_work() {
@@ -1909,4 +1910,167 @@ fn get_liquidity_token_address_work() {
 			Some(H160::from_str("0x0000000000000000000200000000010000000002").unwrap())
 		);
 	});
+}
+
+#[test]
+fn specific_joint_swap_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				DOT,
+				5_000_000_000_000,
+				1_000_000_000_000,
+				0,
+				false,
+			));
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				BTC,
+				5_000_000_000_000,
+				1_000_000_000_000,
+				0,
+				false,
+			));
+
+			assert_eq!(
+				AUSDJointSwap::get_swap_amount(BTC, DOT, SwapLimit::ExactSupply(10000, 0)),
+				Some((10000, 9800))
+			);
+			assert_eq!(
+				ACAJointSwap::get_swap_amount(BTC, DOT, SwapLimit::ExactSupply(10000, 0)),
+				None
+			);
+
+			assert_noop!(
+				AUSDJointSwap::swap(&CAROL, BTC, DOT, SwapLimit::ExactSupply(10000, 0)),
+				orml_tokens::Error::<Runtime>::BalanceTooLow,
+			);
+			assert_noop!(
+				AUSDJointSwap::swap(&BOB, BTC, DOT, SwapLimit::ExactSupply(10000, 9801)),
+				SwapError::CannotSwap,
+			);
+			assert_noop!(
+				ACAJointSwap::swap(&BOB, BTC, DOT, SwapLimit::ExactSupply(10000, 0)),
+				SwapError::CannotSwap,
+			);
+
+			assert_eq!(
+				AUSDJointSwap::swap(&BOB, BTC, DOT, SwapLimit::ExactSupply(10000, 0)),
+				Ok((10000, 9800)),
+			);
+
+			assert_eq!(
+				AUSDJointSwap::swap(&BOB, DOT, BTC, SwapLimit::ExactTarget(20000, 10000)),
+				Ok((10204, 10000)),
+			);
+		});
+}
+
+#[test]
+fn aggregated_swap_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+
+			assert_ok!(DexModule::enable_trading_pair(
+				Origin::signed(ListingOrigin::get()),
+				ACA,
+				DOT
+			));
+			assert_ok!(DexModule::enable_trading_pair(
+				Origin::signed(ListingOrigin::get()),
+				ACA,
+				BTC
+			));
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				DOT,
+				5_000_000_000_000,
+				1_000_000_000_000,
+				0,
+				false,
+			));
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				BTC,
+				5_000_000_000_000,
+				1_000_000_000_000,
+				0,
+				false,
+			));
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				ACA,
+				DOT,
+				500_000_000_000,
+				100_000_000_000,
+				0,
+				false,
+			));
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				ACA,
+				BTC,
+				200_000_000_000,
+				100_000_000_000,
+				0,
+				false,
+			));
+
+			assert_eq!(
+				AUSDJointSwap::get_swap_amount(DOT, BTC, SwapLimit::ExactSupply(10000, 0)),
+				Some((10000, 9800))
+			);
+			assert_eq!(
+				ACAJointSwap::get_swap_amount(DOT, BTC, SwapLimit::ExactSupply(10000, 0)),
+				Some((10000, 24501))
+			);
+			assert_eq!(
+				AggregatedSwap::get_swap_amount(DOT, BTC, SwapLimit::ExactSupply(10000, 0)),
+				Some((10000, 24501))
+			);
+
+			assert_eq!(
+				AUSDJointSwap::get_swap_amount(DOT, BTC, SwapLimit::ExactSupply(100_000_000_000, 0)),
+				Some((100_000_000_000, 81_879_015_212))
+			);
+			assert_eq!(
+				ACAJointSwap::get_swap_amount(DOT, BTC, SwapLimit::ExactSupply(100_000_000_000, 0)),
+				Some((100_000_000_000, 55_182_703_676))
+			);
+			assert_eq!(
+				AggregatedSwap::get_swap_amount(DOT, BTC, SwapLimit::ExactSupply(100_000_000_000, 0)),
+				Some((100_000_000_000, 81_879_015_212))
+			);
+
+			assert_noop!(
+				AggregatedSwap::swap(&CAROL, DOT, BTC, SwapLimit::ExactSupply(10000, 0)),
+				orml_tokens::Error::<Runtime>::BalanceTooLow
+			);
+			assert_noop!(
+				AggregatedSwap::swap(&BOB, DOT, BTC, SwapLimit::ExactSupply(100_000_000_000, 82_000_000_000)),
+				SwapError::CannotSwap
+			);
+			assert_eq!(
+				AggregatedSwap::swap(&BOB, BTC, DOT, SwapLimit::ExactSupply(100_000_000_000, 81_000_000_000)),
+				Ok((100_000_000_000, 81_879_015_212))
+			);
+
+			System::assert_last_event(Event::DexModule(crate::Event::Swap {
+				trader: BOB,
+				path: vec![BTC, AUSD, DOT],
+				liquidity_changes: vec![100_000_000_000, 450_409_463_148, 81_879_015_212],
+			}));
+		});
 }
