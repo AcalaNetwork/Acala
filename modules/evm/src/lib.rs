@@ -1191,6 +1191,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Remove an account if its empty.
+	/// Keep the non-zero nonce exists.
 	pub fn remove_account_if_empty(address: &H160) {
 		if Self::is_account_empty(address) {
 			let res = Self::remove_account(address);
@@ -1241,7 +1242,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Removes an account from Accounts and AccountStorages.
-	pub fn remove_account(address: &EvmAddress) -> DispatchResult {
+	/// Only used in `remove_account_if_empty`
+	fn remove_account(address: &EvmAddress) -> DispatchResult {
 		// Deref code, and remove it if ref count is zero.
 		Accounts::<T>::mutate_exists(&address, |maybe_account| {
 			if let Some(account) = maybe_account {
