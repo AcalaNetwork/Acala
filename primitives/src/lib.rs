@@ -187,3 +187,8 @@ pub type CashYieldIndex = u128;
 pub fn to_bytes<T: Into<U256>>(value: T) -> [u8; 32] {
 	Into::<[u8; 32]>::into(value.into())
 }
+
+/// Switch flag, if enabled, `value()` return true else return false.
+pub trait SwitchFlag {
+	fn value() -> bool;
+}
