@@ -143,6 +143,8 @@ where
 	fn call(&self, request: CallRequest, at: Option<<B as BlockT>::Hash>) -> Result<Bytes> {
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
+		log::debug!(target: "evm", "rpc call, request: {:?}", request);
+
 		let CallRequest {
 			from,
 			to,
@@ -183,7 +185,7 @@ where
 						gas_limit,
 						storage_limit,
 						access_list,
-						false,
+						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
@@ -207,7 +209,7 @@ where
 						gas_limit,
 						storage_limit,
 						access_list,
-						false,
+						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
