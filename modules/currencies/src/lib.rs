@@ -260,8 +260,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 	fn minimum_balance(currency_id: Self::CurrencyId) -> Self::Balance {
 		match currency_id {
 			CurrencyId::Erc20(_) => Default::default(),
-			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::minimum_balance(),
-			_ => T::MultiCurrency::minimum_balance(currency_id),
+			id if id == T::GetNativeCurrencyId::get() => <T::NativeCurrency as fungible::Inspect<_>>::minimum_balance(),
+			_ => <T::MultiCurrency as fungibles::Inspect<_>>::minimum_balance(currency_id),
 		}
 	}
 
@@ -273,8 +273,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 				origin: Default::default(),
 			})
 			.unwrap_or_default(),
-			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::total_issuance(),
-			_ => T::MultiCurrency::total_issuance(currency_id),
+			id if id == T::GetNativeCurrencyId::get() => <T::NativeCurrency as fungible::Inspect<_>>::total_issuance(),
+			_ => <T::MultiCurrency as fungibles::Inspect<_>>::total_issuance(currency_id),
 		}
 	}
 
@@ -663,19 +663,11 @@ impl<T: Config> fungibles::Inspect<T::AccountId> for Pallet<T> {
 	type Balance = BalanceOf<T>;
 
 	fn total_issuance(asset_id: Self::AssetId) -> Self::Balance {
-		match asset_id {
-			CurrencyId::Erc20(_) => <Self as MultiCurrency<_>>::total_issuance(asset_id),
-			id if id == T::GetNativeCurrencyId::get() => <T::NativeCurrency as fungible::Inspect<_>>::total_issuance(),
-			_ => <T::MultiCurrency as fungibles::Inspect<_>>::total_issuance(asset_id),
-		}
+		<Self as MultiCurrency<_>>::total_issuance(asset_id)
 	}
 
 	fn minimum_balance(asset_id: Self::AssetId) -> Self::Balance {
-		match asset_id {
-			CurrencyId::Erc20(_) => <Self as MultiCurrency<_>>::minimum_balance(asset_id),
-			id if id == T::GetNativeCurrencyId::get() => <T::NativeCurrency as fungible::Inspect<_>>::minimum_balance(),
-			_ => <T::MultiCurrency as fungibles::Inspect<_>>::minimum_balance(asset_id),
-		}
+		<Self as MultiCurrency<_>>::minimum_balance(asset_id)
 	}
 
 	fn balance(asset_id: Self::AssetId, who: &T::AccountId) -> Self::Balance {
@@ -688,7 +680,7 @@ impl<T: Config> fungibles::Inspect<T::AccountId> for Pallet<T> {
 
 	fn reducible_balance(asset_id: Self::AssetId, who: &T::AccountId, keep_alive: bool) -> Self::Balance {
 		match asset_id {
-			CurrencyId::Erc20(_) => Self::balance(asset_id, who),
+			CurrencyId::Erc20(_) => <Self as MultiCurrency<_>>::free_balance(asset_id, who),
 			id if id == T::GetNativeCurrencyId::get() => {
 				<T::NativeCurrency as fungible::Inspect<_>>::reducible_balance(who, keep_alive)
 			}
@@ -710,11 +702,10 @@ impl<T: Config> fungibles::Inspect<T::AccountId> for Pallet<T> {
 					return DepositConsequence::Overflow;
 				}
 
-				if <Self as fungibles::Inspect<_>>::balance(asset_id, who)
-					.checked_add(&amount)
-					.is_none()
+				if <Self as fungibles::Inspect<_>>::balance(asset_id, who).saturating_add(amount)
+					< <Self as fungibles::Inspect<_>>::minimum_balance(asset_id)
 				{
-					return DepositConsequence::Overflow;
+					return DepositConsequence::BelowMinimum;
 				}
 
 				DepositConsequence::Success
@@ -732,27 +723,10 @@ impl<T: Config> fungibles::Inspect<T::AccountId> for Pallet<T> {
 		amount: Self::Balance,
 	) -> WithdrawConsequence<Self::Balance> {
 		match asset_id {
-			CurrencyId::Erc20(_) => {
-				if amount.is_zero() {
-					return WithdrawConsequence::Success;
-				}
-
-				if <Self as fungibles::Inspect<_>>::total_issuance(asset_id)
-					.checked_sub(&amount)
-					.is_none()
-				{
-					return WithdrawConsequence::Underflow;
-				}
-
-				if <Self as fungibles::Inspect<_>>::balance(asset_id, who)
-					.checked_sub(&amount)
-					.is_none()
-				{
-					return WithdrawConsequence::NoFunds;
-				}
-
-				WithdrawConsequence::Success
-			}
+			CurrencyId::Erc20(_) => match <Self as MultiCurrency<_>>::ensure_can_withdraw(asset_id, who, amount) {
+				Ok(()) => WithdrawConsequence::Success,
+				_ => WithdrawConsequence::NoFunds,
+			},
 			id if id == T::GetNativeCurrencyId::get() => {
 				<T::NativeCurrency as fungible::Inspect<_>>::can_withdraw(who, amount)
 			}
@@ -763,23 +737,7 @@ impl<T: Config> fungibles::Inspect<T::AccountId> for Pallet<T> {
 
 impl<T: Config> fungibles::Mutate<T::AccountId> for Pallet<T> {
 	fn mint_into(asset_id: Self::AssetId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
-		if amount.is_zero() {
-			return Ok(());
-		}
-
-		match asset_id {
-			CurrencyId::Erc20(_) => return Err(Error::<T>::Erc20InvalidOperation.into()),
-			id if id == T::GetNativeCurrencyId::get() => {
-				<T::NativeCurrency as fungible::Mutate<_>>::mint_into(who, amount)
-			}
-			_ => <T::MultiCurrency as fungibles::Mutate<_>>::mint_into(asset_id, who, amount),
-		}?;
-		Self::deposit_event(Event::Deposited {
-			currency_id: asset_id,
-			who: who.clone(),
-			amount,
-		});
-		Ok(())
+		<Self as MultiCurrency<_>>::deposit(asset_id, who, amount)
 	}
 
 	fn burn_from(
@@ -820,20 +778,8 @@ impl<T: Config> fungibles::Transfer<T::AccountId> for Pallet<T> {
 		}
 
 		let transferred_amount = match asset_id {
-			CurrencyId::Erc20(contract) => {
-				let sender = T::AddressMapping::get_evm_address(source).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
-				let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
-				let address = T::AddressMapping::get_or_create_evm_address(dest);
-				T::EVMBridge::transfer(
-					InvokeContext {
-						contract,
-						sender,
-						origin: origin_address,
-					},
-					address,
-					amount,
-				)?;
+			CurrencyId::Erc20(_) => {
+				<Self as MultiCurrency<_>>::transfer(asset_id, source, dest, amount)?;
 				Ok(amount)
 			}
 			id if id == T::GetNativeCurrencyId::get() => {
@@ -886,12 +832,7 @@ impl<T: Config> fungibles::InspectHold<T::AccountId> for Pallet<T> {
 
 	fn can_hold(asset_id: Self::AssetId, who: &T::AccountId, amount: Self::Balance) -> bool {
 		match asset_id {
-			CurrencyId::Erc20(_) => {
-				amount.is_zero()
-					|| <Self as fungibles::InspectHold<_>>::balance_on_hold(asset_id, who)
-						.checked_add(&amount)
-						.is_some()
-			}
+			CurrencyId::Erc20(_) => <Self as MultiReservableCurrency<_>>::can_reserve(asset_id, who, amount),
 			id if id == T::GetNativeCurrencyId::get() => {
 				<T::NativeCurrency as fungible::InspectHold<_>>::can_hold(who, amount)
 			}
@@ -923,7 +864,7 @@ impl<T: Config> fungibles::MutateHold<T::AccountId> for Pallet<T> {
 					return Ok(amount);
 				}
 				ensure!(
-					amount <= <Self as MultiReservableCurrency<_>>::reserved_balance(asset_id, who) || best_effort,
+					best_effort || amount <= <Self as MultiReservableCurrency<_>>::reserved_balance(asset_id, who),
 					Error::<T>::BalanceTooLow
 				);
 				let gap = <Self as MultiReservableCurrency<_>>::unreserve(asset_id, who, amount);
@@ -949,9 +890,10 @@ impl<T: Config> fungibles::MutateHold<T::AccountId> for Pallet<T> {
 				if amount.is_zero() {
 					return Ok(amount);
 				}
-
-				let reserved_balance = <Self as fungibles::InspectHold<_>>::balance_on_hold(asset_id, source);
-				ensure!(amount <= reserved_balance || best_effort, Error::<T>::BalanceTooLow);
+				ensure!(
+					best_effort || amount <= <Self as fungibles::InspectHold<_>>::balance_on_hold(asset_id, source),
+					Error::<T>::BalanceTooLow
+				);
 
 				let status = if on_hold { Status::Reserved } else { Status::Free };
 				let gap =
