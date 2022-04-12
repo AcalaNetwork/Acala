@@ -32,51 +32,29 @@ runtime_benchmarks! {
 	{ Runtime, ecosystem_aqua_dao }
 
 	create_subscription {
-		let subscription = Subscription {
-			currency_id: STABLECOIN,
-			vesting_period: 1_000,
-			min_amount: dollar(STABLECOIN) * 10,
-			min_ratio: Ratio::saturating_from_rational(1, 10),
-			amount: dollar(CurrencyId::Token(TokenSymbol::ADAO)) * 100_000,
-			discount: Discount {
-				max: DiscountRate::saturating_from_rational(8, 10),
-				inc_on_idle: DiscountRate::saturating_from_rational(1, 1_000),
-				dec_per_unit: DiscountRate::saturating_from_rational(1, 1_000),
-			},
-			state: SubscriptionState {
-				total_sold: 0,
-				last_sold_at: 0,
-				last_discount: DiscountRate::one(),
-			}
-		};
-	}: _(RawOrigin::Root, subscription)
-
-	update_subscription {
-		// create subscription first
-		let subscription = Subscription {
-			currency_id: STABLECOIN,
-			vesting_period: 1_000,
-			min_amount: dollar(STABLECOIN) * 10,
-			min_ratio: Ratio::saturating_from_rational(1, 10),
-			amount: dollar(CurrencyId::Token(TokenSymbol::ADAO)) * 100_000,
-			discount: Discount {
-				max: DiscountRate::saturating_from_rational(8, 10),
-				inc_on_idle: DiscountRate::saturating_from_rational(1, 1_000),
-				dec_per_unit: DiscountRate::saturating_from_rational(1, 1_000),
-			},
-			state: SubscriptionState {
-				total_sold: 0,
-				last_sold_at: 0,
-				last_discount: DiscountRate::one(),
-			}
-		};
-		AquaDao::create_subscription(RawOrigin::Root.into(), subscription)?;
-
-		let discount: Discount = Discount {
+		let min_amount = dollar(STABLECOIN) * 10;
+		let min_ratio = Ratio::saturating_from_rational(1, 10);
+		let amount = dollar(CurrencyId::Token(TokenSymbol::ADAO)) * 100_000;
+		let discount = Discount {
 			max: DiscountRate::saturating_from_rational(8, 10),
+			interval: 1,
 			inc_on_idle: DiscountRate::saturating_from_rational(1, 1_000),
 			dec_per_unit: DiscountRate::saturating_from_rational(1, 1_000),
 		};
+	}: _(RawOrigin::Root, STABLECOIN, 1_000, min_amount, min_ratio, amount, discount)
+
+	update_subscription {
+		// create subscription first
+		let min_amount = dollar(STABLECOIN) * 10;
+		let min_ratio = Ratio::saturating_from_rational(1, 10);
+		let amount = dollar(CurrencyId::Token(TokenSymbol::ADAO)) * 100_000;
+		let discount = Discount {
+			max: DiscountRate::saturating_from_rational(8, 10),
+			interval: 1,
+			inc_on_idle: DiscountRate::saturating_from_rational(1, 1_000),
+			dec_per_unit: DiscountRate::saturating_from_rational(1, 1_000),
+		};
+		AquaDao::create_subscription(RawOrigin::Root.into(), STABLECOIN, 1_000, min_amount, min_ratio, amount, discount)?;
 	}: _(
 		RawOrigin::Root,
 		0,
@@ -89,24 +67,16 @@ runtime_benchmarks! {
 
 	close_subscription {
 		// create subscription first
-		let subscription = Subscription {
-			currency_id: STABLECOIN,
-			vesting_period: 1_000,
-			min_amount: dollar(STABLECOIN) * 10,
-			min_ratio: Ratio::saturating_from_rational(1, 10),
-			amount: dollar(CurrencyId::Token(TokenSymbol::ADAO)) * 100_000,
-			discount: Discount {
-				max: DiscountRate::saturating_from_rational(8, 10),
-				inc_on_idle: DiscountRate::saturating_from_rational(1, 1_000),
-				dec_per_unit: DiscountRate::saturating_from_rational(1, 1_000),
-			},
-			state: SubscriptionState {
-				total_sold: 0,
-				last_sold_at: 0,
-				last_discount: DiscountRate::one(),
-			}
+		let min_amount = dollar(STABLECOIN) * 10;
+		let min_ratio = Ratio::saturating_from_rational(1, 10);
+		let amount = dollar(CurrencyId::Token(TokenSymbol::ADAO)) * 100_000;
+		let discount = Discount {
+			max: DiscountRate::saturating_from_rational(8, 10),
+			interval: 1,
+			inc_on_idle: DiscountRate::saturating_from_rational(1, 1_000),
+			dec_per_unit: DiscountRate::saturating_from_rational(1, 1_000),
 		};
-		AquaDao::create_subscription(RawOrigin::Root.into(), subscription)?;
+		AquaDao::create_subscription(RawOrigin::Root.into(), STABLECOIN, 1_000, min_amount, min_ratio, amount, discount)?;
 	}: _(RawOrigin::Root, 0)
 
 	subscribe {
@@ -133,27 +103,17 @@ runtime_benchmarks! {
 		DexOracle::on_initialize(1);
 
 		// create subscription
-		let units = 1_000_000;
-		let amount = dollar(CurrencyId::Token(TokenSymbol::ADAO)) * units;
-		let subscription = Subscription {
-			currency_id: STABLECOIN,
-			vesting_period: 1_000,
-			min_amount: dollar(ADAO_CURRENCY) * 10,
-			min_ratio: Ratio::saturating_from_rational(1, 10),
-			amount,
-			discount: Discount {
-				max: DiscountRate::saturating_from_rational(2, 10),
-				inc_on_idle: DiscountRate::saturating_from_rational(1, 1_000),
-				dec_per_unit: DiscountRate::saturating_from_rational(20, units * 100),
-			},
-			state: SubscriptionState {
-				total_sold: 0,
-				last_sold_at: 0,
-				last_discount: DiscountRate::saturating_from_rational(95, 100),
-			},
+		let min_amount = dollar(STABLECOIN) * 10;
+		let min_ratio = Ratio::saturating_from_rational(1, 10);
+		let amount = dollar(CurrencyId::Token(TokenSymbol::ADAO)) * 100_000;
+		let discount = Discount {
+			max: DiscountRate::saturating_from_rational(8, 10),
+			interval: 1,
+			inc_on_idle: DiscountRate::saturating_from_rational(1, 1_000),
+			dec_per_unit: DiscountRate::saturating_from_rational(1, 1_000),
 		};
-		AquaDao::create_subscription(Origin::root(), subscription)?;
-		let payment_amount = dollar(STABLECOIN) * 100;
+		AquaDao::create_subscription(RawOrigin::Root.into(), STABLECOIN, 1_000, min_amount, min_ratio, amount, discount)?;
+		let payment_amount = dollar(STABLECOIN) * 200;
 	}: _(RawOrigin::Signed(alice), 0, payment_amount, 0)
 }
 
