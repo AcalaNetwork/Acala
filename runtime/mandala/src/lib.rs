@@ -1805,7 +1805,7 @@ pub struct PayerSignatureVerification;
 impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSignatureVerification {
 	fn convert((call, extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
 		if let Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
-			call: _,
+			call,
 			payload: _,
 			payer_addr,
 			payer_sig,
@@ -1816,7 +1816,8 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 				.as_slice()
 				.try_into()
 				.map_err(|_| InvalidTransaction::Custom(0))?;
-			let raw_payload = SignedPayload::new(call, extra);
+			// payer signature is aim at inner call of `with_fee_paid_by` call.
+			let raw_payload = SignedPayload::new(*call, extra);
 			if !raw_payload
 				.using_encoded(|payload| payer_sig.verify(payload, &sp_core::crypto::AccountId32::new(payer_account)))
 			{
