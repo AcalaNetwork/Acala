@@ -76,6 +76,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup,
+		Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
@@ -1798,6 +1799,36 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 	}
 }
 
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct PayerSignatureVerification;
+
+impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSignatureVerification {
+	fn convert((call, extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
+		match call.clone() {
+			Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+				call: _,
+				payload: _,
+				payer_addr,
+				payer_sig,
+			}) => {
+				let payer_account: [u8; 32] = payer_addr
+					.encode()
+					.as_slice()
+					.try_into()
+					.map_err(|_| InvalidTransaction::Custom(0))?;
+				let raw_payload = SignedPayload::new(call, extra.clone());
+				if !raw_payload.using_encoded(|payload| {
+					payer_sig.verify(payload, &sp_core::crypto::AccountId32::new(payer_account))
+				}) {
+					return Err(InvalidTransaction::BadProof);
+				}
+			}
+			_ => {}
+		}
+		Ok(())
+	}
+}
+
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.
@@ -1819,8 +1850,14 @@ pub type SignedExtra = (
 	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic =
-	AcalaUncheckedExtrinsic<Call, SignedExtra, ConvertEthereumTx, StorageDepositPerByte, TxFeePerGas>;
+pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<
+	Call,
+	SignedExtra,
+	ConvertEthereumTx,
+	PayerSignatureVerification,
+	StorageDepositPerByte,
+	TxFeePerGas,
+>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.

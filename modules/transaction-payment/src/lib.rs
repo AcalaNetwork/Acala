@@ -48,11 +48,10 @@ use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, InclusionFee};
 use primitives::{Balance, CurrencyId, ReserveIdentifier};
 use scale_info::TypeInfo;
-use sp_core::crypto::AccountId32;
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion, Saturating,
-		SignedExtension, Verify, Zero,
+		SignedExtension, Zero,
 	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
@@ -824,55 +823,13 @@ where
 					.map(|_| (who.clone(), custom_fee_surplus))
 			}
 			Some(Call::with_fee_paid_by {
-				call,
-				payload,
+				call: _,
+				payload: _,
 				payer_addr,
-				payer_sig,
+				payer_sig: _,
 			}) => {
-				// validate payer_addr equal to the signer of signature
-				let payer_account: [u8; 32] = payer_addr
-					.encode()
-					.as_slice()
-					.try_into()
-					.map_err(|_| Error::<T>::InvalidSignature)?;
-				let verify = if let Some(payload) = payload {
-					payer_sig.verify(payload.as_slice(), &AccountId32::new(payer_account))
-				} else {
-					let spec_version = frame_system::Pallet::<T>::runtime_version().spec_version;
-					let tx_version = frame_system::Pallet::<T>::runtime_version().transaction_version;
-					let genesis_hash = frame_system::Pallet::<T>::block_hash(T::BlockNumber::zero());
-					let account_data = frame_system::Pallet::<T>::account(who);
-					let nonce = account_data.nonce;
-					let extra = (
-						frame_system::CheckNonZeroSender::<T>::new(),
-						frame_system::CheckSpecVersion::<T>::new(),
-						frame_system::CheckTxVersion::<T>::new(),
-						frame_system::CheckGenesis::<T>::new(),
-						frame_system::CheckEra::<T>::from(sp_runtime::generic::Era::Immortal), // change to mortal
-						frame_system::CheckNonce::<T>::from(nonce),
-						frame_system::CheckWeight::<T>::new(),
-						/* ChargeTransactionPayment::<T>::from(tip),
-						 * module_evm::SetEvmOrigin::<Runtime>::new(), */
-					);
-					let raw_payload = sp_runtime::generic::SignedPayload::from_raw(
-						call,
-						extra,
-						(
-							(),
-							spec_version,
-							tx_version,
-							genesis_hash,
-							genesis_hash,
-							(),
-							(),
-							// (),
-						),
-					);
-					raw_payload.using_encoded(|payload| payer_sig.verify(payload, &AccountId32::new(payer_account)))
-				};
-				if !verify {
-					return Err(DispatchError::Other("verify failed!"));
-				}
+				// validate payer signature is in runtime side, because SignedExtension between different runtime
+				// may be unlikely.
 				Self::native_then_alternative_or_default(payer_addr, fee).map(|surplus| (payer_addr.clone(), surplus))
 			}
 			_ => Self::native_then_alternative_or_default(who, fee).map(|surplus| (who.clone(), surplus)),
