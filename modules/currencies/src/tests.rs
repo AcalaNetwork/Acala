@@ -1018,7 +1018,7 @@ fn fungible_inspect_trait_should_work() {
 					CurrencyId::Erc20(erc20_address()),
 					&alice(),
 					Bounded::max_value()
-				) == WithdrawConsequence::Underflow
+				) == WithdrawConsequence::NoFunds
 			);
 			assert!(
 				<Currencies as fungibles::Inspect<_>>::can_withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 100)
