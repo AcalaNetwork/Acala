@@ -1809,7 +1809,7 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 			payload: _,
 			payer_addr,
 			payer_sig,
-		}) = call.clone()
+		}) = call
 		{
 			let payer_account: [u8; 32] = payer_addr
 				.encode()
