@@ -87,6 +87,16 @@ fn with_fee_currency_call(currency_id: CurrencyId) -> <Runtime as Config>::Call 
 	fee_call
 }
 
+fn with_fee_paid_by_call(payer_addr: AccountId, payer_sig: MultiSignature) -> <Runtime as Config>::Call {
+	let fee_call: <Runtime as Config>::Call =
+		Call::TransactionPayment(crate::mock::transaction_payment::Call::with_fee_paid_by {
+			call: Box::new(CALL),
+			payer_addr,
+			payer_sig,
+		});
+	fee_call
+}
+
 fn enable_dex_and_tx_fee_pool() {
 	let treasury_account: AccountId = <Runtime as Config>::TreasuryAccount::get();
 	let init_balance = FeePoolSize::get();
@@ -555,6 +565,52 @@ fn charges_fee_when_validate_with_fee_currency_call() {
 		));
 		assert_eq!(sub_dot_aca - fee_surplus, Currencies::free_balance(ACA, &dot_acc));
 		assert_eq!(sub_dot_dot + fee_surplus / 10, Currencies::free_balance(DOT, &dot_acc));
+	});
+}
+
+#[test]
+fn charges_fee_when_validate_with_fee_paid_by_native_token() {
+	// Enable dex with Alice, and initialize tx charge fee pool
+	builder_with_dex_and_fee_pool(true).execute_with(|| {
+		// make a fake signature
+		let signature = MultiSignature::Sr25519(sp_core::sr25519::Signature([0u8; 64]));
+		// payer has enough native asset
+		assert_ok!(Currencies::update_balance(Origin::root(), BOB, ACA, 500,));
+
+		let fee: Balance = 50 * 2 + 100;
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(
+			&ALICE,
+			&with_fee_paid_by_call(BOB, signature),
+			&INFO2,
+			50
+		));
+		assert_eq!(500 - fee, Currencies::free_balance(ACA, &BOB));
+	});
+}
+
+#[test]
+fn charges_fee_when_validate_with_fee_paid_by_default_token() {
+	// Enable dex with Alice, and initialize tx charge fee pool
+	builder_with_dex_and_fee_pool(true).execute_with(|| {
+		let ausd_acc = Pallet::<Runtime>::sub_account_id(AUSD);
+		assert_eq!(100, Currencies::free_balance(AUSD, &ausd_acc));
+		assert_eq!(10000, Currencies::free_balance(ACA, &ausd_acc));
+
+		// make a fake signature
+		let signature = MultiSignature::Sr25519(sp_core::sr25519::Signature([0u8; 64]));
+		// payer has enough native asset
+		assert_ok!(Currencies::update_balance(Origin::root(), BOB, AUSD, 5000,));
+
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(
+			&ALICE,
+			&with_fee_paid_by_call(BOB, signature),
+			&INFO2,
+			50
+		));
+		assert_eq!(2700, Currencies::free_balance(AUSD, &ausd_acc));
+		assert_eq!(9740, Currencies::free_balance(ACA, &ausd_acc));
+		assert_eq!(2400, Currencies::free_balance(AUSD, &BOB));
+		assert_eq!(10, Currencies::free_balance(ACA, &BOB));
 	});
 }
 
