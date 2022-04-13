@@ -324,7 +324,7 @@ async fn evm_gas_limit_test() {
 		input: input.clone(),
 		value: 0,
 		gas_limit: 33_000_000,
-		storage_limit: 10_000_000,
+		storage_limit: 5_000_000,
 		access_list: vec![],
 	});
 
@@ -350,7 +350,7 @@ async fn evm_gas_limit_test() {
 		input: input.clone(),
 		value: 0,
 		gas_limit: 33_000_000,
-		storage_limit: 10_000_000,
+		storage_limit: 5_000_000,
 		access_list: vec![],
 	});
 
