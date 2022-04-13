@@ -603,7 +603,6 @@ pub mod module {
 		pub fn with_fee_paid_by(
 			origin: OriginFor<T>,
 			call: Box<CallOf<T>>,
-			_payload: Option<Vec<u8>>,
 			_payer_addr: T::AccountId,
 			_payer_sig: MultiSignature,
 		) -> DispatchResultWithPostInfo {
@@ -820,7 +819,6 @@ where
 			}
 			Some(Call::with_fee_paid_by {
 				call: _,
-				payload: _,
 				payer_addr,
 				payer_sig: _,
 			}) => {
