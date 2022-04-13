@@ -11,6 +11,7 @@ RUN apt-get update && \
 ARG GIT_COMMIT=
 ENV GIT_COMMIT=$GIT_COMMIT
 ARG BUILD_ARGS
+ARG PROFILE=production
 
 COPY . .
 
@@ -28,7 +29,7 @@ LABEL maintainer="hello@acala.network"
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /acala acala
 
-COPY --from=builder /app/target/release/acala /usr/local/bin
+COPY --from=builder /app/target/$PROFILE/acala /usr/local/bin
 
 # checks
 RUN ldd /usr/local/bin/acala && \
