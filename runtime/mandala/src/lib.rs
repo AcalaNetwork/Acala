@@ -30,7 +30,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeLimit, Encode};
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
@@ -2132,7 +2132,7 @@ impl_runtime_apis! {
 		}
 
 		fn get_estimate_resources_request(extrinsic: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError> {
-			let utx = UncheckedExtrinsic::decode(&mut &*extrinsic)
+			let utx = UncheckedExtrinsic::decode_all_with_depth_limit(sp_api::MAX_EXTRINSIC_DEPTH, &mut &*extrinsic)
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
 			let request = match utx.0.function {
