@@ -57,6 +57,7 @@ jobs:
           build-args: |
             BUILD_ARGS=build-${{ matrix.network }}-internal-release
             GIT_COMMIT=${{ env.GITHUB_SHA }}
+            PROFILE=release
           file: scripts/Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
