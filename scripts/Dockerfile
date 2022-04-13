@@ -22,6 +22,8 @@ RUN make $BUILD_ARGS
 FROM phusion/baseimage:bionic-1.0.0
 LABEL maintainer="hello@acala.network"
 
+ARG PROFILE
+
 # RUN mv /usr/share/ca* /tmp && \
 # 	rm -rf /usr/share/*  && \
 # 	mv /tmp/ca-certificates /usr/share/ && \
