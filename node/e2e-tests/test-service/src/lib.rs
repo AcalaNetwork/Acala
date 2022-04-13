@@ -17,6 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! Crate used for testing with acala.
+#[macro_use]
+
 mod builder;
 mod node;
 mod service;
