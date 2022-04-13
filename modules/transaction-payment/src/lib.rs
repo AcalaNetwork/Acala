@@ -599,7 +599,10 @@ pub mod module {
 		}
 
 		/// Fee paid by other account
-		#[pallet::weight(<T as Config>::WeightInfo::disable_charge_fee_pool())]
+		#[pallet::weight({
+			let dispatch_info = call.get_dispatch_info();
+			(T::WeightInfo::with_fee_paid_by().saturating_add(dispatch_info.weight), dispatch_info.class,)
+		})]
 		pub fn with_fee_paid_by(
 			origin: OriginFor<T>,
 			call: Box<CallOf<T>>,
@@ -788,10 +791,7 @@ where
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
 		call: &CallOf<T>,
-	) -> Result<(T::AccountId, Balance), DispatchError>
-	where
-		T: Send + Sync,
-	{
+	) -> Result<(T::AccountId, Balance), DispatchError> {
 		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
 		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
 		match call.is_sub_type() {

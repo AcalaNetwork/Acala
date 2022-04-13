@@ -86,6 +86,9 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	fn with_fee_currency() -> Weight {
 		(2_480_000 as Weight)
 	}
+	fn with_fee_paid_by() -> Weight {
+		(2_480_000 as Weight)
+	}
 	// Storage: TransactionPayment NextFeeMultiplier (r:1 w:1)
 	// Storage: System BlockWeight (r:1 w:0)
 	fn on_finalize() -> Weight {

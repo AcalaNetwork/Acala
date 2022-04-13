@@ -95,4 +95,9 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 		(193_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 	}
+
+	fn with_fee_paid_by() -> Weight {
+		(193_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+	}
 }

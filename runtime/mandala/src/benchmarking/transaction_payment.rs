@@ -150,6 +150,12 @@ runtime_benchmarks! {
 		module_transaction_payment::TokenExchangeRate::<Runtime>::insert(STABLECOIN, Ratio::one());
 	}: _(RawOrigin::Signed(caller.clone()), STABLECOIN, call)
 
+	with_fee_paid_by {
+		let caller: AccountId = whitelisted_caller();
+		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
+		let signature = sp_runtime::MultiSignature::Sr25519(sp_core::sr25519::Signature([0u8; 64]));
+	}: _(RawOrigin::Signed(caller.clone()), call, caller, signature)
+
 	on_finalize {
 	}: {
 		TransactionPayment::on_finalize(System::block_number());
