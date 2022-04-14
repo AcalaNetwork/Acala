@@ -132,6 +132,7 @@ ecosystem-starport = { path = "../../ecosystem-modules/starport", default-featur
 ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash", default-features = false }
 ecosystem-aqua-dao = { path = "../../ecosystem-modules/aquadao/dao", default-features = false }
 ecosystem-aqua-staked-token = { path = "../../ecosystem-modules/aquadao/staked-token", default-features = false }
+ecosystem-aqua-adao-manager = { path = "../../ecosystem-modules/aquadao/adao-manager", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
@@ -267,6 +268,7 @@ std = [
 	"ecosystem-compound-cash/std",
 	"ecosystem-aqua-dao/std",
 	"ecosystem-aqua-staked-token/std",
+	"ecosystem-aqua-adao-manager/std",
 ]
 runtime-benchmarks = [
 	"orml-benchmarking",

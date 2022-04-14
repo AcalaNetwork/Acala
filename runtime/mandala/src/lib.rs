@@ -1773,6 +1773,25 @@ impl ecosystem_aqua_staked_token::Config for Runtime {
 	type WeightInfo = weights::ecosystem_aqua_staked_token::WeightInfo<Runtime>;
 }
 
+parameter_types!(
+	pub RebalancePeriod: BlockNumber = HOURS;
+	pub RebalanceOffset: BlockNumber = 11;
+	pub AquaAdaoManagerPalletId: PalletId = PalletId(*b"aqua/mgr");
+);
+
+impl ecosystem_aqua_adao_manager::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type StableCurrencyId = GetStableCurrencyId;
+	type AssetPriceProvider = module_prices::PriorityLockedPriceProvider<Runtime>;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type DEX = Dex;
+	type RebalancePeriod = RebalancePeriod;
+	type RebalanceOffset = RebalanceOffset;
+	type DaoAccount = DaoAccount;
+	type PalletId = AquaAdaoManagerPalletId;
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct ConvertEthereumTx;
 
@@ -2012,7 +2031,8 @@ construct_runtime! {
 
 		// Aqua DAO
 		AquaDao: ecosystem_aqua_dao::{Pallet, Call, Storage, Event<T>} = 220,
-		AquaStakedToken: ecosystem_aqua_staked_token::{Pallet, Call, Storage, Event<T>} = 211,
+		AquaStakedToken: ecosystem_aqua_staked_token::{Pallet, Call, Storage, Event<T>} = 221,
+		AquaAdaoManager: ecosystem_aqua_adao_manager::{Pallet, Call, Storage, Event<T>} = 222,
 
 		// Parachain System, always put it at the end
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
