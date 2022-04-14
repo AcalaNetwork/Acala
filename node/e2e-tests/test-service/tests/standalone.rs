@@ -202,6 +202,60 @@ async fn evm_fill_block_test() {
 }
 
 /// this testcase will take too long to run, test with command:
+/// cargo test --release --package test-service -- evm_create_fill_block_test --nocapture
+/// --include-ignored
+#[substrate_test_utils::test]
+#[ignore]
+async fn evm_create_fill_block_test() {
+	/*
+	   pragma solidity ^0.8.0;
+	   contract Contract {}
+	*/
+	let contract = hex! {"
+		6080604052348015600f57600080fd5b50603f80601d6000396000f3fe608060
+		4052600080fdfea2646970667358221220b9cbc7f3d9528c236f2c6bdf64e25a
+		c8ca17489f9b4e91a6d92bea793883d5d764736f6c63430008020033
+	"}
+	.to_vec();
+
+	let mut builder = sc_cli::LoggerBuilder::new("");
+	builder.with_colors(true);
+	let _ = builder.init();
+
+	let para_id = ParaId::from(2000);
+	let tokio_handle = tokio::runtime::Handle::current();
+
+	let node = test_service::TestNodeBuilder::new(para_id, tokio_handle.clone(), Alice)
+		.with_seal_mode(SealMode::DevAuraSeal)
+		.enable_collator()
+		.build()
+		.await;
+
+	node.wait_for_blocks(1).await;
+
+	let functions = std::iter::repeat_with(|| {
+		node_runtime::Call::EVM(module_evm::Call::create {
+			input: contract.clone(),
+			value: 0,
+			gas_limit: 2_000_000,
+			storage_limit: 100_000,
+			access_list: vec![],
+		})
+	})
+	.take(1_000)
+	.collect();
+
+	frame_support::assert_ok!(node.submit_extrinsic_batch(functions, Some(Alice), 0).await);
+
+	// wait for 5 blocks
+	node.wait_for_blocks(5).await;
+	println!(
+		"{:#?}",
+		ensure_event!(node, node_runtime::Event::EVM(module_evm::Event::Created { .. }))
+	);
+}
+
+/// this testcase will take too long to run, test with command:
 /// cargo test --release --package test-service -- evm_gas_limit_test --nocapture --include-ignored
 #[substrate_test_utils::test]
 #[ignore]
