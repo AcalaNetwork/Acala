@@ -787,12 +787,6 @@ impl<T: Config> fungibles::Transfer<T::AccountId> for Pallet<T> {
 			}
 			_ => <T::MultiCurrency as fungibles::Transfer<_>>::transfer(asset_id, source, dest, amount, keep_alive),
 		}?;
-		Self::deposit_event(Event::Transferred {
-			currency_id: asset_id,
-			from: source.clone(),
-			to: dest.clone(),
-			amount: transferred_amount,
-		});
 		Ok(transferred_amount)
 	}
 }
