@@ -157,23 +157,14 @@ mod mock {
 	use codec::{Decode, Encode};
 	use frame_support::{
 		parameter_types,
-		traits::{Contains, InstanceFilter},
-		weights::Weight,
+		traits::{ConstU128, ConstU32, ConstU64, Contains, InstanceFilter},
 		PalletId, RuntimeDebug,
 	};
 	use sp_core::{crypto::AccountId32, H256};
 	use sp_runtime::{
 		testing::Header,
 		traits::{BlakeTwo256, IdentityLookup},
-		Perbill,
 	};
-
-	parameter_types! {
-		pub const BlockHashCount: u64 = 250;
-		pub const MaximumBlockWeight: Weight = 1024;
-		pub const MaximumBlockLength: u32 = 2 * 1024;
-		pub const AvailableBlockRatio: Perbill = Perbill::one();
-	}
 
 	pub type AccountId = AccountId32;
 
@@ -189,7 +180,7 @@ mod mock {
 		type Lookup = IdentityLookup<Self::AccountId>;
 		type Header = Header;
 		type Event = ();
-		type BlockHashCount = BlockHashCount;
+		type BlockHashCount = ConstU64<250>;
 		type BlockWeights = ();
 		type BlockLength = ();
 		type DbWeight = ();
@@ -201,20 +192,16 @@ mod mock {
 		type SystemWeightInfo = ();
 		type SS58Prefix = ();
 		type OnSetCode = ();
-		type MaxConsumers = frame_support::traits::ConstU32<16>;
-	}
-	parameter_types! {
-		pub const ExistentialDeposit: u64 = 1;
-		pub const MaxReserves: u32 = 50;
+		type MaxConsumers = ConstU32<16>;
 	}
 	impl pallet_balances::Config for Runtime {
 		type Balance = Balance;
 		type Event = ();
 		type DustRemoval = ();
-		type ExistentialDeposit = ExistentialDeposit;
+		type ExistentialDeposit = ConstU128<1>;
 		type AccountStore = frame_system::Pallet<Runtime>;
 		type MaxLocks = ();
-		type MaxReserves = MaxReserves;
+		type MaxReserves = ConstU32<50>;
 		type ReserveIdentifier = ReserveIdentifier;
 		type WeightInfo = ();
 	}
@@ -223,14 +210,6 @@ mod mock {
 		type Call = Call;
 		type PalletsOrigin = OriginCaller;
 		type WeightInfo = ();
-	}
-	parameter_types! {
-		pub const ProxyDepositBase: u64 = 1;
-		pub const ProxyDepositFactor: u64 = 1;
-		pub const MaxProxies: u16 = 4;
-		pub const MaxPending: u32 = 2;
-		pub const AnnouncementDepositBase: u64 = 1;
-		pub const AnnouncementDepositFactor: u64 = 1;
 	}
 	#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 	pub enum ProxyType {
@@ -271,38 +250,29 @@ mod mock {
 		type Call = Call;
 		type Currency = Balances;
 		type ProxyType = ProxyType;
-		type ProxyDepositBase = ProxyDepositBase;
-		type ProxyDepositFactor = ProxyDepositFactor;
-		type MaxProxies = MaxProxies;
+		type ProxyDepositBase = ConstU128<1>;
+		type ProxyDepositFactor = ConstU128<1>;
+		type MaxProxies = ConstU32<4>;
 		type WeightInfo = ();
 		type CallHasher = BlakeTwo256;
-		type MaxPending = MaxPending;
-		type AnnouncementDepositBase = AnnouncementDepositBase;
-		type AnnouncementDepositFactor = AnnouncementDepositFactor;
+		type MaxPending = ConstU32<2>;
+		type AnnouncementDepositBase = ConstU128<1>;
+		type AnnouncementDepositFactor = ConstU128<1>;
 	}
 
 	parameter_types! {
-		pub const CreateClassDeposit: Balance = 200;
-		pub const CreateTokenDeposit: Balance = 100;
-		pub const DataDepositPerByte: Balance = 10;
 		pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
-		pub MaxAttributesBytes: u32 = 2048;
 	}
 
 	impl crate::Config for Runtime {
 		type Event = ();
 		type Currency = Balances;
-		type CreateClassDeposit = CreateClassDeposit;
-		type CreateTokenDeposit = CreateTokenDeposit;
-		type DataDepositPerByte = DataDepositPerByte;
+		type CreateClassDeposit = ConstU128<200>;
+		type CreateTokenDeposit = ConstU128<100>;
+		type DataDepositPerByte = ConstU128<10>;
 		type PalletId = NftPalletId;
-		type MaxAttributesBytes = MaxAttributesBytes;
+		type MaxAttributesBytes = ConstU32<2048>;
 		type WeightInfo = ();
-	}
-
-	parameter_types! {
-		pub const MaxClassMetadata: u32 = 1024;
-		pub const MaxTokenMetadata: u32 = 1024;
 	}
 
 	impl orml_nft::Config for Runtime {
@@ -310,8 +280,8 @@ mod mock {
 		type TokenId = u64;
 		type ClassData = ClassData<Balance>;
 		type TokenData = TokenData<Balance>;
-		type MaxClassMetadata = MaxClassMetadata;
-		type MaxTokenMetadata = MaxTokenMetadata;
+		type MaxClassMetadata = ConstU32<1024>;
+		type MaxTokenMetadata = ConstU32<1024>;
 	}
 
 	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
