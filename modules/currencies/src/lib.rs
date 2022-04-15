@@ -787,6 +787,16 @@ impl<T: Config> fungibles::Transfer<T::AccountId> for Pallet<T> {
 			}
 			_ => <T::MultiCurrency as fungibles::Transfer<_>>::transfer(asset_id, source, dest, amount, keep_alive),
 		}?;
+
+		// `<Self as MultiCurrency<_>>::transfer` will trigger Transferred event, should avoid duplicate
+		if !matches!(asset_id, CurrencyId::Erc20(_)) {
+			Self::deposit_event(Event::Transferred {
+				currency_id: asset_id,
+				from: source.clone(),
+				to: dest.clone(),
+				amount,
+			});
+		}
 		Ok(transferred_amount)
 	}
 }
