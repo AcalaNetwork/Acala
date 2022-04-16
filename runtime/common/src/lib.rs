@@ -57,7 +57,7 @@ use module_evm::GenesisAccount;
 use orml_traits::GetByKey;
 pub use precompile::{
 	AllPrecompiles, DEXPrecompile, EVMPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile,
-	SchedulePrecompile,
+	SchedulePrecompile, StableAssetPrecompile,
 };
 pub use primitives::{
 	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
