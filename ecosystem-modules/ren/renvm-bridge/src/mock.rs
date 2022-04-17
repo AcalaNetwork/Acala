@@ -23,26 +23,19 @@
 use super::*;
 use frame_support::{
 	ord_parameter_types, parameter_types,
-	traits::{Everything, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 };
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{testing::Header, traits::IdentityLookup};
 
 pub type AccountId = H256;
 pub type BlockNumber = u64;
 
 mod renvm {
 	pub use super::super::*;
-}
-
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	pub const MaximumBlockWeight: u32 = 1024;
-	pub const MaximumBlockLength: u32 = 2 * 1024;
-	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
 impl frame_system::Config for Runtime {
@@ -56,7 +49,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
@@ -69,11 +62,10 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = 0;
 	pub const RENBTCIdentifier: [u8; 32] = hex_literal::hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
 }
 
@@ -81,16 +73,12 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ConstU128<0>;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const UnsignedPriority: u64 = 1 << 20;
 }
 
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
@@ -134,7 +122,7 @@ impl Config for Runtime {
 	type Currency = Balances;
 	type BridgedTokenCurrency = BasicCurrencyAdapter<Runtime, Balances, i128, BlockNumber>;
 	type CurrencyIdentifier = RENBTCIdentifier;
-	type UnsignedPriority = UnsignedPriority;
+	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type ChargeTransactionPayment = ();
 }
 

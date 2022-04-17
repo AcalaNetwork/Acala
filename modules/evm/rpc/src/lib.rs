@@ -143,6 +143,8 @@ where
 	fn call(&self, request: CallRequest, at: Option<<B as BlockT>::Hash>) -> Result<Bytes> {
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
+		log::debug!(target: "evm", "rpc call, request: {:?}", request);
+
 		let CallRequest {
 			from,
 			to,
@@ -279,7 +281,7 @@ where
 
 			// Use request gas limit only if it less than gas_limit parameter
 			let gas_limit = core::cmp::min(gas_limit.unwrap_or(gas), gas);
-			let storage_limit = storage_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
+			let storage_limit = storage_limit.unwrap_or(MAX_STROAGE_LIMIT);
 			let data = data.map(|d| d.0).unwrap_or_default();
 
 			let balance_value = if let Some(value) = value {

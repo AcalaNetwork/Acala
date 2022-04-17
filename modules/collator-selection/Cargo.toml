@@ -1,6 +1,6 @@
 [package]
 name = 'module-collator-selection'
-version = "2.4.2"
+version = "2.5.0"
 authors = ["Acala Developers"]
 edition = "2021"
 

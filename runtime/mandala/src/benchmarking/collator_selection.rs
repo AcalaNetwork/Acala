@@ -17,15 +17,15 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, Balance, Balances, CollatorKickThreshold, CollatorSelection, Event, MaxCandidates, MaxInvulnerables,
-	MinCandidates, Runtime, Session, SessionDuration, SessionKeys, System,
+	AccountId, Balance, Balances, CollatorKickThreshold, CollatorSelection, Event, Runtime, Session, SessionDuration,
+	SessionKeys, System,
 };
 
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::{
 	assert_ok,
 	pallet_prelude::Decode,
-	traits::{Currency, OnInitialize},
+	traits::{Currency, Get, OnInitialize},
 };
 use frame_system::RawOrigin;
 use module_collator_selection::POINT_PER_BLOCK;
@@ -65,7 +65,7 @@ runtime_benchmarks! {
 	{ Runtime, module_collator_selection }
 
 	set_invulnerables {
-		let b in 1 .. MaxInvulnerables::get();
+		let b in 1 .. <Runtime as  module_collator_selection::Config>::MaxInvulnerables::get();
 		let new_invulnerables = (0..b).map(|c| account("candidate", c, SEED)).collect::<Vec<_>>();
 	}: {
 		assert_ok!(
@@ -77,7 +77,7 @@ runtime_benchmarks! {
 	}
 
 	set_desired_candidates {
-		let max: u32 = MaxInvulnerables::get();
+		let max: u32 = <Runtime as module_collator_selection::Config>::MaxInvulnerables::get();
 	}: {
 		assert_ok!(
 			CollatorSelection::set_desired_candidates(RawOrigin::Root.into(), max.clone())
@@ -102,7 +102,7 @@ runtime_benchmarks! {
 	// one.
 	register_as_candidate {
 		// MinCandidates = 5, so begin with 5.
-		let c in 5 .. MaxCandidates::get();
+		let c in 5 .. <Runtime as module_collator_selection::Config>::MaxCandidates::get();
 
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
@@ -120,7 +120,7 @@ runtime_benchmarks! {
 	}
 
 	register_candidate {
-		let c in 1 .. MaxCandidates::get();
+		let c in 1 .. <Runtime as module_collator_selection::Config>::MaxCandidates::get();
 
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
@@ -140,7 +140,7 @@ runtime_benchmarks! {
 	// worse case is the last candidate leaving.
 	leave_intent {
 		// MinCandidates = 5, so begin with 6.
-		let c in 6 .. MaxCandidates::get();
+		let c in 6 .. <Runtime as module_collator_selection::Config>::MaxCandidates::get();
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
 		register_candidates(c);
@@ -154,7 +154,7 @@ runtime_benchmarks! {
 
 	withdraw_bond {
 		// MinCandidates = 5, so begin with 6.
-		let c = MaxCandidates::get();
+		let c = <Runtime as module_collator_selection::Config>::MaxCandidates::get();
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
 		register_candidates(c);
@@ -169,7 +169,7 @@ runtime_benchmarks! {
 
 	// worse case is paying a non-existing candidate account.
 	note_author {
-		let c = MaxCandidates::get();
+		let c = <Runtime as module_collator_selection::Config>::MaxCandidates::get();
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
 		register_candidates(c);
@@ -190,7 +190,7 @@ runtime_benchmarks! {
 
 	// worse case is on new session.
 	new_session {
-		let c = MaxCandidates::get();
+		let c = <Runtime as module_collator_selection::Config>::MaxCandidates::get();
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
 		System::set_block_number(0u32.into());
@@ -205,8 +205,8 @@ runtime_benchmarks! {
 
 	start_session {
 		// MinCandidates = 5, so begin with 5.
-		let r in 5 .. MaxCandidates::get();
-		let c in 5 .. MaxCandidates::get();
+		let r in 5 .. <Runtime as module_collator_selection::Config>::MaxCandidates::get();
+		let c in 5 .. <Runtime as module_collator_selection::Config>::MaxCandidates::get();
 
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
@@ -225,8 +225,8 @@ runtime_benchmarks! {
 
 	end_session {
 		// MinCandidates = 5, so begin with 5.
-		let r in 5 .. MaxCandidates::get();
-		let c in 5 .. MaxCandidates::get();
+		let r in 5 .. <Runtime as module_collator_selection::Config>::MaxCandidates::get();
+		let c in 5 .. <Runtime as module_collator_selection::Config>::MaxCandidates::get();
 
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
@@ -234,7 +234,7 @@ runtime_benchmarks! {
 		register_candidates(c);
 
 		let candidates = module_collator_selection::Candidates::<Runtime>::get();
-		let removals = c.checked_sub(r).unwrap_or_default().checked_sub(MinCandidates::get()).unwrap_or_default();
+		let removals = c.checked_sub(r).unwrap_or_default().checked_sub(<Runtime as module_collator_selection::Config>::MinCandidates::get()).unwrap_or_default();
 
 		let mut count = 0;
 		candidates.iter().for_each(|candidate| {

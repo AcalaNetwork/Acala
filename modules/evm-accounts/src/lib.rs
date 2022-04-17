@@ -337,11 +337,7 @@ where
 pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 	fn on_killed_account(who: &T::AccountId) {
-		// remove the reserve mapping that could be created by
-		// `get_or_create_evm_address`
-		Accounts::<T>::remove(account_to_default_evm_address(who.into_ref()));
-
-		// remove mapping created by `claim_account`
+		// remove mapping created by `claim_account` or `get_or_create_evm_address`
 		if let Some(evm_addr) = Pallet::<T>::evm_addresses(who) {
 			Accounts::<T>::remove(evm_addr);
 			EvmAddresses::<T>::remove(who);
