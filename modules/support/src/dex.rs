@@ -133,7 +133,7 @@ where
 			limit.clone(),
 			Joints::get(),
 		)
-		.ok_or(Into::<DispatchError>::into(SwapError::CannotSwap))?
+		.ok_or_else(|| Into::<DispatchError>::into(SwapError::CannotSwap))?
 		.0;
 
 		<Dex as DEXManager<AccountId, Balance, CurrencyId>>::swap_with_specific_path(who, &path, limit)
