@@ -85,4 +85,10 @@ impl<T: frame_system::Config> module_cdp_treasury::WeightInfo for WeightInfo<T> 
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+	// Storage: Dex TradingPairStatuses (r:1 w:0)
+	// Storage: Dex LiquidityPool (r:1 w:0)
+	fn get_best_price_swap_path() -> Weight {
+		(7_481_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+	}
 }

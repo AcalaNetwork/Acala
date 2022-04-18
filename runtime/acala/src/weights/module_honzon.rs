@@ -162,4 +162,10 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(17 as Weight))
 			.saturating_add(T::DbWeight::get().writes(12 as Weight))
 	}
+	// Storage: Dex TradingPairStatuses (r:2 w:0)
+	// Storage: Dex LiquidityPool (r:2 w:0)
+	fn get_best_price_swap_path() -> Weight {
+		(14_132_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(4 as Weight))
+	}
 }

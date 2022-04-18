@@ -16,18 +16,56 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CdpTreasury, Currencies, CurrencyId, Dex, GetStableCurrencyId, GetStakingCurrencyId, Runtime};
+use crate::{
+	AccountId, Balance, CdpTreasury, Currencies, CurrencyId, Dex, GetStableCurrencyId, GetStakingCurrencyId, Runtime,
+};
 
 use super::utils::{dollar, set_balance};
 use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use module_support::{CDPTreasury, SwapLimit};
+use module_support::{CDPTreasury, DEXManager, SwapLimit};
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::MultiCurrency;
+use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use sp_runtime::traits::UniqueSaturatedInto;
 
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 const STAKING: CurrencyId = GetStakingCurrencyId::get();
+
+fn inject_liquidity(
+	maker: AccountId,
+	currency_id_a: CurrencyId,
+	currency_id_b: CurrencyId,
+	max_amount_a: Balance,
+	max_amount_b: Balance,
+	deposit: bool,
+) -> Result<(), &'static str> {
+	// set balance
+	<Currencies as MultiCurrencyExtended<_>>::update_balance(
+		currency_id_a,
+		&maker,
+		max_amount_a.unique_saturated_into(),
+	)?;
+	<Currencies as MultiCurrencyExtended<_>>::update_balance(
+		currency_id_b,
+		&maker,
+		max_amount_b.unique_saturated_into(),
+	)?;
+
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
+
+	Dex::add_liquidity(
+		RawOrigin::Signed(maker.clone()).into(),
+		currency_id_a,
+		currency_id_b,
+		max_amount_a,
+		max_amount_b,
+		Default::default(),
+		deposit,
+	)?;
+
+	Ok(())
+}
 
 runtime_benchmarks! {
 	{ Runtime, module_cdp_treasury }
@@ -64,6 +102,16 @@ runtime_benchmarks! {
 	extract_surplus_to_treasury {
 		CdpTreasury::on_system_surplus(1_000 * dollar(STABLECOIN))?;
 	}: _(RawOrigin::Root, 200 * dollar(STABLECOIN))
+
+	get_best_price_swap_path {
+		let currency_id: CurrencyId = STAKING;
+		let maker: AccountId = whitelisted_caller();
+		inject_liquidity(maker, currency_id, STABLECOIN, 10_000 * dollar(currency_id), 10_000 * dollar(STABLECOIN), false)?;
+
+		let swap_limit = SwapLimit::ExactSupply(1_000, 1_000);
+	}: {
+		Dex::get_best_price_swap_path(currency_id, STABLECOIN, swap_limit, vec![]);
+	}
 }
 
 #[cfg(test)]

@@ -195,3 +195,11 @@ fn close_loan_has_debit_by_dex_work() {
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 	});
 }
+
+#[test]
+fn test_best_path_weight() {
+	ExtBuilder::default().build().execute_with(|| {
+		let we = HonzonModule::best_price_swap_weight();
+		assert_eq!(we, <()>::get_best_price_swap_path() * 2);
+	})
+}

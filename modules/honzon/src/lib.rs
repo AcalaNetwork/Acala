@@ -158,7 +158,7 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `max_collateral_amount`: the max collateral amount which is used to swap enough
 		/// 	stable token to clear debit.
-		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex())]
+		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex().saturating_add(Pallet::<T>::best_price_swap_weight()))]
 		#[transactional]
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,
@@ -267,7 +267,7 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `increase_debit_value`: the specific increased debit value for CDP
 		/// - `min_increase_collateral`: the minimal increased collateral amount for CDP
-		#[pallet::weight(<T as Config>::WeightInfo::expand_position_collateral())]
+		#[pallet::weight(<T as Config>::WeightInfo::expand_position_collateral().saturating_add(Pallet::<T>::best_price_swap_weight()))]
 		#[transactional]
 		pub fn expand_position_collateral(
 			origin: OriginFor<T>,
@@ -290,7 +290,7 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `decrease_collateral`: the specific decreased collateral amount for CDP
 		/// - `min_decrease_debit_value`: the minimal decreased debit value for CDP
-		#[pallet::weight(<T as Config>::WeightInfo::shrink_position_debit())]
+		#[pallet::weight(<T as Config>::WeightInfo::shrink_position_debit().saturating_add(Pallet::<T>::best_price_swap_weight()))]
 		#[transactional]
 		pub fn shrink_position_debit(
 			origin: OriginFor<T>,
@@ -318,5 +318,16 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::NoPermission
 		);
 		Ok(())
+	}
+
+	/// calculates the weight for worse case scenario for `get_best_price_swap_path()`
+	fn best_price_swap_weight() -> Weight {
+		<T as cdp_engine::Config>::AlternativeSwapPathJointList::get()
+			.into_iter()
+			.fold(Zero::zero(), |acc, path| {
+				acc.saturating_add(<T as Config>::WeightInfo::get_best_price_swap_path().saturating_add(
+					<T as Config>::WeightInfo::get_best_price_swap_path().saturating_mul(path.len() as u64),
+				))
+			})
 	}
 }

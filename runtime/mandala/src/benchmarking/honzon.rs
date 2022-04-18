@@ -25,6 +25,7 @@ use crate::{
 use super::utils::{dollar, feed_price, set_balance};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
+use module_support::{dex::DEXManager, SwapLimit};
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::{Change, GetByKey, MultiCurrencyExtended};
 use sp_runtime::{
@@ -309,6 +310,16 @@ runtime_benchmarks! {
 			debit_amount.try_into().unwrap(),
 		)?;
 	}: _(RawOrigin::Signed(sender), currency_id, collateral_amount / 5, 0)
+
+	get_best_price_swap_path {
+		let currency_id: CurrencyId = STAKING;
+		let maker: AccountId = account("maker", 0, SEED);
+		inject_liquidity(maker, currency_id, STABLECOIN, 10_000 * dollar(currency_id), 10_000 * dollar(STABLECOIN), false)?;
+
+		let swap_limit = SwapLimit::ExactSupply(1_000, 1_000);
+	}: {
+		Dex::get_best_price_swap_path(currency_id, STABLECOIN, swap_limit, vec![]);
+	}
 }
 
 #[cfg(test)]

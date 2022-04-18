@@ -231,7 +231,7 @@ pub mod module {
 		///
 		/// - `currency_id`: collateral type
 		/// - `swap_limit`: target amount
-		#[pallet::weight(T::WeightInfo::exchange_collateral_to_stable())]
+		#[pallet::weight(T::WeightInfo::exchange_collateral_to_stable().saturating_add(Pallet::<T>::best_price_swap_weight()))]
 		#[transactional]
 		pub fn exchange_collateral_to_stable(
 			origin: OriginFor<T>,
@@ -314,6 +314,17 @@ impl<T: Config> Pallet<T> {
 				}
 			}
 		}
+	}
+
+	/// calculates the weight for worse case scenario for `get_best_price_swap_path()`
+	fn best_price_swap_weight() -> Weight {
+		T::AlternativeSwapPathJointList::get()
+			.into_iter()
+			.fold(Zero::zero(), |acc, path| {
+				acc.saturating_add(<T as Config>::WeightInfo::get_best_price_swap_path().saturating_add(
+					<T as Config>::WeightInfo::get_best_price_swap_path().saturating_mul(path.len() as u64),
+				))
+			})
 	}
 }
 
