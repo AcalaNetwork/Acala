@@ -665,10 +665,14 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) {
 		// keep track of original storage
-		if self.substate.known_original_storage(address, index).is_none() {
-			let original = <AccountStorages<T>>::get(address, index);
-			self.substate.set_known_original_storage(address, index, original);
-		}
+		let (original, current) = match self.substate.known_original_storage(address, index) {
+			Some(original) => (original, self.storage(address, index)),
+			None => {
+				let original = <AccountStorages<T>>::get(address, index);
+				self.substate.set_known_original_storage(address, index, original);
+				(original, original)
+			}
+		};
 
 		if value == H256::default() {
 			log::debug!(
@@ -678,8 +682,12 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 				index,
 			);
 			<AccountStorages<T>>::remove(address, index);
-			Pallet::<T>::update_contract_storage_size(&address, -(STORAGE_SIZE as i32));
-			self.substate.metadata.storage_meter_mut().refund(STORAGE_SIZE);
+
+			// storage meter
+			if !original.is_zero() && !current.is_zero() {
+				Pallet::<T>::update_contract_storage_size(&address, -(STORAGE_SIZE as i32));
+				self.substate.metadata.storage_meter_mut().refund(STORAGE_SIZE);
+			}
 		} else {
 			log::debug!(
 				target: "evm",
@@ -689,8 +697,12 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 				value,
 			);
 			<AccountStorages<T>>::insert(address, index, value);
-			Pallet::<T>::update_contract_storage_size(&address, STORAGE_SIZE as i32);
-			self.substate.metadata.storage_meter_mut().charge(STORAGE_SIZE);
+
+			// storage meter
+			if original.is_zero() && current.is_zero() {
+				Pallet::<T>::update_contract_storage_size(&address, STORAGE_SIZE as i32);
+				self.substate.metadata.storage_meter_mut().charge(STORAGE_SIZE);
+			}
 		}
 	}
 
