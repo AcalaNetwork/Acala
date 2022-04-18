@@ -664,14 +664,11 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) {
+		let current = <AccountStorages<T>>::get(address, index);
+
 		// keep track of original storage
-		let (original, current) = match self.substate.known_original_storage(address, index) {
-			Some(original) => (original, self.storage(address, index)),
-			None => {
-				let original = <AccountStorages<T>>::get(address, index);
-				self.substate.set_known_original_storage(address, index, original);
-				(original, original)
-			}
+		if self.substate.known_original_storage(address, index).is_none() {
+			self.substate.set_known_original_storage(address, index, current);
 		};
 
 		if value == H256::default() {
@@ -699,7 +696,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			<AccountStorages<T>>::insert(address, index, value);
 
 			// storage meter
-			if original.is_zero() && current.is_zero() || !original.is_zero() && current.is_zero() {
+			if current.is_zero() {
 				Pallet::<T>::update_contract_storage_size(&address, STORAGE_SIZE as i32);
 				self.substate.metadata.storage_meter_mut().charge(STORAGE_SIZE);
 			}
