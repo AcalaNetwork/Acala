@@ -684,7 +684,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			<AccountStorages<T>>::remove(address, index);
 
 			// storage meter
-			if !original.is_zero() && !current.is_zero() {
+			if !current.is_zero() {
 				Pallet::<T>::update_contract_storage_size(&address, -(STORAGE_SIZE as i32));
 				self.substate.metadata.storage_meter_mut().refund(STORAGE_SIZE);
 			}
@@ -699,7 +699,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			<AccountStorages<T>>::insert(address, index, value);
 
 			// storage meter
-			if original.is_zero() && current.is_zero() {
+			if original.is_zero() && current.is_zero() || !original.is_zero() && current.is_zero() {
 				Pallet::<T>::update_contract_storage_size(&address, STORAGE_SIZE as i32);
 				self.substate.metadata.storage_meter_mut().charge(STORAGE_SIZE);
 			}
