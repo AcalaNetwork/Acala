@@ -114,35 +114,59 @@ pub const BASE_CREATE_GAS: u64 = 67_066;
 pub const BASE_CALL_GAS: u64 = 43_702;
 
 /// Helper method to calculate `create` weight.
-fn create_weight<T: Config>(gas: u64) -> Weight {
+fn create_weight<T: Config>(gas: u64, storage: u32) -> Weight {
 	<T as Config>::WeightInfo::create()
 		// during `create` benchmark an additional of `BASE_CREATE_GAS` was used
 		// so user will be extra charged only for extra gas usage
 		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+		.saturating_add(
+			T::StorageDepositPerByte::get()
+				.saturating_mul(storage.into())
+				.try_into()
+				.unwrap(),
+		)
 }
 
 /// Helper method to calculate `create2` weight.
-fn create2_weight<T: Config>(gas: u64) -> Weight {
+fn create2_weight<T: Config>(gas: u64, storage: u32) -> Weight {
 	<T as Config>::WeightInfo::create2()
 		// during `create2` benchmark an additional of `BASE_CREATE_GAS` was used
 		// so user will be extra charged only for extra gas usage
 		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+		.saturating_add(
+			T::StorageDepositPerByte::get()
+				.saturating_mul(storage.into())
+				.try_into()
+				.unwrap(),
+		)
 }
 
 /// Helper method to calculate `create_predeploy_contract` weight.
-fn create_predeploy_contract<T: Config>(gas: u64) -> Weight {
+fn create_predeploy_contract<T: Config>(gas: u64, storage: u32) -> Weight {
 	<T as Config>::WeightInfo::create_predeploy_contract()
 		// during `create_predeploy_contract` benchmark an additional of `BASE_CREATE_GAS`
 		// was used so user will be extra charged only for extra gas usage
 		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+		.saturating_add(
+			T::StorageDepositPerByte::get()
+				.saturating_mul(storage.into())
+				.try_into()
+				.unwrap(),
+		)
 }
 
 /// Helper method to calculate `create_nft_contract` weight.
-fn create_nft_contract<T: Config>(gas: u64) -> Weight {
+fn create_nft_contract<T: Config>(gas: u64, storage: u32) -> Weight {
 	<T as Config>::WeightInfo::create_nft_contract()
 		// during `create_nft_contract` benchmark an additional of `BASE_CREATE_GAS`
 		// was used so user will be extra charged only for extra gas usage
 		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+		.saturating_add(
+			T::StorageDepositPerByte::get()
+				.saturating_mul(storage.into())
+				.try_into()
+				.unwrap(),
+		)
 }
 
 /// Helper method to calculate `call` weight.
@@ -544,7 +568,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(match *action {
 			TransactionAction::Call(_) => call_weight::<T>(*gas_limit, *storage_limit),
-			TransactionAction::Create => create_weight::<T>(*gas_limit)
+			TransactionAction::Create => create_weight::<T>(*gas_limit, *storage_limit)
 		})]
 		#[transactional]
 		pub fn eth_call(
@@ -756,7 +780,7 @@ pub mod module {
 		/// - `value`: the amount sent to the contract upon creation
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(create_weight::<T>(*gas_limit))]
+		#[pallet::weight(create_weight::<T>(*gas_limit, *storage_limit))]
 		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -792,6 +816,7 @@ pub mod module {
 				}
 				Ok(info) => {
 					let used_gas: u64 = info.used_gas.unique_saturated_into();
+					let used_storage = info.used_storage as u32;
 
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Created {
@@ -813,7 +838,7 @@ pub mod module {
 					}
 
 					Ok(PostDispatchInfo {
-						actual_weight: Some(create_weight::<T>(used_gas)),
+						actual_weight: Some(create_weight::<T>(used_gas, used_storage)),
 						pays_fee: Pays::Yes,
 					})
 				}
@@ -828,7 +853,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(create2_weight::<T>(*gas_limit))]
+		#[pallet::weight(create2_weight::<T>(*gas_limit, *storage_limit))]
 		#[transactional]
 		pub fn create2(
 			origin: OriginFor<T>,
@@ -866,6 +891,7 @@ pub mod module {
 				}
 				Ok(info) => {
 					let used_gas: u64 = info.used_gas.unique_saturated_into();
+					let used_storage = info.used_storage as u32;
 
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Created {
@@ -887,7 +913,7 @@ pub mod module {
 					}
 
 					Ok(PostDispatchInfo {
-						actual_weight: Some(create2_weight::<T>(used_gas)),
+						actual_weight: Some(create2_weight::<T>(used_gas, used_storage)),
 						pays_fee: Pays::Yes,
 					})
 				}
@@ -901,7 +927,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(create_nft_contract::<T>(*gas_limit))]
+		#[pallet::weight(create_nft_contract::<T>(*gas_limit, *storage_limit))]
 		#[transactional]
 		pub fn create_nft_contract(
 			origin: OriginFor<T>,
@@ -952,6 +978,7 @@ pub mod module {
 				}
 				Ok(info) => {
 					let used_gas: u64 = info.used_gas.unique_saturated_into();
+					let used_storage = info.used_storage as u32;
 
 					if info.exit_reason.is_succeed() {
 						NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
@@ -975,7 +1002,7 @@ pub mod module {
 					}
 
 					Ok(PostDispatchInfo {
-						actual_weight: Some(create_nft_contract::<T>(used_gas)),
+						actual_weight: Some(create_nft_contract::<T>(used_gas, used_storage)),
 						pays_fee: Pays::No,
 					})
 				}
@@ -990,7 +1017,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(create_predeploy_contract::<T>(*gas_limit))]
+		#[pallet::weight(create_predeploy_contract::<T>(*gas_limit, *storage_limit))]
 		#[transactional]
 		pub fn create_predeploy_contract(
 			origin: OriginFor<T>,
@@ -1042,6 +1069,7 @@ pub mod module {
 				}
 				Ok(info) => {
 					let used_gas: u64 = info.used_gas.unique_saturated_into();
+					let used_storage = info.used_storage as u32;
 
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Created {
@@ -1063,7 +1091,7 @@ pub mod module {
 					}
 
 					Ok(PostDispatchInfo {
-						actual_weight: Some(create_predeploy_contract::<T>(used_gas)),
+						actual_weight: Some(create_predeploy_contract::<T>(used_gas, used_storage)),
 						pays_fee: Pays::No,
 					})
 				}
