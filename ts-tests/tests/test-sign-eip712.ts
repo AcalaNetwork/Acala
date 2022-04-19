@@ -146,7 +146,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"gas_limit": 2100000,
 						"storage_limit": 20000,
 						"access_list": [],
-						"valid_until": 105
+						"valid_until": 104
 					}
 				}
 			  }`.toString().replace(/\s/g, '')
