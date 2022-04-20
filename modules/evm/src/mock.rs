@@ -22,7 +22,7 @@ use super::*;
 
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{Everything, FindAuthor, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Everything, FindAuthor, Nothing},
 	ConsensusEngineId,
 };
 use frame_system::EnsureSignedBy;
@@ -43,10 +43,6 @@ mod evm_mod {
 	pub use super::super::*;
 }
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
-
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
@@ -61,7 +57,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -71,32 +67,25 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
-parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
-	pub const MaxReserves: u32 = 50;
-}
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ConstU128<1>;
 	type AccountStore = System;
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const MinimumPeriod: u64 = 1000;
-}
 impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
+	type MinimumPeriod = ConstU64<1000>;
 	type WeightInfo = ();
 }
 
@@ -138,11 +127,6 @@ define_combined_task! {
 	}
 }
 
-parameter_types!(
-	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
-	pub DisableBlockThreshold: BlockNumber = u32::MAX;
-);
-
 pub struct MockBlockNumberProvider;
 
 impl BlockNumberProvider for MockBlockNumberProvider {
@@ -157,9 +141,9 @@ impl module_idle_scheduler::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
-	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type MinimumWeightRemainInBlock = ConstU64<0>;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
-	type DisableBlockThreshold = DisableBlockThreshold;
+	type DisableBlockThreshold = ConstU32<6>;
 }
 
 pub struct GasToWeight;
@@ -190,33 +174,31 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const NewContractExtraBytes: u32 = 100;
 	pub const StorageDepositPerByte: Balance = convert_decimals_to_evm(10);
-	pub const TxFeePerGas: Balance = 20_000_000;
-	pub const DeveloperDeposit: Balance = 1000;
-	pub const PublicationFee: Balance = 200;
-	pub const ChainId: u64 = 1;
 }
 
+pub const NEW_CONTRACT_EXTRA_BYTES: u32 = 100;
+pub const DEVELOPER_DEPOSIT: u128 = 1000;
+pub const PUBLICATION_FEE: u128 = 200;
 impl Config for Runtime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
 	type TransferAll = Currencies;
-	type NewContractExtraBytes = NewContractExtraBytes;
+	type NewContractExtraBytes = ConstU32<NEW_CONTRACT_EXTRA_BYTES>;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type TxFeePerGas = TxFeePerGas;
+	type TxFeePerGas = ConstU128<20_000_000>;
 
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
-	type ChainId = ChainId;
+	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ();
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
-	type DeveloperDeposit = DeveloperDeposit;
-	type PublicationFee = PublicationFee;
+	type DeveloperDeposit = ConstU128<DEVELOPER_DEPOSIT>;
+	type PublicationFee = ConstU128<PUBLICATION_FEE>;
 	type TreasuryAccount = TreasuryAccount;
 	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 

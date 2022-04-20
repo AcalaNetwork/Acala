@@ -20,7 +20,7 @@ use super::*;
 use crate as collator_selection;
 use frame_support::{
 	ord_parameter_types, parameter_types,
-	traits::{Everything, FindAuthor, GenesisBuild},
+	traits::{ConstU16, ConstU32, ConstU64, Everything, FindAuthor, GenesisBuild},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -52,11 +52,6 @@ frame_support::construct_runtime!(
 	}
 );
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	pub const SS58Prefix: u8 = 42;
-}
-
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
@@ -72,31 +67,26 @@ impl frame_system::Config for Test {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
-	type SS58Prefix = SS58Prefix;
+	type SS58Prefix = ConstU16<42>;
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-}
-
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 5;
-	pub const MaxReserves: u32 = 50;
+	type MaxConsumers = ConstU32<16>;
 }
 
 impl pallet_balances::Config for Test {
 	type Balance = u64;
 	type Event = Event;
 	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ConstU64<5>;
 	type AccountStore = System;
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
 }
@@ -118,22 +108,17 @@ impl pallet_authorship::Config for Test {
 	type EventHandler = CollatorSelection;
 }
 
-parameter_types! {
-	pub const MinimumPeriod: u64 = 1;
-	pub const MaxAuthorities: u32 = 32;
-}
-
 impl pallet_timestamp::Config for Test {
 	type Moment = u64;
 	type OnTimestampSet = Aura;
-	type MinimumPeriod = MinimumPeriod;
+	type MinimumPeriod = ConstU64<1>;
 	type WeightInfo = ();
 }
 
 impl pallet_aura::Config for Test {
 	type AuthorityId = sp_consensus_aura::sr25519::AuthorityId;
 	type DisabledValidators = ();
-	type MaxAuthorities = MaxAuthorities;
+	type MaxAuthorities = ConstU32<32>;
 }
 
 sp_runtime::impl_opaque_keys! {
@@ -168,19 +153,14 @@ impl pallet_session::SessionHandler<u64> for TestSessionHandler {
 	fn on_before_session_ending() {}
 	fn on_disabled(_: u32) {}
 }
-
-parameter_types! {
-	pub const Offset: u64 = 0;
-	pub const Period: u64 = 10;
-}
-
+pub const PERIOD: u64 = 10;
 impl pallet_session::Config for Test {
 	type Event = Event;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	// we don't have stash and controller, thus we don't need the convert as well.
 	type ValidatorIdOf = IdentityCollator;
-	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
-	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
+	type ShouldEndSession = pallet_session::PeriodicSessions<ConstU64<PERIOD>, ConstU64<0>>;
+	type NextSessionRotation = pallet_session::PeriodicSessions<ConstU64<PERIOD>, ConstU64<0>>;
 	type SessionManager = CollatorSelection;
 	type SessionHandler = TestSessionHandler;
 	type Keys = MockSessionKeys;
@@ -193,12 +173,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
-	pub const MinCandidates: u32 = 1;
-	pub const MaxCandidates: u32 = 4;
-	pub const MaxInvulnerables: u32 = 4;
-	pub const KickPenaltySessionLength: u32 = 8;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(100);
-	pub const MinRewardDistributeAmount: u64 = 10;
 }
 
 impl Config for Test {
@@ -207,12 +182,12 @@ impl Config for Test {
 	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureSignedBy<RootAccount, u64>;
 	type PotId = PotId;
-	type MinCandidates = MinCandidates;
-	type MaxCandidates = MaxCandidates;
-	type MaxInvulnerables = MaxInvulnerables;
-	type KickPenaltySessionLength = KickPenaltySessionLength;
+	type MinCandidates = ConstU32<1>;
+	type MaxCandidates = ConstU32<4>;
+	type MaxInvulnerables = ConstU32<4>;
+	type KickPenaltySessionLength = ConstU32<8>;
 	type CollatorKickThreshold = CollatorKickThreshold;
-	type MinRewardDistributeAmount = MinRewardDistributeAmount;
+	type MinRewardDistributeAmount = ConstU64<10>;
 	type WeightInfo = ();
 }
 

@@ -21,13 +21,13 @@ use super::{
 	utils::{lookup_of_account, set_balance},
 };
 use crate::{
-	dollar, AccountId, Balance, BlockNumber, Currencies, CurrencyId, GetNativeCurrencyId, MaxVestingSchedules,
-	MinVestedTransfer, Runtime, System, Vesting,
+	dollar, AccountId, Balance, BlockNumber, Currencies, CurrencyId, GetNativeCurrencyId, Runtime, System, Vesting,
 };
 
 use sp_std::prelude::*;
 
 use frame_benchmarking::{account, whitelisted_caller};
+use frame_support::traits::Get;
 use frame_system::RawOrigin;
 
 use orml_benchmarking::runtime_benchmarks;
@@ -48,7 +48,7 @@ runtime_benchmarks! {
 			start: 0,
 			period: 2,
 			period_count: 3,
-			per_period: MinVestedTransfer::get(),
+			per_period: <Runtime as orml_vesting::Config>::MinVestedTransfer::get(),
 		};
 
 		// extra 1 dollar to pay fees
@@ -66,13 +66,13 @@ runtime_benchmarks! {
 	}
 
 	claim {
-		let i in 1 .. MaxVestingSchedules::get();
+		let i in 1 .. <Runtime as orml_vesting::Config>::MaxVestingSchedules::get();
 
 		let mut schedule = Schedule {
 			start: 0,
 			period: 2,
 			period_count: 3,
-			per_period: MinVestedTransfer::get(),
+			per_period: <Runtime as orml_vesting::Config>::MinVestedTransfer::get(),
 		};
 
 		let from: AccountId = get_vesting_account();
@@ -96,13 +96,13 @@ runtime_benchmarks! {
 	}
 
 	update_vesting_schedules {
-		let i in 1 .. MaxVestingSchedules::get();
+		let i in 1 .. <Runtime as orml_vesting::Config>::MaxVestingSchedules::get();
 
 		let mut schedule = Schedule {
 			start: 0,
 			period: 2,
 			period_count: 3,
-			per_period: MinVestedTransfer::get(),
+			per_period: <Runtime as orml_vesting::Config>::MinVestedTransfer::get(),
 		};
 
 		let to: AccountId = account("to", 0, SEED);

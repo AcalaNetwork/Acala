@@ -996,10 +996,7 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
-			ensure!(
-				Pallet::<T>::is_account_empty(&target),
-				Error::<T>::ContractAlreadyExisted
-			);
+			ensure!(Self::accounts(target).is_none(), Error::<T>::ContractAlreadyExisted);
 
 			let source = T::NetworkContractSource::get();
 			let source_account = T::AddressMapping::get_account_id(&source);
@@ -1194,7 +1191,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Remove an account if its empty.
-	/// Unused now.
+	/// Keep the non-zero nonce exists.
 	pub fn remove_account_if_empty(address: &H160) {
 		if Self::is_account_empty(address) {
 			let res = Self::remove_account(address);
@@ -1245,7 +1242,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Removes an account from Accounts and AccountStorages.
-	pub fn remove_account(address: &EvmAddress) -> DispatchResult {
+	/// Only used in `remove_account_if_empty`
+	fn remove_account(address: &EvmAddress) -> DispatchResult {
 		// Deref code, and remove it if ref count is zero.
 		Accounts::<T>::mutate_exists(&address, |maybe_account| {
 			if let Some(account) = maybe_account {
@@ -1824,12 +1822,8 @@ pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 	fn on_killed_account(who: &T::AccountId) {
 		if let Some(address) = T::AddressMapping::get_evm_address(who) {
-			let res = Pallet::<T>::remove_account(&address);
-			debug_assert!(res.is_ok());
+			Pallet::<T>::remove_account_if_empty(&address);
 		}
-		let address = T::AddressMapping::get_default_evm_address(who);
-		let res = Pallet::<T>::remove_account(&address);
-		debug_assert!(res.is_ok());
 	}
 }
 
@@ -1963,7 +1957,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 						);
 
 						// Remove account after all of the storages are cleared.
-						Accounts::<T>::take(contract);
+						Pallet::<T>::remove_account_if_empty(&contract);
 
 						TaskResult {
 							result: res,
