@@ -5,7 +5,8 @@ import { Signer } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
 import { encodeAddress } from "@polkadot/keyring";
 import { hexToU8a, u8aConcat, stringToU8a } from "@polkadot/util";
-import { ethers, BigNumber, ContractFactory } from "ethers";
+import { ethers, ContractFactory } from "ethers";
+import { BigNumber } from '@ethersproject/bignumber';
 import Erc20DemoContract from "../build/Erc20DemoContract.json"
 
 describeWithAcala("Acala RPC (Sign eip712)", (context) => {
