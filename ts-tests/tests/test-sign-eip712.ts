@@ -1,12 +1,11 @@
 import { expect } from "chai";
 
-import { describeWithAcala, getEvmNonce } from "./util";
+import { describeWithAcala, getEvmNonce, transfer } from "./util";
 import { Signer } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
 import { encodeAddress } from "@polkadot/keyring";
 import { hexToU8a, u8aConcat, stringToU8a } from "@polkadot/util";
-import { ethers, ContractFactory } from "ethers";
-import { BigNumber } from '@ethersproject/bignumber';
+import { ethers, BigNumber, ContractFactory } from "ethers";
 import Erc20DemoContract from "../build/Erc20DemoContract.json"
 
 describeWithAcala("Acala RPC (Sign eip712)", (context) => {
@@ -34,8 +33,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 
 		expect(subAddr).to.equal("5EMjsczQH4R2WZaB5Svau8HWZp1aAfMqjxfv3GeLWotYSkLc");
 
-		await context.provider.api.tx.balances.transfer(subAddr, "10000000000000")
-			.signAndSend(await alice.getSubstrateAddress());
+		await transfer(context, await alice.getSubstrateAddress(), subAddr, 10000000000000);
 
 		factory = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode);
 	});
@@ -147,7 +145,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"gas_limit": 2100000,
 						"storage_limit": 20000,
 						"access_list": [],
-						"valid_until": 104
+						"valid_until": 105
 					}
 				}
 			  }`.toString().replace(/\s/g, '')
