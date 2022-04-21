@@ -14,7 +14,7 @@ describeWithAcala("Acala RPC (GasLimit)", (context) => {
         [alice] = await context.provider.getWallets();
     });
 
-    it.only("block gas limit", async () => {
+    it("block gas limit", async () => {
         const contract = await deployContract(alice as any, Factory);
         const result = await contract.createContractLoop(400, { gasLimit: 33_000_000 });
         expect(result.gasLimit.toNumber()).to.be.eq(28_875_800);
