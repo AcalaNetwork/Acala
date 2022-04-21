@@ -128,9 +128,9 @@ fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
 }
 
 // 20M. TODO: use value from runtime
-const MAX_GAS_LIMIT: u64 = 20_000_000;
+const MAX_GAS_LIMIT: u64 = 33_000_000;
 // 4M. TODO: use value from runtime
-const MAX_STROAGE_LIMIT: u32 = 4 * 1024 * 1024;
+const MAX_STORAGE_LIMIT: u32 = 4 * 1024 * 1024;
 
 impl<B, C, Balance> EVMApiT<<B as BlockT>::Hash> for EVMApi<B, C, Balance>
 where
@@ -156,7 +156,21 @@ where
 		} = request;
 
 		let gas_limit = gas_limit.unwrap_or(MAX_GAS_LIMIT);
-		let storage_limit = storage_limit.unwrap_or(MAX_STROAGE_LIMIT);
+		if gas_limit > MAX_GAS_LIMIT {
+			return Err(Error {
+				code: ErrorCode::InvalidParams,
+				message: format!("GasLimit exceeds allowance: {}", MAX_GAS_LIMIT),
+				data: None,
+			});
+		}
+		let storage_limit = storage_limit.unwrap_or(MAX_STORAGE_LIMIT);
+		if storage_limit > MAX_STORAGE_LIMIT {
+			return Err(Error {
+				code: ErrorCode::InvalidParams,
+				message: format!("StorageLimit exceeds allowance: {}", MAX_STORAGE_LIMIT),
+				data: None,
+			});
+		}
 		let data = data.map(|d| d.0).unwrap_or_default();
 
 		let api = self.client.runtime_api();
@@ -185,7 +199,7 @@ where
 						gas_limit,
 						storage_limit,
 						access_list,
-						true,
+						false,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
@@ -209,7 +223,7 @@ where
 						gas_limit,
 						storage_limit,
 						access_list,
-						true,
+						false,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
@@ -239,6 +253,26 @@ where
 			.get_estimate_resources_request(&BlockId::Hash(hash), unsigned_extrinsic.to_vec())
 			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 			.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+
+		if let Some(gas_limit) = request.gas_limit {
+			if gas_limit > MAX_GAS_LIMIT {
+				return Err(Error {
+					code: ErrorCode::InvalidParams,
+					message: format!("GasLimit exceeds allowance: {}", MAX_GAS_LIMIT),
+					data: None,
+				});
+			}
+		}
+
+		if let Some(storage_limit) = request.storage_limit {
+			if storage_limit > MAX_STORAGE_LIMIT {
+				return Err(Error {
+					code: ErrorCode::InvalidParams,
+					message: format!("StorageLimit exceeds allowance: {}", MAX_STORAGE_LIMIT),
+					data: None,
+				});
+			}
+		}
 
 		// Determine the highest possible gas limits
 		let max_gas_limit = MAX_GAS_LIMIT;
@@ -281,7 +315,7 @@ where
 
 			// Use request gas limit only if it less than gas_limit parameter
 			let gas_limit = core::cmp::min(gas_limit.unwrap_or(gas), gas);
-			let storage_limit = storage_limit.unwrap_or(MAX_STROAGE_LIMIT);
+			let storage_limit = storage_limit.unwrap_or(MAX_STORAGE_LIMIT);
 			let data = data.map(|d| d.0).unwrap_or_default();
 
 			let balance_value = if let Some(value) = value {
@@ -310,7 +344,7 @@ where
 							gas_limit,
 							storage_limit,
 							access_list,
-							true,
+							false,
 						)
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
@@ -329,7 +363,7 @@ where
 							gas_limit,
 							storage_limit,
 							access_list,
-							true,
+							false,
 						)
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
