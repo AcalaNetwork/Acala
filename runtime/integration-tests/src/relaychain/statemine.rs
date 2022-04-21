@@ -32,7 +32,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE_STATEMINE: Balance = 10_666_664;
-pub const FEE_KUSAMA: Balance = 106_666_660;
+pub const FEE_KUSAMA: Balance = 165_940_672;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
@@ -100,6 +100,7 @@ fn transfer_from_relay_chain() {
 
 #[test]
 fn karura_statemine_transfer_works() {
+	env_logger::init();
 	TestNet::reset();
 	let para_2000: AccountId = Sibling::from(2000).into_account();
 	let child_2000: AccountId = ParaId::from(2000).into_account();

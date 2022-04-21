@@ -535,7 +535,7 @@ parameter_types! {
 	pub const BountyDepositPayoutDelay: BlockNumber = DAYS;
 	pub const BountyUpdatePeriod: BlockNumber = 14 * DAYS;
 	pub const CuratorDepositMultiplier: Permill = Permill::from_percent(50);
-	pub CuratorDepositMin: Balance = 1 * dollar(ACA);
+	pub CuratorDepositMin: Balance = dollar(ACA);
 	pub CuratorDepositMax: Balance = 100 * dollar(ACA);
 	pub BountyValueMinimum: Balance = 5 * dollar(ACA);
 	pub DataDepositPerByte: Balance = cent(ACA);
