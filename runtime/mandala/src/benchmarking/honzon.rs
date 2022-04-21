@@ -19,7 +19,7 @@
 use crate::{
 	AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, Currencies, CurrencyId, DepositPerAuthorization, Dex,
 	ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Honzon,
-	Price, Rate, Ratio, Runtime,
+	Price, Rate, Ratio, Runtime, TokenSymbol,
 };
 
 use super::utils::{dollar, feed_price, set_balance};
@@ -27,6 +27,7 @@ use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::{Change, GetByKey, MultiCurrencyExtended};
+use primitives::currency::{LCDOT, RENBTC};
 use sp_runtime::{
 	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
@@ -200,7 +201,6 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(receiver), currency_id, sender_lookup)
 
 	close_loan_has_debit_by_dex {
-		let currency_id: CurrencyId = LIQUID;
 		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
 		let debit_value = 100 * dollar(STABLECOIN);
@@ -213,7 +213,10 @@ runtime_benchmarks! {
 		// set balance and inject liquidity
 		set_balance(LIQUID, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&LIQUID));
 		inject_liquidity(maker.clone(), LIQUID, STAKING, 10_000 * dollar(LIQUID), 10_000 * dollar(STAKING), false)?;
-		inject_liquidity(maker, STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), LIQUID, LCDOT, 10_000 * dollar(LIQUID), 10_000 * dollar(LCDOT), false)?;
+		inject_liquidity(maker.clone(), LCDOT, STABLECOIN, 10_000 * dollar(LCDOT), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker, LIQUID, STABLECOIN, 10_000 * dollar(LIQUID), 10_000 * dollar(STABLECOIN), false)?;
 
 		feed_price(vec![(STAKING, Price::one())])?;
 
@@ -239,7 +242,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(sender), LIQUID, collateral_amount)
 
 	expand_position_collateral {
-		let currency_id: CurrencyId = STAKING;
+		let currency_id: CurrencyId = RENBTC;
 		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
 		let debit_value = 100 * dollar(STABLECOIN);
@@ -250,7 +253,13 @@ runtime_benchmarks! {
 
 		// set balance and inject liquidity
 		set_balance(currency_id, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&currency_id));
-		inject_liquidity(maker, currency_id, STABLECOIN, 10_000 * dollar(currency_id), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), RENBTC, LIQUID, 10_000 * dollar(RENBTC), 10_000 * dollar(LIQUID), false)?;
+		inject_liquidity(maker.clone(), RENBTC, STAKING, 10_000 * dollar(RENBTC), 10_000 * dollar(STAKING), false)?;
+		inject_liquidity(maker.clone(), RENBTC, LCDOT, 10_000 * dollar(RENBTC), 10_000 * dollar(LCDOT), false)?;
+		inject_liquidity(maker.clone(), STABLECOIN, LCDOT, 10_000 * dollar(RENBTC), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), LIQUID, STABLECOIN, 10_000 * dollar(LIQUID), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker, RENBTC, STABLECOIN, 10_000 * dollar(RENBTC), 10_000 * dollar(STABLECOIN), false)?;
 
 		feed_price(vec![(currency_id, Price::one())])?;
 
@@ -275,7 +284,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(sender), currency_id, debit_value, 0)
 
 	shrink_position_debit {
-		let currency_id: CurrencyId = STAKING;
+		let currency_id: CurrencyId = RENBTC;
 		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
 		let debit_value = 100 * dollar(STABLECOIN);
@@ -286,7 +295,13 @@ runtime_benchmarks! {
 
 		// set balance and inject liquidity
 		set_balance(currency_id, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&currency_id));
-		inject_liquidity(maker, currency_id, STABLECOIN, 10_000 * dollar(currency_id), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), RENBTC, LIQUID, 10_000 * dollar(RENBTC), 10_000 * dollar(LIQUID), false)?;
+		inject_liquidity(maker.clone(), RENBTC, STAKING, 10_000 * dollar(RENBTC), 10_000 * dollar(STAKING), false)?;
+		inject_liquidity(maker.clone(), RENBTC, LCDOT, 10_000 * dollar(RENBTC), 10_000 * dollar(LCDOT), false)?;
+		inject_liquidity(maker.clone(), STABLECOIN, LCDOT, 10_000 * dollar(RENBTC), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), LIQUID, STABLECOIN, 10_000 * dollar(LIQUID), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker, RENBTC, STABLECOIN, 10_000 * dollar(RENBTC), 10_000 * dollar(STABLECOIN), false)?;
 
 		feed_price(vec![(currency_id, Price::one())])?;
 

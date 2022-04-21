@@ -16,7 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CdpTreasury, Currencies, CurrencyId, Dex, GetStableCurrencyId, GetStakingCurrencyId, Runtime};
+use crate::{
+	AccountId, Balance, CdpTreasury, Currencies, CurrencyId, Dex, GetLiquidCurrencyId, GetNativeCurrencyId,
+	GetStableCurrencyId, GetStakingCurrencyId, Runtime,
+};
 
 use super::utils::{dollar, set_balance};
 use frame_benchmarking::whitelisted_caller;
@@ -24,10 +27,48 @@ use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use module_support::{CDPTreasury, SwapLimit};
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::MultiCurrency;
+use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use primitives::currency::{LCDOT, RENBTC};
+use sp_runtime::traits::UniqueSaturatedInto;
 
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 const STAKING: CurrencyId = GetStakingCurrencyId::get();
+const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
+
+fn inject_liquidity(
+	maker: AccountId,
+	currency_id_a: CurrencyId,
+	currency_id_b: CurrencyId,
+	max_amount_a: Balance,
+	max_amount_b: Balance,
+	deposit: bool,
+) -> Result<(), &'static str> {
+	// set balance
+	<Currencies as MultiCurrencyExtended<_>>::update_balance(
+		currency_id_a,
+		&maker,
+		max_amount_a.unique_saturated_into(),
+	)?;
+	<Currencies as MultiCurrencyExtended<_>>::update_balance(
+		currency_id_b,
+		&maker,
+		max_amount_b.unique_saturated_into(),
+	)?;
+
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
+
+	Dex::add_liquidity(
+		RawOrigin::Signed(maker.clone()).into(),
+		currency_id_a,
+		currency_id_b,
+		max_amount_a,
+		max_amount_b,
+		Default::default(),
+		deposit,
+	)?;
+
+	Ok(())
+}
 
 runtime_benchmarks! {
 	{ Runtime, module_cdp_treasury }
@@ -43,20 +84,17 @@ runtime_benchmarks! {
 
 	exchange_collateral_to_stable {
 		let caller: AccountId = whitelisted_caller();
-		set_balance(STABLECOIN, &caller, 1000 * dollar(STABLECOIN));
-		set_balance(STAKING, &caller, 1000 * dollar(STAKING));
-		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), STABLECOIN, STAKING);
-		Dex::add_liquidity(
-			RawOrigin::Signed(caller.clone()).into(),
-			STABLECOIN,
-			STAKING,
-			1000 * dollar(STABLECOIN),
-			100 * dollar(STAKING),
-			0,
-			false,
-		)?;
-		CdpTreasury::deposit_collateral(&caller, STAKING, 100 * dollar(STAKING))?;
-	}: _(RawOrigin::Root, STAKING, SwapLimit::ExactSupply(100 * dollar(STAKING), 0))
+		set_balance(RENBTC, &caller, 1000 * dollar(RENBTC));
+		inject_liquidity(caller.clone(), RENBTC, LIQUID, 10_000 * dollar(RENBTC), 10_000 * dollar(LIQUID), false)?;
+		inject_liquidity(caller.clone(), RENBTC, STAKING, 10_000 * dollar(RENBTC), 10_000 * dollar(STAKING), false)?;
+		inject_liquidity(caller.clone(), RENBTC, LCDOT, 10_000 * dollar(RENBTC), 10_000 * dollar(LCDOT), false)?;
+		inject_liquidity(caller.clone(), STABLECOIN, LCDOT, 10_000 * dollar(RENBTC), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(caller.clone(), STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(caller.clone(), LIQUID, STABLECOIN, 10_000 * dollar(LIQUID), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(caller.clone(), RENBTC, STABLECOIN, 10_000 * dollar(RENBTC), 10_000 * dollar(STABLECOIN), false)?;
+
+		CdpTreasury::deposit_collateral(&caller, RENBTC, 100 * dollar(RENBTC))?;
+	}: _(RawOrigin::Root, RENBTC, SwapLimit::ExactSupply(100 * dollar(RENBTC), 0))
 
 	set_expected_collateral_auction_size {
 	}: _(RawOrigin::Root, STAKING, 200 * dollar(STAKING))
