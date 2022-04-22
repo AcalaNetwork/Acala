@@ -152,6 +152,7 @@ fn karura_genesis(
 			collaterals_params: vec![],
 			global_interest_rate_per_sec: Default::default(),
 		},
+		asset_registry: Default::default(),
 		evm: Default::default(),
 		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],

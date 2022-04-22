@@ -269,6 +269,12 @@ impl ExtBuilder {
 			.build_storage::<Runtime>()
 			.unwrap();
 
+		asset_registry::GenesisConfig::<Runtime> {
+			assets: vec![(CurrencyId::Token(TokenSymbol::ACA), 1)],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self.balances.into_iter().collect::<Vec<_>>(),
 		}
