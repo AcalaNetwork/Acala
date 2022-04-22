@@ -26,6 +26,7 @@ use frame_support::{assert_ok, traits::Contains};
 use frame_system::RawOrigin;
 use module_support::Erc20InfoMapping;
 use orml_traits::MultiCurrencyExtended;
+use primitives::currency::TokenInfo;
 use sp_runtime::{
 	traits::{SaturatedConversion, StaticLookup},
 	DispatchResult,
@@ -62,10 +63,15 @@ pub fn set_balance_fungibles(currency_id: CurrencyId, who: &AccountId, balance: 
 }
 
 pub fn dollar(currency_id: CurrencyId) -> Balance {
-	if let Some(decimals) = module_asset_registry::EvmErc20InfoMapping::<Runtime>::decimals(currency_id) {
-		10u128.saturating_pow(decimals.into())
-	} else {
-		panic!("{:?} not support decimals", currency_id);
+	match currency_id {
+		CurrencyId::Token(_) => 10u128.saturating_pow(currency_id.decimals().unwrap().into()),
+		_ => {
+			if let Some(decimals) = module_asset_registry::EvmErc20InfoMapping::<Runtime>::decimals(currency_id) {
+				10u128.saturating_pow(decimals.into())
+			} else {
+				panic!("{:?} not support decimals", currency_id);
+			}
+		}
 	}
 }
 
