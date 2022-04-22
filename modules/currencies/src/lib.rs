@@ -419,9 +419,9 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 	fn slash(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> Self::Balance {
 		match currency_id {
-			CurrencyId::Erc20(contract) => {
+			CurrencyId::Erc20(_) => {
 				Self::deposit_event(Event::Slashed {
-					currency_id: CurrencyId::Erc20(contract),
+					currency_id,
 					who: who.clone(),
 					amount: Default::default(),
 				});
@@ -500,9 +500,9 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 
 	fn slash_reserved(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> Self::Balance {
 		match currency_id {
-			CurrencyId::Erc20(contract) => {
+			CurrencyId::Erc20(_) => {
 				Self::deposit_event(Event::ReserveSlashed {
-					currency_id: CurrencyId::Erc20(contract),
+					currency_id,
 					who: who.clone(),
 					unslashed: value,
 				});
@@ -551,7 +551,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 					value,
 				)?;
 				Self::deposit_event(Event::Reserved {
-					currency_id: CurrencyId::Erc20(address),
+					currency_id,
 					who: who.clone(),
 					amount: value,
 				});
@@ -593,7 +593,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 						Err(_) => value,
 					};
 					Self::deposit_event(Event::Unreserved {
-						currency_id: CurrencyId::Erc20(contract),
+						currency_id,
 						who: who.clone(),
 						amount: actual,
 					});

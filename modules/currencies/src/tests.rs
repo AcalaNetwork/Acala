@@ -302,12 +302,12 @@ fn call_event_should_work() {
 			assert_ok!(Currencies::transfer(Some(alice()).into(), bob(), X_TOKEN_ID, 50));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 50);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 150);
-			// System::assert_last_event(Event::Currencies(crate::Event::Transferred {
-			// 	currency_id: X_TOKEN_ID,
-			// 	from: alice(),
-			// 	to: bob(),
-			// 	amount: 50,
-			// }));
+			System::assert_last_event(Event::Tokens(tokens::Event::Transfer {
+				currency_id: X_TOKEN_ID,
+				from: alice(),
+				to: bob(),
+				amount: 50,
+			}));
 
 			assert_ok!(<Currencies as MultiCurrency<AccountId>>::transfer(
 				X_TOKEN_ID,
@@ -317,12 +317,12 @@ fn call_event_should_work() {
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 40);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 160);
-			// System::assert_last_event(Event::Currencies(crate::Event::Transferred {
-			// 	currency_id: X_TOKEN_ID,
-			// 	from: alice(),
-			// 	to: bob(),
-			// 	amount: 10,
-			// }));
+			System::assert_last_event(Event::Tokens(tokens::Event::Transfer {
+				currency_id: X_TOKEN_ID,
+				from: alice(),
+				to: bob(),
+				amount: 10,
+			}));
 
 			assert_ok!(<Currencies as MultiCurrency<AccountId>>::deposit(
 				X_TOKEN_ID,
@@ -330,11 +330,11 @@ fn call_event_should_work() {
 				100
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 140);
-			// System::assert_last_event(Event::Currencies(crate::Event::Slashed {
-			// 	currency_id: X_TOKEN_ID,
-			// 	who: alice(),
-			// 	amount: 100,
-			// }));
+			System::assert_last_event(Event::Tokens(tokens::Event::Deposited {
+				currency_id: X_TOKEN_ID,
+				who: alice(),
+				amount: 100,
+			}));
 
 			assert_ok!(<Currencies as MultiCurrency<AccountId>>::withdraw(
 				X_TOKEN_ID,
@@ -342,11 +342,11 @@ fn call_event_should_work() {
 				20
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 120);
-			// System::assert_last_event(Event::Currencies(crate::Event::Slashed {
-			// 	currency_id: X_TOKEN_ID,
-			// 	who: alice(),
-			// 	amount: 20,
-			// }));
+			System::assert_last_event(Event::Tokens(tokens::Event::Withdrawn {
+				currency_id: X_TOKEN_ID,
+				who: alice(),
+				amount: 20,
+			}));
 		});
 }
 
@@ -1219,11 +1219,11 @@ fn fungible_mutate_trait_should_work() {
 				&alice(),
 				1000
 			));
-			// System::assert_last_event(Event::Currencies(crate::Event::Slashed {
-			// 	currency_id: X_TOKEN_ID,
-			// 	who: alice(),
-			// 	amount: 1000,
-			// }));
+			System::assert_last_event(Event::Tokens(tokens::Event::Deposited {
+				currency_id: X_TOKEN_ID,
+				who: alice(),
+				amount: 1000,
+			}));
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::total_issuance(X_TOKEN_ID),
 				201000
@@ -1294,11 +1294,11 @@ fn fungible_mutate_trait_should_work() {
 				&alice(),
 				1000
 			));
-			// System::assert_last_event(Event::Currencies(crate::Event::Slashed {
-			// 	currency_id: X_TOKEN_ID,
-			// 	who: alice(),
-			// 	amount: 1000,
-			// }));
+			System::assert_last_event(Event::Tokens(tokens::Event::Withdrawn {
+				currency_id: X_TOKEN_ID,
+				who: alice(),
+				amount: 1000,
+			}));
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::total_issuance(X_TOKEN_ID),
 				200000
@@ -1399,12 +1399,12 @@ fn fungible_transfer_trait_should_work() {
 				10000,
 				true
 			));
-			// System::assert_last_event(Event::Currencies(crate::Event::Transferred {
-			// 	currency_id: X_TOKEN_ID,
-			// 	from: alice(),
-			// 	to: bob(),
-			// 	amount: 10000,
-			// }));
+			System::assert_last_event(Event::Tokens(tokens::Event::Transfer {
+				currency_id: X_TOKEN_ID,
+				from: alice(),
+				to: bob(),
+				amount: 10000,
+			}));
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(X_TOKEN_ID, &alice()),
 				190000
@@ -1487,6 +1487,11 @@ fn fungible_unbalanced_trait_should_work() {
 				&alice(),
 				80000
 			));
+			System::assert_last_event(Event::Balances(pallet_balances::Event::BalanceSet {
+				who: alice(),
+				free: 80000,
+				reserved: 0,
+			}));
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::total_issuance(NATIVE_CURRENCY_ID),
 				100000
@@ -1509,6 +1514,13 @@ fn fungible_unbalanced_trait_should_work() {
 				&alice(),
 				80000
 			));
+			System::assert_last_event(Event::Tokens(tokens::Event::BalanceSet {
+				currency_id: X_TOKEN_ID,
+				who: alice(),
+				free: 80000,
+				reserved: 0,
+			}));
+
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::total_issuance(X_TOKEN_ID),
 				200000
@@ -1548,6 +1560,10 @@ fn fungible_unbalanced_trait_should_work() {
 			);
 			<Currencies as fungibles::Unbalanced<_>>::set_total_issuance(X_TOKEN_ID, 80000);
 			assert_eq!(<Currencies as fungibles::Inspect<_>>::total_issuance(X_TOKEN_ID), 80000);
+			System::assert_last_event(Event::Tokens(tokens::Event::TotalIssuanceSet {
+				currency_id: X_TOKEN_ID,
+				amount: 80000,
+			}));
 
 			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::total_issuance(), 60000);
 			<AdaptedBasicCurrency as fungible::Unbalanced<_>>::set_total_issuance(0);
@@ -1635,6 +1651,12 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				&alice(),
 				20000
 			));
+			System::assert_last_event(Event::Tokens(tokens::Event::Reserved {
+				currency_id: X_TOKEN_ID,
+				who: alice(),
+				amount: 20000,
+			}));
+
 			assert_noop!(
 				<Currencies as fungibles::MutateHold<_>>::hold(X_TOKEN_ID, &alice(), 200000),
 				DispatchError::Module(ModuleError {
@@ -1728,6 +1750,12 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				<Currencies as fungibles::MutateHold<_>>::release(X_TOKEN_ID, &alice(), 10000, true),
 				Ok(10000)
 			);
+			System::assert_last_event(Event::Tokens(tokens::Event::Unreserved {
+				currency_id: X_TOKEN_ID,
+				who: alice(),
+				amount: 10000,
+			}));
+
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(X_TOKEN_ID, &alice()),
 				200000
@@ -1861,6 +1889,14 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				),
 				Ok(2000)
 			);
+			System::assert_last_event(Event::Tokens(tokens::Event::ReserveRepatriated {
+				currency_id: X_TOKEN_ID,
+				from: alice(),
+				to: bob(),
+				amount: 2000,
+				status: BalanceStatus::Reserved,
+			}));
+
 			assert_noop!(
 				<Currencies as fungibles::MutateHold<_>>::transfer_held(
 					X_TOKEN_ID,
@@ -1953,6 +1989,12 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				&alice(),
 				8000
 			));
+			System::assert_last_event(Event::Currencies(crate::Event::Reserved {
+				currency_id: CurrencyId::Erc20(erc20_address()),
+				who: alice(),
+				amount: 8000,
+			}));
+
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE - 8000
@@ -1974,6 +2016,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				),
 				Ok(0)
 			);
+
 			assert_noop!(
 				<Currencies as fungibles::MutateHold<_>>::release(
 					CurrencyId::Erc20(erc20_address()),
@@ -1992,6 +2035,12 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				),
 				Ok(8000)
 			);
+			System::assert_last_event(Event::Currencies(crate::Event::Unreserved {
+				currency_id: CurrencyId::Erc20(erc20_address()),
+				who: alice(),
+				amount: 8000,
+			}));
+
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE
@@ -2009,6 +2058,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				&alice(),
 				8000
 			));
+
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE - 8000
@@ -2052,6 +2102,14 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				),
 				Ok(2000)
 			);
+			System::assert_last_event(Event::Currencies(crate::Event::ReserveRepatriated {
+				currency_id: CurrencyId::Erc20(erc20_address()),
+				from: alice(),
+				to: bob(),
+				amount: 2000,
+				destination_status: BalanceStatus::Reserved,
+			}));
+
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE - 8000
