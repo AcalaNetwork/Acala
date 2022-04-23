@@ -276,6 +276,17 @@ impl ExtBuilder {
 		)
 		.unwrap();
 
+		module_asset_registry::GenesisConfig::<Runtime> {
+			assets: vec![
+				(NATIVE_CURRENCY, existential_deposit),
+				(LIQUID_CURRENCY, ExistentialDeposits::get(&LIQUID_CURRENCY)),
+				(RELAY_CHAIN_CURRENCY, ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY)),
+				(USD_CURRENCY, ExistentialDeposits::get(&USD_CURRENCY)),
+			],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
 		module_dex::GenesisConfig::<Runtime> {
 			initial_enabled_trading_pairs: initial_enabled_trading_pairs,
 			initial_listing_trading_pairs: Default::default(),
