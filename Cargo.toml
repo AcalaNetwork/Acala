@@ -186,6 +186,7 @@ pallet-beefy-mmr = { git = "https://github.com/paritytech//substrate", rev = "17
 pallet-bags-list = { git = "https://github.com/paritytech//substrate", rev = "174735ea1bb5fc4513519c45181d8df63d86f613" }
 pallet-preimage = { git = "https://github.com/paritytech//substrate", rev = "174735ea1bb5fc4513519c45181d8df63d86f613" }
 beefy-primitives = { git = "https://github.com/paritytech//substrate", rev = "174735ea1bb5fc4513519c45181d8df63d86f613" }
+beefy-merkle-tree = { git = "https://github.com/paritytech//substrate", rev = "174735ea1bb5fc4513519c45181d8df63d86f613" }
 beefy-gadget = { git = "https://github.com/paritytech//substrate", rev = "174735ea1bb5fc4513519c45181d8df63d86f613" }
 beefy-gadget-rpc = { git = "https://github.com/paritytech//substrate", rev = "174735ea1bb5fc4513519c45181d8df63d86f613" }
 remote-externalities = { git = "https://github.com/paritytech//substrate", rev = "174735ea1bb5fc4513519c45181d8df63d86f613" }

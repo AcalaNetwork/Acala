@@ -844,11 +844,6 @@ dependencies = [
 [[package]]
 name = "beefy-merkle-tree"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.19#174735ea1bb5fc4513519c45181d8df63d86f613"
-
-[[package]]
-name = "beefy-merkle-tree"
-version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=174735ea1bb5fc4513519c45181d8df63d86f613#174735ea1bb5fc4513519c45181d8df63d86f613"
 
 [[package]]
@@ -7533,7 +7528,7 @@ name = "pallet-beefy-mmr"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=174735ea1bb5fc4513519c45181d8df63d86f613#174735ea1bb5fc4513519c45181d8df63d86f613"
 dependencies = [
- "beefy-merkle-tree 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=174735ea1bb5fc4513519c45181d8df63d86f613)",
+ "beefy-merkle-tree",
  "beefy-primitives",
  "frame-support",
  "frame-system",
@@ -10578,7 +10573,7 @@ name = "rococo-runtime"
 version = "0.9.19"
 source = "git+https://github.com/paritytech//polkadot?rev=f00a2772497aadddf75b8b4b475843ea0d910c48#f00a2772497aadddf75b8b4b475843ea0d910c48"
 dependencies = [
- "beefy-merkle-tree 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.19)",
+ "beefy-merkle-tree",
  "beefy-primitives",
  "bp-messages",
  "bp-rococo",
