@@ -82,7 +82,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 			await contract.populateTransaction.multiply(3)
 		);
 
-		expect(gas.toNumber()).to.be.eq(342409);
+		expect(gas.toNumber()).to.be.eq(366503);
 	});
 
 	step("should estimateResources", async function () {
@@ -90,7 +90,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 			await contract.populateTransaction.multiply(3)
 		);
 
-		expect(data.gas.toNumber()).to.be.eq(22409);
+		expect(data.gas.toNumber()).to.be.eq(46503);
 		expect(data.storage.toNumber()).to.be.eq(0);
 		expect(data.weightFee.toNumber()).to.be.eq(3999950521582);
 	});

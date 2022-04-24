@@ -31,6 +31,8 @@ sp_api::decl_runtime_apis! {
 	pub trait EVMRuntimeRPCApi<Balance> where
 		Balance: Codec + MaybeDisplay + MaybeFromStr,
 	{
+		fn max_gas_limit() -> u64;
+		fn max_storage_limit() -> u32;
 		fn call(
 			from: H160,
 			to: H160,

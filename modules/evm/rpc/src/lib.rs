@@ -36,7 +36,7 @@ use sp_runtime::{
 use std::{marker::PhantomData, sync::Arc};
 
 use call_request::{CallRequest, EstimateResourcesResponse};
-pub use module_evm::{ExitError, ExitReason};
+pub use module_evm::{ExitError, ExitReason, BASE_CALL_GAS};
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
@@ -127,11 +127,6 @@ fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
 	val.into_u256().try_into().map_err(|_| ())
 }
 
-// 20M. TODO: use value from runtime
-const MAX_GAS_LIMIT: u64 = 33_000_000;
-// 4M. TODO: use value from runtime
-const MAX_STORAGE_LIMIT: u32 = 4 * 1024 * 1024;
-
 impl<B, C, Balance> EVMApiT<<B as BlockT>::Hash> for EVMApi<B, C, Balance>
 where
 	B: BlockT,
@@ -141,6 +136,8 @@ where
 	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128> + Into<U256>,
 {
 	fn call(&self, request: CallRequest, at: Option<<B as BlockT>::Hash>) -> Result<Bytes> {
+		let api = self.client.runtime_api();
+
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
 		log::debug!(target: "evm", "rpc call, request: {:?}", request);
@@ -155,25 +152,30 @@ where
 			access_list,
 		} = request;
 
-		let gas_limit = gas_limit.unwrap_or(MAX_GAS_LIMIT);
-		if gas_limit > MAX_GAS_LIMIT {
+		let max_gas_limit = api
+			.max_gas_limit(&BlockId::Hash(hash))
+			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?;
+		let max_storage_limit = api
+			.max_storage_limit(&BlockId::Hash(hash))
+			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?;
+
+		let gas_limit = gas_limit.unwrap_or(max_gas_limit);
+		if gas_limit > max_gas_limit {
 			return Err(Error {
 				code: ErrorCode::InvalidParams,
-				message: format!("GasLimit exceeds allowance: {}", MAX_GAS_LIMIT),
+				message: format!("GasLimit exceeds allowance: {}", max_gas_limit),
 				data: None,
 			});
 		}
-		let storage_limit = storage_limit.unwrap_or(MAX_STORAGE_LIMIT);
-		if storage_limit > MAX_STORAGE_LIMIT {
+		let storage_limit = storage_limit.unwrap_or(max_storage_limit);
+		if storage_limit > max_storage_limit {
 			return Err(Error {
 				code: ErrorCode::InvalidParams,
-				message: format!("StorageLimit exceeds allowance: {}", MAX_STORAGE_LIMIT),
+				message: format!("StorageLimit exceeds allowance: {}", max_storage_limit),
 				data: None,
 			});
 		}
 		let data = data.map(|d| d.0).unwrap_or_default();
-
-		let api = self.client.runtime_api();
 
 		let balance_value = if let Some(value) = value {
 			to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
@@ -254,35 +256,16 @@ where
 			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 			.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-		if let Some(gas_limit) = request.gas_limit {
-			if gas_limit > MAX_GAS_LIMIT {
-				return Err(Error {
-					code: ErrorCode::InvalidParams,
-					message: format!("GasLimit exceeds allowance: {}", MAX_GAS_LIMIT),
-					data: None,
-				});
-			}
-		}
-
-		if let Some(storage_limit) = request.storage_limit {
-			if storage_limit > MAX_STORAGE_LIMIT {
-				return Err(Error {
-					code: ErrorCode::InvalidParams,
-					message: format!("StorageLimit exceeds allowance: {}", MAX_STORAGE_LIMIT),
-					data: None,
-				});
-			}
-		}
-
 		// Determine the highest possible gas limits
-		let max_gas_limit = MAX_GAS_LIMIT;
-		let mut highest = U256::from(request.gas_limit.unwrap_or(max_gas_limit));
+		let max_gas_limit = request.max_gas_limit;
+		let max_storage_limit = request.max_storage_limit;
+		let mut highest = std::cmp::max(request.gas_limit, max_gas_limit);
 
 		let request = CallRequest {
 			from: Some(from),
 			to: request.to,
-			gas_limit: request.gas_limit,
-			storage_limit: request.storage_limit,
+			gas_limit: Some(request.gas_limit),
+			storage_limit: Some(request.storage_limit),
 			value: request.value.map(|v| NumberOrHex::Hex(U256::from(v))),
 			data: request.data.map(Bytes),
 			access_list: request.access_list,
@@ -297,12 +280,12 @@ where
 		struct ExecutableResult {
 			data: Vec<u8>,
 			exit_reason: ExitReason,
-			used_gas: U256,
+			used_gas: u64,
 			used_storage: i32,
 		}
 
 		// Create a helper to check if a gas allowance results in an executable transaction
-		let executable = move |request: CallRequest, gas| -> Result<ExecutableResult> {
+		let executable = move |request: CallRequest, gas: u64| -> Result<ExecutableResult> {
 			let CallRequest {
 				from,
 				to,
@@ -315,7 +298,7 @@ where
 
 			// Use request gas limit only if it less than gas_limit parameter
 			let gas_limit = core::cmp::min(gas_limit.unwrap_or(gas), gas);
-			let storage_limit = storage_limit.unwrap_or(MAX_STORAGE_LIMIT);
+			let storage_limit = storage_limit.unwrap_or(max_storage_limit);
 			let data = data.map(|d| d.0).unwrap_or_default();
 
 			let balance_value = if let Some(value) = value {
@@ -349,7 +332,7 @@ where
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-					(info.exit_reason, info.value, info.used_gas, info.used_storage)
+					(info.exit_reason, info.value, info.used_gas.as_u64(), info.used_storage)
 				}
 				None => {
 					let info = self
@@ -368,7 +351,7 @@ where
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-					(info.exit_reason, Vec::new(), info.used_gas, info.used_storage)
+					(info.exit_reason, Vec::new(), info.used_gas.as_u64(), info.used_storage)
 				}
 			};
 
@@ -387,7 +370,7 @@ where
 			exit_reason,
 			used_gas,
 			used_storage,
-		} = executable(request.clone(), highest.as_u64())?;
+		} = executable(request.clone(), highest)?;
 		match exit_reason {
 			ExitReason::Succeed(_) => (),
 			ExitReason::Error(ExitError::OutOfGas) => {
@@ -421,22 +404,21 @@ where
 		// rpc_binary_search_estimate block
 		{
 			// Define the lower bound of the binary search
-			const MIN_GAS_PER_TX: U256 = U256([21_000, 0, 0, 0]);
-			let mut lowest = MIN_GAS_PER_TX;
+			let mut lowest = BASE_CALL_GAS;
 
 			// Start close to the used gas for faster binary search
 			let mut mid = std::cmp::min(used_gas * 3, (highest + lowest) / 2);
 
 			// Execute the binary search and hone in on an executable gas limit.
 			let mut previous_highest = highest;
-			while (highest - lowest) > U256::one() {
-				let ExecutableResult { data, exit_reason, .. } = executable(request.clone(), mid.as_u64())?;
+			while (highest - lowest) > 1 {
+				let ExecutableResult { data, exit_reason, .. } = executable(request.clone(), mid)?;
 				match exit_reason {
 					ExitReason::Succeed(_) => {
 						highest = mid;
 						// If the variation in the estimate is less than 10%,
 						// then the estimate is considered sufficiently accurate.
-						if (previous_highest - highest) * 10 / previous_highest < U256::one() {
+						if (previous_highest - highest) * 10 / previous_highest < 1 {
 							break;
 						}
 						previous_highest = highest;
