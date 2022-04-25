@@ -1606,7 +1606,9 @@ impl<T: Config> Pallet<T> {
 			caller, user, limit, amount
 		);
 
-		T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount)
+		// TODO: named reserve fee with RESERVE_ID_STORAGE_DEPOSIT
+		T::ChargeTransactionPayment::reserve_fee(&user, amount)?;
+		Ok(())
 	}
 
 	fn unreserve_storage(caller: &H160, limit: u32, used: u32, refunded: u32) -> DispatchResult {
@@ -1627,7 +1629,8 @@ impl<T: Config> Pallet<T> {
 
 		// should always be able to unreserve the amount
 		// but otherwise we will just ignore the issue here.
-		let err_amount = T::Currency::unreserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount);
+		// TODO: named unreserve fee with RESERVE_ID_STORAGE_DEPOSIT
+		let err_amount = T::ChargeTransactionPayment::unreserve_fee(&user, amount);
 		debug_assert!(err_amount.is_zero());
 		Ok(())
 	}

@@ -215,7 +215,9 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 		Ok(Default::default())
 	}
 
-	fn unreserve_fee(_who: &AccountId, _fee: Balance) {}
+	fn unreserve_fee(_who: &AccountId, _fee: Balance) -> Balance {
+		Default::default()
+	}
 
 	fn unreserve_and_charge_fee(
 		_who: &AccountId,
