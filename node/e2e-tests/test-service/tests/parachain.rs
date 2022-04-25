@@ -117,7 +117,7 @@ async fn simple_balances_test() {
 	// the function with_state allows us to read state, pretty cool right? :D
 	let old_balance = node.with_state(|| Balances::free_balance(bob_account_id.clone()));
 
-	node.transfer(Alice, Bob, amount).await.unwrap();
+	node.transfer(Alice, Bob, amount, 0).await.unwrap();
 
 	node.wait_for_blocks(3).await;
 	// we can check the new state :D
