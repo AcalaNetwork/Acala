@@ -37,6 +37,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup},
 	AccountId32,
 };
+use std::marker::PhantomData;
 
 type Balance = u128;
 
@@ -189,7 +190,7 @@ impl Config for Runtime {
 	type PrecompilesValue = ();
 	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = DefaultTransactionPayment;
+	type ChargeTransactionPayment = DefaultTransactionPayment<Balances>;
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
@@ -205,18 +206,23 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub struct DefaultTransactionPayment;
+pub struct DefaultTransactionPayment<Currency>(PhantomData<Currency>);
 
 use frame_support::traits::Imbalance;
-impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
-	TransactionPayment<AccountId, Balance, NegativeImbalance> for DefaultTransactionPayment
+impl<
+		AccountId,
+		Balance: Default + Copy,
+		NegativeImbalance: Imbalance<Balance>,
+		Currency: frame_support::traits::NamedReservableCurrency<
+			AccountId,
+			ReserveIdentifier = ReserveIdentifier,
+			Balance = Balance,
+		>,
+	> TransactionPayment<AccountId, Balance, NegativeImbalance> for DefaultTransactionPayment<Currency>
 {
-	fn reserve_fee(
-		_who: &AccountId,
-		_fee: Balance,
-		_named: Option<ReserveIdentifier>,
-	) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
+	fn reserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Result<Balance, DispatchError> {
+		Currency::reserve_named(&named.unwrap(), who, fee)?;
+		Ok(fee)
 	}
 
 	fn unreserve_fee(_who: &AccountId, _fee: Balance, _named: Option<ReserveIdentifier>) -> Balance {

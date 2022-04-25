@@ -1608,7 +1608,6 @@ impl<T: Config> Pallet<T> {
 
 		T::ChargeTransactionPayment::reserve_fee(&user, amount, Some(RESERVE_ID_STORAGE_DEPOSIT))?;
 		Ok(())
-		// T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount)
 	}
 
 	fn unreserve_storage(caller: &H160, limit: u32, used: u32, refunded: u32) -> DispatchResult {

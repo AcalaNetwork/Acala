@@ -25,8 +25,8 @@ use primitives::{task::TaskResult, CurrencyId, ReserveIdentifier};
 use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
+use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
-use std::marker::PhantomData;
 
 use xcm::latest::prelude::*;
 
