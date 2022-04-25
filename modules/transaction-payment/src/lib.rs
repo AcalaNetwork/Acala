@@ -1396,11 +1396,11 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> Result<PalletBalanceOf<T>, DispatchError> {
-		let max_fee = T::WeightToFee::calc(&T::BlockWeights::get().max_block);
-		let fee = fee.min(max_fee);
-		Pallet::<T>::native_then_alternative_or_default(who, fee)?;
+		// let max_fee = T::WeightToFee::calc(&T::BlockWeights::get().max_block);
+		// let fee = fee.min(max_fee);
+		// Pallet::<T>::native_then_alternative_or_default(who, fee)?;
 		let named = named.unwrap_or(RESERVE_ID);
-		<T as Config>::Currency::reserve_named(&named, who, fee)?;
+		T::Currency::reserve_named(&named, who, fee)?;
 		Ok(fee)
 	}
 

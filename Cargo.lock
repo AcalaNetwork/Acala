@@ -5895,6 +5895,7 @@ dependencies = [
  "module-evm",
  "module-evm-bridge",
  "module-support",
+ "module-transaction-payment",
  "orml-utilities",
  "pallet-balances",
  "pallet-timestamp",
