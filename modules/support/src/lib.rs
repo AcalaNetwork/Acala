@@ -26,6 +26,7 @@ use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
 use sp_std::prelude::*;
+use std::marker::PhantomData;
 
 use xcm::latest::prelude::*;
 
@@ -117,6 +118,57 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 
 	fn unreserve_fee(_who: &AccountId, _fee: Balance, _named: Option<ReserveIdentifier>) -> Balance {
 		Default::default()
+	}
+
+	fn unreserve_and_charge_fee(
+		_who: &AccountId,
+		_weight: Weight,
+	) -> Result<(Balance, NegativeImbalance), TransactionValidityError> {
+		Ok((Default::default(), Imbalance::zero()))
+	}
+
+	fn refund_fee(
+		_who: &AccountId,
+		_weight: Weight,
+		_payed: NegativeImbalance,
+	) -> Result<(), TransactionValidityError> {
+		Ok(())
+	}
+
+	fn charge_fee(
+		_who: &AccountId,
+		_len: u32,
+		_weight: Weight,
+		_tip: Balance,
+		_pays_fee: Pays,
+		_class: DispatchClass,
+	) -> Result<(), TransactionValidityError> {
+		Ok(())
+	}
+}
+
+/// Given provided `Currency`, implements default reserve behavior
+pub struct MockReservedTransactionPayment<Currency>(PhantomData<Currency>);
+
+#[cfg(feature = "std")]
+impl<
+		AccountId,
+		Balance: Default + Copy,
+		NegativeImbalance: Imbalance<Balance>,
+		Currency: frame_support::traits::NamedReservableCurrency<
+			AccountId,
+			ReserveIdentifier = ReserveIdentifier,
+			Balance = Balance,
+		>,
+	> TransactionPayment<AccountId, Balance, NegativeImbalance> for MockReservedTransactionPayment<Currency>
+{
+	fn reserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Result<Balance, DispatchError> {
+		Currency::reserve_named(&named.unwrap(), who, fee)?;
+		Ok(fee)
+	}
+
+	fn unreserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Balance {
+		Currency::unreserve_named(&named.unwrap(), who, fee)
 	}
 
 	fn unreserve_and_charge_fee(
