@@ -23,14 +23,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(unused_must_use)]
-use acala_primitives::{task::TaskResult, Nonce};
+use acala_primitives::{task::TaskResult, BlockNumber, Nonce};
 use codec::FullCodec;
+use frame_support::log;
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use module_support::{DispatchableTask, IdleScheduler};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{One, Zero},
+	traits::{BlockNumberProvider, One},
 	ArithmeticError,
 };
 use sp_std::{cmp::PartialEq, fmt::Debug, prelude::*};
@@ -58,6 +59,15 @@ pub mod module {
 		/// The minimum weight that should remain before idle tasks are dispatched.
 		#[pallet::constant]
 		type MinimumWeightRemainInBlock: Get<Weight>;
+
+		/// Gets RelayChain Block Number
+		type RelayChainBlockNumberProvider: BlockNumberProvider<BlockNumber = BlockNumber>;
+
+		/// Number of Relay Chain blocks skipped to disable `on_idle` dispatching scheduled tasks
+		/// this shuts down idle-scheduler when block production is slower than this number of
+		/// relaychain blocks
+		#[pallet::constant]
+		type DisableBlockThreshold: Get<BlockNumber>;
 	}
 
 	#[pallet::event]
@@ -76,14 +86,50 @@ pub mod module {
 	#[pallet::getter(fn next_task_id)]
 	pub type NextTaskId<T: Config> = StorageValue<_, Nonce, ValueQuery>;
 
+	///
+	#[pallet::storage]
+	#[pallet::getter(fn previous_relay_block)]
+	pub type PreviousRelayBlockNumber<T: Config> = StorageValue<_, BlockNumber, ValueQuery>;
+
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_initialize(_n: T::BlockNumber) -> Weight {
+			// This is the previous relay block because `on_initialize` is executed
+			// before the inherent that sets the new relay chain block number
+			let previous_relay_block: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number();
+
+			PreviousRelayBlockNumber::<T>::put(previous_relay_block);
+			T::WeightInfo::on_initialize()
+		}
+
 		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
-			Self::do_dispatch_tasks(remaining_weight)
+			// Checks if we have skipped enough relay blocks without block production to skip dispatching
+			// scheduled tasks
+			let current_relay_block_number: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number();
+			let previous_relay_block_number = PreviousRelayBlockNumber::<T>::take();
+			if current_relay_block_number.saturating_sub(previous_relay_block_number) >= T::DisableBlockThreshold::get()
+			{
+				log::debug!(
+					target: "idle-scheduler",
+					"Relaychain produced blocks without finalizing parachain blocks. Idle-scheduler will not execute.\ncurrent relay block number: {:?}\nprevious relay block number: {:?}",
+					current_relay_block_number,
+					previous_relay_block_number
+				);
+				// something is not correct so exaust all remaining weight (note: any on_idle hooks after
+				// IdleScheduler won't execute)
+				remaining_weight
+			} else {
+				Self::do_dispatch_tasks(remaining_weight)
+			}
+		}
+
+		fn on_finalize(_n: T::BlockNumber) {
+			// Don't commit to storage, needed for the case block is full and `on_idle` isn't called
+			PreviousRelayBlockNumber::<T>::kill();
 		}
 	}
 
@@ -116,9 +162,10 @@ impl<T: Config> Pallet<T> {
 
 	/// Keep dispatching tasks in Storage, until insufficient weight remains.
 	pub fn do_dispatch_tasks(total_weight: Weight) -> Weight {
-		let mut weight_remaining = total_weight;
+		let mut weight_remaining = total_weight.saturating_sub(T::WeightInfo::on_idle_base());
 		if weight_remaining <= T::MinimumWeightRemainInBlock::get() {
-			return Zero::zero();
+			// return total weight so no `on_idle` hook will execute after IdleScheduler
+			return total_weight;
 		}
 
 		let mut completed_tasks: Vec<(Nonce, TaskResult)> = vec![];
@@ -128,6 +175,7 @@ impl<T: Config> Pallet<T> {
 			weight_remaining = weight_remaining.saturating_sub(result.used_weight);
 			if result.finished {
 				completed_tasks.push((id, result));
+				weight_remaining = weight_remaining.saturating_sub(T::WeightInfo::clear_tasks());
 			}
 
 			// If remaining weight falls below the minimmum, break from the loop.
@@ -136,6 +184,13 @@ impl<T: Config> Pallet<T> {
 			}
 		}
 
+		Self::remove_completed_tasks(completed_tasks);
+
+		total_weight.saturating_sub(weight_remaining)
+	}
+
+	// Removes completed tasks and deposits events
+	pub fn remove_completed_tasks(completed_tasks: Vec<(Nonce, TaskResult)>) {
 		// Deposit event and remove completed tasks.
 		for (id, result) in completed_tasks {
 			Self::deposit_event(Event::<T>::TaskDispatched {
@@ -144,8 +199,6 @@ impl<T: Config> Pallet<T> {
 			});
 			Tasks::<T>::remove(id);
 		}
-
-		total_weight.saturating_sub(weight_remaining)
 	}
 }
 

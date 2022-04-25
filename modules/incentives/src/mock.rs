@@ -25,7 +25,7 @@ use frame_support::{
 	construct_runtime,
 	dispatch::{DispatchError, DispatchResult},
 	ord_parameter_types, parameter_types,
-	traits::{Everything, Nothing},
+	traits::{ConstU64, Everything, Nothing},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::EnsureSignedBy;
@@ -61,10 +61,6 @@ ord_parameter_types! {
 	pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
 }
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
-
 impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
@@ -76,7 +72,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
@@ -89,7 +85,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -250,7 +246,6 @@ impl orml_rewards::Config for Runtime {
 }
 
 parameter_types! {
-	pub const AccumulatePeriod: BlockNumber = 10;
 	pub const StableCurrencyId: CurrencyId = AUSD;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
@@ -264,7 +259,7 @@ ord_parameter_types! {
 impl Config for Runtime {
 	type Event = Event;
 	type RewardsSource = RewardsSource;
-	type AccumulatePeriod = AccumulatePeriod;
+	type AccumulatePeriod = ConstU64<10>;
 	type StableCurrencyId = StableCurrencyId;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type EarnShareBooster = EarnShareBooster;

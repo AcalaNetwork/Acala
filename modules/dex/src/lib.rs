@@ -36,6 +36,8 @@
 use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
+use nutsfinance_stable_asset::traits::StableAsset;
+use nutsfinance_stable_asset::{PoolTokenIndex, StableAssetPoolId};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
 use scale_info::TypeInfo;
@@ -45,7 +47,7 @@ use sp_runtime::{
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
 use sp_std::{prelude::*, vec};
-use support::{DEXIncentives, DEXManager, Erc20InfoMapping, ExchangeRate, Ratio, SwapLimit};
+use support::{DEXIncentives, DEXManager, Erc20InfoMapping, ExchangeRate, Ratio, StableAssetDEX, SwapLimit};
 
 mod mock;
 mod tests;
@@ -123,6 +125,14 @@ pub mod module {
 
 		/// DEX incentives
 		type DEXIncentives: DEXIncentives<Self::AccountId, CurrencyId, Balance>;
+
+		type StableAsset: StableAsset<
+			AssetId = CurrencyId,
+			AtLeast64BitUnsigned = Balance,
+			Balance = Balance,
+			AccountId = Self::AccountId,
+			BlockNumber = Self::BlockNumber,
+		>;
 
 		/// The origin which may list, enable or disable trading pairs.
 		type ListingOrigin: EnsureOrigin<Self::Origin>;
@@ -344,7 +354,6 @@ pub mod module {
 	}
 
 	#[pallet::pallet]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -1409,6 +1418,69 @@ impl<T: Config> Pallet<T> {
 			liquidity_changes: amounts,
 		});
 		Ok(actual_supply_amount)
+	}
+}
+
+impl<T: Config> StableAssetDEX<T::AccountId, Balance, CurrencyId> for Pallet<T> {
+	fn get_best_price_pool(
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		limit: SwapLimit<Balance>,
+	) -> Option<(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex)> {
+		let target_limit = match limit {
+			SwapLimit::ExactSupply(_, minimum_target_amount) => minimum_target_amount,
+			SwapLimit::ExactTarget(_, exact_target_amount) => exact_target_amount,
+		};
+		let result = T::StableAsset::get_best_route(supply_currency_id, target_currency_id, target_limit)?;
+		let supply_index = result.assets.iter().position(|&r| r == supply_currency_id)?;
+		let target_index = result.assets.iter().position(|&r| r == target_currency_id)?;
+		match result.pool_asset {
+			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
+				Some((stable_asset_id, supply_index as u32, target_index as u32))
+			}
+			_ => None,
+		}
+	}
+
+	fn swap(
+		who: &T::AccountId,
+		pool_id: StableAssetPoolId,
+		supply_asset_index: PoolTokenIndex,
+		target_asset_index: PoolTokenIndex,
+		limit: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+		let pool_info = T::StableAsset::pool(pool_id).ok_or(Error::<T>::InvalidCurrencyId)?;
+		let asset_length = pool_info.assets.len() as u32;
+		match limit {
+			SwapLimit::ExactSupply(exact_supply, minimum_target_amount) => T::StableAsset::swap(
+				who,
+				pool_id,
+				supply_asset_index,
+				target_asset_index,
+				exact_supply,
+				minimum_target_amount,
+				asset_length,
+			),
+			SwapLimit::ExactTarget(max_supply_amount, exact_target_amount) => {
+				let result = T::StableAsset::get_swap_amount_exact(
+					pool_id,
+					supply_asset_index,
+					target_asset_index,
+					exact_target_amount,
+				)
+				.ok_or(Error::<T>::InsufficientLiquidity)?;
+				ensure!(max_supply_amount >= result.dx, Error::<T>::InsufficientLiquidity);
+				T::StableAsset::swap(
+					who,
+					pool_id,
+					supply_asset_index,
+					target_asset_index,
+					result.dx,
+					exact_target_amount,
+					asset_length,
+				)
+			}
+		}
 	}
 }
 

@@ -21,13 +21,11 @@
 #![cfg(test)]
 
 use crate as CompoundCash;
-use frame_support::{construct_runtime, parameter_types, traits::Everything};
+use frame_support::{
+	construct_runtime,
+	traits::{ConstU32, ConstU64, Everything},
+};
 use primitives::Moment;
-
-parameter_types!(
-	pub const SomeConst: u64 = 10;
-	pub const BlockHashCount: u32 = 250;
-);
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
@@ -41,7 +39,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
 	type Header = sp_runtime::testing::Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
@@ -53,7 +51,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 impl CompoundCash::Config for Runtime {
@@ -61,14 +59,11 @@ impl CompoundCash::Config for Runtime {
 	type UnixTime = Timestamp;
 }
 
-parameter_types! {
-	pub const MinimumPeriod: u64 = 6000 / 2;
-}
 impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = Moment;
 	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
+	type MinimumPeriod = ConstU64<3000>; // 6000 / 2
 	type WeightInfo = ();
 }
 

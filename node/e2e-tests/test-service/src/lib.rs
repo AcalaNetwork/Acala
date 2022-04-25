@@ -17,6 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! Crate used for testing with acala.
+#[macro_use]
+
 mod builder;
 mod node;
 mod service;
@@ -24,6 +26,7 @@ mod service;
 use futures::channel::{mpsc, oneshot};
 use std::{future::Future, sync::Arc, time::Duration};
 
+use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::{ParachainCandidate, ParachainConsensus};
 use cumulus_client_network::BlockAnnounceValidator;
@@ -32,7 +35,9 @@ use cumulus_client_service::{
 	StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
-use cumulus_relay_chain_local::RelayChainLocal;
+use cumulus_relay_chain_inprocess_interface::RelayChainInProcessInterface;
+use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
+use cumulus_relay_chain_rpc_interface::RelayChainRPCInterface;
 
 use frame_system_rpc_runtime_api::AccountNonceApi;
 use futures::{channel::mpsc::Sender, SinkExt};
@@ -52,7 +57,7 @@ use sc_network::{config::TransportConfig, multiaddr, NetworkService};
 use sc_service::{
 	config::{
 		DatabaseSource, KeepBlocks, KeystoreConfig, MultiaddrWithPeerId, NetworkConfiguration, OffchainWorkerConfig,
-		PruningMode, TransactionStorageMode, WasmExecutionMethod,
+		PruningMode, WasmExecutionMethod,
 	},
 	BasePath, ChainSpec, Configuration, PartialComponents, Role, RpcHandlers, SpawnTasksParams, TFullBackend,
 	TFullCallExecutor, TFullClient, TaskManager,
@@ -73,9 +78,8 @@ use sp_runtime::{
 };
 use sp_state_machine::{BasicExternalities, Ext};
 use sp_trie::PrefixedMemoryDB;
-use substrate_test_client::{
-	sp_consensus::SlotData, BlockchainEventsExt, RpcHandlersExt, RpcTransactionError, RpcTransactionOutput,
-};
+use substrate_test_client::{BlockchainEventsExt, RpcHandlersExt, RpcTransactionError, RpcTransactionOutput};
+use url::Url;
 
 use node_primitives::{signature::AcalaMultiSignature, AccountId, Address, Balance, Signature};
 use node_runtime::{Block, BlockId, Hash, Header, Runtime, RuntimeApi, SignedExtra};

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
 import { describeWithAcala } from "./util";
-import { Signer, TestAccountSigningKey } from "@acala-network/bodhi";
+import { Signer, AccountSigningKey } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
 import { Keyring } from "@polkadot/keyring";
 import { createTestKeyring } from "@polkadot/keyring/testing";
@@ -17,7 +17,7 @@ describeWithAcala("Acala RPC (Claim Account Eip712)", (context) => {
 		const test_keyring = createTestKeyring();
 		const alice_keyring = test_keyring.pairs[0];
 
-		const signingKey = new TestAccountSigningKey(context.provider.api.registry);
+		const signingKey = new AccountSigningKey(context.provider.api.registry);
 		signingKey.addKeyringPair([alice_keyring]);
 
 		await context.provider.api.isReady;

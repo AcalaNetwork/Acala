@@ -19,7 +19,7 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	ord_parameter_types, parameter_types,
-	traits::{FindAuthor, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, FindAuthor, Nothing},
 	weights::Weight,
 	ConsensusEngineId, RuntimeDebug,
 };
@@ -37,7 +37,7 @@ use sp_runtime::traits::Convert;
 pub use sp_runtime::AccountId32;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup, Zero},
 };
 use std::str::FromStr;
 
@@ -45,10 +45,6 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRunt
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 
 type Balance = u128;
-
-parameter_types! {
-	pub const BlockHashCount: u64 = 10;
-}
 
 impl frame_system::Config for TestRuntime {
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -64,7 +60,7 @@ impl frame_system::Config for TestRuntime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<10>;
 	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -77,34 +73,25 @@ impl frame_system::Config for TestRuntime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-}
-
-parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
-	pub const MaxReserves: u32 = 50;
+	type MaxConsumers = ConstU32<16>;
 }
 
 impl pallet_balances::Config for TestRuntime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ConstU128<1>;
 	type AccountStore = System;
 	type WeightInfo = ();
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
-}
-
-parameter_types! {
-	pub const MinimumPeriod: u64 = 1000;
 }
 
 impl pallet_timestamp::Config for TestRuntime {
 	type Moment = u64;
 	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
+	type MinimumPeriod = ConstU64<1000>;
 	type WeightInfo = ();
 }
 
@@ -146,15 +133,23 @@ define_combined_task! {
 	}
 }
 
-parameter_types!(
-	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
-);
+pub struct MockBlockNumberProvider;
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = u32;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Zero::zero()
+	}
+}
 
 impl module_idle_scheduler::Config for TestRuntime {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
-	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type MinimumWeightRemainInBlock = ConstU64<0>;
+	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
+	type DisableBlockThreshold = ConstU32<6>;
 }
 
 pub struct GasToWeight;
@@ -183,12 +178,7 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const NewContractExtraBytes: u32 = 100;
 	pub const StorageDepositPerByte: Balance = convert_decimals_to_evm(10);
-	pub const TxFeePerGas: Balance = 20_000_000;
-	pub const DeveloperDeposit: Balance = 1000;
-	pub const PublicationFee: Balance = 200;
-	pub const ChainId: u64 = 1;
 }
 
 impl module_evm_accounts::Config for TestRuntime {
@@ -196,7 +186,7 @@ impl module_evm_accounts::Config for TestRuntime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<TestRuntime>;
 	type TransferAll = Currencies;
-	type ChainId = ChainId;
+	type ChainId = ConstU64<1>;
 	type WeightInfo = ();
 }
 
@@ -204,21 +194,21 @@ impl module_evm::Config for TestRuntime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
 	type TransferAll = Currencies;
-	type NewContractExtraBytes = NewContractExtraBytes;
+	type NewContractExtraBytes = ConstU32<100>;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type TxFeePerGas = TxFeePerGas;
+	type TxFeePerGas = ConstU128<20_000_000>;
 
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
-	type ChainId = ChainId;
+	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ();
 
 	type NetworkContractOrigin = frame_system::EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
-	type DeveloperDeposit = DeveloperDeposit;
-	type PublicationFee = PublicationFee;
+	type DeveloperDeposit = ConstU128<1000>;
+	type PublicationFee = ConstU128<200>;
 	type TreasuryAccount = TreasuryAccount;
 	type FreePublicationOrigin = frame_system::EnsureSignedBy<CouncilAccount, AccountId32>;
 
@@ -235,13 +225,13 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
-		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call, Event<T>},
-		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		EVM: module_evm,
+		EvmAccounts: module_evm_accounts,
+		Tokens: orml_tokens exclude_parts { Call },
+		Balances: pallet_balances,
+		Currencies: orml_currencies,
+		IdleScheduler: module_idle_scheduler,
 	}
 );
 

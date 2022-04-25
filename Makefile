@@ -126,7 +126,7 @@ test-eth: githooks test-evm
 
 .PHONY: test-evm
 test-evm: githooks
-	cargo test --manifest-path evm-tests/jsontests/Cargo.toml
+	SKIP_WASM_BUILD= cargo test --manifest-path evm-tests/jsontests/Cargo.toml
 
 .PHONY: test-runtimes
 test-runtimes:
@@ -137,7 +137,7 @@ test-runtimes:
 
 .PHONY: test-e2e
 test-e2e:
-	cargo test --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
+	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
 
 .PHONY: test-ts
 test-ts: build-mandala-internal-release

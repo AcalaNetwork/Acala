@@ -127,6 +127,12 @@ macro_rules! create_currency_id {
 				)*
 			];
 
+			let lcdot = Token {
+				symbol: stringify!(LCDOT).to_string(),
+				address: EvmAddress::try_from(LCDOT).unwrap(),
+			};
+			tokens.push(lcdot);
+
 			let mut lp_tokens = vec![
 				Token {
 					symbol: "LP_ACA_AUSD".to_string(),
