@@ -1391,16 +1391,26 @@ impl<T: Config + Send + Sync> TransactionPayment<T::AccountId, PalletBalanceOf<T
 where
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
-	fn reserve_fee(who: &T::AccountId, fee: PalletBalanceOf<T>) -> Result<PalletBalanceOf<T>, DispatchError> {
+	fn reserve_fee(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		named: Option<ReserveIdentifier>,
+	) -> Result<PalletBalanceOf<T>, DispatchError> {
 		let max_fee = T::WeightToFee::calc(&T::BlockWeights::get().max_block);
 		let fee = fee.min(max_fee);
 		Pallet::<T>::native_then_alternative_or_default(who, fee)?;
-		<T as Config>::Currency::reserve_named(&RESERVE_ID, who, fee)?;
+		let named = named.unwrap_or(RESERVE_ID);
+		<T as Config>::Currency::reserve_named(&named, who, fee)?;
 		Ok(fee)
 	}
 
-	fn unreserve_fee(who: &T::AccountId, fee: PalletBalanceOf<T>) -> PalletBalanceOf<T> {
-		<T as Config>::Currency::unreserve_named(&RESERVE_ID, who, fee)
+	fn unreserve_fee(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		named: Option<ReserveIdentifier>,
+	) -> PalletBalanceOf<T> {
+		let named = named.unwrap_or(RESERVE_ID);
+		<T as Config>::Currency::unreserve_named(&named, who, fee)
 	}
 
 	fn unreserve_and_charge_fee(

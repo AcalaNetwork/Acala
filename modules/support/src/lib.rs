@@ -21,7 +21,7 @@
 
 use codec::FullCodec;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
-use primitives::{task::TaskResult, CurrencyId};
+use primitives::{task::TaskResult, CurrencyId, ReserveIdentifier};
 use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
@@ -84,8 +84,8 @@ impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balanc
 }
 
 pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
-	fn reserve_fee(who: &AccountId, fee: Balance) -> Result<Balance, DispatchError>;
-	fn unreserve_fee(who: &AccountId, fee: Balance) -> Balance;
+	fn reserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Result<Balance, DispatchError>;
+	fn unreserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Balance;
 	fn unreserve_and_charge_fee(
 		who: &AccountId,
 		weight: Weight,
@@ -107,11 +107,15 @@ use frame_support::traits::Imbalance;
 impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 	TransactionPayment<AccountId, Balance, NegativeImbalance> for ()
 {
-	fn reserve_fee(_who: &AccountId, _fee: Balance) -> Result<Balance, DispatchError> {
+	fn reserve_fee(
+		_who: &AccountId,
+		_fee: Balance,
+		_named: Option<ReserveIdentifier>,
+	) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
 
-	fn unreserve_fee(_who: &AccountId, _fee: Balance) -> Balance {
+	fn unreserve_fee(_who: &AccountId, _fee: Balance, _named: Option<ReserveIdentifier>) -> Balance {
 		Default::default()
 	}
 

@@ -211,11 +211,15 @@ use frame_support::traits::Imbalance;
 impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 	TransactionPayment<AccountId, Balance, NegativeImbalance> for DefaultTransactionPayment
 {
-	fn reserve_fee(_who: &AccountId, _fee: Balance) -> Result<Balance, DispatchError> {
+	fn reserve_fee(
+		_who: &AccountId,
+		_fee: Balance,
+		_named: Option<ReserveIdentifier>,
+	) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
 
-	fn unreserve_fee(_who: &AccountId, _fee: Balance) -> Balance {
+	fn unreserve_fee(_who: &AccountId, _fee: Balance, _named: Option<ReserveIdentifier>) -> Balance {
 		Default::default()
 	}
 

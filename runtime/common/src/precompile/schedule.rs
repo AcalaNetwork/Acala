@@ -164,6 +164,7 @@ where
 					_fee = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::reserve_fee(
 						&from_account,
 						fee,
+						None,
 					)
 					.map_err(|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -277,6 +278,7 @@ where
 					let _err_amount = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::unreserve_fee(
 						&from_account,
 						task_info.fee,
+						None,
 					);
 				}
 
