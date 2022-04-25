@@ -197,8 +197,9 @@ fn close_loan_has_debit_by_dex_work() {
 }
 
 #[test]
-fn transfer_debit() {
+fn transfer_debit_fails() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
 			BTC,
@@ -226,5 +227,39 @@ fn transfer_debit() {
 		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), DOT, 100, 50));
 		assert_eq!(LoansModule::positions(DOT, ALICE).collateral, 100);
 		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 50);
+
+		// Will not work for account with no open CDP
+		assert_noop!(
+			HonzonModule::transfer_debit(Origin::signed(BOB), BTC, DOT, 100),
+			ArithmeticError::Underflow
+		);
+		// Below minimum collateral threshold for the BTC CDP
+		assert_noop!(
+			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 50),
+			cdp_engine::Error::<Runtime>::BelowRequiredCollateralRatio
+		);
+		// Too large of a transfer
+		assert_noop!(
+			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, u128::MAX),
+			ArithmeticError::Overflow
+		);
+		// Won't work for currency that is not collateral
+		assert_noop!(
+			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, ACA, 5),
+			cdp_engine::Error::<Runtime>::InvalidCollateralType
+		);
+
+		assert_ok!(HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 5));
+		System::assert_last_event(Event::HonzonModule(crate::Event::<Runtime>::TransferDebit {
+			from_currency: BTC,
+			to_currency: DOT,
+			amount: 5,
+		}));
+
+		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 55);
+		assert_eq!(LoansModule::positions(DOT, ALICE).collateral, 100);
+
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 45);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
 	});
 }

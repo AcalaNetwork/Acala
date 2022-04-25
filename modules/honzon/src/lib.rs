@@ -99,6 +99,12 @@ pub mod module {
 		},
 		/// Cancel all authorization.
 		UnAuthorizationAll { authorizer: T::AccountId },
+		/// Transfers debit between two CDPs
+		TransferDebit {
+			from_currency: CurrencyId,
+			to_currency: CurrencyId,
+			amount: Balance,
+		},
 	}
 
 	/// The authorization relationship map from
@@ -308,7 +314,12 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		/// Transfers debit between two CDPs
+		///
+		/// - `from_currency`: Currency id that debit is transfered from
+		/// - `to_currency`: Currency id that debit is transfered to
+		/// - `debit_transfer`: Debit transfered across two CDPs
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_debit())]
 		#[transactional]
 		pub fn transfer_debit(
 			origin: OriginFor<T>,
@@ -321,6 +332,12 @@ pub mod module {
 			let negative_debit = debit_amount.checked_neg().ok_or(ArithmeticError::Overflow)?;
 			<cdp_engine::Pallet<T>>::adjust_position(&who, from_currency, Zero::zero(), negative_debit)?;
 			<cdp_engine::Pallet<T>>::adjust_position(&who, to_currency, Zero::zero(), debit_amount)?;
+
+			Self::deposit_event(Event::TransferDebit {
+				from_currency,
+				to_currency,
+				amount: debit_transfer,
+			});
 			Ok(())
 		}
 	}
