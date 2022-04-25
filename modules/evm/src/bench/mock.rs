@@ -211,7 +211,7 @@ use frame_support::traits::Imbalance;
 impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 	TransactionPayment<AccountId, Balance, NegativeImbalance> for DefaultTransactionPayment
 {
-	fn reserve_fee(_who: &AccountId, _weight: Weight) -> Result<Balance, DispatchError> {
+	fn reserve_fee(_who: &AccountId, _fee: Balance) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
 

@@ -1391,8 +1391,11 @@ impl<T: Config + Send + Sync> TransactionPayment<T::AccountId, PalletBalanceOf<T
 where
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
-	fn reserve_fee(who: &T::AccountId, weight: Weight) -> Result<PalletBalanceOf<T>, DispatchError> {
-		let fee = Pallet::<T>::weight_to_fee(weight);
+	fn reserve_fee(who: &T::AccountId, fee: PalletBalanceOf<T>) -> Result<PalletBalanceOf<T>, DispatchError> {
+		let capped_weight = T::BlockWeights::get().max_block;
+		let max_fee = T::WeightToFee::calc(&capped_weight);
+		let fee = fee.min(max_fee);
+		Pallet::<T>::native_then_alternative_or_default(who, fee)?;
 		<T as Config>::Currency::reserve_named(&RESERVE_ID, who, fee)?;
 		Ok(fee)
 	}

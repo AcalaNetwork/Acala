@@ -84,7 +84,7 @@ impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balanc
 }
 
 pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
-	fn reserve_fee(who: &AccountId, weight: Weight) -> Result<Balance, DispatchError>;
+	fn reserve_fee(who: &AccountId, fee: Balance) -> Result<Balance, DispatchError>;
 	fn unreserve_fee(who: &AccountId, fee: Balance);
 	fn unreserve_and_charge_fee(
 		who: &AccountId,
@@ -107,7 +107,7 @@ use frame_support::traits::Imbalance;
 impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 	TransactionPayment<AccountId, Balance, NegativeImbalance> for ()
 {
-	fn reserve_fee(_who: &AccountId, _weight: Weight) -> Result<Balance, DispatchError> {
+	fn reserve_fee(_who: &AccountId, _fee: Balance) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
 

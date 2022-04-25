@@ -31,6 +31,7 @@ use frame_support::{
 		schedule::{DispatchTime, Named as ScheduleNamed},
 		Currency, IsType, OriginTrait,
 	},
+	weights::WeightToFeePolynomial,
 };
 use module_evm::{
 	precompiles::Precompile,
@@ -159,9 +160,10 @@ where
 					use sp_runtime::traits::Convert;
 					let from_account = Runtime::AddressMapping::get_account_id(&from);
 					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
+					let fee = <Runtime as module_transaction_payment::Config>::WeightToFee::calc(&weight);
 					_fee = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::reserve_fee(
 						&from_account,
-						weight,
+						fee,
 					)
 					.map_err(|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
