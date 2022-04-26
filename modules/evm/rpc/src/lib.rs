@@ -259,7 +259,7 @@ where
 		// Determine the highest possible gas limits
 		let max_gas_limit = request.max_gas_limit;
 		let max_storage_limit = request.max_storage_limit;
-		let mut highest = std::cmp::max(request.gas_limit, max_gas_limit);
+		let mut highest = std::cmp::min(request.gas_limit, max_gas_limit);
 
 		let request = CallRequest {
 			from: Some(from),
@@ -404,7 +404,7 @@ where
 		// rpc_binary_search_estimate block
 		{
 			// Define the lower bound of the binary search
-			let mut lowest = BASE_CALL_GAS;
+			let mut lowest = 21_000;
 
 			// Start close to the used gas for faster binary search
 			let mut mid = std::cmp::min(used_gas * 3, (highest + lowest) / 2);
