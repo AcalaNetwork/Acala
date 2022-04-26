@@ -245,6 +245,7 @@ pub mod module {
 				}
 				if free_balance < Self::minimum_balance(currency_id) {
 					T::OnDust::on_dust(&account, currency_id, free_balance);
+
 					Self::deposit_event(Event::DustSwept {
 						currency_id,
 						who: account,
@@ -368,6 +369,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					address,
 					amount,
 				)?;
+
 				Self::deposit_event(Event::Transferred {
 					currency_id,
 					from: from.clone(),
@@ -545,6 +547,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 					reserve_address(address),
 					value,
 				)?;
+
 				Self::deposit_event(Event::Reserved {
 					currency_id,
 					who: who.clone(),
@@ -587,6 +590,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 						Ok(_) => value - actual,
 						Err(_) => value,
 					};
+
 					Self::deposit_event(Event::Unreserved {
 						currency_id,
 						who: who.clone(),
