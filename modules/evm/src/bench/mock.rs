@@ -22,7 +22,7 @@ use super::super::*;
 
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything, FindAuthor, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Everything, FindAuthor, Imbalance, Nothing},
 	ConsensusEngineId,
 };
 use frame_system::EnsureSignedBy;
@@ -130,7 +130,6 @@ define_combined_task! {
 }
 
 pub struct MockBlockNumberProvider;
-
 impl BlockNumberProvider for MockBlockNumberProvider {
 	type BlockNumber = u32;
 
@@ -149,7 +148,6 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 pub struct GasToWeight;
-
 impl Convert<u64, u64> for GasToWeight {
 	fn convert(a: u64) -> u64 {
 		a
@@ -207,8 +205,6 @@ impl Config for Runtime {
 }
 
 pub struct DefaultTransactionPayment<Currency>(PhantomData<Currency>);
-
-use frame_support::traits::Imbalance;
 impl<
 		AccountId,
 		Balance: Default + Copy,
