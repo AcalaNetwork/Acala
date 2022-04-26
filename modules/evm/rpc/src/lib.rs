@@ -36,7 +36,7 @@ use sp_runtime::{
 use std::{marker::PhantomData, sync::Arc};
 
 use call_request::{CallRequest, EstimateResourcesResponse};
-pub use module_evm::{ExitError, ExitReason, BASE_CALL_GAS};
+pub use module_evm::{ExitError, ExitReason};
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
