@@ -1396,11 +1396,8 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> Result<PalletBalanceOf<T>, DispatchError> {
-		// let max_fee = T::WeightToFee::calc(&T::BlockWeights::get().max_block);
-		// let fee = fee.min(max_fee);
-		// Pallet::<T>::native_then_alternative_or_default(who, fee)?;
-		let named = named.unwrap_or(RESERVE_ID);
-		T::Currency::reserve_named(&named, who, fee)?;
+		Pallet::<T>::native_then_alternative_or_default(who, fee)?;
+		T::Currency::reserve_named(&named.unwrap_or(RESERVE_ID), who, fee)?;
 		Ok(fee)
 	}
 
@@ -1409,8 +1406,7 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> PalletBalanceOf<T> {
-		let named = named.unwrap_or(RESERVE_ID);
-		<T as Config>::Currency::unreserve_named(&named, who, fee)
+		<T as Config>::Currency::unreserve_named(&named.unwrap_or(RESERVE_ID), who, fee)
 	}
 
 	fn unreserve_and_charge_fee(
