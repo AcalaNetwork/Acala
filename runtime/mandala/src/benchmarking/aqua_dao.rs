@@ -23,7 +23,7 @@ use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 
-use ecosystem_aqua_dao::{Discount, DiscountRate, Subscription, SubscriptionState};
+use ecosystem_aqua_dao::{Discount, DiscountRate};
 
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 const ADAO_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::ADAO);

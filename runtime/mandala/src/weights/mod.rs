@@ -46,6 +46,7 @@ pub mod orml_oracle;
 pub mod orml_tokens;
 pub mod orml_vesting;
 
+pub mod ecosystem_aqua_adao_manager;
 pub mod ecosystem_aqua_dao;
 pub mod ecosystem_aqua_staked_token;
 

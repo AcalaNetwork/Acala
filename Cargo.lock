@@ -11135,6 +11135,7 @@ dependencies = [
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "cumulus-test-relay-sproof-builder",
+ "ecosystem-aqua-adao-manager",
  "ecosystem-aqua-dao",
  "ecosystem-aqua-staked-token",
  "ecosystem-compound-cash",

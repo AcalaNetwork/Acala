@@ -53,6 +53,7 @@ pub mod tokens;
 pub mod vesting;
 
 // Aqua DAO
+pub mod aqua_adao_manager;
 pub mod aqua_dao;
 pub mod aqua_staked_token;
 

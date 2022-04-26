@@ -1783,6 +1783,7 @@ impl ecosystem_aqua_adao_manager::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type StableCurrencyId = GetStableCurrencyId;
+	type AdaoPriceProvider = module_dex_oracle::AverageDEXPriceProvider<Runtime>;
 	type AssetPriceProvider = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DEX = Dex;
@@ -1790,6 +1791,7 @@ impl ecosystem_aqua_adao_manager::Config for Runtime {
 	type RebalanceOffset = RebalanceOffset;
 	type DaoAccount = DaoAccount;
 	type PalletId = AquaAdaoManagerPalletId;
+	type WeightInfo = weights::ecosystem_aqua_adao_manager::WeightInfo<Runtime>;
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -2076,6 +2078,7 @@ mod benches {
 		[orml_oracle, benchmarking::oracle]
 		[ecosystem_aqua_dao, benchmarking::aqua_dao]
 		[ecosystem_aqua_staked_token, benchmarking::aqua_staked_token]
+		[ecosystem_aqua_adao_manager, benchmarking::aqua_adao_manager]
 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 	);
 }
