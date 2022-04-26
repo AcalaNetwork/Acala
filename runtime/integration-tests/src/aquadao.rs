@@ -18,9 +18,11 @@
 
 use crate::setup::*;
 
-use ecosystem_aqua_dao::{Discount, DiscountRate, Subscription, SubscriptionState};
+use ecosystem_aqua_adao_manager::{Allocation, Strategy, StrategyKind};
+use ecosystem_aqua_dao::{Discount, DiscountRate, Subscriptions};
 use frame_support::traits::OnInitialize;
-use mandala_runtime::{AquaStakedToken, DAYS};
+use mandala_runtime::{AquaAdaoManager, AquaStakedToken, DAYS};
+use sp_runtime::{traits::One, FixedI128, FixedU128};
 
 const ADAO_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::ADAO);
 const SDAO_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::SDAO);
@@ -28,136 +30,138 @@ const AUSD_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 const ADAO_AUSD_LP: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::ADAO));
 
-// #[test]
-// fn subscription() {
-// 	ExtBuilder::default()
-// 		.balances(vec![
-// 			(AccountId::from(ALICE), USD_CURRENCY, 2_000_000 * dollar(USD_CURRENCY)),
-// 			(AccountId::from(BOB), USD_CURRENCY, 1_000_000 * dollar(USD_CURRENCY)),
-// 			(AccountId::from(BOB), ADAO_CURRENCY, 1_000_000 * dollar(ADAO_CURRENCY)),
-// 			(AccountId::from(BOB), SDAO_CURRENCY, 1_000_000 * dollar(SDAO_CURRENCY)),
-// 			(
-// 				AquaStakedToken::account_id(),
-// 				ADAO_CURRENCY,
-// 				1_000_000 * dollar(ADAO_CURRENCY),
-// 			),
-// 		])
-// 		.build()
-// 		.execute_with(|| {
-// 			// setup DEX
-// 			assert_ok!(Dex::add_liquidity(
-// 				Origin::signed(AccountId::from(BOB)),
-// 				ADAO_CURRENCY,
-// 				USD_CURRENCY,
-// 				1_000 * dollar(ADAO_CURRENCY),
-// 				10_000 * dollar(USD_CURRENCY),
-// 				0,
-// 				false,
-// 			));
-// 			assert_ok!(DexOracle::enable_average_price(
-// 				Origin::root(),
-// 				ADAO_CURRENCY,
-// 				USD_CURRENCY,
-// 				1
-// 			));
-// 			DexOracle::on_initialize(1);
+#[test]
+fn subscription() {
+	ExtBuilder::default()
+		.balances(vec![
+			(AccountId::from(ALICE), USD_CURRENCY, 2_000_000 * dollar(USD_CURRENCY)),
+			(AccountId::from(BOB), USD_CURRENCY, 1_000_000 * dollar(USD_CURRENCY)),
+			(AccountId::from(BOB), ADAO_CURRENCY, 1_000_000 * dollar(ADAO_CURRENCY)),
+			(AccountId::from(BOB), SDAO_CURRENCY, 1_000_000 * dollar(SDAO_CURRENCY)),
+			(
+				AquaStakedToken::account_id(),
+				ADAO_CURRENCY,
+				1_000_000 * dollar(ADAO_CURRENCY),
+			),
+		])
+		.build()
+		.execute_with(|| {
+			// setup DEX
+			assert_ok!(Dex::add_liquidity(
+				Origin::signed(AccountId::from(BOB)),
+				ADAO_CURRENCY,
+				USD_CURRENCY,
+				1_000 * dollar(ADAO_CURRENCY),
+				10_000 * dollar(USD_CURRENCY),
+				0,
+				false,
+			));
+			assert_ok!(DexOracle::enable_average_price(
+				Origin::root(),
+				ADAO_CURRENCY,
+				USD_CURRENCY,
+				1
+			));
+			DexOracle::on_initialize(1);
 
-// 			// create subscription
-// 			let units = 1_000_000;
-// 			let amount = dollar(CurrencyId::Token(TokenSymbol::ADAO)) * units;
-// 			let subscription = Subscription {
-// 				currency_id: USD_CURRENCY,
-// 				vesting_period: 1_000,
-// 				min_amount: dollar(ADAO_CURRENCY) * 10,
-// 				min_ratio: Ratio::saturating_from_rational(1, 10),
-// 				amount,
-// 				discount: Discount {
-// 					max: DiscountRate::saturating_from_rational(2, 10),
-// 					inc_on_idle: DiscountRate::saturating_from_rational(1, 1_000),
-// 					dec_per_unit: DiscountRate::saturating_from_rational(20, units * 100),
-// 				},
-// 				state: SubscriptionState {
-// 					total_sold: 0,
-// 					last_sold_at: 0,
-// 					last_discount: DiscountRate::saturating_from_rational(95, 100),
-// 				},
-// 			};
-// 			assert_ok!(AquaDao::create_subscription(Origin::root(), subscription));
+			// create subscription
+			let units = 1_000_000;
+			let amount = dollar(CurrencyId::Token(TokenSymbol::ADAO)) * units;
+			let discount = Discount {
+				max: DiscountRate::saturating_from_rational(2, 10),
+				interval: 1,
+				inc_on_idle: DiscountRate::saturating_from_rational(1, 1_000),
+				dec_per_unit: DiscountRate::saturating_from_rational(20, units * 100),
+			};
+			assert_ok!(AquaDao::create_subscription(
+				Origin::root(),
+				USD_CURRENCY,
+				1_000,
+				dollar(ADAO_CURRENCY) * 10,
+				Ratio::saturating_from_rational(1, 10),
+				amount,
+				discount
+			));
+			Subscriptions::<Runtime>::mutate(0, |maybe_subscription| {
+				if let Some(subscription) = maybe_subscription {
+					subscription.state.last_discount = FixedI128::saturating_from_rational(95, 100);
+				}
+			});
 
-// 			// subscribe
-// 			let alice = AccountId::from(ALICE);
-// 			assert_ok!(AquaDao::subscribe(
-// 				Origin::signed(alice.clone()),
-// 				0,
-// 				dollar(USD_CURRENCY) * 1_000,
-// 				0
-// 			));
-// 			let subscription_amount = 124_998_000_000_000;
-// 			System::assert_has_event(Event::AquaDao(ecosystem_aqua_dao::Event::Subscribed {
-// 				who: alice.clone(),
-// 				subscription_id: 0,
-// 				payment_amount: dollar(USD_CURRENCY) * 1_000,
-// 				subscription_amount,
-// 			}));
-// 			// default exchange rate: 1
-// 			assert_eq!(Currencies::free_balance(SDAO, &alice), subscription_amount);
+			// subscribe
+			let alice = AccountId::from(ALICE);
+			assert_ok!(AquaDao::subscribe(
+				Origin::signed(alice.clone()),
+				0,
+				dollar(USD_CURRENCY) * 1_000,
+				0
+			));
+			let subscription_amount = 124_998_000_000_000;
+			System::assert_has_event(Event::AquaDao(ecosystem_aqua_dao::Event::Subscribed {
+				who: alice.clone(),
+				subscription_id: 0,
+				payment_amount: dollar(USD_CURRENCY) * 1_000,
+				subscription_amount,
+			}));
+			// default exchange rate: 1
+			assert_eq!(Currencies::free_balance(SDAO, &alice), subscription_amount);
 
-// 			// not claimable vesting yet
-// 			assert_ok!(AquaStakedToken::claim(Origin::signed(alice.clone())));
-// 			assert_noop!(
-// 				Currencies::transfer(
-// 					Origin::signed(alice.clone()),
-// 					AccountId::from(BOB).into(),
-// 					SDAO_CURRENCY,
-// 					1
-// 				),
-// 				orml_tokens::Error::<Runtime>::LiquidityRestrictions
-// 			);
+			// not claimable vesting yet
+			assert_ok!(AquaStakedToken::claim(Origin::signed(alice.clone())));
+			assert_noop!(
+				Currencies::transfer(
+					Origin::signed(alice.clone()),
+					AccountId::from(BOB).into(),
+					SDAO_CURRENCY,
+					1
+				),
+				orml_tokens::Error::<Runtime>::LiquidityRestrictions
+			);
 
-// 			// inflation
-// 			AquaStakedToken::on_initialize(DAYS);
+			// inflation
+			AquaStakedToken::on_initialize(DAYS);
 
-// 			// claim && unstake
-// 			set_relaychain_block_number(subscription.vesting_period + 1);
-// 			assert_ok!(AquaStakedToken::claim(Origin::signed(alice.clone())));
-// 			assert_ok!(AquaStakedToken::unstake(
-// 				Origin::signed(alice.clone()),
-// 				subscription_amount
-// 			));
-// 			assert_eq!(Currencies::free_balance(ADAO, &alice), 125_203_375_719_934);
-// 		});
-// }
+			// claim && unstake
+			set_relaychain_block_number(1001);
+			assert_ok!(AquaStakedToken::claim(Origin::signed(alice.clone())));
+			assert_ok!(AquaStakedToken::unstake(
+				Origin::signed(alice.clone()),
+				subscription_amount
+			));
+			assert_eq!(Currencies::free_balance(ADAO, &alice), 125_203_375_719_934);
+		});
+}
 
-// #[test]
-// fn inflation() {
-// 	ExtBuilder::default()
-// 		.balances(vec![
-// 			(
-// 				AquaStakedToken::account_id(),
-// 				ADAO_CURRENCY,
-// 				1_000 * dollar(ADAO_CURRENCY),
-// 			),
-// 			(AccountId::from(ALICE), SDAO, 1_000 * dollar(SDAO)),
-// 		])
-// 		.build()
-// 		.execute_with(|| {
-// 			// no inflation yet
-// 			AquaStakedToken::on_initialize(1);
-// 			assert_eq!(
-// 				Currencies::free_balance(ADAO, &AquaStakedToken::account_id()),
-// 				1_000 * dollar(ADAO_CURRENCY)
-// 			);
+#[test]
+fn inflation() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				AquaStakedToken::account_id(),
+				ADAO_CURRENCY,
+				1_000 * dollar(ADAO_CURRENCY),
+			),
+			(AccountId::from(ALICE), SDAO, 1_000 * dollar(SDAO)),
+		])
+		.build()
+		.execute_with(|| {
+			// no inflation yet
+			AquaStakedToken::on_initialize(1);
+			assert_eq!(
+				Currencies::free_balance(ADAO, &AquaStakedToken::account_id()),
+				1_000 * dollar(ADAO_CURRENCY)
+			);
 
-// 			// inflation
-// 			AquaStakedToken::on_initialize(DAYS);
-// 			assert_eq!(
-// 				Currencies::free_balance(ADAO, &AquaStakedToken::account_id()),
-// 				1_001_027_397_260_273
-// 			);
-// 			assert_eq!(Currencies::free_balance(SDAO, &TreasuryAccount::get()), 102_739_726_027);
-// 			assert_eq!(Currencies::free_balance(SDAO, &DaoAccount::get()), 102_739_726_027);
-// 		});
-// }
+			// inflation
+			AquaStakedToken::on_initialize(DAYS);
+			assert_eq!(
+				Currencies::free_balance(ADAO, &AquaStakedToken::account_id()),
+				1_001_027_397_260_273
+			);
+			assert_eq!(Currencies::free_balance(SDAO, &TreasuryAccount::get()), 102_739_726_027);
+			assert_eq!(Currencies::free_balance(SDAO, &DaoAccount::get()), 102_739_726_027);
+		});
+}
 
 #[test]
 fn adao_manager_rebalance() {
@@ -169,12 +173,6 @@ fn adao_manager_rebalance() {
 		])
 		.build()
 		.execute_with(|| {
-			use ecosystem_aqua_adao_manager::{
-				Allocation, AllocationAdjustment, AllocationDiff, Strategy, StrategyKind,
-			};
-			use mandala_runtime::AquaAdaoManager;
-			use sp_runtime::{traits::One, FixedU128};
-
 			// setup DEX
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(BOB)),
@@ -215,7 +213,5 @@ fn adao_manager_rebalance() {
 			assert_ok!(AquaAdaoManager::set_strategies(Origin::root(), vec![strategy]));
 
 			AquaAdaoManager::on_initialize(11);
-
-			System::events().iter().for_each(|e| println!("{:?}", e));
 		});
 }
