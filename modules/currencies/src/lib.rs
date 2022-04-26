@@ -191,8 +191,7 @@ pub mod module {
 		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(dest)?;
-			<Self as MultiCurrency<T::AccountId>>::transfer(currency_id, &from, &to, amount)?;
-			Ok(())
+			<Self as MultiCurrency<T::AccountId>>::transfer(currency_id, &from, &to, amount)
 		}
 
 		/// Transfer some native currency to another account.
@@ -207,8 +206,7 @@ pub mod module {
 		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(dest)?;
-			T::NativeCurrency::transfer(&from, &to, amount)?;
-			Ok(())
+			T::NativeCurrency::transfer(&from, &to, amount)
 		}
 
 		/// update amount of account `who` under `currency_id`.
@@ -223,8 +221,7 @@ pub mod module {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 			let dest = T::Lookup::lookup(who)?;
-			<Self as MultiCurrencyExtended<T::AccountId>>::update_balance(currency_id, &dest, amount)?;
-			Ok(())
+			<Self as MultiCurrencyExtended<T::AccountId>>::update_balance(currency_id, &dest, amount)
 		}
 
 		#[pallet::weight(T::WeightInfo::sweep_dust(accounts.len() as u32))]
@@ -389,11 +386,10 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			return Ok(());
 		}
 		match currency_id {
-			CurrencyId::Erc20(_) => return Err(Error::<T>::Erc20InvalidOperation.into()),
-			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::deposit(who, amount)?,
-			_ => T::MultiCurrency::deposit(currency_id, who, amount)?,
+			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
+			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::deposit(who, amount),
+			_ => T::MultiCurrency::deposit(currency_id, who, amount),
 		}
-		Ok(())
 	}
 
 	fn withdraw(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
@@ -402,11 +398,10 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		}
 
 		match currency_id {
-			CurrencyId::Erc20(_) => return Err(Error::<T>::Erc20InvalidOperation.into()),
-			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::withdraw(who, amount)?,
-			_ => T::MultiCurrency::withdraw(currency_id, who, amount)?,
+			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
+			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::withdraw(who, amount),
+			_ => T::MultiCurrency::withdraw(currency_id, who, amount),
 		}
-		Ok(())
 	}
 
 	fn can_slash(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> bool {
@@ -440,14 +435,14 @@ impl<T: Config> MultiCurrencyExtended<T::AccountId> for Pallet<T> {
 		match currency_id {
 			CurrencyId::Erc20(_) => {
 				if by_amount.is_zero() {
-					return Ok(());
+					Ok(())
+				} else {
+					Err(Error::<T>::Erc20InvalidOperation.into())
 				}
-				return Err(Error::<T>::Erc20InvalidOperation.into());
 			}
-			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::update_balance(who, by_amount)?,
-			_ => T::MultiCurrency::update_balance(currency_id, who, by_amount)?,
+			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::update_balance(who, by_amount),
+			_ => T::MultiCurrency::update_balance(currency_id, who, by_amount),
 		}
-		Ok(())
 	}
 }
 
