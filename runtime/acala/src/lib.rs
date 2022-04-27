@@ -1330,8 +1330,8 @@ parameter_types! {
 	pub const ChainId: u64 = 787;
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub DeveloperDeposit: Balance = 1_000 * dollar(KAR);
-	pub PublicationFee: Balance = 1_000_000 * dollar(KAR);
+	pub DeveloperDeposit: Balance = 1_000 * dollar(ACA);
+	pub PublicationFee: Balance = 1_000_000 * dollar(ACA);
 	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::acala();
 }
 
