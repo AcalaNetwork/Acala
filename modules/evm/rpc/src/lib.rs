@@ -258,8 +258,7 @@ where
 
 		// Determine the highest possible gas limits
 		let max_gas_limit = request.max_gas_limit;
-		let max_storage_limit = request.max_storage_limit;
-		let mut highest = std::cmp::min(request.gas_limit, max_gas_limit);
+		let mut highest = request.gas_limit;
 
 		let request = CallRequest {
 			from: Some(from),
@@ -298,7 +297,8 @@ where
 
 			// Use request gas limit only if it less than gas_limit parameter
 			let gas_limit = core::cmp::min(gas_limit.unwrap_or(gas), gas);
-			let storage_limit = storage_limit.unwrap_or(max_storage_limit);
+			let storage_limit =
+				storage_limit.expect("Cannot be none, value set when request is constructed above; qed");
 			let data = data.map(|d| d.0).unwrap_or_default();
 
 			let balance_value = if let Some(value) = value {

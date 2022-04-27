@@ -81,8 +81,6 @@ pub struct EstimateResourcesRequest {
 	pub max_gas_limit: u64,
 	/// Storage Limit
 	pub storage_limit: u32,
-	/// Max storage Limit
-	pub max_storage_limit: u32,
 	/// Value
 	pub value: Option<Balance>,
 	/// Data

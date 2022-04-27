@@ -41,7 +41,7 @@ sp_api::decl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			estimate: bool,
+			rpc_mode: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError>;
 
 		fn create(
@@ -51,7 +51,7 @@ sp_api::decl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			estimate: bool,
+			rpc_mode: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError>;
 
 		fn get_estimate_resources_request(data: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError>;
