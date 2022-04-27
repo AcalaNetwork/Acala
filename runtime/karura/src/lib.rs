@@ -49,6 +49,7 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+use frame_support::pallet_prelude::InvalidTransaction;
 use frame_system::{EnsureRoot, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
 use module_currencies::BasicCurrencyAdapter;
@@ -86,8 +87,9 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	define_combined_task,
-	evm::{AccessListItem, EstimateResourcesRequest, EvmAddress},
+	evm::{AccessListItem, EstimateResourcesRequest, EthereumTransactionMessage, EvmAddress},
 	task::TaskResult,
+	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
 	DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
 	TradingPair,
@@ -211,13 +213,12 @@ impl Contains<Call> for BaseCallFilter {
 			return false;
 		}
 
-		let is_evm = matches!(
+		let is_honzon_bridge = matches!(
 			call,
-			Call::EVM(_) | Call::EvmAccounts(_) // EvmBridge / EvmManager does not have call
-			| Call::HonzonBridge(_) // HonzonBridge isn't enabled until wAUSD is created. Issue #1967
+			Call::HonzonBridge(_) // HonzonBridge isn't enabled until wAUSD is created. Issue #1967
 		);
-		if is_evm {
-			// no evm call
+		if is_honzon_bridge {
+			// no honzon_bridge
 			return false;
 		}
 
@@ -999,7 +1000,7 @@ where
 			frame_system::CheckTxVersion::<Runtime>::new(),
 			frame_system::CheckGenesis::<Runtime>::new(),
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
-			frame_system::CheckNonce::<Runtime>::from(nonce),
+			runtime_common::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			module_evm::SetEvmOrigin::<Runtime>::new(),
@@ -1718,13 +1719,14 @@ pub type SignedExtra = (
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
 	frame_system::CheckEra<Runtime>,
-	frame_system::CheckNonce<Runtime>,
+	runtime_common::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type UncheckedExtrinsic =
+	AcalaUncheckedExtrinsic<Call, SignedExtra, ConvertEthereumTx, StorageDepositPerByte, TxFeePerGas>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
@@ -1968,7 +1970,7 @@ impl_runtime_apis! {
 			let utx = UncheckedExtrinsic::decode_all_with_depth_limit(sp_api::MAX_EXTRINSIC_DEPTH, &mut &*extrinsic)
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
-			let request = match utx.function {
+			let request = match utx.0.function {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
 					// use MAX_VALUE for no limit
 					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
@@ -2108,6 +2110,63 @@ cumulus_pallet_parachain_system::register_validate_block!(
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 	CheckInherents = CheckInherents,
 );
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct ConvertEthereumTx;
+
+impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtra), InvalidTransaction>>
+	for ConvertEthereumTx
+{
+	fn convert(
+		(call, mut extra): (Call, SignedExtra),
+	) -> Result<(EthereumTransactionMessage, SignedExtra), InvalidTransaction> {
+		match call {
+			Call::EVM(module_evm::Call::eth_call {
+				action,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list,
+				valid_until,
+			}) => {
+				if System::block_number() > valid_until {
+					return Err(InvalidTransaction::Stale);
+				}
+
+				let (_, _, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
+
+				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
+					// require immortal
+					return Err(InvalidTransaction::BadProof);
+				}
+
+				let nonce = check_nonce.nonce;
+				let tip = charge.0;
+
+				extra.5.mark_as_ethereum_tx(valid_until);
+
+				Ok((
+					EthereumTransactionMessage {
+						chain_id: ChainId::get(),
+						genesis: System::block_hash(0),
+						nonce,
+						tip,
+						gas_limit,
+						storage_limit,
+						action,
+						value,
+						input,
+						valid_until,
+						access_list,
+					},
+					extra,
+				))
+			}
+			_ => Err(InvalidTransaction::BadProof),
+		}
+	}
+}
 
 #[cfg(test)]
 mod tests {
