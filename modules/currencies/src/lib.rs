@@ -369,17 +369,17 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					address,
 					amount,
 				)?;
-
-				Self::deposit_event(Event::Transferred {
-					currency_id,
-					from: from.clone(),
-					to: to.clone(),
-					amount,
-				});
 			}
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::transfer(from, to, amount)?,
 			_ => T::MultiCurrency::transfer(currency_id, from, to, amount)?,
 		}
+
+		Self::deposit_event(Event::Transferred {
+			currency_id,
+			from: from.clone(),
+			to: to.clone(),
+			amount,
+		});
 		Ok(())
 	}
 
@@ -797,17 +797,37 @@ impl<T: Config> fungibles::Transfer<T::AccountId> for Pallet<T> {
 			return Ok(amount);
 		}
 
-		let transferred_amount = match asset_id {
+		Ok(match asset_id {
 			CurrencyId::Erc20(_) => {
+				// Event is deposited in `fn transfer`
 				<Self as MultiCurrency<_>>::transfer(asset_id, source, dest, amount)?;
-				Ok(amount)
+				amount
 			}
 			id if id == T::GetNativeCurrencyId::get() => {
-				<T::NativeCurrency as fungible::Transfer<_>>::transfer(source, dest, amount, keep_alive)
+				let actual: Self::Balance =
+					<T::NativeCurrency as fungible::Transfer<_>>::transfer(source, dest, amount, keep_alive)?;
+
+				Self::deposit_event(Event::Transferred {
+					currency_id: asset_id,
+					from: source.clone(),
+					to: dest.clone(),
+					amount: actual,
+				});
+				actual
 			}
-			_ => <T::MultiCurrency as fungibles::Transfer<_>>::transfer(asset_id, source, dest, amount, keep_alive),
-		}?;
-		Ok(transferred_amount)
+			_ => {
+				let actual: Self::Balance =
+					<T::MultiCurrency as fungibles::Transfer<_>>::transfer(asset_id, source, dest, amount, keep_alive)?;
+
+				Self::deposit_event(Event::Transferred {
+					currency_id: asset_id,
+					from: source.clone(),
+					to: dest.clone(),
+					amount: actual,
+				});
+				actual
+			}
+		})
 	}
 }
 

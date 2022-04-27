@@ -302,13 +302,20 @@ fn call_event_should_work() {
 			assert_ok!(Currencies::transfer(Some(alice()).into(), bob(), X_TOKEN_ID, 50));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 50);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 150);
-			System::assert_last_event(Event::Tokens(tokens::Event::Transfer {
+			System::assert_has_event(Event::Tokens(tokens::Event::Transfer {
+				currency_id: X_TOKEN_ID,
+				from: alice(),
+				to: bob(),
+				amount: 50,
+			}));
+			System::assert_has_event(Event::Currencies(crate::Event::Transferred {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
 				amount: 50,
 			}));
 
+			System::reset_events();
 			assert_ok!(<Currencies as MultiCurrency<AccountId>>::transfer(
 				X_TOKEN_ID,
 				&alice(),
@@ -317,7 +324,13 @@ fn call_event_should_work() {
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 40);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 160);
-			System::assert_last_event(Event::Tokens(tokens::Event::Transfer {
+			System::assert_has_event(Event::Tokens(tokens::Event::Transfer {
+				currency_id: X_TOKEN_ID,
+				from: alice(),
+				to: bob(),
+				amount: 10,
+			}));
+			System::assert_has_event(Event::Currencies(crate::Event::Transferred {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
@@ -1356,6 +1369,8 @@ fn fungible_transfer_trait_should_work() {
 				<Currencies as fungibles::Inspect<_>>::balance(NATIVE_CURRENCY_ID, &bob()),
 				0
 			);
+
+			System::reset_events();
 			assert_ok!(<Currencies as fungibles::Transfer<_>>::transfer(
 				NATIVE_CURRENCY_ID,
 				&alice(),
@@ -1363,7 +1378,13 @@ fn fungible_transfer_trait_should_work() {
 				10000,
 				true
 			));
-			System::assert_last_event(Event::Balances(pallet_balances::Event::Transfer {
+			System::assert_has_event(Event::Balances(pallet_balances::Event::Transfer {
+				from: alice(),
+				to: bob(),
+				amount: 10000,
+			}));
+			System::assert_has_event(Event::Currencies(crate::Event::Transferred {
+				currency_id: NATIVE_CURRENCY_ID,
 				from: alice(),
 				to: bob(),
 				amount: 10000,
@@ -1392,6 +1413,7 @@ fn fungible_transfer_trait_should_work() {
 				200000
 			);
 			assert_eq!(<Currencies as fungibles::Inspect<_>>::balance(X_TOKEN_ID, &bob()), 0);
+			System::reset_events();
 			assert_ok!(<Currencies as fungibles::Transfer<_>>::transfer(
 				X_TOKEN_ID,
 				&alice(),
@@ -1399,7 +1421,13 @@ fn fungible_transfer_trait_should_work() {
 				10000,
 				true
 			));
-			System::assert_last_event(Event::Tokens(tokens::Event::Transfer {
+			System::assert_has_event(Event::Tokens(tokens::Event::Transfer {
+				currency_id: X_TOKEN_ID,
+				from: alice(),
+				to: bob(),
+				amount: 10000,
+			}));
+			System::assert_has_event(Event::Currencies(crate::Event::Transferred {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
