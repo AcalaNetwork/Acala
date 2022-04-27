@@ -458,6 +458,30 @@ where
 			weight_fee: adjusted_weight_fee.into(),
 		})
 	}
+
+	fn max_gas_limit(&self, at: Option<<B as BlockT>::Hash>) -> Result<u64> {
+		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
+
+		let max_gas_limit = self
+			.client
+			.runtime_api()
+			.max_gas_limit(&BlockId::Hash(hash))
+			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?;
+
+		Ok(max_gas_limit)
+	}
+
+	fn max_storage_limit(&self, at: Option<<B as BlockT>::Hash>) -> Result<u32> {
+		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
+
+		let max_storage_limit = self
+			.client
+			.runtime_api()
+			.max_storage_limit(&BlockId::Hash(hash))
+			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?;
+
+		Ok(max_storage_limit)
+	}
 }
 
 #[test]

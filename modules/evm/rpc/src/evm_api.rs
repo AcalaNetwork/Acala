@@ -41,4 +41,12 @@ pub trait EVMApi<BlockHash> {
 		unsigned_extrinsic: Bytes,
 		at: Option<BlockHash>,
 	) -> Result<EstimateResourcesResponse>;
+
+	/// Get max gas limit per transaction
+	#[rpc(name = "evm_maxGasLimit")]
+	fn max_gas_limit(&self, at: Option<BlockHash>) -> Result<u64>;
+
+	/// Get max storage limit per transaction
+	#[rpc(name = "evm_maxStorageLimit")]
+	fn max_storage_limit(&self, at: Option<BlockHash>) -> Result<u32>;
 }
