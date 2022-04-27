@@ -212,7 +212,6 @@ macro_rules! evm_call {
 						1_000_000,
 						vec![],
 						<Runtime as Config>::config(),
-						false,
 					)
 				})
 				.unwrap();
