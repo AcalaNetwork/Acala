@@ -1416,25 +1416,13 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::StableAssetSwap => {
 				matches!(c, Call::StableAsset(nutsfinance_stable_asset::Call::swap { .. }))
 			}
-			ProxyType::StableAssetMint => {
-				matches!(c, Call::StableAsset(nutsfinance_stable_asset::Call::mint { .. }))
-			}
-			ProxyType::StableAssetRedeemProportion => {
+			ProxyType::StableAssetLiquidity => {
 				matches!(
 					c,
-					Call::StableAsset(nutsfinance_stable_asset::Call::redeem_proportion { .. })
-				)
-			}
-			ProxyType::StableAssetRedeemSingle => {
-				matches!(
-					c,
-					Call::StableAsset(nutsfinance_stable_asset::Call::redeem_single { .. })
-				)
-			}
-			ProxyType::StableAssetRedeemMulti => {
-				matches!(
-					c,
-					Call::StableAsset(nutsfinance_stable_asset::Call::redeem_multi { .. })
+					Call::StableAsset(nutsfinance_stable_asset::Call::mint { .. })
+						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_proportion { .. })
+						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_single { .. })
+						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_multi { .. })
 				)
 			}
 		}

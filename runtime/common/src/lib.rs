@@ -322,11 +322,9 @@ pub enum ProxyType {
 	Loan,
 	DexLiquidity,
 	StableAssetSwap,
-	StableAssetMint,
-	StableAssetRedeemProportion,
-	StableAssetRedeemSingle,
-	StableAssetRedeemMulti,
+	StableAssetLiquidity,
 }
+
 impl Default for ProxyType {
 	fn default() -> Self {
 		Self::Any
