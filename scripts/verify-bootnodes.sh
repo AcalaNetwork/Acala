@@ -32,7 +32,7 @@ do
 		   --reserved-only \
 		   --reserved-nodes=$node \
 		   --rpc-port=9933 \
-		   --rpc-external=true \
+		   --rpc-external \
 		   --rpc-cors=all \
 		   --rpc-methods=unsafe \
 		   -- \

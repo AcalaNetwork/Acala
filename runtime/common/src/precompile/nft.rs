@@ -16,6 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use super::{
+	input::{Input, InputT, Output},
+	target_gas_limit,
+};
 use frame_support::{
 	log,
 	traits::tokens::nonfungibles::{Inspect, Transfer},
@@ -23,18 +27,15 @@ use frame_support::{
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitRevert, ExitSucceed,
+	Context, ExitError, ExitRevert, ExitSucceed,
 };
 use module_support::AddressMapping;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+use orml_traits::InspectExtended;
+use primitives::nft::NFTBalance;
 use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::{marker::PhantomData, prelude::*};
-
-use orml_traits::InspectExtended;
-
-use super::input::{Input, InputT, Output};
-use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::nft::NFTBalance;
 
 /// The `NFT` impl precompile.
 ///
@@ -62,8 +63,21 @@ where
 		+ Inspect<Runtime::AccountId, InstanceId = u64, ClassId = u32>
 		+ Transfer<Runtime::AccountId>,
 {
-	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
-		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
+	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			input,
+			target_gas_limit(target_gas),
+		);
+
+		let gas_cost = Pricer::<Runtime>::cost(&input)?;
+
+		if let Some(gas_limit) = target_gas {
+			if gas_limit < gas_cost {
+				return Err(PrecompileFailure::Error {
+					exit_status: ExitError::OutOfGas,
+				});
+			}
+		}
 
 		let action = input.action()?;
 
@@ -115,7 +129,7 @@ where
 					.map_err(|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Into::<&str>::into(e).as_bytes().to_vec(),
-						cost: 0,
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					})?;
 
 				Ok(PrecompileOutput {
@@ -126,5 +140,22 @@ where
 				})
 			}
 		}
+	}
+}
+
+pub struct Pricer<R>(PhantomData<R>);
+
+impl<Runtime> Pricer<Runtime>
+where
+	Runtime: module_evm::Config + module_prices::Config + module_nft::Config,
+{
+	pub const BASE_COST: u64 = 200;
+
+	fn cost(
+		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
+	) -> Result<u64, PrecompileFailure> {
+		let _action = input.action()?;
+		// TODO: gas cost
+		Ok(Self::BASE_COST)
 	}
 }

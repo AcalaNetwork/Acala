@@ -30,6 +30,7 @@
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::unnecessary_unwrap)]
 
+use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
@@ -69,7 +70,7 @@ pub const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
 /// Information of an collateral auction
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
-#[derive(Encode, Decode, Clone, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 	/// Refund recipient for may receive refund
 	refund_recipient: AccountId,
@@ -254,7 +255,6 @@ pub mod module {
 	pub type TotalTargetInAuction<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	#[pallet::pallet]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -619,6 +619,18 @@ impl<T: Config> Pallet<T> {
 				collateral_auction.amount.saturating_sub(actual_supply_amount),
 			);
 			Self::try_refund_bid(&collateral_auction, last_bid);
+
+			// Note: for StableAsset, the swap of cdp treasury is always on `ExactSupply`
+			// regardless of this swap_limit params. There will be excess stablecoins that
+			// need to be returned to the refund_recipient from cdp treasury account.
+			if let SwapLimit::ExactTarget(_, target_limit) = swap_limit {
+				if actual_target_amount > target_limit {
+					let _ = T::CDPTreasury::withdraw_surplus(
+						&collateral_auction.refund_recipient,
+						actual_target_amount.saturating_sub(target_limit),
+					);
+				}
+			}
 
 			Self::deposit_event(Event::DEXTakeCollateralAuction {
 				auction_id,

@@ -20,11 +20,12 @@
 
 use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
-use frame_support::{assert_ok, weights::Weight};
+use frame_support::{assert_ok, traits::Get, weights::Weight, BoundedVec};
 use module_homa::UnlockChunk;
 use module_support::HomaSubAccountXcm;
 use module_xcm_interface::XcmInterfaceOperation;
 use pallet_staking::StakingLedger;
+use primitives::EraIndex;
 use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
 
@@ -277,7 +278,7 @@ fn xcm_interface_bond_extra_on_sub_account_works() {
 				stash: homa_lite_sub_account.clone(),
 				total: 500 * dollar(RELAY_CHAIN_CURRENCY),
 				active: 500 * dollar(RELAY_CHAIN_CURRENCY),
-				unlocking: vec![],
+				unlocking: BoundedVec::default(),
 				claimed_rewards: vec![],
 			})
 		);
@@ -315,7 +316,7 @@ fn xcm_interface_bond_extra_on_sub_account_works() {
 				stash: homa_lite_sub_account.clone(),
 				total: 1000 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE,
 				active: 1000 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE,
-				unlocking: vec![],
+				unlocking: BoundedVec::default(),
 				claimed_rewards: vec![],
 			})
 		);
@@ -360,7 +361,7 @@ fn xcm_interface_unbond_on_sub_account_works() {
 				stash: homa_lite_sub_account.clone(),
 				total: dollar(RELAY_CHAIN_CURRENCY),
 				active: dollar(RELAY_CHAIN_CURRENCY),
-				unlocking: vec![],
+				unlocking: BoundedVec::default(),
 				claimed_rewards: vec![],
 			})
 		);
@@ -427,7 +428,7 @@ fn homa_mint_and_redeem_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
-	let bonding_duration = BondingDuration::get();
+	let bonding_duration: EraIndex = <Runtime as module_homa::Config>::BondingDuration::get(); // Defined in Runtime
 
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();

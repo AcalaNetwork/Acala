@@ -32,6 +32,7 @@ use primitives::{
 };
 use sp_core::{H256, U256};
 use sp_runtime::traits::SignedExtension;
+use sp_runtime::Percent;
 use std::str::FromStr;
 
 pub fn erc20_address_0() -> EvmAddress {
@@ -652,6 +653,8 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 				panic!("deploy contract failed");
 			};
 
+			assert!(EVM::accounts(contract).is_some());
+			assert!(EVM::accounts(contract).unwrap().contract_info.is_some());
 			let contract_account_id = EvmAddressMapping::<Runtime>::get_account_id(&contract);
 
 			assert_ok!(Currencies::transfer(
@@ -688,16 +691,13 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			assert_eq!(System::providers(&contract_account_id), 1);
 
-			#[cfg(feature = "with-ethereum-compatibility")]
-			assert!(EVM::accounts(contract).is_none());
-			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			assert!(EVM::accounts(contract).is_some());
+			assert_eq!(EVM::accounts(contract), Some(module_evm::AccountInfo{ nonce: 1, contract_info: None}));
 
 			// use IdleScheduler to remove contract
 			run_to_block(System::block_number() + 1);
 
 			assert_eq!(System::providers(&contract_account_id), 0);
-			assert!(EVM::accounts(contract).is_none());
+			assert_eq!(EVM::accounts(contract), Some(module_evm::AccountInfo{ nonce: 1, contract_info: None}));
 
 			// should be gone
 			assert!(!System::account_exists(&contract_account_id));
@@ -757,6 +757,81 @@ fn test_evm_accounts_module() {
 				Balances::free_balance(&AccountId::from(BOB)),
 				1_000 * dollar(NATIVE_CURRENCY)
 			);
+		});
+}
+
+#[test]
+fn test_default_evm_address_in_evm_accounts_module() {
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), NATIVE_CURRENCY, 1_000_000_000 * dollar(NATIVE_CURRENCY)),
+			(
+				// evm alice
+				MockAddressMapping::get_account_id(&alice_evm_addr()),
+				NATIVE_CURRENCY,
+				1_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+		])
+		.build()
+		.execute_with(|| {
+			deploy_erc20_contracts();
+
+			assert!(EvmAccounts::evm_addresses(AccountId::from(ALICE)).is_none());
+			assert!(EvmAccounts::evm_addresses(AccountId::from(BOB)).is_none());
+
+			assert_ok!(EvmAccounts::claim_account(
+				Origin::signed(AccountId::from(ALICE)),
+				EvmAccounts::eth_address(&alice_key()),
+				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
+			));
+			assert!(EvmAccounts::evm_addresses(AccountId::from(ALICE)).is_some());
+
+			// get_or_create_evm_address
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
+			assert_ok!(Currencies::transfer(
+				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
+				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
+				CurrencyId::Erc20(erc20_address_0()),
+				10
+			));
+
+			assert!(EvmAccounts::evm_addresses(AccountId::from(BOB)).is_some());
+			assert!(!System::account_exists(&AccountId::from(BOB)));
+
+			// BOB claim eth address
+			assert_noop!(
+				EvmAccounts::claim_account(
+					Origin::signed(AccountId::from(BOB)),
+					EvmAccounts::eth_address(&bob_key()),
+					EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB))
+				),
+				module_evm_accounts::Error::<Runtime>::AccountIdHasMapped
+			);
+
+			assert_ok!(Currencies::transfer(
+				Origin::signed(AccountId::from(ALICE)),
+				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
+				NATIVE_CURRENCY,
+				10 * dollar(NATIVE_CURRENCY)
+			));
+			assert!(System::account_exists(&AccountId::from(BOB)));
+
+			// on killed will remove the claim map.
+			assert_ok!(Currencies::transfer(
+				Origin::signed(AccountId::from(BOB)),
+				sp_runtime::MultiAddress::Id(AccountId::from(ALICE)),
+				NATIVE_CURRENCY,
+				10 * dollar(NATIVE_CURRENCY)
+			));
+			assert!(!System::account_exists(&AccountId::from(BOB)));
+			assert!(EvmAccounts::evm_addresses(AccountId::from(BOB)).is_none());
+
+			// BOB claim eth address succeed.
+			assert_ok!(EvmAccounts::claim_account(
+				Origin::signed(AccountId::from(BOB)),
+				EvmAccounts::eth_address(&bob_key()),
+				EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB))
+			));
 		});
 }
 
@@ -884,11 +959,6 @@ fn transaction_payment_module_works_with_evm_contract() {
 				2200 * dollar(NATIVE_CURRENCY)
 			);
 
-			// set_global_fee_swap_path
-			assert_ok!(TransactionPayment::set_global_fee_swap_path(
-				Origin::root(),
-				vec![CurrencyId::Erc20(erc20_address_0()), NATIVE_CURRENCY]
-			));
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(TreasuryAccount::get()),
@@ -905,6 +975,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			assert_ok!(TransactionPayment::enable_charge_fee_pool(
 				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
+				vec![CurrencyId::Erc20(erc20_address_0()), NATIVE_CURRENCY],
 				5 * dollar(NATIVE_CURRENCY),
 				Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
 			));
@@ -1006,6 +1077,10 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-acala-runtime")]
 			assert_eq!(fee, 2500000800);
 
+			let surplus_perc = Percent::from_percent(25);
+			let fee_surplus = surplus_perc.mul_ceil(fee);
+			let fee = fee + fee_surplus;
+
 			// empty_account
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account),
@@ -1021,11 +1096,12 @@ fn transaction_payment_module_works_with_evm_contract() {
 			);
 			let erc20_fee = Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account);
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(erc20_fee, 11612667389);
+			assert_eq!(erc20_fee, 12013104212);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(erc20_fee, 10281777315);
+			assert_eq!(erc20_fee, 10344471099);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(erc20_fee, 10281777315);
+			assert_eq!(erc20_fee, 10344471099);
+
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
 				5 * dollar(NATIVE_CURRENCY) - (fee + NativeTokenExistentialDeposit::get())

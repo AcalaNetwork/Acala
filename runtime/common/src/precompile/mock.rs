@@ -16,56 +16,53 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(test)]
+#![cfg(any(test, feature = "bench"))]
 
 use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, Weight};
-use acala_service::chain_spec::mandala::evm_genesis;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	assert_ok, ord_parameter_types, parameter_types,
+	ord_parameter_types, parameter_types,
 	traits::{
-		EqualPrivilegeOnly, Everything, GenesisBuild, InstanceFilter, Nothing, OnFinalize, OnInitialize, SortedMembers,
+		ConstU128, ConstU32, ConstU64, EqualPrivilegeOnly, Everything, InstanceFilter, Nothing, OnFinalize,
+		OnInitialize, SortedMembers,
 	},
 	weights::IdentityFee,
 	PalletId, RuntimeDebug,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_evm::EvmTask;
+use module_evm_accounts::EvmAddressMapping;
+use module_support::mocks::MockStableAsset;
 use module_support::DispatchableTask;
-use module_support::{
-	mocks::MockAddressMapping, AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider,
-	Rate,
-};
+use module_support::{AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider, Rate};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
 	define_combined_task,
 	evm::{convert_decimals_to_evm, EvmAddress},
 	task::TaskResult,
-	Amount, BlockNumber, CurrencyId, DexShare, Header, Lease, Nonce, ReserveIdentifier, TokenSymbol, TradingPair,
+	Address, Amount, BlockNumber, CurrencyId, DexShare, Header, Lease, Moment, Nonce, ReserveIdentifier, Signature,
+	TokenSymbol, TradingPair,
 };
 use scale_info::TypeInfo;
-use sp_core::{crypto::AccountId32, H160, H256};
+use sp_core::{H160, H256};
 use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
-	DispatchResult, FixedPointNumber, FixedU128, Perbill,
+	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent,
 };
-use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
+use sp_std::prelude::*;
 
 pub type AccountId = AccountId32;
 type Key = CurrencyId;
 pub type Price = FixedU128;
 type Balance = u128;
 
-parameter_types! {
-	pub const BlockHashCount: u32 = 250;
-}
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = ();
 	type Origin = Origin;
 	type Call = Call;
-	type Index = u32;
+	type Index = Nonce;
 	type BlockNumber = BlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
@@ -73,8 +70,8 @@ impl frame_system::Config for Test {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
+	type BlockHashCount = ConstU32<250>;
+	type DbWeight = frame_support::weights::constants::RocksDbWeight;
 	type Version = ();
 	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
@@ -83,15 +80,15 @@ impl frame_system::Config for Test {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_types! {
+	pub const ExistenceRequirement: u128 = 1;
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: u32 = 600;
 	pub const RootOperatorAccountId: AccountId = ALICE;
-	pub static OracleMembers: Vec<AccountId> = vec![ALICE, BOB, EVA];
-	pub const MaxHasDispatchedSize: u32 = 40;
+	pub OracleMembers: Vec<AccountId> = vec![ALICE, BOB, EVA];
 }
 
 pub struct Members;
@@ -111,8 +108,8 @@ impl orml_oracle::Config for Test {
 	type OracleValue = Price;
 	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = Members;
-	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type WeightInfo = ();
+	type MaxHasDispatchedSize = ConstU32<40>;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -140,21 +137,16 @@ impl orml_tokens::Config for Test {
 	type DustRemovalWhitelist = Nothing;
 }
 
-parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
-	pub const MaxReserves: u32 = 50;
-}
-
 impl pallet_balances::Config for Test {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ExistenceRequirement;
 	type AccountStore = System;
-	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
+	type MaxLocks = ();
+	type MaxReserves = ConstU32<50>;
+	type ReserveIdentifier = ReserveIdentifier;
 }
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -175,7 +167,7 @@ impl module_currencies::Config for Test {
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = MockAddressMapping;
+	type AddressMapping = EvmAddressMapping<Test>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
 	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type OnDust = ();
@@ -201,38 +193,37 @@ define_combined_task! {
 	}
 }
 
-parameter_types!(
-	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
-);
+pub struct MockBlockNumberProvider;
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = u32;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Zero::zero()
+	}
+}
 
 impl module_idle_scheduler::Config for Test {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
-	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type MinimumWeightRemainInBlock = ConstU64<0>;
+	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
+	type DisableBlockThreshold = ConstU32<6>;
 }
 
 parameter_types! {
-	pub const CreateClassDeposit: Balance = 200;
-	pub const CreateTokenDeposit: Balance = 100;
-	pub const DataDepositPerByte: Balance = 10;
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
-	pub MaxAttributesBytes: u32 = 2048;
 }
 impl module_nft::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
-	type CreateClassDeposit = CreateClassDeposit;
-	type CreateTokenDeposit = CreateTokenDeposit;
-	type DataDepositPerByte = DataDepositPerByte;
+	type CreateClassDeposit = ConstU128<200>;
+	type CreateTokenDeposit = ConstU128<100>;
+	type DataDepositPerByte = ConstU128<10>;
 	type PalletId = NftPalletId;
-	type MaxAttributesBytes = MaxAttributesBytes;
+	type MaxAttributesBytes = ConstU32<2048>;
 	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub MaxClassMetadata: u32 = 1024;
-	pub MaxTokenMetadata: u32 = 1024;
 }
 
 impl orml_nft::Config for Test {
@@ -240,38 +231,36 @@ impl orml_nft::Config for Test {
 	type TokenId = u64;
 	type ClassData = module_nft::ClassData<Balance>;
 	type TokenData = module_nft::TokenData<Balance>;
-	type MaxClassMetadata = MaxClassMetadata;
-	type MaxTokenMetadata = MaxTokenMetadata;
+	type MaxClassMetadata = ConstU32<1024>;
+	type MaxTokenMetadata = ConstU32<1024>;
 }
 
 parameter_types! {
-	pub const TransactionByteFee: Balance = 10;
-	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::ACA)]];
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
-	pub OperationalFeeMultiplier: u64 = 5;
-	pub TipPerWeightStep: Balance = 1;
-	pub MaxTipsOfPriority: Balance = 1000;
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
 }
 
 impl module_transaction_payment::Config for Test {
 	type Event = Event;
+	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = ();
-	type AlternativeFeeSwapDeposit = ExistentialDeposit;
-	type TransactionByteFee = TransactionByteFee;
-	type OperationalFeeMultiplier = OperationalFeeMultiplier;
-	type TipPerWeightStep = TipPerWeightStep;
-	type MaxTipsOfPriority = MaxTipsOfPriority;
+	type TransactionByteFee = ConstU128<10>;
+	type OperationalFeeMultiplier = ConstU64<5>;
+	type TipPerWeightStep = ConstU128<1>;
+	type MaxTipsOfPriority = ConstU128<1000>;
+	type AlternativeFeeSwapDeposit = ExistenceRequirement;
 	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = ();
-	type DEX = ();
+	type DEX = DexModule;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Test>;
@@ -279,17 +268,11 @@ impl module_transaction_payment::Config for Test {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
-
-parameter_types! {
-	pub const ProxyDepositBase: u64 = 1;
-	pub const ProxyDepositFactor: u64 = 1;
-	pub const MaxProxies: u16 = 4;
-	pub const MaxPending: u32 = 2;
-	pub const AnnouncementDepositBase: u64 = 1;
-	pub const AnnouncementDepositFactor: u64 = 1;
-}
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub enum ProxyType {
@@ -320,14 +303,14 @@ impl pallet_proxy::Config for Test {
 	type Call = Call;
 	type Currency = Balances;
 	type ProxyType = ProxyType;
-	type ProxyDepositBase = ProxyDepositBase;
-	type ProxyDepositFactor = ProxyDepositFactor;
-	type MaxProxies = MaxProxies;
+	type ProxyDepositBase = ConstU128<1>;
+	type ProxyDepositFactor = ConstU128<1>;
+	type MaxProxies = ConstU32<4>;
 	type WeightInfo = ();
+	type MaxPending = ConstU32<2>;
 	type CallHasher = BlakeTwo256;
-	type MaxPending = MaxPending;
-	type AnnouncementDepositBase = AnnouncementDepositBase;
-	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+	type AnnouncementDepositBase = ConstU128<1>;
+	type AnnouncementDepositFactor = ConstU128<1>;
 }
 
 impl pallet_utility::Config for Test {
@@ -339,7 +322,6 @@ impl pallet_utility::Config for Test {
 
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * RuntimeBlockWeights::get().max_block;
-	pub const MaxScheduledPerBlock: u32 = 50;
 }
 
 impl pallet_scheduler::Config for Test {
@@ -349,9 +331,9 @@ impl pallet_scheduler::Config for Test {
 	type Call = Call;
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
-	type MaxScheduledPerBlock = MaxScheduledPerBlock;
-	type WeightInfo = ();
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
+	type MaxScheduledPerBlock = ConstU32<50>;
+	type WeightInfo = ();
 	type PreimageProvider = ();
 	type NoPreimagePostponement = ();
 }
@@ -376,7 +358,6 @@ parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const TradingPathLimit: u32 = 4;
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
-	pub const ExtendedProvisioningBlocks: BlockNumber = 0;
 }
 
 impl module_dex::Config for Test {
@@ -389,7 +370,8 @@ impl module_dex::Config for Test {
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
-	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
+	type ExtendedProvisioningBlocks = ConstU32<0>;
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 	type OnLiquidityPoolUpdated = ();
 }
 
@@ -406,12 +388,7 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const NewContractExtraBytes: u32 = 100;
 	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
-	pub const TxFeePerGas: u64 = 10;
-	pub const DeveloperDeposit: u64 = 1000;
-	pub const PublicationFee: u64 = 200;
-	pub const ChainId: u64 = 1;
 }
 
 pub struct GasToWeight;
@@ -422,28 +399,37 @@ impl Convert<u64, Weight> for GasToWeight {
 }
 
 impl module_evm::Config for Test {
-	type AddressMapping = MockAddressMapping;
+	type AddressMapping = EvmAddressMapping<Test>;
 	type Currency = Balances;
 	type TransferAll = Currencies;
-	type NewContractExtraBytes = NewContractExtraBytes;
+	type NewContractExtraBytes = ConstU32<100>;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type TxFeePerGas = TxFeePerGas;
+	type TxFeePerGas = ConstU128<10>;
 	type Event = Event;
 	type PrecompilesType = AllPrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
-	type ChainId = ChainId;
+	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ChargeTransactionPayment;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
-	type DeveloperDeposit = DeveloperDeposit;
-	type PublicationFee = PublicationFee;
+	type DeveloperDeposit = ConstU128<1000>;
+	type PublicationFee = ConstU128<200>;
 	type TreasuryAccount = TreasuryAccount;
 	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
+	type WeightInfo = ();
+}
+
+impl module_evm_accounts::Config for Test {
+	type Event = Event;
+	type Currency = Balances;
+	type AddressMapping = EvmAddressMapping<Test>;
+	type ChainId = ConstU64<1>;
+	type TransferAll = ();
 	type WeightInfo = ();
 }
 
@@ -478,7 +464,7 @@ parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
-	pub static MockRelayBlockNumberProvider: BlockNumber = 0;
+	pub MockRelayBlockNumberProvider: BlockNumber = 0;
 	pub RewardRatePerRelaychainBlock: Rate = Rate::zero();
 }
 
@@ -514,7 +500,7 @@ pub fn alice() -> AccountId {
 }
 
 pub fn alice_evm_addr() -> EvmAddress {
-	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
+	EvmAddress::from(hex_literal::hex!("1000000000000000000000000000000000000001"))
 }
 
 pub fn bob() -> AccountId {
@@ -522,7 +508,7 @@ pub fn bob() -> AccountId {
 }
 
 pub fn bob_evm_addr() -> EvmAddress {
-	EvmAddress::from_str("1000000000000000000000000000000000000002").unwrap()
+	EvmAddress::from(hex_literal::hex!("1000000000000000000000000000000000000002"))
 }
 
 pub fn aca_evm_address() -> EvmAddress {
@@ -533,22 +519,19 @@ pub fn ausd_evm_address() -> EvmAddress {
 	EvmAddress::try_from(AUSD).unwrap()
 }
 
-pub fn renbtc_evm_address() -> EvmAddress {
-	EvmAddress::try_from(RENBTC).unwrap()
-}
-
 pub fn lp_aca_ausd_evm_address() -> EvmAddress {
 	EvmAddress::try_from(LP_ACA_AUSD).unwrap()
 }
 
 pub fn erc20_address_not_exists() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000200000001").unwrap()
+	EvmAddress::from(hex_literal::hex!("0000000000000000000000000000000200000001"))
 }
 
 pub const INITIAL_BALANCE: Balance = 1_000_000_000_000;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+pub type SignedExtra = (frame_system::CheckWeight<Test>,);
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -556,33 +539,38 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		Oracle: orml_oracle::{Pallet, Storage, Call, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Currencies: module_currencies::{Pallet, Call, Event<T>},
-		EVMBridge: module_evm_bridge::{Pallet},
-		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>},
-		NFTModule: module_nft::{Pallet, Call, Event<T>},
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>},
-		Prices: module_prices::{Pallet, Storage, Call, Event<T>},
-		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
-		Utility: pallet_utility::{Pallet, Call, Event},
-		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
-		DexModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
-		EVMModule: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
-		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		Oracle: orml_oracle,
+		Timestamp: pallet_timestamp,
+		Tokens: orml_tokens exclude_parts { Call },
+		Balances: pallet_balances,
+		Currencies: module_currencies,
+		EVMBridge: module_evm_bridge exclude_parts { Call },
+		AssetRegistry: module_asset_registry,
+		NFTModule: module_nft,
+		TransactionPayment: module_transaction_payment,
+		Prices: module_prices,
+		Proxy: pallet_proxy,
+		Utility: pallet_utility,
+		Scheduler: pallet_scheduler,
+		DexModule: module_dex,
+		EVMModule: module_evm,
+		EvmAccounts: module_evm_accounts,
+		IdleScheduler: module_idle_scheduler,
 	}
 );
 
+#[cfg(test)]
 // This function basically just builds a genesis storage key/value store
 // according to our desired mockup.
 pub fn new_test_ext() -> sp_io::TestExternalities {
+	use frame_support::{assert_ok, traits::GenesisBuild};
+	use sp_std::collections::btree_map::BTreeMap;
+
 	let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 	let mut accounts = BTreeMap::new();
-	let mut evm_genesis_accounts = evm_genesis(vec![]);
+	let mut evm_genesis_accounts = crate::evm_genesis(vec![]);
 	accounts.append(&mut evm_genesis_accounts);
 
 	accounts.insert(
@@ -608,6 +596,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	module_evm::GenesisConfig::<Test> { accounts }
 		.assimilate_storage(&mut storage)
 		.unwrap();
+	module_asset_registry::GenesisConfig::<Test> {
+		assets: vec![(ACA, ExistenceRequirement::get()), (RENBTC, 0)],
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(storage);
 	ext.execute_with(|| {
@@ -624,7 +617,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
-			MockAddressMapping::get_account_id(&alice_evm_addr()),
+			EvmAddressMapping::<Test>::get_account_id(&alice_evm_addr()),
 			RENBTC,
 			1_000
 		));
@@ -638,10 +631,4 @@ pub fn run_to_block(n: u32) {
 		System::set_block_number(System::block_number() + 1);
 		Scheduler::on_initialize(System::block_number());
 	}
-}
-pub fn get_task_id(output: Vec<u8>) -> Vec<u8> {
-	let mut num = [0u8; 4];
-	num[..].copy_from_slice(&output[64 - 4..64]);
-	let task_id_len: u32 = u32::from_be_bytes(num);
-	output[64..64 + task_id_len as usize].to_vec()
 }

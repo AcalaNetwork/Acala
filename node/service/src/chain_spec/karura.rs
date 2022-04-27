@@ -42,6 +42,10 @@ pub fn karura_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/karura-dist.json")[..])
 }
 
+pub fn karura_rococo_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/karura-rococo.json")[..])
+}
+
 fn karura_properties() -> Properties {
 	let mut properties = Map::new();
 	let mut token_symbol: Vec<String> = vec![];
@@ -148,6 +152,7 @@ fn karura_genesis(
 			collaterals_params: vec![],
 			global_interest_rate_per_sec: Default::default(),
 		},
+		asset_registry: Default::default(),
 		evm: Default::default(),
 		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],

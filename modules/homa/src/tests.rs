@@ -573,7 +573,7 @@ fn distribution_helpers_works() {
 			(vec![], 2_000_000)
 		);
 		assert_eq!(
-			distribute_decrement(bonded_list.clone(), 3_000_000, Some(1_000_000), Some(1_000_001)),
+			distribute_decrement(bonded_list, 3_000_000, Some(1_000_000), Some(1_000_001)),
 			(vec![(2, 2_000_000)], 1_000_000)
 		);
 	});
