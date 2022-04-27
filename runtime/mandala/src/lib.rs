@@ -1413,6 +1413,30 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::Dex(module_dex::Call::remove_liquidity { .. })
 				)
 			}
+			ProxyType::StableAssetSwap => {
+				matches!(c, Call::StableAsset(nutsfinance_stable_asset::Call::swap { .. }))
+			}
+			ProxyType::StableAssetMint => {
+				matches!(c, Call::StableAsset(nutsfinance_stable_asset::Call::mint { .. }))
+			}
+			ProxyType::StableAssetRedeemProportion => {
+				matches!(
+					c,
+					Call::StableAsset(nutsfinance_stable_asset::Call::redeem_proportion { .. })
+				)
+			}
+			ProxyType::StableAssetRedeemSingle => {
+				matches!(
+					c,
+					Call::StableAsset(nutsfinance_stable_asset::Call::redeem_single { .. })
+				)
+			}
+			ProxyType::StableAssetRedeemMulti => {
+				matches!(
+					c,
+					Call::StableAsset(nutsfinance_stable_asset::Call::redeem_multi { .. })
+				)
+			}
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
