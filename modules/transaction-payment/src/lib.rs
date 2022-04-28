@@ -760,7 +760,7 @@ where
 	/// Given fee pre-calculated by weight, consider only multiplier, other parts is set to 0.
 	fn calculate_final_fee(fee: PalletBalanceOf<T>) -> PalletBalanceOf<T> {
 		let multiplier = Self::next_fee_multiplier();
-		let adjusted_weight_fee = multiplier.saturating_mul_int(fee.clone());
+		let adjusted_weight_fee = multiplier.saturating_mul_int(fee);
 		let fee_details = FeeDetails {
 			inclusion_fee: Some(InclusionFee {
 				base_fee: 0,

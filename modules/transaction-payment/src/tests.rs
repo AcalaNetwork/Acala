@@ -28,7 +28,8 @@ use frame_support::{
 };
 use mock::{
 	AccountId, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, FeePoolSize, MockPriceSource, Origin, Runtime,
-	System, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT, TIP_UNBALANCED_AMOUNT,
+	System, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DAVE, DOT, FEE_UNBALANCED_AMOUNT,
+	TIP_UNBALANCED_AMOUNT,
 };
 use orml_traits::MultiCurrency;
 use pallet_balances::ReserveData;
@@ -669,6 +670,17 @@ fn payment_reserve_fee() {
 		assert_eq!(35, Currencies::free_balance(ACA, &BOB));
 		assert_eq!(135, Currencies::total_balance(ACA, &BOB));
 		assert_eq!(2650, Currencies::free_balance(AUSD, &BOB));
+
+		// reserve fee consider multiplier
+		NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &DAVE, 4000));
+		let fee = <ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::reserve_fee(
+			&DAVE, 100, None,
+		);
+		assert_eq!(150, fee.unwrap());
+		assert_eq!(48, Currencies::free_balance(ACA, &DAVE));
+		assert_eq!(198, Currencies::total_balance(ACA, &DAVE));
+		assert_eq!(2020, Currencies::free_balance(AUSD, &DAVE));
 	});
 }
 
