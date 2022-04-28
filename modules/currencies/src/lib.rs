@@ -797,7 +797,7 @@ impl<T: Config> fungibles::Transfer<T::AccountId> for Pallet<T> {
 			return Ok(amount);
 		}
 
-		Ok(match asset_id {
+		let transferred_amount = match asset_id {
 			CurrencyId::Erc20(_) => {
 				// Event is deposited in `fn transfer`
 				<Self as MultiCurrency<_>>::transfer(asset_id, source, dest, amount)?;
@@ -827,7 +827,8 @@ impl<T: Config> fungibles::Transfer<T::AccountId> for Pallet<T> {
 				});
 				actual
 			}
-		})
+		};
+		Ok(transferred_amount)
 	}
 }
 

@@ -128,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2050,
+	spec_version: 2051,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -534,7 +534,9 @@ parameter_types! {
 	pub BountyDepositBase: Balance = dollar(ACA);
 	pub const BountyDepositPayoutDelay: BlockNumber = DAYS;
 	pub const BountyUpdatePeriod: BlockNumber = 14 * DAYS;
-	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
+	pub const CuratorDepositMultiplier: Permill = Permill::from_percent(50);
+	pub CuratorDepositMin: Balance = dollar(ACA);
+	pub CuratorDepositMax: Balance = 100 * dollar(ACA);
 	pub BountyValueMinimum: Balance = 5 * dollar(ACA);
 	pub DataDepositPerByte: Balance = cent(ACA);
 	pub const MaximumReasonLength: u32 = 16384;
@@ -564,8 +566,10 @@ impl pallet_bounties::Config for Runtime {
 	type BountyDepositBase = BountyDepositBase;
 	type BountyDepositPayoutDelay = BountyDepositPayoutDelay;
 	type BountyUpdatePeriod = BountyUpdatePeriod;
-	type BountyCuratorDeposit = BountyCuratorDeposit;
 	type BountyValueMinimum = BountyValueMinimum;
+	type CuratorDepositMultiplier = CuratorDepositMultiplier;
+	type CuratorDepositMin = CuratorDepositMin;
+	type CuratorDepositMax = CuratorDepositMax;
 	type DataDepositPerByte = DataDepositPerByte;
 	type MaximumReasonLength = MaximumReasonLength;
 	type WeightInfo = ();
@@ -1907,33 +1911,32 @@ extern crate orml_benchmarking;
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
 	define_benchmarks!(
-		[module_dex, benchmarking::dex]
-		[module_dex_oracle, benchmarking::dex_oracle]
-		[module_asset_registry, benchmarking::asset_registry]
-		[module_auction_manager, benchmarking::auction_manager]
-		[module_cdp_engine, benchmarking::cdp_engine]
-		[module_earning, benchmarking::earning]
-		[module_emergency_shutdown, benchmarking::emergency_shutdown]
-		[module_evm, benchmarking::evm]
-		[module_homa, benchmarking::homa]
-		[module_honzon, benchmarking::honzon]
-		[module_cdp_treasury, benchmarking::cdp_treasury]
-		[module_collator_selection, benchmarking::collator_selection]
-		[module_nominees_election, benchmarking::nominees_election]
-		[module_transaction_pause, benchmarking::transaction_pause]
-		[module_transaction_payment, benchmarking::transaction_payment]
-		[module_incentives, benchmarking::incentives]
-		[module_prices, benchmarking::prices]
-		[module_evm_accounts, benchmarking::evm_accounts]
-		[module_currencies, benchmarking::currencies]
-		[module_session_manager, benchmarking::session_manager]
-		[orml_tokens, benchmarking::tokens]
-		[orml_vesting, benchmarking::vesting]
-		[orml_auction, benchmarking::auction]
-		[orml_authority, benchmarking::authority]
-		[orml_oracle, benchmarking::oracle]
-		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
-		[module_idle_scheduler, benchmarking::idle_scheduler]
+		// [module_dex, benchmarking::dex]
+		// [module_dex_oracle, benchmarking::dex_oracle]
+		// [module_asset_registry, benchmarking::asset_registry]
+		// [module_auction_manager, benchmarking::auction_manager]
+		// [module_cdp_engine, benchmarking::cdp_engine]
+		// [module_earning, benchmarking::earning]
+		// [module_emergency_shutdown, benchmarking::emergency_shutdown]
+		[module_evm, benchmarking::evm] /* [module_homa, benchmarking::homa]
+		                                 * [module_honzon, benchmarking::honzon]
+		                                 * [module_cdp_treasury, benchmarking::cdp_treasury]
+		                                 * [module_collator_selection, benchmarking::collator_selection]
+		                                 * [module_nominees_election, benchmarking::nominees_election]
+		                                 * [module_transaction_pause, benchmarking::transaction_pause]
+		                                 * [module_transaction_payment, benchmarking::transaction_payment]
+		                                 * [module_incentives, benchmarking::incentives]
+		                                 * [module_prices, benchmarking::prices]
+		                                 * [module_evm_accounts, benchmarking::evm_accounts]
+		                                 * [module_currencies, benchmarking::currencies]
+		                                 * [module_session_manager, benchmarking::session_manager]
+		                                 * [orml_tokens, benchmarking::tokens]
+		                                 * [orml_vesting, benchmarking::vesting]
+		                                 * [orml_auction, benchmarking::auction]
+		                                 * [orml_authority, benchmarking::authority]
+		                                 * [orml_oracle, benchmarking::oracle]
+		                                 * [nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
+		                                 * [module_idle_scheduler, benchmarking::idle_scheduler] */
 	);
 }
 

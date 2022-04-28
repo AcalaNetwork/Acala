@@ -1394,7 +1394,7 @@ fn fungible_transfer_trait_should_work() {
 				<Currencies as fungibles::Transfer<_>>::transfer(NATIVE_CURRENCY_ID, &alice(), &bob(), 489_999, true),
 				DispatchError::Module(ModuleError {
 					index: 1,
-					error: 4,
+					error: [4, 0, 0, 0],
 					message: Some("KeepAlive")
 				})
 			);
@@ -1645,7 +1645,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				<Currencies as fungibles::MutateHold<_>>::hold(NATIVE_CURRENCY_ID, &alice(), 500000),
 				DispatchError::Module(ModuleError {
 					index: 1,
-					error: 2,
+					error: [2, 0, 0, 0],
 					message: Some("InsufficientBalance",),
 				})
 			);
@@ -1689,7 +1689,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				<Currencies as fungibles::MutateHold<_>>::hold(X_TOKEN_ID, &alice(), 200000),
 				DispatchError::Module(ModuleError {
 					index: 2,
-					error: 0,
+					error: [0, 0, 0, 0],
 					message: Some("BalanceTooLow",),
 				},)
 			);
@@ -1748,7 +1748,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				<Currencies as fungibles::MutateHold<_>>::release(NATIVE_CURRENCY_ID, &alice(), 50000, false),
 				DispatchError::Module(ModuleError {
 					index: 1,
-					error: 2,
+					error: [2, 0, 0, 0],
 					message: Some("InsufficientBalance")
 				})
 			);
@@ -1796,7 +1796,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				<Currencies as fungibles::MutateHold<_>>::release(X_TOKEN_ID, &alice(), 100000, false),
 				DispatchError::Module(ModuleError {
 					index: 2,
-					error: 0,
+					error: [0, 0, 0, 0],
 					message: Some("BalanceTooLow")
 				})
 			);
@@ -1869,7 +1869,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				),
 				DispatchError::Module(ModuleError {
 					index: 1,
-					error: 2,
+					error: [2, 0, 0, 0],
 					message: Some("InsufficientBalance")
 				})
 			);
@@ -1936,7 +1936,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				),
 				DispatchError::Module(ModuleError {
 					index: 2,
-					error: 0,
+					error: [0, 0, 0, 0],
 					message: Some("BalanceTooLow")
 				})
 			);
