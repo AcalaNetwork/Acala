@@ -130,44 +130,6 @@ pub mod module {
 			to: T::AccountId,
 			amount: BalanceOf<T>,
 		},
-		/// Dust swept.
-		DustSwept {
-			currency_id: CurrencyId,
-			who: T::AccountId,
-			amount: BalanceOf<T>,
-		},
-		/// Some funds where slashed
-		Slashed {
-			currency_id: CurrencyId,
-			who: T::AccountId,
-			amount: BalanceOf<T>,
-		},
-		/// Some funds were reserved.
-		Reserved {
-			currency_id: CurrencyId,
-			who: T::AccountId,
-			amount: BalanceOf<T>,
-		},
-		/// Some funds were unreserved.
-		Unreserved {
-			currency_id: CurrencyId,
-			who: T::AccountId,
-			amount: BalanceOf<T>,
-		},
-		/// Some funds were moved from reserved to another account.
-		ReserveRepatriated {
-			currency_id: CurrencyId,
-			from: T::AccountId,
-			to: T::AccountId,
-			amount: BalanceOf<T>,
-			destination_status: BalanceStatus,
-		},
-		/// Some reserved funds were slashed
-		ReserveSlashed {
-			currency_id: CurrencyId,
-			who: T::AccountId,
-			unslashed: BalanceOf<T>,
-		},
 	}
 
 	#[pallet::pallet]
@@ -245,12 +207,6 @@ pub mod module {
 				}
 				if free_balance < Self::minimum_balance(currency_id) {
 					T::OnDust::on_dust(&account, currency_id, free_balance);
-
-					Self::deposit_event(Event::DustSwept {
-						currency_id,
-						who: account,
-						amount: free_balance,
-					});
 				}
 			}
 			Ok(())
@@ -416,14 +372,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 	fn slash(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> Self::Balance {
 		match currency_id {
-			CurrencyId::Erc20(_) => {
-				Self::deposit_event(Event::Slashed {
-					currency_id,
-					who: who.clone(),
-					amount: Default::default(),
-				});
-				Default::default()
-			}
+			CurrencyId::Erc20(_) => Default::default(),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::slash(who, amount),
 			_ => T::MultiCurrency::slash(currency_id, who, amount),
 		}
@@ -497,14 +446,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 
 	fn slash_reserved(currency_id: Self::CurrencyId, who: &T::AccountId, value: Self::Balance) -> Self::Balance {
 		match currency_id {
-			CurrencyId::Erc20(_) => {
-				Self::deposit_event(Event::ReserveSlashed {
-					currency_id,
-					who: who.clone(),
-					unslashed: value,
-				});
-				value
-			}
+			CurrencyId::Erc20(_) => value,
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::slash_reserved(who, value),
 			_ => T::MultiCurrency::slash_reserved(currency_id, who, value),
 		}
@@ -546,14 +488,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 					},
 					reserve_address(address),
 					value,
-				)?;
-
-				Self::deposit_event(Event::Reserved {
-					currency_id,
-					who: who.clone(),
-					amount: value,
-				});
-				Ok(())
+				)
 			}
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::reserve(who, value),
 			_ => T::MultiCurrency::reserve(currency_id, who, value),
@@ -578,7 +513,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 					)
 					.unwrap_or_default();
 					let actual = reserved_balance.min(value);
-					let remaining = match T::EVMBridge::transfer(
+					match T::EVMBridge::transfer(
 						InvokeContext {
 							contract,
 							sender,
@@ -589,14 +524,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 					) {
 						Ok(_) => value - actual,
 						Err(_) => value,
-					};
-
-					Self::deposit_event(Event::Unreserved {
-						currency_id,
-						who: who.clone(),
-						amount: actual,
-					});
-					remaining
+					}
 				} else {
 					value
 				}
@@ -664,14 +592,6 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 						actual,
 					),
 				}?;
-
-				Self::deposit_event(Event::ReserveRepatriated {
-					currency_id: CurrencyId::Erc20(contract),
-					from: slashed.clone(),
-					to: beneficiary.clone(),
-					amount: actual,
-					destination_status: status,
-				});
 				Ok(value - actual)
 			}
 			id if id == T::GetNativeCurrencyId::get() => {

@@ -2017,11 +2017,6 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				&alice(),
 				8000
 			));
-			System::assert_last_event(Event::Currencies(crate::Event::Reserved {
-				currency_id: CurrencyId::Erc20(erc20_address()),
-				who: alice(),
-				amount: 8000,
-			}));
 
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
@@ -2063,11 +2058,6 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				),
 				Ok(8000)
 			);
-			System::assert_last_event(Event::Currencies(crate::Event::Unreserved {
-				currency_id: CurrencyId::Erc20(erc20_address()),
-				who: alice(),
-				amount: 8000,
-			}));
 
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
@@ -2130,13 +2120,6 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				),
 				Ok(2000)
 			);
-			System::assert_last_event(Event::Currencies(crate::Event::ReserveRepatriated {
-				currency_id: CurrencyId::Erc20(erc20_address()),
-				from: alice(),
-				to: bob(),
-				amount: 2000,
-				destination_status: BalanceStatus::Reserved,
-			}));
 
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
@@ -2244,11 +2227,6 @@ fn sweep_dust_tokens_works() {
 			DOT,
 			accounts
 		));
-		System::assert_last_event(Event::Currencies(crate::Event::DustSwept {
-			currency_id: DOT,
-			who: bob(),
-			amount: 1,
-		}));
 
 		// bob's account is gone
 		assert_eq!(tokens::Accounts::<Runtime>::contains_key(bob(), DOT), false);
@@ -2323,11 +2301,6 @@ fn sweep_dust_native_currency_works() {
 			NATIVE_CURRENCY_ID,
 			accounts
 		));
-		System::assert_last_event(Event::Currencies(crate::Event::DustSwept {
-			currency_id: NATIVE_CURRENCY_ID,
-			who: bob(),
-			amount: 1,
-		}));
 
 		// bob's account is gone
 		assert_eq!(System::account_exists(&bob()), false);
