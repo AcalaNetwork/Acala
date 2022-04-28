@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Cross-chain transfer tests within Kusama network.
+//! Cross-chain transfer tests within Polkadot network.
 
 use crate::relaychain::polkadot_test_net::*;
 use crate::setup::*;
