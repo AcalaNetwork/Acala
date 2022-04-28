@@ -194,7 +194,7 @@ runtime_benchmarks! {
 	publish_contract {
 		let alice_account = alice_account_id();
 
-		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
+		set_balance(NATIVE, &alice_account, 1_000_000_000 * dollar(NATIVE));
 		set_balance(NATIVE, &bob_account_id(), 1_000 * dollar(NATIVE));
 		let contract = deploy_contract(alice_account_id())?;
 
