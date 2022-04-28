@@ -23,14 +23,14 @@ use crate::cli::{Cli, RelayChainCli, Subcommand};
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
-use service::{chain_spec, IdentifyVariant};
-
+use frame_benchmarking_cli::BenchmarkCmd;
 use log::info;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams, NetworkParams, Result,
 	RuntimeVersion, SharedParams, SubstrateCli,
 };
 use sc_service::config::{BasePath, PrometheusConfig};
+use service::{chain_spec, new_partial, IdentifyVariant};
 use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::traits::Block as BlockT;
 use std::{io::Write, net::SocketAddr};
@@ -286,7 +286,31 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			with_runtime_or_err!(chain_spec, {
-				return runner.sync_run(|config| cmd.run::<Block, Executor>(config));
+				{
+					match cmd {
+						BenchmarkCmd::Pallet(cmd) => {
+							if cfg!(feature = "runtime-benchmarks") {
+								runner.sync_run(|config| cmd.run::<Block, Executor>(config))
+							} else {
+								Err("Benchmarking wasn't enabled when building the node. \
+						You can enable it with `--features runtime-benchmarks`."
+									.into())
+							}
+						}
+						BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
+							let partials = new_partial::<RuntimeApi>(&config, true, false)?;
+							cmd.run(partials.client)
+						}),
+						BenchmarkCmd::Storage(cmd) => runner.sync_run(|config| {
+							let partials = new_partial::<RuntimeApi>(&config, true, false)?;
+							let db = partials.backend.expose_db();
+							let storage = partials.backend.expose_storage();
+
+							cmd.run(config, partials.client.clone(), db, storage)
+						}),
+						BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
+					}
+				}
 			})
 		}
 
@@ -382,7 +406,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 			runner.async_run(|mut config| {
 				let (client, backend, _, task_manager) = service::new_chain_ops(&mut config)?;
-				Ok((cmd.run(client, backend), task_manager))
+				Ok((cmd.run(client, backend, None), task_manager))
 			})
 		}
 
