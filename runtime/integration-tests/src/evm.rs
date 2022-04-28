@@ -1154,24 +1154,27 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 
 			assert_ok!(deploy_contract(AccountId::from(BOB)));
 
-			System::assert_has_event(Event::Balances(pallet_balances::Event::Reserved {
-				who: AccountId::from(BOB),
-				amount: 10_000_000_000_000,
-			}));
-			System::assert_has_event(Event::Balances(pallet_balances::Event::Unreserved {
-				who: AccountId::from(BOB),
-				amount: 1_036_700_000_000,
-			}));
-			System::assert_has_event(Event::Balances(pallet_balances::Event::Unreserved {
-				who: AccountId::from(BOB),
-				amount: 8_963_300_000_000,
-			}));
-			System::assert_last_event(Event::EVM(module_evm::Event::Created {
-				from: EvmAddress::from_str("0x414d1f1c39e8357acfa07e8aac63cc5da8f9ca4d").unwrap(),
-				contract: EvmAddress::from_str("0xa764c25fe7641aeb21ac08118fa343093b9cb30d").unwrap(),
-				logs: vec![],
-				used_gas: 132199,
-				used_storage: 10367,
-			}));
+			#[cfg(feature = "with-karura-runtime")]
+			{
+				System::assert_has_event(Event::Balances(pallet_balances::Event::Reserved {
+					who: AccountId::from(BOB),
+					amount: 10_000_000_000_000,
+				}));
+				System::assert_has_event(Event::Balances(pallet_balances::Event::Unreserved {
+					who: AccountId::from(BOB),
+					amount: 1_036_700_000_000,
+				}));
+				System::assert_has_event(Event::Balances(pallet_balances::Event::Unreserved {
+					who: AccountId::from(BOB),
+					amount: 8_963_300_000_000,
+				}));
+				System::assert_last_event(Event::EVM(module_evm::Event::Created {
+					from: EvmAddress::from_str("0x414d1f1c39e8357acfa07e8aac63cc5da8f9ca4d").unwrap(),
+					contract: EvmAddress::from_str("0xa764c25fe7641aeb21ac08118fa343093b9cb30d").unwrap(),
+					logs: vec![],
+					used_gas: 132199,
+					used_storage: 10367,
+				}));
+			}
 		});
 }
