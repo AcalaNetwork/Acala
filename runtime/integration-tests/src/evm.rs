@@ -1152,7 +1152,7 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 				vec![USD_CURRENCY, NATIVE_CURRENCY]
 			);
 
-			let _ = deploy_contract(AccountId::from(BOB));
+			assert_ok!(deploy_contract(AccountId::from(BOB)));
 
 			System::assert_has_event(Event::Balances(pallet_balances::Event::Reserved {
 				who: AccountId::from(BOB),

@@ -757,6 +757,21 @@ where
 		T::WeightToFee::calc(&capped_weight)
 	}
 
+	/// Given fee pre-calculated by weight, consider only multiplier, other parts is set to 0.
+	fn calculate_final_fee(fee: PalletBalanceOf<T>) -> PalletBalanceOf<T> {
+		let multiplier = Self::next_fee_multiplier();
+		let adjusted_weight_fee = multiplier.saturating_mul_int(fee.clone());
+		let fee_details = FeeDetails {
+			inclusion_fee: Some(InclusionFee {
+				base_fee: 0,
+				len_fee: 0,
+				adjusted_weight_fee,
+			}),
+			tip: 0,
+		};
+		fee_details.final_fee()
+	}
+
 	/// If native asset is enough, return `None`, else return the fee amount should be swapped.
 	fn check_native_is_not_enough(who: &T::AccountId, fee: PalletBalanceOf<T>) -> Option<Balance> {
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
@@ -1396,6 +1411,7 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> Result<PalletBalanceOf<T>, DispatchError> {
+		let fee = Pallet::<T>::calculate_final_fee(fee);
 		Pallet::<T>::native_then_alternative_or_default(who, fee)?;
 		T::Currency::reserve_named(&named.unwrap_or(RESERVE_ID), who, fee)?;
 		Ok(fee)
