@@ -134,7 +134,7 @@ where
 				let gas_limit = input.u64_at(4)?;
 				let storage_limit = input.u32_at(5)?;
 				let min_delay = input.u32_at(6)?;
-				// solidity abi enocde bytes will add an length at input[7]
+				// solidity abi encode bytes will add an length at input[7]
 				let input_len = input.u32_at(8)?;
 				let input_data = input.bytes_at(9, input_len as usize)?;
 
