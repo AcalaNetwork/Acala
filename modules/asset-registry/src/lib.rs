@@ -24,6 +24,7 @@
 #![allow(clippy::unused_unit)]
 
 use frame_support::{
+	assert_ok,
 	dispatch::DispatchResult,
 	ensure,
 	pallet_prelude::*,
@@ -192,6 +193,37 @@ pub mod module {
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub assets: Vec<(CurrencyId, BalanceOf<T>)>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig {
+				assets: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			self.assets.iter().for_each(|(asset, ed)| {
+				assert_ok!(Pallet::<T>::do_register_native_asset(
+					*asset,
+					&AssetMetadata {
+						name: asset.name().unwrap().as_bytes().to_vec(),
+						symbol: asset.symbol().unwrap().as_bytes().to_vec(),
+						decimals: asset.decimals().unwrap(),
+						minimal_balance: *ed,
+					}
+				));
+			});
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -679,7 +711,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 	// the EvmAddress must have been mapped.
 	fn name(currency_id: CurrencyId) -> Option<Vec<u8>> {
 		let name = match currency_id {
-			CurrencyId::Token(_) => currency_id.name().map(|v| v.as_bytes().to_vec()),
+			CurrencyId::Token(_) => AssetMetadatas::<T>::get(AssetIds::NativeAssetId(currency_id)).map(|v| v.name),
 			CurrencyId::DexShare(symbol_0, symbol_1) => {
 				let name_0 = match symbol_0 {
 					DexShare::Token(symbol) => CurrencyId::Token(symbol).name().map(|v| v.as_bytes().to_vec()),
@@ -755,7 +787,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 	// the EvmAddress must have been mapped.
 	fn symbol(currency_id: CurrencyId) -> Option<Vec<u8>> {
 		let symbol = match currency_id {
-			CurrencyId::Token(_) => currency_id.symbol().map(|v| v.as_bytes().to_vec()),
+			CurrencyId::Token(_) => AssetMetadatas::<T>::get(AssetIds::NativeAssetId(currency_id)).map(|v| v.symbol),
 			CurrencyId::DexShare(symbol_0, symbol_1) => {
 				let token_symbol_0 = match symbol_0 {
 					DexShare::Token(symbol) => CurrencyId::Token(symbol).symbol().map(|v| v.as_bytes().to_vec()),
@@ -837,7 +869,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 	// the EvmAddress must have been mapped.
 	fn decimals(currency_id: CurrencyId) -> Option<u8> {
 		match currency_id {
-			CurrencyId::Token(_) => currency_id.decimals(),
+			CurrencyId::Token(_) => AssetMetadatas::<T>::get(AssetIds::NativeAssetId(currency_id)).map(|v| v.decimals),
 			CurrencyId::DexShare(symbol_0, _) => {
 				// initial dex share amount is calculated based on currency_id_0,
 				// use the decimals of currency_id_0 as the decimals of lp token.
