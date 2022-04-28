@@ -1286,6 +1286,7 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::Dex(module_dex::Call::remove_liquidity { .. })
 				)
 			}
+			ProxyType::StableAssetLiquidity | ProxyType::StableAssetSwap => false,
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
