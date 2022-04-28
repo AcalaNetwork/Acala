@@ -17,6 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 use super::*;
 
+use node_primitives::Nonce;
+
 /// A Cumulus test node instance used for testing.
 pub struct TestNode {
 	/// TaskManager's instance.
@@ -78,9 +80,10 @@ impl TestNode {
 		&self,
 		function: impl Into<runtime::Call>,
 		caller: Option<Sr25519Keyring>,
+		nonce: Nonce,
 	) -> Result<H256, sc_transaction_pool::error::Error> {
 		let extrinsic = match caller {
-			Some(caller) => construct_extrinsic(&*self.client, function, caller.pair(), Some(0)),
+			Some(caller) => construct_extrinsic(&*self.client, function, caller.pair(), Some(nonce)),
 			None => runtime::UncheckedExtrinsic::new(function.into(), None).unwrap(),
 		};
 		let at = self.client.info().best_hash;
@@ -88,6 +91,32 @@ impl TestNode {
 		self.transaction_pool
 			.submit_one(&BlockId::Hash(at), TransactionSource::Local, extrinsic)
 			.await
+	}
+
+	/// Submit extrinsic batch to transaction pool.
+	pub async fn submit_extrinsic_batch<T>(
+		&self,
+		functions: Vec<T>,
+		caller: Option<Sr25519Keyring>,
+		nonce: Nonce,
+	) -> Result<(), sc_transaction_pool::error::Error>
+	where
+		T: Into<runtime::Call>,
+	{
+		let extrinsics = functions
+			.into_iter()
+			.enumerate()
+			.map(|(index, function)| match caller {
+				Some(caller) => construct_extrinsic(&*self.client, function, caller.pair(), Some(nonce + index as u32)),
+				None => runtime::UncheckedExtrinsic::new(function.into(), None).unwrap(),
+			})
+			.collect();
+		let at = self.client.info().best_hash;
+
+		self.transaction_pool
+			.submit_at(&BlockId::Hash(at), TransactionSource::Local, extrinsics)
+			.await
+			.map(drop)
 	}
 
 	/// Executes closure in an externalities provided environment.
@@ -117,14 +146,15 @@ impl TestNode {
 		&self,
 		function: impl Into<runtime::Call>,
 		caller: Sr25519Keyring,
+		nonce: Nonce,
 	) -> Result<RpcTransactionOutput, RpcTransactionError> {
-		let extrinsic = construct_extrinsic(&*self.client, function, caller.pair(), Some(0));
+		let extrinsic = construct_extrinsic(&*self.client, function, caller.pair(), Some(nonce));
 
 		self.rpc_handlers.send_transaction(extrinsic.0.into()).await
 	}
 
 	/// Register a parachain at this relay chain.
-	pub async fn schedule_upgrade(&self, validation: Vec<u8>) -> Result<(), RpcTransactionError> {
+	pub async fn schedule_upgrade(&self, validation: Vec<u8>, nonce: Nonce) -> Result<(), RpcTransactionError> {
 		let call = frame_system::Call::set_code { code: validation };
 
 		self.send_extrinsic(
@@ -133,6 +163,7 @@ impl TestNode {
 				weight: 1_000,
 			},
 			Sr25519Keyring::Alice,
+			nonce,
 		)
 		.await
 		.map(drop)
@@ -144,12 +175,27 @@ impl TestNode {
 		origin: sp_keyring::AccountKeyring,
 		dest: sp_keyring::AccountKeyring,
 		value: Balance,
+		nonce: Nonce,
 	) -> Result<(), RpcTransactionError> {
 		let function = node_runtime::Call::Balances(pallet_balances::Call::transfer_keep_alive {
 			dest: MultiAddress::Id(dest.public().into_account().into()),
 			value,
 		});
 
-		self.send_extrinsic(function, origin).await.map(drop)
+		self.send_extrinsic(function, origin, nonce).await.map(drop)
 	}
+}
+
+#[macro_export]
+/// makes sure last block emitted event and return it
+macro_rules! ensure_event {
+	($node: expr, $event: pat) => {{
+		let e = $node.with_state(|| {
+			frame_system::Pallet::<node_runtime::Runtime>::events()
+				.into_iter()
+				.find(|record| matches!(record.event, $event))
+		});
+		assert!(e.is_some(), "{}", format!("event {} not found", stringify!($event)));
+		e.unwrap()
+	}};
 }

@@ -22,7 +22,6 @@ use crate::{
 	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Runtime, System,
 };
 use frame_benchmarking::{account, whitelisted_caller};
-use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use module_dex::TradingPairStatus;
 use orml_benchmarking::runtime_benchmarks;

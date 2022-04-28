@@ -32,7 +32,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE_STATEMINE: Balance = 10_666_664;
-pub const FEE_KUSAMA: Balance = 106_666_660;
+pub const FEE_KUSAMA: Balance = 165_940_672;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
