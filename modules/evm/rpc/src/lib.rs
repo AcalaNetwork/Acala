@@ -159,11 +159,14 @@ where
 			.max_storage_limit(&BlockId::Hash(hash))
 			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?;
 
-		let gas_limit = gas_limit.unwrap_or(max_gas_limit);
-		if gas_limit > max_gas_limit {
+		// eth_call is capped at 10x (1000%) the current block gas limit
+		let gas_limit_cap = 10 * max_gas_limit;
+
+		let gas_limit = gas_limit.unwrap_or(gas_limit_cap);
+		if gas_limit > gas_limit_cap {
 			return Err(Error {
 				code: ErrorCode::InvalidParams,
-				message: format!("GasLimit exceeds allowance: {}", max_gas_limit),
+				message: format!("GasLimit exceeds capped allowance: {}", gas_limit_cap),
 				data: None,
 			});
 		}
