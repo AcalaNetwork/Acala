@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
-use orml_traits::Change;
+use orml_traits::{Change, MultiCurrency};
 use sp_runtime::FixedPointNumber;
 use support::{Rate, Ratio};
 
@@ -197,7 +197,7 @@ fn close_loan_has_debit_by_dex_work() {
 }
 
 #[test]
-fn transfer_debit_fails() {
+fn transfer_debit_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
@@ -261,5 +261,45 @@ fn transfer_debit_fails() {
 
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 45);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+	});
+}
+
+#[test]
+fn transfer_debit_no_ausd() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			DOT,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+
+		// set up two loans
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 50);
+
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), DOT, 100, 50));
+		assert_eq!(LoansModule::positions(DOT, ALICE).collateral, 100);
+		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 50);
+
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 100);
+		assert_ok!(Currencies::transfer(Origin::signed(ALICE), BOB, AUSD, 100));
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
+		assert_ok!(HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 5));
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
 	});
 }
