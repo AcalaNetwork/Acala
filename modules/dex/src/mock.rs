@@ -31,7 +31,7 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
-use support::{create_aggregated_swap, mocks::MockErc20InfoMapping, SpecificJointsSwap};
+use support::{mocks::MockErc20InfoMapping, SpecificJointsSwap};
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;
@@ -155,14 +155,6 @@ parameter_types! {
 
 pub type AUSDJointSwap = SpecificJointsSwap<DexModule, AUSDJoint>;
 pub type ACAJointSwap = SpecificJointsSwap<DexModule, ACAJoint>;
-
-create_aggregated_swap!(
-	AggregatedSwap,
-	AccountId,
-	Balance,
-	CurrencyId,
-	[AUSDJointSwap, ACAJointSwap]
-);
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;

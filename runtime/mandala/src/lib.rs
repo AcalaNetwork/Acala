@@ -54,9 +54,7 @@ use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{
-	create_aggregated_swap, AssetIdMapping, DispatchableTask, ExchangeRateProvider, SpecificJointsSwap,
-};
+use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, SpecificJointsSwap};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 use scale_info::TypeInfo;
 
@@ -117,12 +115,9 @@ pub use xcm::latest::prelude::*;
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
 
-use stable_asset_swap::StableAssetSwapAdaptor;
-
 mod authority;
 mod benchmarking;
 pub mod constants;
-mod stable_asset_swap;
 /// Weights for pallets used in the runtime.
 mod weights;
 pub mod xcm_config;
@@ -1056,7 +1051,7 @@ impl module_cdp_engine::Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = Dex;
-	type Swap = AggregatedSwap;
+	type Swap = AcalaSwap;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1108,16 +1103,15 @@ impl module_dex::Config for Runtime {
 	type OnLiquidityPoolUpdated = ();
 }
 
-pub type AcalaSwap = SpecificJointsSwap<Dex, AlternativeSwapPathJointList>;
-pub type StableAssetSwap = StableAssetSwapAdaptor<StableAsset>;
+impl module_aggregated_dex::Config for Runtime {
+	type DEX = Dex;
+	type StableAsset = StableAsset;
+	type DexSwapJointList = AlternativeSwapPathJointList;
+	type SwapPathLimit = ConstU32<3>;
+	type WeightInfo = ();
+}
 
-create_aggregated_swap!(
-	AggregatedSwap,
-	AccountId,
-	Balance,
-	CurrencyId,
-	[AcalaSwap, StableAssetSwapAdaptor<StableAsset>]
-);
+pub type AcalaSwap = SpecificJointsSwap<Dex, AlternativeSwapPathJointList>;
 
 impl module_dex_oracle::Config for Runtime {
 	type DEX = Dex;
@@ -1138,7 +1132,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type AuctionManagerHandler = AuctionManager;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;
 	type DEX = Dex;
-	type Swap = AggregatedSwap;
+	type Swap = AcalaSwap;
 	type MaxAuctionsCount = ConstU32<50>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
@@ -1868,6 +1862,7 @@ construct_runtime!(
 		Prices: module_prices = 110,
 		Dex: module_dex = 111,
 		DexOracle: module_dex_oracle = 112,
+		AggregatedDex: module_aggregated_dex = 113,
 
 		// Honzon
 		AuctionManager: module_auction_manager = 120,

@@ -4498,6 +4498,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "libsecp256k1",
+ "module-aggregated-dex",
  "module-asset-registry",
  "module-auction-manager",
  "module-cdp-engine",
@@ -5496,6 +5497,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "libsecp256k1",
+ "module-aggregated-dex",
  "module-asset-registry",
  "module-auction-manager",
  "module-cdp-engine",
@@ -5807,6 +5809,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "module-aggregated-dex"
+version = "2.5.1"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-dex",
+ "module-support",
+ "nutsfinance-stable-asset",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

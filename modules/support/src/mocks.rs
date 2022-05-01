@@ -271,20 +271,21 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 	fn get_best_route(
 		_input_asset: Self::AssetId,
 		_output_asset: Self::AssetId,
-		_limit: Self::Balance,
-	) -> Option<
-		StableAssetPoolInfo<
-			Self::AssetId,
-			Self::AtLeast64BitUnsigned,
-			Self::Balance,
-			Self::AccountId,
-			Self::BlockNumber,
-		>,
-	> {
+		_input_amount: Self::Balance,
+	) -> Option<(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex, Self::Balance)> {
 		unimplemented!()
 	}
 
-	fn get_swap_amount_exact(
+	fn get_swap_output_amount(
+		_pool_id: StableAssetPoolId,
+		_input_index: PoolTokenIndex,
+		_output_index: PoolTokenIndex,
+		_dx_bal: Self::Balance,
+	) -> Option<SwapResult<Self::Balance>> {
+		unimplemented!()
+	}
+
+	fn get_swap_input_amount(
 		_pool_id: StableAssetPoolId,
 		_input_index: PoolTokenIndex,
 		_output_index: PoolTokenIndex,

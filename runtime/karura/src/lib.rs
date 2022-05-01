@@ -117,7 +117,6 @@ mod integration_tests_config;
 mod authority;
 mod benchmarking;
 pub mod constants;
-mod stable_asset_swap;
 /// Weights for pallets used in the runtime.
 mod weights;
 pub mod xcm_config;
@@ -1108,6 +1107,14 @@ impl module_dex::Config for Runtime {
 
 pub type AcalaSwap = SpecificJointsSwap<Dex, AlternativeSwapPathJointList>;
 
+impl module_aggregated_dex::Config for Runtime {
+	type DEX = Dex;
+	type StableAsset = StableAsset;
+	type DexSwapJointList = AlternativeSwapPathJointList;
+	type SwapPathLimit = ConstU32<3>;
+	type WeightInfo = ();
+}
+
 impl module_dex_oracle::Config for Runtime {
 	type DEX = Dex;
 	type Time = Timestamp;
@@ -1687,6 +1694,7 @@ construct_runtime!(
 		Prices: module_prices = 90,
 		Dex: module_dex = 91,
 		DexOracle: module_dex_oracle = 92,
+		AggregatedDex: module_aggregated_dex = 93,
 
 		// Honzon
 		AuctionManager: module_auction_manager = 100,
