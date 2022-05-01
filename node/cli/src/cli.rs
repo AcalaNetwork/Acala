@@ -47,7 +47,7 @@ pub enum Subcommand {
 	Inspect(inspect::cli::InspectCmd),
 
 	/// The custom benchmark subcommmand benchmarking runtime modules.
-	#[clap(name = "benchmark", about = "Benchmark runtime modules.")]
+	#[clap(subcommand)]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
 
 	/// Try some experimental command on the runtime. This includes migration and runtime-upgrade

@@ -66,8 +66,7 @@ fn create_class_should_work() {
 			class_id: CLASS_ID,
 		}));
 
-		let cls_deposit =
-			CreateClassDeposit::get() + DataDepositPerByte::get() * ((metadata.len() as u128) + TEST_ATTR_LEN);
+		let cls_deposit = CREATE_CLASS_DEPOSIT + DATA_DEPOSIT_PER_BYTE * ((metadata.len() as u128) + TEST_ATTR_LEN);
 
 		assert_eq!(
 			reserved_balance(&class_id_account()),
@@ -131,7 +130,7 @@ fn mint_should_work() {
 		}));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			2 * (CreateTokenDeposit::get() + ((metadata_2.len() as u128 + TEST_ATTR_LEN) * DataDepositPerByte::get()))
+			2 * (CREATE_TOKEN_DEPOSIT + ((metadata_2.len() as u128 + TEST_ATTR_LEN) * DATA_DEPOSIT_PER_BYTE))
 		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
@@ -149,13 +148,13 @@ fn mint_should_work() {
 		}));
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			CreateClassDeposit::get()
+			CREATE_CLASS_DEPOSIT
 				+ Proxy::deposit(1u32)
-				+ DataDepositPerByte::get() * (metadata.len() as u128 + TEST_ATTR_LEN)
+				+ DATA_DEPOSIT_PER_BYTE * (metadata.len() as u128 + TEST_ATTR_LEN)
 		);
 		assert_eq!(
 			reserved_balance(&BOB),
-			2 * (CreateTokenDeposit::get() + DataDepositPerByte::get() * (metadata_2.len() as u128 + TEST_ATTR_LEN))
+			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE * (metadata_2.len() as u128 + TEST_ATTR_LEN))
 		);
 		assert_eq!(
 			orml_nft::Pallet::<Runtime>::tokens(0, 0).unwrap(),
@@ -163,8 +162,7 @@ fn mint_should_work() {
 				metadata: metadata_2.clone().try_into().unwrap(),
 				owner: BOB,
 				data: TokenData {
-					deposit: CreateTokenDeposit::get()
-						+ DataDepositPerByte::get() * (metadata_2.len() as u128 + TEST_ATTR_LEN),
+					deposit: CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE * (metadata_2.len() as u128 + TEST_ATTR_LEN),
 					attributes: test_attr(2),
 				}
 			}
@@ -175,8 +173,7 @@ fn mint_should_work() {
 				metadata: metadata_2.clone().try_into().unwrap(),
 				owner: BOB,
 				data: TokenData {
-					deposit: CreateTokenDeposit::get()
-						+ DataDepositPerByte::get() * (metadata_2.len() as u128 + TEST_ATTR_LEN),
+					deposit: CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE * (metadata_2.len() as u128 + TEST_ATTR_LEN),
 					attributes: test_attr(2),
 				}
 			}
@@ -239,7 +236,7 @@ fn mint_should_fail() {
 		});
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			2 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
+			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
 		));
 		assert_noop!(
 			NFTModule::mint(
@@ -292,7 +289,7 @@ fn transfer_should_work() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			2 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
+			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
 		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
@@ -305,7 +302,7 @@ fn transfer_should_work() {
 
 		assert_eq!(
 			reserved_balance(&BOB),
-			2 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
+			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
 		);
 
 		assert_ok!(NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)));
@@ -317,11 +314,11 @@ fn transfer_should_work() {
 		}));
 		assert_eq!(
 			reserved_balance(&BOB),
-			1 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
+			1 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
 		);
 		assert_eq!(
 			reserved_balance(&ALICE),
-			1 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
+			1 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
 		);
 
 		assert_ok!(NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)));
@@ -333,7 +330,7 @@ fn transfer_should_work() {
 		}));
 		assert_eq!(
 			reserved_balance(&BOB),
-			2 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
+			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
 		);
 		assert_eq!(reserved_balance(&ALICE), 0);
 	});
@@ -351,7 +348,7 @@ fn transfer_should_fail() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
 		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
@@ -385,7 +382,7 @@ fn transfer_should_fail() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
 		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
@@ -414,7 +411,7 @@ fn burn_should_work() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
 		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
@@ -432,7 +429,7 @@ fn burn_should_work() {
 		}));
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			CreateClassDeposit::get() + Proxy::deposit(1u32) + DataDepositPerByte::get() * (metadata.len() as u128)
+			CREATE_CLASS_DEPOSIT + Proxy::deposit(1u32) + DATA_DEPOSIT_PER_BYTE * (metadata.len() as u128)
 		);
 	});
 }
@@ -449,7 +446,7 @@ fn burn_should_fail() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
 		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
@@ -488,7 +485,7 @@ fn burn_should_fail() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
 		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
@@ -517,7 +514,7 @@ fn burn_with_remark_should_work() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
 		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
@@ -544,7 +541,7 @@ fn burn_with_remark_should_work() {
 
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			CreateClassDeposit::get() + Proxy::deposit(1u32) + DataDepositPerByte::get() * (metadata.len() as u128)
+			CREATE_CLASS_DEPOSIT + Proxy::deposit(1u32) + DATA_DEPOSIT_PER_BYTE * (metadata.len() as u128)
 		);
 	});
 }
@@ -560,8 +557,7 @@ fn destroy_class_should_work() {
 			Default::default(),
 		));
 
-		let deposit =
-			Proxy::deposit(1u32) + CreateClassDeposit::get() + DataDepositPerByte::get() * (metadata.len() as u128);
+		let deposit = Proxy::deposit(1u32) + CREATE_CLASS_DEPOSIT + DATA_DEPOSIT_PER_BYTE * (metadata.len() as u128);
 		assert_eq!(free_balance(&ALICE), 100000 - deposit);
 		assert_eq!(reserved_balance(&ALICE), 0);
 		assert_eq!(free_balance(&class_id_account()), 0);
@@ -570,7 +566,7 @@ fn destroy_class_should_work() {
 		assert_eq!(reserved_balance(&BOB), 0);
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
 		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
@@ -594,10 +590,7 @@ fn destroy_class_should_work() {
 		assert_eq!(reserved_balance(&class_id_account()), 0);
 		assert_eq!(free_balance(&ALICE), 100000);
 		assert_eq!(reserved_balance(&ALICE), 0);
-		assert_eq!(
-			free_balance(&BOB),
-			CreateTokenDeposit::get() + DataDepositPerByte::get()
-		);
+		assert_eq!(free_balance(&BOB), CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE);
 		assert_eq!(reserved_balance(&BOB), 0);
 	});
 }
@@ -614,7 +607,7 @@ fn destroy_class_should_fail() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
 		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
@@ -668,7 +661,7 @@ fn update_class_properties_should_work() {
 
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			CreateTokenDeposit::get() + ((metadata.len() as u128 + TEST_ATTR_LEN) * DataDepositPerByte::get())
+			CREATE_TOKEN_DEPOSIT + ((metadata.len() as u128 + TEST_ATTR_LEN) * DATA_DEPOSIT_PER_BYTE)
 		));
 
 		assert_ok!(NFTModule::mint(

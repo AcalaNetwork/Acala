@@ -18,7 +18,9 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-pub mod utils;
+pub mod utils {
+	include!("../../../mandala/src/benchmarking/utils.rs");
+}
 
 // module benchmarking
 pub mod asset_registry {

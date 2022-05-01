@@ -20,18 +20,19 @@
 
 use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
-use frame_support::{assert_ok, weights::Weight, BoundedVec};
+use frame_support::{assert_ok, traits::Get, weights::Weight, BoundedVec};
 use module_homa::UnlockChunk;
 use module_support::HomaSubAccountXcm;
 use module_xcm_interface::XcmInterfaceOperation;
 use pallet_staking::StakingLedger;
+use primitives::EraIndex;
 use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
 
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
 const XCM_WEIGHT: Weight = 20_000_000_000;
 const XCM_FEE: Balance = 10_000_000_000;
-const ACTUAL_XCM_FEE: Balance = 639_999_960;
+const ACTUAL_XCM_FEE: Balance = 995_644_032;
 
 fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<Weight>, Option<Balance>)> {
 	vec![
@@ -142,7 +143,7 @@ fn xcm_interface_transfer_staking_to_sub_account_works() {
 		// 1000 dollars (minus fee) are transferred into the Kusama chain
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-			999_999_893_333_340
+			999_999_834_059_328
 		);
 		// XCM fee is paid by the parachain account.
 		assert_eq!(
@@ -427,7 +428,7 @@ fn homa_mint_and_redeem_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
-	let bonding_duration = BondingDuration::get();
+	let bonding_duration: EraIndex = <Runtime as module_homa::Config>::BondingDuration::get(); // Defined in Runtime
 
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();

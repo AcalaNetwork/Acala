@@ -19,7 +19,7 @@
 use super::utils::dollar;
 use crate::{
 	AccountId, Balance, Currencies, CurrencyId, Dex, Event, ExtendedProvisioningBlocks, GetLiquidCurrencyId,
-	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Runtime, System, TradingPathLimit,
+	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Runtime, System,
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
@@ -278,7 +278,7 @@ runtime_benchmarks! {
 	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.first(), trading_pair.second(), 50 * dollar(trading_pair.first()), Default::default(), Default::default(), true)
 
 	swap_with_exact_supply {
-		let u in 2 .. TradingPathLimit::get() as u32;
+		let u in 2 .. <Runtime as module_dex::Config>::TradingPathLimit::get();
 
 		let maker: AccountId = account("maker", 0, SEED);
 		let taker: AccountId = whitelisted_caller();
@@ -300,12 +300,13 @@ runtime_benchmarks! {
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
 	}: swap_with_exact_supply(RawOrigin::Signed(taker.clone()), path.clone(), 100 * dollar(path[0]), 0)
 	verify {
+		let path_limit: u32 = <Runtime as module_dex::Config>::TradingPathLimit::get();
 		// would panic the benchmark anyways, must add new currencies to CURRENCY_LIST for benchmarking to work
-		assert!(TradingPathLimit::get() < CURRENCY_LIST.len() as u32);
+		assert!( path_limit < CURRENCY_LIST.len() as u32);
 	}
 
 	swap_with_exact_target {
-		let u in 2 .. TradingPathLimit::get() as u32;
+		let u in 2 .. <Runtime as module_dex::Config>::TradingPathLimit::get();
 
 		let maker: AccountId = account("maker", 0, SEED);
 		let taker: AccountId = whitelisted_caller();
@@ -327,8 +328,9 @@ runtime_benchmarks! {
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
 	}: swap_with_exact_target(RawOrigin::Signed(taker.clone()), path.clone(), 10 * dollar(path[path.len() - 1]), 100 * dollar(path[0]))
 	verify {
+		let path_limit: u32 = <Runtime as module_dex::Config>::TradingPathLimit::get();
 		// would panic the benchmark anyways, must add new currencies to CURRENCY_LIST for benchmarking to work
-		assert!(TradingPathLimit::get() < CURRENCY_LIST.len() as u32);
+		assert!(path_limit < CURRENCY_LIST.len() as u32);
 	}
 
 	refund_provision {

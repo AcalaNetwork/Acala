@@ -16,12 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CurrencyId, GetStableCurrencyId, Origin, Price, Prices, Runtime};
+use crate::{CurrencyId, GetStableCurrencyId, Origin, Prices, Runtime};
 
-use super::utils::feed_price;
+use super::utils::{dollar, feed_price};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
-use sp_runtime::traits::One;
 use sp_std::vec;
 
 const STAKING: CurrencyId = GetStableCurrencyId::get();
@@ -31,12 +30,12 @@ runtime_benchmarks! {
 
 	lock_price {
 		// feed price
-		feed_price(vec![(STAKING, Price::one())])?;
+		feed_price(vec![(STAKING, dollar(STAKING).into())])?;
 	}: _(RawOrigin::Root, STAKING)
 
 	unlock_price {
 		// feed price
-		feed_price(vec![(STAKING, Price::one())])?;
+		feed_price(vec![(STAKING, dollar(STAKING).into())])?;
 		Prices::lock_price(Origin::root(), STAKING)?;
 	}: _(RawOrigin::Root, STAKING)
 }
