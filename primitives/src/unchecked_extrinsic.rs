@@ -37,30 +37,22 @@ use sp_runtime::{
 use sp_std::{marker::PhantomData, prelude::*};
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-#[scale_info(skip_type_params(EnableEvmSignature, ConvertTx, PayerTx))]
+#[scale_info(skip_type_params(ConvertTx, CheckPayerTx))]
 pub struct AcalaUncheckedExtrinsic<
 	Call,
 	Extra: SignedExtension,
-	EnableEvmSignature,
 	ConvertTx,
 	StorageDepositPerByte,
 	TxFeePerGas,
-	PayerTx,
+	CheckPayerTx,
 >(
 	pub UncheckedExtrinsic<Address, Call, AcalaMultiSignature, Extra>,
-	PhantomData<(
-		EnableEvmSignature,
-		ConvertTx,
-		StorageDepositPerByte,
-		TxFeePerGas,
-		PayerTx,
-	)>,
+	PhantomData<(ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx)>,
 );
 
 #[cfg(feature = "std")]
-impl<Call, Extra, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx>
-	parity_util_mem::MallocSizeOf
-	for AcalaUncheckedExtrinsic<Call, Extra, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx>
+impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> parity_util_mem::MallocSizeOf
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 where
 	Extra: SignedExtension,
 {
@@ -70,8 +62,8 @@ where
 	}
 }
 
-impl<Call, Extra: SignedExtension, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx> Extrinsic
-	for AcalaUncheckedExtrinsic<Call, Extra, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx>
+impl<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> Extrinsic
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	type Call = Call;
 
@@ -93,31 +85,28 @@ impl<Call, Extra: SignedExtension, EnableEvmSignature, ConvertTx, StorageDeposit
 	}
 }
 
-impl<Call, Extra: SignedExtension, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx>
-	ExtrinsicMetadata
-	for AcalaUncheckedExtrinsic<Call, Extra, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx>
+impl<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> ExtrinsicMetadata
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	const VERSION: u8 = UncheckedExtrinsic::<Address, Call, AcalaMultiSignature, Extra>::VERSION;
 	type SignedExtensions = Extra;
 }
 
-impl<Call, Extra: SignedExtension, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx>
-	ExtrinsicCall
-	for AcalaUncheckedExtrinsic<Call, Extra, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx>
+impl<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> ExtrinsicCall
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	fn call(&self) -> &Self::Call {
 		self.0.call()
 	}
 }
 
-impl<Call, Extra, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, Lookup, PayerTx> Checkable<Lookup>
-	for AcalaUncheckedExtrinsic<Call, Extra, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx>
+impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, Lookup, CheckPayerTx> Checkable<Lookup>
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 where
 	Call: Encode + Member,
 	Extra: SignedExtension<AccountId = AccountId32>,
-	EnableEvmSignature: crate::SwitchFlag,
 	ConvertTx: Convert<(Call, Extra), Result<(EthereumTransactionMessage, Extra), InvalidTransaction>>,
-	PayerTx: Convert<(Call, Extra), Result<(), InvalidTransaction>>,
+	CheckPayerTx: Convert<(Call, Extra), Result<(), InvalidTransaction>>,
 	StorageDepositPerByte: Get<Balance>,
 	TxFeePerGas: Get<Balance>,
 	Lookup: traits::Lookup<Source = Address, Target = AccountId32>,
@@ -128,11 +117,7 @@ where
 		let function = self.0.function.clone();
 		let signature = self.0.signature.clone();
 		if let Some((_, _, extra)) = signature {
-			PayerTx::convert((function.clone(), extra))?;
-		}
-
-		if !EnableEvmSignature::value() {
-			return self.0.check(lookup);
+			CheckPayerTx::convert((function.clone(), extra))?;
 		}
 
 		match self.0.signature {
@@ -254,8 +239,8 @@ where
 	}
 }
 
-impl<Call, Extra, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx> GetDispatchInfo
-	for AcalaUncheckedExtrinsic<Call, Extra, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx>
+impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> GetDispatchInfo
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 where
 	Call: GetDispatchInfo,
 	Extra: SignedExtension,
@@ -266,16 +251,8 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<
-		Call: Encode,
-		Extra: SignedExtension,
-		EnableEvmSignature,
-		ConvertTx,
-		StorageDepositPerByte,
-		TxFeePerGas,
-		PayerTx,
-	> serde::Serialize
-	for AcalaUncheckedExtrinsic<Call, Extra, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx>
+impl<Call: Encode, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> serde::Serialize
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	fn serialize<S>(&self, seq: S) -> Result<S::Ok, S::Error>
 	where
@@ -286,17 +263,9 @@ impl<
 }
 
 #[cfg(feature = "std")]
-impl<
-		'a,
-		Call: Decode,
-		Extra: SignedExtension,
-		EnableEvmSignature,
-		ConvertTx,
-		StorageDepositPerByte,
-		TxFeePerGas,
-		PayerTx,
-	> serde::Deserialize<'a>
-	for AcalaUncheckedExtrinsic<Call, Extra, EnableEvmSignature, ConvertTx, StorageDepositPerByte, TxFeePerGas, PayerTx>
+impl<'a, Call: Decode, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
+	serde::Deserialize<'a>
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	fn deserialize<D>(de: D) -> Result<Self, D::Error>
 	where

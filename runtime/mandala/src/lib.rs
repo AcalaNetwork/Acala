@@ -1825,15 +1825,6 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 	}
 }
 
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-pub struct EnableEvmSignature;
-
-impl primitives::SwitchFlag for EnableEvmSignature {
-	fn value() -> bool {
-		true
-	}
-}
-
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.
@@ -1858,7 +1849,6 @@ pub type SignedExtra = (
 pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<
 	Call,
 	SignedExtra,
-	EnableEvmSignature,
 	ConvertEthereumTx,
 	StorageDepositPerByte,
 	TxFeePerGas,
