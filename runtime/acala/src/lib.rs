@@ -1018,6 +1018,12 @@ where
 	type Extrinsic = UncheckedExtrinsic;
 }
 
+parameter_type_with_key! {
+	pub MinimumCollateralValue: |currency_id: CurrencyId| -> Balance {
+		ExistentialDeposits::get(currency_id).saturating_mul(100u128)
+	};
+}
+
 parameter_types! {
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![ACA, DOT, LCDOT, LDOT];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
@@ -1035,6 +1041,7 @@ impl module_cdp_engine::Config for Runtime {
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
+	type MinimumCollateralValue = MinimumCollateralValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;

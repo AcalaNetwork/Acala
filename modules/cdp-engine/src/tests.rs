@@ -1770,3 +1770,37 @@ fn offchain_default_max_iterator_works() {
 		assert_eq!(pool_state.write().transactions.len(), 1001);
 	});
 }
+
+#[test]
+fn minimal_collateral_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+		// Check position fails if collateral is too small
+		assert_noop!(
+			CDPEngineModule::check_position_valid(BTC, 9, 20, true),
+			Error::<Runtime>::RemainCollateralValueTooSmall,
+		);
+		assert_ok!(CDPEngineModule::check_position_valid(BTC, 10, 20, true));
+
+		// Adjust position fails if collateral is too small
+		assert_noop!(
+			CDPEngineModule::adjust_position(&ALICE, BTC, 9, 20),
+			Error::<Runtime>::RemainCollateralValueTooSmall,
+		);
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 10, 20));
+
+		// Cannot reduce collateral amount below the minimum.
+		assert_noop!(
+			CDPEngineModule::adjust_position(&ALICE, BTC, -1, 0),
+			Error::<Runtime>::RemainCollateralValueTooSmall,
+		);
+	});
+}
