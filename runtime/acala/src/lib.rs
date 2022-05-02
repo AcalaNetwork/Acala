@@ -1019,7 +1019,7 @@ where
 }
 
 parameter_type_with_key! {
-	pub MinimumCollateralValue: |currency_id: CurrencyId| -> Balance {
+	pub MinimumCollateralAmount: |currency_id: CurrencyId| -> Balance {
 		ExistentialDeposits::get(currency_id).saturating_mul(100u128)
 	};
 }
@@ -1041,7 +1041,7 @@ impl module_cdp_engine::Config for Runtime {
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
-	type MinimumCollateralValue = MinimumCollateralValue;
+	type MinimumCollateralAmount = MinimumCollateralAmount;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;

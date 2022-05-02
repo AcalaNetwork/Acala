@@ -1057,7 +1057,7 @@ impl module_cdp_engine::Config for Runtime {
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
-	type MinimumCollateralValue = MinimumCollateralValue;
+	type MinimumCollateralAmount = MinimumCollateralAmount;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;
