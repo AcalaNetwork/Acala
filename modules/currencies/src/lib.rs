@@ -130,6 +130,12 @@ pub mod module {
 			to: T::AccountId,
 			amount: BalanceOf<T>,
 		},
+		/// Dust swept.
+		DustSwept {
+			currency_id: CurrencyId,
+			who: T::AccountId,
+			amount: BalanceOf<T>,
+		},
 	}
 
 	#[pallet::pallet]
@@ -208,6 +214,12 @@ pub mod module {
 				if free_balance < Self::minimum_balance(currency_id) {
 					T::OnDust::on_dust(&account, currency_id, free_balance);
 				}
+
+				Self::deposit_event(Event::<T>::DustSwept {
+					currency_id,
+					who: account,
+					amount: free_balance,
+				});
 			}
 			Ok(())
 		}

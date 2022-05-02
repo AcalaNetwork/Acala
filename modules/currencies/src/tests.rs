@@ -2227,6 +2227,11 @@ fn sweep_dust_tokens_works() {
 			DOT,
 			accounts
 		));
+		System::assert_last_event(Event::Currencies(crate::Event::DustSwept {
+			currency_id: DOT,
+			who: bob(),
+			amount: 1,
+		}));
 
 		// bob's account is gone
 		assert_eq!(tokens::Accounts::<Runtime>::contains_key(bob(), DOT), false);
@@ -2301,6 +2306,11 @@ fn sweep_dust_native_currency_works() {
 			NATIVE_CURRENCY_ID,
 			accounts
 		));
+		System::assert_last_event(Event::Currencies(crate::Event::DustSwept {
+			currency_id: NATIVE_CURRENCY_ID,
+			who: bob(),
+			amount: 1,
+		}));
 
 		// bob's account is gone
 		assert_eq!(System::account_exists(&bob()), false);
