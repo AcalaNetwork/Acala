@@ -1746,7 +1746,7 @@ impl ecosystem_aqua_dao::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type StableCurrencyId = GetStableCurrencyId;
-	type CreatingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type AssetPriceProvider = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type AdaoPriceProvider = module_dex_oracle::AverageDEXPriceProvider<Runtime>;
 	type BlockNumberProvider = RelayChainBlockNumberProvider<Runtime>;

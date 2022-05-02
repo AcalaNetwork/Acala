@@ -2696,21 +2696,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ecosystem-aqua-treasury-staking"
-version = "0.1.0"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-traits",
- "parity-scale-codec",
- "scale-info",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "ecosystem-compound-cash"
 version = "2.4.1"
 dependencies = [
