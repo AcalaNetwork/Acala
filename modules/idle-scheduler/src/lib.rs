@@ -149,7 +149,7 @@ impl<T: Config> Pallet<T> {
 	/// Add the task to the queue to be dispatched later
 	fn do_schedule_task(task: T::Task) -> DispatchResult {
 		let id = Self::get_next_task_id()?;
-		Tasks::<T>::insert(id, task.clone());
+		Tasks::<T>::insert(id, &task);
 		Self::deposit_event(Event::<T>::TaskAdded { task_id: id, task });
 		Ok(())
 	}
