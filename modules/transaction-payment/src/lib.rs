@@ -1410,8 +1410,13 @@ where
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
+		fee_multiplier: bool,
 	) -> Result<PalletBalanceOf<T>, DispatchError> {
-		let fee = Pallet::<T>::calculate_final_fee(fee);
+		let fee = if fee_multiplier {
+			Pallet::<T>::calculate_final_fee(fee)
+		} else {
+			fee
+		};
 		Pallet::<T>::native_then_alternative_or_default(who, fee)?;
 		T::Currency::reserve_named(&named.unwrap_or(RESERVE_ID), who, fee)?;
 		Ok(fee)
@@ -1421,17 +1426,27 @@ where
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
+		fee_multiplier: bool,
 	) -> PalletBalanceOf<T> {
-		let fee = Pallet::<T>::calculate_final_fee(fee);
+		let fee = if fee_multiplier {
+			Pallet::<T>::calculate_final_fee(fee)
+		} else {
+			fee
+		};
 		<T as Config>::Currency::unreserve_named(&named.unwrap_or(RESERVE_ID), who, fee)
 	}
 
 	fn unreserve_and_charge_fee(
 		who: &T::AccountId,
 		weight: Weight,
+		fee_multiplier: bool,
 	) -> Result<(PalletBalanceOf<T>, NegativeImbalanceOf<T>), TransactionValidityError> {
 		let fee = Pallet::<T>::weight_to_fee(weight);
-		let fee = Pallet::<T>::calculate_final_fee(fee);
+		let fee = if fee_multiplier {
+			Pallet::<T>::calculate_final_fee(fee)
+		} else {
+			fee
+		};
 		<T as Config>::Currency::unreserve_named(&RESERVE_ID, who, fee);
 
 		match <T as Config>::Currency::withdraw(
@@ -1449,9 +1464,14 @@ where
 		who: &T::AccountId,
 		refund_weight: Weight,
 		payed: NegativeImbalanceOf<T>,
+		fee_multiplier: bool,
 	) -> Result<(), TransactionValidityError> {
-		let refund = Pallet::<T>::weight_to_fee(refund_weight);
-		let refund = Pallet::<T>::calculate_final_fee(refund);
+		let fee = Pallet::<T>::weight_to_fee(refund_weight);
+		let refund = if fee_multiplier {
+			Pallet::<T>::calculate_final_fee(fee)
+		} else {
+			fee
+		};
 		let actual_payment = match <T as Config>::Currency::deposit_into_existing(who, refund) {
 			Ok(refund_imbalance) => {
 				// The refund cannot be larger than the up front payed max weight.

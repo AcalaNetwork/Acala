@@ -110,17 +110,24 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 		_who: &AccountId,
 		_fee: Balance,
 		_named: Option<ReserveIdentifier>,
+		_fee_multiplier: bool,
 	) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
 
-	fn unreserve_fee(_who: &AccountId, _fee: Balance, _named: Option<ReserveIdentifier>) -> Balance {
+	fn unreserve_fee(
+		_who: &AccountId,
+		_fee: Balance,
+		_named: Option<ReserveIdentifier>,
+		_fee_multiplier: bool,
+	) -> Balance {
 		Default::default()
 	}
 
 	fn unreserve_and_charge_fee(
 		_who: &AccountId,
 		_weight: Weight,
+		_fee_multiplier: bool,
 	) -> Result<(Balance, NegativeImbalance), TransactionValidityError> {
 		Ok((Default::default(), Imbalance::zero()))
 	}
@@ -129,6 +136,7 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 		_who: &AccountId,
 		_weight: Weight,
 		_payed: NegativeImbalance,
+		_fee_multiplier: bool,
 	) -> Result<(), TransactionValidityError> {
 		Ok(())
 	}
@@ -160,18 +168,29 @@ impl<
 		>,
 	> TransactionPayment<AccountId, Balance, NegativeImbalance> for MockReservedTransactionPayment<Currency>
 {
-	fn reserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Result<Balance, DispatchError> {
+	fn reserve_fee(
+		who: &AccountId,
+		fee: Balance,
+		named: Option<ReserveIdentifier>,
+		_fee_multiplier: bool,
+	) -> Result<Balance, DispatchError> {
 		Currency::reserve_named(&named.unwrap(), who, fee)?;
 		Ok(fee)
 	}
 
-	fn unreserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Balance {
+	fn unreserve_fee(
+		who: &AccountId,
+		fee: Balance,
+		named: Option<ReserveIdentifier>,
+		_fee_multiplier: bool,
+	) -> Balance {
 		Currency::unreserve_named(&named.unwrap(), who, fee)
 	}
 
 	fn unreserve_and_charge_fee(
 		_who: &AccountId,
 		_weight: Weight,
+		_fee_multiplier: bool,
 	) -> Result<(Balance, NegativeImbalance), TransactionValidityError> {
 		Ok((Default::default(), Imbalance::zero()))
 	}
@@ -180,6 +199,7 @@ impl<
 		_who: &AccountId,
 		_weight: Weight,
 		_payed: NegativeImbalance,
+		_fee_multiplier: bool,
 	) -> Result<(), TransactionValidityError> {
 		Ok(())
 	}
