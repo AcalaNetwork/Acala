@@ -1035,7 +1035,7 @@ where
 }
 
 parameter_type_with_key! {
-	pub MinimumCollateralValue: |currency_id: CurrencyId| -> Balance {
+	pub MinimumCollateralAmount: |currency_id: CurrencyId| -> Balance {
 		ExistentialDeposits::get(currency_id).saturating_mul(100u128)
 	};
 }

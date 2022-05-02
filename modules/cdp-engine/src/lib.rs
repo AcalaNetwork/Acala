@@ -150,7 +150,7 @@ pub mod module {
 		type MinimumDebitValue: Get<Balance>;
 
 		/// Gets the minimum collateral value for the given currency.
-		type MinimumCollateralValue: GetByKey<CurrencyId, Balance>;
+		type MinimumCollateralAmount: GetByKey<CurrencyId, Balance>;
 
 		/// Stablecoin currency id
 		#[pallet::constant]
@@ -1324,7 +1324,7 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 
 			// check the minimum_collateral_value
 			ensure!(
-				collateral_balance >= T::MinimumCollateralValue::get(&currency_id),
+				collateral_balance >= T::MinimumCollateralAmount::get(&currency_id),
 				Error::<T>::RemainCollateralValueTooSmall,
 			);
 		}

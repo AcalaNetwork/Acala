@@ -227,7 +227,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub MinimumCollateralValue: |currency_id: CurrencyId| -> Balance {
+	pub MinimumCollateralAmount: |currency_id: CurrencyId| -> Balance {
 		10
 	};
 }
@@ -248,7 +248,7 @@ impl cdp_engine::Config for Runtime {
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = ConstU128<2>;
-	type MinimumCollateralValue = MinimumCollateralValue;
+	type MinimumCollateralAmount = MinimumCollateralAmount;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
