@@ -1785,22 +1785,23 @@ fn minimal_collateral_works() {
 		));
 		// Check position fails if collateral is too small
 		assert_noop!(
-			CDPEngineModule::check_position_valid(BTC, 9, 20, true),
-			Error::<Runtime>::RemainCollateralValueTooSmall,
+			CDPEngineModule::check_position_valid(BTC, 9, 0, true),
+			Error::<Runtime>::CollateralAmountBelowMinimum,
 		);
-		assert_ok!(CDPEngineModule::check_position_valid(BTC, 10, 20, true));
+		assert_ok!(CDPEngineModule::check_position_valid(BTC, 9, 20, true));
+		assert_ok!(CDPEngineModule::check_position_valid(BTC, 10, 0, true));
 
 		// Adjust position fails if collateral is too small
 		assert_noop!(
-			CDPEngineModule::adjust_position(&ALICE, BTC, 9, 20),
-			Error::<Runtime>::RemainCollateralValueTooSmall,
+			CDPEngineModule::adjust_position(&ALICE, BTC, 9, 0),
+			Error::<Runtime>::CollateralAmountBelowMinimum,
 		);
-		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 10, 20));
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 10, 0));
 
 		// Cannot reduce collateral amount below the minimum.
 		assert_noop!(
 			CDPEngineModule::adjust_position(&ALICE, BTC, -1, 0),
-			Error::<Runtime>::RemainCollateralValueTooSmall,
+			Error::<Runtime>::CollateralAmountBelowMinimum,
 		);
 	});
 }
