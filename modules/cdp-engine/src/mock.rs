@@ -290,7 +290,7 @@ ord_parameter_types! {
 }
 
 parameter_type_with_key! {
-	pub MinimumCollateralAmount: |currency_id: CurrencyId| -> Balance {
+	pub MinimumCollateralAmount: |_currency_id: CurrencyId| -> Balance {
 		10
 	};
 }
