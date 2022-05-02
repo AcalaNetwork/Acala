@@ -119,7 +119,6 @@ parameter_types! {
 }
 
 impl orml_currencies::Config for Runtime {
-	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -229,7 +228,7 @@ construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
 		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Config, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call, Event<T>},
+		Currencies: orml_currencies::{Pallet, Call},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
 		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
