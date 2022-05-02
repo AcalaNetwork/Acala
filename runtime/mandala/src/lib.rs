@@ -1660,8 +1660,8 @@ impl Contains<CurrencyId> for IsLiquidToken {
 type RebaseTokens = orml_tokens::Combiner<
 	AccountId,
 	IsLiquidToken,
-	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoma, Balance, GetStableAssetStakingCurrencyId>,
-	Tokens,
+	orml_tokens::Mapper<AccountId, Currencies, ConvertBalanceHoma, Balance, GetStableAssetStakingCurrencyId>,
+	Currencies,
 >;
 
 parameter_types! {

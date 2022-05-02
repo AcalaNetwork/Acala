@@ -54,7 +54,7 @@ jobs:
       # Build WASM with Substrate Runtime Tool
       - name: Srtool build
         id: srtool_build
-        uses: AcalaNetwork/srtool-actions@build_opts_env
+        uses: chevdor/srtool-actions@master
         env:
           BUILD_OPTS: "--features on-chain-release-build"
         with:

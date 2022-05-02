@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate::mock::{IdleScheduler, *};
+use crate::mock::{Event, IdleScheduler, *};
 use frame_support::assert_ok;
 
 // Can schedule tasks
@@ -38,6 +38,10 @@ fn can_schedule_tasks() {
 			Tasks::<Runtime>::get(0),
 			Some(ScheduledTasks::BalancesTask(BalancesTask::OnIdle))
 		);
+		System::assert_has_event(Event::IdleScheduler(crate::Event::TaskAdded {
+			task_id: 0,
+			task: ScheduledTasks::BalancesTask(BalancesTask::OnIdle),
+		}));
 
 		assert_ok!(IdleScheduler::schedule_task(
 			Origin::root(),

@@ -10838,6 +10838,7 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain",
  "polkadot-primitives",
+ "polkadot-runtime",
  "polkadot-runtime-parachains",
  "runtime-common",
  "serde",

@@ -1456,7 +1456,7 @@ parameter_types! {
 		2,  // EMrKvFy7xLgzzdgruXT9oXERt553igEScqgSjoDm3GewPSA
 	];
 	pub MintThreshold: Balance = dollar(KSM);
-	pub RedeemThreshold: Balance = 10 * dollar(LKSM);
+	pub RedeemThreshold: Balance = dollar(LKSM);
 }
 
 impl module_homa::Config for Runtime {

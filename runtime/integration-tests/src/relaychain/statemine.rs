@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! Tests parachain to parachain xcm communication between Statemine and Karura.
+
 use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 use cumulus_primitives_core::ParaId;
