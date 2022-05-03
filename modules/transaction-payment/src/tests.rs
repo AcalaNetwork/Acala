@@ -646,12 +646,10 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 #[test]
 fn payment_reserve_fee() {
 	builder_with_dex_and_fee_pool(true).execute_with(|| {
-		NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
-
 		// Alice has enough native token: ACA
 		assert_eq!(90000, Currencies::free_balance(ACA, &ALICE));
 		let fee = <ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::reserve_fee(
-			&ALICE, 100, None, false,
+			&ALICE, 100, None,
 		);
 		assert_eq!(100, fee.unwrap());
 		assert_eq!(89900, Currencies::free_balance(ACA, &ALICE));
@@ -666,22 +664,20 @@ fn payment_reserve_fee() {
 		// Bob has not enough native token, but have enough none native token
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 4000));
 		let fee = <ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::reserve_fee(
-			&BOB, 100, None, false,
+			&BOB, 100, None,
 		);
 		assert_eq!(100, fee.unwrap());
 		assert_eq!(35, Currencies::free_balance(ACA, &BOB));
 		assert_eq!(135, Currencies::total_balance(ACA, &BOB));
 		assert_eq!(2650, Currencies::free_balance(AUSD, &BOB));
 
-		// reserve fee consider multiplier
+		// reserve fee not consider multiplier
+		NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &DAVE, 4000));
 		let fee = <ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::reserve_fee(
-			&DAVE, 100, None, true,
+			&DAVE, 100, None,
 		);
-		assert_eq!(150, fee.unwrap());
-		assert_eq!(48, Currencies::free_balance(ACA, &DAVE));
-		assert_eq!(198, Currencies::total_balance(ACA, &DAVE));
-		assert_eq!(2020, Currencies::free_balance(AUSD, &DAVE));
+		assert_eq!(100, fee.unwrap());
 	});
 }
 

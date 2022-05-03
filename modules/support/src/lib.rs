@@ -83,24 +83,13 @@ impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balanc
 }
 
 pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
-	fn reserve_fee(
-		who: &AccountId,
-		fee: Balance,
-		named: Option<ReserveIdentifier>,
-		fee_multiplier: bool,
-	) -> Result<Balance, DispatchError>;
-	fn unreserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>, fee_multiplier: bool) -> Balance;
+	fn reserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Result<Balance, DispatchError>;
+	fn unreserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Balance;
 	fn unreserve_and_charge_fee(
 		who: &AccountId,
 		weight: Weight,
-		fee_multiplier: bool,
 	) -> Result<(Balance, NegativeImbalance), TransactionValidityError>;
-	fn refund_fee(
-		who: &AccountId,
-		weight: Weight,
-		payed: NegativeImbalance,
-		fee_multiplier: bool,
-	) -> Result<(), TransactionValidityError>;
+	fn refund_fee(who: &AccountId, weight: Weight, payed: NegativeImbalance) -> Result<(), TransactionValidityError>;
 	fn charge_fee(
 		who: &AccountId,
 		len: u32,

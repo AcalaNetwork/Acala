@@ -757,19 +757,13 @@ where
 		T::WeightToFee::calc(&capped_weight)
 	}
 
-	/// Given fee pre-calculated by weight, consider only multiplier, other parts is set to 0.
-	fn calculate_final_fee(fee: PalletBalanceOf<T>) -> PalletBalanceOf<T> {
-		let multiplier = Self::next_fee_multiplier();
-		let adjusted_weight_fee = multiplier.saturating_mul_int(fee);
-		let fee_details = FeeDetails {
-			inclusion_fee: Some(InclusionFee {
-				base_fee: 0,
-				len_fee: 0,
-				adjusted_weight_fee,
-			}),
-			tip: 0,
-		};
-		fee_details.final_fee()
+	/// Given fee and option multiplier, return final fee.
+	fn calculate_final_fee(fee: PalletBalanceOf<T>, multiplier: Option<Multiplier>) -> PalletBalanceOf<T> {
+		if let Some(multiplier) = multiplier {
+			multiplier.saturating_mul_int(fee)
+		} else {
+			fee
+		}
 	}
 
 	/// If native asset is enough, return `None`, else return the fee amount should be swapped.
@@ -1410,13 +1404,8 @@ where
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
-		fee_multiplier: bool,
 	) -> Result<PalletBalanceOf<T>, DispatchError> {
-		let fee = if fee_multiplier {
-			Pallet::<T>::calculate_final_fee(fee)
-		} else {
-			fee
-		};
+		let fee = Pallet::<T>::calculate_final_fee(fee, None);
 		Pallet::<T>::native_then_alternative_or_default(who, fee)?;
 		T::Currency::reserve_named(&named.unwrap_or(RESERVE_ID), who, fee)?;
 		Ok(fee)
@@ -1426,27 +1415,17 @@ where
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
-		fee_multiplier: bool,
 	) -> PalletBalanceOf<T> {
-		let fee = if fee_multiplier {
-			Pallet::<T>::calculate_final_fee(fee)
-		} else {
-			fee
-		};
+		let fee = Pallet::<T>::calculate_final_fee(fee, None);
 		<T as Config>::Currency::unreserve_named(&named.unwrap_or(RESERVE_ID), who, fee)
 	}
 
 	fn unreserve_and_charge_fee(
 		who: &T::AccountId,
 		weight: Weight,
-		fee_multiplier: bool,
 	) -> Result<(PalletBalanceOf<T>, NegativeImbalanceOf<T>), TransactionValidityError> {
 		let fee = Pallet::<T>::weight_to_fee(weight);
-		let fee = if fee_multiplier {
-			Pallet::<T>::calculate_final_fee(fee)
-		} else {
-			fee
-		};
+		let fee = Pallet::<T>::calculate_final_fee(fee, None);
 		<T as Config>::Currency::unreserve_named(&RESERVE_ID, who, fee);
 
 		match <T as Config>::Currency::withdraw(
@@ -1464,14 +1443,9 @@ where
 		who: &T::AccountId,
 		refund_weight: Weight,
 		payed: NegativeImbalanceOf<T>,
-		fee_multiplier: bool,
 	) -> Result<(), TransactionValidityError> {
-		let fee = Pallet::<T>::weight_to_fee(refund_weight);
-		let refund = if fee_multiplier {
-			Pallet::<T>::calculate_final_fee(fee)
-		} else {
-			fee
-		};
+		let refund = Pallet::<T>::weight_to_fee(refund_weight);
+		let refund = Pallet::<T>::calculate_final_fee(refund, None);
 		let actual_payment = match <T as Config>::Currency::deposit_into_existing(who, refund) {
 			Ok(refund_imbalance) => {
 				// The refund cannot be larger than the up front payed max weight.

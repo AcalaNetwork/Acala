@@ -53,7 +53,7 @@ pub mod module {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
-		/// Dispatchable tasks
+		/// Dispatchable tasks.
 		type Task: DispatchableTask + FullCodec + Debug + Clone + PartialEq + TypeInfo;
 
 		/// The minimum weight that should remain before idle tasks are dispatched.
@@ -63,9 +63,9 @@ pub mod module {
 		/// Gets RelayChain Block Number
 		type RelayChainBlockNumberProvider: BlockNumberProvider<BlockNumber = BlockNumber>;
 
-		/// Number of Relay Chain blocks skipped to disable `on_idle` dispatching scheduled tasks
+		/// Number of Relay Chain blocks skipped to disable `on_idle` dispatching scheduled tasks,
 		/// this shuts down idle-scheduler when block production is slower than this number of
-		/// relaychain blocks
+		/// relaychain blocks.
 		#[pallet::constant]
 		type DisableBlockThreshold: Get<BlockNumber>;
 	}
@@ -77,16 +77,19 @@ pub mod module {
 		TaskDispatched { task_id: Nonce, result: DispatchResult },
 	}
 
-	/// Some documentation
+	/// The schedule tasks waiting to dispatch. After task is dispatched, it's removed.
+	///
+	/// Tasks: map Nonce => Task
 	#[pallet::storage]
 	#[pallet::getter(fn tasks)]
 	pub type Tasks<T: Config> = StorageMap<_, Twox64Concat, Nonce, T::Task, OptionQuery>;
 
+	/// The task id used to index tasks.
 	#[pallet::storage]
 	#[pallet::getter(fn next_task_id)]
 	pub type NextTaskId<T: Config> = StorageValue<_, Nonce, ValueQuery>;
 
-	///
+	/// A temporary variable used to check if should skip dispatch schedule task or not.
 	#[pallet::storage]
 	#[pallet::getter(fn previous_relay_block)]
 	pub type PreviousRelayBlockNumber<T: Config> = StorageValue<_, BlockNumber, ValueQuery>;
@@ -119,7 +122,7 @@ pub mod module {
 					current_relay_block_number,
 					previous_relay_block_number
 				);
-				// something is not correct so exaust all remaining weight (note: any on_idle hooks after
+				// something is not correct so exhaust all remaining weight (note: any on_idle hooks after
 				// IdleScheduler won't execute)
 				remaining_weight
 			} else {
@@ -144,7 +147,7 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	/// Add the task to the queue to be dispatched later
+	/// Add the task to the queue to be dispatched later.
 	fn do_schedule_task(task: T::Task) -> DispatchResult {
 		let id = Self::get_next_task_id()?;
 		Tasks::<T>::insert(id, task);
@@ -189,7 +192,7 @@ impl<T: Config> Pallet<T> {
 		total_weight.saturating_sub(weight_remaining)
 	}
 
-	// Removes completed tasks and deposits events
+	/// Removes completed tasks and deposits events.
 	pub fn remove_completed_tasks(completed_tasks: Vec<(Nonce, TaskResult)>) {
 		// Deposit event and remove completed tasks.
 		for (id, result) in completed_tasks {

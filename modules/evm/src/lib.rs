@@ -666,9 +666,8 @@ pub mod module {
 			{
 				// unreserve the transaction fee for gas_limit
 				let weight = T::GasToWeight::convert(gas_limit);
-				let (_, imbalance) =
-					T::ChargeTransactionPayment::unreserve_and_charge_fee(&_from_account, weight, false)
-						.map_err(|_| Error::<T>::ChargeFeeFailed)?;
+				let (_, imbalance) = T::ChargeTransactionPayment::unreserve_and_charge_fee(&_from_account, weight)
+					.map_err(|_| Error::<T>::ChargeFeeFailed)?;
 				_payed = imbalance;
 			}
 
@@ -730,7 +729,6 @@ pub mod module {
 								&_from_account,
 								T::GasToWeight::convert(refund_gas),
 								_payed,
-								false,
 							);
 							debug_assert!(res.is_ok());
 						}
@@ -1608,7 +1606,7 @@ impl<T: Config> Pallet<T> {
 			caller, user, limit, amount
 		);
 
-		T::ChargeTransactionPayment::reserve_fee(&user, amount, Some(RESERVE_ID_STORAGE_DEPOSIT), false)?;
+		T::ChargeTransactionPayment::reserve_fee(&user, amount, Some(RESERVE_ID_STORAGE_DEPOSIT))?;
 		Ok(())
 	}
 
