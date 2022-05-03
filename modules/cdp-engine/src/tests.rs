@@ -29,6 +29,7 @@ use sp_io::offchain;
 use sp_runtime::{
 	offchain::{DbExternalities, StorageKind},
 	traits::BadOrigin,
+	ModuleError,
 };
 use support::DEXManager;
 
@@ -1197,8 +1198,22 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_create_dot_auction() {
 #[test]
 fn get_interest_rate_per_sec_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(BTC), Rate::zero());
-		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(DOT), Rate::zero());
+		assert_noop!(
+			CDPEngineModule::get_interest_rate_per_sec(BTC),
+			DispatchError::Module(ModuleError {
+				index: 1,
+				error: [15, 0, 0, 0],
+				message: Some("CollateralInterestRateNotSet")
+			})
+		);
+		assert_noop!(
+			CDPEngineModule::get_interest_rate_per_sec(DOT),
+			DispatchError::Module(ModuleError {
+				index: 1,
+				error: [15, 0, 0, 0],
+				message: Some("CollateralInterestRateNotSet")
+			})
+		);
 
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -1211,9 +1226,16 @@ fn get_interest_rate_per_sec_work() {
 		));
 		assert_eq!(
 			CDPEngineModule::get_interest_rate_per_sec(BTC),
-			Rate::saturating_from_rational(2, 100000)
+			Ok(Rate::saturating_from_rational(2, 100000))
 		);
-		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(DOT), Rate::zero());
+		assert_noop!(
+			CDPEngineModule::get_interest_rate_per_sec(DOT),
+			DispatchError::Module(ModuleError {
+				index: 1,
+				error: [15, 0, 0, 0],
+				message: Some("CollateralInterestRateNotSet")
+			})
+		);
 	});
 }
 

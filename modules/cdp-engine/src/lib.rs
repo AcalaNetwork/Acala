@@ -227,6 +227,8 @@ pub mod module {
 		NotEnoughDebitDecrement,
 		/// convert debit value to debit balance failed
 		ConvertDebitBalanceFailed,
+		/// THe collateral has not had its parameters set yet
+		CollateralInterestRateNotSet,
 	}
 
 	#[pallet::event]
@@ -552,8 +554,10 @@ impl<T: Config> Pallet<T> {
 			let interval_secs = now_secs.saturating_sub(last_accumulation_secs);
 
 			for currency_id in T::CollateralCurrencyIds::get() {
-				let rate_to_accumulate =
-					Self::compound_interest_rate(Self::get_interest_rate_per_sec(currency_id), interval_secs);
+				let rate_to_accumulate = Self::compound_interest_rate(
+					Self::get_interest_rate_per_sec(currency_id).unwrap_or_default(),
+					interval_secs,
+				);
 				let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
 
 				if !rate_to_accumulate.is_zero() && !total_debits.is_zero() {
@@ -745,10 +749,10 @@ impl<T: Config> Pallet<T> {
 		Self::collateral_params(currency_id).required_collateral_ratio
 	}
 
-	pub fn get_interest_rate_per_sec(currency_id: CurrencyId) -> Rate {
+	pub fn get_interest_rate_per_sec(currency_id: CurrencyId) -> Result<Rate, DispatchError> {
 		Self::collateral_params(currency_id)
 			.interest_rate_per_sec
-			.unwrap_or_default()
+			.ok_or_else(|| Error::<T>::CollateralInterestRateNotSet.into())
 	}
 
 	pub fn compound_interest_rate(rate_per_sec: Rate, secs: u64) -> Rate {
