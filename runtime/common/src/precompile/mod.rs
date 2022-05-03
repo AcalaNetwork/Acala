@@ -41,6 +41,7 @@ use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
 pub mod dex;
 pub mod evm;
+pub mod homa;
 pub mod input;
 pub mod multicurrency;
 pub mod nft;
