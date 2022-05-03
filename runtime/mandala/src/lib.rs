@@ -60,7 +60,7 @@ use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey, Happened,
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
@@ -1733,6 +1733,20 @@ impl ecosystem_aqua_dao::Config for Runtime {
 	type WeightInfo = weights::ecosystem_aqua_dao::WeightInfo<Runtime>;
 }
 
+pub struct AquaOnDepositReward;
+impl Happened<(CurrencyId, Balance)> for AquaOnDepositReward {
+	fn happened(info: &(CurrencyId, Balance)) {
+		let aca_pool = module_incentives::PoolId::Loans(ACA);
+		if let Err(e) = Rewards::accumulate_reward(&aca_pool, info.0, info.1) {
+			log::error!(
+				target: "aqua-dao",
+				"accumulate_reward: failed to accumulate reward to pool {:?}, currency {:?}, amount {:?}: {:?}",
+				aca_pool, info.0, info.1, e,
+			);
+		}
+	}
+}
+
 impl ecosystem_aqua_staked_token::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
@@ -1743,11 +1757,12 @@ impl ecosystem_aqua_staked_token::Config for Runtime {
 	type DaoShare = DaoShare;
 	type DefaultExchangeRate = DaoDefaultExchangeRate;
 	type PalletId = AquaStakedTokenPalletId;
-	//FIX: use aqua dao treasury staking pallet
-	type TreasuryAccount = TreasuryAccount;
+	type FeeDestAccount = TreasuryAccount;
 	type DaoAccount = DaoAccount;
+	type RewardDestAccount = UnreleasedNativeVaultAccountId;
 	type LockIdentifier = AquaStakedTokenLockIdentifier;
 	type MaxVestingChunks = AquaMaxVestingChunks;
+	type OnDepositReward = AquaOnDepositReward;
 	type WeightInfo = weights::ecosystem_aqua_staked_token::WeightInfo<Runtime>;
 }
 
