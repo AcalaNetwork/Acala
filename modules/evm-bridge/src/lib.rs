@@ -30,7 +30,7 @@ use primitive_types::H256;
 use sp_core::{H160, U256};
 use sp_runtime::{ArithmeticError, SaturatedConversion};
 use sp_std::vec::Vec;
-use support::{EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
+use support::{evm::limits::erc20, EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BalanceOf<T> = <<T as Config>::EVM as EVM<AccountIdOf<T>>>::Balance;
@@ -96,7 +96,14 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		// ERC20.name method hash
 		let input = Into::<u32>::into(Action::Name).to_be_bytes().to_vec();
 
-		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
+		let info = T::EVM::execute(
+			context,
+			input,
+			Default::default(),
+			erc20::NAME.gas,
+			erc20::NAME.storage,
+			ExecutionMode::View,
+		)?;
 
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 		Pallet::<T>::decode_string(info.value.as_slice().to_vec())
@@ -108,7 +115,14 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		// ERC20.symbol method hash
 		let input = Into::<u32>::into(Action::Symbol).to_be_bytes().to_vec();
 
-		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
+		let info = T::EVM::execute(
+			context,
+			input,
+			Default::default(),
+			erc20::SYMBOL.gas,
+			erc20::SYMBOL.storage,
+			ExecutionMode::View,
+		)?;
 
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 		Pallet::<T>::decode_string(info.value.as_slice().to_vec())
@@ -120,7 +134,14 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		// ERC20.decimals method hash
 		let input = Into::<u32>::into(Action::Decimals).to_be_bytes().to_vec();
 
-		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
+		let info = T::EVM::execute(
+			context,
+			input,
+			Default::default(),
+			erc20::DECIMALS.gas,
+			erc20::DECIMALS.storage,
+			ExecutionMode::View,
+		)?;
 
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
@@ -137,7 +158,14 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		// ERC20.totalSupply method hash
 		let input = Into::<u32>::into(Action::TotalSupply).to_be_bytes().to_vec();
 
-		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
+		let info = T::EVM::execute(
+			context,
+			input,
+			Default::default(),
+			erc20::TOTAL_SUPPLY.gas,
+			erc20::TOTAL_SUPPLY.storage,
+			ExecutionMode::View,
+		)?;
 
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
@@ -157,7 +185,14 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		// append address
 		input.extend_from_slice(H256::from(address).as_bytes());
 
-		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
+		let info = T::EVM::execute(
+			context,
+			input,
+			Default::default(),
+			erc20::BALANCE_OF.gas,
+			erc20::BALANCE_OF.storage,
+			ExecutionMode::View,
+		)?;
 
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
@@ -177,13 +212,17 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		// append amount to be transferred
 		input.extend_from_slice(H256::from_uint(&U256::from(value.saturated_into::<u128>())).as_bytes());
 
-		let storage_limit = if context.origin == Default::default() { 0 } else { 1_000 };
+		let storage_limit = if context.origin == Default::default() {
+			0
+		} else {
+			erc20::TRANSFER.storage
+		};
 
 		let info = T::EVM::execute(
 			context,
 			input,
 			Default::default(),
-			2_100_000,
+			erc20::TRANSFER.gas,
 			storage_limit,
 			ExecutionMode::Execute,
 		)?;
