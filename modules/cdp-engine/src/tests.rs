@@ -29,7 +29,6 @@ use sp_io::offchain;
 use sp_runtime::{
 	offchain::{DbExternalities, StorageKind},
 	traits::BadOrigin,
-	ModuleError,
 };
 use support::DEXManager;
 
@@ -764,11 +763,7 @@ fn remain_debit_value_too_small_check() {
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
 		assert_noop!(
 			CDPEngineModule::adjust_position(&ALICE, BTC, 0, -490),
-			DispatchError::Module(ModuleError {
-				index: 1,
-				error: [6, 0, 0, 0],
-				message: Some("RemainDebitValueTooSmall"),
-			})
+			crate::Error::<Runtime>::RemainDebitValueTooSmall
 		);
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, -90, -500));
 	});

@@ -100,11 +100,12 @@ pub use runtime_common::{
 	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
-	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
-	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength,
-	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
-	TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
+	ExistentialDepositsTimesOneHundred, FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight,
+	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
+	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
+	RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
+	PHA, RENBTC, VSKSM,
 };
 pub use xcm::latest::prelude::*;
 
@@ -1034,12 +1035,6 @@ where
 	type Extrinsic = UncheckedExtrinsic;
 }
 
-parameter_type_with_key! {
-	pub MinimumCollateralAmount: |currency_id: CurrencyId| -> Balance {
-		ExistentialDeposits::get(currency_id).saturating_mul(100u128)
-	};
-}
-
 parameter_types! {
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, KAR, CurrencyId::StableAssetPoolToken(0)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
@@ -1057,7 +1052,8 @@ impl module_cdp_engine::Config for Runtime {
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
-	type MinimumCollateralAmount = MinimumCollateralAmount;
+	type MinimumCollateralAmount =
+		ExistentialDepositsTimesOneHundred<GetNativeCurrencyId, NativeTokenExistentialDeposit, ExistentialDeposits>;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;

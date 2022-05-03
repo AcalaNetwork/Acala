@@ -104,10 +104,10 @@ pub use runtime_common::{
 	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
-	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
-	OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate,
-	Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	ExistentialDepositsTimesOneHundred, FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight,
+	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
+	MaxTipsOfPriority, OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price,
+	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT, RENBTC,
 };
 pub use xcm::latest::prelude::*;
@@ -1025,14 +1025,8 @@ where
 	type Extrinsic = UncheckedExtrinsic;
 }
 
-parameter_type_with_key! {
-	pub MinimumCollateralAmount: |currency_id: CurrencyId| -> Balance {
-		ExistentialDeposits::get(currency_id).saturating_mul(100u128)
-	};
-}
-
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, RENBTC, CurrencyId::StableAssetPoolToken(0)];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![ACA, DOT, LDOT, RENBTC, CurrencyId::StableAssetPoolToken(0)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -1048,7 +1042,8 @@ impl module_cdp_engine::Config for Runtime {
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
-	type MinimumCollateralAmount = MinimumCollateralAmount;
+	type MinimumCollateralAmount =
+		ExistentialDepositsTimesOneHundred<GetNativeCurrencyId, NativeTokenExistentialDeposit, ExistentialDeposits>;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;
