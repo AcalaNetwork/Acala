@@ -240,11 +240,11 @@ pub mod limits {
 	pub mod erc20 {
 		use super::*;
 
-		pub const NAME: Limit = Limit::new(10_000, 0);
-		pub const SYMBOL: Limit = Limit::new(10_000, 0);
-		pub const DECIMALS: Limit = Limit::new(10_000, 0);
-		pub const TOTAL_SUPPLY: Limit = Limit::new(10_000, 0);
-		pub const BALANCE_OF: Limit = Limit::new(10_000, 0);
+		pub const NAME: Limit = Limit::new(100_000, 0);
+		pub const SYMBOL: Limit = Limit::new(100_000, 0);
+		pub const DECIMALS: Limit = Limit::new(100_000, 0);
+		pub const TOTAL_SUPPLY: Limit = Limit::new(100_000, 0);
+		pub const BALANCE_OF: Limit = Limit::new(100_000, 0);
 		pub const TRANSFER: Limit = Limit::new(200_000, 960);
 	}
 }
