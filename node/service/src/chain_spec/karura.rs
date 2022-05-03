@@ -150,7 +150,6 @@ fn karura_genesis(
 		},
 		cdp_engine: CdpEngineConfig {
 			collaterals_params: vec![],
-			global_interest_rate_per_sec: Default::default(),
 		},
 		asset_registry: Default::default(),
 		evm: Default::default(),

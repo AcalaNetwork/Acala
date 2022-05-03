@@ -139,9 +139,6 @@ runtime_benchmarks! {
 		Change::NewValue(100_000 * dollar(STABLECOIN))
 	)
 
-	set_global_params {
-	}: _(RawOrigin::Root, Rate::saturating_from_rational(1, 1000000))
-
 	// `liquidate` by_auction
 	liquidate_by_auction {
 		let b in 1 .. <Runtime as module_cdp_treasury::Config>::MaxAuctionsCount::get();

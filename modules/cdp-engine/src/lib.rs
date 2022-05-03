@@ -278,8 +278,6 @@ pub mod module {
 			collateral_type: CurrencyId,
 			new_total_debit_value: Balance,
 		},
-		/// The global interest rate per sec for all types of collateral updated.
-		GlobalInterestRatePerSecUpdated { new_global_interest_rate_per_sec: Rate },
 	}
 
 	/// Mapping from collateral type to its exchange rate of debit units and
@@ -289,13 +287,6 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn debit_exchange_rate)]
 	pub type DebitExchangeRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, ExchangeRate, OptionQuery>;
-
-	/// Global interest rate per sec for all types of collateral
-	///
-	/// GlobalInterestRatePerSec: Rate
-	#[pallet::storage]
-	#[pallet::getter(fn global_interest_rate_per_sec)]
-	pub type GlobalInterestRatePerSec<T: Config> = StorageValue<_, Rate, ValueQuery>;
 
 	/// Mapping from collateral type to its risk management params
 	///
@@ -323,7 +314,6 @@ pub mod module {
 			Option<Ratio>,
 			Balance,
 		)>,
-		pub global_interest_rate_per_sec: Rate,
 	}
 
 	#[pallet::genesis_build]
@@ -350,7 +340,6 @@ pub mod module {
 					);
 				},
 			);
-			GlobalInterestRatePerSec::<T>::put(self.global_interest_rate_per_sec);
 		}
 	}
 
@@ -435,22 +424,6 @@ pub mod module {
 			let who = T::Lookup::lookup(who)?;
 			ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
 			Self::settle_cdp_has_debit(who, currency_id)?;
-			Ok(())
-		}
-
-		/// Update global parameters related to risk management of CDP
-		///
-		/// The dispatch origin of this call must be `UpdateOrigin`.
-		///
-		/// - `global_interest_rate_per_sec`: global interest rate per sec.
-		#[pallet::weight((<T as Config>::WeightInfo::set_global_params(), DispatchClass::Operational))]
-		#[transactional]
-		pub fn set_global_params(origin: OriginFor<T>, global_interest_rate_per_sec: Rate) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
-			GlobalInterestRatePerSec::<T>::put(global_interest_rate_per_sec);
-			Self::deposit_event(Event::GlobalInterestRatePerSecUpdated {
-				new_global_interest_rate_per_sec: global_interest_rate_per_sec,
-			});
 			Ok(())
 		}
 
@@ -776,7 +749,6 @@ impl<T: Config> Pallet<T> {
 		Self::collateral_params(currency_id)
 			.interest_rate_per_sec
 			.unwrap_or_default()
-			.saturating_add(Self::global_interest_rate_per_sec())
 	}
 
 	pub fn compound_interest_rate(rate_per_sec: Rate, secs: u64) -> Rate {
