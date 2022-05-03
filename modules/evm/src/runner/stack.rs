@@ -365,13 +365,6 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 		access_list: Vec<(H160, Vec<H256>)>,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
-		// if the contract not published, the caller must be developer or contract or maintainer.
-		// if the contract not exists, let evm try to execute it and handle the error.
-		ensure!(
-			Pallet::<T>::can_call_contract(&target, &source),
-			Error::<T>::NoPermission
-		);
-
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(
