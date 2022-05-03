@@ -357,17 +357,17 @@ fn withdraw_bond() {
 			CollatorSelection::withdraw_bond(Origin::signed(3)),
 			Error::<Test>::StillLocked
 		);
-		initialize_to_block(Period::get());
+		initialize_to_block(PERIOD);
 		assert_noop!(
 			CollatorSelection::withdraw_bond(Origin::signed(3)),
 			Error::<Test>::StillLocked
 		);
-		initialize_to_block(2 * Period::get() - 1);
+		initialize_to_block(2u64 * PERIOD - 1u64);
 		assert_noop!(
 			CollatorSelection::withdraw_bond(Origin::signed(3)),
 			Error::<Test>::StillLocked
 		);
-		initialize_to_block(2 * Period::get());
+		initialize_to_block(2 * PERIOD);
 		// bond is returned
 		assert!(NonCandidates::<Test>::contains_key(3));
 		assert_ok!(CollatorSelection::withdraw_bond(Origin::signed(3)));

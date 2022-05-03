@@ -16,24 +16,22 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use super::{
+	input::{Input, InputPricer, InputT, Output},
+	target_gas_limit,
+	weights::PrecompileWeights,
+};
 use crate::WeightToGas;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
 	Context, ExitError, ExitRevert, ExitSucceed, WeightInfo,
 };
+use module_support::EVMManager;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use primitives::Balance;
 use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
-
-use module_support::EVMManager;
-
-use super::{
-	input::{Input, InputT, Output},
-	weights::PrecompileWeights,
-};
-use crate::precompile::input::InputPricer;
-use primitives::Balance;
 
 /// The `EVM` impl precompile.
 ///
@@ -71,7 +69,8 @@ where
 {
 	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
-			input, target_gas,
+			input,
+			target_gas_limit(target_gas),
 		);
 
 		let gas_cost = Pricer::<Runtime>::cost(&input)?;
@@ -112,7 +111,7 @@ where
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Into::<&str>::into(e).as_bytes().to_vec(),
-						cost: target_gas.unwrap_or_default(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
 
@@ -160,7 +159,7 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Into::<&str>::into(e).as_bytes().to_vec(),
-					cost: target_gas.unwrap_or_default(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
@@ -177,7 +176,7 @@ where
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Into::<&str>::into(e).as_bytes().to_vec(),
-						cost: target_gas.unwrap_or_default(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
 
@@ -194,7 +193,7 @@ where
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Into::<&str>::into(e).as_bytes().to_vec(),
-						cost: target_gas.unwrap_or_default(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
 
@@ -211,7 +210,7 @@ where
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Into::<&str>::into(e).as_bytes().to_vec(),
-						cost: target_gas.unwrap_or_default(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
 

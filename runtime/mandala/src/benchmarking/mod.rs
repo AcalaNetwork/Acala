@@ -37,6 +37,7 @@ pub mod evm;
 pub mod evm_accounts;
 pub mod homa;
 pub mod honzon;
+pub mod idle_scheduler;
 pub mod incentives;
 pub mod nominees_election;
 pub mod nutsfinance_stable_asset;

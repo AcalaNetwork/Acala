@@ -169,7 +169,14 @@ pub mod module {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// The AccountId of a relay chain account.
-		type RelaychainAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
+		type RelaychainAccountId: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ Debug
+			+ MaybeDisplay
+			+ Ord
+			+ Default
+			+ MaxEncodedLen;
 		/// The liquid representation of the staking token on the relay chain.
 		type LiquidTokenCurrency: BasicLockableCurrency<Self::AccountId, Balance = Balance>;
 		#[pallet::constant]
@@ -268,7 +275,6 @@ pub mod module {
 		StorageMap<_, Blake2_128Concat, T::RelaychainAccountId, ValidatorBacking, OptionQuery>;
 
 	#[pallet::pallet]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -303,13 +309,13 @@ pub mod module {
 							guarantee.bonded >= T::MinBondAmount::get(),
 							Error::<T>::BelowMinBondAmount
 						);
-						Self::deposit_event(Event::BondGuarantee {
-							who: guarantor.clone(),
-							validator: validator.clone(),
-							bond: amount,
-						});
 						Ok(())
 					})?;
+					Self::deposit_event(Event::BondGuarantee {
+						who: guarantor,
+						validator: validator.clone(),
+						bond: amount,
+					});
 				}
 			}
 			Ok(())

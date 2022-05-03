@@ -29,19 +29,19 @@ use sp_runtime::traits::AccountIdConversion;
 use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
 
 decl_test_relay_chain! {
-	pub struct KusamaNet {
-		Runtime = kusama_runtime::Runtime,
-		XcmConfig = kusama_runtime::xcm_config::XcmConfig,
-		new_ext = kusama_ext(),
+	pub struct PolkadotNet {
+		Runtime = polkadot_runtime::Runtime,
+		XcmConfig = polkadot_runtime::xcm_config::XcmConfig,
+		new_ext = polkadot_ext(),
 	}
 }
 
 decl_test_parachain! {
-	pub struct Karura {
+	pub struct Acala {
 		Runtime = Runtime,
 		Origin = Origin,
-		XcmpMessageHandler = karura_runtime::XcmpQueue,
-		DmpMessageHandler = karura_runtime::DmpQueue,
+		XcmpMessageHandler = acala_runtime::XcmpQueue,
+		DmpMessageHandler = acala_runtime::DmpQueue,
 		new_ext = para_ext(2000),
 	}
 }
@@ -50,28 +50,17 @@ decl_test_parachain! {
 	pub struct Sibling {
 		Runtime = Runtime,
 		Origin = Origin,
-		XcmpMessageHandler = karura_runtime::XcmpQueue,
-		DmpMessageHandler = karura_runtime::DmpQueue,
+		XcmpMessageHandler = acala_runtime::XcmpQueue,
+		DmpMessageHandler = acala_runtime::DmpQueue,
 		new_ext = para_ext(2001),
-	}
-}
-
-decl_test_parachain! {
-	pub struct Statemine {
-		Runtime = statemine_runtime::Runtime,
-		Origin = statemine_runtime::Origin,
-		XcmpMessageHandler = statemine_runtime::XcmpQueue,
-		DmpMessageHandler = statemine_runtime::DmpQueue,
-		new_ext = para_ext(1000),
 	}
 }
 
 decl_test_network! {
 	pub struct TestNet {
-		relay_chain = KusamaNet,
+		relay_chain = PolkadotNet,
 		parachains = vec![
-			(1000, Statemine),
-			(2000, Karura),
+			(2000, Acala),
 			(2001, Sibling),
 		],
 	}
@@ -115,8 +104,8 @@ fn default_parachains_host_configuration() -> HostConfiguration<BlockNumber> {
 	}
 }
 
-pub fn kusama_ext() -> sp_io::TestExternalities {
-	use kusama_runtime::{Runtime, System};
+pub fn polkadot_ext() -> sp_io::TestExternalities {
+	use polkadot_runtime::{Runtime, System};
 
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
@@ -124,8 +113,8 @@ pub fn kusama_ext() -> sp_io::TestExternalities {
 
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
-			(AccountId::from(ALICE), 2002 * dollar(KSM)),
-			(ParaId::from(2000).into_account(), 2 * dollar(KSM)),
+			(AccountId::from(ALICE), 2002 * dollar(DOT)),
+			(ParaId::from(2000).into_account(), 10 * dollar(DOT)),
 		],
 	}
 	.assimilate_storage(&mut t)
@@ -153,8 +142,8 @@ pub fn kusama_ext() -> sp_io::TestExternalities {
 pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 	ExtBuilder::default()
 		.balances(vec![
-			(AccountId::from(ALICE), KSM, 10 * dollar(KSM)),
-			(karura_runtime::KaruraTreasuryAccount::get(), KSM, dollar(KSM)),
+			(AccountId::from(ALICE), DOT, 10 * dollar(DOT)),
+			(acala_runtime::AcalaTreasuryAccount::get(), DOT, dollar(DOT)),
 		])
 		.parachain_id(parachain_id)
 		.build()

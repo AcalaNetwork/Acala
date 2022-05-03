@@ -24,6 +24,7 @@
 #![allow(clippy::unused_unit)]
 
 use frame_support::{
+	assert_ok,
 	dispatch::DispatchResult,
 	ensure,
 	pallet_prelude::*,
@@ -95,6 +96,7 @@ pub mod module {
 		Erc20(EvmAddress),
 		StableAssetId(StableAssetPoolId),
 		ForeignAssetId(ForeignAssetId),
+		NativeAssetId(CurrencyId),
 	}
 
 	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
@@ -191,6 +193,37 @@ pub mod module {
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub assets: Vec<(CurrencyId, BalanceOf<T>)>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig {
+				assets: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			self.assets.iter().for_each(|(asset, ed)| {
+				assert_ok!(Pallet::<T>::do_register_native_asset(
+					*asset,
+					&AssetMetadata {
+						name: asset.name().unwrap().as_bytes().to_vec(),
+						symbol: asset.symbol().unwrap().as_bytes().to_vec(),
+						decimals: asset.decimals().unwrap(),
+						minimal_balance: *ed,
+					}
+				));
+			});
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -301,6 +334,42 @@ pub mod module {
 
 			Self::deposit_event(Event::<T>::AssetUpdated {
 				asset_id: AssetIds::Erc20(contract),
+				metadata: *metadata,
+			});
+			Ok(())
+		}
+
+		#[pallet::weight(T::WeightInfo::register_native_asset())]
+		#[transactional]
+		pub fn register_native_asset(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			metadata: Box<AssetMetadata<BalanceOf<T>>>,
+		) -> DispatchResult {
+			T::RegisterOrigin::ensure_origin(origin)?;
+
+			Self::do_register_native_asset(currency_id, &metadata)?;
+
+			Self::deposit_event(Event::<T>::AssetRegistered {
+				asset_id: AssetIds::NativeAssetId(currency_id),
+				metadata: *metadata,
+			});
+			Ok(())
+		}
+
+		#[pallet::weight(T::WeightInfo::update_native_asset())]
+		#[transactional]
+		pub fn update_native_asset(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			metadata: Box<AssetMetadata<BalanceOf<T>>>,
+		) -> DispatchResult {
+			T::RegisterOrigin::ensure_origin(origin)?;
+
+			Self::do_update_native_asset(currency_id, &metadata)?;
+
+			Self::deposit_event(Event::<T>::AssetUpdated {
+				asset_id: AssetIds::NativeAssetId(currency_id),
 				metadata: *metadata,
 			});
 			Ok(())
@@ -456,6 +525,32 @@ impl<T: Config> Pallet<T> {
 			*maybe_asset_metadatas = Some(metadata.clone());
 			Ok(())
 		})
+	}
+
+	fn do_register_native_asset(asset: CurrencyId, metadata: &AssetMetadata<BalanceOf<T>>) -> DispatchResult {
+		AssetMetadatas::<T>::try_mutate(
+			AssetIds::NativeAssetId(asset),
+			|maybe_asset_metadatas| -> DispatchResult {
+				ensure!(maybe_asset_metadatas.is_none(), Error::<T>::AssetIdExisted);
+
+				*maybe_asset_metadatas = Some(metadata.clone());
+				Ok(())
+			},
+		)?;
+
+		Ok(())
+	}
+
+	fn do_update_native_asset(currency_id: CurrencyId, metadata: &AssetMetadata<BalanceOf<T>>) -> DispatchResult {
+		AssetMetadatas::<T>::try_mutate(
+			AssetIds::NativeAssetId(currency_id),
+			|maybe_asset_metadatas| -> DispatchResult {
+				ensure!(maybe_asset_metadatas.is_some(), Error::<T>::AssetIdNotExists);
+
+				*maybe_asset_metadatas = Some(metadata.clone());
+				Ok(())
+			},
+		)
 	}
 }
 
@@ -616,7 +711,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 	// the EvmAddress must have been mapped.
 	fn name(currency_id: CurrencyId) -> Option<Vec<u8>> {
 		let name = match currency_id {
-			CurrencyId::Token(_) => currency_id.name().map(|v| v.as_bytes().to_vec()),
+			CurrencyId::Token(_) => AssetMetadatas::<T>::get(AssetIds::NativeAssetId(currency_id)).map(|v| v.name),
 			CurrencyId::DexShare(symbol_0, symbol_1) => {
 				let name_0 = match symbol_0 {
 					DexShare::Token(symbol) => CurrencyId::Token(symbol).name().map(|v| v.as_bytes().to_vec()),
@@ -692,7 +787,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 	// the EvmAddress must have been mapped.
 	fn symbol(currency_id: CurrencyId) -> Option<Vec<u8>> {
 		let symbol = match currency_id {
-			CurrencyId::Token(_) => currency_id.symbol().map(|v| v.as_bytes().to_vec()),
+			CurrencyId::Token(_) => AssetMetadatas::<T>::get(AssetIds::NativeAssetId(currency_id)).map(|v| v.symbol),
 			CurrencyId::DexShare(symbol_0, symbol_1) => {
 				let token_symbol_0 = match symbol_0 {
 					DexShare::Token(symbol) => CurrencyId::Token(symbol).symbol().map(|v| v.as_bytes().to_vec()),
@@ -774,7 +869,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 	// the EvmAddress must have been mapped.
 	fn decimals(currency_id: CurrencyId) -> Option<u8> {
 		match currency_id {
-			CurrencyId::Token(_) => currency_id.decimals(),
+			CurrencyId::Token(_) => AssetMetadatas::<T>::get(AssetIds::NativeAssetId(currency_id)).map(|v| v.decimals),
 			CurrencyId::DexShare(symbol_0, _) => {
 				// initial dex share amount is calculated based on currency_id_0,
 				// use the decimals of currency_id_0 as the decimals of lp token.

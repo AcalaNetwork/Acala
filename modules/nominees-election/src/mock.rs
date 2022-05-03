@@ -25,7 +25,7 @@ use super::*;
 use crate as nominees_election;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{Everything, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 };
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId, TokenSymbol};
@@ -40,10 +40,6 @@ pub const BOB: AccountId = 1;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
-
 impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
@@ -55,7 +51,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
@@ -68,17 +64,13 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		Default::default()
 	};
-}
-
-parameter_types! {
-	pub const MaxLocks: u32 = 100;
 }
 
 ord_parameter_types! {
@@ -93,19 +85,15 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
-	type MaxLocks = MaxLocks;
+	type MaxLocks = ConstU32<100>;
 	type DustRemovalWhitelist = Nothing;
-}
-
-parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
 }
 
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ConstU128<1>;
 	type AccountStore = System;
 	type MaxLocks = ();
 	type MaxReserves = ();
@@ -122,7 +110,6 @@ pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletB
 pub type LDOTCurrency = orml_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 
 impl orml_currencies::Config for Runtime {
-	type Event = Event;
 	type MultiCurrency = TokensModule;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -130,10 +117,6 @@ impl orml_currencies::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinBond: Balance = 5;
-	pub const BondingDuration: EraIndex = 4;
-	pub const NominateesCount: u32 = 5;
-	pub const MaxUnbondingChunks: u32 = 3;
 	pub const PalletId: LockIdentifier = *b"1       ";
 }
 
@@ -149,10 +132,10 @@ impl Config for Runtime {
 	type Currency = LDOTCurrency;
 	type NomineeId = AccountId;
 	type PalletId = PalletId;
-	type MinBond = MinBond;
-	type BondingDuration = BondingDuration;
-	type NominateesCount = NominateesCount;
-	type MaxUnbondingChunks = MaxUnbondingChunks;
+	type MinBond = ConstU128<5>;
+	type BondingDuration = ConstU32<4>;
+	type NominateesCount = ConstU32<5>;
+	type MaxUnbondingChunks = ConstU32<3>;
 	type NomineeFilter = MockNomineeFilter;
 	type WeightInfo = ();
 }
@@ -170,7 +153,7 @@ construct_runtime!(
 		NomineesElectionModule: nominees_election::{Pallet, Call, Storage, Event<T>},
 		TokensModule: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		OrmlCurrencies: orml_currencies::{Pallet, Call, Event<T>},
+		OrmlCurrencies: orml_currencies::{Pallet, Call},
 	}
 );
 

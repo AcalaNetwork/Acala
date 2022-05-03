@@ -112,6 +112,9 @@ pub trait CDPTreasury<AccountId> {
 	/// deposit surplus(stable currency) to cdp treasury by `from`
 	fn deposit_surplus(from: &AccountId, surplus: Self::Balance) -> DispatchResult;
 
+	/// withdraw surplus(stable currency) from cdp treasury to `to`
+	fn withdraw_surplus(to: &AccountId, surplus: Self::Balance) -> DispatchResult;
+
 	/// deposit collateral assets to cdp treasury by `who`
 	fn deposit_collateral(from: &AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult;
 

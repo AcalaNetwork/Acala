@@ -375,7 +375,7 @@ fn mint_match_from_previous_redeem_requests() {
 				Origin::root(),
 				account.clone(),
 				LKSM,
-				dollar(1000 as u128) as i128
+				dollar(1000_u128) as i128
 			));
 			assert_ok!(HomaLite::request_redeem(
 				Origin::signed(account),
@@ -415,7 +415,7 @@ fn mint_match_from_previous_redeem_requests() {
 			Origin::root(),
 			minter.clone(),
 			KSM,
-			dollar(100 as u128) as i128
+			dollar(100_u128) as i128
 		));
 
 		// If unset, `LastRedeemRequestKeyIterated` should be the default account Id
@@ -446,7 +446,7 @@ fn mint_match_from_previous_redeem_requests() {
 			Origin::root(),
 			minter.clone(),
 			KSM,
-			dollar(1000 as u128) as i128
+			dollar(1000_u128) as i128
 		));
 
 		assert_eq!(HomaLite::total_staking_currency(), dollar(1000));
@@ -503,7 +503,7 @@ fn test_increase_staking_match_from_previous_redeem_requests(
 			Origin::root(),
 			AccountId::from([255u8; 32]),
 			LKSM,
-			dollar(10 as u128) as i128
+			dollar(10_u128) as i128
 		));
 
 		for i in 0..10 {
@@ -512,7 +512,7 @@ fn test_increase_staking_match_from_previous_redeem_requests(
 				Origin::root(),
 				account.clone(),
 				LKSM,
-				dollar(1000 as u128) as i128
+				dollar(1000_u128) as i128
 			));
 			assert_ok!(HomaLite::request_redeem(
 				Origin::signed(account),
@@ -605,7 +605,7 @@ fn redeem_does_not_restart_if_previous_key_is_removed() {
 				Origin::root(),
 				account.clone(),
 				LKSM,
-				dollar(1000 as u128) as i128
+				dollar(1000_u128) as i128
 			));
 			assert_ok!(HomaLite::request_redeem(
 				Origin::signed(account),
@@ -640,7 +640,7 @@ fn redeem_does_not_restart_if_previous_key_is_removed() {
 			Origin::root(),
 			minter.clone(),
 			KSM,
-			dollar(100 as u128) as i128
+			dollar(100_u128) as i128
 		));
 
 		// Mint from the first element in the iterator
@@ -678,7 +678,7 @@ fn redeem_does_not_restart_if_previous_key_is_removed() {
 		RedeemRequests::<NoFeeRuntime>::remove(AccountId::from([0u8; 32]));
 
 		// Next mint should start from the beginning
-		assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(10)));
+		assert_ok!(HomaLite::mint(Origin::signed(minter), dollar(10)));
 		assert_eq!(
 			HomaLite::redeem_requests(AccountId::from([1u8; 32])),
 			Some((dollar(800), Permill::zero()))

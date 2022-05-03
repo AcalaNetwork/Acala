@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{Everything, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
@@ -49,10 +49,6 @@ mod homa_validator_list {
 	pub use super::super::*;
 }
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
-
 impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
@@ -64,7 +60,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
@@ -77,17 +73,13 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		Default::default()
 	};
-}
-
-parameter_types! {
-	pub const MaxLocks: u32 = 100;
 }
 
 impl orml_tokens::Config for Runtime {
@@ -98,19 +90,15 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
-	type MaxLocks = MaxLocks;
+	type MaxLocks = ConstU32<100>;
 	type DustRemovalWhitelist = Nothing;
-}
-
-parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
 }
 
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ConstU128<1>;
 	type AccountStore = System;
 	type MaxLocks = ();
 	type MaxReserves = ();
@@ -127,7 +115,6 @@ pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletB
 pub type LDOTCurrency = orml_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 
 impl orml_currencies::Config for Runtime {
-	type Event = Event;
 	type MultiCurrency = OrmlTokens;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -188,9 +175,6 @@ impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 }
 
 parameter_types! {
-	pub const MinBondAmount: Balance = 100;
-	pub const BondingDuration: BlockNumber = 100;
-	pub const ValidatorInsuranceThreshold: Balance = 200;
 	pub static MockBlockNumberProvider: u64 = 0;
 }
 
@@ -210,9 +194,9 @@ impl Config for Runtime {
 	type Event = Event;
 	type RelaychainAccountId = AccountId;
 	type LiquidTokenCurrency = LDOTCurrency;
-	type MinBondAmount = MinBondAmount;
-	type BondingDuration = BondingDuration;
-	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
+	type MinBondAmount = ConstU128<100>;
+	type BondingDuration = ConstU64<100>;
+	type ValidatorInsuranceThreshold = ConstU128<200>;
 	type FreezeOrigin = EnsureSignedBy<Admin, AccountId>;
 	type SlashOrigin = EnsureSignedBy<Admin, AccountId>;
 	type OnSlash = MockOnSlash;
@@ -235,7 +219,7 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		OrmlCurrencies: orml_currencies::{Pallet, Call, Event<T>},
+		OrmlCurrencies: orml_currencies::{Pallet, Call},
 		HomaValidatorListModule: homa_validator_list::{Pallet, Call, Storage, Event<T>},
 	}
 );

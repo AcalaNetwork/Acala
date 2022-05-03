@@ -553,7 +553,11 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 	}
 
 	/// Burn some asset `instance` of `class`.
-	fn burn_from(class: &Self::ClassId, instance: &Self::InstanceId) -> DispatchResult {
+	fn burn(
+		class: &Self::ClassId,
+		instance: &Self::InstanceId,
+		_maybe_check_owner: Option<&T::AccountId>,
+	) -> DispatchResult {
 		let owner = <Self as Inspect<T::AccountId>>::owner(class, instance).ok_or(Error::<T>::TokenIdNotFound)?;
 		Self::do_burn(owner, (*class, *instance), None)
 	}
