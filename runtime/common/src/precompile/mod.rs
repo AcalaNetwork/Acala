@@ -144,7 +144,6 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
-				STABLE_ASSET,
 			]),
 			_marker: Default::default(),
 		}
