@@ -42,8 +42,12 @@ pub struct StableAssetPrecompile<R>(PhantomData<R>);
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
-	GetStableAssetPoolTokens = "getStableAssetPoolTokens(uint32)",
-	GetStableAssetPoolTotalSupply = "getStableAssetPoolTotalSupply(uint32)",
+	GetStableAssetPoolPoolTokens = "getStableAssetPoolTokens(uint32)",
+	GetStableAssetPoolPoolTotalSupply = "getStableAssetPoolPoolTotalSupply(uint32)",
+	GetStableAssetPoolPoolPrecision = "getStableAssetPoolPoolPrecision(uint32)",
+	GetStableAssetPoolPoolMintFee = "getStableAssetPoolPoolMintFee(uint32)",
+	GetStableAssetPoolPoolSwapFee = "getStableAssetPoolPoolSwapFee(uint32)",
+	GetStableAssetPoolPoolRedeemFee = "getStableAssetPoolPoolRedeemFee(uint32)",
 	StableAssetSwap = "stableAssetSwap(address,uint32,uint32,uint32,uint256,uint256,uint32)",
 	StableAssetMint = "stableAssetMint(address,uint32,uint256[],uint256)",
 	StableAssetRedeem = "stableAssetRedeem(address,uint32,uint256,uint256[])",
