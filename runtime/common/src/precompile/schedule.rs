@@ -31,7 +31,6 @@ use frame_support::{
 		schedule::{DispatchTime, Named as ScheduleNamed},
 		Currency, IsType, OriginTrait,
 	},
-	weights::WeightToFeePolynomial,
 };
 use module_evm::{
 	precompiles::Precompile,
