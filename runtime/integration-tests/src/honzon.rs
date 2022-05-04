@@ -563,3 +563,104 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 			)
 		});
 }
+
+#[test]
+fn cdp_engine_minimum_collateral_amount_works() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+			),
+			(AccountId::from(ALICE), USD_CURRENCY, 100 * dollar(USD_CURRENCY)),
+			(AccountId::from(ALICE), NATIVE_CURRENCY, 100 * dollar(NATIVE_CURRENCY)),
+		])
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+
+			set_oracle_price(vec![
+				(NATIVE_CURRENCY, Price::saturating_from_rational(1, 1)),
+				(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(1, 1)),
+			]);
+
+			assert_ok!(CdpEngine::set_collateral_params(
+				Origin::root(),
+				NATIVE_CURRENCY,
+				Change::NewValue(Some(Rate::zero())),
+				Change::NewValue(Some(Rate::saturating_from_rational(1, 10000))),
+				Change::NewValue(None),
+				Change::NewValue(None),
+				Change::NewValue(1_000_000 * dollar(NATIVE_CURRENCY)),
+			));
+			assert_ok!(CdpEngine::set_collateral_params(
+				Origin::root(),
+				RELAY_CHAIN_CURRENCY,
+				Change::NewValue(Some(Rate::zero())),
+				Change::NewValue(Some(Rate::saturating_from_rational(1, 10000))),
+				Change::NewValue(None),
+				Change::NewValue(None),
+				Change::NewValue(1_000_000 * dollar(RELAY_CHAIN_CURRENCY)),
+			));
+
+			let native_minimum_collateral_amount = NativeTokenExistentialDeposit::get() * 100;
+			let relaychain_minimum_collateral_amount = ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY) * 100;
+
+			#[cfg(feature = "with-acala-runtime")]
+			{
+				assert_eq!(native_minimum_collateral_amount, 10 * dollar(ACA));
+				assert_eq!(relaychain_minimum_collateral_amount, dollar(DOT));
+			}
+
+			#[cfg(feature = "with-mandala-runtime")]
+			{
+				assert_eq!(native_minimum_collateral_amount, 10 * dollar(ACA));
+				assert_eq!(relaychain_minimum_collateral_amount, cent(DOT));
+			}
+
+			#[cfg(feature = "with-karura-runtime")]
+			{
+				assert_eq!(native_minimum_collateral_amount, 10 * dollar(KAR));
+				assert_eq!(relaychain_minimum_collateral_amount, cent(KSM));
+			}
+
+			// Native collateral cannot be below the minimum when debit is 0
+			assert_noop!(
+				CdpEngine::adjust_position(
+					&AccountId::from(ALICE),
+					NATIVE_CURRENCY,
+					(native_minimum_collateral_amount - 1) as i128,
+					0i128,
+				),
+				module_cdp_engine::Error::<Runtime>::CollateralAmountBelowMinimum
+			);
+
+			// Other token collaterals cannot be below the minimum when debit is 0
+			assert_noop!(
+				CdpEngine::adjust_position(
+					&AccountId::from(ALICE),
+					RELAY_CHAIN_CURRENCY,
+					(relaychain_minimum_collateral_amount - 1) as i128,
+					0i128,
+				),
+				module_cdp_engine::Error::<Runtime>::CollateralAmountBelowMinimum
+			);
+
+			// Native collateral minimum not enforced when debit is non-zero
+			assert_ok!(CdpEngine::adjust_position(
+				&AccountId::from(ALICE),
+				NATIVE_CURRENCY,
+				(native_minimum_collateral_amount - 1) as i128,
+				(MinimumDebitValue::get() * 10) as i128,
+			));
+
+			// Other token collateral minimum not enforced when debit is non-zero
+			assert_ok!(CdpEngine::adjust_position(
+				&AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				(relaychain_minimum_collateral_amount - 1) as i128,
+				(MinimumDebitValue::get() * 10) as i128,
+			));
+		});
+}

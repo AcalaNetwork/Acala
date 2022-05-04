@@ -35,7 +35,7 @@ use frame_system::{
 	pallet_prelude::*,
 };
 use loans::Position;
-use orml_traits::{Change, MultiCurrency};
+use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_utilities::OffchainErr;
 use primitives::{Amount, Balance, CurrencyId};
 use rand_chacha::{
@@ -149,6 +149,9 @@ pub mod module {
 		#[pallet::constant]
 		type MinimumDebitValue: Get<Balance>;
 
+		/// Gets the minimum collateral value for the given currency.
+		type MinimumCollateralAmount: GetByKey<CurrencyId, Balance>;
+
 		/// Stablecoin currency id
 		#[pallet::constant]
 		type GetStableCurrencyId: Get<CurrencyId>;
@@ -211,6 +214,8 @@ pub mod module {
 		InvalidCollateralType,
 		/// Remain debit value in CDP below the dust amount
 		RemainDebitValueTooSmall,
+		/// Remain collateral value in CDP below the dust amount
+		CollateralAmountBelowMinimum,
 		/// Feed price is invalid
 		InvalidFeedPrice,
 		/// No debit value in CDP so that it cannot be settled
@@ -1288,6 +1293,12 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 			ensure!(
 				debit_value >= T::MinimumDebitValue::get(),
 				Error::<T>::RemainDebitValueTooSmall,
+			);
+		} else {
+			// check the collateral amount is above minimum when debit is 0
+			ensure!(
+				collateral_balance >= T::MinimumCollateralAmount::get(&currency_id),
+				Error::<T>::CollateralAmountBelowMinimum,
 			);
 		}
 
