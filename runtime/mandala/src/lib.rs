@@ -1715,7 +1715,7 @@ parameter_types!(
 	/// AquaDao Staked Token pallet
 	pub AquaStakedTokenPalletId: PalletId = PalletId(*b"aqua/stt");
 	pub DaoAccount: AccountId = AquaDaoPalletId::get().into_account();
-	pub InflationRatePerNBlock: (BlockNumber, Rate) = (DAYS, Rate::saturating_from_rational(30, 365_00));
+	pub InflationRatePerNBlock: (BlockNumber, Rate) = (DAYS, Rate::saturating_from_rational(30, 36_500));
 	pub AquaStakedTokenLockIdentifier: LockIdentifier = *b"aqu/vest";
 	pub AquaMaxVestingChunks: u32 = 10;
 );
