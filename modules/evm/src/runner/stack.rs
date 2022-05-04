@@ -67,7 +67,7 @@ impl<T: Config> Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &'config evm::Config,
-		rpc_mode: bool,
+		skip_storage_rent: bool,
 		precompiles: &'precompiles T::PrecompilesType,
 		f: F,
 	) -> Result<ExecutionInfo<R>, sp_runtime::DispatchError>
@@ -92,7 +92,7 @@ impl<T: Config> Runner<T> {
 			Error::<T>::InvalidDecimals
 		);
 
-		if !rpc_mode {
+		if !skip_storage_rent {
 			Pallet::<T>::reserve_storage(&origin, storage_limit).map_err(|e| {
 				log::debug!(
 					target: "evm",
@@ -136,7 +136,7 @@ impl<T: Config> Runner<T> {
 		);
 		let mut sum_storage: i32 = 0;
 		for (target, storage) in &state.substate.storage_logs {
-			if !rpc_mode {
+			if !skip_storage_rent {
 				Pallet::<T>::charge_storage(&origin, target, *storage).map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -160,7 +160,7 @@ impl<T: Config> Runner<T> {
 			return Err(Error::<T>::ChargeStorageFailed.into());
 		}
 
-		if !rpc_mode {
+		if !skip_storage_rent {
 			Pallet::<T>::unreserve_storage(&origin, storage_limit, used_storage, refunded_storage).map_err(|e| {
 				log::debug!(
 					target: "evm",
@@ -353,7 +353,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 
 impl<T: Config> RunnerExtended<T> for Runner<T> {
 	/// Special method for rpc call which won't charge for storage rent
-	/// Same as call but with rpc_mode: true
+	/// Same as call but with skip_storage_rent: true
 	fn rpc_call(
 		source: H160,
 		origin: H160,
@@ -381,7 +381,7 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 	}
 
 	/// Special method for rpc create which won't charge for storage rent
-	/// Same as create but with rpc_mode: true
+	/// Same as create but with skip_storage_rent: true
 	fn rpc_create(
 		source: H160,
 		init: Vec<u8>,
