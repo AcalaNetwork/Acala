@@ -84,7 +84,9 @@ runtime_benchmarks! {
 		// setup balances
 		set_balance(STABLECOIN, &alice, 2_000_000 * dollar(STABLECOIN));
 		set_balance(ADAO_CURRENCY, &alice, 1_000_000 * dollar(ADAO_CURRENCY));
+
 		// setup DEX
+		Dex::enable_trading_pair(RawOrigin::Root.into(), ADAO_CURRENCY, STABLECOIN);
 		Dex::add_liquidity(
 			Origin::signed(AccountId::from(alice.clone())),
 			ADAO_CURRENCY,

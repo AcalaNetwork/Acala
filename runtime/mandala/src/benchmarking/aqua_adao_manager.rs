@@ -91,6 +91,8 @@ runtime_benchmarks! {
 		let alice = whitelisted_caller();
 		set_balance(STABLECOIN, &alice, dollar(STABLECOIN) * 1_000_000);
 		set_balance(ADAO, &alice, dollar(STABLECOIN) * 1_000_000);
+
+		Dex::enable_trading_pair(RawOrigin::Root.into(), ADAO, STABLECOIN);
 		Dex::add_liquidity(
 			Origin::signed(AccountId::from(alice.clone())),
 			ADAO,
