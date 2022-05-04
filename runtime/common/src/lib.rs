@@ -109,6 +109,21 @@ impl Convert<u64, Weight> for GasToWeight {
 	}
 }
 
+pub struct ExistentialDepositsTimesOneHundred<NativeCurrencyId, NativeED, OtherEDs>(
+	PhantomData<(NativeCurrencyId, NativeED, OtherEDs)>,
+);
+impl<NativeCurrencyId: Get<CurrencyId>, NativeED: Get<Balance>, OtherEDs: GetByKey<CurrencyId, Balance>>
+	GetByKey<CurrencyId, Balance> for ExistentialDepositsTimesOneHundred<NativeCurrencyId, NativeED, OtherEDs>
+{
+	fn get(currency_id: &CurrencyId) -> Balance {
+		if *currency_id == NativeCurrencyId::get() {
+			NativeED::get().saturating_mul(100u128)
+		} else {
+			OtherEDs::get(currency_id).saturating_mul(100u128)
+		}
+	}
+}
+
 /// Convert weight to gas
 pub struct WeightToGas;
 impl Convert<Weight, u64> for WeightToGas {

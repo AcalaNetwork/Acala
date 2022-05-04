@@ -256,7 +256,7 @@ runtime_benchmarks! {
 		let min_debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(min_debit_value);
 		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
 		let collateral_value = 2 * min_debit_value;
-		let collateral_amount = Price::saturating_from_rational(dollar(STAKING), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
+		let collateral_amount = Price::saturating_from_rational(1_000 * dollar(STAKING), 1000 * dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance
 		set_balance(STAKING, &owner, collateral_amount + ExistentialDeposits::get(&STAKING));
