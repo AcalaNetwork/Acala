@@ -160,7 +160,7 @@ where
 					use sp_runtime::traits::Convert;
 					let from_account = Runtime::AddressMapping::get_account_id(&from);
 					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
-					let fee = <Runtime as module_transaction_payment::Config>::WeightToFee::calc(&weight);
+					let fee = module_transaction_payment::Pallet::<Runtime>::weight_to_fee(weight);
 					_fee = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::reserve_fee(
 						&from_account,
 						fee,
@@ -292,7 +292,7 @@ where
 			Action::Reschedule => {
 				let from = input.evm_address_at(1)?;
 				let min_delay = input.u32_at(2)?;
-				// solidity abi enocde bytes will add an length at input[3]
+				// solidity abi encode bytes will add an length at input[3]
 				let task_id_len = input.u32_at(4)?;
 				let task_id = input.bytes_at(5, task_id_len as usize)?;
 

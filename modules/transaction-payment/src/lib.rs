@@ -1405,7 +1405,6 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> Result<PalletBalanceOf<T>, DispatchError> {
-		let fee = Pallet::<T>::calculate_final_fee(fee, None);
 		Pallet::<T>::native_then_alternative_or_default(who, fee)?;
 		T::Currency::reserve_named(&named.unwrap_or(RESERVE_ID), who, fee)?;
 		Ok(fee)
@@ -1416,7 +1415,6 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> PalletBalanceOf<T> {
-		let fee = Pallet::<T>::calculate_final_fee(fee, None);
 		<T as Config>::Currency::unreserve_named(&named.unwrap_or(RESERVE_ID), who, fee)
 	}
 
@@ -1425,7 +1423,6 @@ where
 		weight: Weight,
 	) -> Result<(PalletBalanceOf<T>, NegativeImbalanceOf<T>), TransactionValidityError> {
 		let fee = Pallet::<T>::weight_to_fee(weight);
-		let fee = Pallet::<T>::calculate_final_fee(fee, None);
 		<T as Config>::Currency::unreserve_named(&RESERVE_ID, who, fee);
 
 		match <T as Config>::Currency::withdraw(
@@ -1445,7 +1442,6 @@ where
 		payed: NegativeImbalanceOf<T>,
 	) -> Result<(), TransactionValidityError> {
 		let refund = Pallet::<T>::weight_to_fee(refund_weight);
-		let refund = Pallet::<T>::calculate_final_fee(refund, None);
 		let actual_payment = match <T as Config>::Currency::deposit_into_existing(who, refund) {
 			Ok(refund_imbalance) => {
 				// The refund cannot be larger than the up front payed max weight.
