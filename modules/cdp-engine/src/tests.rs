@@ -1200,19 +1200,11 @@ fn get_interest_rate_per_sec_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(BTC),
-			DispatchError::Module(ModuleError {
-				index: 1,
-				error: [15, 0, 0, 0],
-				message: Some("CollateralInterestRateNotSet")
-			})
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
 		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(DOT),
-			DispatchError::Module(ModuleError {
-				index: 1,
-				error: [15, 0, 0, 0],
-				message: Some("CollateralInterestRateNotSet")
-			})
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
 
 		assert_ok!(CDPEngineModule::set_collateral_params(
@@ -1230,11 +1222,7 @@ fn get_interest_rate_per_sec_work() {
 		);
 		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(DOT),
-			DispatchError::Module(ModuleError {
-				index: 1,
-				error: [15, 0, 0, 0],
-				message: Some("CollateralInterestRateNotSet")
-			})
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
 	});
 }
