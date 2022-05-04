@@ -759,6 +759,7 @@ where
 	}
 
 	/// Given fee and option multiplier, return final fee.
+	#[allow(dead_code)]
 	fn calculate_final_fee(fee: PalletBalanceOf<T>, multiplier: Option<Multiplier>) -> PalletBalanceOf<T> {
 		if let Some(multiplier) = multiplier {
 			multiplier.saturating_mul_int(fee)
