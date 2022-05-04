@@ -799,8 +799,12 @@ parameter_type_with_key! {
 }
 
 parameter_type_with_key! {
-	pub PricingPegged: |_currency_id: CurrencyId| -> Option<CurrencyId> {
-		None
+	pub PricingPegged: |currency_id: CurrencyId| -> Option<CurrencyId> {
+		match currency_id {
+			// taiKSM
+			CurrencyId::StableAssetPoolToken(0) => Some(DOT),
+			_ => None,
+		}
 	};
 }
 
@@ -2152,8 +2156,8 @@ mod tests {
 	fn check_call_size() {
 		println!("{:?}", core::mem::size_of::<Call>());
 		assert!(
-			core::mem::size_of::<Call>() <= 240,
-			"size of Call is more than 240 bytes: some calls have too big arguments, use Box to \
+			core::mem::size_of::<Call>() <= 280,
+			"size of Call is more than 280 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
