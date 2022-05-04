@@ -21,7 +21,7 @@ use crate::setup::*;
 use ecosystem_aqua_adao_manager::{Allocation, Strategy, StrategyKind};
 use ecosystem_aqua_dao::{Discount, DiscountRate, Subscriptions};
 use frame_support::traits::OnInitialize;
-use mandala_runtime::{AquaAdaoManager, AquaStakedToken, DAYS};
+use mandala_runtime::{AquaAdaoManager, AquaStakedToken, UnreleasedNativeVaultAccountId, DAYS};
 use sp_runtime::{traits::One, FixedI128, FixedU128};
 
 const ADAO_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::ADAO);
@@ -158,7 +158,10 @@ fn inflation() {
 				Currencies::free_balance(ADAO, &AquaStakedToken::account_id()),
 				1_001_027_397_260_273
 			);
-			assert_eq!(Currencies::free_balance(SDAO, &TreasuryAccount::get()), 102_739_726_027);
+			assert_eq!(
+				Currencies::free_balance(SDAO, &UnreleasedNativeVaultAccountId::get()),
+				102_739_726_027
+			);
 			assert_eq!(Currencies::free_balance(SDAO, &DaoAccount::get()), 102_739_726_027);
 		});
 }
