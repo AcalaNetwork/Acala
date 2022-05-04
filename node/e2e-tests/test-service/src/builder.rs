@@ -297,7 +297,7 @@ pub fn node_config(
 		state_pruning: PruningMode::ArchiveAll,
 		keep_blocks: KeepBlocks::All,
 		chain_spec: spec,
-		wasm_method: WasmExecutionMethod::Interpreted,
+		wasm_method: WasmExecutionMethod::Compiled,
 		// NOTE: we enforce the use of the native runtime to make the errors more debuggable
 		execution_strategies: ExecutionStrategies {
 			syncing: sc_client_api::ExecutionStrategy::NativeWhenPossible,

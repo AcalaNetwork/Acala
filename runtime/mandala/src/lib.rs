@@ -128,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2050,
+	spec_version: 2060,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -534,7 +534,9 @@ parameter_types! {
 	pub BountyDepositBase: Balance = dollar(ACA);
 	pub const BountyDepositPayoutDelay: BlockNumber = DAYS;
 	pub const BountyUpdatePeriod: BlockNumber = 14 * DAYS;
-	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
+	pub const CuratorDepositMultiplier: Permill = Permill::from_percent(50);
+	pub CuratorDepositMin: Balance = dollar(ACA);
+	pub CuratorDepositMax: Balance = 100 * dollar(ACA);
 	pub BountyValueMinimum: Balance = 5 * dollar(ACA);
 	pub DataDepositPerByte: Balance = cent(ACA);
 	pub const MaximumReasonLength: u32 = 16384;
@@ -564,8 +566,10 @@ impl pallet_bounties::Config for Runtime {
 	type BountyDepositBase = BountyDepositBase;
 	type BountyDepositPayoutDelay = BountyDepositPayoutDelay;
 	type BountyUpdatePeriod = BountyUpdatePeriod;
-	type BountyCuratorDeposit = BountyCuratorDeposit;
 	type BountyValueMinimum = BountyValueMinimum;
+	type CuratorDepositMultiplier = CuratorDepositMultiplier;
+	type CuratorDepositMin = CuratorDepositMin;
+	type CuratorDepositMax = CuratorDepositMax;
 	type DataDepositPerByte = DataDepositPerByte;
 	type MaximumReasonLength = MaximumReasonLength;
 	type WeightInfo = ();
@@ -855,6 +859,7 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
+	type GasToWeight = GasToWeight;
 	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type OnDust = module_currencies::TransferDust<Runtime, TreasuryAccount>;
 }
@@ -1413,6 +1418,18 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::Dex(module_dex::Call::remove_liquidity { .. })
 				)
 			}
+			ProxyType::StableAssetSwap => {
+				matches!(c, Call::StableAsset(nutsfinance_stable_asset::Call::swap { .. }))
+			}
+			ProxyType::StableAssetLiquidity => {
+				matches!(
+					c,
+					Call::StableAsset(nutsfinance_stable_asset::Call::mint { .. })
+						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_proportion { .. })
+						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_single { .. })
+						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_multi { .. })
+				)
+			}
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
@@ -1635,8 +1652,8 @@ impl Contains<CurrencyId> for IsLiquidToken {
 type RebaseTokens = orml_tokens::Combiner<
 	AccountId,
 	IsLiquidToken,
-	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoma, Balance, GetStableAssetStakingCurrencyId>,
-	Tokens,
+	orml_tokens::Mapper<AccountId, Currencies, ConvertBalanceHoma, Balance, GetStableAssetStakingCurrencyId>,
+	Currencies,
 >;
 
 parameter_types! {

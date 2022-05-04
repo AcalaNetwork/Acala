@@ -75,6 +75,8 @@ pub mod module {
 	pub enum Event<T: Config> {
 		/// A task has been dispatched on_idle.
 		TaskDispatched { task_id: Nonce, result: DispatchResult },
+		/// A task is added.
+		TaskAdded { task_id: Nonce, task: T::Task },
 	}
 
 	/// The schedule tasks waiting to dispatch. After task is dispatched, it's removed.
@@ -150,7 +152,8 @@ impl<T: Config> Pallet<T> {
 	/// Add the task to the queue to be dispatched later.
 	fn do_schedule_task(task: T::Task) -> DispatchResult {
 		let id = Self::get_next_task_id()?;
-		Tasks::<T>::insert(id, task);
+		Tasks::<T>::insert(id, &task);
+		Self::deposit_event(Event::<T>::TaskAdded { task_id: id, task });
 		Ok(())
 	}
 

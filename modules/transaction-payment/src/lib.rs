@@ -482,7 +482,8 @@ pub mod module {
 			// multiplier without loss.
 			assert!(
 				<Multiplier as sp_runtime::traits::Bounded>::max_value()
-					>= Multiplier::checked_from_integer(T::BlockWeights::get().max_block.try_into().unwrap()).unwrap(),
+					>= Multiplier::checked_from_integer::<u128>(T::BlockWeights::get().max_block.try_into().unwrap())
+						.unwrap(),
 			);
 
 			// This is the minimum value of the multiplier. Make sure that if we collapse to

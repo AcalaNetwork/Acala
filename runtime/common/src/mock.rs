@@ -118,7 +118,6 @@ parameter_types! {
 }
 
 impl orml_currencies::Config for TestRuntime {
-	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;

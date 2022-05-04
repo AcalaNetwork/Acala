@@ -110,7 +110,6 @@ pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletB
 pub type LDOTCurrency = orml_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 
 impl orml_currencies::Config for Runtime {
-	type Event = Event;
 	type MultiCurrency = TokensModule;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -154,7 +153,7 @@ construct_runtime!(
 		NomineesElectionModule: nominees_election::{Pallet, Call, Storage, Event<T>},
 		TokensModule: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		OrmlCurrencies: orml_currencies::{Pallet, Call, Event<T>},
+		OrmlCurrencies: orml_currencies::{Pallet, Call},
 	}
 );
 

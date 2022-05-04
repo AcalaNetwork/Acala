@@ -169,6 +169,7 @@ impl module_currencies::Config for Test {
 	type WeightInfo = ();
 	type AddressMapping = EvmAddressMapping<Test>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
+	type GasToWeight = ();
 	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type OnDust = ();
 }
@@ -596,6 +597,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	module_evm::GenesisConfig::<Test> { accounts }
 		.assimilate_storage(&mut storage)
 		.unwrap();
+	module_asset_registry::GenesisConfig::<Test> {
+		assets: vec![(ACA, ExistenceRequirement::get()), (RENBTC, 0)],
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(storage);
 	ext.execute_with(|| {

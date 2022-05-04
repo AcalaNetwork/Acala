@@ -16,19 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-	AccountId, Currencies, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, NetworkContractSource, Origin, Runtime,
-	System, EVM,
-};
+use crate::{AccountId, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, Origin, Runtime, System, EVM};
 
 use super::utils::{dollar, set_balance};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchError;
 use frame_system::RawOrigin;
 use module_evm::MaxCodeSize;
 use module_support::AddressMapping;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
-use orml_traits::MultiCurrency;
-use primitives::evm::PREDEPLOY_ADDRESS_START;
 use sp_core::{H160, H256};
 use sp_io::hashing::keccak_256;
 use sp_std::{str::FromStr, vec};
@@ -67,31 +62,6 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 		used_storage: 10_367,
 	}));
 	Ok(contract_addr())
-}
-
-fn deploy_token_contract() -> DispatchResult {
-	System::set_block_number(1);
-	if EVM::is_account_empty(&PREDEPLOY_ADDRESS_START) {
-		EVM::create_predeploy_contract(
-			RawOrigin::Root.into(),
-			PREDEPLOY_ADDRESS_START,
-			STORAGE_CONTRACT.to_vec(),
-			0,
-			1_000_000,
-			15_000,
-			vec![],
-		)
-		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
-
-		System::assert_last_event(Event::EVM(module_evm::Event::Created {
-			from: NetworkContractSource::get(),
-			contract: PREDEPLOY_ADDRESS_START,
-			logs: vec![],
-			used_gas: 132_199,
-			used_storage: 10_367,
-		}));
-	}
-	Ok(())
 }
 
 pub fn alice_account_id() -> AccountId {
@@ -224,7 +194,7 @@ runtime_benchmarks! {
 	publish_contract {
 		let alice_account = alice_account_id();
 
-		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
+		set_balance(NATIVE, &alice_account, 1_000_000_000 * dollar(NATIVE));
 		set_balance(NATIVE, &bob_account_id(), 1_000 * dollar(NATIVE));
 		let contract = deploy_contract(alice_account_id())?;
 
