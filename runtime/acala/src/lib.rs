@@ -1524,7 +1524,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 
 	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate()
+			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate()
 				.reciprocal()
 				.and_then(|x| x.checked_mul_int(balance))
 				.unwrap_or_default(),
@@ -1536,7 +1536,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 pub struct IsLiquidToken;
 impl Contains<CurrencyId> for IsLiquidToken {
 	fn contains(currency_id: &CurrencyId) -> bool {
-		matches!(currency_id, CurrencyId::Token(TokenSymbol::LKSM))
+		matches!(currency_id, CurrencyId::Token(TokenSymbol::LDOT))
 	}
 }
 
