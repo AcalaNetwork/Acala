@@ -282,7 +282,7 @@ runtime_benchmarks! {
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
 		let collateral_value = 10 * debit_value;
-		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
+		let collateral_amount = Price::saturating_from_rational(1000 * dollar(currency_id), 1000 * dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance and inject liquidity
 		set_balance(currency_id, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&currency_id));
