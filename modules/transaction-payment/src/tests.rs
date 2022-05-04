@@ -678,6 +678,11 @@ fn payment_reserve_fee() {
 			&DAVE, 100, None,
 		);
 		assert_eq!(100, fee.unwrap());
+
+		let fee = Pallet::<Runtime>::calculate_final_fee(100, None);
+		assert_eq!(100, fee);
+		let fee = Pallet::<Runtime>::calculate_final_fee(100, Some(Multiplier::saturating_from_rational(2, 1)));
+		assert_eq!(200, fee);
 	});
 }
 
