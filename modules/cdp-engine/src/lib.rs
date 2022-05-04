@@ -945,7 +945,7 @@ impl<T: Config> Pallet<T> {
 
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
 		// check the CDP if is still at valid risk
-		Self::check_position_valid(currency_id, collateral, debit, true)?;
+		Self::check_position_valid(currency_id, collateral, debit, false)?;
 		// debit cap check due to new issued stable coin
 		Self::check_debit_cap(currency_id, <LoansOf<T>>::total_positions(currency_id).debit)?;
 		Ok(())
