@@ -29,7 +29,6 @@ use sp_io::offchain;
 use sp_runtime::{
 	offchain::{DbExternalities, StorageKind},
 	traits::BadOrigin,
-	ModuleError,
 };
 use support::DEXManager;
 
