@@ -20,6 +20,7 @@
 
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
+use primitives::evm::BlockLimits;
 use sp_core::{Bytes, H160};
 
 pub use rpc_impl_EVMApi::gen_server::EVMApi as EVMApiServer;
@@ -42,11 +43,7 @@ pub trait EVMApi<BlockHash> {
 		at: Option<BlockHash>,
 	) -> Result<EstimateResourcesResponse>;
 
-	/// Get max gas limit per transaction
-	#[rpc(name = "evm_maxGasLimit")]
-	fn max_gas_limit(&self, at: Option<BlockHash>) -> Result<u64>;
-
-	/// Get max storage limit per transaction
-	#[rpc(name = "evm_maxStorageLimit")]
-	fn max_storage_limit(&self, at: Option<BlockHash>) -> Result<u32>;
+	/// Get max gas and storage limits per transaction
+	#[rpc(name = "evm_blockLimits")]
+	fn block_limits(&self, at: Option<BlockHash>) -> Result<BlockLimits>;
 }

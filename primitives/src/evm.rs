@@ -70,6 +70,15 @@ pub type CreateInfo = ExecutionInfo<H160>;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct BlockLimits {
+	/// Max gas limit
+	pub max_gas_limit: u64,
+	/// Max storage limit
+	pub max_storage_limit: u32,
+}
+
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EstimateResourcesRequest {
 	/// From
 	pub from: Option<H160>,

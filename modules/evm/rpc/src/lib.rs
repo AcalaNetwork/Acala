@@ -38,7 +38,7 @@ use std::{marker::PhantomData, sync::Arc};
 use call_request::{CallRequest, EstimateResourcesResponse};
 pub use module_evm::{ExitError, ExitReason};
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
-use primitives::evm::{EstimateResourcesRequest, EstimateResourcesRequestV1};
+use primitives::evm::{BlockLimits, EstimateResourcesRequest, EstimateResourcesRequestV1};
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
 
@@ -153,15 +153,14 @@ where
 			access_list,
 		} = request;
 
-		let max_gas_limit = api
-			.max_gas_limit(&BlockId::Hash(hash))
-			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?;
-		let max_storage_limit = api
-			.max_storage_limit(&BlockId::Hash(hash))
-			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?;
+		let block_limits = api.block_limits(&BlockId::Hash(hash)).map_err(|e| Error {
+			code: ErrorCode::InternalError,
+			message: "Unable to query block limits.".into(),
+			data: Some(format!("{:?}", e).into()),
+		})?;
 
 		// eth_call is capped at 10x (1000%) the current block gas limit
-		let gas_limit_cap = 10 * max_gas_limit;
+		let gas_limit_cap = 10 * block_limits.max_gas_limit;
 
 		let gas_limit = gas_limit.unwrap_or(gas_limit_cap);
 		if gas_limit > gas_limit_cap {
@@ -171,11 +170,11 @@ where
 				data: None,
 			});
 		}
-		let storage_limit = storage_limit.unwrap_or(max_storage_limit);
-		if storage_limit > max_storage_limit {
+		let storage_limit = storage_limit.unwrap_or(block_limits.max_storage_limit);
+		if storage_limit > block_limits.max_storage_limit {
 			return Err(Error {
 				code: ErrorCode::InvalidParams,
-				message: format!("StorageLimit exceeds allowance: {}", max_storage_limit),
+				message: format!("StorageLimit exceeds allowance: {}", block_limits.max_storage_limit),
 				data: None,
 			});
 		}
@@ -510,28 +509,20 @@ where
 		})
 	}
 
-	fn max_gas_limit(&self, at: Option<<B as BlockT>::Hash>) -> Result<u64> {
+	fn block_limits(&self, at: Option<<B as BlockT>::Hash>) -> Result<BlockLimits> {
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
-		let max_gas_limit = self
+		let block_limits = self
 			.client
 			.runtime_api()
-			.max_gas_limit(&BlockId::Hash(hash))
-			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?;
+			.block_limits(&BlockId::Hash(hash))
+			.map_err(|e| Error {
+				code: ErrorCode::InternalError,
+				message: "Unable to query block limits.".into(),
+				data: Some(format!("{:?}", e).into()),
+			})?;
 
-		Ok(max_gas_limit)
-	}
-
-	fn max_storage_limit(&self, at: Option<<B as BlockT>::Hash>) -> Result<u32> {
-		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
-
-		let max_storage_limit = self
-			.client
-			.runtime_api()
-			.max_storage_limit(&BlockId::Hash(hash))
-			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?;
-
-		Ok(max_storage_limit)
+		Ok(block_limits)
 	}
 }
 

@@ -19,7 +19,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::all)]
 
-use primitives::evm::{AccessListItem, CallInfo, CreateInfo, EstimateResourcesRequest, EstimateResourcesRequestV1};
+use primitives::evm::{
+	AccessListItem, BlockLimits, CallInfo, CreateInfo, EstimateResourcesRequest, EstimateResourcesRequestV1,
+};
 use sp_core::H160;
 use sp_runtime::{
 	codec::Codec,
@@ -34,10 +36,6 @@ sp_api::decl_runtime_apis! {
 	{
 		#[changed_in(2)]
 		fn get_estimate_resources_request(data: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError>;
-
-		fn max_gas_limit() -> u64;
-
-		fn max_storage_limit() -> u32;
 
 		fn call(
 			from: H160,
@@ -61,5 +59,7 @@ sp_api::decl_runtime_apis! {
 		) -> Result<CreateInfo, sp_runtime::DispatchError>;
 
 		fn get_estimate_resources_request(data: Vec<u8>) -> Result<EstimateResourcesRequestV1, sp_runtime::DispatchError>;
+
+		fn block_limits() -> BlockLimits;
 	}
 }
