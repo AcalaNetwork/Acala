@@ -762,7 +762,7 @@ where
 	/// `next_fee_multiplier`.
 	#[allow(dead_code)]
 	fn apply_multiplier_to_fee(fee: PalletBalanceOf<T>, multiplier: Option<Multiplier>) -> PalletBalanceOf<T> {
-		let multiplier = multiplier.unwrap_or(Self::next_fee_multiplier());
+		let multiplier = multiplier.unwrap_or_else(|| Self::next_fee_multiplier());
 		multiplier.saturating_mul_int(fee)
 	}
 
