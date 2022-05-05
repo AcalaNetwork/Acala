@@ -452,7 +452,7 @@ mod tests {
 
 			// 1_000_000_000
 			let expected_output = hex! {"
-				00000000000000000000000000000000 0000000000000000000000003b9aca00
+				00000000000000000000000000000000 00000000000000000000000077359400
 			"};
 
 			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
