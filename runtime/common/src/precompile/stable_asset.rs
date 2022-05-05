@@ -42,12 +42,12 @@ pub struct StableAssetPrecompile<R>(PhantomData<R>);
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
-	GetStableAssetPoolPoolTokens = "getStableAssetPoolTokens(uint32)",
-	GetStableAssetPoolPoolTotalSupply = "getStableAssetPoolPoolTotalSupply(uint32)",
-	GetStableAssetPoolPoolPrecision = "getStableAssetPoolPoolPrecision(uint32)",
-	GetStableAssetPoolPoolMintFee = "getStableAssetPoolPoolMintFee(uint32)",
-	GetStableAssetPoolPoolSwapFee = "getStableAssetPoolPoolSwapFee(uint32)",
-	GetStableAssetPoolPoolRedeemFee = "getStableAssetPoolPoolRedeemFee(uint32)",
+	GetStableAssetPoolTokens = "getStableAssetPoolTokens(uint32)",
+	GetStableAssetPoolTotalSupply = "getStableAssetPoolTotalSupply(uint32)",
+	GetStableAssetPoolPrecision = "getStableAssetPoolPrecision(uint32)",
+	GetStableAssetPoolMintFee = "getStableAssetPoolMintFee(uint32)",
+	GetStableAssetPoolSwapFee = "getStableAssetPoolSwapFee(uint32)",
+	GetStableAssetPoolRedeemFee = "getStableAssetPoolRedeemFee(uint32)",
 	StableAssetSwap = "stableAssetSwap(address,uint32,uint32,uint32,uint256,uint256,uint32)",
 	StableAssetMint = "stableAssetMint(address,uint32,uint256[],uint256)",
 	StableAssetRedeem = "stableAssetRedeem(address,uint32,uint256,uint256[])",
@@ -83,7 +83,7 @@ where
 		let action = input.action()?;
 
 		match action {
-			Action::GetStableAssetPoolPoolTokens => {
+			Action::GetStableAssetPoolTokens => {
 				let pool_id = input.u32_at(1)?;
 
 				let pool_info =
@@ -106,7 +106,7 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::GetStableAssetPoolPoolTotalSupply => {
+			Action::GetStableAssetPoolTotalSupply => {
 				let pool_id = input.u32_at(1)?;
 
 				let pool_info =
@@ -124,7 +124,7 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::GetStableAssetPoolPoolPrecision => {
+			Action::GetStableAssetPoolPrecision => {
 				let pool_id = input.u32_at(1)?;
 
 				let pool_info =
@@ -142,7 +142,7 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::GetStableAssetPoolPoolMintFee => {
+			Action::GetStableAssetPoolMintFee => {
 				let pool_id = input.u32_at(1)?;
 
 				let pool_info =
@@ -160,7 +160,7 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::GetStableAssetPoolPoolSwapFee => {
+			Action::GetStableAssetPoolSwapFee => {
 				let pool_id = input.u32_at(1)?;
 
 				let pool_info =
@@ -178,7 +178,7 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::GetStableAssetPoolPoolRedeemFee => {
+			Action::GetStableAssetPoolRedeemFee => {
 				let pool_id = input.u32_at(1)?;
 
 				let pool_info =
@@ -307,27 +307,27 @@ where
 		let action = input.action()?;
 
 		let cost: u64 = match action {
-			Action::GetStableAssetPoolPoolTokens => {
+			Action::GetStableAssetPoolTokens => {
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
 				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
-			Action::GetStableAssetPoolPoolTotalSupply => {
+			Action::GetStableAssetPoolTotalSupply => {
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
 				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
-			Action::GetStableAssetPoolPoolPrecision => {
+			Action::GetStableAssetPoolPrecision => {
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
 				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
-			Action::GetStableAssetPoolPoolMintFee => {
+			Action::GetStableAssetPoolMintFee => {
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
 				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
-			Action::GetStableAssetPoolPoolSwapFee => {
+			Action::GetStableAssetPoolSwapFee => {
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
 				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
-			Action::GetStableAssetPoolPoolRedeemFee => {
+			Action::GetStableAssetPoolRedeemFee => {
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
 				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
@@ -421,7 +421,7 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let input = hex! {"
-				dc2306b5
+				7172c6aa
 				0000000000000000000000000000000000000000000000000000000000000000
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
@@ -457,7 +457,7 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let input = hex! {"
-				32d74a84
+				9ccdcf91
 				0000000000000000000000000000000000000000000000000000000000000000
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
@@ -493,7 +493,7 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let input = hex! {"
-				2ff9b99e
+				62ff9875
 				0000000000000000000000000000000000000000000000000000000000000000
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
@@ -529,7 +529,7 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let input = hex! {"
-				fcac2437
+				68410f61
 				0000000000000000000000000000000000000000000000000000000000000000
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
@@ -565,7 +565,7 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let input = hex! {"
-				c155d42e
+				7f2f11ca
 				0000000000000000000000000000000000000000000000000000000000000000
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
