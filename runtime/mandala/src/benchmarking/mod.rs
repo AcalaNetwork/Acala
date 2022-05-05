@@ -56,3 +56,13 @@ pub mod vesting;
 pub fn get_vesting_account() -> super::AccountId {
 	super::TreasuryPalletId::get().into_account()
 }
+
+pub fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
+	vec![
+		CurrencyId::Token(TokenSymbol::ACA),
+		CurrencyId::Token(TokenSymbol::DOT),
+		CurrencyId::Token(TokenSymbol::LDOT),
+		CurrencyId::Token(TokenSymbol::RENBTC),
+		CurrencyId::StableAssetPoolToken(0),
+	]
+}

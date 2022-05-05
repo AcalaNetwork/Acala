@@ -66,6 +66,10 @@ pub mod module {
 		#[pallet::constant]
 		type DepositPerAuthorization: Get<Balance>;
 
+		/// The list of valid collateral currency types
+		#[pallet::constant]
+		type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -252,7 +256,7 @@ pub mod module {
 		}
 
 		/// Cancel all authorization of caller
-		#[pallet::weight(<T as Config>::WeightInfo::unauthorize_all(<T as cdp_engine::Config>::CollateralCurrencyIds::get().len() as u32))]
+		#[pallet::weight(<T as Config>::WeightInfo::unauthorize_all(T::CollateralCurrencyIds::get().len() as u32))]
 		#[transactional]
 		pub fn unauthorize_all(origin: OriginFor<T>) -> DispatchResult {
 			let from = ensure_signed(origin)?;

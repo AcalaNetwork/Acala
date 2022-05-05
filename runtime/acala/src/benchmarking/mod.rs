@@ -101,3 +101,12 @@ pub mod vesting {
 pub fn get_vesting_account() -> super::AccountId {
 	super::AcalaFoundationAccounts::get()[0].clone()
 }
+
+pub fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
+	vec![
+		CurrencyId::Token(TokenSymbol::ACA),
+		CurrencyId::Token(TokenSymbol::DOT),
+		CurrencyId::Token(TokenSymbol::LCDOT),
+		CurrencyId::Token(TokenSymbol::LDOT),
+	]
+}

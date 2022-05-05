@@ -105,3 +105,12 @@ pub mod honzon_bridge;
 pub fn get_vesting_account() -> super::AccountId {
 	super::KaruraFoundationAccounts::get()[0].clone()
 }
+
+pub fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
+	vec![
+		CurrencyId::Token(TokenSymbol::KSM),
+		CurrencyId::Token(TokenSymbol::LKSM),
+		CurrencyId::Token(TokenSymbol::KAR),
+		CurrencyId::CurrencyId::StableAssetPoolToken(0),
+	]
+}
