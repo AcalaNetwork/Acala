@@ -761,8 +761,11 @@ fn remain_debit_value_too_small_check() {
 			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
-		assert!(!CDPEngineModule::adjust_position(&ALICE, BTC, 0, -490).is_ok());
-		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, -100, -500));
+		assert_noop!(
+			CDPEngineModule::adjust_position(&ALICE, BTC, 0, -490),
+			crate::Error::<Runtime>::RemainDebitValueTooSmall
+		);
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, -90, -500));
 	});
 }
 
@@ -1768,5 +1771,40 @@ fn offchain_default_max_iterator_works() {
 		// should only now run 1 iteration to finish off where it ended last block
 		run_to_block_offchain(3);
 		assert_eq!(pool_state.write().transactions.len(), 1001);
+	});
+}
+
+#[test]
+fn minimal_collateral_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+		// Check position fails if collateral is too small
+		assert_noop!(
+			CDPEngineModule::check_position_valid(BTC, 9, 0, true),
+			Error::<Runtime>::CollateralAmountBelowMinimum,
+		);
+		assert_ok!(CDPEngineModule::check_position_valid(BTC, 9, 20, true));
+		assert_ok!(CDPEngineModule::check_position_valid(BTC, 10, 0, true));
+
+		// Adjust position fails if collateral is too small
+		assert_noop!(
+			CDPEngineModule::adjust_position(&ALICE, BTC, 9, 0),
+			Error::<Runtime>::CollateralAmountBelowMinimum,
+		);
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 10, 0));
+
+		// Cannot reduce collateral amount below the minimum.
+		assert_noop!(
+			CDPEngineModule::adjust_position(&ALICE, BTC, -1, 0),
+			Error::<Runtime>::CollateralAmountBelowMinimum,
+		);
 	});
 }
