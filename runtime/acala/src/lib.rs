@@ -86,7 +86,7 @@ pub use constants::{fee::*, time::*};
 use module_support::mocks::MockStableAsset;
 pub use primitives::{
 	define_combined_task,
-	evm::{AccessListItem, EstimateResourcesRequest},
+	evm::{AccessListItem, EstimateResourcesRequestV1},
 	task::TaskResult,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
 	DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
@@ -1889,7 +1889,7 @@ impl_runtime_apis! {
 			}
 		}
 
-		fn get_estimate_resources_request(extrinsic: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError> {
+		fn get_estimate_resources_request(extrinsic: Vec<u8>) -> Result<EstimateResourcesRequestV1, sp_runtime::DispatchError> {
 			let utx = UncheckedExtrinsic::decode_all_with_depth_limit(sp_api::MAX_EXTRINSIC_DEPTH, &mut &*extrinsic)
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
@@ -1900,7 +1900,7 @@ impl_runtime_apis! {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
 					let gas_limit = sp_std::cmp::min(max_gas_limit, gas_limit);
 					let storage_limit = sp_std::cmp::min(max_storage_limit, storage_limit);
-					Some(EstimateResourcesRequest {
+					Some(EstimateResourcesRequestV1 {
 						from: None,
 						to: Some(target),
 						gas_limit,
@@ -1914,7 +1914,7 @@ impl_runtime_apis! {
 				Call::EVM(module_evm::Call::create{input, value, gas_limit, storage_limit, access_list}) => {
 					let gas_limit = sp_std::cmp::min(max_gas_limit, gas_limit);
 					let storage_limit = sp_std::cmp::min(max_storage_limit, storage_limit);
-					Some(EstimateResourcesRequest {
+					Some(EstimateResourcesRequestV1 {
 						from: None,
 						to: None,
 						gas_limit,

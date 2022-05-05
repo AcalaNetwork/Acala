@@ -76,6 +76,25 @@ pub struct EstimateResourcesRequest {
 	/// To
 	pub to: Option<H160>,
 	/// Gas Limit
+	pub gas_limit: Option<u64>,
+	/// Storage Limit
+	pub storage_limit: Option<u32>,
+	/// Value
+	pub value: Option<Balance>,
+	/// Data
+	pub data: Option<Vec<u8>>,
+	/// AccessList
+	pub access_list: Option<Vec<AccessListItem>>,
+}
+
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct EstimateResourcesRequestV1 {
+	/// From
+	pub from: Option<H160>,
+	/// To
+	pub to: Option<H160>,
+	/// Gas Limit
 	pub gas_limit: u64,
 	/// Max gas Limit
 	pub max_gas_limit: u64,

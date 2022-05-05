@@ -23,7 +23,7 @@ use jsonrpc_core::{Error, ErrorCode, Result, Value};
 use pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi;
 use rustc_hex::ToHex;
 use sc_rpc_api::DenyUnsafe;
-use sp_api::ProvideRuntimeApi;
+use sp_api::{ApiExt, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
 use sp_core::{Bytes, Decode, H160, U256};
 use sp_rpc::number::NumberOrHex;
@@ -38,6 +38,7 @@ use std::{marker::PhantomData, sync::Arc};
 use call_request::{CallRequest, EstimateResourcesResponse};
 pub use module_evm::{ExitError, ExitReason};
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
+use primitives::evm::{EstimateResourcesRequest, EstimateResourcesRequestV1};
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
 
@@ -251,26 +252,73 @@ where
 		unsigned_extrinsic: Bytes,
 		at: Option<<B as BlockT>::Hash>,
 	) -> Result<EstimateResourcesResponse> {
+		let api = self.client.runtime_api();
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
-		let request = self
-			.client
-			.runtime_api()
-			.get_estimate_resources_request(&BlockId::Hash(hash), unsigned_extrinsic.to_vec())
+
+		let block_id = BlockId::Hash(hash);
+
+		let version = api
+			.api_version::<dyn EVMRuntimeRPCApi<B, Balance>>(&block_id)
 			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-			.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+			.ok_or_else(|| {
+				internal_err(format!(
+					"Could not find `EVMRuntimeRPCApi` api for block `{:?}`.",
+					&block_id
+				))
+			})?;
 
-		// Determine the highest possible gas limits
-		let max_gas_limit = request.max_gas_limit;
-		let mut highest = request.gas_limit;
+		let (request, mut highest, max_gas_limit) = if version == 2 {
+			let request: EstimateResourcesRequestV1 = self
+				.client
+				.runtime_api()
+				.get_estimate_resources_request(&block_id, unsigned_extrinsic.to_vec())
+				.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
+				.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-		let request = CallRequest {
-			from: Some(from),
-			to: request.to,
-			gas_limit: Some(request.gas_limit),
-			storage_limit: Some(request.storage_limit),
-			value: request.value.map(|v| NumberOrHex::Hex(U256::from(v))),
-			data: request.data.map(Bytes),
-			access_list: request.access_list,
+			// Determine the highest possible gas limits
+			let max_gas_limit = request.max_gas_limit;
+			let highest = request.gas_limit;
+
+			(
+				CallRequest {
+					from: Some(from),
+					to: request.to,
+					gas_limit: Some(request.gas_limit),
+					storage_limit: Some(request.storage_limit),
+					value: request.value.map(|v| NumberOrHex::Hex(U256::from(v))),
+					data: request.data.map(Bytes),
+					access_list: request.access_list,
+				},
+				highest,
+				max_gas_limit,
+			)
+		} else {
+			#[allow(deprecated)]
+			let request: EstimateResourcesRequest = self
+				.client
+				.runtime_api()
+				.get_estimate_resources_request_before_version_2(&block_id, unsigned_extrinsic.to_vec())
+				.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
+				.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+
+			// Determine the highest possible gas limits
+			const MAX_GAS_LIMIT: u64 = 20_000_000;
+			const MAX_STORAGE_LIMIT: u32 = 4 * 1024 * 1024;
+			let highest = request.gas_limit.unwrap_or(MAX_GAS_LIMIT);
+
+			(
+				CallRequest {
+					from: Some(from),
+					to: request.to,
+					gas_limit: request.gas_limit,
+					storage_limit: Some(request.storage_limit.unwrap_or(MAX_STORAGE_LIMIT)),
+					value: request.value.map(|v| NumberOrHex::Hex(U256::from(v))),
+					data: request.data.map(Bytes),
+					access_list: request.access_list,
+				},
+				highest,
+				MAX_GAS_LIMIT,
+			)
 		};
 
 		log::debug!(
@@ -322,7 +370,7 @@ where
 						.client
 						.runtime_api()
 						.call(
-							&BlockId::Hash(hash),
+							&block_id,
 							from.unwrap_or_default(),
 							to,
 							data,
@@ -342,7 +390,7 @@ where
 						.client
 						.runtime_api()
 						.create(
-							&BlockId::Hash(hash),
+							&block_id,
 							from.unwrap_or_default(),
 							data,
 							balance_value,
@@ -444,7 +492,7 @@ where
 		let fee = self
 			.client
 			.runtime_api()
-			.query_fee_details(&BlockId::Hash(hash), uxt, unsigned_extrinsic.len() as u32)
+			.query_fee_details(&block_id, uxt, unsigned_extrinsic.len() as u32)
 			.map_err(|e| Error {
 				code: ErrorCode::InternalError,
 				message: "Unable to query fee details.".into(),
