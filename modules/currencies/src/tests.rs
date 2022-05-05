@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, weights::GetDispatchInfo};
 use mock::{
 	alice, bob, deploy_contracts, erc20_address, eva, AccountId, AdaptedBasicCurrency, CouncilAccount, Currencies,
 	DustAccount, Event, ExtBuilder, NativeCurrency, Origin, PalletBalances, Runtime, System, Tokens, ALICE_BALANCE,
@@ -2336,6 +2336,34 @@ fn sweep_dust_erc20_not_allowed() {
 				vec![]
 			),
 			Error::<Runtime>::Erc20InvalidOperation
+		);
+	});
+}
+
+#[test]
+fn transfer_erc20_will_charge_gas() {
+	ExtBuilder::default().build().execute_with(|| {
+		let dispatch_info = module::Call::<Runtime>::transfer {
+			dest: alice(),
+			currency_id: CurrencyId::Erc20(erc20_address()),
+			amount: 1,
+		}
+		.get_dispatch_info();
+		assert_eq!(
+			dispatch_info.weight,
+			<Runtime as module::Config>::WeightInfo::transfer_non_native_currency()
+				+ support::evm::limits::erc20::TRANSFER.gas // mock GasToWeight is 1:1
+		);
+
+		let dispatch_info = module::Call::<Runtime>::transfer {
+			dest: alice(),
+			currency_id: DOT,
+			amount: 1,
+		}
+		.get_dispatch_info();
+		assert_eq!(
+			dispatch_info.weight,
+			<Runtime as module::Config>::WeightInfo::transfer_non_native_currency()
 		);
 	});
 }

@@ -42,11 +42,11 @@ use orml_traits::{
 use primitives::{evm::EvmAddress, CurrencyId};
 use sp_io::hashing::blake2_256;
 use sp_runtime::{
-	traits::{CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Saturating, StaticLookup, Zero},
+	traits::{CheckedAdd, CheckedSub, Convert, MaybeSerializeDeserialize, Saturating, StaticLookup, Zero},
 	DispatchError, DispatchResult,
 };
 use sp_std::{fmt::Debug, marker, result, vec::Vec};
-use support::{AddressMapping, EVMBridge, InvokeContext};
+use support::{evm::limits::erc20, AddressMapping, EVMBridge, InvokeContext};
 
 mod mock;
 mod tests;
@@ -96,6 +96,9 @@ pub mod module {
 		/// Mapping from address to account id.
 		type AddressMapping: AddressMapping<Self::AccountId>;
 		type EVMBridge: EVMBridge<Self::AccountId, BalanceOf<Self>>;
+
+		/// Convert gas to weight.
+		type GasToWeight: Convert<u64, Weight>;
 
 		/// The AccountId that can perform a sweep dust.
 		type SweepOrigin: EnsureOrigin<Self::Origin>;
@@ -150,7 +153,9 @@ pub mod module {
 		///
 		/// The dispatch origin for this call must be `Signed` by the
 		/// transactor.
-		#[pallet::weight(T::WeightInfo::transfer_non_native_currency())]
+		#[pallet::weight(T::WeightInfo::transfer_non_native_currency()
+			.saturating_add(if currency_id.is_erc20_currency_id() { T::GasToWeight::convert(erc20::TRANSFER.gas) } else { 0 })
+		)]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -177,7 +182,7 @@ pub mod module {
 			T::NativeCurrency::transfer(&from, &to, amount)
 		}
 
-		/// update amount of account `who` under `currency_id`.
+		/// Update amount of account `who` under `currency_id`.
 		///
 		/// The dispatch origin of this call must be _Root_.
 		#[pallet::weight(T::WeightInfo::update_balance_non_native_currency())]
