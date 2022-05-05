@@ -758,14 +758,12 @@ where
 		T::WeightToFee::calc(&capped_weight)
 	}
 
-	/// Given fee and option multiplier, return final fee.
+	/// Apply multiplier to fee, return the final fee. If multiplier is `None`, use
+	/// `next_fee_multiplier`.
 	#[allow(dead_code)]
-	fn calculate_final_fee(fee: PalletBalanceOf<T>, multiplier: Option<Multiplier>) -> PalletBalanceOf<T> {
-		if let Some(multiplier) = multiplier {
-			multiplier.saturating_mul_int(fee)
-		} else {
-			fee
-		}
+	fn apply_multiplier_to_fee(fee: PalletBalanceOf<T>, multiplier: Option<Multiplier>) -> PalletBalanceOf<T> {
+		let multiplier = multiplier.unwrap_or(Self::next_fee_multiplier());
+		multiplier.saturating_mul_int(fee)
 	}
 
 	/// If native asset is enough, return `None`, else return the fee amount should be swapped.
