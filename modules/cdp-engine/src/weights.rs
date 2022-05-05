@@ -49,7 +49,6 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn on_initialize(c: u32) -> Weight;
 	fn set_collateral_params() -> Weight;
-	fn set_global_params() -> Weight;
 	fn liquidate_by_auction(b: u32) -> Weight;
 	fn liquidate_by_dex() -> Weight;
 	fn settle() -> Weight;
@@ -67,10 +66,6 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn set_collateral_params() -> Weight {
 		(37_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn set_global_params() -> Weight {
-		(11_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn liquidate_by_auction(_b: u32) -> Weight {
@@ -101,10 +96,6 @@ impl WeightInfo for () {
 	fn set_collateral_params() -> Weight {
 		(37_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn set_global_params() -> Weight {
-		(11_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn liquidate_by_auction(_b: u32) -> Weight {

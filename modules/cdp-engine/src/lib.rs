@@ -283,8 +283,6 @@ pub mod module {
 			collateral_type: CurrencyId,
 			new_total_debit_value: Balance,
 		},
-		/// The global interest rate per sec for all types of collateral updated.
-		GlobalInterestRatePerSecUpdated { new_global_interest_rate_per_sec: Rate },
 	}
 
 	/// Mapping from collateral type to its exchange rate of debit units and
@@ -294,13 +292,6 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn debit_exchange_rate)]
 	pub type DebitExchangeRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, ExchangeRate, OptionQuery>;
-
-	/// Global interest rate per sec for all types of collateral
-	///
-	/// GlobalInterestRatePerSec: Rate
-	#[pallet::storage]
-	#[pallet::getter(fn global_interest_rate_per_sec)]
-	pub type GlobalInterestRatePerSec<T: Config> = StorageValue<_, Rate, ValueQuery>;
 
 	/// Mapping from collateral type to its risk management params
 	///
@@ -328,7 +319,6 @@ pub mod module {
 			Option<Ratio>,
 			Balance,
 		)>,
-		pub global_interest_rate_per_sec: Rate,
 	}
 
 	#[pallet::genesis_build]
@@ -355,7 +345,6 @@ pub mod module {
 					);
 				},
 			);
-			GlobalInterestRatePerSec::<T>::put(self.global_interest_rate_per_sec);
 		}
 	}
 
@@ -440,22 +429,6 @@ pub mod module {
 			let who = T::Lookup::lookup(who)?;
 			ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
 			Self::settle_cdp_has_debit(who, currency_id)?;
-			Ok(())
-		}
-
-		/// Update global parameters related to risk management of CDP
-		///
-		/// The dispatch origin of this call must be `UpdateOrigin`.
-		///
-		/// - `global_interest_rate_per_sec`: global interest rate per sec.
-		#[pallet::weight((<T as Config>::WeightInfo::set_global_params(), DispatchClass::Operational))]
-		#[transactional]
-		pub fn set_global_params(origin: OriginFor<T>, global_interest_rate_per_sec: Rate) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
-			GlobalInterestRatePerSec::<T>::put(global_interest_rate_per_sec);
-			Self::deposit_event(Event::GlobalInterestRatePerSecUpdated {
-				new_global_interest_rate_per_sec: global_interest_rate_per_sec,
-			});
 			Ok(())
 		}
 
@@ -584,35 +557,36 @@ impl<T: Config> Pallet<T> {
 			let interval_secs = now_secs.saturating_sub(last_accumulation_secs);
 
 			for currency_id in T::CollateralCurrencyIds::get() {
-				let rate_to_accumulate =
-					Self::compound_interest_rate(Self::get_interest_rate_per_sec(currency_id), interval_secs);
-				let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
+				if let Ok(interest_rate) = Self::get_interest_rate_per_sec(currency_id) {
+					let rate_to_accumulate = Self::compound_interest_rate(interest_rate, interval_secs);
+					let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
 
-				if !rate_to_accumulate.is_zero() && !total_debits.is_zero() {
-					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
-					let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(rate_to_accumulate);
-					let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(total_debits);
+					if !rate_to_accumulate.is_zero() && !total_debits.is_zero() {
+						let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
+						let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(rate_to_accumulate);
+						let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(total_debits);
 
-					// issue stablecoin to surplus pool
-					let res = <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance);
-					match res {
-						Ok(_) => {
-							// update exchange rate when issue success
-							let new_debit_exchange_rate =
-								debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
-							DebitExchangeRate::<T>::insert(currency_id, new_debit_exchange_rate);
-						}
-						Err(e) => {
-							log::warn!(
-								target: "cdp-engine",
-								"on_system_surplus: failed to on system surplus {:?}: {:?}. \
-								This is unexpected but should be safe",
-								issued_stable_coin_balance, e
-							);
+						// issue stablecoin to surplus pool
+						let res = <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance);
+						match res {
+							Ok(_) => {
+								// update exchange rate when issue success
+								let new_debit_exchange_rate =
+									debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
+								DebitExchangeRate::<T>::insert(currency_id, new_debit_exchange_rate);
+							}
+							Err(e) => {
+								log::warn!(
+									target: "cdp-engine",
+									"on_system_surplus: failed to on system surplus {:?}: {:?}. \
+									This is unexpected but should be safe",
+									issued_stable_coin_balance, e
+								);
+							}
 						}
 					}
+					count += 1;
 				}
-				count += 1;
 			}
 		}
 
@@ -777,11 +751,10 @@ impl<T: Config> Pallet<T> {
 		Self::collateral_params(currency_id).required_collateral_ratio
 	}
 
-	pub fn get_interest_rate_per_sec(currency_id: CurrencyId) -> Rate {
+	pub fn get_interest_rate_per_sec(currency_id: CurrencyId) -> Result<Rate, DispatchError> {
 		Self::collateral_params(currency_id)
 			.interest_rate_per_sec
-			.unwrap_or_default()
-			.saturating_add(Self::global_interest_rate_per_sec())
+			.ok_or_else(|| Error::<T>::InvalidCollateralType.into())
 	}
 
 	pub fn compound_interest_rate(rate_per_sec: Rate, secs: u64) -> Rate {

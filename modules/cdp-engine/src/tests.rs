@@ -141,28 +141,6 @@ fn get_liquidation_ratio_work() {
 }
 
 #[test]
-fn set_global_params_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		assert_noop!(
-			CDPEngineModule::set_global_params(Origin::signed(5), Rate::saturating_from_rational(1, 10000)),
-			BadOrigin
-		);
-		assert_ok!(CDPEngineModule::set_global_params(
-			Origin::signed(1),
-			Rate::saturating_from_rational(1, 10000),
-		));
-		System::assert_last_event(Event::CDPEngineModule(crate::Event::GlobalInterestRatePerSecUpdated {
-			new_global_interest_rate_per_sec: Rate::saturating_from_rational(1, 10000),
-		}));
-		assert_eq!(
-			CDPEngineModule::global_interest_rate_per_sec(),
-			Rate::saturating_from_rational(1, 10000)
-		);
-	});
-}
-
-#[test]
 fn set_collateral_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
@@ -1222,20 +1200,13 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_create_dot_auction() {
 #[test]
 fn get_interest_rate_per_sec_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(BTC), Rate::zero());
-		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(DOT), Rate::zero());
-
-		assert_ok!(CDPEngineModule::set_global_params(
-			Origin::signed(1),
-			Rate::saturating_from_rational(1, 10000),
-		));
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(BTC),
-			Rate::saturating_from_rational(1, 10000)
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(DOT),
-			Rate::saturating_from_rational(1, 10000)
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
 
 		assert_ok!(CDPEngineModule::set_collateral_params(
@@ -1249,11 +1220,11 @@ fn get_interest_rate_per_sec_work() {
 		));
 		assert_eq!(
 			CDPEngineModule::get_interest_rate_per_sec(BTC),
-			Rate::saturating_from_rational(12, 100000)
+			Ok(Rate::saturating_from_rational(2, 100000))
 		);
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(DOT),
-			Rate::saturating_from_rational(1, 10000)
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
 	});
 }

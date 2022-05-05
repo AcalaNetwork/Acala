@@ -292,8 +292,13 @@ fn cancel_schedule_test() {
 			None,
 			5,
 		));
-		let council_call = Call::CdpEngine(module_cdp_engine::Call::set_global_params {
-			global_interest_rate_per_sec: Rate::from(10),
+		let council_call = Call::CdpEngine(module_cdp_engine::Call::set_collateral_params {
+			currency_id: RENBTC,
+			interest_rate_per_sec: Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			liquidation_ratio: Change::NewValue(Some(Ratio::saturating_from_rational(5, 2))),
+			liquidation_penalty: Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			required_collateral_ratio: Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			maximum_total_debit_value: Change::NewValue(10000),
 		});
 
 		assert_ok!(Authority::schedule_dispatch(
