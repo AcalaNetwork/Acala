@@ -26,7 +26,7 @@ use module_evm::{runner::state::PrecompileFailure, ExitRevert};
 use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
 use primitives::{Balance, CurrencyId, DexShare};
 use sp_core::{H160, U256};
-use sp_runtime::traits::Convert;
+use sp_runtime::traits::{Convert, One, Zero};
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
@@ -52,6 +52,7 @@ pub trait InputT {
 	fn u32_at(&self, index: usize) -> Result<u32, Self::Error>;
 
 	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error>;
+	fn bool_at(&self, index: usize) -> Result<bool, Self::Error>;
 }
 
 pub struct Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping> {
@@ -185,6 +186,21 @@ where
 		let bytes = self.nth_param(index, Some(len))?;
 
 		Ok(bytes.to_vec())
+	}
+
+	fn bool_at(&self, index: usize) -> Result<bool, Self::Error> {
+		let param = self.u64_at(index)?;
+		if param.is_one() {
+			Ok(true)
+		} else if param.is_zero() {
+			Ok(false)
+		} else {
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to decode bool".into(),
+				cost: self.target_gas.unwrap_or_default(),
+			})
+		}
 	}
 }
 

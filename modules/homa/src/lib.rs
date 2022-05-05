@@ -21,7 +21,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{log, pallet_prelude::*, require_transactional, transactional, PalletId};
+use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::{ExchangeRate, ExchangeRateProvider, HomaManager, HomaSubAccountXcm, Rate, Ratio};
 use orml_traits::MultiCurrency;
@@ -638,7 +638,6 @@ pub mod module {
 			})
 		}
 
-		#[require_transactional]
 		pub(super) fn do_mint(minter: T::AccountId, amount: Balance) -> DispatchResult {
 			// Ensure the amount is above the MintThreshold.
 			ensure!(amount >= T::MintThreshold::get(), Error::<T>::BelowMintThreshold);
@@ -673,7 +672,6 @@ pub mod module {
 			Ok(())
 		}
 
-		#[require_transactional]
 		pub(super) fn do_request_redeem(
 			redeemer: T::AccountId,
 			amount: Balance,
