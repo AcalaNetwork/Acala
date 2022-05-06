@@ -40,7 +40,12 @@ use sp_std::{marker::PhantomData, prelude::*};
 /// `input` data starts with `action`.
 ///
 /// Actions:
-/// - mint
+/// - Mint. Rest `input bytes: `who`, `amount`.
+/// - Request redeem. Rest `input bytes: `who`, `amount`, `fast_match`.
+/// - Get exchange rate.
+/// - Get estimated reward rate.
+/// - Get commission rate.
+/// - Get fast match fee.
 
 pub struct HomaPrecompile<R>(PhantomData<R>);
 
@@ -114,8 +119,8 @@ where
 
 				log::debug!(
 					target: "evm",
-					"homa: mint, who: {:?}, amount: {:?}",
-					&who, amount
+					"homa: request_redeem, who: {:?}, amount: {:?}, fast_match: {:?}",
+					&who, amount, fast_match
 				);
 
 				<module_homa::Pallet<Runtime> as HomaManager<Runtime::AccountId, Balance>>::request_redeem(
