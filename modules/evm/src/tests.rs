@@ -842,13 +842,15 @@ fn create_predeploy_contract_works() {
 
 		assert_eq!(Pallet::<Runtime>::is_account_empty(&addr), false);
 
-		System::assert_last_event(Event::EVM(crate::Event::Created {
+		System::assert_has_event(Event::EVM(crate::Event::Created {
 			from: NetworkContractSource::get(),
 			contract: addr,
 			logs: vec![],
 			used_gas: 93183,
 			used_storage: 284,
 		}));
+
+		System::assert_last_event(Event::EVM(crate::Event::ContractPublished { contract: addr }));
 
 		assert_noop!(
 			EVM::create_predeploy_contract(
@@ -865,15 +867,18 @@ fn create_predeploy_contract_works() {
 
 		// deploy empty contract
 		let token_addr = H160::from_str("2222222222222222222222222222222222222222").unwrap();
-		assert_ok!(EVM::create_predeploy_contract(
-			Origin::signed(NetworkContractAccount::get()),
-			token_addr,
-			vec![],
-			0,
-			1000000,
-			1000000,
-			vec![],
-		));
+		assert_noop!(
+			EVM::create_predeploy_contract(
+				Origin::signed(NetworkContractAccount::get()),
+				token_addr,
+				vec![],
+				0,
+				1000000,
+				1000000,
+				vec![],
+			),
+			Error::<Runtime>::ContractNotFound
+		);
 
 		assert_eq!(CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&token_addr)), None);
 	});

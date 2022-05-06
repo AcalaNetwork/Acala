@@ -1,6 +1,6 @@
 [package]
 name = "runtime-common"
-version = "2.5.1"
+version = "2.6.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -58,6 +58,7 @@ module-evm-accounts = { path = "../../modules/evm-accounts", default-features = 
 module-asset-registry = { path = "../../modules/asset-registry", default-features = false, optional = true }
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false, optional = true }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 
 # orml
 orml-oracle = { path = "../../orml/oracle", default-features = false }

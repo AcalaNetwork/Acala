@@ -547,13 +547,13 @@ fn withdraw_unbonded_work() {
 			SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)),
 			200
 		);
-
+		System::reset_events();
 		MockBlockNumberProvider::set(101);
 		assert_ok!(HomaValidatorListModule::withdraw_unbonded(
 			Origin::signed(ALICE),
 			VALIDATOR_1
 		));
-		System::assert_last_event(mock::Event::HomaValidatorListModule(crate::Event::WithdrawnGuarantee {
+		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::WithdrawnGuarantee {
 			who: ALICE,
 			validator: VALIDATOR_1,
 			bond: 100,

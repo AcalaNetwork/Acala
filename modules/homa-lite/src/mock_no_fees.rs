@@ -170,6 +170,8 @@ impl orml_tokens::Config for NoFeeRuntime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -200,6 +202,7 @@ impl module_currencies::Config for NoFeeRuntime {
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = ();
+	type GasToWeight = ();
 	type SweepOrigin = EnsureSignedBy<Root, AccountId>;
 	type OnDust = ();
 }
