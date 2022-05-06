@@ -705,6 +705,98 @@ impl<T, FixedRate: Get<u128>, R: TakeRevenue> Drop for FixedRateOfForeignAsset<T
 
 pub struct EvmErc20InfoMapping<T>(sp_std::marker::PhantomData<T>);
 
+impl<T: Config> EvmErc20InfoMapping<T> {
+	fn name_for_dex_share(symbol: DexShare) -> Option<Vec<u8>> {
+		match symbol {
+			DexShare::Token(symbol) => CurrencyId::Token(symbol).name().map(|v| v.as_bytes().to_vec()),
+			DexShare::Erc20(address) => AssetMetadatas::<T>::get(AssetIds::Erc20(address)).map(|v| v.name),
+			DexShare::LiquidCrowdloan(lease) => Some(
+				format!(
+					"LiquidCrowdloan-{}-{}",
+					T::StakingCurrencyId::get().name().expect("constant never failed; qed"),
+					lease
+				)
+				.into_bytes(),
+			),
+			DexShare::ForeignAsset(foreign_asset_id) => {
+				AssetMetadatas::<T>::get(AssetIds::ForeignAssetId(foreign_asset_id)).map(|v| v.name)
+			}
+			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
+				AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_pool_id)).map(|v| v.name)
+			}
+		}
+	}
+
+	fn symbol_for_dex_share(symbol: DexShare) -> Option<Vec<u8>> {
+		match symbol {
+			DexShare::Token(symbol) => CurrencyId::Token(symbol).symbol().map(|v| v.as_bytes().to_vec()),
+			DexShare::Erc20(address) => AssetMetadatas::<T>::get(AssetIds::Erc20(address)).map(|v| v.symbol),
+			DexShare::LiquidCrowdloan(lease) => Some(
+				format!(
+					"LC{}-{}",
+					T::StakingCurrencyId::get()
+						.symbol()
+						.expect("constant never failed; qed"),
+					lease
+				)
+				.into_bytes(),
+			),
+			DexShare::ForeignAsset(foreign_asset_id) => {
+				AssetMetadatas::<T>::get(AssetIds::ForeignAssetId(foreign_asset_id)).map(|v| v.symbol)
+			}
+			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
+				AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_pool_id)).map(|v| v.symbol)
+			}
+		}
+	}
+
+	fn decimal_for_dex_share(symbol: DexShare) -> Option<u8> {
+		match symbol {
+			DexShare::Token(symbol) => CurrencyId::Token(symbol).decimals(),
+			DexShare::Erc20(address) => AssetMetadatas::<T>::get(AssetIds::Erc20(address)).map(|v| v.decimals),
+			DexShare::LiquidCrowdloan(_) => T::StakingCurrencyId::get().decimals(),
+			DexShare::ForeignAsset(foreign_asset_id) => {
+				AssetMetadatas::<T>::get(AssetIds::ForeignAssetId(foreign_asset_id)).map(|v| v.decimals)
+			}
+			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
+				AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_pool_id)).map(|v| v.decimals)
+			}
+		}
+	}
+
+	fn decode_evm_address_for_dex_share(address: &[u8], left: bool) -> Option<DexShare> {
+		let dex_share_type = if left {
+			H160_POSITION_DEXSHARE_LEFT_TYPE
+		} else {
+			H160_POSITION_DEXSHARE_RIGHT_TYPE
+		};
+		let dex_share_field = if left {
+			H160_POSITION_DEXSHARE_LEFT_FIELD
+		} else {
+			H160_POSITION_DEXSHARE_RIGHT_FIELD
+		};
+		match DexShareType::try_from(address[dex_share_type]).ok()? {
+			DexShareType::Token => address[dex_share_field][3].try_into().map(DexShare::Token).ok(),
+			DexShareType::Erc20 => {
+				let id = u32::from_be_bytes(address[dex_share_field].try_into().ok()?);
+				Erc20IdToAddress::<T>::get(id).map(DexShare::Erc20)
+			}
+			DexShareType::LiquidCrowdloan => {
+				let id = Lease::from_be_bytes(address[dex_share_field].try_into().ok()?);
+				Some(DexShare::LiquidCrowdloan(id))
+			}
+			DexShareType::ForeignAsset => {
+				let id = ForeignAssetId::from_be_bytes(address[dex_share_field][2..].try_into().ok()?);
+				Some(DexShare::ForeignAsset(id))
+			}
+			DexShareType::StableAssetPoolToken => {
+				let id = StableAssetPoolId::from_be_bytes(address[dex_share_field][..].try_into().ok()?);
+				Some(DexShare::StableAssetPoolToken(id))
+			}
+		}
+	}
+}
+
 impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 	// Returns the name associated with a given CurrencyId.
 	// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
@@ -713,42 +805,8 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 		let name = match currency_id {
 			CurrencyId::Token(_) => AssetMetadatas::<T>::get(AssetIds::NativeAssetId(currency_id)).map(|v| v.name),
 			CurrencyId::DexShare(symbol_0, symbol_1) => {
-				let name_0 = match symbol_0 {
-					DexShare::Token(symbol) => CurrencyId::Token(symbol).name().map(|v| v.as_bytes().to_vec()),
-					DexShare::Erc20(address) => AssetMetadatas::<T>::get(AssetIds::Erc20(address)).map(|v| v.name),
-					DexShare::LiquidCrowdloan(lease) => Some(
-						format!(
-							"LiquidCrowdloan-{}-{}",
-							T::StakingCurrencyId::get().name().expect("constant never failed; qed"),
-							lease
-						)
-						.into_bytes(),
-					),
-					DexShare::ForeignAsset(foreign_asset_id) => {
-						AssetMetadatas::<T>::get(AssetIds::ForeignAssetId(foreign_asset_id)).map(|v| v.name)
-					}
-					DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
-						AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_pool_id)).map(|v| v.name)
-					}
-				}?;
-				let name_1 = match symbol_1 {
-					DexShare::Token(symbol) => CurrencyId::Token(symbol).name().map(|v| v.as_bytes().to_vec()),
-					DexShare::Erc20(address) => AssetMetadatas::<T>::get(AssetIds::Erc20(address)).map(|v| v.name),
-					DexShare::LiquidCrowdloan(lease) => Some(
-						format!(
-							"LiquidCrowdloan-{}-{}",
-							T::StakingCurrencyId::get().name().expect("constant never failed; qed"),
-							lease
-						)
-						.into_bytes(),
-					),
-					DexShare::ForeignAsset(foreign_asset_id) => {
-						AssetMetadatas::<T>::get(AssetIds::ForeignAssetId(foreign_asset_id)).map(|v| v.name)
-					}
-					DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
-						AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_pool_id)).map(|v| v.name)
-					}
-				}?;
+				let name_0 = EvmErc20InfoMapping::<T>::name_for_dex_share(symbol_0)?;
+				let name_1 = EvmErc20InfoMapping::<T>::name_for_dex_share(symbol_1)?;
 
 				let mut vec = Vec::new();
 				vec.extend_from_slice(&b"LP "[..]);
@@ -789,46 +847,8 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 		let symbol = match currency_id {
 			CurrencyId::Token(_) => AssetMetadatas::<T>::get(AssetIds::NativeAssetId(currency_id)).map(|v| v.symbol),
 			CurrencyId::DexShare(symbol_0, symbol_1) => {
-				let token_symbol_0 = match symbol_0 {
-					DexShare::Token(symbol) => CurrencyId::Token(symbol).symbol().map(|v| v.as_bytes().to_vec()),
-					DexShare::Erc20(address) => AssetMetadatas::<T>::get(AssetIds::Erc20(address)).map(|v| v.symbol),
-					DexShare::LiquidCrowdloan(lease) => Some(
-						format!(
-							"LC{}-{}",
-							T::StakingCurrencyId::get()
-								.symbol()
-								.expect("constant never failed; qed"),
-							lease
-						)
-						.into_bytes(),
-					),
-					DexShare::ForeignAsset(foreign_asset_id) => {
-						AssetMetadatas::<T>::get(AssetIds::ForeignAssetId(foreign_asset_id)).map(|v| v.symbol)
-					}
-					DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
-						AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_pool_id)).map(|v| v.symbol)
-					}
-				}?;
-				let token_symbol_1 = match symbol_1 {
-					DexShare::Token(symbol) => CurrencyId::Token(symbol).symbol().map(|v| v.as_bytes().to_vec()),
-					DexShare::Erc20(address) => AssetMetadatas::<T>::get(AssetIds::Erc20(address)).map(|v| v.symbol),
-					DexShare::LiquidCrowdloan(lease) => Some(
-						format!(
-							"LC{}-{}",
-							T::StakingCurrencyId::get()
-								.symbol()
-								.expect("constant never failed; qed"),
-							lease
-						)
-						.into_bytes(),
-					),
-					DexShare::ForeignAsset(foreign_asset_id) => {
-						AssetMetadatas::<T>::get(AssetIds::ForeignAssetId(foreign_asset_id)).map(|v| v.symbol)
-					}
-					DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
-						AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_pool_id)).map(|v| v.symbol)
-					}
-				}?;
+				let token_symbol_0 = EvmErc20InfoMapping::<T>::symbol_for_dex_share(symbol_0)?;
+				let token_symbol_1 = EvmErc20InfoMapping::<T>::symbol_for_dex_share(symbol_1)?;
 
 				let mut vec = Vec::new();
 				vec.extend_from_slice(&b"LP_"[..]);
@@ -873,17 +893,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 			CurrencyId::DexShare(symbol_0, _) => {
 				// initial dex share amount is calculated based on currency_id_0,
 				// use the decimals of currency_id_0 as the decimals of lp token.
-				match symbol_0 {
-					DexShare::Token(symbol) => CurrencyId::Token(symbol).decimals(),
-					DexShare::Erc20(address) => AssetMetadatas::<T>::get(AssetIds::Erc20(address)).map(|v| v.decimals),
-					DexShare::LiquidCrowdloan(_) => T::StakingCurrencyId::get().decimals(),
-					DexShare::ForeignAsset(foreign_asset_id) => {
-						AssetMetadatas::<T>::get(AssetIds::ForeignAssetId(foreign_asset_id)).map(|v| v.decimals)
-					}
-					DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
-						AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_pool_id)).map(|v| v.decimals)
-					}
-				}
+				EvmErc20InfoMapping::<T>::decimal_for_dex_share(symbol_0)
 			}
 			CurrencyId::Erc20(address) => AssetMetadatas::<T>::get(AssetIds::Erc20(address)).map(|v| v.decimals),
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
@@ -945,58 +955,8 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 		let currency_id = match CurrencyIdType::try_from(address[H160_POSITION_CURRENCY_ID_TYPE]).ok()? {
 			CurrencyIdType::Token => address[H160_POSITION_TOKEN].try_into().map(CurrencyId::Token).ok(),
 			CurrencyIdType::DexShare => {
-				let left = match DexShareType::try_from(address[H160_POSITION_DEXSHARE_LEFT_TYPE]).ok()? {
-					DexShareType::Token => address[H160_POSITION_DEXSHARE_LEFT_FIELD][3]
-						.try_into()
-						.map(DexShare::Token)
-						.ok(),
-					DexShareType::Erc20 => {
-						let id = u32::from_be_bytes(address[H160_POSITION_DEXSHARE_LEFT_FIELD].try_into().ok()?);
-						Erc20IdToAddress::<T>::get(id).map(DexShare::Erc20)
-					}
-					DexShareType::LiquidCrowdloan => {
-						let id = Lease::from_be_bytes(address[H160_POSITION_DEXSHARE_LEFT_FIELD].try_into().ok()?);
-						Some(DexShare::LiquidCrowdloan(id))
-					}
-					DexShareType::ForeignAsset => {
-						let id = ForeignAssetId::from_be_bytes(
-							address[H160_POSITION_DEXSHARE_LEFT_FIELD][2..].try_into().ok()?,
-						);
-						Some(DexShare::ForeignAsset(id))
-					}
-					DexShareType::StableAssetPoolToken => {
-						let id = StableAssetPoolId::from_be_bytes(
-							address[H160_POSITION_DEXSHARE_LEFT_FIELD][..].try_into().ok()?,
-						);
-						Some(DexShare::StableAssetPoolToken(id))
-					}
-				}?;
-				let right = match DexShareType::try_from(address[H160_POSITION_DEXSHARE_RIGHT_TYPE]).ok()? {
-					DexShareType::Token => address[H160_POSITION_DEXSHARE_RIGHT_FIELD][3]
-						.try_into()
-						.map(DexShare::Token)
-						.ok(),
-					DexShareType::Erc20 => {
-						let id = u32::from_be_bytes(address[H160_POSITION_DEXSHARE_RIGHT_FIELD].try_into().ok()?);
-						Erc20IdToAddress::<T>::get(id).map(DexShare::Erc20)
-					}
-					DexShareType::LiquidCrowdloan => {
-						let id = Lease::from_be_bytes(address[H160_POSITION_DEXSHARE_RIGHT_FIELD].try_into().ok()?);
-						Some(DexShare::LiquidCrowdloan(id))
-					}
-					DexShareType::ForeignAsset => {
-						let id = ForeignAssetId::from_be_bytes(
-							address[H160_POSITION_DEXSHARE_RIGHT_FIELD][2..].try_into().ok()?,
-						);
-						Some(DexShare::ForeignAsset(id))
-					}
-					DexShareType::StableAssetPoolToken => {
-						let id = StableAssetPoolId::from_be_bytes(
-							address[H160_POSITION_DEXSHARE_RIGHT_FIELD][..].try_into().ok()?,
-						);
-						Some(DexShare::StableAssetPoolToken(id))
-					}
-				}?;
+				let left = EvmErc20InfoMapping::<T>::decode_evm_address_for_dex_share(address, true)?;
+				let right = EvmErc20InfoMapping::<T>::decode_evm_address_for_dex_share(address, false)?;
 
 				Some(CurrencyId::DexShare(left, right))
 			}
