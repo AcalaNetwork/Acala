@@ -20,6 +20,9 @@
 
 use sp_runtime::traits::AccountIdConversion;
 
+use super::{CurrencyId, ACA, DOT, LDOT, RENBTC};
+use sp_std::prelude::*;
+
 pub mod utils;
 
 // module benchmarking
@@ -58,11 +61,5 @@ pub fn get_vesting_account() -> super::AccountId {
 }
 
 pub fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
-	vec![
-		CurrencyId::Token(TokenSymbol::ACA),
-		CurrencyId::Token(TokenSymbol::DOT),
-		CurrencyId::Token(TokenSymbol::LDOT),
-		CurrencyId::Token(TokenSymbol::RENBTC),
-		CurrencyId::StableAssetPoolToken(0),
-	]
+	vec![ACA, DOT, LDOT, RENBTC, CurrencyId::StableAssetPoolToken(0)]
 }

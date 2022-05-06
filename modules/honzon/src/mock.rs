@@ -242,7 +242,6 @@ parameter_types! {
 impl cdp_engine::Config for Runtime {
 	type Event = Event;
 	type PriceSource = MockPriceSource;
-	type CollateralCurrencyIds = CDPEngineModule;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
@@ -268,6 +267,7 @@ impl Config for Runtime {
 	type Event = Event;
 	type Currency = PalletBalances;
 	type DepositPerAuthorization = ConstU128<100>;
+	type CollateralCurrencyIds = CDPEngineModule;
 	type WeightInfo = ();
 }
 

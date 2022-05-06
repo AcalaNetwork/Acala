@@ -36,6 +36,7 @@ use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchResult,
 };
+use sp_std::prelude::*;
 use support::EmergencyShutdown;
 
 mod mock;

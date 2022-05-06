@@ -29,7 +29,6 @@ use sp_io::offchain;
 use sp_runtime::{
 	offchain::{DbExternalities, StorageKind},
 	traits::BadOrigin,
-	ModuleError,
 };
 use support::DEXManager;
 
@@ -110,9 +109,9 @@ fn get_debit_exchange_rate_work() {
 #[test]
 fn get_liquidation_penalty_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_liquidation_penalty(BTC),
-			DefaultLiquidationPenalty::get()
+			Error::<Runtime>::InvalidCollateralType
 		);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -125,7 +124,7 @@ fn get_liquidation_penalty_work() {
 		));
 		assert_eq!(
 			CDPEngineModule::get_liquidation_penalty(BTC),
-			Rate::saturating_from_rational(2, 10)
+			Ok(Rate::saturating_from_rational(2, 10))
 		);
 	});
 }
@@ -133,9 +132,9 @@ fn get_liquidation_penalty_work() {
 #[test]
 fn get_liquidation_ratio_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_liquidation_ratio(BTC),
-			DefaultLiquidationRatio::get()
+			Error::<Runtime>::InvalidCollateralType
 		);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -148,7 +147,7 @@ fn get_liquidation_ratio_work() {
 		));
 		assert_eq!(
 			CDPEngineModule::get_liquidation_ratio(BTC),
-			Ratio::saturating_from_rational(5, 2)
+			Ok(Ratio::saturating_from_rational(5, 2))
 		);
 	});
 }
@@ -209,7 +208,7 @@ fn set_collateral_params_work() {
 			Change::NewValue(10000),
 		));
 
-		let new_collateral_params = CDPEngineModule::collateral_params(BTC);
+		let new_collateral_params = CDPEngineModule::collateral_params(BTC).unwrap();
 
 		assert_eq!(
 			new_collateral_params.interest_rate_per_sec,
@@ -227,7 +226,7 @@ fn set_collateral_params_work() {
 			new_collateral_params.required_collateral_ratio,
 			Some(Ratio::saturating_from_rational(9, 5))
 		);
-		assert_eq!(new_collateral_params.maximum_total_debit_value, Ok(10000));
+		assert_eq!(new_collateral_params.maximum_total_debit_value, 10000);
 	});
 }
 
@@ -1575,12 +1574,13 @@ fn offchain_worker_works_cdp() {
 
 	ext.execute_with(|| {
 		// number of currencies allowed as collateral (cycles through all of them)
-		let collateral_currencies_num = <CDPEngineModule as Get<Vec<CurrencyId>>>::get().len() as u64;
-		System::set_block_number(1);
-
-		setup_default_collateral(DOT);
-		setup_default_collateral(LP_AUSD_DOT);
 		setup_default_collateral(BTC);
+		setup_default_collateral(LP_AUSD_DOT);
+		setup_default_collateral(DOT);
+
+		let collateral_currencies_num = <CDPEngineModule as Get<Vec<CurrencyId>>>::get().len() as u64;
+
+		System::set_block_number(1);
 
 		// offchain worker will not liquidate alice
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
@@ -1670,8 +1670,6 @@ fn offchain_worker_iteration_limit_works() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
-		setup_default_collateral(DOT);
-		setup_default_collateral(LP_AUSD_DOT);
 
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
 		assert_ok!(CDPEngineModule::adjust_position(&BOB, BTC, 100, 500));
@@ -1728,7 +1726,6 @@ fn offchain_default_max_iterator_works() {
 	ext.register_extension(OffchainDbExt::new(offchain.clone()));
 
 	ext.execute_with(|| {
-		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
 			BTC,
@@ -1738,8 +1735,8 @@ fn offchain_default_max_iterator_works() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
-		setup_default_collateral(DOT);
-		setup_default_collateral(LP_AUSD_DOT);
+
+		System::set_block_number(1);
 
 		// checks that max iterations is stored as none
 		assert!(offchain

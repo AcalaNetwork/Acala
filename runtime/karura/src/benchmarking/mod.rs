@@ -18,6 +18,9 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
+use super::{CurrencyId, KAR, KSM, LKSM};
+use sp_std::prelude::*;
+
 pub mod utils {
 	include!("../../../mandala/src/benchmarking/utils.rs");
 }
@@ -107,10 +110,5 @@ pub fn get_vesting_account() -> super::AccountId {
 }
 
 pub fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
-	vec![
-		CurrencyId::Token(TokenSymbol::KSM),
-		CurrencyId::Token(TokenSymbol::LKSM),
-		CurrencyId::Token(TokenSymbol::KAR),
-		CurrencyId::CurrencyId::StableAssetPoolToken(0),
-	]
+	vec![KSM, LKSM, KAR, CurrencyId::StableAssetPoolToken(0)]
 }
