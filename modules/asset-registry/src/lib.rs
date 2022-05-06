@@ -765,15 +765,10 @@ impl<T: Config> EvmErc20InfoMapping<T> {
 	}
 
 	fn decode_evm_address_for_dex_share(address: &[u8], left: bool) -> Option<DexShare> {
-		let dex_share_type = if left {
-			H160_POSITION_DEXSHARE_LEFT_TYPE
+		let (dex_share_type, dex_share_field) = if left {
+			(H160_POSITION_DEXSHARE_LEFT_TYPE, H160_POSITION_DEXSHARE_LEFT_FIELD)
 		} else {
-			H160_POSITION_DEXSHARE_RIGHT_TYPE
-		};
-		let dex_share_field = if left {
-			H160_POSITION_DEXSHARE_LEFT_FIELD
-		} else {
-			H160_POSITION_DEXSHARE_RIGHT_FIELD
+			(H160_POSITION_DEXSHARE_RIGHT_TYPE, H160_POSITION_DEXSHARE_RIGHT_FIELD)
 		};
 		match DexShareType::try_from(address[dex_share_type]).ok()? {
 			DexShareType::Token => address[dex_share_field][3].try_into().map(DexShare::Token).ok(),
@@ -957,7 +952,6 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 			CurrencyIdType::DexShare => {
 				let left = EvmErc20InfoMapping::<T>::decode_evm_address_for_dex_share(address, true)?;
 				let right = EvmErc20InfoMapping::<T>::decode_evm_address_for_dex_share(address, false)?;
-
 				Some(CurrencyId::DexShare(left, right))
 			}
 			CurrencyIdType::StableAsset => {
