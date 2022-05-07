@@ -26,7 +26,7 @@ use nutsfinance_stable_asset::{
 use primitives::{
 	currency::TokenInfo,
 	evm::{EvmAddress, H160_POSITION_TOKEN},
-	ReserveIdentifier,
+	Multiplier, ReserveIdentifier,
 };
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
@@ -143,6 +143,14 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 	) -> Result<(), TransactionValidityError> {
 		Ok(())
 	}
+
+	fn weight_to_fee(_weight: Weight) -> Balance {
+		Default::default()
+	}
+
+	fn apply_multiplier_to_fee(_fee: Balance, _multiplier: Option<Multiplier>) -> Balance {
+		Default::default()
+	}
 }
 
 /// Given provided `Currency`, implements default reserve behavior
@@ -193,6 +201,14 @@ impl<
 		_class: DispatchClass,
 	) -> Result<(), TransactionValidityError> {
 		Ok(())
+	}
+
+	fn weight_to_fee(_weight: Weight) -> Balance {
+		Default::default()
+	}
+
+	fn apply_multiplier_to_fee(_fee: Balance, _multiplier: Option<Multiplier>) -> Balance {
+		Default::default()
 	}
 }
 

@@ -159,7 +159,7 @@ where
 					use sp_runtime::traits::Convert;
 					let from_account = Runtime::AddressMapping::get_account_id(&from);
 					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
-					let fee = module_transaction_payment::Pallet::<Runtime>::weight_to_fee(weight);
+					let fee = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::weight_to_fee(weight);
 					_fee = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::reserve_fee(
 						&from_account,
 						fee,

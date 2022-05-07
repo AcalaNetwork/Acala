@@ -679,9 +679,16 @@ fn payment_reserve_fee() {
 		);
 		assert_eq!(100, fee.unwrap());
 
-		let fee = Pallet::<Runtime>::apply_multiplier_to_fee(100, None);
+		let fee =
+			<ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::apply_multiplier_to_fee(
+				100, None,
+			);
 		assert_eq!(150, fee);
-		let fee = Pallet::<Runtime>::apply_multiplier_to_fee(100, Some(Multiplier::saturating_from_rational(2, 1)));
+		let fee =
+			<ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::apply_multiplier_to_fee(
+				100,
+				Some(Multiplier::saturating_from_rational(2, 1)),
+			);
 		assert_eq!(200, fee);
 	});
 }

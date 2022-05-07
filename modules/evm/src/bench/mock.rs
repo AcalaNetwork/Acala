@@ -29,8 +29,8 @@ use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockAddressMapping, TransactionPayment};
 use orml_traits::parameter_type_with_key;
 pub use primitives::{
-	define_combined_task, Address, Amount, Block, BlockNumber, CurrencyId, Header, ReserveIdentifier, Signature,
-	TokenSymbol,
+	define_combined_task, Address, Amount, Block, BlockNumber, CurrencyId, Header, Multiplier, ReserveIdentifier,
+	Signature, TokenSymbol,
 };
 use sp_core::{H160, H256};
 use sp_runtime::{
@@ -248,6 +248,14 @@ impl<
 		_class: DispatchClass,
 	) -> Result<(), TransactionValidityError> {
 		Ok(())
+	}
+
+	fn weight_to_fee(_weight: Weight) -> Balance {
+		Default::default()
+	}
+
+	fn apply_multiplier_to_fee(_fee: Balance, _multiplier: Option<Multiplier>) -> Balance {
+		Default::default()
 	}
 }
 

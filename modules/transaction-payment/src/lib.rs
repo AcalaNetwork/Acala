@@ -46,7 +46,7 @@ use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, InclusionFee};
-use primitives::{Balance, CurrencyId, ReserveIdentifier};
+use primitives::{Balance, CurrencyId, Multiplier, ReserveIdentifier};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
@@ -56,7 +56,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	FixedPointNumber, FixedPointOperand, FixedU128, Percent, Perquintill,
+	FixedPointNumber, FixedPointOperand, Percent, Perquintill,
 };
 use sp_std::prelude::*;
 use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
@@ -70,9 +70,6 @@ pub mod weights;
 
 pub use module::*;
 pub use weights::WeightInfo;
-
-/// Fee multiplier.
-pub type Multiplier = FixedU128;
 
 type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type NegativeImbalanceOf<T> =
@@ -756,14 +753,6 @@ where
 		// `Bounded` maximum of its data type, which is not desired.
 		let capped_weight = weight.min(T::BlockWeights::get().max_block);
 		T::WeightToFee::calc(&capped_weight)
-	}
-
-	/// Apply multiplier to fee, return the final fee. If multiplier is `None`, use
-	/// `next_fee_multiplier`.
-	#[allow(dead_code)]
-	fn apply_multiplier_to_fee(fee: PalletBalanceOf<T>, multiplier: Option<Multiplier>) -> PalletBalanceOf<T> {
-		let multiplier = multiplier.unwrap_or_else(|| Self::next_fee_multiplier());
-		multiplier.saturating_mul_int(fee)
 	}
 
 	/// If native asset is enough, return `None`, else return the fee amount should be swapped.
@@ -1484,5 +1473,16 @@ where
 		// distribute fee
 		<T as Config>::OnTransactionPayment::on_unbalanced(actual_payment);
 		Ok(())
+	}
+
+	fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {
+		Pallet::<T>::weight_to_fee(weight)
+	}
+
+	/// Apply multiplier to fee, return the final fee. If multiplier is `None`, use
+	/// `next_fee_multiplier`.
+	fn apply_multiplier_to_fee(fee: PalletBalanceOf<T>, multiplier: Option<Multiplier>) -> PalletBalanceOf<T> {
+		let multiplier = multiplier.unwrap_or_else(|| Pallet::<T>::next_fee_multiplier());
+		multiplier.saturating_mul_int(fee)
 	}
 }
