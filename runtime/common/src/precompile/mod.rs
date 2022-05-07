@@ -52,6 +52,7 @@ pub mod stable_asset;
 use crate::SystemContractsFilter;
 pub use dex::DEXPrecompile;
 pub use evm::EVMPrecompile;
+pub use homa::HomaPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
@@ -79,6 +80,7 @@ pub const ORACLE: H160 = H160(hex!("0000000000000000000000000000000000000403"));
 pub const SCHEDULER: H160 = H160(hex!("0000000000000000000000000000000000000404"));
 pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000405"));
 pub const STABLE_ASSET: H160 = H160(hex!("0000000000000000000000000000000000000406"));
+pub const HOMA: H160 = H160(hex!("0000000000000000000000000000000000000407"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
 	// srtool support rust 1.57.0
@@ -117,6 +119,7 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
+				// HOMA,
 			]),
 			_marker: Default::default(),
 		}
@@ -145,6 +148,7 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
+				// Homa,
 			]),
 			_marker: Default::default(),
 		}
@@ -174,6 +178,7 @@ where
 				SCHEDULER,
 				DEX,
 				STABLE_ASSET,
+				HOMA,
 			]),
 			_marker: Default::default(),
 		}
@@ -190,6 +195,7 @@ where
 	DEXPrecompile<R>: Precompile,
 	StableAssetPrecompile<R>: Precompile,
 	SchedulePrecompile<R>: Precompile,
+	HomaPrecompile<R>: Precompile,
 {
 	fn execute(
 		&self,
@@ -265,6 +271,8 @@ where
 				Some(StableAssetPrecompile::<R>::execute(
 					input, target_gas, context, is_static,
 				))
+			} else if address == HOMA {
+				Some(HomaPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else {
 				None
 			}
