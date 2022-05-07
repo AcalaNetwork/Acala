@@ -80,8 +80,7 @@ pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000405"));
 pub const STABLE_ASSET: H160 = H160(hex!("0000000000000000000000000000000000000406"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
-	// srtool support rust 1.57.0
-	target_gas.map(|x| x.checked_div(10).expect("divisor is non-zero; qed").saturating_mul(9)) // 90%
+	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
 }
 
 pub struct AllPrecompiles<R> {

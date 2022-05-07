@@ -330,14 +330,9 @@ fn recover_sign_data(
 ) -> Option<(u128, u128)> {
 	// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
 	// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
-	let block_period = eth_msg.valid_until.checked_div(30).expect("divisor is non-zero; qed");
+	let block_period = eth_msg.valid_until.saturating_div(30);
 	// u16: max value 0xffff * 64 = 4194240 bytes = 4MB
-	let storage_entry_limit: u16 = eth_msg
-		.storage_limit
-		.checked_div(64)
-		.expect("divisor is non-zero; qed")
-		.try_into()
-		.ok()?;
+	let storage_entry_limit: u16 = eth_msg.storage_limit.saturating_div(64).try_into().ok()?;
 	let storage_entry_deposit = storage_deposit_per_byte.saturating_mul(64);
 	let tx_gas_price = ts_fee_per_gas
 		.checked_add(Into::<u128>::into(block_period).checked_shl(16)?)?
@@ -345,8 +340,7 @@ fn recover_sign_data(
 	// There is a loss of precision here, so the order of calculation must be guaranteed
 	// must ensure storage_deposit / tx_fee_per_gas * storage_limit
 	let tx_gas_limit = storage_entry_deposit
-		.checked_div(ts_fee_per_gas)
-		.expect("divisor is non-zero; qed")
+		.saturating_div(ts_fee_per_gas)
 		.checked_mul(storage_entry_limit.into())?
 		.checked_add(eth_msg.gas_limit.into())?;
 

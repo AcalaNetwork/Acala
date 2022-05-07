@@ -71,7 +71,7 @@ pub fn keccak256(input: TokenStream) -> TokenStream {
 
 	let result = module_evm_utility::sha3_256(&lit_str.value());
 
-	let eval = Lit::ByteStr(LitByteStr::new(&result.to_vec(), proc_macro2::Span::call_site()));
+	let eval = Lit::ByteStr(LitByteStr::new(result.as_ref(), proc_macro2::Span::call_site()));
 
 	quote!(#eval).into()
 }
