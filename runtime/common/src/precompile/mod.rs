@@ -270,7 +270,7 @@ where
 
 		log::trace!(target: "evm", "Precompile end, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}, result: {:?}", address, input, target_gas, context, result);
 		if let Some(Err(PrecompileFailure::Revert { ref output, .. })) = result {
-			log::debug!(target: "evm", "Precompile failed: {:?}", core::str::from_utf8(&output.to_vec()));
+			log::debug!(target: "evm", "Precompile failed: {:?}", core::str::from_utf8(output));
 		};
 		result
 	}

@@ -506,7 +506,9 @@ impl<T: Config> Pallet<T> {
 	fn get_auction_time_to_close(now: T::BlockNumber, start_block: T::BlockNumber) -> T::BlockNumber {
 		if now >= start_block + T::AuctionDurationSoftCap::get() {
 			// halve the extended time of bid when reach soft cap
-			T::AuctionTimeToClose::get().saturating_div(&2u32.into())
+			T::AuctionTimeToClose::get()
+				.checked_div(&2u32.into())
+				.expect("cannot overflow with positive divisor; qed")
 		} else {
 			T::AuctionTimeToClose::get()
 		}
