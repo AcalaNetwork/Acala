@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
-use module_asset_registry::AssetMetadata;
+use primitives::currency::AssetMetadata;
 
 #[test]
 fn test_dex_module() {

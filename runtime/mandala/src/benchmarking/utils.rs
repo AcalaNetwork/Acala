@@ -25,9 +25,9 @@ use frame_benchmarking::account;
 use frame_support::traits::tokens::fungibles;
 use frame_support::{assert_ok, traits::Contains};
 use frame_system::RawOrigin;
-use module_asset_registry::AssetMetadata;
 use module_support::Erc20InfoMapping;
 use orml_traits::{GetByKey, MultiCurrencyExtended};
+use primitives::currency::AssetMetadata;
 use runtime_common::TokenInfo;
 use sp_runtime::{
 	traits::{SaturatedConversion, StaticLookup},
