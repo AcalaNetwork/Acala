@@ -340,7 +340,8 @@ fn recover_sign_data(
 	// There is a loss of precision here, so the order of calculation must be guaranteed
 	// must ensure storage_deposit / tx_fee_per_gas * storage_limit
 	let tx_gas_limit = storage_entry_deposit
-		.saturating_div(ts_fee_per_gas)
+		.checked_div(ts_fee_per_gas)
+		.expect("divisor is non-zero; qed")
 		.checked_mul(storage_entry_limit.into())?
 		.checked_add(eth_msg.gas_limit.into())?;
 
