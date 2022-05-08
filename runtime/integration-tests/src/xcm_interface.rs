@@ -32,7 +32,7 @@ use xcm_emulator::TestExt;
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
 const XCM_WEIGHT: Weight = 20_000_000_000;
 const XCM_FEE: Balance = 10_000_000_000;
-const ACTUAL_XCM_FEE: Balance = 995_644_032;
+const ACTUAL_XCM_FEE: Balance = 1_037_129_200;
 
 fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<Weight>, Option<Balance>)> {
 	vec![

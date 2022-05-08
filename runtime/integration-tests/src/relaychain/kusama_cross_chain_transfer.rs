@@ -623,7 +623,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 		// Unspent fund from the 1 dollar XCM fee is returned to the sovereign account.
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1_000 * dollar(RELAY_CHAIN_CURRENCY) + 999_419_207_648
+			1_000 * dollar(RELAY_CHAIN_CURRENCY) + 999_377_722_480
 		);
 	});
 }

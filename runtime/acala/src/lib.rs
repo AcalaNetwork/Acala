@@ -84,6 +84,7 @@ pub use sp_runtime::BuildStorage;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 use module_support::mocks::MockStableAsset;
+use module_support::ExchangeRateProvider;
 pub use primitives::{
 	define_combined_task,
 	evm::{AccessListItem, EstimateResourcesRequest},
@@ -161,6 +162,7 @@ parameter_types! {
 	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
 	// because transaction payment pallet will ensure the accounts always have enough ED.
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
+	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -176,6 +178,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
+		StableAssetPalletId::get().into_account(),
 	]
 }
 
@@ -787,6 +790,8 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, AcalaTreasuryAccount>;
 	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = DustRemovalWhitelist;
 }
 
@@ -800,8 +805,12 @@ parameter_type_with_key! {
 }
 
 parameter_type_with_key! {
-	pub PricingPegged: |_currency_id: CurrencyId| -> Option<CurrencyId> {
-		None
+	pub PricingPegged: |currency_id: CurrencyId| -> Option<CurrencyId> {
+		match currency_id {
+			// taiKSM
+			CurrencyId::StableAssetPoolToken(0) => Some(DOT),
+			_ => None,
+		}
 	};
 }
 
@@ -1506,6 +1515,68 @@ impl module_idle_scheduler::Config for Runtime {
 	type DisableBlockThreshold = ConstU32<6>;
 }
 
+pub struct EnsurePoolAssetId;
+impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoolAssetId {
+	fn validate(currency_id: CurrencyId) -> bool {
+		matches!(currency_id, CurrencyId::StableAssetPoolToken(_))
+	}
+}
+
+pub struct ConvertBalanceHoma;
+impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
+	type AssetId = CurrencyId;
+
+	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			CurrencyId::Token(TokenSymbol::LDOT) => {
+				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
+			}
+			_ => balance,
+		}
+	}
+
+	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate()
+				.reciprocal()
+				.and_then(|x| x.checked_mul_int(balance))
+				.unwrap_or_default(),
+			_ => balance,
+		}
+	}
+}
+
+pub struct IsLiquidToken;
+impl Contains<CurrencyId> for IsLiquidToken {
+	fn contains(currency_id: &CurrencyId) -> bool {
+		matches!(currency_id, CurrencyId::Token(TokenSymbol::LDOT))
+	}
+}
+
+type RebaseTokens = orml_tokens::Combiner<
+	AccountId,
+	IsLiquidToken,
+	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoma, Balance, GetLiquidCurrencyId>,
+	Tokens,
+>;
+
+impl nutsfinance_stable_asset::Config for Runtime {
+	type Event = Event;
+	type AssetId = CurrencyId;
+	type Balance = Balance;
+	type Assets = RebaseTokens;
+	type PalletId = StableAssetPalletId;
+
+	type AtLeast64BitUnsigned = u128;
+	type FeePrecision = ConstU128<10_000_000_000>; // 10 decimals
+	type APrecision = ConstU128<100>; // 2 decimals
+	type PoolAssetLimit = ConstU32<5>;
+	type SwapExactOverAmount = ConstU128<100>;
+	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
+	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type EnsurePoolAssetId = EnsurePoolAssetId;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1605,6 +1676,9 @@ construct_runtime!(
 		EVM: module_evm = 130,
 		EVMBridge: module_evm_bridge exclude_parts { Call } = 131,
 		EvmAccounts: module_evm_accounts = 132,
+
+		// Stable asset
+		StableAsset: nutsfinance_stable_asset = 200,
 
 		// Parachain System, always put it at the end
 		ParachainSystem: cumulus_pallet_parachain_system = 30,
@@ -2091,8 +2165,8 @@ mod tests {
 	fn check_call_size() {
 		println!("{:?}", core::mem::size_of::<Call>());
 		assert!(
-			core::mem::size_of::<Call>() <= 240,
-			"size of Call is more than 240 bytes: some calls have too big arguments, use Box to \
+			core::mem::size_of::<Call>() <= 280,
+			"size of Call is more than 280 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);

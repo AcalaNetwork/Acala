@@ -29,7 +29,7 @@
 // --chain=acala-dev
 // --steps=50
 // --repeat=20
-// --pallet=*
+// --pallet=module_evm
 // --extrinsic=*
 // --execution=wasm
 // --wasm-execution=compiled
@@ -57,7 +57,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create() -> Weight {
-		(132_014_000 as Weight)
+		(127_636_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(13 as Weight))
 			.saturating_add(T::DbWeight::get().writes(10 as Weight))
 	}
@@ -71,7 +71,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create2() -> Weight {
-		(128_607_000 as Weight)
+		(125_195_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(13 as Weight))
 			.saturating_add(T::DbWeight::get().writes(10 as Weight))
 	}
@@ -85,7 +85,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create_nft_contract() -> Weight {
-		(145_251_000 as Weight)
+		(139_210_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(14 as Weight))
 			.saturating_add(T::DbWeight::get().writes(12 as Weight))
 	}
@@ -98,7 +98,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create_predeploy_contract() -> Weight {
-		(142_987_000 as Weight)
+		(141_558_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(13 as Weight))
 			.saturating_add(T::DbWeight::get().writes(11 as Weight))
 	}
@@ -111,7 +111,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM Codes (r:1 w:0)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn call() -> Weight {
-		(177_380_000 as Weight)
+		(112_450_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
@@ -119,7 +119,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM Accounts (r:1 w:1)
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn transfer_maintainer() -> Weight {
-		(96_278_000 as Weight)
+		(93_518_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
@@ -128,28 +128,28 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	// Storage: EVM Accounts (r:1 w:1)
 	fn publish_contract() -> Weight {
-		(113_575_000 as Weight)
+		(110_067_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EVM Accounts (r:1 w:1)
 	fn publish_free() -> Weight {
-		(20_011_000 as Weight)
+		(19_425_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn enable_contract_development() -> Weight {
-		(101_634_000 as Weight)
+		(98_442_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn disable_contract_development() -> Weight {
-		(102_567_000 as Weight)
+		(98_847_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
@@ -163,7 +163,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	// Storage: EVM Codes (r:0 w:2)
 	fn set_code(c: u32, ) -> Weight {
-		(149_213_000 as Weight)
+		(147_970_000 as Weight)
 			// Standard Error: 0
 			.saturating_add((8_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
@@ -180,7 +180,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: IdleScheduler Tasks (r:0 w:1)
 	// Storage: EVM Codes (r:0 w:1)
 	fn selfdestruct() -> Weight {
-		(120_793_000 as Weight)
+		(117_642_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}

@@ -92,6 +92,8 @@ impl tokens::Config for Runtime {
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
 	type MaxLocks = ConstU32<100>;
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
