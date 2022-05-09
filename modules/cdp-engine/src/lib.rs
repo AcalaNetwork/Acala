@@ -547,7 +547,7 @@ impl<T: Config> Pallet<T> {
 		if !T::EmergencyShutdown::is_shutdown() && !now_secs.is_zero() {
 			let interval_secs = now_secs.saturating_sub(last_accumulation_secs);
 
-			for (currency_id, _) in CollateralParams::<T>::iter() {
+			for currency_id in <Self as Get<Vec<CurrencyId>>>::get() {
 				if let Ok(interest_rate) = Self::get_interest_rate_per_sec(currency_id) {
 					let rate_to_accumulate = Self::compound_interest_rate(interest_rate, interval_secs);
 					let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;

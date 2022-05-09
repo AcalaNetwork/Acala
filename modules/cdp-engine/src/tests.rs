@@ -1231,8 +1231,16 @@ fn get_interest_rate_per_sec_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
-		setup_default_collateral(DOT);
 
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			DOT,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
 		assert_eq!(
 			CDPEngineModule::get_interest_rate_per_sec(BTC),
 			Ok(Rate::saturating_from_rational(2, 100000))
