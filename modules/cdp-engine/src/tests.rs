@@ -450,25 +450,6 @@ fn expand_position_collateral_work() {
 		assert_eq!(Currencies::free_balance(AUSD, &LoansModule::account_id()), 0);
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (976, 10250));
 
-		assert_noop!(
-			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 300, 0),
-			Error::<Runtime>::BelowRequiredCollateralRatio
-		);
-
-		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
-			DOT,
-			Change::NoChange,
-			Change::NoChange,
-			Change::NoChange,
-			Change::NoChange,
-			Change::NewValue(700),
-		));
-		assert_noop!(
-			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 201, 0),
-			Error::<Runtime>::ExceedDebitValueHardCap
-		);
-
 		assert_ok!(CDPEngineModule::expand_position_collateral(&ALICE, DOT, 200, 18));
 		assert_eq!(
 			LoansModule::positions(DOT, ALICE),
@@ -480,6 +461,35 @@ fn expand_position_collateral_work() {
 		assert_eq!(Currencies::free_balance(DOT, &LoansModule::account_id()), 142);
 		assert_eq!(Currencies::free_balance(AUSD, &LoansModule::account_id()), 0);
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (958, 10450));
+
+		// make position below the RequireCollateralRatio
+		assert_ok!(CDPEngineModule::expand_position_collateral(&ALICE, DOT, 100, 0));
+		assert_eq!(
+			LoansModule::positions(DOT, ALICE),
+			Position {
+				collateral: 151,
+				debit: 8000,
+			}
+		);
+
+		assert_noop!(
+			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 800, 0),
+			Error::<Runtime>::BelowLiquidationRatio
+		);
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			DOT,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NewValue(900),
+		));
+		assert_noop!(
+			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 101, 0),
+			Error::<Runtime>::ExceedDebitValueHardCap
+		);
 	});
 }
 
