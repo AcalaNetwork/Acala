@@ -20,7 +20,7 @@
 #[test]
 fn test_mint() {
 	use crate::setup::*;
-	use module_asset_registry::AssetMetadata;
+	use primitives::currency::AssetMetadata;
 
 	ExtBuilder::default()
 		.balances(vec![
