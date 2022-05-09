@@ -210,19 +210,17 @@ pub mod module {
 			}
 
 			Authorization::<T>::try_mutate_exists(&from, (currency_id, &to), |maybe_reserved| -> DispatchResult {
-				if maybe_reserved.is_none() {
-					let reserve_amount = T::DepositPerAuthorization::get();
-					<T as Config>::Currency::reserve_named(&RESERVE_ID, &from, reserve_amount)?;
-					*maybe_reserved = Some(reserve_amount);
-					Self::deposit_event(Event::Authorization {
-						authorizer: from.clone(),
-						authorizee: to.clone(),
-						collateral_type: currency_id,
-					});
-					Ok(())
-				} else {
-					Err(Error::<T>::AlreadyAuthorized.into())
-				}
+				ensure!(maybe_reserved.is_none(), Error::<T>::AlreadyAuthorized.into());
+
+				let reserve_amount = T::DepositPerAuthorization::get();
+				<T as Config>::Currency::reserve_named(&RESERVE_ID, &from, reserve_amount)?;
+				*maybe_reserved = Some(reserve_amount);
+				Self::deposit_event(Event::Authorization {
+					authorizer: from.clone(),
+					authorizee: to.clone(),
+					collateral_type: currency_id,
+				});
+				Ok(())
 			})?;
 			Ok(())
 		}
@@ -285,7 +283,7 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Sell ​​the collateral locked in CDP to get stable coin to repay the debit.
+		/// Sell the collateral locked in CDP to get stable coin to repay the debit.
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `decrease_collateral`: the specific decreased collateral amount for CDP
