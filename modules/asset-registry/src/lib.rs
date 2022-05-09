@@ -806,7 +806,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 				let mut vec = Vec::new();
 				vec.extend_from_slice(&b"LP "[..]);
 				vec.extend_from_slice(&name_0);
-				vec.extend_from_slice(b" - ".as_ref());
+				vec.extend_from_slice(&b" - "[..]);
 				vec.extend_from_slice(&name_1);
 				Some(vec)
 			}
@@ -848,7 +848,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 				let mut vec = Vec::new();
 				vec.extend_from_slice(&b"LP_"[..]);
 				vec.extend_from_slice(&token_symbol_0);
-				vec.extend_from_slice(b"_".as_ref());
+				vec.extend_from_slice(&b"_"[..]);
 				vec.extend_from_slice(&token_symbol_1);
 				Some(vec)
 			}
