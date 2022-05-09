@@ -100,22 +100,50 @@ fn transfer_from_relay_chain() {
 }
 
 #[test]
-fn karura_statemine_transfer_works() {
+fn karura_statemine_self_sufficient_asset_as_fee() {
+	TestNet::reset();
+
+	let asset_id: u32 = 0;
+	let para_2000: AccountId = Sibling::from(2000).into_account();
+
+	// Alice in Statemine send RMRK to Bob on Karura
+	statemine_side(UNIT);
+
+	// Bob on Karura send back RMRK to Bob on Statemine
+	karura_side(0);
+
+	Statemine::execute_with(|| {
+		use statemine_runtime::*;
+
+		// in `statemine_side()`, para_2000 account has 10 RMRK. after `karura_side()` transfered
+		// 1 RMRK back to Statemine, para_2000 account in Statemine left 9 RMRK.
+		assert_eq!(9 * UNIT, Assets::balance(asset_id, &para_2000));
+
+		// Bob not received RMRK, because of `Trader` in Statemine current not support RMRK as fee.
+		assert_eq!(0, Assets::balance(asset_id, &AccountId::from(BOB)));
+	});
+}
+
+#[test]
+fn karura_statemine_transfer_use_ksm_as_fee() {
 	TestNet::reset();
 	let para_2000: AccountId = Sibling::from(2000).into_account();
 	let child_2000: AccountId = ParaId::from(2000).into_account();
 	let child_1000: AccountId = ParaId::from(1000).into_account();
+	let asset_id: u32 = 0;
 
 	// minimum asset should be: FEE_WEIGHT+FEE_KUSAMA+max(KUSAMA_ED,STATEMINE_ED+FEE_STATEMINE).
 	// but due to current half fee, sender asset should at lease: FEE_WEIGHT + 2 * FEE_KUSAMA
 	let asset = FEE_WEIGHT + 2 * FEE_KUSAMA;
 
+	// Alice in Statemine send RMRK to Bob on Karura
 	statemine_side(UNIT);
 
 	KusamaNet::execute_with(|| {
 		let _ = kusama_runtime::Balances::make_free_balance_be(&child_2000, TEN);
 	});
 
+	// Bob on Karura send back RMRK with KSM as fee to Bob on Statemine
 	karura_side(asset);
 
 	KusamaNet::execute_with(|| {
@@ -131,10 +159,11 @@ fn karura_statemine_transfer_works() {
 
 	Statemine::execute_with(|| {
 		use statemine_runtime::*;
+
 		// Karura send back custom asset to Statemine, ensure recipient got custom asset
-		assert_eq!(UNIT, Assets::balance(0, &AccountId::from(BOB)));
+		assert_eq!(UNIT, Assets::balance(asset_id, &AccountId::from(BOB)));
 		// and withdraw sibling parachain sovereign account
-		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
+		assert_eq!(9 * UNIT, Assets::balance(asset_id, &para_2000));
 
 		assert_eq!(
 			UNIT + FEE_WEIGHT - FEE_STATEMINE,
@@ -159,25 +188,49 @@ fn karura_side(fee_amount: u128) {
 		// ensure sender has enough KSM balance to be charged as fee
 		assert_ok!(Tokens::deposit(KSM, &AccountId::from(BOB), TEN));
 
-		assert_ok!(XTokens::transfer_multicurrencies(
-			Origin::signed(BOB.into()),
-			vec![(CurrencyId::ForeignAsset(0), UNIT), (KSM, fee_amount)],
-			1,
-			Box::new(
-				MultiLocation::new(
-					1,
-					X2(
-						Parachain(1000),
-						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: BOB.into(),
-						}
+		if fee_amount == 0 {
+			// use custom asset(RMRK/USDT on Statemine) as fee
+			assert_ok!(XTokens::transfer(
+				Origin::signed(BOB.into()),
+				CurrencyId::ForeignAsset(0),
+				UNIT,
+				Box::new(
+					MultiLocation::new(
+						1,
+						X2(
+							Parachain(1000),
+							Junction::AccountId32 {
+								network: NetworkId::Any,
+								id: BOB.into(),
+							}
+						)
 					)
-				)
-				.into()
-			),
-			FEE_WEIGHT as u64
-		));
+					.into()
+				),
+				FEE_WEIGHT as u64
+			));
+		} else {
+			// use KSM as fee
+			assert_ok!(XTokens::transfer_multicurrencies(
+				Origin::signed(BOB.into()),
+				vec![(CurrencyId::ForeignAsset(0), UNIT), (KSM, fee_amount)],
+				1,
+				Box::new(
+					MultiLocation::new(
+						1,
+						X2(
+							Parachain(1000),
+							Junction::AccountId32 {
+								network: NetworkId::Any,
+								id: BOB.into(),
+							}
+						)
+					)
+					.into()
+				),
+				FEE_WEIGHT as u64
+			));
+		}
 
 		assert_eq!(
 			8_999_936_000_000,
@@ -191,7 +244,8 @@ fn karura_side(fee_amount: u128) {
 fn statemine_side(para_2000_init_amount: u128) {
 	register_asset();
 
-	let para_acc: AccountId = Sibling::from(2000).into_account();
+	let para_2000: AccountId = Sibling::from(2000).into_account();
+	let asset_id: u32 = 0;
 
 	Statemine::execute_with(|| {
 		use statemine_runtime::*;
@@ -203,7 +257,7 @@ fn statemine_side(para_2000_init_amount: u128) {
 		// create custom asset cost 1 KSM
 		assert_ok!(Assets::create(
 			origin.clone(),
-			0,
+			asset_id,
 			MultiAddress::Id(ALICE.into()),
 			UNIT / 100
 		));
@@ -211,13 +265,13 @@ fn statemine_side(para_2000_init_amount: u128) {
 
 		assert_ok!(Assets::mint(
 			origin.clone(),
-			0,
+			asset_id,
 			MultiAddress::Id(ALICE.into()),
 			1000 * UNIT
 		));
 
 		// need to have some KSM to be able to receive user assets
-		Balances::make_free_balance_be(&para_acc, para_2000_init_amount);
+		Balances::make_free_balance_be(&para_2000, para_2000_init_amount);
 
 		assert_ok!(PolkadotXcm::reserve_transfer_assets(
 			origin.clone(),
@@ -230,15 +284,16 @@ fn statemine_side(para_2000_init_amount: u128) {
 				.into()
 				.into()
 			),
-			Box::new((X2(PalletInstance(50), GeneralIndex(0)), TEN).into()),
+			Box::new((X2(PalletInstance(50), GeneralIndex(asset_id as u128)), TEN).into()),
 			0
 		));
 
-		assert_eq!(0, Assets::balance(0, &AccountId::from(BOB)));
+		assert_eq!(990 * UNIT, Assets::balance(asset_id, &AccountId::from(ALICE)));
+		assert_eq!(0, Assets::balance(asset_id, &AccountId::from(BOB)));
 
-		assert_eq!(TEN, Assets::balance(0, &para_acc));
+		assert_eq!(TEN, Assets::balance(asset_id, &para_2000));
 		// the KSM balance of sibling parachain sovereign account is not changed
-		assert_eq!(para_2000_init_amount, Balances::free_balance(&para_acc));
+		assert_eq!(para_2000_init_amount, Balances::free_balance(&para_2000));
 	});
 
 	// Rerun the Statemine::execute to actually send the egress message via XCM
