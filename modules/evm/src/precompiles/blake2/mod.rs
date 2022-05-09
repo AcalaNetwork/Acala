@@ -100,7 +100,7 @@ impl Precompile for Blake2F {
 
 		eip_152::compress(&mut h, m, [t_0, t_1], f, rounds as usize);
 
-		let mut output_buf = [0u8; u64::BITS as usize];
+		let mut output_buf = [0u8; 8 * u64::BITS as usize];
 		for (i, state_word) in h.iter().enumerate() {
 			output_buf[i * 8..(i + 1) * 8].copy_from_slice(&state_word.to_le_bytes());
 		}
