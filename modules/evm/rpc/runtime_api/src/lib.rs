@@ -20,7 +20,7 @@
 #![allow(clippy::all)]
 
 use primitives::evm::{
-	AccessListItem, BlockLimits, CallInfo, CreateInfo, EstimateResourcesRequest, EstimateResourcesRequestV1,
+	AccessListItem, BlockLimits, CallInfo, CreateInfo, EstimateResourcesRequest, EstimateResourcesRequestLegacy,
 };
 use sp_core::H160;
 use sp_runtime::{
@@ -35,7 +35,7 @@ sp_api::decl_runtime_apis! {
 		Balance: Codec + MaybeDisplay + MaybeFromStr,
 	{
 		#[changed_in(2)]
-		fn get_estimate_resources_request(data: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError>;
+		fn get_estimate_resources_request(data: Vec<u8>) -> Result<EstimateResourcesRequestLegacy, sp_runtime::DispatchError>;
 
 		fn call(
 			from: H160,
@@ -58,7 +58,7 @@ sp_api::decl_runtime_apis! {
 			rpc_mode: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError>;
 
-		fn get_estimate_resources_request(data: Vec<u8>) -> Result<EstimateResourcesRequestV1, sp_runtime::DispatchError>;
+		fn get_estimate_resources_request(data: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError>;
 
 		fn block_limits() -> BlockLimits;
 	}

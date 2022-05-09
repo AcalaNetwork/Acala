@@ -79,7 +79,7 @@ pub struct BlockLimits {
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct EstimateResourcesRequest {
+pub struct EstimateResourcesRequestLegacy {
 	/// From
 	pub from: Option<H160>,
 	/// To
@@ -98,7 +98,7 @@ pub struct EstimateResourcesRequest {
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct EstimateResourcesRequestV1 {
+pub struct EstimateResourcesRequest {
 	/// From
 	pub from: Option<H160>,
 	/// To

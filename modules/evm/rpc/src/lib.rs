@@ -38,7 +38,7 @@ use std::{marker::PhantomData, sync::Arc};
 use call_request::{CallRequest, EstimateResourcesResponse};
 pub use module_evm::{ExitError, ExitReason};
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
-use primitives::evm::{BlockLimits, EstimateResourcesRequest, EstimateResourcesRequestV1};
+use primitives::evm::{BlockLimits, EstimateResourcesRequest, EstimateResourcesRequestLegacy};
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
 
@@ -267,7 +267,7 @@ where
 			})?;
 
 		let (request, mut highest, max_gas_limit) = if version == 2 {
-			let request: EstimateResourcesRequestV1 = self
+			let request: EstimateResourcesRequest = self
 				.client
 				.runtime_api()
 				.get_estimate_resources_request(&block_id, unsigned_extrinsic.to_vec())
@@ -293,7 +293,7 @@ where
 			)
 		} else {
 			#[allow(deprecated)]
-			let request: EstimateResourcesRequest = self
+			let request: EstimateResourcesRequestLegacy = self
 				.client
 				.runtime_api()
 				.get_estimate_resources_request_before_version_2(&block_id, unsigned_extrinsic.to_vec())
