@@ -575,7 +575,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn chain_id(&self) -> U256 {
-		U256::from(T::ChainId::get())
+		U256::from(Pallet::<T>::chain_id())
 	}
 
 	#[cfg(feature = "evm-tests")]

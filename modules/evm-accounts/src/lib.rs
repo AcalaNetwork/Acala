@@ -35,7 +35,7 @@ use frame_support::{
 };
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_evm_utility_macro::keccak256;
-use module_support::AddressMapping;
+use module_support::{AddressMapping, EVMChainId};
 use orml_traits::currency::TransferAll;
 use primitives::{evm::EvmAddress, to_bytes, AccountIndex};
 use sp_core::crypto::AccountId32;
@@ -75,8 +75,7 @@ pub mod module {
 		type AddressMapping: AddressMapping<Self::AccountId>;
 
 		/// Chain ID of EVM.
-		#[pallet::constant]
-		type ChainId: Get<u64>;
+		type ChainId: EVMChainId;
 
 		/// Merge free balance from source to dest.
 		type TransferAll: TransferAll<Self::AccountId>;
@@ -253,7 +252,7 @@ impl<T: Config> Pallet<T> {
 		let mut domain_seperator_msg = domain_hash.to_vec();
 		domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM claim")); // name
 		domain_seperator_msg.extend_from_slice(keccak256!("1")); // version
-		domain_seperator_msg.extend_from_slice(&to_bytes(T::ChainId::get())); // chain id
+		domain_seperator_msg.extend_from_slice(&to_bytes(T::ChainId::chain_id())); // chain id
 		domain_seperator_msg.extend_from_slice(frame_system::Pallet::<T>::block_hash(T::BlockNumber::zero()).as_ref()); // genesis block hash
 		keccak_256(domain_seperator_msg.as_slice())
 	}

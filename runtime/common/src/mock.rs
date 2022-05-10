@@ -187,7 +187,7 @@ impl module_evm_accounts::Config for TestRuntime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<TestRuntime>;
 	type TransferAll = Currencies;
-	type ChainId = ConstU64<1>;
+	type ChainId = EVM;
 	type WeightInfo = ();
 }
 
@@ -202,7 +202,6 @@ impl module_evm::Config for TestRuntime {
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
-	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ();
 

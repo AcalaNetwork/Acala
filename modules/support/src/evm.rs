@@ -121,6 +121,19 @@ impl<AccountId, Balance: Default> EVMBridge<AccountId, Balance> for () {
 	fn set_origin(_origin: AccountId) {}
 }
 
+/// An abstraction of EVMChainId
+pub trait EVMChainId {
+	/// Get Chain ID of evm.
+	fn chain_id() -> u64;
+}
+
+#[cfg(feature = "std")]
+impl EVMChainId for () {
+	fn chain_id() -> u64 {
+		1
+	}
+}
+
 /// An abstraction of EVMManager
 pub trait EVMManager<AccountId, Balance> {
 	/// Query the constants `NewContractExtraBytes` value from evm module.

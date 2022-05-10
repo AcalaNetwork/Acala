@@ -1219,7 +1219,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
-	type ChainId = ChainId;
+	type ChainId = EVM;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
@@ -1496,7 +1496,6 @@ impl ecosystem_compound_cash::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ChainId: u64 = 595;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::mandala();
 }
@@ -1551,7 +1550,6 @@ impl module_evm::Config for Runtime {
 	type Event = Event;
 	type PrecompilesType = AllPrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
-	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
@@ -1743,7 +1741,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 
 				Ok((
 					EthereumTransactionMessage {
-						chain_id: ChainId::get(),
+						chain_id: EVM::chain_id(),
 						genesis: System::block_hash(0),
 						nonce,
 						tip,
@@ -2406,7 +2404,7 @@ mod tests {
 						action: module_evm::TransactionAction::Create,
 						value: 0,
 						input: vec![0x01],
-						chain_id: ChainId::get(),
+						chain_id: 0,
 						genesis: sp_core::H256::default(),
 						valid_until: 30,
 						access_list: vec![],

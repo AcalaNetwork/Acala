@@ -102,7 +102,6 @@ impl module_evm::Config for Runtime {
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
-	type ChainId = ();
 	type GasToWeight = ();
 	type ChargeTransactionPayment = ();
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
