@@ -2240,7 +2240,7 @@ fn auto_publish_works() {
 				code_hash: H256::from_str("0x21da9211a5ef5e10cf7efc58b70c09e2a586844a4798b5e506927cc05808ca4c")
 					.unwrap(),
 				maintainer: H160::from_str("0x39b26a36a8a175ce7d498b5ef187d1ab2f381bbd").unwrap(),
-				published: false
+				published: true
 			})
 		);
 	});

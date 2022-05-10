@@ -723,44 +723,39 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			address
 		);
 
-		let caller: H160;
-		let is_published: bool;
-		let mut substate = &self.substate;
-
-		loop {
-			// get maintainer from parent caller
-			// `enter_substate` will do `spit_child`
-			if substate.parent.is_none() {
-				log::error!(
-					target: "evm",
-					"get parent's maintainer failed. address: {:?}",
-					address
-				);
-				debug_assert!(false);
-				return;
-			}
-
-			substate = substate.parent.as_ref().expect("has checked; qed");
-
-			if let Some(c) = substate.metadata().caller() {
-				// the caller maybe is contract and not published.
-				// get the parent's maintainer.
-				if !Pallet::<T>::is_account_empty(c) {
-					caller = *c;
-					is_published = Pallet::<T>::accounts(c)
-						.expect("has checked; qed")
-						.contract_info
-						.map_or(false, |v| v.published);
-					break;
-				}
-			}
+		// get maintainer from parent caller `enter_substate` will do `spit_child`
+		if self.substate.parent.is_none() {
+			log::error!(
+				target: "evm",
+				"get parent's maintainer failed. address: {:?}",
+				address
+			);
+			debug_assert!(false);
+			return;
 		}
 
+		let parent = self.substate.parent.as_ref().expect("has checked; qed");
+		if parent.metadata().caller().is_none() {
+			log::error!(
+				target: "evm",
+				"get parent's caller failed. address: {:?}",
+				address
+			);
+			debug_assert!(false);
+			return;
+		}
+		let caller = parent.metadata().caller().expect("has checked; qed");
+
+		let is_published = self.substate.metadata.call_address().map_or(false, |addr| {
+			Pallet::<T>::accounts(addr).map_or(false, |account| account.contract_info.map_or(false, |v| v.published))
+		});
+
 		log::debug!(
-			target: "evm",
-			"set_code: address: {:?}, maintainer: {:?}",
-			address,
-			caller
+			 target: "evm",
+			 "set_code: address: {:?}, maintainer: {:?}, publish: {:?}",
+			 address,
+			 caller,
+			is_published
 		);
 
 		let code_size = code.len() as u32;

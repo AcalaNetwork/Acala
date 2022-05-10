@@ -147,6 +147,8 @@ pub struct StackSubstateMetadata<'config> {
 	caller: Option<H160>,
 	// save the contract to charge storage
 	target: Option<H160>,
+	// save the call contract address, publish status will sync from it.
+	call_address: Option<H160>,
 	// this is needed only for evm-tests to keep track of dirty accounts
 	#[cfg(feature = "evm-tests")]
 	pub dirty_accounts: std::cell::RefCell<BTreeSet<H160>>,
@@ -167,6 +169,7 @@ impl<'config> StackSubstateMetadata<'config> {
 			accessed,
 			caller: None,
 			target: None,
+			call_address: None,
 			#[cfg(feature = "evm-tests")]
 			dirty_accounts: std::cell::RefCell::new(BTreeSet::new()),
 		}
@@ -218,6 +221,7 @@ impl<'config> StackSubstateMetadata<'config> {
 			accessed: self.accessed.as_ref().map(|_| Accessed::default()),
 			caller: None,
 			target: None,
+			call_address: self.call_address,
 			#[cfg(feature = "evm-tests")]
 			dirty_accounts: std::cell::RefCell::new(BTreeSet::new()),
 		}
@@ -295,6 +299,14 @@ impl<'config> StackSubstateMetadata<'config> {
 
 	pub fn target_mut(&mut self) -> &mut Option<H160> {
 		&mut self.target
+	}
+
+	pub fn call_address(&mut self) -> &Option<H160> {
+		&self.call_address
+	}
+
+	pub fn call_address_mut(&mut self) -> &mut Option<H160> {
+		&mut self.call_address
 	}
 }
 
@@ -632,6 +644,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Ok(()) => (),
 			Err(e) => return emit_exit!(e.into(), Vec::new()),
 		}
+		// set call_address. publish status will sync from it.
+		*self.state.metadata_mut().call_address_mut() = Some(address);
 
 		// Initialize initial addresses for EIP-2929
 		if self.config.increase_state_access_gas {
