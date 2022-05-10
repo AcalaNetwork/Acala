@@ -1945,10 +1945,10 @@ impl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			rpc_mode: bool,
+			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			if rpc_mode {
-				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_call(
+			if estimate {
+				module_evm::runner::stack::Runner::<Runtime>::call(
 					from,
 					from,
 					to,
@@ -1960,7 +1960,7 @@ impl_runtime_apis! {
 					<Runtime as module_evm::Config>::config(),
 				)
 			} else {
-				module_evm::runner::stack::Runner::<Runtime>::call(
+				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_call(
 					from,
 					from,
 					to,
@@ -1981,10 +1981,10 @@ impl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			rpc_mode: bool,
+			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
-			if rpc_mode {
-				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_create(
+			if estimate {
+				module_evm::runner::stack::Runner::<Runtime>::create(
 					from,
 					data,
 					value,
@@ -1994,7 +1994,7 @@ impl_runtime_apis! {
 					<Runtime as module_evm::Config>::config(),
 				)
 			} else {
-				module_evm::runner::stack::Runner::<Runtime>::create(
+				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_create(
 					from,
 					data,
 					value,
