@@ -10690,6 +10690,7 @@ dependencies = [
  "module-support",
  "module-transaction-payment",
  "num_enum",
+ "nutsfinance-stable-asset",
  "orml-bencher",
  "orml-currencies",
  "orml-nft",

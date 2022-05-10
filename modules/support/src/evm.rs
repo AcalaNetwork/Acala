@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode};
+use primitives::currency::AssetIds;
 use primitives::{
 	evm::{CallInfo, EvmAddress},
 	CurrencyId,
@@ -164,13 +165,9 @@ pub trait AddressMapping<AccountId> {
 }
 
 /// A mapping between AssetId and AssetMetadata.
-pub trait AssetIdMapping<StableAssetPoolId, ForeignAssetId, MultiLocation, AssetMetadata> {
-	/// Returns the AssetMetadata associated with a given contract address.
-	fn get_erc20_asset_metadata(contract: EvmAddress) -> Option<AssetMetadata>;
-	/// Returns the AssetMetadata associated with a given StableAssetPoolId.
-	fn get_stable_asset_metadata(stable_asset_id: StableAssetPoolId) -> Option<AssetMetadata>;
-	/// Returns the AssetMetadata associated with a given ForeignAssetId.
-	fn get_foreign_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
+pub trait AssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
+	/// Returns the AssetMetadata associated with a given `AssetIds`.
+	fn get_asset_metadata(asset_ids: AssetIds) -> Option<AssetMetadata>;
 	/// Returns the MultiLocation associated with a given ForeignAssetId.
 	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation>;
 	/// Returns the CurrencyId associated with a given MultiLocation.

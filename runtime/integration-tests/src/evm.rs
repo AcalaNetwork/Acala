@@ -487,16 +487,6 @@ fn test_multicurrency_precompile_module() {
 				origin: alice_evm_addr(),
 			};
 
-			assert_noop!(
-				EVMBridge::<Runtime>::name(invoke_context),
-				module_evm::Error::<Runtime>::NoPermission
-			);
-
-			assert_ok!(EVM::publish_free(
-				Origin::root(),
-				lp_erc20_evm_address(),
-			));
-
 			assert_eq!(
 				EVMBridge::<Runtime>::name(invoke_context),
 				Ok(b"LP long string name, long string name, long string name, long string name, long string name - long string name, long string name, long string name, long string name, long string name"[..32].to_vec())

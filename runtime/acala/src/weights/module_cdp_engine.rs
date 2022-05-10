@@ -50,7 +50,6 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: CdpEngine LastAccumulationSecs (r:1 w:1)
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
 	// Storage: CdpEngine CollateralParams (r:4 w:0)
-	// Storage: CdpEngine GlobalInterestRatePerSec (r:1 w:0)
 	// Storage: Loans TotalPositions (r:4 w:0)
 	// Storage: Timestamp Now (r:0 w:1)
 	fn on_initialize(c: u32, ) -> Weight {
@@ -67,14 +66,6 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
-	// Storage: CdpEngine GlobalInterestRatePerSec (r:0 w:1)
-	fn set_global_params() -> Weight {
-		(11_584_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
 	// Storage: Loans Positions (r:1 w:1)
 	// Storage: Prices LockedPrice (r:2 w:0)

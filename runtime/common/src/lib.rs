@@ -57,7 +57,7 @@ use module_evm::GenesisAccount;
 use orml_traits::GetByKey;
 pub use precompile::{
 	AllPrecompiles, DEXPrecompile, EVMPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile,
-	SchedulePrecompile,
+	SchedulePrecompile, StableAssetPrecompile,
 };
 pub use primitives::{
 	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
@@ -106,6 +106,21 @@ pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(gas: u64) -> Weight {
 		gas.saturating_mul(gas_to_weight_ratio::RATIO)
+	}
+}
+
+pub struct ExistentialDepositsTimesOneHundred<NativeCurrencyId, NativeED, OtherEDs>(
+	PhantomData<(NativeCurrencyId, NativeED, OtherEDs)>,
+);
+impl<NativeCurrencyId: Get<CurrencyId>, NativeED: Get<Balance>, OtherEDs: GetByKey<CurrencyId, Balance>>
+	GetByKey<CurrencyId, Balance> for ExistentialDepositsTimesOneHundred<NativeCurrencyId, NativeED, OtherEDs>
+{
+	fn get(currency_id: &CurrencyId) -> Balance {
+		if *currency_id == NativeCurrencyId::get() {
+			NativeED::get().saturating_mul(100u128)
+		} else {
+			OtherEDs::get(currency_id).saturating_mul(100u128)
+		}
 	}
 }
 

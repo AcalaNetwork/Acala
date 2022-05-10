@@ -106,6 +106,8 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -187,7 +189,7 @@ impl Config for Runtime {
 	type PrecompilesValue = ();
 	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = DefaultTransactionPayment<Balances>;
+	type ChargeTransactionPayment = module_support::mocks::MockReservedTransactionPayment<Balances>;
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
