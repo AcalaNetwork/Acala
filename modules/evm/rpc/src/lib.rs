@@ -17,7 +17,6 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::upper_case_acronyms)]
-#![allow(deprecated)]
 
 use frame_support::log;
 use jsonrpc_core::{Error, ErrorCode, Result, Value};
@@ -128,11 +127,6 @@ impl<B, C, Balance> EVMApi<B, C, Balance> {
 fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
 	val.into_u256().try_into().map_err(|_| ())
 }
-
-#[deprecated]
-const MAX_GAS_LIMIT: u64 = 20_000_000;
-#[deprecated]
-const MAX_STORAGE_LIMIT: u32 = 4 * 1024 * 1024;
 
 impl<B, C, Balance> EVMApiT<<B as BlockT>::Hash> for EVMApi<B, C, Balance>
 where
@@ -508,8 +502,8 @@ where
 			})?
 		} else {
 			BlockLimits {
-				max_gas_limit: MAX_GAS_LIMIT,
-				max_storage_limit: MAX_STORAGE_LIMIT,
+				max_gas_limit: 20_000_000,    // 20M
+				max_storage_limit: 4_194_304, // 4Mb
 			}
 		};
 
