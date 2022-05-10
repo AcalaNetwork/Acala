@@ -161,28 +161,7 @@ where
 			access_list,
 		} = request;
 
-		let version = api
-			.api_version::<dyn EVMRuntimeRPCApi<B, Balance>>(&block_id)
-			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-			.ok_or_else(|| {
-				internal_err(format!(
-					"Could not find `EVMRuntimeRPCApi` api for block `{:?}`.",
-					&block_id
-				))
-			})?;
-
-		let block_limits = if version == 2 {
-			api.block_limits(&block_id).map_err(|e| Error {
-				code: ErrorCode::InternalError,
-				message: "Unable to query block limits.".into(),
-				data: Some(format!("{:?}", e).into()),
-			})?
-		} else {
-			BlockLimits {
-				max_gas_limit: MAX_GAS_LIMIT,
-				max_storage_limit: MAX_STORAGE_LIMIT,
-			}
-		};
+		let block_limits = self.block_limits(at)?;
 
 		// eth_call is capped at 10x (1000%) the current block gas limit
 		let gas_limit_cap = 10 * block_limits.max_gas_limit;
@@ -534,15 +513,32 @@ where
 	fn block_limits(&self, at: Option<<B as BlockT>::Hash>) -> Result<BlockLimits> {
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
-		let block_limits = self
+		let block_id = BlockId::Hash(hash);
+
+		let version = self
 			.client
 			.runtime_api()
-			.block_limits(&BlockId::Hash(hash))
-			.map_err(|e| Error {
+			.api_version::<dyn EVMRuntimeRPCApi<B, Balance>>(&block_id)
+			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
+			.ok_or_else(|| {
+				internal_err(format!(
+					"Could not find `EVMRuntimeRPCApi` api for block `{:?}`.",
+					&block_id
+				))
+			})?;
+
+		let block_limits = if version > 1 {
+			self.client.runtime_api().block_limits(&block_id).map_err(|e| Error {
 				code: ErrorCode::InternalError,
 				message: "Unable to query block limits.".into(),
 				data: Some(format!("{:?}", e).into()),
-			})?;
+			})?
+		} else {
+			BlockLimits {
+				max_gas_limit: MAX_GAS_LIMIT,
+				max_storage_limit: MAX_STORAGE_LIMIT,
+			}
+		};
 
 		Ok(block_limits)
 	}
