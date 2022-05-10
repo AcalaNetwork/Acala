@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::upper_case_acronyms)]
+#![allow(deprecated)]
 
 use frame_support::log;
 use jsonrpc_core::{Error, ErrorCode, Result, Value};
@@ -128,6 +129,11 @@ fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
 	val.into_u256().try_into().map_err(|_| ())
 }
 
+#[deprecated]
+const MAX_GAS_LIMIT: u64 = 20_000_000;
+#[deprecated]
+const MAX_STORAGE_LIMIT: u32 = 4 * 1024 * 1024;
+
 impl<B, C, Balance> EVMApiT<<B as BlockT>::Hash> for EVMApi<B, C, Balance>
 where
 	B: BlockT,
@@ -141,6 +147,8 @@ where
 
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
+		let block_id = BlockId::Hash(hash);
+
 		log::debug!(target: "evm", "rpc call, request: {:?}", request);
 
 		let CallRequest {
@@ -153,11 +161,28 @@ where
 			access_list,
 		} = request;
 
-		let block_limits = api.block_limits(&BlockId::Hash(hash)).map_err(|e| Error {
-			code: ErrorCode::InternalError,
-			message: "Unable to query block limits.".into(),
-			data: Some(format!("{:?}", e).into()),
-		})?;
+		let version = api
+			.api_version::<dyn EVMRuntimeRPCApi<B, Balance>>(&block_id)
+			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
+			.ok_or_else(|| {
+				internal_err(format!(
+					"Could not find `EVMRuntimeRPCApi` api for block `{:?}`.",
+					&block_id
+				))
+			})?;
+
+		let block_limits = if version == 2 {
+			api.block_limits(&block_id).map_err(|e| Error {
+				code: ErrorCode::InternalError,
+				message: "Unable to query block limits.".into(),
+				data: Some(format!("{:?}", e).into()),
+			})?
+		} else {
+			BlockLimits {
+				max_gas_limit: MAX_GAS_LIMIT,
+				max_storage_limit: MAX_STORAGE_LIMIT,
+			}
+		};
 
 		// eth_call is capped at 10x (1000%) the current block gas limit
 		let gas_limit_cap = 10 * block_limits.max_gas_limit;
@@ -196,7 +221,7 @@ where
 			Some(to) => {
 				let info = api
 					.call(
-						&BlockId::Hash(hash),
+						&block_id,
 						from.unwrap_or_default(),
 						to,
 						data,
@@ -221,7 +246,7 @@ where
 			None => {
 				let info = api
 					.create(
-						&BlockId::Hash(hash),
+						&block_id,
 						from.unwrap_or_default(),
 						data,
 						balance_value,
@@ -292,7 +317,6 @@ where
 				max_gas_limit,
 			)
 		} else {
-			#[allow(deprecated)]
 			let request: EstimateResourcesRequestLegacy = self
 				.client
 				.runtime_api()
@@ -301,8 +325,6 @@ where
 				.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
 			// Determine the highest possible gas limits
-			const MAX_GAS_LIMIT: u64 = 20_000_000;
-			const MAX_STORAGE_LIMIT: u32 = 4 * 1024 * 1024;
 			let highest = request.gas_limit.unwrap_or(MAX_GAS_LIMIT);
 
 			(
