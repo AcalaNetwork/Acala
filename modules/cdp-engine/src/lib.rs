@@ -547,7 +547,7 @@ impl<T: Config> Pallet<T> {
 		if !T::EmergencyShutdown::is_shutdown() && !now_secs.is_zero() {
 			let interval_secs = now_secs.saturating_sub(last_accumulation_secs);
 
-			for currency_id in <Self as Get<Vec<CurrencyId>>>::get() {
+			for currency_id in Self::get_collateral_currency_ids() {
 				if let Ok(interest_rate) = Self::get_interest_rate_per_sec(currency_id) {
 					let rate_to_accumulate = Self::compound_interest_rate(interest_rate, interval_secs);
 					let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
@@ -617,7 +617,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn _offchain_worker() -> Result<(), OffchainErr> {
-		let collateral_currency_ids = <Self as Get<Vec<CurrencyId>>>::get();
+		let collateral_currency_ids = Self::get_collateral_currency_ids();
 		if collateral_currency_ids.len().is_zero() {
 			return Ok(());
 		}
@@ -808,7 +808,7 @@ impl<T: Config> Pallet<T> {
 		debit_adjustment: Amount,
 	) -> DispatchResult {
 		ensure!(
-			Self::collateral_params(&currency_id).is_some(),
+			CollateralParams::<T>::contains_key(&currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 		<LoansOf<T>>::adjust_position(who, currency_id, collateral_adjustment, debit_adjustment)?;
@@ -828,7 +828,7 @@ impl<T: Config> Pallet<T> {
 		min_increase_collateral: Balance,
 	) -> DispatchResult {
 		ensure!(
-			Self::collateral_params(&currency_id).is_some(),
+			CollateralParams::<T>::contains_key(&currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 		let loans_module_account = <LoansOf<T>>::account_id();
@@ -937,7 +937,7 @@ impl<T: Config> Pallet<T> {
 		min_decrease_debit_value: Balance,
 	) -> DispatchResult {
 		ensure!(
-			Self::collateral_params(&currency_id).is_some(),
+			CollateralParams::<T>::contains_key(&currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 
@@ -1253,6 +1253,9 @@ impl<T: Config> Pallet<T> {
 
 		Ok(())
 	}
+	pub fn get_collateral_currency_ids() -> Vec<CurrencyId> {
+		CollateralParams::<T>::iter_keys().collect()
+	}
 }
 
 impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pallet<T> {
@@ -1313,12 +1316,11 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 	}
 }
 
+pub struct CollateralCurrencyIds<T>(PhantomData<T>);
 // Returns a list of currently supported/configured collateral currency
-impl<T: Config> Get<Vec<CurrencyId>> for Pallet<T> {
+impl<T: Config> Get<Vec<CurrencyId>> for CollateralCurrencyIds<T> {
 	fn get() -> Vec<CurrencyId> {
-		CollateralParams::<T>::iter()
-			.map(|(currency_id, _)| currency_id)
-			.collect()
+		Pallet::<T>::get_collateral_currency_ids()
 	}
 }
 

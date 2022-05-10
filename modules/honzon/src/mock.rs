@@ -21,6 +21,7 @@
 #![cfg(test)]
 
 use super::*;
+use cdp_engine::CollateralCurrencyIds;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
@@ -269,7 +270,7 @@ impl Config for Runtime {
 	type Event = Event;
 	type Currency = PalletBalances;
 	type DepositPerAuthorization = ConstU128<100>;
-	type CollateralCurrencyIds = CDPEngineModule;
+	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type WeightInfo = ();
 }
 

@@ -1578,7 +1578,7 @@ fn offchain_worker_works_cdp() {
 		setup_default_collateral(LP_AUSD_DOT);
 		setup_default_collateral(DOT);
 
-		let collateral_currencies_num = <CDPEngineModule as Get<Vec<CurrencyId>>>::get().len() as u64;
+		let collateral_currencies_num = CollateralCurrencyIds::<Runtime>::get().len() as u64;
 
 		System::set_block_number(1);
 
