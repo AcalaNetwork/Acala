@@ -2080,3 +2080,168 @@ fn remove_account_works() {
 		assert_eq!(Accounts::<Runtime>::contains_key(&address), false);
 	});
 }
+
+#[test]
+fn auto_publish_works() {
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../ts-tests/build/CreateContractFactory.json")).unwrap();
+	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
+
+	new_test_ext().execute_with(|| {
+		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+		assert_ok!(EVM::create(
+			Origin::signed(alice_account_id.clone()),
+			code,
+			0,
+			2_100_000,
+			10000,
+			vec![]
+		));
+
+		let factory = H160::from_str("0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap();
+		System::assert_last_event(Event::EVM(crate::Event::Created {
+			from: alice(),
+			contract: factory,
+			logs: vec![],
+			used_gas: 354694,
+			used_storage: 1498,
+		}));
+
+		// call method `createContract()`
+		assert_ok!(EVM::call(
+			Origin::signed(alice_account_id.clone()),
+			factory,
+			from_hex("0x412a5a6d").unwrap(),
+			0,
+			1000000,
+			1000,
+			vec![],
+		));
+		System::assert_last_event(Event::EVM(crate::Event::Executed {
+			from: alice(),
+			contract: factory,
+			logs: vec![
+				crate::Log {
+					address: H160::from_str("0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap(),
+					topics: vec![
+						H256::from_str("0xb0199510a4d57fac89f9b613861450ae948394f2abe3bf9918eb3c6890243f00").unwrap(),
+						H256::from_str("0x00000000000000000000000030f612c54706d40f65acaf10b8f6989103c2af58").unwrap(),
+					],
+					data: vec![],
+				},
+				crate::Log {
+					address: factory,
+					topics: vec![
+						H256::from_str("0x6837ff1e738d95fc8bb5f12ce1513f42866f6c59c226c77342c4f36a1958ea10").unwrap(),
+						H256::from_str("0x0000000000000000000000007b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap(),
+					],
+					data: vec![],
+				},
+			],
+			used_gas: 248186,
+			used_storage: 834,
+		}));
+
+		assert_eq!(
+			EVM::accounts(factory).unwrap().contract_info,
+			Some(ContractInfo {
+				code_hash: H256::from_str("0x0aaddd7924d6a6789dba233a48270c4a52ca44074d2a0453362b249712c6a21c")
+					.unwrap(),
+				maintainer: alice(),
+				published: false
+			})
+		);
+		assert_eq!(
+			EVM::accounts(H160::from_str("0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap())
+				.unwrap()
+				.contract_info,
+			Some(ContractInfo {
+				code_hash: H256::from_str("0x3c098bc145b56c64e688ccc6055980b993fefd794cb97a69654d3e125cdda9dc")
+					.unwrap(),
+				maintainer: alice(),
+				published: false
+			})
+		);
+		assert_eq!(
+			EVM::accounts(H160::from_str("0x30f612c54706d40f65acaf10b8f6989103c2af58").unwrap())
+				.unwrap()
+				.contract_info,
+			Some(ContractInfo {
+				code_hash: H256::from_str("0x21da9211a5ef5e10cf7efc58b70c09e2a586844a4798b5e506927cc05808ca4c")
+					.unwrap(),
+				maintainer: H160::from_str("0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap(),
+				published: false
+			})
+		);
+
+		// publish the factory
+		assert_ok!(EVM::publish_free(Origin::signed(CouncilAccount::get()), factory));
+
+		// call method `createContract()`
+		assert_ok!(EVM::call(
+			Origin::signed(alice_account_id.clone()),
+			factory,
+			from_hex("0x412a5a6d").unwrap(),
+			0,
+			1000000,
+			1000,
+			vec![],
+		));
+		System::assert_last_event(Event::EVM(crate::Event::Executed {
+			from: alice(),
+			contract: factory,
+			logs: vec![
+				crate::Log {
+					address: H160::from_str("0x39b26a36a8a175ce7d498b5ef187d1ab2f381bbd").unwrap(),
+					topics: vec![
+						H256::from_str("0xb0199510a4d57fac89f9b613861450ae948394f2abe3bf9918eb3c6890243f00").unwrap(),
+						H256::from_str("0x000000000000000000000000769a55efaf4dbdd6f44efce668455522b61abb82").unwrap(),
+					],
+					data: vec![],
+				},
+				crate::Log {
+					address: factory,
+					topics: vec![
+						H256::from_str("0x6837ff1e738d95fc8bb5f12ce1513f42866f6c59c226c77342c4f36a1958ea10").unwrap(),
+						H256::from_str("0x00000000000000000000000039b26a36a8a175ce7d498b5ef187d1ab2f381bbd").unwrap(),
+					],
+					data: vec![],
+				},
+			],
+			used_gas: 231086,
+			used_storage: 770,
+		}));
+
+		assert_eq!(
+			EVM::accounts(factory).unwrap().contract_info,
+			Some(ContractInfo {
+				code_hash: H256::from_str("0x0aaddd7924d6a6789dba233a48270c4a52ca44074d2a0453362b249712c6a21c")
+					.unwrap(),
+				maintainer: alice(),
+				published: true
+			})
+		);
+		assert_eq!(
+			EVM::accounts(H160::from_str("0x39b26a36a8a175ce7d498b5ef187d1ab2f381bbd").unwrap())
+				.unwrap()
+				.contract_info,
+			Some(ContractInfo {
+				code_hash: H256::from_str("0x3c098bc145b56c64e688ccc6055980b993fefd794cb97a69654d3e125cdda9dc")
+					.unwrap(),
+				maintainer: alice(),
+				published: true
+			})
+		);
+		assert_eq!(
+			EVM::accounts(H160::from_str("0x769a55efaf4dbdd6f44efce668455522b61abb82").unwrap())
+				.unwrap()
+				.contract_info,
+			Some(ContractInfo {
+				code_hash: H256::from_str("0x21da9211a5ef5e10cf7efc58b70c09e2a586844a4798b5e506927cc05808ca4c")
+					.unwrap(),
+				maintainer: H160::from_str("0x39b26a36a8a175ce7d498b5ef187d1ab2f381bbd").unwrap(),
+				published: false
+			})
+		);
+	});
+}

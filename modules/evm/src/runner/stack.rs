@@ -724,6 +724,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		);
 
 		let caller: H160;
+		let is_published: bool;
 		let mut substate = &self.substate;
 
 		loop {
@@ -746,6 +747,10 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 				// get the parent's maintainer.
 				if !Pallet::<T>::is_account_empty(c) {
 					caller = *c;
+					is_published = Pallet::<T>::accounts(c)
+						.expect("has checked; qed")
+						.contract_info
+						.map_or(false, |v| v.published);
 					break;
 				}
 			}
@@ -759,7 +764,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		);
 
 		let code_size = code.len() as u32;
-		Pallet::<T>::create_contract(caller, address, code);
+		Pallet::<T>::create_contract(caller, address, is_published, code);
 
 		let used_storage = code_size.saturating_add(T::NewContractExtraBytes::get());
 		Pallet::<T>::update_contract_storage_size(&address, used_storage as i32);

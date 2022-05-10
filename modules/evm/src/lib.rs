@@ -418,10 +418,7 @@ pub mod module {
 					);
 
 					let out = runtime.machine().return_value();
-					<Pallet<T>>::create_contract(source, *address, out);
-
-					#[cfg(not(feature = "with-ethereum-compatibility"))]
-					<Pallet<T>>::mark_published(*address, None).expect("Genesis contract failed to publish");
+					<Pallet<T>>::create_contract(source, *address, true, out);
 
 					for (index, value) in &account.storage {
 						AccountStorages::<T>::insert(address, index, value);
@@ -1287,7 +1284,7 @@ impl<T: Config> Pallet<T> {
 	/// - Update codes info.
 	/// - Update maintainer of the contract.
 	/// - Save `code` if not saved yet.
-	pub fn create_contract(source: H160, address: H160, code: Vec<u8>) {
+	pub fn create_contract(source: H160, address: H160, publish: bool, code: Vec<u8>) {
 		let bounded_code: BoundedVec<u8, MaxCodeSize> = code
 			.try_into()
 			.expect("checked by create_contract_limit in ACALA_CONFIG; qed");
@@ -1312,7 +1309,7 @@ impl<T: Config> Pallet<T> {
 			#[cfg(feature = "with-ethereum-compatibility")]
 			published: true,
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			published: false,
+			published: publish,
 		};
 
 		CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
