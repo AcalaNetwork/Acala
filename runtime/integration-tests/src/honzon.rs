@@ -18,6 +18,18 @@
 
 use crate::setup::*;
 
+fn setup_default_collateral(currency_id: CurrencyId) {
+	assert_ok!(CdpEngine::set_collateral_params(
+		Origin::root(),
+		currency_id,
+		Change::NewValue(Some(Default::default())),
+		Change::NoChange,
+		Change::NoChange,
+		Change::NoChange,
+		Change::NewValue(10000),
+	));
+}
+
 #[test]
 fn emergency_shutdown_and_cdp_treasury() {
 	ExtBuilder::default()
@@ -37,6 +49,10 @@ fn emergency_shutdown_and_cdp_treasury() {
 		])
 		.build()
 		.execute_with(|| {
+			setup_default_collateral(RELAY_CHAIN_CURRENCY);
+			setup_default_collateral(LIQUID_CURRENCY);
+			setup_default_collateral(USD_CURRENCY);
+
 			assert_ok!(CdpTreasury::deposit_collateral(
 				&AccountId::from(BOB),
 				RELAY_CHAIN_CURRENCY,
@@ -335,7 +351,9 @@ fn test_cdp_engine_module() {
 				Change::NewValue(10_000 * dollar(USD_CURRENCY)),
 			));
 
-			let new_collateral_params = CdpEngine::collateral_params(RELAY_CHAIN_CURRENCY);
+			let maybe_new_collateral_params = CdpEngine::collateral_params(RELAY_CHAIN_CURRENCY);
+			assert!(maybe_new_collateral_params.is_some());
+			let new_collateral_params = maybe_new_collateral_params.unwrap();
 
 			assert_eq!(
 				new_collateral_params.interest_rate_per_sec,

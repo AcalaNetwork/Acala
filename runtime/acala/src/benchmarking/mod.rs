@@ -18,6 +18,9 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
+use super::{CurrencyId, ACA, DOT, LCDOT, LDOT};
+use sp_std::prelude::*;
+
 pub mod utils {
 	include!("../../../mandala/src/benchmarking/utils.rs");
 }
@@ -100,4 +103,8 @@ pub mod vesting {
 
 pub fn get_vesting_account() -> super::AccountId {
 	super::AcalaFoundationAccounts::get()[0].clone()
+}
+
+pub fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
+	vec![ACA, DOT, LCDOT, LDOT]
 }
