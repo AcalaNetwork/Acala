@@ -39,7 +39,7 @@ use std::{marker::PhantomData, sync::Arc};
 use call_request::{CallRequest, EstimateResourcesResponse};
 pub use module_evm::{ExitError, ExitReason};
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
-use primitives::evm::{BlockLimits, EstimateResourcesRequest, EstimateResourcesRequestLegacy};
+use primitives::evm::{BlockLimits, EstimateResourcesRequest};
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
 
@@ -255,70 +255,40 @@ where
 		unsigned_extrinsic: Bytes,
 		at: Option<<B as BlockT>::Hash>,
 	) -> Result<EstimateResourcesResponse> {
-		let api = self.client.runtime_api();
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
 		let block_id = BlockId::Hash(hash);
 
-		let version = api
-			.api_version::<dyn EVMRuntimeRPCApi<B, Balance>>(&block_id)
+		let block_limits = self.block_limits(at)?;
+
+		let request: EstimateResourcesRequest = self
+			.client
+			.runtime_api()
+			.get_estimate_resources_request(&block_id, unsigned_extrinsic.to_vec())
 			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-			.ok_or_else(|| {
-				internal_err(format!(
-					"Could not find `EVMRuntimeRPCApi` api for block `{:?}`.",
-					&block_id
-				))
-			})?;
+			.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-		let (request, mut highest, max_gas_limit) = if version == 2 {
-			let request: EstimateResourcesRequest = self
-				.client
-				.runtime_api()
-				.get_estimate_resources_request(&block_id, unsigned_extrinsic.to_vec())
-				.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-				.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+		// Determine the highest possible gas limits
+		let mut highest = request.gas_limit.unwrap_or(block_limits.max_gas_limit);
 
-			// Determine the highest possible gas limits
-			let max_gas_limit = request.max_gas_limit;
-			let highest = request.gas_limit;
+		let gas_limit = core::cmp::min(
+			request.gas_limit.unwrap_or(block_limits.max_gas_limit),
+			block_limits.max_gas_limit,
+		);
 
-			(
-				CallRequest {
-					from: Some(from),
-					to: request.to,
-					gas_limit: Some(request.gas_limit),
-					storage_limit: Some(request.storage_limit),
-					value: request.value.map(|v| NumberOrHex::Hex(U256::from(v))),
-					data: request.data.map(Bytes),
-					access_list: request.access_list,
-				},
-				highest,
-				max_gas_limit,
-			)
-		} else {
-			let request: EstimateResourcesRequestLegacy = self
-				.client
-				.runtime_api()
-				.get_estimate_resources_request_before_version_2(&block_id, unsigned_extrinsic.to_vec())
-				.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-				.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+		let storage_limit = core::cmp::min(
+			request.storage_limit.unwrap_or(block_limits.max_storage_limit),
+			block_limits.max_storage_limit,
+		);
 
-			// Determine the highest possible gas limits
-			let highest = request.gas_limit.unwrap_or(MAX_GAS_LIMIT);
-
-			(
-				CallRequest {
-					from: Some(from),
-					to: request.to,
-					gas_limit: request.gas_limit,
-					storage_limit: Some(request.storage_limit.unwrap_or(MAX_STORAGE_LIMIT)),
-					value: request.value.map(|v| NumberOrHex::Hex(U256::from(v))),
-					data: request.data.map(Bytes),
-					access_list: request.access_list,
-				},
-				highest,
-				MAX_GAS_LIMIT,
-			)
+		let request = CallRequest {
+			from: Some(from),
+			to: request.to,
+			gas_limit: Some(gas_limit),
+			storage_limit: Some(storage_limit),
+			value: request.value.map(|v| NumberOrHex::Hex(U256::from(v))),
+			data: request.data.map(Bytes),
+			access_list: request.access_list,
 		};
 
 		log::debug!(
@@ -346,11 +316,13 @@ where
 				access_list,
 			} = request;
 
-			// Use request gas limit only if it less than gas_limit parameter
-			let gas_limit = core::cmp::min(gas_limit.unwrap_or(gas), gas);
+			let gas_limit = gas_limit.expect("Cannot be none, value set when request is constructed above; qed");
 			let storage_limit =
 				storage_limit.expect("Cannot be none, value set when request is constructed above; qed");
 			let data = data.map(|d| d.0).unwrap_or_default();
+
+			// Use request gas limit only if it less than gas_limit parameter
+			let gas_limit = core::cmp::min(gas_limit, gas);
 
 			let balance_value = if let Some(value) = value {
 				to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
@@ -435,7 +407,8 @@ where
 					// If the user has provided a gas limit, then we have executed
 					// with less block gas limit, so we must reexecute with block gas limit to
 					// know if the revert is due to a lack of gas or not.
-					let ExecutableResult { data, exit_reason, .. } = executable(request.clone(), max_gas_limit)?;
+					let ExecutableResult { data, exit_reason, .. } =
+						executable(request.clone(), block_limits.max_gas_limit)?;
 					match exit_reason {
 						ExitReason::Succeed(_) => {
 							return Err(internal_err(format!("gas required exceeds allowance {}", cap)))

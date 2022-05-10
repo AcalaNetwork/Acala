@@ -1970,33 +1970,24 @@ impl_runtime_apis! {
 			let utx = UncheckedExtrinsic::decode_all_with_depth_limit(sp_api::MAX_EXTRINSIC_DEPTH, &mut &*extrinsic)
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
-			let max_gas_limit = runtime_common::EvmLimits::<Runtime>::max_gas_limit();
-			let max_storage_limit = runtime_common::EvmLimits::<Runtime>::max_storage_limit();
-
 			let request = match utx.function {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
-					let gas_limit = sp_std::cmp::min(max_gas_limit, gas_limit);
-					let storage_limit = sp_std::cmp::min(max_storage_limit, storage_limit);
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: Some(target),
-						gas_limit,
-						max_gas_limit,
-						storage_limit,
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
 						value: Some(value),
 						data: Some(input),
 						access_list: Some(access_list)
 					})
 				}
 				Call::EVM(module_evm::Call::create{input, value, gas_limit, storage_limit, access_list}) => {
-					let gas_limit = sp_std::cmp::min(max_gas_limit, gas_limit);
-					let storage_limit = sp_std::cmp::min(max_storage_limit, storage_limit);
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,
-						gas_limit,
-						max_gas_limit,
-						storage_limit,
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
 						value: Some(value),
 						data: Some(input),
 						access_list: Some(access_list)
