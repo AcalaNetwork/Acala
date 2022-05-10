@@ -816,8 +816,8 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// If reverse is false, exchange stable coin to given token.
-	/// If reverse is true, swap given token to stable coin.
+	/// If reverse is false, exchange stable coin with given token.
+	/// If reverse is true, exchange given token with stable coin.
 	fn swap_stable_and_lp_token(
 		token: CurrencyId,
 		amount: Balance,
@@ -837,12 +837,11 @@ impl<T: Config> Pallet<T> {
 			(stable_currency_id, token)
 		};
 
-		let limit = SwapLimit::ExactSupply(amount, Zero::zero());
 		T::DEX::swap_supply_with_best_price_swap_path(
 			&loans_module_account,
 			supply,
 			target,
-			limit,
+			SwapLimit::ExactSupply(amount, Zero::zero()),
 			T::AlternativeSwapPathJointList::get(),
 		)
 		.map(|e| e.1)
@@ -905,13 +904,11 @@ impl<T: Config> Pallet<T> {
 			}
 			_ => {
 				// swap stable coin to collateral
-				let limit = SwapLimit::ExactSupply(increase_debit_value, min_increase_collateral);
-
 				T::DEX::swap_supply_with_best_price_swap_path(
 					&loans_module_account,
 					T::GetStableCurrencyId::get(),
 					currency_id,
-					limit,
+					SwapLimit::ExactSupply(increase_debit_value, min_increase_collateral),
 					T::AlternativeSwapPathJointList::get(),
 				)
 				.map(|e| e.1)?
@@ -988,12 +985,11 @@ impl<T: Config> Pallet<T> {
 			}
 			_ => {
 				// swap collateral to stable coin
-				let limit = SwapLimit::ExactSupply(decrease_collateral, min_decrease_debit_value);
 				T::DEX::swap_supply_with_best_price_swap_path(
 					&loans_module_account,
 					currency_id,
 					stable_currency_id,
-					limit,
+					SwapLimit::ExactSupply(decrease_collateral, min_decrease_debit_value),
 					T::AlternativeSwapPathJointList::get(),
 				)
 				.map(|e| e.1)?
