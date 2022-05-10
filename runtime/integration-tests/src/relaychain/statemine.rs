@@ -23,9 +23,9 @@ use crate::setup::*;
 use cumulus_primitives_core::ParaId;
 
 use frame_support::assert_ok;
-use module_asset_registry::AssetMetadata;
 pub use orml_traits::GetByKey;
 use polkadot_parachain::primitives::Sibling;
+use primitives::currency::AssetMetadata;
 use xcm::v1::{Junction, MultiLocation};
 use xcm_emulator::TestExt;
 

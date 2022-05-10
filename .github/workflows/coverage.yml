@@ -14,7 +14,7 @@ on:
       - '**/README.md'
 
 env:
-  TARPAULIN_VERSION: 0.18.5
+  TARPAULIN_VERSION: 0.19.1
   # LIBCLANG_PATH: "/usr/lib/llvm-11/lib" # default `llvm-config --prefix`
   # SCCACHE_CACHE_SIZE: "100G"
   CARGO_INCREMENTAL: 0
@@ -34,14 +34,14 @@ jobs:
     needs: clean-up-actions
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2021-11-07
+          toolchain: nightly-2022-02-19
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
@@ -50,19 +50,17 @@ jobs:
       #       sudo apt update -y &&
       #       sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
       - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
-        with:
-          version: ${{ env.TARPAULIN_VERSION }}
-          timeout: 900
-          out-type: Xml
-          args: '--avoid-cfg-tarpaulin --no-fail-fast --workspace
-            -e acala-inspect
-            acala acala-cli e2e-tests acala-service
-            acala-primitives
-            acala-rpc
-            acala-runtime runtime-common runtime-integration-tests karura-runtime mandala-runtime
-            test-service
-            --exclude-files */mock.rs */weights.rs'
+        run: |
+          wget https://github.com/xd009642/tarpaulin/releases/download/${{ env.TARPAULIN_VERSION }}/cargo-tarpaulin-${{ env.TARPAULIN_VERSION }}-travis.tar.gz
+          tar -zxvf cargo-tarpaulin-${{ env.TARPAULIN_VERSION }}-travis.tar.gz -C $HOME/.cargo/bin
+          cargo tarpaulin -v --no-fail-fast --workspace \
+            -e acala-inspect \
+            acala acala-cli e2e-tests acala-service \
+            acala-primitives \
+            acala-rpc \
+            acala-runtime runtime-common runtime-integration-tests karura-runtime mandala-runtime \
+            test-service \
+            --exclude-files **/mock.rs **/weights.rs **/weights/*
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:

@@ -371,7 +371,7 @@ where
 				let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
 
 				// DEX::TradingPairStatuses (r: 1)
-				// AssetRegistry::AssetMetadatas (r: 2)
+				// primitives::currency::AssetMetadatas (r: 2)
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(3);
 
 				Self::BASE_COST
