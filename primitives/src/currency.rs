@@ -400,3 +400,19 @@ impl Into<DexShareType> for DexShare {
 
 /// The first batch of lcDOT that expires at end of least 13
 pub const LCDOT: CurrencyId = CurrencyId::LiquidCrowdloan(13);
+
+#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
+pub enum AssetIds {
+	Erc20(EvmAddress),
+	StableAssetId(StableAssetPoolId),
+	ForeignAssetId(ForeignAssetId),
+	NativeAssetId(CurrencyId),
+}
+
+#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
+pub struct AssetMetadata<Balance> {
+	pub name: Vec<u8>,
+	pub symbol: Vec<u8>,
+	pub decimals: u8,
+	pub minimal_balance: Balance,
+}

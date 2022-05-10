@@ -116,7 +116,7 @@ runtime_benchmarks! {
 		Session::set_keys(RawOrigin::Signed(caller.clone()).into(), keys, vec![]).unwrap();
 	}: _(RawOrigin::Signed(caller.clone()))
 	verify {
-		assert_last_event(module_collator_selection::Event::CandidateAdded{who: caller, bond: bond.checked_div(2u32.into()).unwrap()}.into());
+		assert_last_event(module_collator_selection::Event::CandidateAdded{who: caller, bond: bond.saturating_div(2u32.into())}.into());
 	}
 
 	register_candidate {

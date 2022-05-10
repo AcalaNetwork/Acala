@@ -1035,11 +1035,12 @@ pub mod module {
 				}
 				Ok(info) => {
 					let used_gas: u64 = info.used_gas.unique_saturated_into();
+					let contract = info.value;
 
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Created {
 							from: source,
-							contract: info.value,
+							contract,
 							logs: info.logs,
 							used_gas,
 							used_storage: info.used_storage,
@@ -1047,12 +1048,17 @@ pub mod module {
 					} else {
 						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 							from: source,
-							contract: info.value,
+							contract,
 							exit_reason: info.exit_reason.clone(),
 							logs: info.logs,
 							used_gas,
 							used_storage: Default::default(),
 						});
+					}
+
+					if info.exit_reason.is_succeed() {
+						Self::mark_published(contract, Some(source))?;
+						Pallet::<T>::deposit_event(Event::<T>::ContractPublished { contract });
 					}
 
 					Ok(PostDispatchInfo {

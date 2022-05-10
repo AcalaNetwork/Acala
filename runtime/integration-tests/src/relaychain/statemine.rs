@@ -17,14 +17,15 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! Tests parachain to parachain xcm communication between Statemine and Karura.
+
 use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 use cumulus_primitives_core::ParaId;
 
 use frame_support::assert_ok;
-use module_asset_registry::AssetMetadata;
 pub use orml_traits::GetByKey;
 use polkadot_parachain::primitives::Sibling;
+use primitives::currency::AssetMetadata;
 use xcm::v1::{Junction, MultiLocation};
 use xcm_emulator::TestExt;
 

@@ -22,10 +22,11 @@ use super::utils::set_balance_fungibles;
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use module_asset_registry::AssetMetadata;
 use orml_benchmarking::runtime_benchmarks;
-use primitives::currency::{CurrencyId, AUSD, BNC, LDOT, VSKSM};
-use primitives::{DexShare, TokenSymbol};
+use primitives::{
+	currency::{AssetMetadata, CurrencyId, AUSD, BNC, LDOT, VSKSM},
+	DexShare, TokenSymbol,
+};
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;

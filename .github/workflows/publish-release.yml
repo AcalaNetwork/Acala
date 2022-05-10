@@ -10,7 +10,7 @@ name: Publish Release
 # - Publish the WASM to Pinata via ipfs
 
 env:
-  SUBWASM_VERSION: 0.15.0
+  SUBWASM_VERSION: 0.17.0
 
 on:
   workflow_dispatch:
@@ -47,14 +47,14 @@ jobs:
     steps:
       # Checkout the Acala codebase
       - name: Checkout Codebase
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
 
       # Build WASM with Substrate Runtime Tool
       - name: Srtool build
         id: srtool_build
-        uses: AcalaNetwork/srtool-actions@build_opts_env
+        uses: chevdor/srtool-actions@master
         env:
           BUILD_OPTS: "--features on-chain-release-build"
         with:

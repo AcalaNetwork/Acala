@@ -141,28 +141,6 @@ fn get_liquidation_ratio_work() {
 }
 
 #[test]
-fn set_global_params_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		assert_noop!(
-			CDPEngineModule::set_global_params(Origin::signed(5), Rate::saturating_from_rational(1, 10000)),
-			BadOrigin
-		);
-		assert_ok!(CDPEngineModule::set_global_params(
-			Origin::signed(1),
-			Rate::saturating_from_rational(1, 10000),
-		));
-		System::assert_last_event(Event::CDPEngineModule(crate::Event::GlobalInterestRatePerSecUpdated {
-			new_global_interest_rate_per_sec: Rate::saturating_from_rational(1, 10000),
-		}));
-		assert_eq!(
-			CDPEngineModule::global_interest_rate_per_sec(),
-			Rate::saturating_from_rational(1, 10000)
-		);
-	});
-}
-
-#[test]
 fn set_collateral_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
@@ -472,25 +450,6 @@ fn expand_position_collateral_work() {
 		assert_eq!(Currencies::free_balance(AUSD, &LoansModule::account_id()), 0);
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (976, 10250));
 
-		assert_noop!(
-			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 300, 0),
-			Error::<Runtime>::BelowRequiredCollateralRatio
-		);
-
-		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
-			DOT,
-			Change::NoChange,
-			Change::NoChange,
-			Change::NoChange,
-			Change::NoChange,
-			Change::NewValue(700),
-		));
-		assert_noop!(
-			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 201, 0),
-			Error::<Runtime>::ExceedDebitValueHardCap
-		);
-
 		assert_ok!(CDPEngineModule::expand_position_collateral(&ALICE, DOT, 200, 18));
 		assert_eq!(
 			LoansModule::positions(DOT, ALICE),
@@ -502,6 +461,35 @@ fn expand_position_collateral_work() {
 		assert_eq!(Currencies::free_balance(DOT, &LoansModule::account_id()), 142);
 		assert_eq!(Currencies::free_balance(AUSD, &LoansModule::account_id()), 0);
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (958, 10450));
+
+		// make position below the RequireCollateralRatio
+		assert_ok!(CDPEngineModule::expand_position_collateral(&ALICE, DOT, 100, 0));
+		assert_eq!(
+			LoansModule::positions(DOT, ALICE),
+			Position {
+				collateral: 151,
+				debit: 8000,
+			}
+		);
+
+		assert_noop!(
+			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 800, 0),
+			Error::<Runtime>::BelowLiquidationRatio
+		);
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			DOT,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NewValue(900),
+		));
+		assert_noop!(
+			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 101, 0),
+			Error::<Runtime>::ExceedDebitValueHardCap
+		);
 	});
 }
 
@@ -761,8 +749,11 @@ fn remain_debit_value_too_small_check() {
 			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
-		assert!(!CDPEngineModule::adjust_position(&ALICE, BTC, 0, -490).is_ok());
-		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, -100, -500));
+		assert_noop!(
+			CDPEngineModule::adjust_position(&ALICE, BTC, 0, -490),
+			crate::Error::<Runtime>::RemainDebitValueTooSmall
+		);
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, -90, -500));
 	});
 }
 
@@ -1219,20 +1210,13 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_create_dot_auction() {
 #[test]
 fn get_interest_rate_per_sec_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(BTC), Rate::zero());
-		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(DOT), Rate::zero());
-
-		assert_ok!(CDPEngineModule::set_global_params(
-			Origin::signed(1),
-			Rate::saturating_from_rational(1, 10000),
-		));
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(BTC),
-			Rate::saturating_from_rational(1, 10000)
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(DOT),
-			Rate::saturating_from_rational(1, 10000)
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
 
 		assert_ok!(CDPEngineModule::set_collateral_params(
@@ -1246,11 +1230,11 @@ fn get_interest_rate_per_sec_work() {
 		));
 		assert_eq!(
 			CDPEngineModule::get_interest_rate_per_sec(BTC),
-			Rate::saturating_from_rational(12, 100000)
+			Ok(Rate::saturating_from_rational(2, 100000))
 		);
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(DOT),
-			Rate::saturating_from_rational(1, 10000)
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
 	});
 }
@@ -1768,5 +1752,40 @@ fn offchain_default_max_iterator_works() {
 		// should only now run 1 iteration to finish off where it ended last block
 		run_to_block_offchain(3);
 		assert_eq!(pool_state.write().transactions.len(), 1001);
+	});
+}
+
+#[test]
+fn minimal_collateral_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+		// Check position fails if collateral is too small
+		assert_noop!(
+			CDPEngineModule::check_position_valid(BTC, 9, 0, true),
+			Error::<Runtime>::CollateralAmountBelowMinimum,
+		);
+		assert_ok!(CDPEngineModule::check_position_valid(BTC, 9, 20, true));
+		assert_ok!(CDPEngineModule::check_position_valid(BTC, 10, 0, true));
+
+		// Adjust position fails if collateral is too small
+		assert_noop!(
+			CDPEngineModule::adjust_position(&ALICE, BTC, 9, 0),
+			Error::<Runtime>::CollateralAmountBelowMinimum,
+		);
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 10, 0));
+
+		// Cannot reduce collateral amount below the minimum.
+		assert_noop!(
+			CDPEngineModule::adjust_position(&ALICE, BTC, -1, 0),
+			Error::<Runtime>::CollateralAmountBelowMinimum,
+		);
 	});
 }

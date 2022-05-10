@@ -1,6 +1,6 @@
 [package]
 name = "acala-runtime"
-version = "2.5.1"
+version = "2.6.1"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"

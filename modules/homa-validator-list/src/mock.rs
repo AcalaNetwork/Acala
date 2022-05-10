@@ -91,6 +91,8 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ConstU32<100>;
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -115,7 +117,6 @@ pub type NativeCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletB
 pub type LDOTCurrency = orml_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 
 impl orml_currencies::Config for Runtime {
-	type Event = Event;
 	type MultiCurrency = OrmlTokens;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -220,7 +221,7 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		OrmlCurrencies: orml_currencies::{Pallet, Call, Event<T>},
+		OrmlCurrencies: orml_currencies::{Pallet, Call},
 		HomaValidatorListModule: homa_validator_list::{Pallet, Call, Storage, Event<T>},
 	}
 );
