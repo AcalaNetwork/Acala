@@ -268,9 +268,6 @@ where
 			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 			.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-		// Determine the highest possible gas limits
-		let mut highest = request.gas_limit.unwrap_or(block_limits.max_gas_limit);
-
 		let gas_limit = core::cmp::min(
 			request.gas_limit.unwrap_or(block_limits.max_gas_limit),
 			block_limits.max_gas_limit,
@@ -280,6 +277,9 @@ where
 			request.storage_limit.unwrap_or(block_limits.max_storage_limit),
 			block_limits.max_storage_limit,
 		);
+
+		// Determine the highest possible gas limits
+		let mut highest = gas_limit;
 
 		let request = CallRequest {
 			from: Some(from),
