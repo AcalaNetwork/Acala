@@ -210,7 +210,7 @@ pub mod module {
 			}
 
 			Authorization::<T>::try_mutate_exists(&from, (currency_id, &to), |maybe_reserved| -> DispatchResult {
-				ensure!(maybe_reserved.is_none(), Error::<T>::AlreadyAuthorized.into());
+				ensure!(maybe_reserved.is_none(), Error::<T>::AlreadyAuthorized);
 
 				let reserve_amount = T::DepositPerAuthorization::get();
 				<T as Config>::Currency::reserve_named(&RESERVE_ID, &from, reserve_amount)?;

@@ -821,18 +821,18 @@ impl<T: Config> Pallet<T> {
 		amount: Balance,
 		reverse: bool,
 	) -> sp_std::result::Result<Balance, DispatchError> {
+		let stable_currency_id = T::GetStableCurrencyId::get();
+		let loans_module_account = <LoansOf<T>>::account_id();
+
 		// do nothing if component token is stable coin
 		if token == stable_currency_id {
 			return Ok(amount);
 		}
 
-		let loans_module_account = <LoansOf<T>>::account_id();
-		let stable_currency_id = T::GetStableCurrencyId::get();
-
 		let (supply, target) = if reverse {
-			(stable_currency_id, token)
-		} else {
 			(token, stable_currency_id)
+		} else {
+			(stable_currency_id, token)
 		};
 
 		// swap component token in DEX
@@ -874,11 +874,10 @@ impl<T: Config> Pallet<T> {
 				// need better distribution methods to avoid unused component tokens.
 				let stable_for_token_0 = increase_debit_value / 2;
 				let stable_for_token_1 = increase_debit_value.saturating_sub(stable_for_token_0);
-				let stable_currency_id = T::GetStableCurrencyId::get();
 
 				// swap stable coin to lp component tokens.
-				let available_0 = Self::stable_and_lp_component(token_0, stable_for_token_0, true)?;
-				let available_1 = Self::stable_and_lp_component(token_1, stable_for_token_1, true)?;
+				let available_0 = Self::stable_and_lp_component(token_0, stable_for_token_0, false)?;
+				let available_1 = Self::stable_and_lp_component(token_1, stable_for_token_1, false)?;
 				let (consumption_0, consumption_1, actual_increase_lp) = T::DEX::add_liquidity(
 					&loans_module_account,
 					token_0,
@@ -972,8 +971,8 @@ impl<T: Config> Pallet<T> {
 					false,
 				)?;
 
-				let stable_0 = Self::stable_and_lp_component(token_0, available_0, false)?;
-				let stable_1 = Self::stable_and_lp_component(token_1, available_1, false)?;
+				let stable_0 = Self::stable_and_lp_component(token_0, available_0, true)?;
+				let stable_1 = Self::stable_and_lp_component(token_1, available_1, true)?;
 				let total_stable = stable_0.saturating_add(stable_1);
 
 				// check whether the amount of stable token obtained by selling lptokens is enough as expected
@@ -1090,7 +1089,7 @@ impl<T: Config> Pallet<T> {
 		// refund remain collateral to CDP owner
 		let refund_collateral_amount = collateral
 			.checked_sub(actual_supply_collateral)
-			.expect("swap succecced means collateral >= actual_supply_collateral; qed");
+			.expect("swap succeed means collateral >= actual_supply_collateral; qed");
 		<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
 
 		Self::deposit_event(Event::CloseCDPInDebitByDEX {
@@ -1211,7 +1210,7 @@ impl<T: Config> Pallet<T> {
 			) {
 			let refund_collateral_amount = amount
 				.checked_sub(actual_supply_collateral)
-				.expect("swap succecced means collateral >= actual_supply_collateral; qed");
+				.expect("swap succeed means collateral >= actual_supply_collateral; qed");
 
 			// refund remain collateral to CDP owner
 			if !refund_collateral_amount.is_zero() {

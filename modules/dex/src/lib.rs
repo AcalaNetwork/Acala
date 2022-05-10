@@ -439,7 +439,7 @@ pub mod module {
 		}
 
 		/// Add provision to Provisioning trading pair.
-		/// If succecced, will record the provision, but shares issuing will happen after the
+		/// If succeed, will record the provision, but shares issuing will happen after the
 		/// trading pair convert to Enabled status.
 		///
 		/// - `currency_id_a`: currency id A.
