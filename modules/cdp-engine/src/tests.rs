@@ -416,7 +416,7 @@ fn expand_position_collateral_work() {
 
 		assert_noop!(
 			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 0, 1),
-			Error::<Runtime>::CannotSwap
+			DispatchError::CannotLookup
 		);
 
 		assert_ok!(DEXModule::add_liquidity(
@@ -431,7 +431,7 @@ fn expand_position_collateral_work() {
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (1000, 10000));
 		assert_noop!(
 			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 250, 100),
-			Error::<Runtime>::CannotSwap
+			DispatchError::CannotLookup
 		);
 
 		assert_ok!(CDPEngineModule::expand_position_collateral(&ALICE, DOT, 250, 20));

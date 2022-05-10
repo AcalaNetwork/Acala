@@ -198,7 +198,7 @@ pub mod module {
 		/// - `currency_id`: collateral type
 		/// - `amount`: collateral amount
 		/// - `target`: target amount
-		/// - `splited`: splite collateral to multiple auction according to the config size
+		/// - `splited`: split collateral to multiple auction according to the config size
 		#[pallet::weight(
 			if *splited {
 				T::WeightInfo::auction_collateral(T::MaxAuctionsCount::get())
@@ -440,22 +440,20 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 					let amount = amounts[i];
 
 					if !amount.is_zero() {
-						let swap_limit = SwapLimit::ExactSupply(amount, 0);
-						let swap_path = T::DEX::get_best_price_swap_path(
+						let response = T::DEX::swap_supply_with_best_price_swap_path(
+							&Self::account_id(),
 							redemption_currency,
 							T::GetStableCurrencyId::get(),
-							swap_limit,
+							SwapLimit::ExactSupply(amount, Zero::zero()),
 							T::AlternativeSwapPathJointList::get(),
-						)
-						.ok_or(Error::<T>::CannotSwap)?;
+						)?;
 
-						let response = T::DEX::swap_with_specific_path(&Self::account_id(), &swap_path, swap_limit)?;
 						supply_sum = supply_sum.checked_add(response.0).ok_or(Error::<T>::CannotSwap)?;
 						target_sum = target_sum.checked_add(response.1).ok_or(Error::<T>::CannotSwap)?;
 					}
 				}
 
-				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap,);
+				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap);
 				Ok((supply_sum, target_sum))
 			}
 			_ => {
