@@ -36,7 +36,7 @@ use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchResult,
 };
-use support::EmergencyShutdown;
+use support::{EmergencyShutdown, HonzonManager};
 
 mod mock;
 mod tests;
@@ -317,6 +317,25 @@ impl<T: Config> Pallet<T> {
 			from == to || Authorization::<T>::contains_key(from, (currency_id, to)),
 			Error::<T>::NoPermission
 		);
+		Ok(())
+	}
+}
+
+impl<T: Config> HonzonManager<T::AccountId, CurrencyId, Amount, Balance> for Pallet<T> {
+	fn adjust_loan(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
+		debit_adjustment: Amount,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn close_loan_by_dex(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		max_collateral_amount: Balance,
+	) -> DispatchResult {
 		Ok(())
 	}
 }

@@ -58,6 +58,7 @@ module-asset-registry = { path = "../../modules/asset-registry", default-feature
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false, optional = true }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
+module-honzon = { path = "../../modules/honzon", default-features = false }
 
 # orml
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -112,6 +113,7 @@ std = [
 	"module-evm-accounts/std",
 	"module-asset-registry/std",
 	"module-evm-bridge/std",
+	"module-honzon/std",
 
 	"xcm/std",
 	"xcm-executor/std",

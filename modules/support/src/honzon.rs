@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::FullCodec;
+use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -147,4 +148,16 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 
 pub trait EmergencyShutdown {
 	fn is_shutdown() -> bool;
+}
+
+/// Functionality of Honzon Protocol to be exposed to EVM+.
+pub trait HonzonManager<AccountId, CurrencyId, Amount, Balance> {
+	fn adjust_loan(
+		who: &AccountId,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
+		debit_adjustment: Amount,
+	) -> DispatchResult;
+
+	fn close_loan_by_dex(who: &AccountId, currency_id: CurrencyId, max_collateral_amount: Balance) -> DispatchResult;
 }

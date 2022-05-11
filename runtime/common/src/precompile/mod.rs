@@ -41,6 +41,7 @@ use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
 pub mod dex;
 pub mod evm;
+pub mod honzon;
 pub mod input;
 pub mod multicurrency;
 pub mod nft;
@@ -51,6 +52,7 @@ pub mod stable_asset;
 use crate::SystemContractsFilter;
 pub use dex::DEXPrecompile;
 pub use evm::EVMPrecompile;
+pub use honzon::HonzonPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
@@ -78,6 +80,7 @@ pub const ORACLE: H160 = H160(hex!("0000000000000000000000000000000000000403"));
 pub const SCHEDULER: H160 = H160(hex!("0000000000000000000000000000000000000404"));
 pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000405"));
 pub const STABLE_ASSET: H160 = H160(hex!("0000000000000000000000000000000000000406"));
+pub const HONZON: H160 = H160(hex!("0000000000000000000000000000000000000408"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
 	// srtool support rust 1.57.0
@@ -173,6 +176,7 @@ where
 				SCHEDULER,
 				DEX,
 				STABLE_ASSET,
+				HONZON,
 			]),
 			_marker: Default::default(),
 		}
