@@ -1806,6 +1806,18 @@ impl OnRuntimeUpgrade for EvmChainIdMigration {
 
 		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		frame_support::ensure!(EvmChainId::<Runtime>::get() == 0, "must upgrade linearly");
+		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		frame_support::ensure!(EvmChainId::<Runtime>::get() == 595, "must upgrade");
+		Ok(())
+	}
 }
 
 construct_runtime!(
