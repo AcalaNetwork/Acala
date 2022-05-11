@@ -46,9 +46,6 @@ mod dex;
 ))]
 mod evm;
 
-#[cfg(feature = "with-karura-runtime")]
-mod xcm_interface;
-
 #[cfg(any(
 	feature = "with-mandala-runtime",
 	feature = "with-karura-runtime",
@@ -126,6 +123,12 @@ mod weights;
 ))]
 mod payment;
 
-// TODO: polkadot_runtime not support XCM
-#[cfg(feature = "with-karura-runtime")]
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod relaychain;
+
+#[cfg(feature = "with-karura-runtime")]
+mod xcm_interface;

@@ -27,10 +27,10 @@ use xcm_builder::ParentIsPreset;
 
 use karura_runtime::parachains::bifrost::BNC_KEY;
 use karura_runtime::{AssetRegistry, KaruraTreasuryAccount};
-use module_asset_registry::AssetMetadata;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::CallBuilder;
 use orml_traits::MultiCurrency;
+use primitives::currency::AssetMetadata;
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert;
 
@@ -82,7 +82,9 @@ fn transfer_to_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&AccountId::from(BOB)),
-			999_893_333_340
+			// v0.9.18: 106_666_660
+			// v0.9.19: 165_940_672
+			999_834_059_328
 		);
 	});
 }
@@ -208,12 +210,14 @@ fn xcm_transfer_execution_barrier_trader_works() {
 		},
 	]);
 	KusamaNet::execute_with(|| {
-		let r = pallet_xcm::Pallet::<kusama_runtime::Runtime>::send(
-			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
-			Box::new(xcm::VersionedXcm::from(message)),
-		);
-		assert_ok!(r);
+		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
+			X1(Junction::AccountId32 {
+				network: NetworkId::Any,
+				id: ALICE.into(),
+			}),
+			Parachain(2000).into(),
+			message
+		));
 	});
 	Karura::execute_with(|| {
 		assert!(System::events().iter().any(|r| matches!(
@@ -619,7 +623,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 		// Unspent fund from the 1 dollar XCM fee is returned to the sovereign account.
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1_000 * dollar(RELAY_CHAIN_CURRENCY) + 999_626_666_690
+			1_000 * dollar(RELAY_CHAIN_CURRENCY) + 999_377_722_480
 		);
 	});
 }

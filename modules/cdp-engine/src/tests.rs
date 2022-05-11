@@ -46,6 +46,18 @@ fn run_to_block_offchain(n: u64) {
 	}
 }
 
+fn setup_default_collateral(currency_id: CurrencyId) {
+	assert_ok!(CDPEngineModule::set_collateral_params(
+		Origin::signed(1),
+		currency_id,
+		Change::NewValue(Some(Default::default())),
+		Change::NoChange,
+		Change::NoChange,
+		Change::NoChange,
+		Change::NewValue(10000),
+	));
+}
+
 #[test]
 fn check_cdp_status_work() {
 	ExtBuilder::default().build().execute_with(|| {
@@ -97,9 +109,9 @@ fn get_debit_exchange_rate_work() {
 #[test]
 fn get_liquidation_penalty_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_liquidation_penalty(BTC),
-			DefaultLiquidationPenalty::get()
+			Error::<Runtime>::InvalidCollateralType
 		);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -112,7 +124,7 @@ fn get_liquidation_penalty_work() {
 		));
 		assert_eq!(
 			CDPEngineModule::get_liquidation_penalty(BTC),
-			Rate::saturating_from_rational(2, 10)
+			Ok(Rate::saturating_from_rational(2, 10))
 		);
 	});
 }
@@ -120,9 +132,9 @@ fn get_liquidation_penalty_work() {
 #[test]
 fn get_liquidation_ratio_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_liquidation_ratio(BTC),
-			DefaultLiquidationRatio::get()
+			Error::<Runtime>::InvalidCollateralType
 		);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -135,29 +147,7 @@ fn get_liquidation_ratio_work() {
 		));
 		assert_eq!(
 			CDPEngineModule::get_liquidation_ratio(BTC),
-			Ratio::saturating_from_rational(5, 2)
-		);
-	});
-}
-
-#[test]
-fn set_global_params_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		assert_noop!(
-			CDPEngineModule::set_global_params(Origin::signed(5), Rate::saturating_from_rational(1, 10000)),
-			BadOrigin
-		);
-		assert_ok!(CDPEngineModule::set_global_params(
-			Origin::signed(1),
-			Rate::saturating_from_rational(1, 10000),
-		));
-		System::assert_last_event(Event::CDPEngineModule(crate::Event::GlobalInterestRatePerSecUpdated {
-			new_global_interest_rate_per_sec: Rate::saturating_from_rational(1, 10000),
-		}));
-		assert_eq!(
-			CDPEngineModule::global_interest_rate_per_sec(),
-			Rate::saturating_from_rational(1, 10000)
+			Ok(Ratio::saturating_from_rational(5, 2))
 		);
 	});
 }
@@ -165,19 +155,6 @@ fn set_global_params_work() {
 #[test]
 fn set_collateral_params_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			CDPEngineModule::set_collateral_params(
-				Origin::signed(1),
-				ACA,
-				Change::NoChange,
-				Change::NoChange,
-				Change::NoChange,
-				Change::NoChange,
-				Change::NoChange,
-			),
-			Error::<Runtime>::InvalidCollateralType
-		);
-
 		System::set_block_number(1);
 		assert_noop!(
 			CDPEngineModule::set_collateral_params(
@@ -231,7 +208,7 @@ fn set_collateral_params_work() {
 			Change::NewValue(10000),
 		));
 
-		let new_collateral_params = CDPEngineModule::collateral_params(BTC);
+		let new_collateral_params = CDPEngineModule::collateral_params(BTC).unwrap();
 
 		assert_eq!(
 			new_collateral_params.interest_rate_per_sec,
@@ -377,15 +354,9 @@ fn check_position_valid_ratio_below_required_ratio() {
 #[test]
 fn adjust_position_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
-			BTC,
-			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
-			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
-			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
-			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
-			Change::NewValue(10000),
-		));
+		setup_default_collateral(BTC);
+		setup_default_collateral(AUSD);
+
 		assert_noop!(
 			CDPEngineModule::adjust_position(&ALICE, ACA, 100, 500),
 			Error::<Runtime>::InvalidCollateralType,
@@ -412,6 +383,7 @@ fn adjust_position_work() {
 fn expand_position_collateral_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		MockPriceSource::set_price(DOT, Some(Price::saturating_from_rational(10, 1)));
+		setup_default_collateral(AUSD);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
 			DOT,
@@ -472,25 +444,6 @@ fn expand_position_collateral_work() {
 		assert_eq!(Currencies::free_balance(AUSD, &LoansModule::account_id()), 0);
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (976, 10250));
 
-		assert_noop!(
-			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 300, 0),
-			Error::<Runtime>::BelowRequiredCollateralRatio
-		);
-
-		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
-			DOT,
-			Change::NoChange,
-			Change::NoChange,
-			Change::NoChange,
-			Change::NoChange,
-			Change::NewValue(700),
-		));
-		assert_noop!(
-			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 201, 0),
-			Error::<Runtime>::ExceedDebitValueHardCap
-		);
-
 		assert_ok!(CDPEngineModule::expand_position_collateral(&ALICE, DOT, 200, 18));
 		assert_eq!(
 			LoansModule::positions(DOT, ALICE),
@@ -502,6 +455,35 @@ fn expand_position_collateral_work() {
 		assert_eq!(Currencies::free_balance(DOT, &LoansModule::account_id()), 142);
 		assert_eq!(Currencies::free_balance(AUSD, &LoansModule::account_id()), 0);
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (958, 10450));
+
+		// make position below the RequireCollateralRatio
+		assert_ok!(CDPEngineModule::expand_position_collateral(&ALICE, DOT, 100, 0));
+		assert_eq!(
+			LoansModule::positions(DOT, ALICE),
+			Position {
+				collateral: 151,
+				debit: 8000,
+			}
+		);
+
+		assert_noop!(
+			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 800, 0),
+			Error::<Runtime>::BelowLiquidationRatio
+		);
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			DOT,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NewValue(900),
+		));
+		assert_noop!(
+			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 101, 0),
+			Error::<Runtime>::ExceedDebitValueHardCap
+		);
 	});
 }
 
@@ -530,6 +512,9 @@ fn expand_position_collateral_for_lp_ausd_dot_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
 			Change::NewValue(10000),
 		));
+		setup_default_collateral(DOT);
+		setup_default_collateral(AUSD);
+
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, LP_AUSD_DOT, 1000, 2000));
 		assert_eq!(
 			LoansModule::positions(LP_AUSD_DOT, ALICE),
@@ -591,6 +576,7 @@ fn shrink_position_debit_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
 			Change::NewValue(10000),
 		));
+		setup_default_collateral(AUSD);
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, DOT, 100, 5000));
 		assert_eq!(
 			LoansModule::positions(DOT, ALICE),
@@ -687,6 +673,8 @@ fn shrink_position_debit_for_lp_ausd_dot_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
 			Change::NewValue(10000),
 		));
+		setup_default_collateral(DOT);
+		setup_default_collateral(AUSD);
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, LP_AUSD_DOT, 1000, 5000));
 		assert_eq!(
 			LoansModule::positions(LP_AUSD_DOT, ALICE),
@@ -761,8 +749,11 @@ fn remain_debit_value_too_small_check() {
 			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
-		assert!(!CDPEngineModule::adjust_position(&ALICE, BTC, 0, -490).is_ok());
-		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, -100, -500));
+		assert_noop!(
+			CDPEngineModule::adjust_position(&ALICE, BTC, 0, -490),
+			crate::Error::<Runtime>::RemainDebitValueTooSmall
+		);
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, -90, -500));
 	});
 }
 
@@ -779,6 +770,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
+		setup_default_collateral(AUSD);
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
@@ -833,6 +825,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction_when_limited_by_slippage() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
+		setup_default_collateral(AUSD);
 		assert_ok!(DEXModule::add_liquidity(
 			Origin::signed(CAROL),
 			BTC,
@@ -901,6 +894,8 @@ fn liquidate_unsafe_cdp_by_swap() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
+		setup_default_collateral(DOT);
+		setup_default_collateral(AUSD);
 		assert_ok!(DEXModule::add_liquidity(
 			Origin::signed(CAROL),
 			BTC,
@@ -959,6 +954,9 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_swap_dot() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
 			Change::NewValue(10000),
 		));
+		setup_default_collateral(DOT);
+		setup_default_collateral(AUSD);
+
 		assert_ok!(DEXModule::add_liquidity(
 			Origin::signed(CAROL),
 			AUSD,
@@ -1049,6 +1047,9 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_ausd_take_whole_target() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
 			Change::NewValue(10000),
 		));
+		setup_default_collateral(DOT);
+		setup_default_collateral(AUSD);
+
 		assert_ok!(DEXModule::add_liquidity(
 			Origin::signed(CAROL),
 			AUSD,
@@ -1139,6 +1140,9 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_create_dot_auction() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
 			Change::NewValue(10000),
 		));
+		setup_default_collateral(DOT);
+		setup_default_collateral(AUSD);
+
 		assert_ok!(DEXModule::add_liquidity(
 			Origin::signed(CAROL),
 			AUSD,
@@ -1219,20 +1223,13 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_create_dot_auction() {
 #[test]
 fn get_interest_rate_per_sec_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(BTC), Rate::zero());
-		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(DOT), Rate::zero());
-
-		assert_ok!(CDPEngineModule::set_global_params(
-			Origin::signed(1),
-			Rate::saturating_from_rational(1, 10000),
-		));
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(BTC),
-			Rate::saturating_from_rational(1, 10000)
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(DOT),
-			Rate::saturating_from_rational(1, 10000)
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
 
 		assert_ok!(CDPEngineModule::set_collateral_params(
@@ -1244,13 +1241,23 @@ fn get_interest_rate_per_sec_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			DOT,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
 		assert_eq!(
 			CDPEngineModule::get_interest_rate_per_sec(BTC),
-			Rate::saturating_from_rational(12, 100000)
+			Ok(Rate::saturating_from_rational(2, 100000))
 		);
-		assert_eq!(
+		assert_noop!(
 			CDPEngineModule::get_interest_rate_per_sec(DOT),
-			Rate::saturating_from_rational(1, 10000)
+			crate::Error::<Runtime>::InvalidCollateralType
 		);
 	});
 }
@@ -1577,17 +1584,13 @@ fn offchain_worker_works_cdp() {
 
 	ext.execute_with(|| {
 		// number of currencies allowed as collateral (cycles through all of them)
-		let collateral_currencies_num = CollateralCurrencyIds::get().len() as u64;
+		setup_default_collateral(BTC);
+		setup_default_collateral(LP_AUSD_DOT);
+		setup_default_collateral(DOT);
+
+		let collateral_currencies_num = CollateralCurrencyIds::<Runtime>::get().len() as u64;
+
 		System::set_block_number(1);
-		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
-			BTC,
-			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
-			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
-			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
-			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
-			Change::NewValue(10000),
-		));
 
 		// offchain worker will not liquidate alice
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
@@ -1596,7 +1599,8 @@ fn offchain_worker_works_cdp() {
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
-		// jump 2 blocks at a time because code rotates through the different T::CollateralCurrencyIds
+		// jump 2 blocks at a time because code rotates through the different supported collateral
+		// currencies
 		run_to_block_offchain(System::block_number() + collateral_currencies_num);
 
 		// checks that offchain worker tx pool is empty (therefore tx to liquidate alice is not present)
@@ -1732,7 +1736,6 @@ fn offchain_default_max_iterator_works() {
 	ext.register_extension(OffchainDbExt::new(offchain.clone()));
 
 	ext.execute_with(|| {
-		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
 			BTC,
@@ -1742,6 +1745,9 @@ fn offchain_default_max_iterator_works() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
+
+		System::set_block_number(1);
+
 		// checks that max iterations is stored as none
 		assert!(offchain
 			.local_storage_get(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS)
@@ -1768,5 +1774,40 @@ fn offchain_default_max_iterator_works() {
 		// should only now run 1 iteration to finish off where it ended last block
 		run_to_block_offchain(3);
 		assert_eq!(pool_state.write().transactions.len(), 1001);
+	});
+}
+
+#[test]
+fn minimal_collateral_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+		// Check position fails if collateral is too small
+		assert_noop!(
+			CDPEngineModule::check_position_valid(BTC, 9, 0, true),
+			Error::<Runtime>::CollateralAmountBelowMinimum,
+		);
+		assert_ok!(CDPEngineModule::check_position_valid(BTC, 9, 20, true));
+		assert_ok!(CDPEngineModule::check_position_valid(BTC, 10, 0, true));
+
+		// Adjust position fails if collateral is too small
+		assert_noop!(
+			CDPEngineModule::adjust_position(&ALICE, BTC, 9, 0),
+			Error::<Runtime>::CollateralAmountBelowMinimum,
+		);
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 10, 0));
+
+		// Cannot reduce collateral amount below the minimum.
+		assert_noop!(
+			CDPEngineModule::adjust_position(&ALICE, BTC, -1, 0),
+			Error::<Runtime>::CollateralAmountBelowMinimum,
+		);
 	});
 }

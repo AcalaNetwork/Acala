@@ -16,11 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-	AccountId, CdpTreasury, CollateralCurrencyIds, CurrencyId, EmergencyShutdown, GetStableCurrencyId, Price, Runtime,
-};
+use crate::{AccountId, CdpTreasury, CurrencyId, EmergencyShutdown, GetStableCurrencyId, Price, Runtime};
 
-use super::utils::{dollar, feed_price, set_balance};
+use super::{
+	get_benchmarking_collateral_currency_ids,
+	utils::{dollar, feed_price, set_balance},
+};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_support::CDPTreasury;
@@ -36,8 +37,8 @@ runtime_benchmarks! {
 	{ Runtime, module_emergency_shutdown }
 
 	emergency_shutdown {
-		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
-		let currency_ids = CollateralCurrencyIds::get();
+		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
+		let currency_ids = get_benchmarking_collateral_currency_ids();
 		let mut values = vec![];
 
 		for i in 0 .. c {
@@ -51,8 +52,8 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root)
 
 	refund_collaterals {
-		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
-		let currency_ids = CollateralCurrencyIds::get();
+		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
+		let currency_ids = get_benchmarking_collateral_currency_ids();
 		let funder: AccountId = account("funder", 0, SEED);
 		let caller: AccountId = whitelisted_caller();
 		let mut values = vec![];

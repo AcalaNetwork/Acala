@@ -309,13 +309,13 @@ pub mod module {
 							guarantee.bonded >= T::MinBondAmount::get(),
 							Error::<T>::BelowMinBondAmount
 						);
-						Self::deposit_event(Event::BondGuarantee {
-							who: guarantor.clone(),
-							validator: validator.clone(),
-							bond: amount,
-						});
 						Ok(())
 					})?;
+					Self::deposit_event(Event::BondGuarantee {
+						who: guarantor,
+						validator: validator.clone(),
+						bond: amount,
+					});
 				}
 			}
 			Ok(())

@@ -156,6 +156,7 @@ where
 				require_weight_at_most: weight,
 				call: call.encode().into(),
 			},
+			RefundSurplus,
 			DepositAsset {
 				assets: All.into(),
 				max_assets: u32::max_value(),

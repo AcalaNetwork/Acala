@@ -19,7 +19,6 @@
 use super::Precompile;
 use crate::runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult};
 use module_evm_utility::evm::{Context, ExitError, ExitSucceed};
-use sp_std::mem::size_of;
 
 mod eip_152;
 
@@ -101,7 +100,7 @@ impl Precompile for Blake2F {
 
 		eip_152::compress(&mut h, m, [t_0, t_1], f, rounds as usize);
 
-		let mut output_buf = [0u8; 8 * size_of::<u64>()];
+		let mut output_buf = [0u8; u64::BITS as usize];
 		for (i, state_word) in h.iter().enumerate() {
 			output_buf[i * 8..(i + 1) * 8].copy_from_slice(&state_word.to_le_bytes());
 		}

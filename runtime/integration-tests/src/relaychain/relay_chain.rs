@@ -97,8 +97,7 @@ mod karura_tests {
 			// Call withdraw_unbonded as the homa-lite subaccount
 			let xcm_message =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 0);
-
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 600_000_000, 10_000_000_000);
+			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 2_000_000_000, 10_000_000_000);
 
 			// Withdraw unbonded
 			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
@@ -111,13 +110,11 @@ mod karura_tests {
 			);
 
 			// Transfer fails because liquidity is locked.
-			assert_ok!(
-				kusama_runtime::Balances::transfer(
-					kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
-					MultiAddress::Id(ALICE.into()),
-					1_000_000_000_000_000
-				) //kusama_runtime::Balances::Error::<Runtime>::LiquidityLocked,
-			);
+			assert_ok!(kusama_runtime::Balances::transfer(
+				kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+				MultiAddress::Id(ALICE.into()),
+				1_000_000_000_000_000
+			));
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
 				1_000_000_000_000
@@ -147,7 +144,7 @@ mod karura_tests {
 			// Transfer all remaining, but leave enough fund to pay for the XCM transaction.
 			let xcm_message = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1_990_000_000_000);
 
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 600_000_000, 10_000_000_000);
+			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 2_000_000_000, 10_000_000_000);
 
 			// Withdraw unbonded
 			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
@@ -161,7 +158,7 @@ mod karura_tests {
 			// Only leftover XCM fee remains in the account
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				9_626_666_690
+				9_377_722_480
 			);
 		});
 	}
