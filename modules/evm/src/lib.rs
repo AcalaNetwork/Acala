@@ -52,8 +52,8 @@ pub use module_evm_utility::{
 	Account,
 };
 pub use module_support::{
-	AddressMapping, DispatchableTask, EVMChainId, EVMManager, ExecutionMode, IdleScheduler, InvokeContext,
-	TransactionPayment, EVM as EVMTrait,
+	AddressMapping, DispatchableTask, EVMManager, ExecutionMode, IdleScheduler, InvokeContext, TransactionPayment,
+	EVM as EVMTrait,
 };
 pub use orml_traits::{currency::TransferAll, MultiCurrency};
 use primitive_types::{H160, H256, U256};
@@ -1783,8 +1783,9 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 	}
 }
 
-impl<T: Config> EVMChainId for Pallet<T> {
-	fn chain_id() -> u64 {
+pub struct EvmChainId<T>(PhantomData<T>);
+impl<T: Config> Get<u64> for EvmChainId<T> {
+	fn get() -> u64 {
 		Pallet::<T>::chain_id()
 	}
 }

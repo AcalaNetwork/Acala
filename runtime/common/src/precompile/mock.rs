@@ -30,7 +30,7 @@ use frame_support::{
 	PalletId, RuntimeDebug,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use module_evm::EvmTask;
+use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::mocks::MockStableAsset;
 use module_support::DispatchableTask;
@@ -458,7 +458,7 @@ impl module_evm_accounts::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Test>;
-	type ChainId = EVMModule;
+	type ChainId = EvmChainId<Test>;
 	type TransferAll = ();
 	type WeightInfo = ();
 }

@@ -23,7 +23,7 @@ use frame_support::{
 	weights::Weight,
 	ConsensusEngineId, RuntimeDebug,
 };
-use module_evm::EvmTask;
+use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{mocks::MockAddressMapping, DispatchableTask};
 use orml_traits::parameter_type_with_key;
@@ -187,7 +187,7 @@ impl module_evm_accounts::Config for TestRuntime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<TestRuntime>;
 	type TransferAll = Currencies;
-	type ChainId = EVM;
+	type ChainId = EvmChainId<TestRuntime>;
 	type WeightInfo = ();
 }
 
