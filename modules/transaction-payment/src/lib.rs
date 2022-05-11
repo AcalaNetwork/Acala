@@ -762,8 +762,17 @@ where
 	fn check_native_is_not_enough(who: &T::AccountId, fee: PalletBalanceOf<T>) -> Option<Balance> {
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
 		let total_native = <T as Config>::Currency::free_balance(who);
+
 		if fee.saturating_add(native_existential_deposit) <= total_native {
-			None
+			// User's locked balance can't be transferable, which means can't be used for fee payment.
+			if let Some(new_free_balance) = total_native.checked_sub(fee) {
+				if T::Currency::ensure_can_withdraw(who, fee, WithdrawReasons::TRANSACTION_PAYMENT, new_free_balance)
+					.is_ok()
+				{
+					return None;
+				}
+			}
+			Some(fee)
 		} else {
 			Some(fee.saturating_add(native_existential_deposit.saturating_sub(total_native)))
 		}
