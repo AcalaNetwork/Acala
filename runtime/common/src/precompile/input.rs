@@ -189,18 +189,8 @@ where
 	}
 
 	fn bool_at(&self, index: usize) -> Result<bool, Self::Error> {
-		let param = self.u64_at(index)?;
-		if param.is_one() {
-			Ok(true)
-		} else if param.is_zero() {
-			Ok(false)
-		} else {
-			Err(PrecompileFailure::Revert {
-				exit_status: ExitRevert::Reverted,
-				output: "failed to decode bool".into(),
-				cost: self.target_gas.unwrap_or_default(),
-			})
-		}
+		let param = self.u256_at(index)?;
+		Ok(!param.is_zero())
 	}
 }
 
