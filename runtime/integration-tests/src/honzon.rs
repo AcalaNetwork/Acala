@@ -685,16 +685,16 @@ fn cdp_engine_minimum_collateral_amount_works() {
 			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(ALICE),
 				NATIVE_CURRENCY,
-				(1 - native_minimum_collateral_amount) as i128,
-				(MinimumDebitValue::get() * -10) as i128,
+				1i128 - (native_minimum_collateral_amount as i128),
+				-((MinimumDebitValue::get() * 10) as i128),
 			));
 
 			// Other tokens collateral can be withdrawal in its entirety if debit is 0
 			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
-				(1 - relaychain_minimum_collateral_amount) as i128,
-				(MinimumDebitValue::get() * -10) as i128,
+				1i128 - (relaychain_minimum_collateral_amount as i128),
+				-((MinimumDebitValue::get() * 10) as i128),
 			));
 		});
 }
