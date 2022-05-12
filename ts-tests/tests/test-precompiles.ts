@@ -2,8 +2,7 @@ import { expect } from "chai";
 import ECRecoverTests from "../build/ECRecoverTests.json"
 import { describeWithAcala } from "./util";
 import { deployContract } from "ethereum-waffle";
-import { Contract, ethers, Signer, Wallet } from "ethers";
-import { BigNumber } from '@ethersproject/bignumber';
+import { BigNumber, Contract, ethers, Signer, Wallet } from "ethers";
 
 describeWithAcala("Acala RPC (Precompile)", (context) => {
 	let alice: Signer;
