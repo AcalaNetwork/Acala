@@ -233,6 +233,11 @@ fn transfer_debit_works() {
 			HonzonModule::transfer_debit(Origin::signed(BOB), BTC, DOT, 100),
 			ArithmeticError::Underflow
 		);
+		// Won't work when transfering more debit than is present
+		assert_noop!(
+			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 1_000),
+			ArithmeticError::Underflow
+		);
 		// Below minimum collateral threshold for the BTC CDP
 		assert_noop!(
 			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 50),
