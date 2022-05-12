@@ -17,7 +17,6 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::FullCodec;
-use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -159,5 +158,5 @@ pub trait HonzonManager<AccountId, CurrencyId, Amount, Balance> {
 		debit_adjustment: Amount,
 	) -> DispatchResult;
 
-	fn close_loan_by_dex(who: &AccountId, currency_id: CurrencyId, max_collateral_amount: Balance) -> DispatchResult;
+	fn close_loan_by_dex(who: AccountId, currency_id: CurrencyId, max_collateral_amount: Balance) -> DispatchResult;
 }

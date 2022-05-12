@@ -143,13 +143,7 @@ pub mod module {
 			debit_adjustment: Amount,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-
-			// not allowed to adjust the debit after system shutdown
-			if !debit_adjustment.is_zero() {
-				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-			}
-			<cdp_engine::Pallet<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
-			Ok(())
+			Self::do_adjust_loan(&who, currency_id, collateral_adjustment, debit_adjustment)
 		}
 
 		/// Close caller's CDP which has debit but still in safe by use collateral to swap
@@ -166,9 +160,7 @@ pub mod module {
 			#[pallet::compact] max_collateral_amount: Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(who, currency_id, max_collateral_amount)?;
-			Ok(())
+			Self::do_close_loan_by_dex(who, currency_id, max_collateral_amount)
 		}
 
 		/// Transfer the whole CDP of `from` under `currency_id` to caller's CDP
@@ -319,6 +311,30 @@ impl<T: Config> Pallet<T> {
 		);
 		Ok(())
 	}
+
+	fn do_adjust_loan(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
+		debit_adjustment: Amount,
+	) -> DispatchResult {
+		// not allowed to adjust the debit after system shutdown
+		if !debit_adjustment.is_zero() {
+			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
+		}
+		<cdp_engine::Pallet<T>>::adjust_position(who, currency_id, collateral_adjustment, debit_adjustment)?;
+		Ok(())
+	}
+
+	fn do_close_loan_by_dex(
+		who: T::AccountId,
+		currency_id: CurrencyId,
+		max_collateral_amount: Balance,
+	) -> DispatchResult {
+		ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
+		<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(who, currency_id, max_collateral_amount)?;
+		Ok(())
+	}
 }
 
 impl<T: Config> HonzonManager<T::AccountId, CurrencyId, Amount, Balance> for Pallet<T> {
@@ -328,14 +344,10 @@ impl<T: Config> HonzonManager<T::AccountId, CurrencyId, Amount, Balance> for Pal
 		collateral_adjustment: Amount,
 		debit_adjustment: Amount,
 	) -> DispatchResult {
-		Ok(())
+		Self::do_adjust_loan(who, currency_id, collateral_adjustment, debit_adjustment)
 	}
 
-	fn close_loan_by_dex(
-		who: &T::AccountId,
-		currency_id: CurrencyId,
-		max_collateral_amount: Balance,
-	) -> DispatchResult {
-		Ok(())
+	fn close_loan_by_dex(who: T::AccountId, currency_id: CurrencyId, max_collateral_amount: Balance) -> DispatchResult {
+		Self::do_close_loan_by_dex(who, currency_id, max_collateral_amount)
 	}
 }
