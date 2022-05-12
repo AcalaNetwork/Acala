@@ -100,7 +100,7 @@ pub fn acala_dev_config() -> Result<ChainSpec, String> {
 	))
 }
 
-fn acala_devnet_genesis(
+fn acala_dev_genesis(
 	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AuraId)>,
 	root_key: AccountId,
