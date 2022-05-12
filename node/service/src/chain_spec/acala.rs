@@ -69,7 +69,7 @@ pub fn acala_dev_config() -> Result<ChainSpec, String> {
 		"acala-dev",
 		ChainType::Development,
 		move || {
-			acala_devnet_genesis(
+			acala_dev_genesis(
 				wasm_binary,
 				// Initial PoA authorities
 				vec![get_parachain_authority_keys_from_seed("Alice")],
