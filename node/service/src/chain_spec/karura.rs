@@ -69,7 +69,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 		"karura-dev",
 		ChainType::Development,
 		move || {
-			karura_devnet_genesis(
+			karura_dev_genesis(
 				wasm_binary,
 				// Initial PoA authorities
 				vec![get_parachain_authority_keys_from_seed("Alice")],
