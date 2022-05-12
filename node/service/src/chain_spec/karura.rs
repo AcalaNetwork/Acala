@@ -100,7 +100,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 	))
 }
 
-fn karura_devnet_genesis(
+fn karura_dev_genesis(
 	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AuraId)>,
 	root_key: AccountId,
