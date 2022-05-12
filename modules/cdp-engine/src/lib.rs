@@ -816,8 +816,8 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// If reverse is false, exchange stable coin with given token.
-	/// If reverse is true, exchange given token with stable coin.
+	/// If reverse is false, swap stable coin to given `token`.
+	/// If reverse is true, swap given `token` to stable coin.
 	fn swap_stable_and_lp_token(
 		token: CurrencyId,
 		amount: Balance,
@@ -1086,7 +1086,7 @@ impl<T: Config> Pallet<T> {
 		// refund remain collateral to CDP owner
 		let refund_collateral_amount = collateral
 			.checked_sub(actual_supply_collateral)
-			.expect("swap succeed means collateral >= actual_supply_collateral; qed");
+			.expect("swap success means collateral >= actual_supply_collateral; qed");
 		<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
 
 		Self::deposit_event(Event::CloseCDPInDebitByDEX {
@@ -1207,7 +1207,7 @@ impl<T: Config> Pallet<T> {
 			) {
 			let refund_collateral_amount = amount
 				.checked_sub(actual_supply_collateral)
-				.expect("swap succeed means collateral >= actual_supply_collateral; qed");
+				.expect("swap success means collateral >= actual_supply_collateral; qed");
 
 			// refund remain collateral to CDP owner
 			if !refund_collateral_amount.is_zero() {
