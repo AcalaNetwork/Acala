@@ -746,7 +746,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		}
 		let caller = parent.metadata().caller().expect("has checked; qed");
 
-		let is_published = self.substate.metadata.call_address().map_or(false, |addr| {
+		let is_published = self.substate.metadata.origin_code_address().map_or(false, |addr| {
 			Pallet::<T>::accounts(addr).map_or(false, |account| account.contract_info.map_or(false, |v| v.published))
 		});
 
