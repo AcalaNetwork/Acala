@@ -49,8 +49,10 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+use frame_support::pallet_prelude::InvalidTransaction;
 use frame_system::{EnsureRoot, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
+use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
@@ -85,9 +87,11 @@ pub use sp_runtime::BuildStorage;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
+	currency::AssetIds,
 	define_combined_task,
-	evm::{AccessListItem, EstimateResourcesRequest, EvmAddress},
+	evm::{AccessListItem, EstimateResourcesRequest, EthereumTransactionMessage, EvmAddress},
 	task::TaskResult,
+	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
 	DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
 	TradingPair,
@@ -98,11 +102,12 @@ pub use runtime_common::{
 	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
-	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
-	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength,
-	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
-	TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
+	ExistentialDepositsTimesOneHundred, FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight,
+	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
+	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
+	RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
+	PHA, RENBTC, VSKSM,
 };
 pub use xcm::latest::prelude::*;
 
@@ -125,7 +130,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2050,
+	spec_version: 2061,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -211,13 +216,12 @@ impl Contains<Call> for BaseCallFilter {
 			return false;
 		}
 
-		let is_evm = matches!(
+		let is_honzon_bridge = matches!(
 			call,
-			Call::EVM(_) | Call::EvmAccounts(_) // EvmBridge / EvmManager does not have call
-			| Call::HonzonBridge(_) // HonzonBridge isn't enabled until wAUSD is created. Issue #1967
+			Call::HonzonBridge(_) // HonzonBridge isn't enabled until wAUSD is created. Issue #1967
 		);
-		if is_evm {
-			// no evm call
+		if is_honzon_bridge {
+			// no honzon_bridge
 			return false;
 		}
 
@@ -568,7 +572,9 @@ parameter_types! {
 	pub BountyDepositBase: Balance = deposit(1, 0);
 	pub const BountyDepositPayoutDelay: BlockNumber = 4 * DAYS;
 	pub const BountyUpdatePeriod: BlockNumber = 35 * DAYS;
-	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
+	pub const CuratorDepositMultiplier: Permill = Permill::from_percent(50);
+	pub CuratorDepositMin: Balance = dollar(KAR);
+	pub CuratorDepositMax: Balance = 100 * dollar(KAR);
 	pub BountyValueMinimum: Balance = 5 * dollar(KAR);
 	pub DataDepositPerByte: Balance = deposit(0, 1);
 	pub const MaximumReasonLength: u32 = 8192;
@@ -600,8 +606,10 @@ impl pallet_bounties::Config for Runtime {
 	type BountyDepositBase = BountyDepositBase;
 	type BountyDepositPayoutDelay = BountyDepositPayoutDelay;
 	type BountyUpdatePeriod = BountyUpdatePeriod;
-	type BountyCuratorDeposit = BountyCuratorDeposit;
 	type BountyValueMinimum = BountyValueMinimum;
+	type CuratorDepositMultiplier = CuratorDepositMultiplier;
+	type CuratorDepositMin = CuratorDepositMin;
+	type CuratorDepositMax = CuratorDepositMax;
 	type DataDepositPerByte = DataDepositPerByte;
 	type MaximumReasonLength = MaximumReasonLength;
 	type WeightInfo = ();
@@ -756,7 +764,7 @@ parameter_type_with_key! {
 					NativeTokenExistentialDeposit::get()
 				} else if let CurrencyId::Erc20(address) = currency_id_0 {
 					// LP token with erc20
-					AssetIdMaps::<Runtime>::get_erc20_asset_metadata(address).
+					AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(address)).
 						map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 				} else {
 					Self::get(&currency_id_0)
@@ -764,12 +772,12 @@ parameter_type_with_key! {
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
-				AssetIdMaps::<Runtime>::get_stable_asset_metadata(*stable_asset_id).
+				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetId(*stable_asset_id)).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 			},
 			CurrencyId::LiquidCrowdloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::KSM)), // the same as KSM
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
-				AssetIdMaps::<Runtime>::get_foreign_asset_metadata(*foreign_asset_id).
+				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::ForeignAssetId(*foreign_asset_id)).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 			},
 		}
@@ -796,6 +804,8 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, KaruraTreasuryAccount>;
 	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = DustRemovalWhitelist;
 }
 
@@ -854,6 +864,7 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
+	type GasToWeight = GasToWeight;
 	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type OnDust = module_currencies::TransferDust<Runtime, KaruraTreasuryAccount>;
 }
@@ -999,7 +1010,7 @@ where
 			frame_system::CheckTxVersion::<Runtime>::new(),
 			frame_system::CheckGenesis::<Runtime>::new(),
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
-			frame_system::CheckNonce::<Runtime>::from(nonce),
+			runtime_common::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			module_evm::SetEvmOrigin::<Runtime>::new(),
@@ -1030,7 +1041,6 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, KAR, CurrencyId::StableAssetPoolToken(0)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
@@ -1041,11 +1051,12 @@ parameter_types! {
 impl module_cdp_engine::Config for Runtime {
 	type Event = Event;
 	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
 	type MinimumDebitValue = MinimumDebitValue;
+	type MinimumCollateralAmount =
+		ExistentialDepositsTimesOneHundred<GetNativeCurrencyId, NativeTokenExistentialDeposit, ExistentialDeposits>;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;
@@ -1067,12 +1078,13 @@ impl module_honzon::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type DepositPerAuthorization = DepositPerAuthorization;
+	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type WeightInfo = weights::module_honzon::WeightInfo<Runtime>;
 }
 
 impl module_emergency_shutdown::Config for Runtime {
 	type Event = Event;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type PriceSource = Prices;
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
@@ -1300,6 +1312,18 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::Dex(module_dex::Call::remove_liquidity { .. })
 				)
 			}
+			ProxyType::StableAssetSwap => {
+				matches!(c, Call::StableAsset(nutsfinance_stable_asset::Call::swap { .. }))
+			}
+			ProxyType::StableAssetLiquidity => {
+				matches!(
+					c,
+					Call::StableAsset(nutsfinance_stable_asset::Call::mint { .. })
+						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_proportion { .. })
+						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_single { .. })
+						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_multi { .. })
+				)
+			}
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
@@ -1340,8 +1364,8 @@ parameter_types! {
 	pub const ChainId: u64 = 686;
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub DeveloperDeposit: Balance = 100 * dollar(KAR);
-	pub PublicationFee: Balance = 10000 * dollar(KAR);
+	pub DeveloperDeposit: Balance = 1_000 * dollar(KAR);
+	pub PublicationFee: Balance = 1_000_000 * dollar(KAR);
 	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::karura();
 }
 
@@ -1430,7 +1454,7 @@ parameter_types! {
 		2,  // EMrKvFy7xLgzzdgruXT9oXERt553igEScqgSjoDm3GewPSA
 	];
 	pub MintThreshold: Balance = dollar(KSM);
-	pub RedeemThreshold: Balance = 10 * dollar(LKSM);
+	pub RedeemThreshold: Balance = dollar(LKSM);
 }
 
 impl module_homa::Config for Runtime {
@@ -1718,13 +1742,14 @@ pub type SignedExtra = (
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
 	frame_system::CheckEra<Runtime>,
-	frame_system::CheckNonce<Runtime>,
+	runtime_common::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type UncheckedExtrinsic =
+	AcalaUncheckedExtrinsic<Call, SignedExtra, ConvertEthereumTx, StorageDepositPerByte, TxFeePerGas>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
@@ -1968,7 +1993,7 @@ impl_runtime_apis! {
 			let utx = UncheckedExtrinsic::decode_all_with_depth_limit(sp_api::MAX_EXTRINSIC_DEPTH, &mut &*extrinsic)
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
-			let request = match utx.function {
+			let request = match utx.0.function {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
 					// use MAX_VALUE for no limit
 					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
@@ -2108,6 +2133,63 @@ cumulus_pallet_parachain_system::register_validate_block!(
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 	CheckInherents = CheckInherents,
 );
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct ConvertEthereumTx;
+
+impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtra), InvalidTransaction>>
+	for ConvertEthereumTx
+{
+	fn convert(
+		(call, mut extra): (Call, SignedExtra),
+	) -> Result<(EthereumTransactionMessage, SignedExtra), InvalidTransaction> {
+		match call {
+			Call::EVM(module_evm::Call::eth_call {
+				action,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list,
+				valid_until,
+			}) => {
+				if System::block_number() > valid_until {
+					return Err(InvalidTransaction::Stale);
+				}
+
+				let (_, _, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
+
+				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
+					// require immortal
+					return Err(InvalidTransaction::BadProof);
+				}
+
+				let nonce = check_nonce.nonce;
+				let tip = charge.0;
+
+				extra.5.mark_as_ethereum_tx(valid_until);
+
+				Ok((
+					EthereumTransactionMessage {
+						chain_id: ChainId::get(),
+						genesis: System::block_hash(0),
+						nonce,
+						tip,
+						gas_limit,
+						storage_limit,
+						action,
+						value,
+						input,
+						valid_until,
+						access_list,
+					},
+					extra,
+				))
+			}
+			_ => Err(InvalidTransaction::BadProof),
+		}
+	}
+}
 
 #[cfg(test)]
 mod tests {

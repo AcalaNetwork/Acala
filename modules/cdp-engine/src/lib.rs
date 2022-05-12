@@ -35,7 +35,7 @@ use frame_system::{
 	pallet_prelude::*,
 };
 use loans::Position;
-use orml_traits::{Change, MultiCurrency};
+use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_utilities::OffchainErr;
 use primitives::{Amount, Balance, CurrencyId};
 use rand_chacha::{
@@ -129,10 +129,6 @@ pub mod module {
 		/// always do this.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
-		/// The list of valid collateral currency types
-		#[pallet::constant]
-		type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
-
 		/// The default liquidation ratio for all collateral types of CDP
 		#[pallet::constant]
 		type DefaultLiquidationRatio: Get<Ratio>;
@@ -148,6 +144,9 @@ pub mod module {
 		/// The minimum debit value to avoid debit dust
 		#[pallet::constant]
 		type MinimumDebitValue: Get<Balance>;
+
+		/// Gets the minimum collateral value for the given currency.
+		type MinimumCollateralAmount: GetByKey<CurrencyId, Balance>;
 
 		/// Stablecoin currency id
 		#[pallet::constant]
@@ -211,6 +210,8 @@ pub mod module {
 		InvalidCollateralType,
 		/// Remain debit value in CDP below the dust amount
 		RemainDebitValueTooSmall,
+		/// Remain collateral value in CDP below the dust amount
+		CollateralAmountBelowMinimum,
 		/// Feed price is invalid
 		InvalidFeedPrice,
 		/// No debit value in CDP so that it cannot be settled
@@ -278,8 +279,6 @@ pub mod module {
 			collateral_type: CurrencyId,
 			new_total_debit_value: Balance,
 		},
-		/// The global interest rate per sec for all types of collateral updated.
-		GlobalInterestRatePerSecUpdated { new_global_interest_rate_per_sec: Rate },
 	}
 
 	/// Mapping from collateral type to its exchange rate of debit units and
@@ -290,19 +289,12 @@ pub mod module {
 	#[pallet::getter(fn debit_exchange_rate)]
 	pub type DebitExchangeRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, ExchangeRate, OptionQuery>;
 
-	/// Global interest rate per sec for all types of collateral
+	/// Mapping from valid collateral type to its risk management params
 	///
-	/// GlobalInterestRatePerSec: Rate
-	#[pallet::storage]
-	#[pallet::getter(fn global_interest_rate_per_sec)]
-	pub type GlobalInterestRatePerSec<T: Config> = StorageValue<_, Rate, ValueQuery>;
-
-	/// Mapping from collateral type to its risk management params
-	///
-	/// CollateralParams: CurrencyId => RiskManagementParams
+	/// CollateralParams: CurrencyId => Option<RiskManagementParams>
 	#[pallet::storage]
 	#[pallet::getter(fn collateral_params)]
-	pub type CollateralParams<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, RiskManagementParams, ValueQuery>;
+	pub type CollateralParams<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, RiskManagementParams, OptionQuery>;
 
 	/// Timestamp in seconds of the last interest accumulation
 	///
@@ -323,7 +315,6 @@ pub mod module {
 			Option<Ratio>,
 			Balance,
 		)>,
-		pub global_interest_rate_per_sec: Rate,
 	}
 
 	#[pallet::genesis_build]
@@ -350,7 +341,6 @@ pub mod module {
 					);
 				},
 			);
-			GlobalInterestRatePerSec::<T>::put(self.global_interest_rate_per_sec);
 		}
 	}
 
@@ -438,30 +428,13 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Update global parameters related to risk management of CDP
-		///
-		/// The dispatch origin of this call must be `UpdateOrigin`.
-		///
-		/// - `global_interest_rate_per_sec`: global interest rate per sec.
-		#[pallet::weight((<T as Config>::WeightInfo::set_global_params(), DispatchClass::Operational))]
-		#[transactional]
-		pub fn set_global_params(origin: OriginFor<T>, global_interest_rate_per_sec: Rate) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
-			GlobalInterestRatePerSec::<T>::put(global_interest_rate_per_sec);
-			Self::deposit_event(Event::GlobalInterestRatePerSecUpdated {
-				new_global_interest_rate_per_sec: global_interest_rate_per_sec,
-			});
-			Ok(())
-		}
-
 		/// Update parameters related to risk management of CDP under specific
 		/// collateral type
 		///
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `currency_id`: collateral type.
-		/// - `interest_rate_per_sec`: extra interest rate per sec, `None` means do not update,
-		///   `Some(None)` means update it to `None`.
+		/// - `interest_rate_per_sec`: Interest rate per sec, `None` means do not update,
 		/// - `liquidation_ratio`: liquidation ratio, `None` means do not update, `Some(None)` means
 		///   update it to `None`.
 		/// - `liquidation_penalty`: liquidation penalty, `None` means do not update, `Some(None)`
@@ -481,12 +454,8 @@ pub mod module {
 			maximum_total_debit_value: ChangeBalance,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			ensure!(
-				T::CollateralCurrencyIds::get().contains(&currency_id),
-				Error::<T>::InvalidCollateralType,
-			);
 
-			let mut collateral_params = Self::collateral_params(currency_id);
+			let mut collateral_params = Self::collateral_params(currency_id).unwrap_or_default();
 			if let Change::NewValue(update) = interest_rate_per_sec {
 				collateral_params.interest_rate_per_sec = update;
 				Self::deposit_event(Event::InterestRatePerSecUpdated {
@@ -578,36 +547,37 @@ impl<T: Config> Pallet<T> {
 		if !T::EmergencyShutdown::is_shutdown() && !now_secs.is_zero() {
 			let interval_secs = now_secs.saturating_sub(last_accumulation_secs);
 
-			for currency_id in T::CollateralCurrencyIds::get() {
-				let rate_to_accumulate =
-					Self::compound_interest_rate(Self::get_interest_rate_per_sec(currency_id), interval_secs);
-				let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
+			for currency_id in Self::get_collateral_currency_ids() {
+				if let Ok(interest_rate) = Self::get_interest_rate_per_sec(currency_id) {
+					let rate_to_accumulate = Self::compound_interest_rate(interest_rate, interval_secs);
+					let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
 
-				if !rate_to_accumulate.is_zero() && !total_debits.is_zero() {
-					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
-					let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(rate_to_accumulate);
-					let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(total_debits);
+					if !rate_to_accumulate.is_zero() && !total_debits.is_zero() {
+						let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
+						let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(rate_to_accumulate);
+						let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(total_debits);
 
-					// issue stablecoin to surplus pool
-					let res = <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance);
-					match res {
-						Ok(_) => {
-							// update exchange rate when issue success
-							let new_debit_exchange_rate =
-								debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
-							DebitExchangeRate::<T>::insert(currency_id, new_debit_exchange_rate);
-						}
-						Err(e) => {
-							log::warn!(
-								target: "cdp-engine",
-								"on_system_surplus: failed to on system surplus {:?}: {:?}. \
-								This is unexpected but should be safe",
-								issued_stable_coin_balance, e
-							);
+						// issue stablecoin to surplus pool
+						let res = <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance);
+						match res {
+							Ok(_) => {
+								// update exchange rate when issue success
+								let new_debit_exchange_rate =
+									debit_exchange_rate.saturating_add(debit_exchange_rate_increment);
+								DebitExchangeRate::<T>::insert(currency_id, new_debit_exchange_rate);
+							}
+							Err(e) => {
+								log::warn!(
+									target: "cdp-engine",
+									"on_system_surplus: failed to on system surplus {:?}: {:?}. \
+									This is unexpected but should be safe",
+									issued_stable_coin_balance, e
+								);
+							}
 						}
 					}
+					count += 1;
 				}
-				count += 1;
 			}
 		}
 
@@ -647,7 +617,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn _offchain_worker() -> Result<(), OffchainErr> {
-		let collateral_currency_ids = T::CollateralCurrencyIds::get();
+		let collateral_currency_ids = Self::get_collateral_currency_ids();
 		if collateral_currency_ids.len().is_zero() {
 			return Ok(());
 		}
@@ -754,29 +724,36 @@ impl<T: Config> Pallet<T> {
 		if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, stable_currency_id) {
 			let collateral_ratio =
 				Self::calculate_collateral_ratio(currency_id, collateral_amount, debit_amount, feed_price);
-			if collateral_ratio < Self::get_liquidation_ratio(currency_id) {
-				CDPStatus::Unsafe
-			} else {
-				CDPStatus::Safe
+			match Self::get_liquidation_ratio(currency_id) {
+				Ok(liquidation_ratio) => {
+					if collateral_ratio < liquidation_ratio {
+						CDPStatus::Unsafe
+					} else {
+						CDPStatus::Safe
+					}
+				}
+				Err(e) => CDPStatus::ChecksFailed(e),
 			}
 		} else {
 			CDPStatus::ChecksFailed(Error::<T>::InvalidFeedPrice.into())
 		}
 	}
 
-	pub fn maximum_total_debit_value(currency_id: CurrencyId) -> Balance {
-		Self::collateral_params(currency_id).maximum_total_debit_value
+	pub fn maximum_total_debit_value(currency_id: CurrencyId) -> Result<Balance, DispatchError> {
+		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
+		Ok(params.maximum_total_debit_value)
 	}
 
-	pub fn required_collateral_ratio(currency_id: CurrencyId) -> Option<Ratio> {
-		Self::collateral_params(currency_id).required_collateral_ratio
+	pub fn required_collateral_ratio(currency_id: CurrencyId) -> Result<Option<Ratio>, DispatchError> {
+		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
+		Ok(params.required_collateral_ratio)
 	}
 
-	pub fn get_interest_rate_per_sec(currency_id: CurrencyId) -> Rate {
-		Self::collateral_params(currency_id)
+	pub fn get_interest_rate_per_sec(currency_id: CurrencyId) -> Result<Rate, DispatchError> {
+		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
+		params
 			.interest_rate_per_sec
-			.unwrap_or_default()
-			.saturating_add(Self::global_interest_rate_per_sec())
+			.ok_or_else(|| Error::<T>::InvalidCollateralType.into())
 	}
 
 	pub fn compound_interest_rate(rate_per_sec: Rate, secs: u64) -> Rate {
@@ -786,16 +763,16 @@ impl<T: Config> Pallet<T> {
 			.saturating_sub(Rate::one())
 	}
 
-	pub fn get_liquidation_ratio(currency_id: CurrencyId) -> Ratio {
-		Self::collateral_params(currency_id)
-			.liquidation_ratio
-			.unwrap_or_else(T::DefaultLiquidationRatio::get)
+	pub fn get_liquidation_ratio(currency_id: CurrencyId) -> Result<Ratio, DispatchError> {
+		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
+		Ok(params.liquidation_ratio.unwrap_or_else(T::DefaultLiquidationRatio::get))
 	}
 
-	pub fn get_liquidation_penalty(currency_id: CurrencyId) -> Rate {
-		Self::collateral_params(currency_id)
+	pub fn get_liquidation_penalty(currency_id: CurrencyId) -> Result<Rate, DispatchError> {
+		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
+		Ok(params
 			.liquidation_penalty
-			.unwrap_or_else(T::DefaultLiquidationPenalty::get)
+			.unwrap_or_else(T::DefaultLiquidationPenalty::get))
 	}
 
 	pub fn get_debit_exchange_rate(currency_id: CurrencyId) -> ExchangeRate {
@@ -831,7 +808,7 @@ impl<T: Config> Pallet<T> {
 		debit_adjustment: Amount,
 	) -> DispatchResult {
 		ensure!(
-			T::CollateralCurrencyIds::get().contains(&currency_id),
+			CollateralParams::<T>::contains_key(&currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 		<LoansOf<T>>::adjust_position(who, currency_id, collateral_adjustment, debit_adjustment)?;
@@ -851,7 +828,7 @@ impl<T: Config> Pallet<T> {
 		min_increase_collateral: Balance,
 	) -> DispatchResult {
 		ensure!(
-			T::CollateralCurrencyIds::get().contains(&currency_id),
+			CollateralParams::<T>::contains_key(&currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 		let loans_module_account = <LoansOf<T>>::account_id();
@@ -940,7 +917,7 @@ impl<T: Config> Pallet<T> {
 
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
 		// check the CDP if is still at valid risk
-		Self::check_position_valid(currency_id, collateral, debit, true)?;
+		Self::check_position_valid(currency_id, collateral, debit, false)?;
 		// debit cap check due to new issued stable coin
 		Self::check_debit_cap(currency_id, <LoansOf<T>>::total_positions(currency_id).debit)?;
 		Ok(())
@@ -960,7 +937,7 @@ impl<T: Config> Pallet<T> {
 		min_decrease_debit_value: Balance,
 	) -> DispatchResult {
 		ensure!(
-			T::CollateralCurrencyIds::get().contains(&currency_id),
+			CollateralParams::<T>::contains_key(&currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 
@@ -1155,7 +1132,8 @@ impl<T: Config> Pallet<T> {
 		<LoansOf<T>>::confiscate_collateral_and_debit(&who, currency_id, collateral, debit)?;
 
 		let bad_debt_value = Self::get_debit_value(currency_id, debit);
-		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
+		let liquidation_penalty = Self::get_liquidation_penalty(currency_id)?;
+		let target_stable_amount = liquidation_penalty.saturating_mul_acc_int(bad_debt_value);
 
 		match currency_id {
 			CurrencyId::DexShare(dex_share_0, dex_share_1) => {
@@ -1275,6 +1253,9 @@ impl<T: Config> Pallet<T> {
 
 		Ok(())
 	}
+	pub fn get_collateral_currency_ids() -> Vec<CurrencyId> {
+		CollateralParams::<T>::iter_keys().collect()
+	}
 }
 
 impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pallet<T> {
@@ -1297,7 +1278,7 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 
 			// check the required collateral ratio
 			if check_required_ratio {
-				if let Some(required_collateral_ratio) = Self::required_collateral_ratio(currency_id) {
+				if let Some(required_collateral_ratio) = Self::required_collateral_ratio(currency_id)? {
 					ensure!(
 						collateral_ratio >= required_collateral_ratio,
 						Error::<T>::BelowRequiredCollateralRatio
@@ -1306,15 +1287,19 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 			}
 
 			// check the liquidation ratio
-			ensure!(
-				collateral_ratio >= Self::get_liquidation_ratio(currency_id),
-				Error::<T>::BelowLiquidationRatio
-			);
+			let liquidation_ratio = Self::get_liquidation_ratio(currency_id)?;
+			ensure!(collateral_ratio >= liquidation_ratio, Error::<T>::BelowLiquidationRatio);
 
 			// check the minimum_debit_value
 			ensure!(
 				debit_value >= T::MinimumDebitValue::get(),
 				Error::<T>::RemainDebitValueTooSmall,
+			);
+		} else {
+			// check the collateral amount is above minimum when debit is 0
+			ensure!(
+				collateral_balance >= T::MinimumCollateralAmount::get(&currency_id),
+				Error::<T>::CollateralAmountBelowMinimum,
 			);
 		}
 
@@ -1322,12 +1307,20 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 	}
 
 	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: Balance) -> DispatchResult {
-		let hard_cap = Self::maximum_total_debit_value(currency_id);
+		let hard_cap = Self::maximum_total_debit_value(currency_id)?;
 		let total_debit_value = Self::get_debit_value(currency_id, total_debit_balance);
 
-		ensure!(total_debit_value <= hard_cap, Error::<T>::ExceedDebitValueHardCap,);
+		ensure!(total_debit_value <= hard_cap, Error::<T>::ExceedDebitValueHardCap);
 
 		Ok(())
+	}
+}
+
+pub struct CollateralCurrencyIds<T>(PhantomData<T>);
+// Returns a list of currently supported/configured collateral currency
+impl<T: Config> Get<Vec<CurrencyId>> for CollateralCurrencyIds<T> {
+	fn get() -> Vec<CurrencyId> {
+		Pallet::<T>::get_collateral_currency_ids()
 	}
 }
 

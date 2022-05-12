@@ -217,6 +217,21 @@ impl Output {
 		ethabi::encode(&[out])
 	}
 
+	pub fn encode_u128_array(&self, b: Vec<u128>) -> Vec<u8> {
+		let result: Vec<Token> = b.iter().map(|x| Token::Uint(U256::from(*x))).collect();
+		let out = Token::FixedArray(result);
+		ethabi::encode(&[out])
+	}
+
+	pub fn encode_address_array(&self, b: Vec<H160>) -> Vec<u8> {
+		let result: Vec<Token> = b
+			.iter()
+			.map(|x| Token::Address(H160::from_slice(x.as_bytes())))
+			.collect();
+		let out = Token::FixedArray(result);
+		ethabi::encode(&[out])
+	}
+
 	pub fn encode_bytes(&self, b: &[u8]) -> Vec<u8> {
 		let out = Token::Bytes(b.to_vec());
 		ethabi::encode(&[out])

@@ -92,6 +92,8 @@ impl tokens::Config for Runtime {
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
 	type MaxLocks = ConstU32<100>;
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -138,6 +140,13 @@ ord_parameter_types! {
 	pub const PublicationFee: u64 = 200;
 }
 
+pub struct GasToWeight;
+impl Convert<u64, u64> for GasToWeight {
+	fn convert(a: u64) -> u64 {
+		a
+	}
+}
+
 impl module_evm::Config for Runtime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = PalletBalances;
@@ -149,7 +158,7 @@ impl module_evm::Config for Runtime {
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type ChainId = ();
-	type GasToWeight = ();
+	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ();
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
@@ -178,6 +187,7 @@ impl Config for Runtime {
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
+	type GasToWeight = GasToWeight;
 	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type OnDust = crate::TransferDust<Runtime, DustAccount>;
 }

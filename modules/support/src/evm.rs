@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode};
+use primitives::currency::AssetIds;
 use primitives::{
 	evm::{CallInfo, EvmAddress},
 	CurrencyId,
@@ -164,13 +165,9 @@ pub trait AddressMapping<AccountId> {
 }
 
 /// A mapping between AssetId and AssetMetadata.
-pub trait AssetIdMapping<StableAssetPoolId, ForeignAssetId, MultiLocation, AssetMetadata> {
-	/// Returns the AssetMetadata associated with a given contract address.
-	fn get_erc20_asset_metadata(contract: EvmAddress) -> Option<AssetMetadata>;
-	/// Returns the AssetMetadata associated with a given StableAssetPoolId.
-	fn get_stable_asset_metadata(stable_asset_id: StableAssetPoolId) -> Option<AssetMetadata>;
-	/// Returns the AssetMetadata associated with a given ForeignAssetId.
-	fn get_foreign_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
+pub trait AssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
+	/// Returns the AssetMetadata associated with a given `AssetIds`.
+	fn get_asset_metadata(asset_ids: AssetIds) -> Option<AssetMetadata>;
 	/// Returns the MultiLocation associated with a given ForeignAssetId.
 	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation>;
 	/// Returns the CurrencyId associated with a given MultiLocation.
@@ -222,5 +219,29 @@ impl Erc20InfoMapping for () {
 
 	fn decode_evm_address(_v: EvmAddress) -> Option<CurrencyId> {
 		None
+	}
+}
+
+pub mod limits {
+	pub struct Limit {
+		pub gas: u64,
+		pub storage: u32,
+	}
+
+	impl Limit {
+		pub const fn new(gas: u64, storage: u32) -> Self {
+			Self { gas, storage }
+		}
+	}
+
+	pub mod erc20 {
+		use super::*;
+
+		pub const NAME: Limit = Limit::new(100_000, 0);
+		pub const SYMBOL: Limit = Limit::new(100_000, 0);
+		pub const DECIMALS: Limit = Limit::new(100_000, 0);
+		pub const TOTAL_SUPPLY: Limit = Limit::new(100_000, 0);
+		pub const BALANCE_OF: Limit = Limit::new(100_000, 0);
+		pub const TRANSFER: Limit = Limit::new(200_000, 960);
 	}
 }
