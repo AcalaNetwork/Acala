@@ -26,7 +26,7 @@ use module_evm::{runner::state::PrecompileFailure, ExitRevert};
 use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
 use primitives::{Balance, CurrencyId, DexShare};
 use sp_core::{H160, U256};
-use sp_runtime::traits::{Convert, One, Zero};
+use sp_runtime::traits::Convert;
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
