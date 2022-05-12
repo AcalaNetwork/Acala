@@ -52,7 +52,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 	) -> Result<(Balance, Balance), DispatchError>;
 
 	/// A swap strategy using best price trading path.
-	fn swap_supply_with_best_price_swap_path(
+	fn swap_with_best_price(
 		who: &AccountId,
 		supply: CurrencyId,
 		target: CurrencyId,

@@ -837,7 +837,7 @@ impl<T: Config> Pallet<T> {
 			(stable_currency_id, token)
 		};
 
-		T::DEX::swap_supply_with_best_price_swap_path(
+		T::DEX::swap_with_best_price(
 			&loans_module_account,
 			supply,
 			target,
@@ -904,7 +904,7 @@ impl<T: Config> Pallet<T> {
 			}
 			_ => {
 				// swap stable coin to collateral
-				T::DEX::swap_supply_with_best_price_swap_path(
+				T::DEX::swap_with_best_price(
 					&loans_module_account,
 					T::GetStableCurrencyId::get(),
 					currency_id,
@@ -985,7 +985,7 @@ impl<T: Config> Pallet<T> {
 			}
 			_ => {
 				// swap collateral to stable coin
-				T::DEX::swap_supply_with_best_price_swap_path(
+				T::DEX::swap_with_best_price(
 					&loans_module_account,
 					currency_id,
 					stable_currency_id,

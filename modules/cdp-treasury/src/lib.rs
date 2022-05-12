@@ -440,7 +440,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 					let amount = amounts[i];
 
 					if !amount.is_zero() {
-						let response = T::DEX::swap_supply_with_best_price_swap_path(
+						let response = T::DEX::swap_with_best_price(
 							&Self::account_id(),
 							redemption_currency,
 							T::GetStableCurrencyId::get(),
