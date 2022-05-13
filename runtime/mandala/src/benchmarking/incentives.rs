@@ -17,11 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, AccumulatePeriod, CollateralCurrencyIds, Currencies, CurrencyId, GetNativeCurrencyId,
-	GetStableCurrencyId, GetStakingCurrencyId, Incentives, Rate, Rewards, Runtime, System,
+	AccountId, AccumulatePeriod, Currencies, CurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
+	GetStakingCurrencyId, Incentives, Rate, Rewards, Runtime, System,
 };
 
-use super::utils::{dollar, set_balance};
+use super::{
+	get_benchmarking_collateral_currency_ids,
+	utils::{dollar, set_balance},
+};
 use frame_benchmarking::{account, whitelisted_caller, BenchmarkError};
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
@@ -40,8 +43,8 @@ runtime_benchmarks! {
 	{ Runtime, module_incentives }
 
 	on_initialize {
-		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
-		let currency_ids = CollateralCurrencyIds::get();
+		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
+		let currency_ids = get_benchmarking_collateral_currency_ids();
 		let block_number = AccumulatePeriod::get();
 
 		for i in 0 .. c {
@@ -88,8 +91,8 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), pool_id)
 
 	update_incentive_rewards {
-		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
-		let currency_ids = CollateralCurrencyIds::get();
+		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
+		let currency_ids = get_benchmarking_collateral_currency_ids();
 		let mut updates = vec![];
 
 		for i in 0 .. c {
@@ -99,8 +102,8 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, updates)
 
 	update_dex_saving_rewards {
-		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
-		let currency_ids = CollateralCurrencyIds::get();
+		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
+		let currency_ids = get_benchmarking_collateral_currency_ids();
 		let caller: AccountId = account("caller", 0, SEED);
 		let mut updates = vec![];
 		let base_currency_id = GetStableCurrencyId::get();
@@ -119,8 +122,8 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, updates)
 
 	update_claim_reward_deduction_rates {
-		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
-		let currency_ids = CollateralCurrencyIds::get();
+		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
+		let currency_ids = get_benchmarking_collateral_currency_ids();
 		let mut updates = vec![];
 
 		for i in 0 .. c {
