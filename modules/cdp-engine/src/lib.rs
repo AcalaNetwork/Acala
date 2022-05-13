@@ -214,7 +214,8 @@ pub mod module {
 		InvalidCollateralType,
 		/// Remain debit value in CDP below the dust amount
 		RemainDebitValueTooSmall,
-		/// Remain collateral value in CDP below the dust amount
+		/// Remain collateral value in CDP below the dust amount.
+		/// Withdraw all collateral or leave more than the minimum.
 		CollateralAmountBelowMinimum,
 		/// Feed price is invalid
 		InvalidFeedPrice,
@@ -1294,8 +1295,8 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 				debit_value >= T::MinimumDebitValue::get(),
 				Error::<T>::RemainDebitValueTooSmall,
 			);
-		} else {
-			// check the collateral amount is above minimum when debit is 0
+		} else if !collateral_balance.is_zero() {
+			// If there are any collateral remaining, then it must be above the minimum
 			ensure!(
 				collateral_balance >= T::MinimumCollateralAmount::get(&currency_id),
 				Error::<T>::CollateralAmountBelowMinimum,

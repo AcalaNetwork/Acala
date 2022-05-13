@@ -1774,6 +1774,7 @@ fn minimal_collateral_works() {
 		);
 		assert_ok!(CDPEngineModule::check_position_valid(BTC, 9, 20, true));
 		assert_ok!(CDPEngineModule::check_position_valid(BTC, 10, 0, true));
+		assert_ok!(CDPEngineModule::check_position_valid(BTC, 0, 0, true));
 
 		// Adjust position fails if collateral is too small
 		assert_noop!(
@@ -1787,5 +1788,8 @@ fn minimal_collateral_works() {
 			CDPEngineModule::adjust_position(&ALICE, BTC, -1, 0),
 			Error::<Runtime>::CollateralAmountBelowMinimum,
 		);
+
+		// Allow the user to withdraw all assets
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, 0));
 	});
 }
