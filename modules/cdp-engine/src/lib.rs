@@ -814,6 +814,35 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	pub fn adjust_position_by_debit_value(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
+		debit_value_adjustment: Amount,
+	) -> DispatchResult {
+		let debit_value_adjustment_abs = <LoansOf<T>>::balance_try_from_amount_abs(debit_value_adjustment)?;
+		let debit_adjustment_abs = Self::try_convert_to_debit_balance(currency_id, debit_value_adjustment_abs)
+			.ok_or(Error::<T>::ConvertDebitBalanceFailed)?;
+
+		if debit_value_adjustment.is_negative() {
+			let Position { collateral: _, debit } = <LoansOf<T>>::positions(currency_id, who);
+			let actual_adjustment_abs = debit.min(debit_adjustment_abs);
+			let debit_adjustment = <LoansOf<T>>::amount_try_from_balance(actual_adjustment_abs)?;
+
+			Self::adjust_position(
+				who,
+				currency_id,
+				collateral_adjustment,
+				debit_adjustment.saturating_neg(),
+			)?;
+		} else {
+			let debit_adjustment = <LoansOf<T>>::amount_try_from_balance(debit_adjustment_abs)?;
+			Self::adjust_position(who, currency_id, collateral_adjustment, debit_adjustment)?;
+		}
+
+		Ok(())
+	}
+
 	/// If reverse is false, swap stable coin to given `token`.
 	/// If reverse is true, swap given `token` to stable coin.
 	fn swap_stable_and_lp_token(

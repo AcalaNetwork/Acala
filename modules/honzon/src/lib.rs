@@ -310,6 +310,37 @@ pub mod module {
 			)?;
 			Ok(())
 		}
+
+		/// Adjust the loans of `currency_id` by specific
+		/// `collateral_adjustment` and `debit_value_adjustment`
+		///
+		/// - `currency_id`: collateral currency id.
+		/// - `collateral_adjustment`: signed amount, positive means to deposit collateral currency
+		///   into CDP, negative means withdraw collateral currency from CDP.
+		/// - `debit_value_adjustment`: signed amount, positive means to issue some amount of
+		///   stablecoin, negative means caller will payback some amount of stablecoin to CDP.
+		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
+		#[transactional]
+		pub fn adjust_loan_by_debit_value(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			collateral_adjustment: Amount,
+			debit_value_adjustment: Amount,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			// not allowed to adjust the debit after system shutdown
+			if !debit_value_adjustment.is_zero() {
+				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
+			}
+			<cdp_engine::Pallet<T>>::adjust_position_by_debit_value(
+				&who,
+				currency_id,
+				collateral_adjustment,
+				debit_value_adjustment,
+			)?;
+			Ok(())
+		}
 	}
 }
 
