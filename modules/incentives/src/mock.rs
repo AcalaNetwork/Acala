@@ -199,6 +199,16 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		unimplemented!()
 	}
 
+	fn swap_with_best_price(
+		_: &AccountId,
+		_: CurrencyId,
+		_: CurrencyId,
+		_: SwapLimit<Balance>,
+		_: Vec<Vec<CurrencyId>>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		unimplemented!()
+	}
+
 	fn add_liquidity(
 		_: &AccountId,
 		_: CurrencyId,
