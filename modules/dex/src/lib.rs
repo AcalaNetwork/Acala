@@ -191,6 +191,8 @@ pub mod module {
 		InvalidTradingPath,
 		/// Not allowed to refund provision
 		NotAllowedRefund,
+		/// Cannot swap
+		CannotSwap,
 	}
 
 	#[pallet::event]
@@ -1524,6 +1526,22 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 					})
 			}
 		}
+	}
+
+	fn swap_with_best_price(
+		who: &T::AccountId,
+		supply: CurrencyId,
+		target: CurrencyId,
+		limit: SwapLimit<Balance>,
+		alternative_path_joint_list: Vec<Vec<CurrencyId>>,
+	) -> Result<(Balance, Balance), DispatchError>
+	where
+		Balance: Clone,
+	{
+		let swap_path = Self::get_best_price_swap_path(supply, target, limit.clone(), alternative_path_joint_list)
+			.ok_or(Error::<T>::CannotSwap)?;
+		let (supply, target) = Self::swap_with_specific_path(who, &swap_path, limit)?;
+		Ok((supply, target))
 	}
 
 	fn get_best_price_swap_path(

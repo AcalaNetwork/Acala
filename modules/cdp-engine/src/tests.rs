@@ -410,7 +410,7 @@ fn expand_position_collateral_work() {
 
 		assert_noop!(
 			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 0, 1),
-			DispatchError::CannotLookup
+			dex::Error::<Runtime>::CannotSwap
 		);
 
 		assert_ok!(DEXModule::add_liquidity(
@@ -425,7 +425,7 @@ fn expand_position_collateral_work() {
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (1000, 10000));
 		assert_noop!(
 			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 250, 100),
-			DispatchError::CannotLookup
+			dex::Error::<Runtime>::CannotSwap
 		);
 
 		assert_ok!(CDPEngineModule::expand_position_collateral(&ALICE, DOT, 250, 20));
@@ -595,7 +595,7 @@ fn shrink_position_debit_work() {
 		MockPriceSource::set_price(DOT, Some(Price::saturating_from_rational(8, 1)));
 		assert_noop!(
 			CDPEngineModule::shrink_position_debit(&ALICE, DOT, 10, 0),
-			DispatchError::CannotLookup
+			dex::Error::<Runtime>::CannotSwap
 		);
 
 		assert_ok!(DEXModule::add_liquidity(
@@ -610,7 +610,7 @@ fn shrink_position_debit_work() {
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (1000, 8000));
 		assert_noop!(
 			CDPEngineModule::shrink_position_debit(&ALICE, DOT, 10, 80),
-			DispatchError::CannotLookup
+			dex::Error::<Runtime>::CannotSwap
 		);
 
 		assert_ok!(CDPEngineModule::shrink_position_debit(&ALICE, DOT, 10, 70));
@@ -1480,7 +1480,7 @@ fn close_cdp_has_debit_by_dex_work() {
 		// max collateral amount limit swap
 		assert_noop!(
 			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5),
-			DispatchError::CannotLookup
+			cdp_treasury::Error::<Runtime>::CannotSwap
 		);
 
 		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 1000));

@@ -221,8 +221,6 @@ pub mod module {
 		AlreadyShutdown,
 		/// Must after system shutdown
 		MustAfterShutdown,
-		/// Cannot swap
-		CannotSwap,
 		/// Collateral in CDP is not enough
 		CollateralNotEnough,
 		/// debit value decrement is not enough

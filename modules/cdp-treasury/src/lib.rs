@@ -456,16 +456,13 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap);
 				Ok((supply_sum, target_sum))
 			}
-			_ => {
-				let swap_path = T::DEX::get_best_price_swap_path(
-					currency_id,
-					T::GetStableCurrencyId::get(),
-					limit,
-					T::AlternativeSwapPathJointList::get(),
-				)
-				.ok_or(Error::<T>::CannotSwap)?;
-				T::DEX::swap_with_specific_path(&Self::account_id(), &swap_path, limit)
-			}
+			_ => T::DEX::swap_with_best_price(
+				&Self::account_id(),
+				currency_id,
+				T::GetStableCurrencyId::get(),
+				limit,
+				T::AlternativeSwapPathJointList::get(),
+			),
 		}
 	}
 
