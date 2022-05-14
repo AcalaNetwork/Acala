@@ -127,11 +127,25 @@ macro_rules! create_currency_id {
 				)*
 			];
 
-			let lcdot = Token {
+			tokens.push(Token {
 				symbol: stringify!(LCDOT).to_string(),
 				address: EvmAddress::try_from(LCDOT).unwrap(),
-			};
-			tokens.push(lcdot);
+			});
+
+			tokens.push(Token {
+				symbol: "taiKSM".to_string(),
+				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(0)).unwrap(),
+			});
+
+			tokens.push(Token {
+				symbol: "t3USD".to_string(),
+				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(1)).unwrap(),
+			});
+
+			tokens.push(Token {
+				symbol: "tDOT".to_string(),
+				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(0)).unwrap(),
+			});
 
 			let mut lp_tokens = vec![
 				Token {
