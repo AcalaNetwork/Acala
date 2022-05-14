@@ -173,7 +173,6 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_: CurrencyId,
 		_: CurrencyId,
 		_: SwapLimit<Balance>,
-		_: Vec<Vec<CurrencyId>>,
 	) -> Result<(Balance, Balance), DispatchError> {
 		unimplemented!()
 	}

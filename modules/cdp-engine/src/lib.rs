@@ -181,11 +181,6 @@ pub mod module {
 		/// Currency for transfer assets
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		/// The alternative swap path joint list, which can be concated to
-		/// alternative swap path when cdp treasury swap collateral to stable.
-		#[pallet::constant]
-		type AlternativeSwapPathJointList: Get<Vec<Vec<CurrencyId>>>;
-
 		/// Dex
 		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
@@ -869,7 +864,6 @@ impl<T: Config> Pallet<T> {
 			supply,
 			target,
 			SwapLimit::ExactSupply(amount, Zero::zero()),
-			T::AlternativeSwapPathJointList::get(),
 		)
 		.map(|e| e.1)
 	}
@@ -936,7 +930,6 @@ impl<T: Config> Pallet<T> {
 					T::GetStableCurrencyId::get(),
 					currency_id,
 					SwapLimit::ExactSupply(increase_debit_value, min_increase_collateral),
-					T::AlternativeSwapPathJointList::get(),
 				)
 				.map(|e| e.1)?
 			}
@@ -1017,7 +1010,6 @@ impl<T: Config> Pallet<T> {
 					currency_id,
 					stable_currency_id,
 					SwapLimit::ExactSupply(decrease_collateral, min_decrease_debit_value),
-					T::AlternativeSwapPathJointList::get(),
 				)
 				.map(|e| e.1)?
 			}

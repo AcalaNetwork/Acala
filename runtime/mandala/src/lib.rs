@@ -1054,7 +1054,6 @@ impl module_cdp_engine::Config for Runtime {
 	type EmergencyShutdown = EmergencyShutdown;
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type DEX = Dex;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
@@ -1092,6 +1091,7 @@ parameter_types! {
 	];
 	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
 	pub const TradingPathLimit: u32 = 4;
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![vec![GetStakingCurrencyId::get()]];
 }
 
 impl module_dex::Config for Runtime {
@@ -1107,6 +1107,7 @@ impl module_dex::Config for Runtime {
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type StableAsset = StableAsset;
 	type OnLiquidityPoolUpdated = ();
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 }
 
 impl module_dex_oracle::Config for Runtime {
@@ -1118,7 +1119,6 @@ impl module_dex_oracle::Config for Runtime {
 
 parameter_types! {
 	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
-	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![vec![GetStakingCurrencyId::get()]];
 }
 
 impl module_cdp_treasury::Config for Runtime {
@@ -1131,7 +1131,6 @@ impl module_cdp_treasury::Config for Runtime {
 	type MaxAuctionsCount = ConstU32<50>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 	type StableAsset = StableAsset;
 }

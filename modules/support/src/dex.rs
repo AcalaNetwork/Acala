@@ -57,7 +57,6 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		supply: CurrencyId,
 		target: CurrencyId,
 		limit: SwapLimit<Balance>,
-		alternative_path_joint_list: Vec<Vec<CurrencyId>>,
 	) -> Result<(Balance, Balance), DispatchError>;
 
 	fn add_liquidity(
@@ -136,7 +135,6 @@ where
 		_: CurrencyId,
 		_: CurrencyId,
 		_: SwapLimit<Balance>,
-		_: Vec<Vec<CurrencyId>>,
 	) -> Result<(Balance, Balance), DispatchError> {
 		Ok(Default::default())
 	}

@@ -1065,7 +1065,6 @@ impl module_cdp_engine::Config for Runtime {
 	type EmergencyShutdown = EmergencyShutdown;
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type DEX = Dex;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
@@ -1111,6 +1110,7 @@ impl module_dex::Config for Runtime {
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = ();
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 }
 
 impl module_dex_oracle::Config for Runtime {
@@ -1138,7 +1138,6 @@ impl module_cdp_treasury::Config for Runtime {
 	type MaxAuctionsCount = ConstU32<50>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 	type StableAsset = StableAsset;
 }

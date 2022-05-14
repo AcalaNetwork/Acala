@@ -151,6 +151,7 @@ impl module_dex::Config for Runtime {
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
 	type OnLiquidityPoolUpdated = ();
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 }
 
 thread_local! {
@@ -214,7 +215,6 @@ impl Config for Runtime {
 	type MaxAuctionsCount = ConstU32<5>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset;
 }

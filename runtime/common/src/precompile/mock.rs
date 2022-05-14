@@ -361,6 +361,9 @@ parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const TradingPathLimit: u32 = 4;
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![DOT],
+	];
 }
 
 impl module_dex::Config for Test {
@@ -376,6 +379,7 @@ impl module_dex::Config for Test {
 	type ExtendedProvisioningBlocks = ConstU32<0>;
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 	type OnLiquidityPoolUpdated = ();
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 }
 
 parameter_types! {

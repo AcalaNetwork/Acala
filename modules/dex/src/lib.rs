@@ -141,6 +141,11 @@ pub mod module {
 		#[pallet::constant]
 		type ExtendedProvisioningBlocks: Get<Self::BlockNumber>;
 
+		/// The alternative swap path joint list, which can be concated to
+		/// alternative swap path when cdp treasury swap collateral to stable.
+		#[pallet::constant]
+		type AlternativeSwapPathJointList: Get<Vec<Vec<CurrencyId>>>;
+
 		/// Event handler which calls when update liquidity pool.
 		type OnLiquidityPoolUpdated: Happened<(TradingPair, Balance, Balance)>;
 	}
@@ -1533,9 +1538,8 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		supply: CurrencyId,
 		target: CurrencyId,
 		limit: SwapLimit<Balance>,
-		alternative_path_joint_list: Vec<Vec<CurrencyId>>,
 	) -> Result<(Balance, Balance), DispatchError> {
-		let swap_path = Self::get_best_price_swap_path(supply, target, limit, alternative_path_joint_list)
+		let swap_path = Self::get_best_price_swap_path(supply, target, limit, T::AlternativeSwapPathJointList::get())
 			.ok_or(Error::<T>::CannotSwap)?;
 		let (supply, target) = Self::swap_with_specific_path(who, &swap_path, limit)?;
 		Ok((supply, target))

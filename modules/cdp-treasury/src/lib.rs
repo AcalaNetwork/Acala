@@ -97,11 +97,6 @@ pub mod module {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
-		/// The alternative swap path joint list, which can be concated to
-		/// alternative swap path when cdp treasury swap collateral to stable.
-		#[pallet::constant]
-		type AlternativeSwapPathJointList: Get<Vec<Vec<CurrencyId>>>;
-
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -445,7 +440,6 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 							redemption_currency,
 							T::GetStableCurrencyId::get(),
 							SwapLimit::ExactSupply(amount, Zero::zero()),
-							T::AlternativeSwapPathJointList::get(),
 						)?;
 
 						supply_sum = supply_sum.checked_add(response.0).ok_or(Error::<T>::CannotSwap)?;
@@ -456,13 +450,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap);
 				Ok((supply_sum, target_sum))
 			}
-			_ => T::DEX::swap_with_best_price(
-				&Self::account_id(),
-				currency_id,
-				T::GetStableCurrencyId::get(),
-				limit,
-				T::AlternativeSwapPathJointList::get(),
-			),
+			_ => T::DEX::swap_with_best_price(&Self::account_id(), currency_id, T::GetStableCurrencyId::get(), limit),
 		}
 	}
 

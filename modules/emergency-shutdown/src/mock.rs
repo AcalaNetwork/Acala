@@ -217,7 +217,6 @@ impl cdp_treasury::Config for Runtime {
 	type MaxAuctionsCount = ConstU32<10_000>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
