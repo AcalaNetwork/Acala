@@ -58,7 +58,15 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		target: CurrencyId,
 		limit: SwapLimit<Balance>,
 		alternative_path_joint_list: Vec<Vec<CurrencyId>>,
-	) -> Result<(Balance, Balance), DispatchError>;
+	) -> Result<(Balance, Balance), DispatchError>
+	where
+		Balance: Clone,
+	{
+		let swap_path = Self::get_best_price_swap_path(supply, target, limit.clone(), alternative_path_joint_list)
+			.ok_or(DispatchError::CannotLookup)?;
+		let (supply, target) = Self::swap_with_specific_path(who, &swap_path, limit)?;
+		Ok((supply, target))
+	}
 
 	fn add_liquidity(
 		who: &AccountId,
@@ -129,16 +137,6 @@ where
 		_limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError> {
 		Ok(Default::default())
-	}
-
-	fn swap_with_best_price(
-		_: &AccountId,
-		_: CurrencyId,
-		_: CurrencyId,
-		_: SwapLimit<Balance>,
-		_: Vec<Vec<CurrencyId>>,
-	) -> Result<(Balance, Balance), DispatchError> {
-		unimplemented!()
 	}
 
 	fn add_liquidity(
