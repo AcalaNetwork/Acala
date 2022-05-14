@@ -122,6 +122,9 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![DOT],
+	];
 }
 
 thread_local! {
@@ -151,6 +154,7 @@ impl Config for Runtime {
 	type ExtendedProvisioningBlocks = ConstU64<2000>;
 	type OnLiquidityPoolUpdated = MockOnLiquidityPoolUpdated;
 	type StableAsset = MockStableAsset;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
