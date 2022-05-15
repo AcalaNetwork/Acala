@@ -1634,7 +1634,7 @@ impl<T: Config> Pallet<T> {
 
 		// should always be able to unreserve the amount
 		// but otherwise we will just ignore the issue here.
-		let err_amount = T::Currency::unreserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount);
+		let err_amount = T::ChargeTransactionPayment::unreserve_fee(&user, amount, Some(RESERVE_ID_STORAGE_DEPOSIT));
 		debug_assert!(err_amount.is_zero());
 		Ok(())
 	}

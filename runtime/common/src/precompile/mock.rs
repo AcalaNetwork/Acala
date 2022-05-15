@@ -275,7 +275,6 @@ impl module_transaction_payment::Config for Test {
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
-pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub enum ProxyType {
@@ -441,7 +440,7 @@ impl module_evm::Config for Test {
 	type PrecompilesValue = PrecompilesValue;
 	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = ChargeTransactionPayment;
+	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = ConstU128<1000>;

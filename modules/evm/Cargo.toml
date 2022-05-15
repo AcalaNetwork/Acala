@@ -1,6 +1,6 @@
 [package]
 name = "module-evm"
-version = "2.6.0"
+version = "2.6.1"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -45,6 +45,7 @@ module-idle-scheduler = { path = "../idle-scheduler", default-features = false, 
 
 [dev-dependencies]
 env_logger = "0.9.0"
+module-transaction-payment = { path = "../../modules/transaction-payment" }
 
 [features]
 default = ["std"]

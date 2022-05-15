@@ -756,11 +756,22 @@ where
 	}
 
 	/// If native asset is enough, return `None`, else return the fee amount should be swapped.
-	fn check_native_is_not_enough(who: &T::AccountId, fee: PalletBalanceOf<T>) -> Option<Balance> {
+	fn check_native_is_not_enough(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		reason: WithdrawReasons,
+	) -> Option<Balance> {
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
 		let total_native = <T as Config>::Currency::free_balance(who);
+
 		if fee.saturating_add(native_existential_deposit) <= total_native {
-			None
+			// User's locked balance can't be transferable, which means can't be used for fee payment.
+			if let Some(new_free_balance) = total_native.checked_sub(fee) {
+				if T::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok() {
+					return None;
+				}
+			}
+			Some(fee)
 		} else {
 			Some(fee.saturating_add(native_existential_deposit.saturating_sub(total_native)))
 		}
@@ -774,6 +785,7 @@ where
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
 		call: &CallOf<T>,
+		reason: WithdrawReasons,
 	) -> Result<Balance, DispatchError> {
 		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
 		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
@@ -799,7 +811,7 @@ where
 				);
 				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
 			}
-			_ => Self::native_then_alternative_or_default(who, fee),
+			_ => Self::native_then_alternative_or_default(who, fee, reason),
 		}
 	}
 
@@ -811,8 +823,9 @@ where
 	fn native_then_alternative_or_default(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
+		reason: WithdrawReasons,
 	) -> Result<Balance, DispatchError> {
-		if let Some(amount) = Self::check_native_is_not_enough(who, fee) {
+		if let Some(amount) = Self::check_native_is_not_enough(who, fee, reason) {
 			// native asset is not enough
 			let fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
 			let fee_amount = fee_surplus.saturating_add(amount);
@@ -1197,8 +1210,8 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		let fee_surplus =
-			Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call).map_err(|_| InvalidTransaction::Payment)?;
+		let fee_surplus = Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call, reason)
+			.map_err(|_| InvalidTransaction::Payment)?;
 
 		// withdraw native currency as fee, also consider surplus when swap from dex or pool.
 		match <T as Config>::Currency::withdraw(who, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
@@ -1394,7 +1407,7 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> Result<PalletBalanceOf<T>, DispatchError> {
-		Pallet::<T>::native_then_alternative_or_default(who, fee)?;
+		Pallet::<T>::native_then_alternative_or_default(who, fee, WithdrawReasons::TRANSACTION_PAYMENT)?;
 		T::Currency::reserve_named(&named.unwrap_or(RESERVE_ID), who, fee)?;
 		Ok(fee)
 	}

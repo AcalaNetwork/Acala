@@ -302,13 +302,11 @@ parameter_types! {
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT, LP_AUSD_DOT];
 }
 
 impl Config for Runtime {
 	type Event = Event;
 	type PriceSource = MockPriceSource;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;

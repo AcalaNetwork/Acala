@@ -31,7 +31,7 @@ use mock::{
 	System, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DAVE, DOT, FEE_UNBALANCED_AMOUNT,
 	TIP_UNBALANCED_AMOUNT,
 };
-use orml_traits::MultiCurrency;
+use orml_traits::{MultiCurrency, MultiLockableCurrency};
 use pallet_balances::ReserveData;
 use primitives::currency::*;
 use sp_io::TestExternalities;
@@ -242,6 +242,30 @@ fn charges_fee_when_validate_native_is_enough() {
 			1
 		);
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - fee2);
+	});
+}
+
+#[test]
+fn charges_fee_when_locked_transfer_not_enough() {
+	builder_with_dex_and_fee_pool(false).execute_with(|| {
+		let fee = 12 * 2 + 1000; // len * byte + weight
+		assert_ok!(Currencies::update_balance(Origin::root(), BOB, ACA, 2048,));
+
+		// transferable=2048-1025 < fee=1024, native asset is not enough
+		assert_ok!(<Currencies as MultiLockableCurrency<AccountId>>::set_lock(
+			[0u8; 8], ACA, &BOB, 1025
+		));
+		assert_noop!(
+			ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL, &INFO, 12),
+			TransactionValidityError::Invalid(InvalidTransaction::Payment)
+		);
+
+		// after remove lock, transferable=2048 > fee
+		assert_ok!(<Currencies as MultiLockableCurrency<AccountId>>::remove_lock(
+			[0u8; 8], ACA, &BOB
+		));
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL, &INFO, 12));
+		assert_eq!(Currencies::free_balance(ACA, &BOB), 2048 - fee);
 	});
 }
 
