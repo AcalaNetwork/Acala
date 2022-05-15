@@ -22,12 +22,12 @@ use super::super::*;
 
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything, FindAuthor, Imbalance, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Everything, FindAuthor, Nothing},
 	weights::IdentityFee,
-	ConsensusEngineId,
+	ConsensusEngineId, PalletId,
 };
 use frame_system::EnsureSignedBy;
-use module_support::{mocks::MockAddressMapping, Price, PriceProvider, TransactionPayment};
+use module_support::{mocks::MockAddressMapping, Price, PriceProvider};
 use orml_traits::parameter_type_with_key;
 pub use primitives::{
 	define_combined_task, Address, Amount, Block, BlockNumber, CurrencyId, Header, Multiplier, ReserveIdentifier,
@@ -35,10 +35,9 @@ pub use primitives::{
 };
 use sp_core::{H160, H256};
 use sp_runtime::{
-	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup},
+	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, IdentityLookup},
 	AccountId32, FixedU128, Percent,
 };
-use std::marker::PhantomData;
 
 type Balance = u128;
 type Ratio = FixedU128;
@@ -213,14 +212,15 @@ parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
-	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub KaruraTreasuryAccount: AccountId32 = TreasuryPalletId::get().into_account();
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
 	pub const TradingPathLimit: u32 = 4;
+	pub const ExistenceRequirement: u128 = 1;
 }
 ord_parameter_types! {
-	pub const ListingOrigin: AccountId = ALICE;
+	pub const ListingOrigin: AccountId32 = AccountId32::new([1u8; 32]);
 }
 pub struct MockPriceSource;
 impl PriceProvider<CurrencyId> for MockPriceSource {
@@ -233,7 +233,7 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 	}
 }
 
-impl module_transaction_payment::Config for Test {
+impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;

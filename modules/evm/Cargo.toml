@@ -42,10 +42,12 @@ module-support = { path = "../support", default-features = false }
 module-evm-utility = { path = "../evm-utility", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 module-idle-scheduler = { path = "../idle-scheduler", default-features = false, optional = true }
+module-transaction-payment = { path = "../../modules/transaction-payment" }
+
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.19", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.9.0"
-module-transaction-payment = { path = "../../modules/transaction-payment" }
 
 [features]
 default = ["std"]
@@ -88,7 +90,8 @@ bench = [
 	"frame-system/runtime-benchmarks",
 	"serde_json",
 	"hex",
-	"module-idle-scheduler"
+	"module-idle-scheduler",
+	"xcm-builder/runtime-benchmarks"
 ]
 evm-tests = [
 	"primitives/evm-tests"
