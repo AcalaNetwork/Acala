@@ -809,7 +809,12 @@ where
 					TokenExchangeRate::<T>::contains_key(currency_id),
 					Error::<T>::InvalidToken
 				);
-				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
+				let fee_amount = if T::DefaultFeeTokens::get().contains(currency_id) {
+					fee.saturating_add(T::AlternativeFeeSurplus::get().mul_ceil(fee))
+				} else {
+					custom_fee_amount
+				};
+				Self::swap_from_pool_or_dex(who, fee_amount, *currency_id).map(|_| fee_amount)
 			}
 			_ => Self::native_then_alternative_or_default(who, fee, reason),
 		}

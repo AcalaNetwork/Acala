@@ -556,9 +556,9 @@ fn charges_fee_when_validate_with_fee_currency_call() {
 		let sub_dot_dot = Currencies::free_balance(DOT, &dot_acc);
 
 		let fee: Balance = 50 * 2 + 100;
-		let fee_perc = CustomFeeSurplus::get();
+		let fee_perc = AlternativeFeeSurplus::get();
 		let surplus = fee_perc.mul_ceil(fee);
-		let fee_surplus = fee + surplus;
+		let fee_amount = fee + surplus;
 
 		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(
 			&ALICE,
@@ -566,20 +566,23 @@ fn charges_fee_when_validate_with_fee_currency_call() {
 			&INFO2,
 			50
 		));
-		assert_eq!(sub_ausd_aca - fee_surplus, Currencies::free_balance(ACA, &ausd_acc));
+		assert_eq!(sub_ausd_aca - fee_amount, Currencies::free_balance(ACA, &ausd_acc));
 		assert_eq!(
-			sub_ausd_usd + fee_surplus * 10,
+			sub_ausd_usd + fee_amount * 10,
 			Currencies::free_balance(AUSD, &ausd_acc)
 		);
 
+		let fee_perc = CustomFeeSurplus::get();
+		let surplus = fee_perc.mul_ceil(fee);
+		let fee_amount = fee + surplus;
 		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(
 			&ALICE,
 			&with_fee_currency_call(DOT),
 			&INFO2,
 			50
 		));
-		assert_eq!(sub_dot_aca - fee_surplus, Currencies::free_balance(ACA, &dot_acc));
-		assert_eq!(sub_dot_dot + fee_surplus / 10, Currencies::free_balance(DOT, &dot_acc));
+		assert_eq!(sub_dot_aca - fee_amount, Currencies::free_balance(ACA, &dot_acc));
+		assert_eq!(sub_dot_dot + fee_amount / 10, Currencies::free_balance(DOT, &dot_acc));
 	});
 }
 
