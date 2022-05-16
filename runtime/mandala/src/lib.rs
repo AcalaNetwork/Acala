@@ -677,6 +677,48 @@ impl orml_authority::Config for Runtime {
 	type WeightInfo = weights::orml_authority::WeightInfo<Runtime>;
 }
 
+pub struct PaymentsDisputeResolver;
+impl orml_payments::DisputeResolver<AccountId> for PaymentsDisputeResolver {
+	fn get_resolver_account() -> AccountId {
+		Sudo::key().expect("Sudo key not set!")
+	}
+}
+
+pub struct PaymentsFeeHandler;
+impl orml_payments::FeeHandler<Runtime> for PaymentsFeeHandler {
+	fn apply_fees(
+		_from: &AccountId,
+		_to: &AccountId,
+		_detail: &orml_payments::PaymentDetail<Runtime>,
+		_remark: Option<&[u8]>,
+	) -> (AccountId, Percent) {
+		// we do not charge any fee
+		const MARKETPLACE_FEE_PERCENT: Percent = Percent::from_percent(0);
+		let fee_receiver = Sudo::key().expect("Sudo key not set!");
+		(fee_receiver, MARKETPLACE_FEE_PERCENT)
+	}
+}
+
+parameter_types! {
+	pub const IncentivePercentage: Percent = Percent::from_percent(5);
+	pub const MaxRemarkLength: u32 = 10;
+	// 1hr buffer period (60*60)/12
+	pub const CancelBufferBlockLength: BlockNumber = 300;
+	pub const MaxScheduledTaskListLength : u32 = 5;
+}
+
+impl orml_payments::Config for Runtime {
+	type Event = Event;
+	type Asset = Currencies;
+	type DisputeResolver = PaymentsDisputeResolver;
+	type IncentivePercentage = IncentivePercentage;
+	type FeeHandler = PaymentsFeeHandler;
+	type MaxRemarkLength = MaxRemarkLength;
+	type CancelBufferBlockLength = CancelBufferBlockLength;
+	type MaxScheduledTaskListLength = MaxScheduledTaskListLength;
+	type WeightInfo = orml_payments::weights::SubstrateWeight<Runtime>;
+}
+
 parameter_types! {
 	pub CandidacyBond: Balance = 10 * dollar(LDOT);
 	pub VotingBondBase: Balance = 2 * dollar(LDOT);
@@ -1911,6 +1953,7 @@ construct_runtime!(
 
 		// Stable asset
 		StableAsset: nutsfinance_stable_asset = 200,
+		Payments: orml_payments = 201,
 
 		// Staking related pallets
 		Earning: module_earning = 210,
