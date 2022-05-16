@@ -108,7 +108,7 @@ impl module_evm::Config for Runtime {
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = ();
-	type ChargeTransactionPayment = ();
+	type ChargeTransactionPayment = support::mocks::MockReservedTransactionPayment<Balances>;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
 

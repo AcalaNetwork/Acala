@@ -28,16 +28,18 @@ use frame_support::{
 };
 use mock::{
 	AccountId, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, FeePoolSize, MockPriceSource, Origin, Runtime,
-	System, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT, TIP_UNBALANCED_AMOUNT,
+	System, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DAVE, DOT, FEE_UNBALANCED_AMOUNT,
+	TIP_UNBALANCED_AMOUNT,
 };
 use orml_traits::{MultiCurrency, MultiLockableCurrency};
+use pallet_balances::ReserveData;
 use primitives::currency::*;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::TestXt,
 	traits::{One, UniqueSaturatedInto},
 };
-use support::Price;
+use support::{Price, TransactionPayment as TransactionPaymentT};
 use xcm::latest::prelude::*;
 use xcm::prelude::GeneralKey;
 use xcm_executor::Assets;
@@ -662,6 +664,56 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 			Currencies::free_balance(AUSD, &BOB),
 			1900 - (surplus1 + fee2 + surplus2) * 10
 		);
+	});
+}
+
+#[test]
+fn payment_reserve_fee() {
+	builder_with_dex_and_fee_pool(true).execute_with(|| {
+		// Alice has enough native token: ACA
+		assert_eq!(90000, Currencies::free_balance(ACA, &ALICE));
+		let fee = <ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::reserve_fee(
+			&ALICE, 100, None,
+		);
+		assert_eq!(100, fee.unwrap());
+		assert_eq!(89900, Currencies::free_balance(ACA, &ALICE));
+
+		let reserves = crate::mock::PalletBalances::reserves(&ALICE);
+		let reserve_data = ReserveData {
+			id: ReserveIdentifier::TransactionPayment,
+			amount: 100,
+		};
+		assert_eq!(reserve_data, *reserves.get(0).unwrap());
+
+		// Bob has not enough native token, but have enough none native token
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 4000));
+		let fee = <ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::reserve_fee(
+			&BOB, 100, None,
+		);
+		assert_eq!(100, fee.unwrap());
+		assert_eq!(35, Currencies::free_balance(ACA, &BOB));
+		assert_eq!(135, Currencies::total_balance(ACA, &BOB));
+		assert_eq!(2650, Currencies::free_balance(AUSD, &BOB));
+
+		// reserve fee not consider multiplier
+		NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &DAVE, 4000));
+		let fee = <ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::reserve_fee(
+			&DAVE, 100, None,
+		);
+		assert_eq!(100, fee.unwrap());
+
+		let fee =
+			<ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::apply_multiplier_to_fee(
+				100, None,
+			);
+		assert_eq!(150, fee);
+		let fee =
+			<ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::apply_multiplier_to_fee(
+				100,
+				Some(Multiplier::saturating_from_rational(2, 1)),
+			);
+		assert_eq!(200, fee);
 	});
 }
 

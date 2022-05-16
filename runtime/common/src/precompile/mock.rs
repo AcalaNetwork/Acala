@@ -32,9 +32,10 @@ use frame_support::{
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
-use module_support::mocks::MockStableAsset;
-use module_support::DispatchableTask;
-use module_support::{AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider, Rate};
+use module_support::{
+	mocks::MockStableAsset, AddressMapping as AddressMappingT, DEXIncentives, DispatchableTask, ExchangeRate,
+	ExchangeRateProvider, Rate,
+};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
 	define_combined_task,
@@ -275,7 +276,6 @@ impl module_transaction_payment::Config for Test {
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
-pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub enum ProxyType {
@@ -440,7 +440,7 @@ impl module_evm::Config for Test {
 	type PrecompilesType = AllPrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = ChargeTransactionPayment;
+	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = ConstU128<1000>;

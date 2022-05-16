@@ -57,7 +57,7 @@ use module_evm::{CallInfo, CreateInfo, EvmChainId, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask};
-use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
+use module_transaction_payment::{TargetedFeeAdjustment, TransactionFeePoolTrader};
 
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use orml_traits::{
@@ -92,7 +92,7 @@ pub use primitives::{
 	evm::{AccessListItem, BlockLimits, EstimateResourcesRequest},
 	task::TaskResult,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
-	DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
+	DataProviderId, EraIndex, Hash, Lease, Moment, Multiplier, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
 	TradingPair,
 };
 pub use runtime_common::{

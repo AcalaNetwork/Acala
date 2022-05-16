@@ -193,7 +193,7 @@ impl Config for Runtime {
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = ();
+	type ChargeTransactionPayment = module_support::mocks::MockReservedTransactionPayment<Balances>;
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;

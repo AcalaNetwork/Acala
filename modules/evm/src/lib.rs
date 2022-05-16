@@ -1488,7 +1488,7 @@ impl<T: Config> Pallet<T> {
 	///
 	/// - Ensures signer is maintainer or root.
 	/// - Update codes info.
-	/// - Save `code`if not saved yet.
+	/// - Save `code` if not saved yet.
 	fn do_set_code(root_or_signed: Either<(), T::AccountId>, contract: EvmAddress, code: Vec<u8>) -> DispatchResult {
 		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
@@ -1513,20 +1513,20 @@ impl<T: Config> Pallet<T> {
 			let code_hash = code_hash(bounded_code.as_slice());
 			let code_size = bounded_code.len() as u32;
 			// The code_hash of the same contract is definitely different.
-			// The `contract_info.code_hash` hashed by on_contract_initialization which constructored.
+			// The `contract_info.code_hash` hashed by on_contract_initialization which constructed.
 			// Still check it here.
 			if code_hash == contract_info.code_hash {
 				return Ok(());
 			}
 
-			let storage_size_chainged: i32 =
+			let storage_size_changed: i32 =
 				code_size.saturating_add(T::NewContractExtraBytes::get()) as i32 - old_code_info.code_size as i32;
 
-			if storage_size_chainged.is_positive() {
-				Self::reserve_storage(&source, storage_size_chainged as u32)?;
+			if storage_size_changed.is_positive() {
+				Self::reserve_storage(&source, storage_size_changed as u32)?;
 			}
-			Self::charge_storage(&source, &contract, storage_size_chainged)?;
-			Self::update_contract_storage_size(&contract, storage_size_chainged);
+			Self::charge_storage(&source, &contract, storage_size_changed)?;
+			Self::update_contract_storage_size(&contract, storage_size_changed);
 
 			// try remove old codes
 			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| -> DispatchResult {
@@ -1589,7 +1589,7 @@ impl<T: Config> Pallet<T> {
 			// when rpc is called, from is empty, allowing the call
 			published || maintainer == *caller || Self::is_developer_or_contract(caller) || *caller == H160::default()
 		} else {
-			// contract non exist, we don't override defualt evm behaviour
+			// contract non exist, we don't override default evm behaviour
 			true
 		}
 	}
@@ -1618,7 +1618,8 @@ impl<T: Config> Pallet<T> {
 			caller, user, limit, amount
 		);
 
-		T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount)
+		T::ChargeTransactionPayment::reserve_fee(&user, amount, Some(RESERVE_ID_STORAGE_DEPOSIT))?;
+		Ok(())
 	}
 
 	fn unreserve_storage(caller: &H160, limit: u32, used: u32, refunded: u32) -> DispatchResult {
@@ -1639,7 +1640,7 @@ impl<T: Config> Pallet<T> {
 
 		// should always be able to unreserve the amount
 		// but otherwise we will just ignore the issue here.
-		let err_amount = T::Currency::unreserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount);
+		let err_amount = T::ChargeTransactionPayment::unreserve_fee(&user, amount, Some(RESERVE_ID_STORAGE_DEPOSIT));
 		debug_assert!(err_amount.is_zero());
 		Ok(())
 	}

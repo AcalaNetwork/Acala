@@ -133,7 +133,7 @@ where
 				let gas_limit = input.u64_at(4)?;
 				let storage_limit = input.u32_at(5)?;
 				let min_delay = input.u32_at(6)?;
-				// solidity abi enocde bytes will add an length at input[7]
+				// solidity abi encode bytes will add an length at input[7]
 				let input_len = input.u32_at(8)?;
 				let input_data = input.bytes_at(9, input_len as usize)?;
 
@@ -159,9 +159,11 @@ where
 					use sp_runtime::traits::Convert;
 					let from_account = Runtime::AddressMapping::get_account_id(&from);
 					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
+					let fee = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::weight_to_fee(weight);
 					_fee = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::reserve_fee(
 						&from_account,
-						weight,
+						fee,
+						None,
 					)
 					.map_err(|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -272,9 +274,10 @@ where
 				{
 					// unreserve the transaction fee for gas_limit
 					let from_account = Runtime::AddressMapping::get_account_id(&from);
-					<module_transaction_payment::ChargeTransactionPayment<Runtime>>::unreserve_fee(
+					let _err_amount = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::unreserve_fee(
 						&from_account,
 						task_info.fee,
+						None,
 					);
 				}
 
@@ -288,7 +291,7 @@ where
 			Action::Reschedule => {
 				let from = input.evm_address_at(1)?;
 				let min_delay = input.u32_at(2)?;
-				// solidity abi enocde bytes will add an length at input[3]
+				// solidity abi encode bytes will add an length at input[3]
 				let task_id_len = input.u32_at(4)?;
 				let task_id = input.bytes_at(5, task_id_len as usize)?;
 

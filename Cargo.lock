@@ -6064,6 +6064,7 @@ dependencies = [
  "module-evm-utility",
  "module-idle-scheduler",
  "module-support",
+ "module-transaction-payment",
  "num",
  "orml-bencher",
  "orml-currencies",
@@ -6085,6 +6086,7 @@ dependencies = [
  "sp-std",
  "substrate-bn",
  "tiny-keccak",
+ "xcm-builder",
 ]
 
 [[package]]
