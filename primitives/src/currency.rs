@@ -133,17 +133,17 @@ macro_rules! create_currency_id {
 			});
 
 			tokens.push(Token {
-				symbol: "taiKSM".to_string(),
+				symbol: "TAI_KSM".to_string(),
 				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(0)).unwrap(),
 			});
 
 			tokens.push(Token {
-				symbol: "t3USD".to_string(),
+				symbol: "TAI_3USD".to_string(),
 				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(1)).unwrap(),
 			});
 
 			tokens.push(Token {
-				symbol: "tDOT".to_string(),
+				symbol: "TAI_DOT".to_string(),
 				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(0)).unwrap(),
 			});
 
