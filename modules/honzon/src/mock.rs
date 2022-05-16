@@ -202,9 +202,6 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 	pub TreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
-	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
-		vec![AUSD],
-	];
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -217,7 +214,6 @@ impl cdp_treasury::Config for Runtime {
 	type MaxAuctionsCount = ConstU32<10_000>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
@@ -258,7 +254,6 @@ impl cdp_engine::Config for Runtime {
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type DEX = ();
 	type WeightInfo = ();
 }

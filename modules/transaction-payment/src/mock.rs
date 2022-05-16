@@ -170,6 +170,9 @@ parameter_types! {
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
 	];
 	pub const TradingPathLimit: u32 = 4;
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![DOT],
+	];
 }
 
 impl module_dex::Config for Runtime {
@@ -185,6 +188,7 @@ impl module_dex::Config for Runtime {
 	type ListingOrigin = frame_system::EnsureSignedBy<Zero, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
 	type OnLiquidityPoolUpdated = ();
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 }
 
 parameter_types! {

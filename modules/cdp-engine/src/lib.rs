@@ -181,11 +181,6 @@ pub mod module {
 		/// Currency for transfer assets
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		/// The alternative swap path joint list, which can be concated to
-		/// alternative swap path when cdp treasury swap collateral to stable.
-		#[pallet::constant]
-		type AlternativeSwapPathJointList: Get<Vec<Vec<CurrencyId>>>;
-
 		/// Dex
 		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
@@ -221,8 +216,6 @@ pub mod module {
 		AlreadyShutdown,
 		/// Must after system shutdown
 		MustAfterShutdown,
-		/// Cannot swap
-		CannotSwap,
 		/// Collateral in CDP is not enough
 		CollateralNotEnough,
 		/// debit value decrement is not enough
@@ -645,7 +638,7 @@ impl<T: Config> Pallet<T> {
 				(pick_u32(&mut rng, collateral_currency_ids.len() as u32), None)
 			};
 
-		// get the max iterationns config
+		// get the max iterations config
 		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
 			.get::<u32>()
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
@@ -655,7 +648,7 @@ impl<T: Config> Pallet<T> {
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 
 		// If start key is Some(value) continue iterating from that point in storage otherwise start
-		// iterating from the beginning of <loans::Positons<T>>
+		// iterating from the beginning of <loans::Positions<T>>
 		let mut map_iterator = match start_key.clone() {
 			Some(key) => <loans::Positions<T>>::iter_prefix_from(currency_id, key),
 			None => <loans::Positions<T>>::iter_prefix(currency_id),
@@ -845,6 +838,36 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	/// If reverse is false, swap stable coin to given `token`.
+	/// If reverse is true, swap given `token` to stable coin.
+	fn swap_stable_and_lp_token(
+		token: CurrencyId,
+		amount: Balance,
+		reverse: bool,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		let stable_currency_id = T::GetStableCurrencyId::get();
+		let loans_module_account = <LoansOf<T>>::account_id();
+
+		// do nothing if given token is stable coin
+		if token == stable_currency_id {
+			return Ok(amount);
+		}
+
+		let (supply, target) = if reverse {
+			(token, stable_currency_id)
+		} else {
+			(stable_currency_id, token)
+		};
+
+		T::DEX::swap_with_best_price(
+			&loans_module_account,
+			supply,
+			target,
+			SwapLimit::ExactSupply(amount, Zero::zero()),
+		)
+		.map(|e| e.1)
+	}
+
 	/// Generate new debit in advance, buy collateral and deposit it into CDP,
 	/// and the collateral ratio will be reduced but CDP must still be at valid risk.
 	/// For single token collateral, try to swap collateral by DEX. For lp token collateral,
@@ -876,31 +899,10 @@ impl<T: Config> Pallet<T> {
 				// need better distribution methods to avoid unused component tokens.
 				let stable_for_token_0 = increase_debit_value / 2;
 				let stable_for_token_1 = increase_debit_value.saturating_sub(stable_for_token_0);
-				let stable_currency_id = T::GetStableCurrencyId::get();
-				let stable_to_lp_component = |token: CurrencyId,
-				                              stable_amount: Balance|
-				 -> sp_std::result::Result<Balance, DispatchError> {
-					// do nothing if component token is stable coin
-					if token == stable_currency_id {
-						Ok(stable_amount)
-					} else {
-						// swap compnent token in DEX
-						let limit = SwapLimit::ExactSupply(stable_amount, Zero::zero());
-						let swap_path = T::DEX::get_best_price_swap_path(
-							stable_currency_id,
-							token,
-							limit,
-							T::AlternativeSwapPathJointList::get(),
-						)
-						.ok_or(Error::<T>::CannotSwap)?;
-						let (_, target) = T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
-						Ok(target)
-					}
-				};
 
 				// swap stable coin to lp component tokens.
-				let available_0 = stable_to_lp_component(token_0, stable_for_token_0)?;
-				let available_1 = stable_to_lp_component(token_1, stable_for_token_1)?;
+				let available_0 = Self::swap_stable_and_lp_token(token_0, stable_for_token_0, false)?;
+				let available_1 = Self::swap_stable_and_lp_token(token_1, stable_for_token_1, false)?;
 				let (consumption_0, consumption_1, actual_increase_lp) = T::DEX::add_liquidity(
 					&loans_module_account,
 					token_0,
@@ -923,18 +925,13 @@ impl<T: Config> Pallet<T> {
 			}
 			_ => {
 				// swap stable coin to collateral
-				let limit = SwapLimit::ExactSupply(increase_debit_value, min_increase_collateral);
-				let swap_path = T::DEX::get_best_price_swap_path(
+				T::DEX::swap_with_best_price(
+					&loans_module_account,
 					T::GetStableCurrencyId::get(),
 					currency_id,
-					limit,
-					T::AlternativeSwapPathJointList::get(),
+					SwapLimit::ExactSupply(increase_debit_value, min_increase_collateral),
 				)
-				.ok_or(Error::<T>::CannotSwap)?;
-				let (_, actual_increase_collateral) =
-					T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
-
-				actual_increase_collateral
+				.map(|e| e.1)?
 			}
 		};
 
@@ -953,7 +950,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Sell ​​the collateral locked in CDP to get stable coin to repay the debit,
+	/// Sell the collateral locked in CDP to get stable coin to repay the debit,
 	/// and the collateral ratio will be increased. For single token collateral,
 	/// try to swap stable coin by DEX. For lp token collateral, try to remove liquidity
 	/// for lp token first, then swap the non-stable coin to get stable coin. If all
@@ -993,29 +990,9 @@ impl<T: Config> Pallet<T> {
 					Zero::zero(),
 					false,
 				)?;
-				let component_to_stable = |token: CurrencyId,
-				                           amount: Balance|
-				 -> sp_std::result::Result<Balance, DispatchError> {
-					// do nothing if component token is stable coin
-					if token == stable_currency_id {
-						Ok(amount)
-					} else {
-						// swap component token to stable coin
-						let limit = SwapLimit::ExactSupply(amount, Zero::zero());
-						let swap_path = T::DEX::get_best_price_swap_path(
-							token,
-							stable_currency_id,
-							limit,
-							T::AlternativeSwapPathJointList::get(),
-						)
-						.ok_or(Error::<T>::CannotSwap)?;
-						let (_, target) = T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
-						Ok(target)
-					}
-				};
 
-				let stable_0 = component_to_stable(token_0, available_0)?;
-				let stable_1 = component_to_stable(token_1, available_1)?;
+				let stable_0 = Self::swap_stable_and_lp_token(token_0, available_0, true)?;
+				let stable_1 = Self::swap_stable_and_lp_token(token_1, available_1, true)?;
 				let total_stable = stable_0.saturating_add(stable_1);
 
 				// check whether the amount of stable token obtained by selling lptokens is enough as expected
@@ -1028,17 +1005,13 @@ impl<T: Config> Pallet<T> {
 			}
 			_ => {
 				// swap collateral to stable coin
-				let limit = SwapLimit::ExactSupply(decrease_collateral, min_decrease_debit_value);
-				let swap_path = T::DEX::get_best_price_swap_path(
+				T::DEX::swap_with_best_price(
+					&loans_module_account,
 					currency_id,
 					stable_currency_id,
-					limit,
-					T::AlternativeSwapPathJointList::get(),
+					SwapLimit::ExactSupply(decrease_collateral, min_decrease_debit_value),
 				)
-				.ok_or(Error::<T>::CannotSwap)?;
-				let (_, actual_stable) = T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
-
-				actual_stable
+				.map(|e| e.1)?
 			}
 		};
 
@@ -1132,7 +1105,7 @@ impl<T: Config> Pallet<T> {
 		// refund remain collateral to CDP owner
 		let refund_collateral_amount = collateral
 			.checked_sub(actual_supply_collateral)
-			.expect("swap succecced means collateral >= actual_supply_collateral; qed");
+			.expect("swap success means collateral >= actual_supply_collateral; qed");
 		<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
 
 		Self::deposit_event(Event::CloseCDPInDebitByDEX {
@@ -1170,7 +1143,7 @@ impl<T: Config> Pallet<T> {
 				let token_0: CurrencyId = dex_share_0.into();
 				let token_1: CurrencyId = dex_share_1.into();
 
-				// remove liqudity first
+				// remove liquidity first
 				let (amount_0, amount_1) =
 					<T as Config>::CDPTreasury::remove_liquidity_for_lp_collateral(currency_id, collateral)?;
 
@@ -1254,7 +1227,7 @@ impl<T: Config> Pallet<T> {
 			) {
 			let refund_collateral_amount = amount
 				.checked_sub(actual_supply_collateral)
-				.expect("swap succecced means collateral >= actual_supply_collateral; qed");
+				.expect("swap success means collateral >= actual_supply_collateral; qed");
 
 			// refund remain collateral to CDP owner
 			if !refund_collateral_amount.is_zero() {
