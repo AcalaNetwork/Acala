@@ -793,27 +793,31 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		);
 
 		// get maintainer from parent caller `enter_substate` will do `spit_child`
-		if self.substate.parent.is_none() {
-			log::error!(
-				target: "evm",
-				"get parent's maintainer failed. address: {:?}",
-				address
-			);
-			debug_assert!(false);
-			return;
-		}
+		let parent = match self.substate.parent {
+			Some(ref parent) => parent,
+			None => {
+				log::error!(
+					target: "evm",
+					"get parent's maintainer failed. address: {:?}",
+					address
+				);
+				debug_assert!(false);
+				return;
+			}
+		};
 
-		let parent = self.substate.parent.as_ref().expect("has checked; qed");
-		if parent.metadata().caller().is_none() {
-			log::error!(
-				target: "evm",
-				"get parent's caller failed. address: {:?}",
-				address
-			);
-			debug_assert!(false);
-			return;
-		}
-		let caller = parent.metadata().caller().expect("has checked; qed");
+		let caller = match parent.metadata().caller() {
+			Some(ref caller) => caller,
+			None => {
+				log::error!(
+					target: "evm",
+					"get parent's caller failed. address: {:?}",
+					address
+				);
+				debug_assert!(false);
+				return;
+			}
+		};
 
 		let is_published = self.substate.metadata.origin_code_address().map_or(false, |addr| {
 			Pallet::<T>::accounts(addr).map_or(false, |account| account.contract_info.map_or(false, |v| v.published))
@@ -828,7 +832,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		);
 
 		let code_size = code.len() as u32;
-		Pallet::<T>::create_contract(caller, address, is_published, code);
+		Pallet::<T>::create_contract(*caller, address, is_published, code);
 
 		let used_storage = code_size.saturating_add(T::NewContractExtraBytes::get());
 		Pallet::<T>::update_contract_storage_size(&address, used_storage as i32);
