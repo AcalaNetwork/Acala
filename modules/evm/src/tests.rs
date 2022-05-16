@@ -2103,8 +2103,8 @@ fn auto_publish_works() {
 			from: alice(),
 			contract: factory,
 			logs: vec![],
-			used_gas: 354694,
-			used_storage: 1498,
+			used_gas: 593221,
+			used_storage: 2609,
 		}));
 
 		// call method `createContract()`
@@ -2114,7 +2114,7 @@ fn auto_publish_works() {
 			from_hex("0x412a5a6d").unwrap(),
 			0,
 			1000000,
-			1000,
+			10000,
 			vec![],
 		));
 		System::assert_last_event(Event::EVM(crate::Event::Executed {
@@ -2138,14 +2138,14 @@ fn auto_publish_works() {
 					data: vec![],
 				},
 			],
-			used_gas: 248186,
-			used_storage: 834,
+			used_gas: 387664,
+			used_storage: 1530,
 		}));
 
 		assert_eq!(
 			EVM::accounts(factory).unwrap().contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0x0aaddd7924d6a6789dba233a48270c4a52ca44074d2a0453362b249712c6a21c")
+				code_hash: H256::from_str("0x04c797e49b05ffe6f15fcfd0a30b692a96cbe5da34e2f8d78d6ead028b65f58f")
 					.unwrap(),
 				maintainer: alice(),
 				published: false
@@ -2156,7 +2156,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0x3c098bc145b56c64e688ccc6055980b993fefd794cb97a69654d3e125cdda9dc")
+				code_hash: H256::from_str("0xe3240ba653c3294c888599b1e2deea25b1d446b6b7e8d5a638fdd30a70b25c4f")
 					.unwrap(),
 				maintainer: alice(),
 				published: false
@@ -2167,7 +2167,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0x21da9211a5ef5e10cf7efc58b70c09e2a586844a4798b5e506927cc05808ca4c")
+				code_hash: H256::from_str("0xed8cef9d59d52661a06ef9a5be0cc76a4bbcf85309430f03cdc7c0226b0dda1a")
 					.unwrap(),
 				maintainer: H160::from_str("0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap(),
 				published: false
@@ -2184,7 +2184,7 @@ fn auto_publish_works() {
 			from_hex("0x412a5a6d").unwrap(),
 			0,
 			1000000,
-			1000,
+			10000,
 			vec![],
 		));
 		System::assert_last_event(Event::EVM(crate::Event::Executed {
@@ -2208,14 +2208,14 @@ fn auto_publish_works() {
 					data: vec![],
 				},
 			],
-			used_gas: 231086,
-			used_storage: 770,
+			used_gas: 370564,
+			used_storage: 1466,
 		}));
 
 		assert_eq!(
 			EVM::accounts(factory).unwrap().contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0x0aaddd7924d6a6789dba233a48270c4a52ca44074d2a0453362b249712c6a21c")
+				code_hash: H256::from_str("0x04c797e49b05ffe6f15fcfd0a30b692a96cbe5da34e2f8d78d6ead028b65f58f")
 					.unwrap(),
 				maintainer: alice(),
 				published: true
@@ -2226,7 +2226,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0x3c098bc145b56c64e688ccc6055980b993fefd794cb97a69654d3e125cdda9dc")
+				code_hash: H256::from_str("0xe3240ba653c3294c888599b1e2deea25b1d446b6b7e8d5a638fdd30a70b25c4f")
 					.unwrap(),
 				maintainer: alice(),
 				published: true
@@ -2237,9 +2237,46 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0x21da9211a5ef5e10cf7efc58b70c09e2a586844a4798b5e506927cc05808ca4c")
+				code_hash: H256::from_str("0xed8cef9d59d52661a06ef9a5be0cc76a4bbcf85309430f03cdc7c0226b0dda1a")
 					.unwrap(),
 				maintainer: H160::from_str("0x39b26a36a8a175ce7d498b5ef187d1ab2f381bbd").unwrap(),
+				published: true
+			})
+		);
+
+		// call method `callContract()`
+		assert_ok!(EVM::call(
+			Origin::signed(alice_account_id.clone()),
+			factory,
+			from_hex("0x0f24df3a").unwrap(),
+			0,
+			1000000,
+			10000,
+			vec![],
+		));
+		System::assert_last_event(Event::EVM(crate::Event::Executed {
+			from: alice(),
+			contract: factory,
+			logs: vec![crate::Log {
+				address: H160::from_str("0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap(),
+				topics: vec![
+					H256::from_str("0xb0199510a4d57fac89f9b613861450ae948394f2abe3bf9918eb3c6890243f00").unwrap(),
+					H256::from_str("0x000000000000000000000000d8a09b53762a01c2beb363d5355f4eecf7b48360").unwrap(),
+				],
+				data: vec![],
+			}],
+			used_gas: 147214,
+			used_storage: 407,
+		}));
+
+		assert_eq!(
+			EVM::accounts(H160::from_str("d8a09b53762a01c2beb363d5355f4eecf7b48360").unwrap())
+				.unwrap()
+				.contract_info,
+			Some(ContractInfo {
+				code_hash: H256::from_str("0xed8cef9d59d52661a06ef9a5be0cc76a4bbcf85309430f03cdc7c0226b0dda1a")
+					.unwrap(),
+				maintainer: alice(),
 				published: true
 			})
 		);
