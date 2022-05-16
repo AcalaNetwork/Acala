@@ -47,7 +47,7 @@ pub struct CallRequest {
 #[serde(rename_all = "camelCase")]
 pub struct EstimateResourcesResponse {
 	/// Used gas
-	pub gas: U256,
+	pub gas: u64,
 	/// Used storage
 	pub storage: i32,
 	/// Adjusted weight fee

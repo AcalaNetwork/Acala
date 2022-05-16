@@ -1138,3 +1138,11 @@ fn transaction_payment_module_works_with_evm_contract() {
 			);
 		});
 }
+
+#[test]
+fn evm_limits() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 33_319_444);
+		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_storage_limit(), 3_670_016);
+	})
+}

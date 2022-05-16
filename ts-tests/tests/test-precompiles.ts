@@ -34,7 +34,7 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 			from: await alice.getAddress(),
 			confirmations: 0,
 			nonce: 1,
-			gasLimit: BigNumber.from("28572"),
+			gasLimit: BigNumber.from("28535"),
 			gasPrice: BigNumber.from("1"),
 			//data: "",
 			value: BigNumber.from(0),
