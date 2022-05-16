@@ -23,7 +23,7 @@ use jsonrpc_core::{Error, ErrorCode, Result, Value};
 use pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi;
 use rustc_hex::ToHex;
 use sc_rpc_api::DenyUnsafe;
-use sp_api::ProvideRuntimeApi;
+use sp_api::{ApiExt, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
 use sp_core::{Bytes, Decode, H160, U256};
 use sp_rpc::number::NumberOrHex;
@@ -38,6 +38,7 @@ use std::{marker::PhantomData, sync::Arc};
 use call_request::{CallRequest, EstimateResourcesResponse};
 pub use module_evm::{ExitError, ExitReason};
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
+use primitives::evm::{BlockLimits, EstimateResourcesRequest};
 
 pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
 
@@ -127,11 +128,6 @@ fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
 	val.into_u256().try_into().map_err(|_| ())
 }
 
-// 20M. TODO: use value from runtime
-const MAX_GAS_LIMIT: u64 = 20_000_000;
-// 4M. TODO: use value from runtime
-const MAX_STROAGE_LIMIT: u32 = 4 * 1024 * 1024;
-
 impl<B, C, Balance> EVMApiT<<B as BlockT>::Hash> for EVMApi<B, C, Balance>
 where
 	B: BlockT,
@@ -141,7 +137,11 @@ where
 	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128> + Into<U256>,
 {
 	fn call(&self, request: CallRequest, at: Option<<B as BlockT>::Hash>) -> Result<Bytes> {
+		let api = self.client.runtime_api();
+
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
+
+		let block_id = BlockId::Hash(hash);
 
 		log::debug!(target: "evm", "rpc call, request: {:?}", request);
 
@@ -155,11 +155,28 @@ where
 			access_list,
 		} = request;
 
-		let gas_limit = gas_limit.unwrap_or(MAX_GAS_LIMIT);
-		let storage_limit = storage_limit.unwrap_or(MAX_STROAGE_LIMIT);
-		let data = data.map(|d| d.0).unwrap_or_default();
+		let block_limits = self.block_limits(at)?;
 
-		let api = self.client.runtime_api();
+		// eth_call is capped at 10x (1000%) the current block gas limit
+		let gas_limit_cap = 10 * block_limits.max_gas_limit;
+
+		let gas_limit = gas_limit.unwrap_or(gas_limit_cap);
+		if gas_limit > gas_limit_cap {
+			return Err(Error {
+				code: ErrorCode::InvalidParams,
+				message: format!("GasLimit exceeds capped allowance: {}", gas_limit_cap),
+				data: None,
+			});
+		}
+		let storage_limit = storage_limit.unwrap_or(block_limits.max_storage_limit);
+		if storage_limit > block_limits.max_storage_limit {
+			return Err(Error {
+				code: ErrorCode::InvalidParams,
+				message: format!("StorageLimit exceeds allowance: {}", block_limits.max_storage_limit),
+				data: None,
+			});
+		}
+		let data = data.map(|d| d.0).unwrap_or_default();
 
 		let balance_value = if let Some(value) = value {
 			to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
@@ -177,7 +194,7 @@ where
 			Some(to) => {
 				let info = api
 					.call(
-						&BlockId::Hash(hash),
+						&block_id,
 						from.unwrap_or_default(),
 						to,
 						data,
@@ -185,7 +202,7 @@ where
 						gas_limit,
 						storage_limit,
 						access_list,
-						true,
+						false,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
@@ -202,14 +219,14 @@ where
 			None => {
 				let info = api
 					.create(
-						&BlockId::Hash(hash),
+						&block_id,
 						from.unwrap_or_default(),
 						data,
 						balance_value,
 						gas_limit,
 						storage_limit,
 						access_list,
-						true,
+						false,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
@@ -233,22 +250,36 @@ where
 		at: Option<<B as BlockT>::Hash>,
 	) -> Result<EstimateResourcesResponse> {
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
-		let request = self
+
+		let block_id = BlockId::Hash(hash);
+
+		let block_limits = self.block_limits(at)?;
+
+		let request: EstimateResourcesRequest = self
 			.client
 			.runtime_api()
-			.get_estimate_resources_request(&BlockId::Hash(hash), unsigned_extrinsic.to_vec())
+			.get_estimate_resources_request(&block_id, unsigned_extrinsic.to_vec())
 			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 			.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
+		let gas_limit = core::cmp::min(
+			request.gas_limit.unwrap_or(block_limits.max_gas_limit),
+			block_limits.max_gas_limit,
+		);
+
+		let storage_limit = core::cmp::min(
+			request.storage_limit.unwrap_or(block_limits.max_storage_limit),
+			block_limits.max_storage_limit,
+		);
+
 		// Determine the highest possible gas limits
-		let max_gas_limit = MAX_GAS_LIMIT;
-		let mut highest = U256::from(request.gas_limit.unwrap_or(max_gas_limit));
+		let mut highest = gas_limit;
 
 		let request = CallRequest {
 			from: Some(from),
 			to: request.to,
-			gas_limit: request.gas_limit,
-			storage_limit: request.storage_limit,
+			gas_limit: Some(gas_limit),
+			storage_limit: Some(storage_limit),
 			value: request.value.map(|v| NumberOrHex::Hex(U256::from(v))),
 			data: request.data.map(Bytes),
 			access_list: request.access_list,
@@ -263,12 +294,12 @@ where
 		struct ExecutableResult {
 			data: Vec<u8>,
 			exit_reason: ExitReason,
-			used_gas: U256,
+			used_gas: u64,
 			used_storage: i32,
 		}
 
 		// Create a helper to check if a gas allowance results in an executable transaction
-		let executable = move |request: CallRequest, gas| -> Result<ExecutableResult> {
+		let executable = move |request: CallRequest, gas: u64| -> Result<ExecutableResult> {
 			let CallRequest {
 				from,
 				to,
@@ -279,10 +310,13 @@ where
 				access_list,
 			} = request;
 
-			// Use request gas limit only if it less than gas_limit parameter
-			let gas_limit = core::cmp::min(gas_limit.unwrap_or(gas), gas);
-			let storage_limit = storage_limit.unwrap_or(MAX_STROAGE_LIMIT);
+			let gas_limit = gas_limit.expect("Cannot be none, value set when request is constructed above; qed");
+			let storage_limit =
+				storage_limit.expect("Cannot be none, value set when request is constructed above; qed");
 			let data = data.map(|d| d.0).unwrap_or_default();
+
+			// Use request gas limit only if it less than gas_limit parameter
+			let gas_limit = core::cmp::min(gas_limit, gas);
 
 			let balance_value = if let Some(value) = value {
 				to_u128(value).and_then(|v| TryInto::<Balance>::try_into(v).map_err(|_| ()))
@@ -302,7 +336,7 @@ where
 						.client
 						.runtime_api()
 						.call(
-							&BlockId::Hash(hash),
+							&block_id,
 							from.unwrap_or_default(),
 							to,
 							data,
@@ -315,14 +349,14 @@ where
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-					(info.exit_reason, info.value, info.used_gas, info.used_storage)
+					(info.exit_reason, info.value, info.used_gas.as_u64(), info.used_storage)
 				}
 				None => {
 					let info = self
 						.client
 						.runtime_api()
 						.create(
-							&BlockId::Hash(hash),
+							&block_id,
 							from.unwrap_or_default(),
 							data,
 							balance_value,
@@ -334,7 +368,7 @@ where
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-					(info.exit_reason, Vec::new(), info.used_gas, info.used_storage)
+					(info.exit_reason, Vec::new(), info.used_gas.as_u64(), info.used_storage)
 				}
 			};
 
@@ -353,7 +387,7 @@ where
 			exit_reason,
 			used_gas,
 			used_storage,
-		} = executable(request.clone(), highest.as_u64())?;
+		} = executable(request.clone(), highest)?;
 		match exit_reason {
 			ExitReason::Succeed(_) => (),
 			ExitReason::Error(ExitError::OutOfGas) => {
@@ -367,7 +401,8 @@ where
 					// If the user has provided a gas limit, then we have executed
 					// with less block gas limit, so we must reexecute with block gas limit to
 					// know if the revert is due to a lack of gas or not.
-					let ExecutableResult { data, exit_reason, .. } = executable(request.clone(), max_gas_limit)?;
+					let ExecutableResult { data, exit_reason, .. } =
+						executable(request.clone(), block_limits.max_gas_limit)?;
 					match exit_reason {
 						ExitReason::Succeed(_) => {
 							return Err(internal_err(format!("gas required exceeds allowance {}", cap)))
@@ -387,22 +422,21 @@ where
 		// rpc_binary_search_estimate block
 		{
 			// Define the lower bound of the binary search
-			const MIN_GAS_PER_TX: U256 = U256([21_000, 0, 0, 0]);
-			let mut lowest = MIN_GAS_PER_TX;
+			let mut lowest = 21_000;
 
 			// Start close to the used gas for faster binary search
 			let mut mid = std::cmp::min(used_gas * 3, (highest + lowest) / 2);
 
 			// Execute the binary search and hone in on an executable gas limit.
 			let mut previous_highest = highest;
-			while (highest - lowest) > U256::one() {
-				let ExecutableResult { data, exit_reason, .. } = executable(request.clone(), mid.as_u64())?;
+			while (highest - lowest) > 1 {
+				let ExecutableResult { data, exit_reason, .. } = executable(request.clone(), mid)?;
 				match exit_reason {
 					ExitReason::Succeed(_) => {
 						highest = mid;
 						// If the variation in the estimate is less than 10%,
 						// then the estimate is considered sufficiently accurate.
-						if (previous_highest - highest) * 10 / previous_highest < U256::one() {
+						if (previous_highest - highest) * 10 / previous_highest < 1 {
 							break;
 						}
 						previous_highest = highest;
@@ -425,7 +459,7 @@ where
 		let fee = self
 			.client
 			.runtime_api()
-			.query_fee_details(&BlockId::Hash(hash), uxt, unsigned_extrinsic.len() as u32)
+			.query_fee_details(&block_id, uxt, unsigned_extrinsic.len() as u32)
 			.map_err(|e| Error {
 				code: ErrorCode::InternalError,
 				message: "Unable to query fee details.".into(),
@@ -441,6 +475,39 @@ where
 			storage: used_storage,
 			weight_fee: adjusted_weight_fee.into(),
 		})
+	}
+
+	fn block_limits(&self, at: Option<<B as BlockT>::Hash>) -> Result<BlockLimits> {
+		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
+
+		let block_id = BlockId::Hash(hash);
+
+		let version = self
+			.client
+			.runtime_api()
+			.api_version::<dyn EVMRuntimeRPCApi<B, Balance>>(&block_id)
+			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
+			.ok_or_else(|| {
+				internal_err(format!(
+					"Could not find `EVMRuntimeRPCApi` api for block `{:?}`.",
+					&block_id
+				))
+			})?;
+
+		let block_limits = if version > 1 {
+			self.client.runtime_api().block_limits(&block_id).map_err(|e| Error {
+				code: ErrorCode::InternalError,
+				message: "Unable to query block limits.".into(),
+				data: Some(format!("{:?}", e).into()),
+			})?
+		} else {
+			BlockLimits {
+				max_gas_limit: 20_000_000,    // 20M
+				max_storage_limit: 4_194_304, // 4Mb
+			}
+		};
+
+		Ok(block_limits)
 	}
 }
 

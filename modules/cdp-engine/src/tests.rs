@@ -380,6 +380,53 @@ fn adjust_position_work() {
 }
 
 #[test]
+fn adjust_position_by_debit_value_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		setup_default_collateral(BTC);
+
+		assert_noop!(
+			CDPEngineModule::adjust_position_by_debit_value(&ALICE, ACA, 100, 5000),
+			Error::<Runtime>::InvalidCollateralType,
+		);
+
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+
+		assert_ok!(CDPEngineModule::adjust_position_by_debit_value(&ALICE, BTC, 100, 0));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+
+		assert_ok!(CDPEngineModule::adjust_position_by_debit_value(&ALICE, BTC, 100, 100));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 800);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 100);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 200);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 1000);
+
+		assert_ok!(CDPEngineModule::adjust_position_by_debit_value(&ALICE, BTC, 0, -30));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 800);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 70);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 200);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 700);
+
+		assert_noop!(
+			CDPEngineModule::adjust_position_by_debit_value(&ALICE, BTC, 0, -69),
+			Error::<Runtime>::RemainDebitValueTooSmall
+		);
+
+		// if payback value is over the actual debit, just payback the actual debit.
+		assert_ok!(CDPEngineModule::adjust_position_by_debit_value(&ALICE, BTC, 0, -999999));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 800);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 200);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+	});
+}
+
+#[test]
 fn expand_position_collateral_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		MockPriceSource::set_price(DOT, Some(Price::saturating_from_rational(10, 1)));

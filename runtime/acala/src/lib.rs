@@ -89,7 +89,7 @@ use module_support::ExchangeRateProvider;
 use primitives::currency::AssetIds;
 pub use primitives::{
 	define_combined_task,
-	evm::{AccessListItem, EstimateResourcesRequest},
+	evm::{AccessListItem, BlockLimits, EstimateResourcesRequest},
 	task::TaskResult,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
 	DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
@@ -1890,6 +1890,13 @@ impl_runtime_apis! {
 	}
 
 	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance> for Runtime {
+		fn block_limits() -> BlockLimits {
+			BlockLimits {
+				max_gas_limit: runtime_common::EvmLimits::<Runtime>::max_gas_limit(),
+				max_storage_limit: runtime_common::EvmLimits::<Runtime>::max_storage_limit(),
+			}
+		}
+
 		fn call(
 			from: H160,
 			to: H160,
@@ -1900,25 +1907,31 @@ impl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			let config = if estimate {
-				let mut config = <Runtime as module_evm::Config>::config().clone();
-				config.estimate = true;
-				Some(config)
+			if estimate {
+				module_evm::runner::stack::Runner::<Runtime>::call(
+					from,
+					from,
+					to,
+					data,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+					<Runtime as module_evm::Config>::config(),
+				)
 			} else {
-				None
-			};
-
-			module_evm::runner::stack::Runner::<Runtime>::call(
-				from,
-				from,
-				to,
-				data,
-				value,
-				gas_limit,
-				storage_limit,
-				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
-			)
+				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_call(
+					from,
+					from,
+					to,
+					data,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+					<Runtime as module_evm::Config>::config(),
+				)
+			}
 		}
 
 		fn create(
@@ -1930,23 +1943,27 @@ impl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
-			let config = if estimate {
-				let mut config = <Runtime as module_evm::Config>::config().clone();
-				config.estimate = true;
-				Some(config)
+			if estimate {
+				module_evm::runner::stack::Runner::<Runtime>::create(
+					from,
+					data,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+					<Runtime as module_evm::Config>::config(),
+				)
 			} else {
-				None
-			};
-
-			module_evm::runner::stack::Runner::<Runtime>::create(
-				from,
-				data,
-				value,
-				gas_limit,
-				storage_limit,
-				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
-			)
+				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_create(
+					from,
+					data,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+					<Runtime as module_evm::Config>::config(),
+				)
+			}
 		}
 
 		fn get_estimate_resources_request(extrinsic: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError> {
@@ -1955,28 +1972,22 @@ impl_runtime_apis! {
 
 			let request = match utx.function {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
-					// use MAX_VALUE for no limit
-					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
-					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: Some(target),
-						gas_limit,
-						storage_limit,
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
 						value: Some(value),
 						data: Some(input),
 						access_list: Some(access_list)
 					})
 				}
 				Call::EVM(module_evm::Call::create{input, value, gas_limit, storage_limit, access_list}) => {
-					// use MAX_VALUE for no limit
-					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
-					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,
-						gas_limit,
-						storage_limit,
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
 						value: Some(value),
 						data: Some(input),
 						access_list: Some(access_list)
