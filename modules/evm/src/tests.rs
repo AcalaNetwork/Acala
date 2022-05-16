@@ -2083,7 +2083,6 @@ fn remove_account_works() {
 
 #[test]
 fn auto_publish_works() {
-	env_logger::init();
 	let json: serde_json::Value =
 		serde_json::from_str(include_str!("../../../ts-tests/build/CreateContractFactory.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
