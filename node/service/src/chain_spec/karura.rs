@@ -27,10 +27,10 @@ use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_f
 
 use karura_runtime::{
 	dollar, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
-	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
-	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig,
-	SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-	TokensConfig, VestingConfig, BNC, KAR, KSM, KUSD, LKSM, PHA, VSKSM,
+	DexConfig, EVMConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
+	HomaCouncilMembershipConfig, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig,
+	SS58Prefix, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig,
+	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, BNC, KAR, KSM, KUSD, LKSM, PHA, VSKSM,
 };
 use runtime_common::TokenInfo;
 
@@ -69,7 +69,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 		"karura-dev",
 		ChainType::Development,
 		move || {
-			karura_genesis(
+			karura_dev_genesis(
 				wasm_binary,
 				// Initial PoA authorities
 				vec![get_parachain_authority_keys_from_seed("Alice")],
@@ -100,7 +100,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 	))
 }
 
-fn karura_genesis(
+fn karura_dev_genesis(
 	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AuraId)>,
 	root_key: AccountId,
@@ -152,7 +152,10 @@ fn karura_genesis(
 			collaterals_params: vec![],
 		},
 		asset_registry: Default::default(),
-		evm: Default::default(),
+		evm: EVMConfig {
+			chain_id: 596u64,
+			accounts: Default::default(),
+		},
 		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: vec![],

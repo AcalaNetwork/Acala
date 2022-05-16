@@ -30,7 +30,7 @@ use frame_support::{
 	PalletId, RuntimeDebug,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use module_evm::EvmTask;
+use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::mocks::MockStableAsset;
 use module_support::DispatchableTask;
@@ -439,7 +439,6 @@ impl module_evm::Config for Test {
 	type Event = Event;
 	type PrecompilesType = AllPrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
-	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ChargeTransactionPayment;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
@@ -459,7 +458,7 @@ impl module_evm_accounts::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Test>;
-	type ChainId = ConstU64<1>;
+	type ChainId = EvmChainId<Test>;
 	type TransferAll = ();
 	type WeightInfo = ();
 }
@@ -625,9 +624,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Test>::default()
 		.assimilate_storage(&mut storage)
 		.unwrap();
-	module_evm::GenesisConfig::<Test> { accounts }
-		.assimilate_storage(&mut storage)
-		.unwrap();
+	module_evm::GenesisConfig::<Test> {
+		chain_id: 595,
+		accounts,
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
 	module_asset_registry::GenesisConfig::<Test> {
 		assets: vec![(ACA, ExistenceRequirement::get()), (RENBTC, 0)],
 	}

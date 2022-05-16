@@ -438,6 +438,7 @@ fn testnet_genesis(
 			],
 		},
 		evm: EVMConfig {
+			chain_id: 595u64,
 			accounts: evm_genesis_accounts,
 		},
 		dex: DexConfig {
@@ -634,6 +635,7 @@ fn mandala_genesis(
 			],
 		},
 		evm: EVMConfig {
+			chain_id: 595u64,
 			accounts: evm_genesis_accounts,
 		},
 		dex: DexConfig {

@@ -192,7 +192,6 @@ impl Config for Runtime {
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
-	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ();
 
@@ -294,7 +293,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
-	evm_mod::GenesisConfig::<Runtime> { accounts }
+	evm_mod::GenesisConfig::<Runtime> { chain_id: 1, accounts }
 		.assimilate_storage(&mut t)
 		.unwrap();
 

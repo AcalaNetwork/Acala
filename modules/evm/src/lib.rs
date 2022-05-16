@@ -199,10 +199,6 @@ pub mod module {
 		type PrecompilesType: PrecompileSet;
 		type PrecompilesValue: Get<Self::PrecompilesType>;
 
-		/// Chain ID of EVM.
-		#[pallet::constant]
-		type ChainId: Get<u64>;
-
 		/// Convert gas to weight.
 		type GasToWeight: Convert<u64, Weight>;
 
@@ -291,6 +287,13 @@ pub mod module {
 		pub enable_contract_development: bool,
 	}
 
+	/// The EVM Chain ID.
+	///
+	/// ChainId: u64
+	#[pallet::storage]
+	#[pallet::getter(fn chain_id)]
+	pub type ChainId<T: Config> = StorageValue<_, u64, ValueQuery>;
+
 	/// The EVM accounts info.
 	///
 	/// Accounts: map EvmAddress => Option<AccountInfo<T>>
@@ -346,6 +349,7 @@ pub mod module {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
+		pub chain_id: u64,
 		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
 	}
 
@@ -353,6 +357,7 @@ pub mod module {
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig {
+				chain_id: Default::default(),
 				accounts: Default::default(),
 			}
 		}
@@ -428,6 +433,7 @@ pub mod module {
 					}
 				}
 			});
+			ChainId::<T>::put(self.chain_id);
 			NetworkContractIndex::<T>::put(MIRRORED_NFT_ADDRESS_START);
 		}
 	}
@@ -1774,6 +1780,13 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 	/// Provide a method to set origin for `on_initialize`
 	fn set_origin(origin: T::AccountId) {
 		ExtrinsicOrigin::<T>::set(Some(origin));
+	}
+}
+
+pub struct EvmChainId<T>(PhantomData<T>);
+impl<T: Config> Get<u64> for EvmChainId<T> {
+	fn get() -> u64 {
+		Pallet::<T>::chain_id()
 	}
 }
 
