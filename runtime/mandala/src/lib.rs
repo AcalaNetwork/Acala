@@ -50,6 +50,7 @@ pub use frame_support::{
 use frame_system::{EnsureRoot, RawOrigin};
 use hex_literal::hex;
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
+use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
@@ -94,9 +95,11 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	currency::AssetIds, evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, Amount, AuctionId,
-	AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Lease, Moment, Nonce,
-	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	currency::AssetIds,
+	evm::{BlockLimits, EstimateResourcesRequest},
+	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
+	DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
+	TradingPair,
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles,
@@ -674,6 +677,48 @@ impl orml_authority::Config for Runtime {
 	type WeightInfo = weights::orml_authority::WeightInfo<Runtime>;
 }
 
+pub struct PaymentsDisputeResolver;
+impl orml_payments::DisputeResolver<AccountId> for PaymentsDisputeResolver {
+	fn get_resolver_account() -> AccountId {
+		Sudo::key().expect("Sudo key not set!")
+	}
+}
+
+pub struct PaymentsFeeHandler;
+impl orml_payments::FeeHandler<Runtime> for PaymentsFeeHandler {
+	fn apply_fees(
+		_from: &AccountId,
+		_to: &AccountId,
+		_detail: &orml_payments::PaymentDetail<Runtime>,
+		_remark: Option<&[u8]>,
+	) -> (AccountId, Percent) {
+		// we do not charge any fee
+		const MARKETPLACE_FEE_PERCENT: Percent = Percent::from_percent(0);
+		let fee_receiver = Sudo::key().expect("Sudo key not set!");
+		(fee_receiver, MARKETPLACE_FEE_PERCENT)
+	}
+}
+
+parameter_types! {
+	pub const IncentivePercentage: Percent = Percent::from_percent(5);
+	pub const MaxRemarkLength: u32 = 10;
+	// 1hr buffer period (60*60)/12
+	pub const CancelBufferBlockLength: BlockNumber = 300;
+	pub const MaxScheduledTaskListLength : u32 = 5;
+}
+
+impl orml_payments::Config for Runtime {
+	type Event = Event;
+	type Asset = Currencies;
+	type DisputeResolver = PaymentsDisputeResolver;
+	type IncentivePercentage = IncentivePercentage;
+	type FeeHandler = PaymentsFeeHandler;
+	type MaxRemarkLength = MaxRemarkLength;
+	type CancelBufferBlockLength = CancelBufferBlockLength;
+	type MaxScheduledTaskListLength = MaxScheduledTaskListLength;
+	type WeightInfo = orml_payments::weights::SubstrateWeight<Runtime>;
+}
+
 parameter_types! {
 	pub CandidacyBond: Balance = 10 * dollar(LDOT);
 	pub VotingBondBase: Balance = 2 * dollar(LDOT);
@@ -1029,7 +1074,6 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![ACA, DOT, LDOT, RENBTC, CurrencyId::StableAssetPoolToken(0)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -1040,7 +1084,6 @@ parameter_types! {
 impl module_cdp_engine::Config for Runtime {
 	type Event = Event;
 	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
@@ -1068,12 +1111,13 @@ impl module_honzon::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type DepositPerAuthorization = DepositPerAuthorization;
+	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type WeightInfo = weights::module_honzon::WeightInfo<Runtime>;
 }
 
 impl module_emergency_shutdown::Config for Runtime {
 	type Event = Event;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type PriceSource = Prices;
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
@@ -1909,6 +1953,7 @@ construct_runtime!(
 
 		// Stable asset
 		StableAsset: nutsfinance_stable_asset = 200,
+		Payments: orml_payments = 201,
 
 		// Staking related pallets
 		Earning: module_earning = 210,
@@ -2093,6 +2138,13 @@ impl_runtime_apis! {
 	}
 
 	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance> for Runtime {
+		fn block_limits() -> BlockLimits {
+			BlockLimits {
+				max_gas_limit: runtime_common::EvmLimits::<Runtime>::max_gas_limit(),
+				max_storage_limit: runtime_common::EvmLimits::<Runtime>::max_storage_limit(),
+			}
+		}
+
 		fn call(
 			from: H160,
 			to: H160,
@@ -2103,25 +2155,31 @@ impl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			let config = if estimate {
-				let mut config = <Runtime as module_evm::Config>::config().clone();
-				config.estimate = true;
-				Some(config)
+			if estimate {
+				module_evm::runner::stack::Runner::<Runtime>::call(
+					from,
+					from,
+					to,
+					data,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+					<Runtime as module_evm::Config>::config(),
+				)
 			} else {
-				None
-			};
-
-			module_evm::runner::stack::Runner::<Runtime>::call(
-				from,
-				from,
-				to,
-				data,
-				value,
-				gas_limit,
-				storage_limit,
-				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
-			)
+				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_call(
+					from,
+					from,
+					to,
+					data,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+					<Runtime as module_evm::Config>::config(),
+				)
+			}
 		}
 
 		fn create(
@@ -2133,23 +2191,27 @@ impl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
-			let config = if estimate {
-				let mut config = <Runtime as module_evm::Config>::config().clone();
-				config.estimate = true;
-				Some(config)
+			if estimate {
+				module_evm::runner::stack::Runner::<Runtime>::create(
+					from,
+					data,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+					<Runtime as module_evm::Config>::config(),
+				)
 			} else {
-				None
-			};
-
-			module_evm::runner::stack::Runner::<Runtime>::create(
-				from,
-				data,
-				value,
-				gas_limit,
-				storage_limit,
-				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
-			)
+				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_create(
+					from,
+					data,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+					<Runtime as module_evm::Config>::config(),
+				)
+			}
 		}
 
 		fn get_estimate_resources_request(extrinsic: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError> {
@@ -2158,28 +2220,22 @@ impl_runtime_apis! {
 
 			let request = match utx.0.function {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
-					// use MAX_VALUE for no limit
-					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
-					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: Some(target),
-						gas_limit,
-						storage_limit,
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
 						value: Some(value),
 						data: Some(input),
 						access_list: Some(access_list)
 					})
 				}
 				Call::EVM(module_evm::Call::create{input, value, gas_limit, storage_limit, access_list}) => {
-					// use MAX_VALUE for no limit
-					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
-					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,
-						gas_limit,
-						storage_limit,
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
 						value: Some(value),
 						data: Some(input),
 						access_list: Some(access_list)

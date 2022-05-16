@@ -21,6 +21,7 @@
 #![cfg(test)]
 
 use super::*;
+use cdp_engine::CollateralCurrencyIds;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
@@ -235,9 +236,8 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
-	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::one();
+	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
 }
@@ -245,7 +245,6 @@ parameter_types! {
 impl cdp_engine::Config for Runtime {
 	type Event = Event;
 	type PriceSource = MockPriceSource;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
@@ -271,6 +270,7 @@ impl Config for Runtime {
 	type Event = Event;
 	type Currency = PalletBalances;
 	type DepositPerAuthorization = ConstU128<100>;
+	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type WeightInfo = ();
 }
 
