@@ -1293,7 +1293,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// if source is account, the maintainer of the new contract is source.
-		// if source is contract, the maintainer of the new contract is the contract.
+		// if source is contract, the maintainer of the new contract is the source contract.
 		let maintainer = source;
 		let code_hash = code_hash(bounded_code.as_slice());
 		let code_size = bounded_code.len() as u32;
