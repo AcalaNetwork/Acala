@@ -2083,6 +2083,7 @@ fn remove_account_works() {
 
 #[test]
 fn auto_publish_works() {
+	env_logger::init();
 	let json: serde_json::Value =
 		serde_json::from_str(include_str!("../../../ts-tests/build/CreateContractFactory.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
@@ -2158,7 +2159,7 @@ fn auto_publish_works() {
 			Some(ContractInfo {
 				code_hash: H256::from_str("0xe12fa7753d9cd8de1f8b597fef33ab91c2749fe4a1022b648f949ab2566f391f")
 					.unwrap(),
-				maintainer: alice(),
+				maintainer: factory,
 				published: false
 			})
 		);
@@ -2228,7 +2229,7 @@ fn auto_publish_works() {
 			Some(ContractInfo {
 				code_hash: H256::from_str("0xe12fa7753d9cd8de1f8b597fef33ab91c2749fe4a1022b648f949ab2566f391f")
 					.unwrap(),
-				maintainer: alice(),
+				maintainer: H160::from_str("0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap(),
 				published: true
 			})
 		);
@@ -2276,7 +2277,7 @@ fn auto_publish_works() {
 			Some(ContractInfo {
 				code_hash: H256::from_str("0x46460b564756d0e02bbfdc8fc3d47d1a68c3b3d8301b5de90da83d6d75e0b6c7")
 					.unwrap(),
-				maintainer: alice(),
+				maintainer: H160::from_str("0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap(),
 				published: true
 			})
 		);

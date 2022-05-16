@@ -1293,13 +1293,8 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// if source is account, the maintainer of the new contract is source.
-		// if source is contract, the maintainer of the new contract is the maintainer of the contract.
-		let maintainer = Self::accounts(source).map_or(source, |account_info| {
-			account_info
-				.contract_info
-				.map_or(source, |contract_info| contract_info.maintainer)
-		});
-
+		// if source is contract, the maintainer of the new contract is the contract.
+		let maintainer = source;
 		let code_hash = code_hash(bounded_code.as_slice());
 		let code_size = bounded_code.len() as u32;
 
