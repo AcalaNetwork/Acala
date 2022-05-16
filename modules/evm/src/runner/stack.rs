@@ -824,10 +824,10 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		});
 
 		log::debug!(
-			 target: "evm",
-			 "set_code: address: {:?}, maintainer: {:?}, publish: {:?}",
-			 address,
-			 caller,
+			target: "evm",
+			"set_code: address: {:?}, maintainer: {:?}, publish: {:?}",
+			address,
+			caller,
 			is_published
 		);
 
