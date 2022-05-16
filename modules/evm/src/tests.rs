@@ -2103,7 +2103,7 @@ fn auto_publish_works() {
 			from: alice(),
 			contract: factory,
 			logs: vec![],
-			used_gas: 593221,
+			used_gas: 593209,
 			used_storage: 2609,
 		}));
 
@@ -2145,7 +2145,7 @@ fn auto_publish_works() {
 		assert_eq!(
 			EVM::accounts(factory).unwrap().contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0x04c797e49b05ffe6f15fcfd0a30b692a96cbe5da34e2f8d78d6ead028b65f58f")
+				code_hash: H256::from_str("0xd007bd109daec7dec73d897c079b67b3d2fd6ad4892a916c5e03e21bb60ff384")
 					.unwrap(),
 				maintainer: alice(),
 				published: false
@@ -2156,7 +2156,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0xe3240ba653c3294c888599b1e2deea25b1d446b6b7e8d5a638fdd30a70b25c4f")
+				code_hash: H256::from_str("0xe12fa7753d9cd8de1f8b597fef33ab91c2749fe4a1022b648f949ab2566f391f")
 					.unwrap(),
 				maintainer: alice(),
 				published: false
@@ -2167,7 +2167,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0xed8cef9d59d52661a06ef9a5be0cc76a4bbcf85309430f03cdc7c0226b0dda1a")
+				code_hash: H256::from_str("0x46460b564756d0e02bbfdc8fc3d47d1a68c3b3d8301b5de90da83d6d75e0b6c7")
 					.unwrap(),
 				maintainer: H160::from_str("0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap(),
 				published: false
@@ -2215,7 +2215,7 @@ fn auto_publish_works() {
 		assert_eq!(
 			EVM::accounts(factory).unwrap().contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0x04c797e49b05ffe6f15fcfd0a30b692a96cbe5da34e2f8d78d6ead028b65f58f")
+				code_hash: H256::from_str("0xd007bd109daec7dec73d897c079b67b3d2fd6ad4892a916c5e03e21bb60ff384")
 					.unwrap(),
 				maintainer: alice(),
 				published: true
@@ -2226,7 +2226,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0xe3240ba653c3294c888599b1e2deea25b1d446b6b7e8d5a638fdd30a70b25c4f")
+				code_hash: H256::from_str("0xe12fa7753d9cd8de1f8b597fef33ab91c2749fe4a1022b648f949ab2566f391f")
 					.unwrap(),
 				maintainer: alice(),
 				published: true
@@ -2237,7 +2237,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0xed8cef9d59d52661a06ef9a5be0cc76a4bbcf85309430f03cdc7c0226b0dda1a")
+				code_hash: H256::from_str("0x46460b564756d0e02bbfdc8fc3d47d1a68c3b3d8301b5de90da83d6d75e0b6c7")
 					.unwrap(),
 				maintainer: H160::from_str("0x39b26a36a8a175ce7d498b5ef187d1ab2f381bbd").unwrap(),
 				published: true
@@ -2274,7 +2274,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0xed8cef9d59d52661a06ef9a5be0cc76a4bbcf85309430f03cdc7c0226b0dda1a")
+				code_hash: H256::from_str("0x46460b564756d0e02bbfdc8fc3d47d1a68c3b3d8301b5de90da83d6d75e0b6c7")
 					.unwrap(),
 				maintainer: alice(),
 				published: true
