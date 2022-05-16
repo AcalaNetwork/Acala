@@ -413,6 +413,23 @@ where
 	}
 }
 
+pub struct EvmLimits<T>(PhantomData<T>);
+impl<T> EvmLimits<T>
+where
+	T: frame_system::Config,
+{
+	pub fn max_gas_limit() -> u64 {
+		let weights = T::BlockWeights::get();
+		let normal_weight = weights.get(DispatchClass::Normal);
+		WeightToGas::convert(normal_weight.max_extrinsic.unwrap_or(weights.max_block))
+	}
+
+	pub fn max_storage_limit() -> u32 {
+		let length = T::BlockLength::get();
+		*length.max.get(DispatchClass::Normal)
+	}
+}
+
 #[cfg(feature = "std")]
 /// Returns `evm_genesis_accounts`
 pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {

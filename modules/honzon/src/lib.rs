@@ -36,6 +36,7 @@ use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchResult,
 };
+use sp_std::prelude::*;
 use support::EmergencyShutdown;
 
 mod mock;
@@ -65,6 +66,10 @@ pub mod module {
 		/// Reserved amount per authorization.
 		#[pallet::constant]
 		type DepositPerAuthorization: Get<Balance>;
+
+		/// The list of valid collateral currency types
+		#[pallet::constant]
+		type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -252,7 +257,7 @@ pub mod module {
 		}
 
 		/// Cancel all authorization of caller
-		#[pallet::weight(<T as Config>::WeightInfo::unauthorize_all(<T as cdp_engine::Config>::CollateralCurrencyIds::get().len() as u32))]
+		#[pallet::weight(<T as Config>::WeightInfo::unauthorize_all(T::CollateralCurrencyIds::get().len() as u32))]
 		#[transactional]
 		pub fn unauthorize_all(origin: OriginFor<T>) -> DispatchResult {
 			let from = ensure_signed(origin)?;
@@ -304,6 +309,37 @@ pub mod module {
 				currency_id,
 				decrease_collateral,
 				min_decrease_debit_value,
+			)?;
+			Ok(())
+		}
+
+		/// Adjust the loans of `currency_id` by specific
+		/// `collateral_adjustment` and `debit_value_adjustment`
+		///
+		/// - `currency_id`: collateral currency id.
+		/// - `collateral_adjustment`: signed amount, positive means to deposit collateral currency
+		///   into CDP, negative means withdraw collateral currency from CDP.
+		/// - `debit_value_adjustment`: signed amount, positive means to issue some amount of
+		///   stablecoin, negative means caller will payback some amount of stablecoin to CDP.
+		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
+		#[transactional]
+		pub fn adjust_loan_by_debit_value(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			collateral_adjustment: Amount,
+			debit_value_adjustment: Amount,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			// not allowed to adjust the debit after system shutdown
+			if !debit_value_adjustment.is_zero() {
+				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
+			}
+			<cdp_engine::Pallet<T>>::adjust_position_by_debit_value(
+				&who,
+				currency_id,
+				collateral_adjustment,
+				debit_value_adjustment,
 			)?;
 			Ok(())
 		}

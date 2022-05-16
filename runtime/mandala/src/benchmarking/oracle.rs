@@ -16,8 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AcalaDataProvider, AcalaOracle, CollateralCurrencyIds, Origin, Price, Runtime, System};
+use crate::{AcalaDataProvider, AcalaOracle, Origin, Price, Runtime, System};
 
+use super::get_benchmarking_collateral_currency_ids;
 use frame_support::traits::OnFinalize;
 use orml_benchmarking::runtime_benchmarks_instance;
 use sp_runtime::traits::One;
@@ -28,8 +29,8 @@ runtime_benchmarks_instance! {
 
 	// feed values
 	feed_values {
-		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
-		let currency_ids = CollateralCurrencyIds::get();
+		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
+		let currency_ids = get_benchmarking_collateral_currency_ids();
 		let mut values = vec![];
 
 		for i in 0 .. c {
@@ -38,7 +39,7 @@ runtime_benchmarks_instance! {
 	}: _(Origin::root(), values)
 
 	on_finalize {
-		let currency_ids = CollateralCurrencyIds::get();
+		let currency_ids = get_benchmarking_collateral_currency_ids();
 		let mut values = vec![];
 
 		for currency_id in currency_ids {

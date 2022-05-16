@@ -83,8 +83,7 @@ pub const STABLE_ASSET: H160 = H160(hex!("00000000000000000000000000000000000004
 pub const HOMA: H160 = H160(hex!("0000000000000000000000000000000000000407"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
-	// srtool support rust 1.57.0
-	target_gas.map(|x| x.checked_div(10).expect("divisor is non-zero; qed").saturating_mul(9)) // 90%
+	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
 }
 
 pub struct AllPrecompiles<R> {
@@ -280,7 +279,7 @@ where
 
 		log::trace!(target: "evm", "Precompile end, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}, result: {:?}", address, input, target_gas, context, result);
 		if let Some(Err(PrecompileFailure::Revert { ref output, .. })) = result {
-			log::debug!(target: "evm", "Precompile failed: {:?}", core::str::from_utf8(&output.to_vec()));
+			log::debug!(target: "evm", "Precompile failed: {:?}", core::str::from_utf8(output));
 		};
 		result
 	}

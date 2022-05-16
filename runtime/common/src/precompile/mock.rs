@@ -30,12 +30,11 @@ use frame_support::{
 	PalletId, RuntimeDebug,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use module_evm::EvmTask;
+use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
-use module_support::mocks::MockStableAsset;
-use module_support::DispatchableTask;
 use module_support::{
-	AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, Rate,
+	mocks::MockStableAsset, AddressMapping as AddressMappingT, DEXIncentives, DispatchableTask, ExchangeRate,
+	ExchangeRateProvider, Rate,
 };
 use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 pub use primitives::{
@@ -278,7 +277,6 @@ impl module_transaction_payment::Config for Test {
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
-pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub enum ProxyType {
@@ -442,9 +440,8 @@ impl module_evm::Config for Test {
 	type Event = Event;
 	type PrecompilesType = AllPrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
-	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = ChargeTransactionPayment;
+	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = ConstU128<1000>;
@@ -462,7 +459,7 @@ impl module_evm_accounts::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Test>;
-	type ChainId = ConstU64<1>;
+	type ChainId = EvmChainId<Test>;
 	type TransferAll = ();
 	type WeightInfo = ();
 }
@@ -692,9 +689,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Test>::default()
 		.assimilate_storage(&mut storage)
 		.unwrap();
-	module_evm::GenesisConfig::<Test> { accounts }
-		.assimilate_storage(&mut storage)
-		.unwrap();
+	module_evm::GenesisConfig::<Test> {
+		chain_id: 595,
+		accounts,
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
 	module_asset_registry::GenesisConfig::<Test> {
 		assets: vec![(ACA, ExistenceRequirement::get()), (RENBTC, 0)],
 	}
