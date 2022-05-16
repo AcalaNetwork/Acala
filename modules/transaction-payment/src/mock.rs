@@ -190,7 +190,7 @@ parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(1, 2);
 	pub static TransactionByteFee: u128 = 1;
 	pub static TipPerWeightStep: u128 = 1;
-	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
 	pub AusdFeeSwapPath: Vec<CurrencyId> = vec![AUSD, ACA];
 	pub DotFeeSwapPath: Vec<CurrencyId> = vec![DOT, AUSD, ACA];
 }
