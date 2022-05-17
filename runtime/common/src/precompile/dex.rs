@@ -193,7 +193,7 @@ where
 			}
 			Action::SwapWithExactSupply => {
 				let who = input.account_id_at(1)?;
-				// solidity abi enocde array will add an offset at input[2]
+				// solidity abi encode array will add an offset at input[2]
 				let supply_amount = input.balance_at(3)?;
 				let min_target_amount = input.balance_at(4)?;
 				let path_len = input.u32_at(5)?;
