@@ -32,23 +32,19 @@ build-all:
 
 .PHONY: build-release
 build-release:
-	cargo build --locked --features with-all-runtime,no-metadata-docs --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
-
-.PHONY: build-release-full-metadata
-build-release-full-metadata:
-	cargo build --locked --features with-all-runtime,full-metadata-docs --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-all-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: build-mandala-release
 build-mandala-release:
-	cargo build --locked --features with-mandala-runtime,no-metadata-docs --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-mandala-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: build-karura-release
 build-karura-release:
-	cargo build --locked --features with-karura-runtime,no-metadata-docs --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-karura-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: build-acala-release
 build-acala-release:
-	cargo build --locked --features with-acala-runtime,no-metadata-docs --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-acala-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: build-mandala-internal-release
 build-mandala-internal-release:
