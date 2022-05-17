@@ -52,6 +52,7 @@ pub trait InputT {
 	fn u32_at(&self, index: usize) -> Result<u32, Self::Error>;
 
 	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error>;
+	fn bool_at(&self, index: usize) -> Result<bool, Self::Error>;
 }
 
 pub struct Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping> {
@@ -185,6 +186,11 @@ where
 		let bytes = self.nth_param(index, Some(len))?;
 
 		Ok(bytes.to_vec())
+	}
+
+	fn bool_at(&self, index: usize) -> Result<bool, Self::Error> {
+		let param = self.u256_at(index)?;
+		Ok(!param.is_zero())
 	}
 }
 

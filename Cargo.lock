@@ -10705,6 +10705,7 @@ dependencies = [
  "module-evm-accounts",
  "module-evm-bridge",
  "module-evm-utility-macro",
+ "module-homa",
  "module-idle-scheduler",
  "module-nft",
  "module-prices",
