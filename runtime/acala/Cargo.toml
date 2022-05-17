@@ -339,3 +339,9 @@ try-runtime = [
 	"module-xcm-interface/try-runtime",
 	"module-session-manager/try-runtime",
 ]
+# By default some types have documentation, `no-metadata-docs` allows to reduce the documentation
+# in the metadata.
+no-metadata-docs = ["frame-support/no-metadata-docs"]
+# By default some types have documentation, `full-metadata-docs` allows to add documentation to
+# more types in the metadata.
+full-metadata-docs = ["frame-support/full-metadata-docs"]
