@@ -119,7 +119,8 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
-				// EVM_ACCOUNTS,
+				// STABLE_ASSET,
+				EVM_ACCOUNTS,
 			]),
 			_marker: Default::default(),
 		}
@@ -148,6 +149,7 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
+				// STABLE_ASSET,
 				EVM_ACCOUNTS,
 			]),
 			_marker: Default::default(),

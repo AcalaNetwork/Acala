@@ -17,21 +17,18 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{
-	input::{Input, InputPricer, InputT, Output},
+	input::{Input, InputT, Output},
 	target_gas_limit,
-	weights::PrecompileWeights,
 };
 use crate::WeightToGas;
-use codec::Encode;
-use frame_support::pallet_prelude::IsType;
+use frame_support::{pallet_prelude::IsType, traits::Get};
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed, WeightInfo,
+	Context, ExitError, ExitRevert, ExitSucceed,
 };
 use module_support::EVMAccountsManager;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::Balance;
 use sp_runtime::{traits::Convert, AccountId32, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
@@ -100,7 +97,7 @@ where
 					module_evm_accounts::Pallet::<Runtime>::get_evm_address(&account_id).ok_or_else(|| {
 						PrecompileFailure::Revert {
 							exit_status: ExitRevert::Reverted,
-							output: "Get EvmAddress failed".into(),
+							output: "EvmAddress mapping not found".into(),
 							cost: target_gas_limit(target_gas).unwrap_or_default(),
 						}
 					})?;
@@ -122,7 +119,7 @@ impl<Runtime> Pricer<Runtime>
 where
 	Runtime: module_evm_accounts::Config + module_prices::Config,
 {
-	const BASE_COST: u64 = 50;
+	const BASE_COST: u64 = 200;
 
 	fn cost(
 		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
@@ -130,15 +127,15 @@ where
 		let action = input.action()?;
 		let cost = match action {
 			Action::GetAccountId => {
-				let weight = PrecompileWeights::<Runtime>::evm_query_new_contract_extra_bytes();
-				WeightToGas::convert(weight)
+				// EVMAccounts::Accounts (r: 1)
+				WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
 			}
 			Action::GetEvmAddress => {
-				let weight = PrecompileWeights::<Runtime>::evm_query_storage_deposit_per_byte();
-				WeightToGas::convert(weight)
+				// EVMAccounts::EvmAddresses (r: 1)
+				WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
 			}
 		};
-		Ok(cost)
+		Ok(Self::BASE_COST.saturating_add(cost))
 	}
 }
 
@@ -146,18 +143,14 @@ where
 mod tests {
 	use super::*;
 
-	use crate::precompile::mock::{
-		alice_evm_addr, bob, bob_evm_addr, new_test_ext, EVMModule, Event as TestEvent, Origin, System, Test,
-	};
-	use frame_support::assert_ok;
+	use crate::precompile::mock::{alice_evm_addr, new_test_ext, Test};
+	use frame_support::assert_noop;
 	use hex_literal::hex;
-	use module_evm::{ExitReason, Runner};
-	use sp_core::H160;
 
-	type EVMPrecompile = crate::EVMPrecompile<Test>;
+	type EVMAccountsPrecompile = crate::precompile::EVMAccountsPrecompile<Test>;
 
 	#[test]
-	fn developer_status_works() {
+	fn get_account_id_works() {
 		new_test_ext().execute_with(|| {
 			let context = Context {
 				address: Default::default(),
@@ -165,81 +158,64 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 
-			// developerStatus(address) -> 0x710f50ff
-			// who
+			// getAccountId(address) -> 0xe0b490f7
 			let input = hex! {"
-				710f50ff
+				e0b490f7
 				000000000000000000000000 1000000000000000000000000000000000000001
 			"};
 
-			// expect output is false as alice has not put a deposit down
+			// expect output is `evm` padded address
+			// evm: -> 0x65766d3a
 			let expected_output = hex! {"
-				00000000000000000000000000000000 00000000000000000000000000000000
+				65766d3a 1000000000000000000000000000000000000001 0000000000000000
 			"};
 
-			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = EVMAccountsPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
+		});
+	}
+
+	#[test]
+	fn get_evm_address_works() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			// getEvmAddress(bytes32) -> 0x0232027e
+			// evm: -> 0x65766d3a
+			let input = hex! {"
+				0232027e
+				65766d3a 1000000000000000000000000000000000000001 0000000000000000
+			"};
+
+			// expect output is evm address
+			let expected_output = hex! {"
+				000000000000000000000000 1000000000000000000000000000000000000001
+			"};
+
+			let resp = EVMAccountsPrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
-			// developerEnable(address) -> 0x504eb6b5
-			// who
+			// evm address mapping not found
+			// normal account_id: ALICE
 			let input = hex! {"
-				504eb6b5
-				000000000000000000000000 1000000000000000000000000000000000000001
+				0232027e
+				0101010101010101010101010101010101010101010101010101010101010101
 			"};
 
-			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
-			assert_eq!(resp.exit_status, ExitSucceed::Returned);
-			assert_eq!(resp.output, [0u8; 0].to_vec());
-
-			// query developer status again but this time it is enabled
-
-			// developerStatus(address) -> 0x710f50ff
-			// who
-			let input = hex! {"
-				710f50ff
-				000000000000000000000000 1000000000000000000000000000000000000001
-			"};
-
-			// expect output is now true as alice now is enabled for developer mode
-			let expected_output = hex! {"
-				00000000000000000000000000000000 00000000000000000000000000000001
-			"};
-
-			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
-			assert_eq!(resp.exit_status, ExitSucceed::Returned);
-			assert_eq!(resp.output, expected_output.to_vec());
-
-			// disable alice account for developer mode
-
-			// developerDisable(address) -> 0x757c54c9
-			// who
-			let input = hex! {"
-				757c54c9
-				000000000000000000000000 1000000000000000000000000000000000000001
-			"};
-
-			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
-			assert_eq!(resp.exit_status, ExitSucceed::Returned);
-			assert_eq!(resp.output, [0u8; 0].to_vec());
-
-			// query developer status
-
-			// developerStatus(address) -> 0x710f50ff
-			// who
-			let input = hex! {"
-				710f50ff
-				000000000000000000000000 1000000000000000000000000000000000000001
-			"};
-
-			// expect output is now false as alice now is disabled again for developer mode
-			let expected_output = hex! {"
-				00000000000000000000000000000000 00000000000000000000000000000000
-			"};
-
-			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
-			assert_eq!(resp.exit_status, ExitSucceed::Returned);
-			assert_eq!(resp.output, expected_output.to_vec());
+			assert_noop!(
+				EVMAccountsPrecompile::execute(&input, Some(10_000), &context, false),
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "EvmAddress mapping not found".into(),
+					cost: target_gas_limit(Some(10_000)).unwrap(),
+				}
+			);
 		});
 	}
 }
