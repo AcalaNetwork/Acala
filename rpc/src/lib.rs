@@ -22,7 +22,8 @@
 
 use primitives::{AccountId, Balance, Block, CurrencyId, DataProviderId, Hash, Nonce};
 use sc_consensus_manual_seal::rpc::{EngineCommand, ManualSeal, ManualSealApi};
-pub use sc_rpc_api::DenyUnsafe;
+pub use sc_rpc::dev::Dev;
+pub use sc_rpc_api::{dev::DevApi, DenyUnsafe};
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
@@ -51,7 +52,7 @@ pub struct FullDeps<C, P> {
 /// Instantiate all Full RPC extensions.
 pub fn create_full<C, P>(deps: FullDeps<C, P>) -> RpcExtension
 where
-	C: ProvideRuntimeApi<Block>,
+	C: ProvideRuntimeApi<Block> + sc_client_api::BlockBackend<Block>,
 	C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
 	C: Send + Sync + 'static,
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
@@ -88,7 +89,8 @@ where
 	// These RPCs should use an asynchronous caller instead.
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
 	io.extend_with(TokensApi::to_delegate(Tokens::new(client.clone())));
-	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client, deny_unsafe)));
+	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client.clone(), deny_unsafe)));
+	io.extend_with(DevApi::to_delegate(Dev::new(client, deny_unsafe)));
 
 	if let Some(command_sink) = command_sink {
 		io.extend_with(

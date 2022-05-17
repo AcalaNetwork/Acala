@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::all)]
 
-use primitives::evm::{AccessListItem, CallInfo, CreateInfo, EstimateResourcesRequest};
+use primitives::evm::{AccessListItem, BlockLimits, CallInfo, CreateInfo, EstimateResourcesRequest};
 use sp_core::H160;
 use sp_runtime::{
 	codec::Codec,
@@ -28,6 +28,7 @@ use sp_runtime::{
 use sp_std::vec::Vec;
 
 sp_api::decl_runtime_apis! {
+	#[api_version(2)]
 	pub trait EVMRuntimeRPCApi<Balance> where
 		Balance: Codec + MaybeDisplay + MaybeFromStr,
 	{
@@ -53,5 +54,7 @@ sp_api::decl_runtime_apis! {
 		) -> Result<CreateInfo, sp_runtime::DispatchError>;
 
 		fn get_estimate_resources_request(data: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError>;
+
+		fn block_limits() -> BlockLimits;
 	}
 }

@@ -1,6 +1,6 @@
 [package]
 name = "mandala-runtime"
-version = "2.6.1"
+version = "2.6.2"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -94,6 +94,7 @@ orml-xtokens = { path = "../../orml/xtokens", default-features = false }
 orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
 orml-unknown-tokens = { path = "../../orml/unknown-tokens", default-features = false }
 orml-xcm = { path = "../../orml/xcm", default-features = false }
+orml-payments = { path = "../../orml/payments", default-features = false }
 
 # modules
 module-transaction-pause = { path = "../../modules/transaction-pause", default-features = false }

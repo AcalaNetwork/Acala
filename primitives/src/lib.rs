@@ -36,7 +36,7 @@ use sp_core::U256;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
-	RuntimeDebug,
+	FixedU128, RuntimeDebug,
 };
 use sp_std::prelude::*;
 
@@ -107,6 +107,9 @@ pub type BlockId = generic::BlockId<Block>;
 
 /// Opaque, encoded, unchecked extrinsic.
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
+
+/// Fee multiplier.
+pub type Multiplier = FixedU128;
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
