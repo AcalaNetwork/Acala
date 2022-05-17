@@ -195,7 +195,7 @@ pub mod module {
 		/// - `currency_id`: collateral type
 		/// - `amount`: collateral amount
 		/// - `target`: target amount
-		/// - `splited`: splite collateral to multiple auction according to the config size
+		/// - `splited`: split collateral to multiple auction according to the config size
 		#[pallet::weight(
 			if *splited {
 				T::WeightInfo::auction_collateral(T::MaxAuctionsCount::get())
@@ -450,7 +450,6 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 				}
 
 				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap);
-
 				Ok((supply_sum, target_sum))
 			}
 			_ => T::Swap::swap(&Self::account_id(), currency_id, T::GetStableCurrencyId::get(), limit),

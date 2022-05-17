@@ -95,6 +95,8 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -221,12 +223,12 @@ impl cdp_treasury::Config for Runtime {
 }
 
 ord_parameter_types! {
-	pub const CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
+	pub const MockCollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
 }
 
 impl Config for Runtime {
 	type Event = Event;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type CollateralCurrencyIds = MockCollateralCurrencyIds;
 	type PriceSource = MockLockablePrice;
 	type CDPTreasury = CDPTreasuryModule;
 	type AuctionManagerHandler = MockAuctionManager;

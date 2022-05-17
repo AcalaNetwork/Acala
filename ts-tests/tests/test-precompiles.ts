@@ -2,8 +2,7 @@ import { expect } from "chai";
 import ECRecoverTests from "../build/ECRecoverTests.json"
 import { describeWithAcala } from "./util";
 import { deployContract } from "ethereum-waffle";
-import { Contract, ethers, Signer, Wallet } from "ethers";
-import { BigNumber } from '@ethersproject/bignumber';
+import { BigNumber, Contract, ethers, Signer, Wallet } from "ethers";
 
 describeWithAcala("Acala RPC (Precompile)", (context) => {
 	let alice: Signer;
@@ -34,7 +33,7 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 			from: await alice.getAddress(),
 			confirmations: 0,
 			nonce: 1,
-			gasLimit: BigNumber.from("28572"),
+			gasLimit: BigNumber.from("28535"),
 			gasPrice: BigNumber.from("1"),
 			//data: "",
 			value: BigNumber.from(0),

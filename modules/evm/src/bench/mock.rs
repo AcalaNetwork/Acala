@@ -23,22 +23,25 @@ use super::super::*;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, FindAuthor, Nothing},
-	ConsensusEngineId,
+	weights::IdentityFee,
+	ConsensusEngineId, PalletId,
 };
 use frame_system::EnsureSignedBy;
-use module_support::{mocks::MockAddressMapping, TransactionPayment};
+use module_support::{mocks::MockAddressMapping, Price, PriceProvider};
 use orml_traits::parameter_type_with_key;
 pub use primitives::{
-	define_combined_task, Address, Amount, Block, BlockNumber, CurrencyId, Header, ReserveIdentifier, Signature,
-	TokenSymbol,
+	define_combined_task, Address, Amount, Block, BlockNumber, CurrencyId, Header, Multiplier, ReserveIdentifier,
+	Signature, TokenSymbol,
 };
 use sp_core::{H160, H256};
 use sp_runtime::{
-	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup},
-	AccountId32,
+	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, IdentityLookup},
+	AccountId32, FixedU128, Percent,
 };
 
 type Balance = u128;
+type Ratio = FixedU128;
+pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 
 mod evm_mod {
 	pub use super::super::super::*;
@@ -105,6 +108,8 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -128,7 +133,6 @@ define_combined_task! {
 }
 
 pub struct MockBlockNumberProvider;
-
 impl BlockNumberProvider for MockBlockNumberProvider {
 	type BlockNumber = u32;
 
@@ -147,7 +151,6 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 pub struct GasToWeight;
-
 impl Convert<u64, u64> for GasToWeight {
 	fn convert(a: u64) -> u64 {
 		a
@@ -186,9 +189,8 @@ impl Config for Runtime {
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
-	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = DefaultTransactionPayment;
+	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
@@ -204,43 +206,57 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub struct DefaultTransactionPayment;
-
-use frame_support::traits::Imbalance;
-impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
-	TransactionPayment<AccountId, Balance, NegativeImbalance> for DefaultTransactionPayment
-{
-	fn reserve_fee(_who: &AccountId, _weight: Weight) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
+parameter_types! {
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
+	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
+	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
+	pub KaruraTreasuryAccount: AccountId32 = TreasuryPalletId::get().into_account();
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
+	pub const TradingPathLimit: u32 = 4;
+	pub const ExistenceRequirement: u128 = 1;
+}
+ord_parameter_types! {
+	pub const ListingOrigin: AccountId32 = AccountId32::new([1u8; 32]);
+}
+pub struct MockPriceSource;
+impl PriceProvider<CurrencyId> for MockPriceSource {
+	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
+		Some(Price::one())
 	}
 
-	fn unreserve_fee(_who: &AccountId, _fee: Balance) {}
-
-	fn unreserve_and_charge_fee(
-		_who: &AccountId,
-		_weight: Weight,
-	) -> Result<(Balance, NegativeImbalance), TransactionValidityError> {
-		Ok((Default::default(), Imbalance::zero()))
+	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
+		Some(Price::one())
 	}
+}
 
-	fn refund_fee(
-		_who: &AccountId,
-		_weight: Weight,
-		_payed: NegativeImbalance,
-	) -> Result<(), TransactionValidityError> {
-		Ok(())
-	}
-
-	fn charge_fee(
-		_who: &AccountId,
-		_len: u32,
-		_weight: Weight,
-		_tip: Balance,
-		_pays_fee: Pays,
-		_class: DispatchClass,
-	) -> Result<(), TransactionValidityError> {
-		Ok(())
-	}
+impl module_transaction_payment::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type Currency = Balances;
+	type MultiCurrency = Currencies;
+	type OnTransactionPayment = ();
+	type TransactionByteFee = ConstU128<10>;
+	type OperationalFeeMultiplier = ConstU64<5>;
+	type TipPerWeightStep = ConstU128<1>;
+	type MaxTipsOfPriority = ConstU128<1000>;
+	type AlternativeFeeSwapDeposit = ExistenceRequirement;
+	type WeightToFee = IdentityFee<Balance>;
+	type FeeMultiplierUpdate = ();
+	type DEX = ();
+	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
+	type TradingPathLimit = TradingPathLimit;
+	type PriceSource = MockPriceSource;
+	type WeightInfo = ();
+	type PalletId = TransactionPaymentPalletId;
+	type TreasuryAccount = KaruraTreasuryAccount;
+	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId32>;
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
 pub type SignedExtra = (frame_system::CheckWeight<Runtime>,);
@@ -258,5 +274,6 @@ construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call},
 		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
+		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>},
 	}
 );

@@ -30,10 +30,12 @@ use frame_support::{
 	PalletId, RuntimeDebug,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use module_evm::EvmTask;
+use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
-use module_support::DispatchableTask;
-use module_support::{AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider, Rate};
+use module_support::{
+	mocks::MockStableAsset, AddressMapping as AddressMappingT, DEXIncentives, DispatchableTask, ExchangeRate,
+	ExchangeRateProvider, Rate,
+};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
 	define_combined_task,
@@ -133,6 +135,8 @@ impl orml_tokens::Config for Test {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -272,7 +276,6 @@ impl module_transaction_payment::Config for Test {
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
-pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub enum ProxyType {
@@ -374,6 +377,34 @@ impl module_dex::Config for Test {
 	type OnLiquidityPoolUpdated = ();
 }
 
+parameter_types! {
+	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
+}
+
+pub struct EnsurePoolAssetId;
+impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoolAssetId {
+	fn validate(_currency_id: CurrencyId) -> bool {
+		true
+	}
+}
+
+impl nutsfinance_stable_asset::Config for Test {
+	type Event = Event;
+	type AssetId = CurrencyId;
+	type Balance = Balance;
+	type Assets = Tokens;
+	type PalletId = StableAssetPalletId;
+
+	type AtLeast64BitUnsigned = u128;
+	type FeePrecision = ConstU128<10_000_000_000>; // 10 decimals
+	type APrecision = ConstU128<100>; // 2 decimals
+	type PoolAssetLimit = ConstU32<5>;
+	type SwapExactOverAmount = ConstU128<100>;
+	type WeightInfo = ();
+	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type EnsurePoolAssetId = EnsurePoolAssetId;
+}
+
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
 pub type EvmErc20InfoMapping = module_asset_registry::EvmErc20InfoMapping<Test>;
@@ -407,9 +438,8 @@ impl module_evm::Config for Test {
 	type Event = Event;
 	type PrecompilesType = AllPrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
-	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = ChargeTransactionPayment;
+	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = ConstU128<1000>;
@@ -427,7 +457,7 @@ impl module_evm_accounts::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Test>;
-	type ChainId = ConstU64<1>;
+	type ChainId = EvmChainId<Test>;
 	type TransferAll = ();
 	type WeightInfo = ();
 }
@@ -556,6 +586,7 @@ frame_support::construct_runtime!(
 		EVMModule: module_evm,
 		EvmAccounts: module_evm_accounts,
 		IdleScheduler: module_idle_scheduler,
+		StableAsset: nutsfinance_stable_asset,
 	}
 );
 
@@ -592,9 +623,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Test>::default()
 		.assimilate_storage(&mut storage)
 		.unwrap();
-	module_evm::GenesisConfig::<Test> { accounts }
-		.assimilate_storage(&mut storage)
-		.unwrap();
+	module_evm::GenesisConfig::<Test> {
+		chain_id: 595,
+		accounts,
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
 	module_asset_registry::GenesisConfig::<Test> {
 		assets: vec![(ACA, ExistenceRequirement::get()), (RENBTC, 0)],
 	}
@@ -618,7 +652,14 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			Origin::root(),
 			EvmAddressMapping::<Test>::get_account_id(&alice_evm_addr()),
 			RENBTC,
-			1_000
+			1_000_000_000
+		));
+
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			EvmAddressMapping::<Test>::get_account_id(&alice_evm_addr()),
+			AUSD,
+			1_000_000_000
 		));
 	});
 	ext

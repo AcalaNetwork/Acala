@@ -427,10 +427,6 @@ fn testnet_genesis(
 					10_000_000 * dollar(AUSD),
 				),
 			],
-			global_interest_rate_per_sec: FixedU128::saturating_from_rational(
-				1_547_126_000u128,
-				1_000_000_000_000_000_000u128,
-			), /* 5% APR */
 		},
 		asset_registry: AssetRegistryConfig {
 			assets: vec![
@@ -442,6 +438,7 @@ fn testnet_genesis(
 			],
 		},
 		evm: EVMConfig {
+			chain_id: 595u64,
 			accounts: evm_genesis_accounts,
 		},
 		dex: DexConfig {
@@ -627,10 +624,6 @@ fn mandala_genesis(
 					10_000_000 * dollar(AUSD),
 				),
 			],
-			global_interest_rate_per_sec: FixedU128::saturating_from_rational(
-				1_547_126_000u128,
-				1_000_000_000_000_000_000u128,
-			), /* 5% APR */
 		},
 		asset_registry: AssetRegistryConfig {
 			assets: vec![
@@ -642,6 +635,7 @@ fn mandala_genesis(
 			],
 		},
 		evm: EVMConfig {
+			chain_id: 595u64,
 			accounts: evm_genesis_accounts,
 		},
 		dex: DexConfig {

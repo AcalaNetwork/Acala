@@ -21,7 +21,7 @@ use frame_support::traits::Get;
 use scale_info::TypeInfo;
 use sp_core::H160;
 use sp_runtime::{DispatchError, RuntimeDebug};
-use sp_std::{cmp::PartialEq, prelude::*};
+use sp_std::{cmp::PartialEq, prelude::*, result::Result};
 
 #[derive(RuntimeDebug, Encode, Decode, Clone, Copy, PartialEq, TypeInfo)]
 pub enum SwapLimit<Balance> {
@@ -49,7 +49,7 @@ pub trait DEXManager<AccountId, Balance, CurrencyId> {
 		who: &AccountId,
 		path: &[CurrencyId],
 		limit: SwapLimit<Balance>,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
+	) -> Result<(Balance, Balance), DispatchError>;
 
 	fn add_liquidity(
 		who: &AccountId,
@@ -59,7 +59,7 @@ pub trait DEXManager<AccountId, Balance, CurrencyId> {
 		max_amount_b: Balance,
 		min_share_increment: Balance,
 		stake_increment_share: bool,
-	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError>;
+	) -> Result<(Balance, Balance, Balance), DispatchError>;
 
 	fn remove_liquidity(
 		who: &AccountId,
@@ -69,7 +69,7 @@ pub trait DEXManager<AccountId, Balance, CurrencyId> {
 		min_withdrawn_a: Balance,
 		min_withdrawn_b: Balance,
 		by_unstake: bool,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
+	) -> Result<(Balance, Balance), DispatchError>;
 }
 
 pub trait Swap<AccountId, Balance, CurrencyId> {
@@ -84,7 +84,7 @@ pub trait Swap<AccountId, Balance, CurrencyId> {
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
 		limit: SwapLimit<Balance>,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
+	) -> Result<(Balance, Balance), DispatchError>;
 }
 
 #[derive(Eq, PartialEq, RuntimeDebug)]
@@ -170,7 +170,7 @@ where
 		_who: &AccountId,
 		_path: &[CurrencyId],
 		_limit: SwapLimit<Balance>,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+	) -> Result<(Balance, Balance), DispatchError> {
 		Ok(Default::default())
 	}
 
@@ -182,7 +182,7 @@ where
 		_max_amount_b: Balance,
 		_min_share_increment: Balance,
 		_stake_increment_share: bool,
-	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError> {
+	) -> Result<(Balance, Balance, Balance), DispatchError> {
 		Ok(Default::default())
 	}
 
@@ -194,7 +194,7 @@ where
 		_min_withdrawn_a: Balance,
 		_min_withdrawn_b: Balance,
 		_by_unstake: bool,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+	) -> Result<(Balance, Balance), DispatchError> {
 		Ok(Default::default())
 	}
 }

@@ -92,6 +92,8 @@ impl tokens::Config for Runtime {
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
 	type MaxLocks = ConstU32<100>;
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -155,9 +157,8 @@ impl module_evm::Config for Runtime {
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
-	type ChainId = ();
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = ();
+	type ChargeTransactionPayment = support::mocks::MockReservedTransactionPayment<Balances>;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 
