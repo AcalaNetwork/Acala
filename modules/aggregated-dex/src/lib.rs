@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -113,7 +113,7 @@ pub mod module {
 			min_target_amount: Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_aggregated_swap(
+			let _ = Self::do_aggregated_swap(
 				&who,
 				paths.into(),
 				SwapLimit::ExactSupply(supply_amount, min_target_amount),
@@ -133,32 +133,33 @@ impl<T: Config> Pallet<T> {
 		paths: Vec<SwapPath>,
 		swap_limit: SwapLimit<Balance>,
 	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+		ensure!(!paths.is_empty(), Error::<T>::InvalidSwapPath);
+
 		match swap_limit {
 			SwapLimit::ExactSupply(exact_supply_amount, min_target_amount) => {
 				let mut previous_output_currency_id: Option<CurrencyId> = None;
-				let mut input_amount: Balance = exact_supply_amount;
-				let mut output_amount: Balance = Default::default();
-
-				ensure!(!paths.is_empty(), Error::<T>::InvalidSwapPath);
+				let mut output_amount: Balance = exact_supply_amount;
 
 				for path in paths {
 					match path {
 						SwapPath::Dex(dex_path) => {
 							let input_currency_id = dex_path.first().ok_or(Error::<T>::InvalidSwapPath)?;
 
+							// If there has been a swap before,
+							// the currency id of this swap must be the output currency id of the previous swap.
 							if let Some(currency_id) = previous_output_currency_id {
 								ensure!(currency_id == *input_currency_id, Error::<T>::InvalidSwapPath);
 							}
 
+							// use the output of the previous swap as input.
 							let (_, actual_target) = T::DEX::swap_with_specific_path(
 								who,
 								&dex_path,
-								SwapLimit::ExactSupply(input_amount, Zero::zero()),
+								SwapLimit::ExactSupply(output_amount, Zero::zero()),
 							)?;
 
 							let output_currency_id = dex_path.last().ok_or(Error::<T>::InvalidSwapPath)?;
 							previous_output_currency_id = Some(*output_currency_id);
-							input_amount = actual_target;
 							output_amount = actual_target;
 						}
 						SwapPath::Taiga(pool_id, supply_asset_index, target_asset_index) => {
@@ -172,24 +173,26 @@ impl<T: Config> Pallet<T> {
 								.get(target_asset_index as usize)
 								.ok_or(Error::<T>::InvalidTokenIndex)?;
 
+							// If there has been a swap before,
+							// the currency id of this swap must be the output currency id of the previous swap.
 							if let Some(currency_id) = previous_output_currency_id {
-								// the swap path must be
 								ensure!(currency_id == *input_currency_id, Error::<T>::InvalidSwapPath);
 							}
 
 							let asset_length = pool_info.assets.len() as u32;
+
+							// use the output of the previous swap as input.
 							let (_, actual_target) = T::StableAsset::swap(
 								who,
 								pool_id,
 								supply_asset_index,
 								target_asset_index,
-								input_amount,
+								output_amount,
 								Zero::zero(),
 								asset_length,
 							)?;
 
 							previous_output_currency_id = Some(*output_currency_id);
-							input_amount = actual_target;
 							output_amount = actual_target;
 						}
 					}
@@ -303,36 +306,22 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
 
 /// Choose DEX or Taiga to fully execute the swap by which price is better.
 pub struct EitherDexOrTaigaSwap<T>(PhantomData<T>);
-impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for EitherDexOrTaigaSwap<T> {
-	fn get_swap_amount(
+
+struct DexOrTaigaSwapParams {
+	dex_result: Option<(Balance, Balance)>,
+	taiga_result: Option<(Balance, Balance)>,
+	swap_amount: Option<(Balance, Balance)>,
+}
+
+impl<T: Config> EitherDexOrTaigaSwap<T> {
+	fn get_swap_params(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
 		limit: SwapLimit<Balance>,
-	) -> Option<(Balance, Balance)> {
+	) -> DexOrTaigaSwapParams {
 		let dex_result = DexSwap::<T>::get_swap_amount(supply_currency_id, target_currency_id, limit);
 		let taiga_result = TaigaSwap::<T>::get_swap_amount(supply_currency_id, target_currency_id, limit);
-
-		if let (Some((dex_supply, dex_target)), Some((taiga_supply, taiga_target))) = (dex_result, taiga_result) {
-			if dex_supply > taiga_supply || dex_target < taiga_target {
-				taiga_result
-			} else {
-				dex_result
-			}
-		} else {
-			dex_result.or(taiga_result)
-		}
-	}
-
-	fn swap(
-		who: &T::AccountId,
-		supply_currency_id: CurrencyId,
-		target_currency_id: CurrencyId,
-		limit: SwapLimit<Balance>,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
-		let dex_result = DexSwap::<T>::get_swap_amount(supply_currency_id, target_currency_id, limit);
-		let taiga_result = TaigaSwap::<T>::get_swap_amount(supply_currency_id, target_currency_id, limit);
-
-		let do_swap =
+		let swap_amount =
 			if let (Some((dex_supply, dex_target)), Some((taiga_supply, taiga_target))) = (dex_result, taiga_result) {
 				if dex_supply > taiga_supply || dex_target < taiga_target {
 					taiga_result
@@ -343,14 +332,43 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for EitherDexOrTaigaSwap
 				dex_result.or(taiga_result)
 			};
 
-		if do_swap.is_some() {
-			if do_swap == dex_result {
-				DexSwap::<T>::swap(who, supply_currency_id, target_currency_id, limit)
-			} else {
-				TaigaSwap::<T>::swap(who, supply_currency_id, target_currency_id, limit)
-			}
-		} else {
-			Err(Error::<T>::CannotSwap.into())
+		DexOrTaigaSwapParams {
+			dex_result,
+			taiga_result,
+			swap_amount,
 		}
+	}
+}
+
+impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for EitherDexOrTaigaSwap<T> {
+	fn get_swap_amount(
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		limit: SwapLimit<Balance>,
+	) -> Option<(Balance, Balance)> {
+		Self::get_swap_params(supply_currency_id, target_currency_id, limit).swap_amount
+	}
+
+	fn swap(
+		who: &T::AccountId,
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		limit: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+		let DexOrTaigaSwapParams {
+			dex_result,
+			taiga_result,
+			swap_amount,
+		} = Self::get_swap_params(supply_currency_id, target_currency_id, limit);
+
+		if swap_amount.is_some() {
+			if dex_result == swap_amount {
+				return DexSwap::<T>::swap(who, supply_currency_id, target_currency_id, limit);
+			} else if taiga_result == swap_amount {
+				return TaigaSwap::<T>::swap(who, supply_currency_id, target_currency_id, limit);
+			}
+		}
+
+		Err(Error::<T>::CannotSwap.into())
 	}
 }
