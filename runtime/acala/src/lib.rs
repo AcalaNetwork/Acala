@@ -2162,7 +2162,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 
 				Ok((
 					EthereumTransactionMessage {
-						chain_id: ChainId::get(),
+						chain_id: EVM::chain_id(),
 						genesis: System::block_hash(0),
 						nonce,
 						tip,
