@@ -192,9 +192,8 @@ impl Config for Runtime {
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
-	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = ();
+	type ChargeTransactionPayment = module_support::mocks::MockReservedTransactionPayment<Balances>;
 
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
@@ -219,12 +218,13 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		EVM: evm_mod::{Pallet, Config<T>, Call, Storage, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
-		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		Timestamp: pallet_timestamp,
+		EVM: evm_mod,
+		Tokens: orml_tokens,
+		Balances: pallet_balances,
+		Currencies: orml_currencies,
+		IdleScheduler: module_idle_scheduler,
 	}
 );
 
@@ -294,12 +294,14 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
-	evm_mod::GenesisConfig::<Runtime> { accounts }
+	evm_mod::GenesisConfig::<Runtime> { chain_id: 1, accounts }
 		.assimilate_storage(&mut t)
 		.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(t);
-	ext.execute_with(|| System::set_block_number(1));
+	ext.execute_with(|| {
+		System::set_block_number(1);
+	});
 	ext
 }
 

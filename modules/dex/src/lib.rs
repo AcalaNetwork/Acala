@@ -141,6 +141,11 @@ pub mod module {
 		#[pallet::constant]
 		type ExtendedProvisioningBlocks: Get<Self::BlockNumber>;
 
+		/// The alternative swap path joint list, which can be concated to
+		/// alternative swap path when cdp treasury swap collateral to stable.
+		#[pallet::constant]
+		type AlternativeSwapPathJointList: Get<Vec<Vec<CurrencyId>>>;
+
 		/// Event handler which calls when update liquidity pool.
 		type OnLiquidityPoolUpdated: Happened<(TradingPair, Balance, Balance)>;
 	}
@@ -191,6 +196,8 @@ pub mod module {
 		InvalidTradingPath,
 		/// Not allowed to refund provision
 		NotAllowedRefund,
+		/// Cannot swap
+		CannotSwap,
 	}
 
 	#[pallet::event]
@@ -439,7 +446,7 @@ pub mod module {
 		}
 
 		/// Add provision to Provisioning trading pair.
-		/// If succecced, will record the provision, but shares issuing will happen after the
+		/// If succeed, will record the provision, but shares issuing will happen after the
 		/// trading pair convert to Enabled status.
 		///
 		/// - `currency_id_a`: currency id A.
@@ -1524,6 +1531,18 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 					})
 			}
 		}
+	}
+
+	fn swap_with_best_price(
+		who: &T::AccountId,
+		supply: CurrencyId,
+		target: CurrencyId,
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		let swap_path = Self::get_best_price_swap_path(supply, target, limit, T::AlternativeSwapPathJointList::get())
+			.ok_or(Error::<T>::CannotSwap)?;
+		let (supply, target) = Self::swap_with_specific_path(who, &swap_path, limit)?;
+		Ok((supply, target))
 	}
 
 	fn get_best_price_swap_path(

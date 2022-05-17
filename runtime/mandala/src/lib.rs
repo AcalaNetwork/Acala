@@ -52,11 +52,11 @@ use hex_literal::hex;
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::{BasicCurrencyAdapter, Currency};
-use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
+use module_evm::{CallInfo, CreateInfo, EvmChainId, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
-use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
+use module_transaction_payment::{TargetedFeeAdjustment, TransactionFeePoolTrader};
 use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
@@ -98,7 +98,7 @@ pub use primitives::{
 	currency::AssetIds,
 	evm::{BlockLimits, EstimateResourcesRequest},
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
-	DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
+	DataProviderId, EraIndex, Hash, Lease, Moment, Multiplier, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
 	TradingPair,
 };
 pub use runtime_common::{
@@ -131,7 +131,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2061,
+	spec_version: 2062,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1098,7 +1098,6 @@ impl module_cdp_engine::Config for Runtime {
 	type EmergencyShutdown = EmergencyShutdown;
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type DEX = Dex;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
@@ -1136,6 +1135,7 @@ parameter_types! {
 	];
 	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
 	pub const TradingPathLimit: u32 = 4;
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![vec![GetStakingCurrencyId::get()]];
 }
 
 impl module_dex::Config for Runtime {
@@ -1151,6 +1151,7 @@ impl module_dex::Config for Runtime {
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type StableAsset = StableAsset;
 	type OnLiquidityPoolUpdated = ();
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 }
 
 impl module_dex_oracle::Config for Runtime {
@@ -1162,7 +1163,6 @@ impl module_dex_oracle::Config for Runtime {
 
 parameter_types! {
 	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
-	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![vec![GetStakingCurrencyId::get()]];
 }
 
 impl module_cdp_treasury::Config for Runtime {
@@ -1175,7 +1175,6 @@ impl module_cdp_treasury::Config for Runtime {
 	type MaxAuctionsCount = ConstU32<50>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 	type StableAsset = StableAsset;
 }
@@ -1263,7 +1262,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
-	type ChainId = ChainId;
+	type ChainId = EvmChainId<Runtime>;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
@@ -1540,7 +1539,6 @@ impl ecosystem_compound_cash::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ChainId: u64 = 595;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::mandala();
 }
@@ -1595,7 +1593,6 @@ impl module_evm::Config for Runtime {
 	type Event = Event;
 	type PrecompilesType = AllPrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
-	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
@@ -1787,7 +1784,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 
 				Ok((
 					EthereumTransactionMessage {
-						chain_id: ChainId::get(),
+						chain_id: EVM::chain_id(),
 						genesis: System::block_hash(0),
 						nonce,
 						tip,
@@ -1835,8 +1832,36 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	EvmChainIdMigration,
+>;
+
+// TODO: remove
+pub struct EvmChainIdMigration;
+impl OnRuntimeUpgrade for EvmChainIdMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		module_evm::ChainId::<Runtime>::put(595);
+
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		frame_support::ensure!(EvmChainId::<Runtime>::get() == 0, "must upgrade linearly");
+		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		frame_support::ensure!(EvmChainId::<Runtime>::get() == 595, "must upgrade");
+		Ok(())
+	}
+}
 
 construct_runtime!(
 	pub enum Runtime where
@@ -2462,7 +2487,7 @@ mod tests {
 						action: module_evm::TransactionAction::Create,
 						value: 0,
 						input: vec![0x01],
-						chain_id: ChainId::get(),
+						chain_id: 0,
 						genesis: sp_core::H256::default(),
 						valid_until: 30,
 						access_list: vec![],

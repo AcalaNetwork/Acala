@@ -644,7 +644,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn chain_id(&self) -> U256 {
-		U256::from(T::ChainId::get())
+		U256::from(Pallet::<T>::chain_id())
 	}
 
 	#[cfg(feature = "evm-tests")]
@@ -792,13 +792,10 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			address
 		);
 
-		let caller: H160;
-		let mut substate = &self.substate;
-
-		loop {
-			// get maintainer from parent caller
-			// `enter_substate` will do `spit_child`
-			if substate.parent.is_none() {
+		// get maintainer from parent caller `enter_substate` will do `spit_child`
+		let parent = match self.substate.parent {
+			Some(ref parent) => parent,
+			None => {
 				log::error!(
 					target: "evm",
 					"get parent's maintainer failed. address: {:?}",
@@ -807,28 +804,35 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 				debug_assert!(false);
 				return;
 			}
+		};
 
-			substate = substate.parent.as_ref().expect("has checked; qed");
-
-			if let Some(c) = substate.metadata().caller() {
-				// the caller maybe is contract and not published.
-				// get the parent's maintainer.
-				if !Pallet::<T>::is_account_empty(c) {
-					caller = *c;
-					break;
-				}
+		let caller = match parent.metadata().caller() {
+			Some(ref caller) => caller,
+			None => {
+				log::error!(
+					target: "evm",
+					"get parent's caller failed. address: {:?}",
+					address
+				);
+				debug_assert!(false);
+				return;
 			}
-		}
+		};
+
+		let is_published = self.substate.metadata.origin_code_address().map_or(false, |addr| {
+			Pallet::<T>::accounts(addr).map_or(false, |account| account.contract_info.map_or(false, |v| v.published))
+		});
 
 		log::debug!(
 			target: "evm",
-			"set_code: address: {:?}, maintainer: {:?}",
+			"set_code: address: {:?}, maintainer: {:?}, publish: {:?}",
 			address,
-			caller
+			caller,
+			is_published
 		);
 
 		let code_size = code.len() as u32;
-		Pallet::<T>::create_contract(caller, address, code);
+		Pallet::<T>::create_contract(*caller, address, is_published, code);
 
 		let used_storage = code_size.saturating_add(T::NewContractExtraBytes::get());
 		Pallet::<T>::update_contract_storage_size(&address, used_storage as i32);

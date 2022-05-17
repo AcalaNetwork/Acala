@@ -46,7 +46,7 @@ use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, InclusionFee};
-use primitives::{Balance, CurrencyId, ReserveIdentifier};
+use primitives::{Balance, CurrencyId, Multiplier, ReserveIdentifier};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
@@ -56,7 +56,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	FixedPointNumber, FixedPointOperand, FixedU128, Percent, Perquintill,
+	FixedPointNumber, FixedPointOperand, Percent, Perquintill,
 };
 use sp_std::prelude::*;
 use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
@@ -70,9 +70,6 @@ pub mod weights;
 
 pub use module::*;
 pub use weights::WeightInfo;
-
-/// Fee multiplier.
-pub type Multiplier = FixedU128;
 
 type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type NegativeImbalanceOf<T> =
@@ -751,7 +748,7 @@ where
 		}
 	}
 
-	fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {
+	pub fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {
 		// cap the weight to the maximum defined in runtime, otherwise it will be the
 		// `Bounded` maximum of its data type, which is not desired.
 		let capped_weight = weight.min(T::BlockWeights::get().max_block);
@@ -812,7 +809,12 @@ where
 					TokenExchangeRate::<T>::contains_key(currency_id),
 					Error::<T>::InvalidToken
 				);
-				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
+				let fee_amount = if T::DefaultFeeTokens::get().contains(currency_id) {
+					fee.saturating_add(T::AlternativeFeeSurplus::get().mul_ceil(fee))
+				} else {
+					custom_fee_amount
+				};
+				Self::swap_from_pool_or_dex(who, fee_amount, *currency_id).map(|_| fee_amount)
 			}
 			_ => Self::native_then_alternative_or_default(who, fee, reason),
 		}
@@ -1405,14 +1407,22 @@ impl<T: Config + Send + Sync> TransactionPayment<T::AccountId, PalletBalanceOf<T
 where
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
-	fn reserve_fee(who: &T::AccountId, weight: Weight) -> Result<PalletBalanceOf<T>, DispatchError> {
-		let fee = Pallet::<T>::weight_to_fee(weight);
-		<T as Config>::Currency::reserve_named(&RESERVE_ID, who, fee)?;
+	fn reserve_fee(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		named: Option<ReserveIdentifier>,
+	) -> Result<PalletBalanceOf<T>, DispatchError> {
+		Pallet::<T>::native_then_alternative_or_default(who, fee, WithdrawReasons::TRANSACTION_PAYMENT)?;
+		T::Currency::reserve_named(&named.unwrap_or(RESERVE_ID), who, fee)?;
 		Ok(fee)
 	}
 
-	fn unreserve_fee(who: &T::AccountId, fee: PalletBalanceOf<T>) {
-		<T as Config>::Currency::unreserve_named(&RESERVE_ID, who, fee);
+	fn unreserve_fee(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		named: Option<ReserveIdentifier>,
+	) -> PalletBalanceOf<T> {
+		<T as Config>::Currency::unreserve_named(&named.unwrap_or(RESERVE_ID), who, fee)
 	}
 
 	fn unreserve_and_charge_fee(
@@ -1481,5 +1491,16 @@ where
 		// distribute fee
 		<T as Config>::OnTransactionPayment::on_unbalanced(actual_payment);
 		Ok(())
+	}
+
+	fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {
+		Pallet::<T>::weight_to_fee(weight)
+	}
+
+	/// Apply multiplier to fee, return the final fee. If multiplier is `None`, use
+	/// `next_fee_multiplier`.
+	fn apply_multiplier_to_fee(fee: PalletBalanceOf<T>, multiplier: Option<Multiplier>) -> PalletBalanceOf<T> {
+		let multiplier = multiplier.unwrap_or_else(|| Pallet::<T>::next_fee_multiplier());
+		multiplier.saturating_mul_int(fee)
 	}
 }
