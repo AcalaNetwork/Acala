@@ -362,10 +362,13 @@ impl<T: Config> StaticLookup for Pallet<T> {
 }
 
 impl<T: Config> EVMAccountsManager<T::AccountId> for Pallet<T> {
+	/// Returns the AccountId used to generate the given EvmAddress.
 	fn get_account_id(address: &EvmAddress) -> T::AccountId {
 		T::AddressMapping::get_account_id(address)
 	}
 
+	/// Returns the EvmAddress associated with a given AccountId or the underlying EvmAddress of the
+	/// AccountId.
 	fn get_evm_address(account_id: &T::AccountId) -> Option<EvmAddress> {
 		T::AddressMapping::get_evm_address(account_id)
 	}

@@ -81,7 +81,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_fixed_bytes(&output.into().as_ref()),
+					output: Output::default().encode_fixed_bytes(output.into().as_ref()),
 					logs: Default::default(),
 				})
 			}
