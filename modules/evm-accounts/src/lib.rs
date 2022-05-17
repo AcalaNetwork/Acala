@@ -35,7 +35,7 @@ use frame_support::{
 };
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_evm_utility_macro::keccak256;
-use module_support::AddressMapping;
+use module_support::{AddressMapping, EVMAccountsManager};
 use orml_traits::currency::TransferAll;
 use primitives::{evm::EvmAddress, to_bytes, AccountIndex};
 use sp_core::crypto::AccountId32;
@@ -278,7 +278,7 @@ impl<T: Config> AddressMapping<T::AccountId> for EvmAddressMapping<T>
 where
 	T::AccountId: IsType<AccountId32>,
 {
-	// Returns the AccountId used go generate the given EvmAddress.
+	// Returns the AccountId used to generate the given EvmAddress.
 	fn get_account_id(address: &EvmAddress) -> T::AccountId {
 		if let Some(acc) = Accounts::<T>::get(address) {
 			acc
@@ -358,5 +358,15 @@ impl<T: Config> StaticLookup for Pallet<T> {
 
 	fn unlookup(a: Self::Target) -> Self::Source {
 		MultiAddress::Id(a)
+	}
+}
+
+impl<T: Config> EVMAccountsManager<T::AccountId> for Pallet<T> {
+	fn get_account_id(address: &EvmAddress) -> T::AccountId {
+		T::AddressMapping::get_account_id(address)
+	}
+
+	fn get_evm_address(account_id: &T::AccountId) -> Option<EvmAddress> {
+		T::AddressMapping::get_evm_address(account_id)
 	}
 }
