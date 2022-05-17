@@ -31,12 +31,12 @@
 
 use frame_support::{pallet_prelude::*, traits::NamedReservableCurrency, transactional};
 use frame_system::pallet_prelude::*;
-use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier};
+use primitives::{Amount, Balance, CurrencyId, Position, ReserveIdentifier};
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchResult,
 };
-use support::{EmergencyShutdown, HonzonManager};
+use support::{EmergencyShutdown, HonzonManager, PriceProvider, Ratio};
 
 mod mock;
 mod tests;
@@ -349,5 +349,21 @@ impl<T: Config> HonzonManager<T::AccountId, CurrencyId, Amount, Balance> for Pal
 
 	fn close_loan_by_dex(who: T::AccountId, currency_id: CurrencyId, max_collateral_amount: Balance) -> DispatchResult {
 		Self::do_close_loan_by_dex(who, currency_id, max_collateral_amount)
+	}
+
+	fn get_position(who: &T::AccountId, currency_id: CurrencyId) -> Position {
+		<loans::Pallet<T>>::positions(currency_id, who)
+	}
+
+	fn get_liquidation_ratio(currency_id: CurrencyId) -> Option<Ratio> {
+		<cdp_engine::Pallet<T>>::collateral_params(currency_id).liquidation_ratio
+	}
+
+	fn get_current_collateral_ratio(who: &T::AccountId, currency_id: CurrencyId) -> Option<Ratio> {
+		let Position { collateral, debit } = <loans::Pallet<T>>::positions(currency_id, &who);
+		let stable_currency_id = T::GetStableCurrencyId::get();
+
+		T::PriceSource::get_relative_price(currency_id, stable_currency_id)
+			.map(|price| <cdp_engine::Pallet<T>>::calculate_collateral_ratio(currency_id, collateral, debit, price))
 	}
 }

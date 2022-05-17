@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::FullCodec;
+use primitives::Position;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -159,4 +160,10 @@ pub trait HonzonManager<AccountId, CurrencyId, Amount, Balance> {
 	) -> DispatchResult;
 
 	fn close_loan_by_dex(who: AccountId, currency_id: CurrencyId, max_collateral_amount: Balance) -> DispatchResult;
+
+	fn get_position(who: &AccountId, currency_id: CurrencyId) -> Position;
+
+	fn get_liquidation_ratio(currency_id: CurrencyId) -> Option<Ratio>;
+
+	fn get_current_collateral_ratio(who: &AccountId, currency_id: CurrencyId) -> Option<Ratio>;
 }

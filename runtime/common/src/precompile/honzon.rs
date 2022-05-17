@@ -21,7 +21,7 @@ use super::{
 	target_gas_limit,
 };
 use crate::WeightToGas;
-use frame_support::log;
+use frame_support::{log, traits::Get};
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
@@ -30,8 +30,8 @@ use module_evm::{
 use module_honzon::WeightInfo;
 use module_support::HonzonManager;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::{Amount, Balance, CurrencyId};
-use sp_runtime::{traits::Convert, RuntimeDebug};
+use primitives::{Amount, Balance, CurrencyId, Position};
+use sp_runtime::{traits::Convert, FixedPointNumber, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 pub struct HonzonPrecompile<R>(PhantomData<R>);
@@ -42,6 +42,9 @@ pub struct HonzonPrecompile<R>(PhantomData<R>);
 pub enum Action {
 	AdjustLoan = "adjustLoan(address,address,int256,int256)",
 	CloseLoanByDex = "closeLoanByDex(address,address,uint256)",
+	GetPosition = "getPosition(address,address)",
+	GetLiquidationRatio = "getLiquidationRatio(address)",
+	GetCurrentCollateralRatio = "getCurrentCollateralRatio(address,address)",
 }
 
 impl<Runtime> Precompile for HonzonPrecompile<Runtime>
@@ -121,6 +124,67 @@ where
 					logs: Default::default(),
 				})
 			}
+			Action::GetPosition => {
+				let who = input.account_id_at(1)?;
+				let currency_id = input.currency_id_at(2)?;
+
+				let Position { collateral, debit } = <module_honzon::Pallet<Runtime> as HonzonManager<
+					Runtime::AccountId,
+					CurrencyId,
+					Amount,
+					Balance,
+				>>::get_position(&who, currency_id);
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: Output::default().encode_u128_tuple(collateral, debit),
+					logs: Default::default(),
+				})
+			}
+			Action::GetLiquidationRatio => {
+				let currency_id = input.currency_id_at(1)?;
+				let ratio = <module_honzon::Pallet<Runtime> as HonzonManager<
+					Runtime::AccountId,
+					CurrencyId,
+					Amount,
+					Balance,
+				>>::get_liquidation_ratio(currency_id)
+				.ok_or(PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Honzon get liquidation ratio failed".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: Output::default().encode_u128(ratio.into_inner()),
+					logs: Default::default(),
+				})
+			}
+			Action::GetCurrentCollateralRatio => {
+				let who = input.account_id_at(1)?;
+				let currency_id = input.currency_id_at(2)?;
+				let ratio = <module_honzon::Pallet<Runtime> as HonzonManager<
+					Runtime::AccountId,
+					CurrencyId,
+					Amount,
+					Balance,
+				>>::get_current_collateral_ratio(&who, currency_id)
+				.ok_or(PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Honzon get current collateral ratio failed, no price feed".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: Output::default().encode_u128(ratio.into_inner()),
+					logs: Default::default(),
+				})
+			}
 		}
 	}
 }
@@ -163,6 +227,32 @@ where
 					.saturating_add(read_currency)
 					.saturating_add(WeightToGas::convert(weight))
 			}
+			Action::GetPosition => {
+				let read_account = InputPricer::<Runtime>::read_accounts(1);
+				let currency_id = input.currency_id_at(2)?;
+				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
+				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+
+				Self::BASE_COST
+					.saturating_add(read_account)
+					.saturating_add(read_currency)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::GetLiquidationRatio => {
+				let currency_id = input.currency_id_at(1)?;
+				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
+				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+
+				Self::BASE_COST
+					.saturating_add(read_currency)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::GetCurrentCollateralRatio => {
+				/*let read_account = InputPricer::<Runtime>::read_accounts(1);
+				let currency_id = input.currency_id_at(2)?;
+				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);*/
+				1
+			}
 		};
 		Ok(cost)
 	}
@@ -173,7 +263,8 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{
-		alice, alice_evm_addr, new_test_ext, CDPEngine, Currencies, Honzon, One, Origin, Test, DOT,
+		alice, alice_evm_addr, new_test_ext, CDPEngine, Currencies, DexModule, Honzon, Loans, One, Origin, Test, AUSD,
+		BOB, DOT,
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
@@ -208,7 +299,11 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let input = hex! {"
-                f4f31ede
+                bf0ea731
+				000000000000000000000000 1000000000000000000000000000000000000001
+				000000000000000000000000 0000000000000000000100000000000000000002
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000000
             "};
 
 			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
@@ -240,6 +335,170 @@ mod tests {
 				100_000_000_000,
 				1_000_000
 			));
+
+			assert_ok!(DexModule::enable_trading_pair(Origin::signed(One::get()), DOT, AUSD));
+			assert_ok!(Currencies::update_balance(Origin::root(), BOB, AUSD, 1_000_000_000_000));
+			assert_ok!(Currencies::update_balance(Origin::root(), BOB, DOT, 1_000_000_000_000));
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(BOB),
+				DOT,
+				AUSD,
+				1_000_000_000,
+				1_000_000_000,
+				0,
+				false
+			));
+
+			assert_eq!(Loans::positions(DOT, alice()).debit, 1_000_000);
+			assert_eq!(Loans::positions(DOT, alice()).collateral, 100_000_000_000);
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+			let input = hex! {"
+				bf0ea731
+				000000000000000000000000 1000000000000000000000000000000000000001
+				000000000000000000000000 0000000000000000000100000000000000000002
+				00000000000000000000000000000000 00000000000000000000000100000000
+			"};
+
+			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+
+			assert_eq!(Loans::positions(DOT, alice()).debit, 0);
+			assert_eq!(Loans::positions(DOT, alice()).collateral, 0);
+		});
+	}
+
+	#[test]
+	fn get_position_works() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(CDPEngine::set_collateral_params(
+				Origin::signed(One::get()),
+				DOT,
+				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+				Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+				Change::NewValue(1_000_000_000)
+			));
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				alice(),
+				DOT,
+				1_000_000_000_000
+			));
+			assert_ok!(Honzon::adjust_loan(
+				Origin::signed(alice()),
+				DOT,
+				100_000_000_000,
+				1_000_000
+			));
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+			let input = hex! {"
+				b33dc190
+				000000000000000000000000 1000000000000000000000000000000000000001
+				000000000000000000000000 0000000000000000000100000000000000000002
+			"};
+
+			// 100_000_000_000
+			// 1_000_000
+			let expected_output = hex! {"
+				00000000000000000000000000000000 0000000000000000000000174876e800
+				00000000000000000000000000000000 000000000000000000000000000f4240
+			"};
+			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+			assert_eq!(res.output, expected_output.to_vec());
+		});
+	}
+
+	#[test]
+	fn get_liquidation_ratio_works() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(CDPEngine::set_collateral_params(
+				Origin::signed(One::get()),
+				DOT,
+				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+				Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+				Change::NewValue(1_000_000_000)
+			));
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+			// 0xc4ba4c3a
+			let input = hex! {"
+				c4ba4c3a
+				000000000000000000000000 0000000000000000000100000000000000000002
+			"};
+
+			// Hex value of `FixedU128` for 3/2
+			let expected_output = hex! {"
+				00000000000000000000000000000000 000000000000000014d1120d7b160000
+			"};
+
+			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+			assert_eq!(res.output, expected_output.to_vec());
+		});
+	}
+
+	#[test]
+	fn get_current_collateral_ratio_works() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(CDPEngine::set_collateral_params(
+				Origin::signed(One::get()),
+				DOT,
+				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+				Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+				Change::NewValue(1_000_000_000)
+			));
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				alice(),
+				DOT,
+				1_000_000_000_000
+			));
+			assert_ok!(Honzon::adjust_loan(
+				Origin::signed(alice()),
+				DOT,
+				100_000_000_000,
+				1_000_000
+			));
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+			// 0x1384ed17
+			let input = hex! {"
+				1384ed17
+				000000000000000000000000 1000000000000000000000000000000000000001
+				000000000000000000000000 0000000000000000000100000000000000000002
+			"};
+
+			// value for FixedU128 of 100_000
+			let expected_output = hex! {"
+				00000000000000000000000000000000 000000000000152d02c7e14af6800000
+			"};
+			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+			assert_eq!(res.output, expected_output.to_vec());
 		});
 	}
 }
