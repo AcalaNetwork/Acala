@@ -17,12 +17,15 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, Currencies, CurrencyId, DepositPerAuthorization, Dex,
-	ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Honzon,
-	Price, Rate, Ratio, Runtime,
+	AccountId, Amount, Balance, CdpEngine, Currencies, CurrencyId, DepositPerAuthorization, Dex, ExistentialDeposits,
+	GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Honzon, Price, Rate, Ratio,
+	Runtime,
 };
 
-use super::utils::{dollar, feed_price, set_balance};
+use super::{
+	get_benchmarking_collateral_currency_ids,
+	utils::{dollar, feed_price, set_balance},
+};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
@@ -102,10 +105,10 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), STAKING, to_lookup)
 
 	unauthorize_all {
-		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
+		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
 
 		let caller: AccountId = whitelisted_caller();
-		let currency_ids = CollateralCurrencyIds::get();
+		let currency_ids = get_benchmarking_collateral_currency_ids();
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = AccountIdLookup::unlookup(to);
 
@@ -124,7 +127,7 @@ runtime_benchmarks! {
 	// adjust both collateral and debit
 	adjust_loan {
 		let caller: AccountId = whitelisted_caller();
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
+		let currency_id: CurrencyId = get_benchmarking_collateral_currency_ids()[0];
 		let collateral_price = Price::one();		// 1 USD
 		let debit_value = 100 * dollar(STABLECOIN);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
@@ -152,7 +155,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), currency_id, collateral_amount.try_into().unwrap(), debit_amount)
 
 	transfer_loan_from {
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
+		let currency_id: CurrencyId = get_benchmarking_collateral_currency_ids()[0];
 		let sender: AccountId = account("sender", 0, SEED);
 		let sender_lookup = AccountIdLookup::unlookup(sender.clone());
 		let receiver: AccountId = whitelisted_caller();
@@ -282,7 +285,7 @@ runtime_benchmarks! {
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
 		let collateral_value = 10 * debit_value;
-		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
+		let collateral_amount = Price::saturating_from_rational(1000 * dollar(currency_id), 1000 * dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance and inject liquidity
 		set_balance(currency_id, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&currency_id));

@@ -1,6 +1,6 @@
 [package]
 name = "mandala-runtime"
-version = "2.5.1"
+version = "2.6.2"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -94,6 +94,7 @@ orml-xtokens = { path = "../../orml/xtokens", default-features = false }
 orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
 orml-unknown-tokens = { path = "../../orml/unknown-tokens", default-features = false }
 orml-xcm = { path = "../../orml/xcm", default-features = false }
+orml-payments = { path = "../../orml/payments", default-features = false }
 
 # modules
 module-transaction-pause = { path = "../../modules/transaction-pause", default-features = false }
@@ -371,3 +372,9 @@ try-runtime = [
 	"ecosystem-starport/try-runtime",
 	"ecosystem-compound-cash/try-runtime",
 ]
+# By default some types have documentation, `no-metadata-docs` allows to reduce the documentation
+# in the metadata.
+no-metadata-docs = ["frame-support/no-metadata-docs"]
+# By default some types have documentation, `full-metadata-docs` allows to add documentation to
+# more types in the metadata.
+full-metadata-docs = ["frame-support/full-metadata-docs"]

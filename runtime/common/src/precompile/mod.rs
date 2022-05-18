@@ -41,19 +41,25 @@ use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
 pub mod dex;
 pub mod evm;
+pub mod evm_accounts;
+pub mod homa;
 pub mod input;
 pub mod multicurrency;
 pub mod nft;
 pub mod oracle;
 pub mod schedule;
+pub mod stable_asset;
 
 use crate::SystemContractsFilter;
 pub use dex::DEXPrecompile;
 pub use evm::EVMPrecompile;
+pub use evm_accounts::EVMAccountsPrecompile;
+pub use homa::HomaPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
 pub use schedule::SchedulePrecompile;
+pub use stable_asset::StableAssetPrecompile;
 
 pub const ECRECOVER: H160 = H160(hex!("0000000000000000000000000000000000000001"));
 pub const SHA256: H160 = H160(hex!("0000000000000000000000000000000000000002"));
@@ -75,10 +81,12 @@ pub const EVM: H160 = H160(hex!("0000000000000000000000000000000000000402"));
 pub const ORACLE: H160 = H160(hex!("0000000000000000000000000000000000000403"));
 pub const SCHEDULER: H160 = H160(hex!("0000000000000000000000000000000000000404"));
 pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000405"));
+pub const STABLE_ASSET: H160 = H160(hex!("0000000000000000000000000000000000000406"));
+pub const HOMA: H160 = H160(hex!("0000000000000000000000000000000000000407"));
+pub const EVM_ACCOUNTS: H160 = H160(hex!("0000000000000000000000000000000000000408"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
-	// srtool support rust 1.57.0
-	target_gas.map(|x| x.checked_div(10).expect("divisor is non-zero; qed").saturating_mul(9)) // 90%
+	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
 }
 
 pub struct AllPrecompiles<R> {
@@ -113,6 +121,9 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
+				// STABLE_ASSET,
+				// HOMA,
+				EVM_ACCOUNTS,
 			]),
 			_marker: Default::default(),
 		}
@@ -141,6 +152,9 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
+				// STABLE_ASSET,
+				// Homa,
+				EVM_ACCOUNTS,
 			]),
 			_marker: Default::default(),
 		}
@@ -169,6 +183,9 @@ where
 				ORACLE,
 				SCHEDULER,
 				DEX,
+				STABLE_ASSET,
+				HOMA,
+				EVM_ACCOUNTS,
 			]),
 			_marker: Default::default(),
 		}
@@ -181,9 +198,12 @@ where
 	MultiCurrencyPrecompile<R>: Precompile,
 	NFTPrecompile<R>: Precompile,
 	EVMPrecompile<R>: Precompile,
+	EVMAccountsPrecompile<R>: Precompile,
 	OraclePrecompile<R>: Precompile,
 	DEXPrecompile<R>: Precompile,
+	StableAssetPrecompile<R>: Precompile,
 	SchedulePrecompile<R>: Precompile,
+	HomaPrecompile<R>: Precompile,
 {
 	fn execute(
 		&self,
@@ -255,6 +275,16 @@ where
 				Some(SchedulePrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else if address == DEX {
 				Some(DEXPrecompile::<R>::execute(input, target_gas, context, is_static))
+			} else if address == STABLE_ASSET {
+				Some(StableAssetPrecompile::<R>::execute(
+					input, target_gas, context, is_static,
+				))
+			} else if address == HOMA {
+				Some(HomaPrecompile::<R>::execute(input, target_gas, context, is_static))
+			} else if address == EVM_ACCOUNTS {
+				Some(EVMAccountsPrecompile::<R>::execute(
+					input, target_gas, context, is_static,
+				))
 			} else {
 				None
 			}
@@ -262,7 +292,7 @@ where
 
 		log::trace!(target: "evm", "Precompile end, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}, result: {:?}", address, input, target_gas, context, result);
 		if let Some(Err(PrecompileFailure::Revert { ref output, .. })) = result {
-			log::debug!(target: "evm", "Precompile failed: {:?}", core::str::from_utf8(&output.to_vec()));
+			log::debug!(target: "evm", "Precompile failed: {:?}", core::str::from_utf8(output));
 		};
 		result
 	}

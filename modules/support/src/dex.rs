@@ -21,7 +21,7 @@ use nutsfinance_stable_asset::{PoolTokenIndex, StableAssetPoolId};
 use scale_info::TypeInfo;
 use sp_core::H160;
 use sp_runtime::{DispatchError, RuntimeDebug};
-use sp_std::{cmp::PartialEq, prelude::*};
+use sp_std::{cmp::PartialEq, prelude::*, result::Result};
 
 #[derive(RuntimeDebug, Encode, Decode, Clone, Copy, PartialEq, TypeInfo)]
 pub enum SwapLimit<Balance> {
@@ -49,7 +49,15 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		who: &AccountId,
 		path: &[CurrencyId],
 		limit: SwapLimit<Balance>,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
+	) -> Result<(Balance, Balance), DispatchError>;
+
+	/// A swap strategy using best price trading path. default implementation in module_dex.
+	fn swap_with_best_price(
+		who: &AccountId,
+		supply: CurrencyId,
+		target: CurrencyId,
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError>;
 
 	fn add_liquidity(
 		who: &AccountId,
@@ -59,7 +67,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		max_amount_b: Balance,
 		min_share_increment: Balance,
 		stake_increment_share: bool,
-	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError>;
+	) -> Result<(Balance, Balance, Balance), DispatchError>;
 
 	fn remove_liquidity(
 		who: &AccountId,
@@ -69,7 +77,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		min_withdrawn_a: Balance,
 		min_withdrawn_b: Balance,
 		by_unstake: bool,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
+	) -> Result<(Balance, Balance), DispatchError>;
 }
 
 pub trait StableAssetDEX<AccountId, Balance, CurrencyId> {
@@ -85,7 +93,7 @@ pub trait StableAssetDEX<AccountId, Balance, CurrencyId> {
 		supply_asset_index: PoolTokenIndex,
 		target_asset_index: PoolTokenIndex,
 		limit: SwapLimit<Balance>,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
+	) -> Result<(Balance, Balance), DispatchError>;
 }
 
 #[cfg(feature = "std")]
@@ -118,7 +126,16 @@ where
 		_who: &AccountId,
 		_path: &[CurrencyId],
 		_limit: SwapLimit<Balance>,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+	) -> Result<(Balance, Balance), DispatchError> {
+		Ok(Default::default())
+	}
+
+	fn swap_with_best_price(
+		_: &AccountId,
+		_: CurrencyId,
+		_: CurrencyId,
+		_: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
 		Ok(Default::default())
 	}
 
@@ -130,7 +147,7 @@ where
 		_max_amount_b: Balance,
 		_min_share_increment: Balance,
 		_stake_increment_share: bool,
-	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError> {
+	) -> Result<(Balance, Balance, Balance), DispatchError> {
 		Ok(Default::default())
 	}
 
@@ -142,7 +159,7 @@ where
 		_min_withdrawn_a: Balance,
 		_min_withdrawn_b: Balance,
 		_by_unstake: bool,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+	) -> Result<(Balance, Balance), DispatchError> {
 		Ok(Default::default())
 	}
 }

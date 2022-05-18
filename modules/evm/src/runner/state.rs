@@ -147,6 +147,8 @@ pub struct StackSubstateMetadata<'config> {
 	caller: Option<H160>,
 	// save the contract to charge storage
 	target: Option<H160>,
+	// save the call contract address, publish status will sync from it.
+	origin_code_address: Option<H160>,
 	// this is needed only for evm-tests to keep track of dirty accounts
 	#[cfg(feature = "evm-tests")]
 	pub dirty_accounts: std::cell::RefCell<BTreeSet<H160>>,
@@ -167,6 +169,7 @@ impl<'config> StackSubstateMetadata<'config> {
 			accessed,
 			caller: None,
 			target: None,
+			origin_code_address: None,
 			#[cfg(feature = "evm-tests")]
 			dirty_accounts: std::cell::RefCell::new(BTreeSet::new()),
 		}
@@ -218,6 +221,7 @@ impl<'config> StackSubstateMetadata<'config> {
 			accessed: self.accessed.as_ref().map(|_| Accessed::default()),
 			caller: None,
 			target: None,
+			origin_code_address: self.origin_code_address,
 			#[cfg(feature = "evm-tests")]
 			dirty_accounts: std::cell::RefCell::new(BTreeSet::new()),
 		}
@@ -295,6 +299,14 @@ impl<'config> StackSubstateMetadata<'config> {
 
 	pub fn target_mut(&mut self) -> &mut Option<H160> {
 		&mut self.target
+	}
+
+	pub fn origin_code_address(&mut self) -> &Option<H160> {
+		&self.origin_code_address
+	}
+
+	pub fn origin_code_address_mut(&mut self) -> &mut Option<H160> {
+		&mut self.origin_code_address
 	}
 }
 
@@ -632,6 +644,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Ok(()) => (),
 			Err(e) => return emit_exit!(e.into(), Vec::new()),
 		}
+		// set origin_code_address publish status will sync from it.
+		*self.state.metadata_mut().origin_code_address_mut() = Some(address);
 
 		// Initialize initial addresses for EIP-2929
 		if self.config.increase_state_access_gas {
@@ -1102,7 +1116,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 
 	fn code(&self, address: H160) -> Vec<u8> {
 		let code = self.state.code(address);
-		if code.len().is_zero() {
+		if code.len().is_zero() && !self.precompile_set.is_precompile(address) {
 			log::debug!(
 				target: "evm",
 				"contract does not exist, address: {:?}",

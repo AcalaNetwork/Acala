@@ -21,11 +21,10 @@ use crate::{AccountId, AssetRegistry, CurrencyId, GetNativeCurrencyId, Origin, R
 use super::utils::{dollar, set_balance};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
-use module_asset_registry::AssetMetadata;
 use module_evm::EvmAddress;
 use module_support::AddressMapping;
 use orml_benchmarking::runtime_benchmarks;
-use primitives::TokenSymbol;
+use primitives::{currency::AssetMetadata, TokenSymbol};
 use sp_std::{boxed::Box, str::FromStr, vec};
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
 

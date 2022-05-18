@@ -103,6 +103,8 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -194,6 +196,15 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_: &[CurrencyId],
 		_: SwapLimit<Balance>,
 	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+		unimplemented!()
+	}
+
+	fn swap_with_best_price(
+		_: &AccountId,
+		_: CurrencyId,
+		_: CurrencyId,
+		_: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
 

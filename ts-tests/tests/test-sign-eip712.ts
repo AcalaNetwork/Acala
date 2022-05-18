@@ -44,7 +44,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		const domain = {
 			name: "Acala EVM",
 			version: "1",
-			chainId: +context.provider.api.consts.evm.chainId.toString(),
+			chainId: +context.provider.api.consts.evmAccounts.chainId.toString(),
 			salt: (await context.provider.api.rpc.chain.getBlockHash(0)).toHex(),
 		};
 
@@ -178,7 +178,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		const domain = {
 			name: "Acala EVM",
 			version: "1",
-			chainId: +context.provider.api.consts.evm.chainId.toString(),
+			chainId: +context.provider.api.consts.evmAccounts.chainId.toString(),
 			salt: (await context.provider.api.rpc.chain.getBlockHash(0)).toHex(),
 		};
 

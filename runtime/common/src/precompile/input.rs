@@ -52,6 +52,7 @@ pub trait InputT {
 	fn u32_at(&self, index: usize) -> Result<u32, Self::Error>;
 
 	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error>;
+	fn bool_at(&self, index: usize) -> Result<bool, Self::Error>;
 }
 
 pub struct Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping> {
@@ -186,6 +187,11 @@ where
 
 		Ok(bytes.to_vec())
 	}
+
+	fn bool_at(&self, index: usize) -> Result<bool, Self::Error> {
+		let param = self.u256_at(index)?;
+		Ok(!param.is_zero())
+	}
 }
 
 #[derive(Default, Clone, PartialEq, Debug)]
@@ -217,8 +223,28 @@ impl Output {
 		ethabi::encode(&[out])
 	}
 
+	pub fn encode_u128_array(&self, b: Vec<u128>) -> Vec<u8> {
+		let result: Vec<Token> = b.iter().map(|x| Token::Uint(U256::from(*x))).collect();
+		let out = Token::FixedArray(result);
+		ethabi::encode(&[out])
+	}
+
+	pub fn encode_address_array(&self, b: Vec<H160>) -> Vec<u8> {
+		let result: Vec<Token> = b
+			.iter()
+			.map(|x| Token::Address(H160::from_slice(x.as_bytes())))
+			.collect();
+		let out = Token::FixedArray(result);
+		ethabi::encode(&[out])
+	}
+
 	pub fn encode_bytes(&self, b: &[u8]) -> Vec<u8> {
 		let out = Token::Bytes(b.to_vec());
+		ethabi::encode(&[out])
+	}
+
+	pub fn encode_fixed_bytes(&self, b: &[u8]) -> Vec<u8> {
+		let out = Token::FixedBytes(b.to_vec());
 		ethabi::encode(&[out])
 	}
 

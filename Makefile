@@ -206,15 +206,15 @@ build-wasm-acala:
 
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:
-	PACKAGE=mandala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
+	PACKAGE=mandala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build,no-metadata-docs" ./scripts/srtool-build.sh
 
 .PHONY: srtool-build-wasm-karura
 srtool-build-wasm-karura:
-	PACKAGE=karura-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
+	PACKAGE=karura-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build,no-metadata-docs" ./scripts/srtool-build.sh
 
 .PHONY: srtool-build-wasm-acala
 srtool-build-wasm-acala:
-	PACKAGE=acala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
+	PACKAGE=acala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build,no-metadata-docs" ./scripts/srtool-build.sh
 
 .PHONY: generate-tokens
 generate-tokens:

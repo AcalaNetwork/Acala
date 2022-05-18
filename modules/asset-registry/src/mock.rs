@@ -102,9 +102,8 @@ impl module_evm::Config for Runtime {
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
-	type ChainId = ();
 	type GasToWeight = ();
-	type ChargeTransactionPayment = ();
+	type ChargeTransactionPayment = module_support::mocks::MockReservedTransactionPayment<Balances>;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 
@@ -222,7 +221,7 @@ pub fn deploy_contracts_same_prefix() {
 		vec![]
 	));
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+	System::assert_has_event(Event::EVM(module_evm::Event::Created {
 		from: alice_evm_addr(),
 		contract: erc20_address_same_prefix(),
 		logs: vec![module_evm::Log {
@@ -242,10 +241,9 @@ pub fn deploy_contracts_same_prefix() {
 		used_storage: 5462,
 	}));
 
-	assert_ok!(EVM::publish_free(
-		Origin::signed(CouncilAccount::get()),
-		erc20_address_same_prefix()
-	));
+	System::assert_last_event(Event::EVM(module_evm::Event::ContractPublished {
+		contract: erc20_address_same_prefix(),
+	}));
 }
 
 pub struct ExtBuilder {

@@ -23,7 +23,7 @@ use frame_support::{
 	weights::Weight,
 	ConsensusEngineId, RuntimeDebug,
 };
-use module_evm::EvmTask;
+use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{mocks::MockAddressMapping, DispatchableTask};
 use orml_traits::parameter_type_with_key;
@@ -110,6 +110,8 @@ impl orml_tokens::Config for TestRuntime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -118,7 +120,6 @@ parameter_types! {
 }
 
 impl orml_currencies::Config for TestRuntime {
-	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -186,7 +187,7 @@ impl module_evm_accounts::Config for TestRuntime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<TestRuntime>;
 	type TransferAll = Currencies;
-	type ChainId = ConstU64<1>;
+	type ChainId = EvmChainId<TestRuntime>;
 	type WeightInfo = ();
 }
 
@@ -201,7 +202,6 @@ impl module_evm::Config for TestRuntime {
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
-	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ();
 

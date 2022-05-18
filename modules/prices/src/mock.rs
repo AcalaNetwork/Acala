@@ -168,6 +168,15 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		unimplemented!()
 	}
 
+	fn swap_with_best_price(
+		_: &AccountId,
+		_: CurrencyId,
+		_: CurrencyId,
+		_: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		unimplemented!()
+	}
+
 	fn add_liquidity(
 		_who: &AccountId,
 		_currency_id_a: CurrencyId,
@@ -208,6 +217,8 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 }
 
