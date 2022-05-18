@@ -102,7 +102,7 @@ pub fn set_pool(trading_pair: &TradingPair, pool_0: Balance, pool_1: Balance) {
 }
 
 pub struct MockDEX;
-impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
+impl DEXManager<AccountId, Balance, CurrencyId> for MockDEX {
 	fn get_liquidity_pool(currency_id_0: CurrencyId, currency_id_1: CurrencyId) -> (Balance, Balance) {
 		TradingPair::from_currency_ids(currency_id_0, currency_id_1)
 			.map(|trading_pair| {
@@ -130,7 +130,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_: CurrencyId,
 		_: SwapLimit<Balance>,
 		_: Vec<Vec<CurrencyId>>,
-	) -> Option<Vec<CurrencyId>> {
+	) -> Option<(Vec<CurrencyId>, Balance, Balance)> {
 		unimplemented!()
 	}
 
@@ -139,15 +139,6 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_: &[CurrencyId],
 		_: SwapLimit<Balance>,
 	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
-		unimplemented!()
-	}
-
-	fn swap_with_best_price(
-		_: &AccountId,
-		_: CurrencyId,
-		_: CurrencyId,
-		_: SwapLimit<Balance>,
-	) -> Result<(Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
 

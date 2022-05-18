@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode};
-use nutsfinance_stable_asset::{PoolTokenIndex, StableAssetPoolId};
+use frame_support::traits::Get;
 use scale_info::TypeInfo;
 use sp_core::H160;
 use sp_runtime::{DispatchError, RuntimeDebug};
@@ -31,7 +31,7 @@ pub enum SwapLimit<Balance> {
 	ExactTarget(Balance, Balance),
 }
 
-pub trait DEXManager<AccountId, CurrencyId, Balance> {
+pub trait DEXManager<AccountId, Balance, CurrencyId> {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance);
 
 	fn get_liquidity_token_address(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<H160>;
@@ -43,19 +43,11 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		target_currency_id: CurrencyId,
 		limit: SwapLimit<Balance>,
 		alternative_path_joint_list: Vec<Vec<CurrencyId>>,
-	) -> Option<Vec<CurrencyId>>;
+	) -> Option<(Vec<CurrencyId>, Balance, Balance)>;
 
 	fn swap_with_specific_path(
 		who: &AccountId,
 		path: &[CurrencyId],
-		limit: SwapLimit<Balance>,
-	) -> Result<(Balance, Balance), DispatchError>;
-
-	/// A swap strategy using best price trading path. default implementation in module_dex.
-	fn swap_with_best_price(
-		who: &AccountId,
-		supply: CurrencyId,
-		target: CurrencyId,
 		limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError>;
 
@@ -80,24 +72,76 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 	) -> Result<(Balance, Balance), DispatchError>;
 }
 
-pub trait StableAssetDEX<AccountId, Balance, CurrencyId> {
-	fn get_best_price_pool(
+pub trait Swap<AccountId, Balance, CurrencyId> {
+	fn get_swap_amount(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
 		limit: SwapLimit<Balance>,
-	) -> Option<(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex)>;
+	) -> Option<(Balance, Balance)>;
 
 	fn swap(
 		who: &AccountId,
-		pool_id: StableAssetPoolId,
-		supply_asset_index: PoolTokenIndex,
-		target_asset_index: PoolTokenIndex,
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
 		limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError>;
 }
 
+#[derive(Eq, PartialEq, RuntimeDebug)]
+pub enum SwapError {
+	CannotSwap,
+}
+
+impl Into<DispatchError> for SwapError {
+	fn into(self) -> DispatchError {
+		DispatchError::Other("Cannot swap")
+	}
+}
+
+pub struct SpecificJointsSwap<Dex, Joints>(sp_std::marker::PhantomData<(Dex, Joints)>);
+
+impl<AccountId, Balance, CurrencyId, Dex, Joints> Swap<AccountId, Balance, CurrencyId>
+	for SpecificJointsSwap<Dex, Joints>
+where
+	Dex: DEXManager<AccountId, Balance, CurrencyId>,
+	Joints: Get<Vec<Vec<CurrencyId>>>,
+	Balance: Clone,
+{
+	fn get_swap_amount(
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		limit: SwapLimit<Balance>,
+	) -> Option<(Balance, Balance)> {
+		<Dex as DEXManager<AccountId, Balance, CurrencyId>>::get_best_price_swap_path(
+			supply_currency_id,
+			target_currency_id,
+			limit,
+			Joints::get(),
+		)
+		.map(|(_, supply_amount, target_amount)| (supply_amount, target_amount))
+	}
+
+	fn swap(
+		who: &AccountId,
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		limit: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+		let path = <Dex as DEXManager<AccountId, Balance, CurrencyId>>::get_best_price_swap_path(
+			supply_currency_id,
+			target_currency_id,
+			limit.clone(),
+			Joints::get(),
+		)
+		.ok_or_else(|| Into::<DispatchError>::into(SwapError::CannotSwap))?
+		.0;
+
+		<Dex as DEXManager<AccountId, Balance, CurrencyId>>::swap_with_specific_path(who, &path, limit)
+	}
+}
+
 #[cfg(feature = "std")]
-impl<AccountId, CurrencyId, Balance> DEXManager<AccountId, CurrencyId, Balance> for ()
+impl<AccountId, CurrencyId, Balance> DEXManager<AccountId, Balance, CurrencyId> for ()
 where
 	Balance: Default,
 {
@@ -118,7 +162,7 @@ where
 		_target_currency_id: CurrencyId,
 		_limit: SwapLimit<Balance>,
 		_alternative_path_joint_list: Vec<Vec<CurrencyId>>,
-	) -> Option<Vec<CurrencyId>> {
+	) -> Option<(Vec<CurrencyId>, Balance, Balance)> {
 		Some(Default::default())
 	}
 
@@ -126,15 +170,6 @@ where
 		_who: &AccountId,
 		_path: &[CurrencyId],
 		_limit: SwapLimit<Balance>,
-	) -> Result<(Balance, Balance), DispatchError> {
-		Ok(Default::default())
-	}
-
-	fn swap_with_best_price(
-		_: &AccountId,
-		_: CurrencyId,
-		_: CurrencyId,
-		_: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError> {
 		Ok(Default::default())
 	}

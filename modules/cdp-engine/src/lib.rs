@@ -58,7 +58,7 @@ use sp_runtime::{
 use sp_std::prelude::*;
 use support::{
 	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
-	RiskManager, SwapLimit,
+	RiskManager, Swap, SwapLimit,
 };
 
 mod mock;
@@ -182,7 +182,10 @@ pub mod module {
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Dex
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
+
+		/// Swap
+		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -859,7 +862,7 @@ impl<T: Config> Pallet<T> {
 			(stable_currency_id, token)
 		};
 
-		T::DEX::swap_with_best_price(
+		T::Swap::swap(
 			&loans_module_account,
 			supply,
 			target,
@@ -925,13 +928,11 @@ impl<T: Config> Pallet<T> {
 			}
 			_ => {
 				// swap stable coin to collateral
-				T::DEX::swap_with_best_price(
-					&loans_module_account,
-					T::GetStableCurrencyId::get(),
-					currency_id,
-					SwapLimit::ExactSupply(increase_debit_value, min_increase_collateral),
-				)
-				.map(|e| e.1)?
+				let limit = SwapLimit::ExactSupply(increase_debit_value, min_increase_collateral);
+				let (_, actual_increase_collateral) =
+					T::Swap::swap(&loans_module_account, T::GetStableCurrencyId::get(), currency_id, limit)?;
+
+				actual_increase_collateral
 			}
 		};
 
@@ -1005,13 +1006,10 @@ impl<T: Config> Pallet<T> {
 			}
 			_ => {
 				// swap collateral to stable coin
-				T::DEX::swap_with_best_price(
-					&loans_module_account,
-					currency_id,
-					stable_currency_id,
-					SwapLimit::ExactSupply(decrease_collateral, min_decrease_debit_value),
-				)
-				.map(|e| e.1)?
+				let limit = SwapLimit::ExactSupply(decrease_collateral, min_decrease_debit_value);
+				let (_, actual_stable) = T::Swap::swap(&loans_module_account, currency_id, stable_currency_id, limit)?;
+
+				actual_stable
 			}
 		};
 

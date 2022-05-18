@@ -137,6 +137,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "libsecp256k1",
+ "module-aggregated-dex",
  "module-asset-registry",
  "module-auction-manager",
  "module-cdp-engine",
@@ -4498,6 +4499,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "libsecp256k1",
+ "module-aggregated-dex",
  "module-asset-registry",
  "module-auction-manager",
  "module-cdp-engine",
@@ -5496,6 +5498,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "libsecp256k1",
+ "module-aggregated-dex",
  "module-asset-registry",
  "module-auction-manager",
  "module-cdp-engine",
@@ -5811,6 +5814,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-aggregated-dex"
+version = "2.5.1"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-dex",
+ "module-support",
+ "nutsfinance-stable-asset",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-asset-registry"
 version = "2.6.2"
 dependencies = [
@@ -5975,7 +6000,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-support",
- "nutsfinance-stable-asset",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
