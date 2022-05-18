@@ -644,7 +644,20 @@ impl<T: Config> Pallet<T> {
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
 			.unwrap_or(DEFAULT_MAX_ITERATIONS);
 
-		let currency_id = collateral_currency_ids[collateral_position as usize];
+		let currency_id = match collateral_currency_ids.get(collateral_position as usize) {
+			Some(currency_id) => *currency_id,
+			None => {
+				log::debug!(
+					target: "cdp-engine offchain worker",
+					"collateral_currency was removed, need to reset the offchain worker: collateral_position is {:?}, collateral_currency_ids: {:?}",
+					collateral_position,
+					collateral_currency_ids
+				);
+				to_be_continue.set(&(0, Option::<Vec<u8>>::None));
+				return Ok(());
+			}
+		};
+
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 
 		// If start key is Some(value) continue iterating from that point in storage otherwise start
