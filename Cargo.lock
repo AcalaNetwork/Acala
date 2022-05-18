@@ -5816,7 +5816,7 @@ dependencies = [
 
 [[package]]
 name = "module-aggregated-dex"
-version = "2.5.1"
+version = "2.6.2"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6035,7 +6035,7 @@ dependencies = [
 
 [[package]]
 name = "module-earning"
-version = "2.4.0"
+version = "2.6.2"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6310,7 +6310,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon-bridge"
-version = "2.4.0"
+version = "2.6.2"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6555,7 +6555,7 @@ dependencies = [
 
 [[package]]
 name = "module-xcm-interface"
-version = "2.0.3"
+version = "2.6.2"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
