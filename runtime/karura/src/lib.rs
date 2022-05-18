@@ -1602,7 +1602,7 @@ type RebaseTokens = orml_tokens::Combiner<
 	AccountId,
 	IsLiquidToken,
 	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoma, Balance, GetLiquidCurrencyId>,
-	Tokens,
+	Currencies,
 >;
 
 impl nutsfinance_stable_asset::Config for Runtime {
