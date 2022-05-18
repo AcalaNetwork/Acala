@@ -33,8 +33,8 @@ use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
-	mocks::MockStableAsset, AddressMapping as AddressMappingT, DEXIncentives, DispatchableTask, ExchangeRate,
-	ExchangeRateProvider, HomaSubAccountXcm, Rate,
+	AddressMapping as AddressMappingT, DEXIncentives, DispatchableTask, ExchangeRate, ExchangeRateProvider,
+	HomaSubAccountXcm, Rate,
 };
 use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 pub use primitives::{
