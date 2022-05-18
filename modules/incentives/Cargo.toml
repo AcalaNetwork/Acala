@@ -1,6 +1,6 @@
 [package]
 name = "module-incentives"
-version = "2.6.2"
+version = "2.6.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
