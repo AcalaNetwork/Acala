@@ -1116,7 +1116,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 
 	fn code(&self, address: H160) -> Vec<u8> {
 		let code = self.state.code(address);
-		if code.len().is_zero() {
+		if code.len().is_zero() && !self.precompile_set.is_precompile(address) {
 			log::debug!(
 				target: "evm",
 				"contract does not exist, address: {:?}",

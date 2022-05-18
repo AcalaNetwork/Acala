@@ -41,6 +41,7 @@ use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
 pub mod dex;
 pub mod evm;
+pub mod evm_accounts;
 pub mod homa;
 pub mod input;
 pub mod multicurrency;
@@ -52,6 +53,7 @@ pub mod stable_asset;
 use crate::SystemContractsFilter;
 pub use dex::DEXPrecompile;
 pub use evm::EVMPrecompile;
+pub use evm_accounts::EVMAccountsPrecompile;
 pub use homa::HomaPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
@@ -81,6 +83,7 @@ pub const SCHEDULER: H160 = H160(hex!("0000000000000000000000000000000000000404"
 pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000405"));
 pub const STABLE_ASSET: H160 = H160(hex!("0000000000000000000000000000000000000406"));
 pub const HOMA: H160 = H160(hex!("0000000000000000000000000000000000000407"));
+pub const EVM_ACCOUNTS: H160 = H160(hex!("0000000000000000000000000000000000000408"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
 	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
@@ -118,7 +121,9 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
+				// STABLE_ASSET,
 				// HOMA,
+				EVM_ACCOUNTS,
 			]),
 			_marker: Default::default(),
 		}
@@ -147,7 +152,9 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
+				// STABLE_ASSET,
 				// Homa,
+				EVM_ACCOUNTS,
 			]),
 			_marker: Default::default(),
 		}
@@ -178,6 +185,7 @@ where
 				DEX,
 				STABLE_ASSET,
 				HOMA,
+				EVM_ACCOUNTS,
 			]),
 			_marker: Default::default(),
 		}
@@ -190,6 +198,7 @@ where
 	MultiCurrencyPrecompile<R>: Precompile,
 	NFTPrecompile<R>: Precompile,
 	EVMPrecompile<R>: Precompile,
+	EVMAccountsPrecompile<R>: Precompile,
 	OraclePrecompile<R>: Precompile,
 	DEXPrecompile<R>: Precompile,
 	StableAssetPrecompile<R>: Precompile,
@@ -272,6 +281,10 @@ where
 				))
 			} else if address == HOMA {
 				Some(HomaPrecompile::<R>::execute(input, target_gas, context, is_static))
+			} else if address == EVM_ACCOUNTS {
+				Some(EVMAccountsPrecompile::<R>::execute(
+					input, target_gas, context, is_static,
+				))
 			} else {
 				None
 			}

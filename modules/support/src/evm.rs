@@ -145,6 +145,15 @@ pub trait EVMManager<AccountId, Balance> {
 	fn disable_account_contract_development(who: AccountId) -> DispatchResult;
 }
 
+/// An abstraction of EVMAccountsManager
+pub trait EVMAccountsManager<AccountId> {
+	/// Returns the AccountId used to generate the given EvmAddress.
+	fn get_account_id(address: &EvmAddress) -> AccountId;
+	/// Returns the EvmAddress associated with a given AccountId or the underlying EvmAddress of the
+	/// AccountId.
+	fn get_evm_address(account_id: &AccountId) -> Option<EvmAddress>;
+}
+
 /// A mapping between `AccountId` and `EvmAddress`.
 pub trait AddressMapping<AccountId> {
 	/// Returns the AccountId used go generate the given EvmAddress.
