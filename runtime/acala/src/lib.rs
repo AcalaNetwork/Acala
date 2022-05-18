@@ -1559,7 +1559,7 @@ impl Contains<CurrencyId> for IsLiquidToken {
 type RebaseTokens = orml_tokens::Combiner<
 	AccountId,
 	IsLiquidToken,
-	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoma, Balance, GetLiquidCurrencyId>,
+	orml_tokens::Mapper<AccountId, Currencies, ConvertBalanceHoma, Balance, GetLiquidCurrencyId>,
 	Currencies,
 >;
 
