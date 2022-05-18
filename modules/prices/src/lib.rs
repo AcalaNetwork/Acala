@@ -83,7 +83,7 @@ pub mod module {
 		type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
 
 		/// DEX provide liquidity info.
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
 		/// Currency provide the total insurance of LPToken.
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
