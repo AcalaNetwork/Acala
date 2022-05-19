@@ -39,7 +39,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, AccountIdLookup, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion,
-		StaticLookup,
+		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
@@ -1713,8 +1713,14 @@ pub type SignedExtra = (
 	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic =
-	AcalaUncheckedExtrinsic<Call, SignedExtra, ConvertEthereumTx, StorageDepositPerByte, TxFeePerGas>;
+pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<
+	Call,
+	SignedExtra,
+	ConvertEthereumTx,
+	StorageDepositPerByte,
+	TxFeePerGas,
+	PayerSignatureVerification,
+>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
@@ -2190,6 +2196,32 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 			}
 			_ => Err(InvalidTransaction::BadProof),
 		}
+	}
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct PayerSignatureVerification;
+
+impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSignatureVerification {
+	fn convert((call, extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
+		if let Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+			call,
+			payer_addr,
+			payer_sig,
+		}) = call
+		{
+			let payer_account: [u8; 32] = payer_addr
+				.encode()
+				.as_slice()
+				.try_into()
+				.map_err(|_| InvalidTransaction::BadSigner)?;
+			// payer signature is aim at inner call of `with_fee_paid_by` call.
+			let raw_payload = SignedPayload::new(*call, extra).map_err(|_| InvalidTransaction::BadSigner)?;
+			if !raw_payload.using_encoded(|payload| payer_sig.verify(payload, &payer_account.into())) {
+				return Err(InvalidTransaction::BadProof);
+			}
+		}
+		Ok(())
 	}
 }
 

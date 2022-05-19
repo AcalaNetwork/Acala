@@ -77,6 +77,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup,
+		Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
@@ -1814,6 +1815,32 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 	}
 }
 
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct PayerSignatureVerification;
+
+impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSignatureVerification {
+	fn convert((call, extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
+		if let Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+			call,
+			payer_addr,
+			payer_sig,
+		}) = call
+		{
+			let payer_account: [u8; 32] = payer_addr
+				.encode()
+				.as_slice()
+				.try_into()
+				.map_err(|_| InvalidTransaction::BadSigner)?;
+			// payer signature is aim at inner call of `with_fee_paid_by` call.
+			let raw_payload = SignedPayload::new(*call, extra).map_err(|_| InvalidTransaction::BadSigner)?;
+			if !raw_payload.using_encoded(|payload| payer_sig.verify(payload, &payer_account.into())) {
+				return Err(InvalidTransaction::BadProof);
+			}
+		}
+		Ok(())
+	}
+}
+
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.
@@ -1835,8 +1862,14 @@ pub type SignedExtra = (
 	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic =
-	AcalaUncheckedExtrinsic<Call, SignedExtra, ConvertEthereumTx, StorageDepositPerByte, TxFeePerGas>;
+pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<
+	Call,
+	SignedExtra,
+	ConvertEthereumTx,
+	StorageDepositPerByte,
+	TxFeePerGas,
+	PayerSignatureVerification,
+>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
@@ -2544,6 +2577,76 @@ mod tests {
 					propagate: true,
 				})
 			);
+		});
+	}
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let t = frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap();
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
+	#[test]
+	fn payer_signature_verify() {
+		use sp_core::Pair;
+
+		let extra: SignedExtra = (
+			frame_system::CheckNonZeroSender::<Runtime>::new(),
+			frame_system::CheckSpecVersion::<Runtime>::new(),
+			frame_system::CheckTxVersion::<Runtime>::new(),
+			frame_system::CheckGenesis::<Runtime>::new(),
+			frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
+			runtime_common::CheckNonce::<Runtime>::from(0),
+			frame_system::CheckWeight::<Runtime>::new(),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
+			module_evm::SetEvmOrigin::<Runtime>::new(),
+		);
+
+		// correct payer signature
+		new_test_ext().execute_with(|| {
+			let payer = sp_keyring::AccountKeyring::Charlie;
+
+			let call = Call::Balances(pallet_balances::Call::transfer {
+				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Bob.to_account_id()),
+				value: 100,
+			});
+
+			let raw_payload = SignedPayload::new(call.clone(), extra.clone()).unwrap();
+			let payer_signature = raw_payload.using_encoded(|payload| payer.pair().sign(payload));
+
+			let fee_call = Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+				call: Box::new(call),
+				payer_addr: payer.to_account_id(),
+				payer_sig: sp_runtime::MultiSignature::Sr25519(payer_signature),
+			});
+			assert!(PayerSignatureVerification::convert((fee_call, extra.clone())).is_ok());
+		});
+
+		// wrong payer signature
+		new_test_ext().execute_with(|| {
+			let hacker = sp_keyring::AccountKeyring::Dave;
+
+			let call = Call::Balances(pallet_balances::Call::transfer {
+				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Bob.to_account_id()),
+				value: 100,
+			});
+			let hacker_call = Call::Balances(pallet_balances::Call::transfer {
+				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Dave.to_account_id()),
+				value: 100,
+			});
+
+			let raw_payload = SignedPayload::new(hacker_call.clone(), extra.clone()).unwrap();
+			let payer_signature = raw_payload.using_encoded(|payload| hacker.pair().sign(payload));
+
+			let fee_call = Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+				call: Box::new(call),
+				payer_addr: hacker.to_account_id(),
+				payer_sig: sp_runtime::MultiSignature::Sr25519(payer_signature),
+			});
+			assert!(PayerSignatureVerification::convert((fee_call, extra)).is_err());
 		});
 	}
 }

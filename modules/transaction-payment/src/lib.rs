@@ -56,7 +56,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	FixedPointNumber, FixedPointOperand, Percent, Perquintill,
+	FixedPointNumber, FixedPointOperand, MultiSignature, Percent, Perquintill,
 };
 use sp_std::prelude::*;
 use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
@@ -595,6 +595,21 @@ pub mod module {
 			ensure_signed(origin.clone())?;
 			call.dispatch(origin)
 		}
+
+		/// Fee paid by other account
+		#[pallet::weight({
+			let dispatch_info = call.get_dispatch_info();
+			(T::WeightInfo::with_fee_paid_by().saturating_add(dispatch_info.weight), dispatch_info.class,)
+		})]
+		pub fn with_fee_paid_by(
+			origin: OriginFor<T>,
+			call: Box<CallOf<T>>,
+			_payer_addr: T::AccountId,
+			_payer_sig: MultiSignature,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin.clone())?;
+			call.dispatch(origin)
+		}
 	}
 }
 
@@ -786,7 +801,7 @@ where
 		fee: PalletBalanceOf<T>,
 		call: &CallOf<T>,
 		reason: WithdrawReasons,
-	) -> Result<Balance, DispatchError> {
+	) -> Result<(T::AccountId, Balance), DispatchError> {
 		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
 		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
 		match call.is_sub_type() {
@@ -802,7 +817,7 @@ where
 					fee_swap_path,
 					SwapLimit::ExactTarget(Balance::MAX, custom_fee_amount),
 				)
-				.map(|_| custom_fee_surplus)
+				.map(|_| (who.clone(), custom_fee_surplus))
 			}
 			Some(Call::with_fee_currency { currency_id, .. }) => {
 				ensure!(
@@ -814,9 +829,19 @@ where
 				} else {
 					custom_fee_amount
 				};
-				Self::swap_from_pool_or_dex(who, fee_amount, *currency_id).map(|_| fee_amount)
+				Self::swap_from_pool_or_dex(who, fee_amount, *currency_id).map(|_| (who.clone(), fee_amount))
 			}
-			_ => Self::native_then_alternative_or_default(who, fee, reason),
+			Some(Call::with_fee_paid_by {
+				call: _,
+				payer_addr,
+				payer_sig: _,
+			}) => {
+				// validate payer signature in runtime side, because `SignedExtension` between different runtime
+				// may be different.
+				Self::native_then_alternative_or_default(payer_addr, fee, WithdrawReasons::TRANSACTION_PAYMENT)
+					.map(|surplus| (payer_addr.clone(), surplus))
+			}
+			_ => Self::native_then_alternative_or_default(who, fee, reason).map(|surplus| (who.clone(), surplus)),
 		}
 	}
 
@@ -1198,6 +1223,7 @@ where
 			PalletBalanceOf<T>,
 			Option<NegativeImbalanceOf<T>>,
 			Option<PalletBalanceOf<T>>,
+			T::AccountId,
 		),
 		TransactionValidityError,
 	> {
@@ -1206,7 +1232,7 @@ where
 
 		// Only mess with balances if fee is not zero.
 		if fee.is_zero() {
-			return Ok((fee, None, None));
+			return Ok((fee, None, None, who.clone()));
 		}
 
 		let reason = if tip.is_zero() {
@@ -1215,12 +1241,12 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		let fee_surplus = Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call, reason)
+		let (payer, fee_surplus) = Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call, reason)
 			.map_err(|_| InvalidTransaction::Payment)?;
 
 		// withdraw native currency as fee, also consider surplus when swap from dex or pool.
-		match <T as Config>::Currency::withdraw(who, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
-			Ok(imbalance) => Ok((fee + fee_surplus, Some(imbalance), Some(fee_surplus))),
+		match <T as Config>::Currency::withdraw(&payer, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
+			Ok(imbalance) => Ok((fee + fee_surplus, Some(imbalance), Some(fee_surplus), payer)),
 			Err(_) => Err(InvalidTransaction::Payment.into()),
 		}
 	}
@@ -1332,7 +1358,7 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
-		let (final_fee, _, _) = self.withdraw_fee(who, call, info, len)?;
+		let (final_fee, _, _, _) = self.withdraw_fee(who, call, info, len)?;
 		let tip = self.0;
 		Ok(ValidTransaction {
 			priority: Self::get_priority(info, len, tip, final_fee),
@@ -1347,8 +1373,8 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let (fee, imbalance, surplus) = self.withdraw_fee(who, call, info, len)?;
-		Ok((self.0, who.clone(), imbalance, fee, surplus))
+		let (fee, imbalance, surplus, payer) = self.withdraw_fee(who, call, info, len)?;
+		Ok((self.0, payer, imbalance, fee, surplus))
 	}
 
 	fn post_dispatch(
