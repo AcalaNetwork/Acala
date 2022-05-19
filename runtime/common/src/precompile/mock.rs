@@ -30,11 +30,12 @@ use frame_support::{
 	PalletId, RuntimeDebug,
 };
 use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
+use module_cdp_engine::CollateralCurrencyIds;
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
-	AddressMapping as AddressMappingT, DEXIncentives, DispatchableTask, ExchangeRate, ExchangeRateProvider,
-	HomaSubAccountXcm, Rate,
+	mocks::MockStableAsset, AddressMapping as AddressMappingT, AuctionManager, DEXIncentives, DispatchableTask,
+	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, PriceProvider, Rate, SpecificJointsSwap,
 };
 use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 pub use primitives::{
@@ -410,7 +411,6 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![ACA, DOT];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::one();
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
@@ -419,7 +419,6 @@ parameter_types! {
 impl module_cdp_engine::Config for Test {
 	type Event = Event;
 	type PriceSource = MockPriceSource;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
@@ -433,8 +432,8 @@ impl module_cdp_engine::Config for Test {
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type DEX = ();
+	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
 	type WeightInfo = ();
 }
 
@@ -499,15 +498,16 @@ impl module_cdp_treasury::Config for Test {
 	type MaxAuctionsCount = ConstU32<10_000>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = CDPTreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
+	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
 }
 
 impl module_honzon::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 	type DepositPerAuthorization = ConstU128<100>;
+	type CollateralCurrencyIds = CollateralCurrencyIds<Test>;
 	type WeightInfo = ();
 }
 
