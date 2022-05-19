@@ -210,6 +210,7 @@ where
 	StableAssetPrecompile<R>: Precompile,
 	SchedulePrecompile<R>: Precompile,
 	HomaPrecompile<R>: Precompile,
+	HonzonPrecompile<R>: Precompile,
 {
 	fn execute(
 		&self,
@@ -291,6 +292,8 @@ where
 				Some(EVMAccountsPrecompile::<R>::execute(
 					input, target_gas, context, is_static,
 				))
+			} else if address == HONZON {
+				Some(HonzonPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else {
 				None
 			}
