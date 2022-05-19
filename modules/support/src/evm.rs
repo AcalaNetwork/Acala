@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode};
+use primitives::currency::AssetIds;
 use primitives::{
 	evm::{CallInfo, EvmAddress},
 	CurrencyId,
@@ -144,6 +145,15 @@ pub trait EVMManager<AccountId, Balance> {
 	fn disable_account_contract_development(who: AccountId) -> DispatchResult;
 }
 
+/// An abstraction of EVMAccountsManager
+pub trait EVMAccountsManager<AccountId> {
+	/// Returns the AccountId used to generate the given EvmAddress.
+	fn get_account_id(address: &EvmAddress) -> AccountId;
+	/// Returns the EvmAddress associated with a given AccountId or the underlying EvmAddress of the
+	/// AccountId.
+	fn get_evm_address(account_id: &AccountId) -> Option<EvmAddress>;
+}
+
 /// A mapping between `AccountId` and `EvmAddress`.
 pub trait AddressMapping<AccountId> {
 	/// Returns the AccountId used go generate the given EvmAddress.
@@ -164,13 +174,9 @@ pub trait AddressMapping<AccountId> {
 }
 
 /// A mapping between AssetId and AssetMetadata.
-pub trait AssetIdMapping<StableAssetPoolId, ForeignAssetId, MultiLocation, AssetMetadata> {
-	/// Returns the AssetMetadata associated with a given contract address.
-	fn get_erc20_asset_metadata(contract: EvmAddress) -> Option<AssetMetadata>;
-	/// Returns the AssetMetadata associated with a given StableAssetPoolId.
-	fn get_stable_asset_metadata(stable_asset_id: StableAssetPoolId) -> Option<AssetMetadata>;
-	/// Returns the AssetMetadata associated with a given ForeignAssetId.
-	fn get_foreign_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
+pub trait AssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
+	/// Returns the AssetMetadata associated with a given `AssetIds`.
+	fn get_asset_metadata(asset_ids: AssetIds) -> Option<AssetMetadata>;
 	/// Returns the MultiLocation associated with a given ForeignAssetId.
 	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation>;
 	/// Returns the CurrencyId associated with a given MultiLocation.

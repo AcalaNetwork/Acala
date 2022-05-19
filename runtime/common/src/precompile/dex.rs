@@ -62,7 +62,7 @@ pub enum Action {
 impl<Runtime> Precompile for DEXPrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_dex::Config + module_prices::Config,
-	module_dex::Pallet<Runtime>: DEXManager<Runtime::AccountId, CurrencyId, Balance>,
+	module_dex::Pallet<Runtime>: DEXManager<Runtime::AccountId, Balance, CurrencyId>,
 {
 	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<
@@ -96,8 +96,8 @@ where
 
 				let (balance_a, balance_b) = <module_dex::Pallet<Runtime> as DEXManager<
 					Runtime::AccountId,
-					CurrencyId,
 					Balance,
+					CurrencyId,
 				>>::get_liquidity_pool(currency_id_a, currency_id_b);
 
 				Ok(PrecompileOutput {
@@ -116,7 +116,7 @@ where
 					currency_id_a, currency_id_b
 				);
 
-				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::get_liquidity_token_address(currency_id_a, currency_id_b)
+				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_liquidity_token_address(currency_id_a, currency_id_b)
 					.ok_or_else(||
 								PrecompileFailure::Revert {
 									exit_status: ExitRevert::Reverted,
@@ -145,7 +145,7 @@ where
 					path, supply_amount
 				);
 
-				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::get_swap_amount(&path, SwapLimit::ExactSupply(supply_amount, Balance::MIN))
+				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_swap_amount(&path, SwapLimit::ExactSupply(supply_amount, Balance::MIN))
 					.map(|(_, target)| target)
 					.ok_or_else(||
 								PrecompileFailure::Revert {
@@ -175,7 +175,7 @@ where
 					path, target_amount
 				);
 
-				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::get_swap_amount(&path, SwapLimit::ExactTarget(Balance::MAX, target_amount))
+				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_swap_amount(&path, SwapLimit::ExactTarget(Balance::MAX, target_amount))
 					.map(|(supply, _)| supply)
 					.ok_or_else(||
 								PrecompileFailure::Revert {
@@ -193,7 +193,7 @@ where
 			}
 			Action::SwapWithExactSupply => {
 				let who = input.account_id_at(1)?;
-				// solidity abi enocde array will add an offset at input[2]
+				// solidity abi encode array will add an offset at input[2]
 				let supply_amount = input.balance_at(3)?;
 				let min_target_amount = input.balance_at(4)?;
 				let path_len = input.u32_at(5)?;
@@ -208,7 +208,7 @@ where
 				);
 
 				let (_, value) =
-					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::swap_with_specific_path(&who, &path, SwapLimit::ExactSupply(supply_amount, min_target_amount))
+					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::swap_with_specific_path(&who, &path, SwapLimit::ExactSupply(supply_amount, min_target_amount))
 					.map_err(|e|
 							 PrecompileFailure::Revert {
 								 exit_status: ExitRevert::Reverted,
@@ -240,7 +240,7 @@ where
 				);
 
 				let (value, _) =
-					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::swap_with_specific_path(&who, &path, SwapLimit::ExactTarget(max_supply_amount, target_amount))
+					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::swap_with_specific_path(&who, &path, SwapLimit::ExactTarget(max_supply_amount, target_amount))
 					.map_err(|e|
 							 PrecompileFailure::Revert {
 								 exit_status: ExitRevert::Reverted,
@@ -269,7 +269,7 @@ where
 					who, currency_id_a, currency_id_b, max_amount_a, max_amount_b, min_share_increment,
 				);
 
-				<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::add_liquidity(
+				<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::add_liquidity(
 					&who,
 					currency_id_a,
 					currency_id_b,
@@ -305,7 +305,7 @@ where
 					who, currency_id_a, currency_id_b, remove_share, min_withdrawn_a, min_withdrawn_b,
 				);
 
-				<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::remove_liquidity(
+				<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::remove_liquidity(
 					&who,
 					currency_id_a,
 					currency_id_b,
@@ -371,7 +371,7 @@ where
 				let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
 
 				// DEX::TradingPairStatuses (r: 1)
-				// AssetRegistry::AssetMetadatas (r: 2)
+				// primitives::currency::AssetMetadatas (r: 2)
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(3);
 
 				Self::BASE_COST

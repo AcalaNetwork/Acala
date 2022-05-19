@@ -18,24 +18,26 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::from_over_into)]
 
 use codec::FullCodec;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
-use primitives::{task::TaskResult, CurrencyId};
+use primitives::{task::TaskResult, CurrencyId, Multiplier, ReserveIdentifier};
 use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
 use sp_std::prelude::*;
-
 use xcm::latest::prelude::*;
 
 pub mod dex;
 pub mod evm;
+pub mod homa;
 pub mod honzon;
 pub mod mocks;
 
 pub use crate::dex::*;
 pub use crate::evm::*;
+pub use crate::homa::*;
 pub use crate::honzon::*;
 
 pub type Price = FixedU128;
@@ -84,8 +86,8 @@ impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balanc
 }
 
 pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
-	fn reserve_fee(who: &AccountId, weight: Weight) -> Result<Balance, DispatchError>;
-	fn unreserve_fee(who: &AccountId, fee: Balance);
+	fn reserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Result<Balance, DispatchError>;
+	fn unreserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Balance;
 	fn unreserve_and_charge_fee(
 		who: &AccountId,
 		weight: Weight,
@@ -99,45 +101,8 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 		pays_fee: Pays,
 		class: DispatchClass,
 	) -> Result<(), TransactionValidityError>;
-}
-
-#[cfg(feature = "std")]
-use frame_support::traits::Imbalance;
-#[cfg(feature = "std")]
-impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
-	TransactionPayment<AccountId, Balance, NegativeImbalance> for ()
-{
-	fn reserve_fee(_who: &AccountId, _weight: Weight) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
-	}
-
-	fn unreserve_fee(_who: &AccountId, _fee: Balance) {}
-
-	fn unreserve_and_charge_fee(
-		_who: &AccountId,
-		_weight: Weight,
-	) -> Result<(Balance, NegativeImbalance), TransactionValidityError> {
-		Ok((Default::default(), Imbalance::zero()))
-	}
-
-	fn refund_fee(
-		_who: &AccountId,
-		_weight: Weight,
-		_payed: NegativeImbalance,
-	) -> Result<(), TransactionValidityError> {
-		Ok(())
-	}
-
-	fn charge_fee(
-		_who: &AccountId,
-		_len: u32,
-		_weight: Weight,
-		_tip: Balance,
-		_pays_fee: Pays,
-		_class: DispatchClass,
-	) -> Result<(), TransactionValidityError> {
-		Ok(())
-	}
+	fn weight_to_fee(weight: Weight) -> Balance;
+	fn apply_multiplier_to_fee(fee: Balance, multiplier: Option<Multiplier>) -> Balance;
 }
 
 /// Used to interface with the Compound's Cash module
@@ -222,20 +187,4 @@ pub trait OnNewEra<EraIndex> {
 
 pub trait NomineesProvider<AccountId> {
 	fn nominees() -> Vec<AccountId>;
-}
-
-pub trait HomaSubAccountXcm<AccountId, Balance> {
-	/// Cross-chain transfer staking currency to sub account on relaychain.
-	fn transfer_staking_to_sub_account(sender: &AccountId, sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency and
-	/// send it back.
-	fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// Send XCM message to the relaychain for sub account to bond extra.
-	fn bond_extra_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// Send XCM message to the relaychain for sub account to unbond.
-	fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// The fee of cross-chain transfer is deducted from the recipient.
-	fn get_xcm_transfer_fee() -> Balance;
-	/// The fee of parachain
-	fn get_parachain_fee(location: MultiLocation) -> Balance;
 }

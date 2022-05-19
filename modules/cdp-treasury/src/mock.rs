@@ -35,6 +35,7 @@ use primitives::{DexShare, TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
+use support::SpecificJointsSwap;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -144,7 +145,6 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<4>;
 	type PalletId = DEXPalletId;
-	type StableAsset = MockStableAsset;
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
@@ -211,10 +211,10 @@ impl Config for Runtime {
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureOneOf<EnsureRoot<AccountId>, EnsureSignedBy<One, AccountId>>;
 	type DEX = DEXModule;
+	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
 	type MaxAuctionsCount = ConstU32<5>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset;
 }
@@ -517,20 +517,21 @@ impl StableAsset for MockStableAsset {
 	fn get_best_route(
 		_input_asset: Self::AssetId,
 		_output_asset: Self::AssetId,
-		_limit: Self::Balance,
-	) -> Option<
-		StableAssetPoolInfo<
-			Self::AssetId,
-			Self::AtLeast64BitUnsigned,
-			Self::Balance,
-			Self::AccountId,
-			Self::BlockNumber,
-		>,
-	> {
+		_input_amount: Self::Balance,
+	) -> Option<(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex, Self::Balance)> {
 		unimplemented!()
 	}
 
-	fn get_swap_amount_exact(
+	fn get_swap_output_amount(
+		_pool_id: StableAssetPoolId,
+		_input_index: PoolTokenIndex,
+		_output_index: PoolTokenIndex,
+		_dx_bal: Self::Balance,
+	) -> Option<SwapResult<Self::Balance>> {
+		unimplemented!()
+	}
+
+	fn get_swap_input_amount(
 		_pool_id: StableAssetPoolId,
 		_input_index: PoolTokenIndex,
 		_output_index: PoolTokenIndex,

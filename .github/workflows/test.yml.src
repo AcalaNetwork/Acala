@@ -34,7 +34,7 @@ jobs:
     needs: clean-up-actions
     steps:
       - &checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
       - &toolchain
@@ -42,7 +42,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2021-11-07
+          toolchain: nightly-2022-02-19
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true

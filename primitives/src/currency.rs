@@ -127,11 +127,25 @@ macro_rules! create_currency_id {
 				)*
 			];
 
-			let lcdot = Token {
+			tokens.push(Token {
 				symbol: stringify!(LCDOT).to_string(),
 				address: EvmAddress::try_from(LCDOT).unwrap(),
-			};
-			tokens.push(lcdot);
+			});
+
+			tokens.push(Token {
+				symbol: "TAI_KSM".to_string(),
+				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(0)).unwrap(),
+			});
+
+			tokens.push(Token {
+				symbol: "TAI_3USD".to_string(),
+				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(1)).unwrap(),
+			});
+
+			tokens.push(Token {
+				symbol: "TAI_DOT".to_string(),
+				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(0)).unwrap(),
+			});
 
 			let mut lp_tokens = vec![
 				Token {
@@ -400,3 +414,19 @@ impl Into<DexShareType> for DexShare {
 
 /// The first batch of lcDOT that expires at end of least 13
 pub const LCDOT: CurrencyId = CurrencyId::LiquidCrowdloan(13);
+
+#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
+pub enum AssetIds {
+	Erc20(EvmAddress),
+	StableAssetId(StableAssetPoolId),
+	ForeignAssetId(ForeignAssetId),
+	NativeAssetId(CurrencyId),
+}
+
+#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
+pub struct AssetMetadata<Balance> {
+	pub name: Vec<u8>,
+	pub symbol: Vec<u8>,
+	pub decimals: u8,
+	pub minimal_balance: Balance,
+}

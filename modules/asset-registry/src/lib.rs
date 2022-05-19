@@ -31,12 +31,14 @@ use frame_support::{
 	traits::{Currency, EnsureOrigin},
 	transactional,
 	weights::constants::WEIGHT_PER_SECOND,
-	RuntimeDebug,
 };
 use frame_system::pallet_prelude::*;
 use module_support::{AssetIdMapping, EVMBridge, Erc20InfoMapping, InvokeContext};
 use primitives::{
-	currency::{CurrencyIdType, DexShare, DexShareType, Erc20Id, ForeignAssetId, Lease, StableAssetPoolId, TokenInfo},
+	currency::{
+		AssetIds, AssetMetadata, CurrencyIdType, DexShare, DexShareType, Erc20Id, ForeignAssetId, Lease,
+		StableAssetPoolId, TokenInfo,
+	},
 	evm::{
 		is_system_contract, EvmAddress, H160_POSITION_CURRENCY_ID_TYPE, H160_POSITION_DEXSHARE_LEFT_FIELD,
 		H160_POSITION_DEXSHARE_LEFT_TYPE, H160_POSITION_DEXSHARE_RIGHT_FIELD, H160_POSITION_DEXSHARE_RIGHT_TYPE,
@@ -44,7 +46,7 @@ use primitives::{
 	},
 	CurrencyId,
 };
-use scale_info::{prelude::format, TypeInfo};
+use scale_info::prelude::format;
 use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedU128};
 use sp_std::{boxed::Box, vec::Vec};
 
@@ -89,22 +91,6 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
-	}
-
-	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
-	pub enum AssetIds {
-		Erc20(EvmAddress),
-		StableAssetId(StableAssetPoolId),
-		ForeignAssetId(ForeignAssetId),
-		NativeAssetId(CurrencyId),
-	}
-
-	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
-	pub struct AssetMetadata<Balance> {
-		pub name: Vec<u8>,
-		pub symbol: Vec<u8>,
-		pub decimals: u8,
-		pub minimal_balance: Balance,
 	}
 
 	#[pallet::error]
@@ -556,19 +542,9 @@ impl<T: Config> Pallet<T> {
 
 pub struct AssetIdMaps<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: Config> AssetIdMapping<StableAssetPoolId, ForeignAssetId, MultiLocation, AssetMetadata<BalanceOf<T>>>
-	for AssetIdMaps<T>
-{
-	fn get_erc20_asset_metadata(contract: EvmAddress) -> Option<AssetMetadata<BalanceOf<T>>> {
-		Pallet::<T>::asset_metadatas(AssetIds::Erc20(contract))
-	}
-
-	fn get_stable_asset_metadata(stable_asset_id: StableAssetPoolId) -> Option<AssetMetadata<BalanceOf<T>>> {
-		Pallet::<T>::asset_metadatas(AssetIds::StableAssetId(stable_asset_id))
-	}
-
-	fn get_foreign_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata<BalanceOf<T>>> {
-		Pallet::<T>::asset_metadatas(AssetIds::ForeignAssetId(foreign_asset_id))
+impl<T: Config> AssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata<BalanceOf<T>>> for AssetIdMaps<T> {
+	fn get_asset_metadata(asset_ids: AssetIds) -> Option<AssetMetadata<BalanceOf<T>>> {
+		Pallet::<T>::asset_metadatas(asset_ids)
 	}
 
 	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation> {
@@ -806,7 +782,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 				let mut vec = Vec::new();
 				vec.extend_from_slice(&b"LP "[..]);
 				vec.extend_from_slice(&name_0);
-				vec.extend_from_slice(&b" - ".to_vec());
+				vec.extend_from_slice(&b" - "[..]);
 				vec.extend_from_slice(&name_1);
 				Some(vec)
 			}
@@ -848,7 +824,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 				let mut vec = Vec::new();
 				vec.extend_from_slice(&b"LP_"[..]);
 				vec.extend_from_slice(&token_symbol_0);
-				vec.extend_from_slice(&b"_".to_vec());
+				vec.extend_from_slice(&b"_"[..]);
 				vec.extend_from_slice(&token_symbol_1);
 				Some(vec)
 			}

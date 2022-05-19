@@ -336,6 +336,7 @@ impl ExtBuilder {
 		.unwrap();
 
 		module_evm::GenesisConfig::<Runtime> {
+			chain_id: 595u64,
 			accounts: evm_genesis_accounts,
 		}
 		.assimilate_storage(&mut t)

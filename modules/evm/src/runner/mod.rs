@@ -72,3 +72,27 @@ pub trait Runner<T: Config> {
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError>;
 }
+
+pub trait RunnerExtended<T: Config>: Runner<T> {
+	fn rpc_call(
+		source: H160,
+		origin: H160,
+		target: H160,
+		input: Vec<u8>,
+		value: BalanceOf<T>,
+		gas_limit: u64,
+		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
+		config: &evm::Config,
+	) -> Result<CallInfo, DispatchError>;
+
+	fn rpc_create(
+		source: H160,
+		init: Vec<u8>,
+		value: BalanceOf<T>,
+		gas_limit: u64,
+		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
+		config: &evm::Config,
+	) -> Result<CreateInfo, DispatchError>;
+}

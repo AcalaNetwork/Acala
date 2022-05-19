@@ -48,7 +48,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 	it("create should sign and verify", async function () {
 		this.timeout(150000);
 
-		const chain_id = +context.provider.api.consts.evm.chainId.toString()
+		const chain_id = +context.provider.api.consts.evmAccounts.chainId.toString()
 		const nonce = await getEvmNonce(context.provider, signer.address);
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
 		const storageLimit = 20000;
@@ -189,7 +189,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 	it("call should sign and verify", async function () {
 		this.timeout(150000);
 
-		const chain_id = +context.provider.api.consts.evm.chainId.toString();
+		const chain_id = +context.provider.api.consts.evmAccounts.chainId.toString();
 		const nonce = await getEvmNonce(context.provider, signer.address);
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100;
 		const storageLimit = 1000;

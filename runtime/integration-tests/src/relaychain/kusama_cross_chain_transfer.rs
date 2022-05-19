@@ -27,10 +27,10 @@ use xcm_builder::ParentIsPreset;
 
 use karura_runtime::parachains::bifrost::BNC_KEY;
 use karura_runtime::{AssetRegistry, KaruraTreasuryAccount};
-use module_asset_registry::AssetMetadata;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::CallBuilder;
 use orml_traits::MultiCurrency;
+use primitives::currency::AssetMetadata;
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert;
 
