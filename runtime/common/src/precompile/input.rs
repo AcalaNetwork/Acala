@@ -28,6 +28,7 @@ use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc2
 use primitives::{Balance, CurrencyId, DexShare};
 use sp_core::{H160, U256};
 use sp_runtime::traits::Convert;
+use sp_std::prelude::*;
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
@@ -169,13 +170,12 @@ where
 		} else {
 			// flips bits of each byte, giving logical compliment
 			let complement_vec: Vec<u8> = param.iter().map(|x| !x).collect();
-			U256::from_big_endian(&complement_vec)
-				.checked_add(U256::one())
-				.ok_or(PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "failed to add one to get two's complement, should never happen".into(),
-					cost: self.target_gas.unwrap_or_default(),
-				})?
+			let compliment_uint = U256::from_big_endian(&complement_vec);
+			if compliment_uint == U256::MAX {
+				U256::zero()
+			} else {
+				compliment_uint.saturating_add(U256::one())
+			}
 		};
 
 		let mut signed_value: i128 = unsigned_value.try_into().map_err(|_| PrecompileFailure::Revert {
@@ -558,7 +558,9 @@ mod tests {
 			00000000000000000000000000000000 0000000000000000000000000000007f
 			0fffffffffffffffffffffffffffffff 00000000000000000000000000000001
 			ffffffffffffffffffffffffffffffff ffffffffffffffffffffffffffffffff
-			f0000000000000000000000000000000 ffffffffffffffffffffffffffffffff
+			ffffffffffffffffffffffffffffffff fffffffffffffffffffffffffffffff0
+			ff000000000000000000000000000000 ffffffffffffffffffffffffffffffff
+			00000000000000000000000000000000 00000000000000000000000000000000
 		"};
 		let input = TestInput::new(&data[..], Some(10));
 		assert_ok!(input.i128_at(1), 127_i128);
@@ -571,13 +573,15 @@ mod tests {
 			})
 		);
 		assert_ok!(input.i128_at(3), -1_i128);
+		assert_ok!(input.i128_at(4), -16_i128);
 		assert_eq!(
-			input.i128_at(4),
+			input.i128_at(5),
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "failed to convert U256 to i128".into(),
 				cost: 10,
 			})
 		);
+		assert_ok!(input.i128_at(6), 0);
 	}
 }
