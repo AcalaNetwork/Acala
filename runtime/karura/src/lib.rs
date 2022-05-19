@@ -114,9 +114,6 @@ pub use xcm::latest::prelude::*;
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
 
-#[cfg(feature = "integration-tests")]
-mod integration_tests_config;
-
 mod authority;
 mod benchmarking;
 pub mod constants;
