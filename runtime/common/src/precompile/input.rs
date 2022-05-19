@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use frame_support::ensure;
+use orml_traits::arithmetic::Zero;
 use sp_std::{marker::PhantomData, result::Result, vec, vec::Vec};
 
 use crate::WeightToGas;
@@ -44,6 +45,7 @@ pub trait InputT {
 	fn evm_address_at(&self, index: usize) -> Result<H160, Self::Error>;
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error>;
 
+	fn i128_at(&self, index: usize) -> Result<i128, Self::Error>;
 	fn u256_at(&self, index: usize) -> Result<U256, Self::Error>;
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error>;
@@ -147,6 +149,47 @@ where
 			output: "invalid currency id".into(),
 			cost: self.target_gas.unwrap_or_default(),
 		})
+	}
+
+	fn i128_at(&self, index: usize) -> Result<i128, Self::Error> {
+		let param = self.nth_param(index, None)?;
+
+		// Gets first byte
+		let first_byte = param.get(0).ok_or(PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "empty input".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})?;
+		// checks if most signifigant bit is 0, determining the sign of integer
+		let first_bit_zero = (first_byte >> 7_u8).is_zero();
+
+		let unsigned_value = if first_bit_zero {
+			U256::from_big_endian(param)
+		} else {
+			// flips bits of each byte, giving logical compliment
+			let complement_vec: Vec<u8> = param.iter().map(|x| !x).collect();
+			U256::from_big_endian(&complement_vec)
+				.checked_add(U256::one())
+				.ok_or(PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "failed to add one to get two's complement, should never happen".into(),
+					cost: self.target_gas.unwrap_or_default(),
+				})?
+		};
+
+		let mut signed_value: i128 = unsigned_value.try_into().map_err(|_| PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "failed to convert U256 to i128".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})?;
+		if !first_bit_zero {
+			signed_value = signed_value.checked_neg().ok_or(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to negate i128, should never happen".into(),
+				cost: self.target_gas.unwrap_or_default(),
+			})?;
+		}
+		Ok(signed_value)
 	}
 
 	fn u256_at(&self, index: usize) -> Result<U256, Self::Error> {
@@ -492,6 +535,36 @@ mod tests {
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "failed to convert uint256 into u32".into(),
+				cost: 10,
+			})
+		);
+	}
+
+	#[test]
+	fn i128_works() {
+		let data = hex_literal::hex! {"
+			00000000
+			00000000000000000000000000000000 0000000000000000000000000000007f
+			0fffffffffffffffffffffffffffffff 00000000000000000000000000000001
+			ffffffffffffffffffffffffffffffff ffffffffffffffffffffffffffffffff
+			f0000000000000000000000000000000 ffffffffffffffffffffffffffffffff
+		"};
+		let input = TestInput::new(&data[..], Some(10));
+		assert_ok!(input.i128_at(1), 127_i128);
+		assert_eq!(
+			input.i128_at(2),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to convert U256 to i128".into(),
+				cost: 10,
+			})
+		);
+		assert_ok!(input.i128_at(3), -1_i128);
+		assert_eq!(
+			input.i128_at(4),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to convert U256 to i128".into(),
 				cost: 10,
 			})
 		);

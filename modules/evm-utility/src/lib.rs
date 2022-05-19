@@ -46,16 +46,3 @@ pub fn get_function_selector(s: &str) -> u32 {
 	let result = sha3_256(s);
 	u32::from_be_bytes(result[..4].try_into().unwrap())
 }
-
-#[cfg(test)]
-mod test {
-	use super::*;
-
-	#[test]
-	fn foo() {
-		let s = "adjustLoan(address,address,int256,int256)";
-		let x = get_function_selector(s);
-		println!("{:?}", x);
-		panic!();
-	}
-}

@@ -74,8 +74,8 @@ where
 			Action::AdjustLoan => {
 				let who = input.account_id_at(1)?;
 				let currency_id = input.currency_id_at(2)?;
-				let collateral_adjustment = 0;
-				let debit_adjustment = 0;
+				let collateral_adjustment = input.i128_at(3)?;
+				let debit_adjustment = input.i128_at(4)?;
 
 				log::debug!(
 					target: "evm",
@@ -298,12 +298,13 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
+			// 0xaf174446
 			let input = hex! {"
-                bf0ea731
+                af174446
 				000000000000000000000000 1000000000000000000000000000000000000001
 				000000000000000000000000 0000000000000000000100000000000000000002
-				00000000000000000000000000000000 00000000000000000000000000000000
-				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000010000000
+				00000000000000000000000000000000 00000000000000000000000000001000
             "};
 
 			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
