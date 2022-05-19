@@ -390,9 +390,7 @@ impl<T: Config> HonzonManager<T::AccountId, CurrencyId, Amount, Balance> for Pal
 	}
 
 	fn get_liquidation_ratio(currency_id: CurrencyId) -> Option<Ratio> {
-		<cdp_engine::Pallet<T>>::collateral_params(currency_id)
-			.map(|risk_params| risk_params.liquidation_ratio)
-			.flatten()
+		<cdp_engine::Pallet<T>>::collateral_params(currency_id).and_then(|risk_params| risk_params.liquidation_ratio)
 	}
 
 	fn get_current_collateral_ratio(who: &T::AccountId, currency_id: CurrencyId) -> Option<Ratio> {
