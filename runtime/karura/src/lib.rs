@@ -54,7 +54,7 @@ use frame_system::{EnsureRoot, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::BasicCurrencyAdapter;
-use module_evm::{CallInfo, CreateInfo, EvmChainId, EvmTask, Runner};
+use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
@@ -1987,33 +1987,19 @@ impl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			estimate: bool,
+			_estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			if estimate {
-				module_evm::runner::stack::Runner::<Runtime>::call(
-					from,
-					from,
-					to,
-					data,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					<Runtime as module_evm::Config>::config(),
-				)
-			} else {
-				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_call(
-					from,
-					from,
-					to,
-					data,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					<Runtime as module_evm::Config>::config(),
-				)
-			}
+			<Runtime as module_evm::Config>::Runner::rpc_call(
+				from,
+				from,
+				to,
+				data,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				<Runtime as module_evm::Config>::config(),
+			)
 		}
 
 		fn create(
@@ -2023,29 +2009,17 @@ impl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			estimate: bool,
+			_estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
-			if estimate {
-				module_evm::runner::stack::Runner::<Runtime>::create(
-					from,
-					data,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					<Runtime as module_evm::Config>::config(),
-				)
-			} else {
-				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_create(
-					from,
-					data,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					<Runtime as module_evm::Config>::config(),
-				)
-			}
+			<Runtime as module_evm::Config>::Runner::rpc_create(
+				from,
+				data,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				<Runtime as module_evm::Config>::config(),
+			)
 		}
 
 		fn get_estimate_resources_request(extrinsic: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError> {
