@@ -164,4 +164,17 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(15 as Weight))
 			.saturating_add(T::DbWeight::get().writes(12 as Weight))
 	}
+	// Storage: Loans Positions (r:1 w:0)
+	// Storage: Prices LockedPrice (r:2 w:0)
+	// Storage: AcalaOracle Values (r:1 w:0)
+	// Storage: AssetRegistry AssetMetadatas (r:2 w:0)
+	// Storage: Homa StakingLedgers (r:1 w:0)
+	// Storage: Homa ToBondPool (r:1 w:0)
+	// Storage: Tokens TotalIssuance (r:1 w:0)
+	// Storage: Homa TotalVoidLiquid (r:1 w:0)
+	// Storage: CdpEngine DebitExchangeRate (r:1 w:0)
+	fn precompile_get_current_collateral_ratio() -> Weight {
+		(31_657_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(11 as Weight))
+	}
 }
