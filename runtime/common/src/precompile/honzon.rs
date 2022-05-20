@@ -305,7 +305,7 @@ mod tests {
 			};
 			// 0xaf174446
 			let input = hex! {"
-                af174446
+				af174446
 				000000000000000000000000 1000000000000000000000000000000000000001
 				000000000000000000000000 0000000000000000000100000000000000000002
 				00000000000000000000000000000000 00000000000000000000000010000000
@@ -314,6 +314,8 @@ mod tests {
 
 			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
+			assert_eq!(Loans::positions(DOT, alice()).collateral, 268435456);
+			assert_eq!(Loans::positions(DOT, alice()).debit, 4096)
 		})
 	}
 
