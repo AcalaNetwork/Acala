@@ -202,7 +202,7 @@ where
 						gas_limit,
 						storage_limit,
 						access_list,
-						false,
+						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
@@ -226,7 +226,7 @@ where
 						gas_limit,
 						storage_limit,
 						access_list,
-						false,
+						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
