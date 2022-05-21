@@ -325,7 +325,6 @@ mod tests {
 	use sp_runtime::RuntimeDebug;
 	use std::str::FromStr;
 
-	use crate::from_hex;
 	use module_support::mocks::{MockAddressMapping, MockErc20InfoMapping};
 	use primitives::{AccountId, CurrencyId, TokenSymbol};
 
@@ -618,10 +617,12 @@ mod tests {
 				"000000000000000000000000000000007fffffffffffffffffffffffffffffff",
 				Some(i128::MAX),
 			),
+			("00000000000000000000000000000000ffffffffffffffffffffffffffffffff", None),
+			("ffffffffffffffffffffffffffffffff00000000000000000000000000000000", None),
 		];
 
 		items.into_iter().for_each(|(input, value)| {
-			assert_eq!(decode_i128(&from_hex(input).unwrap()), value);
+			assert_eq!(decode_i128(&crate::from_hex(input).unwrap()), value);
 		});
 	}
 }
