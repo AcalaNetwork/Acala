@@ -83,7 +83,7 @@ fn transfer_to_relay_chain() {
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&AccountId::from(BOB)),
 			// v0.9.18: 106_666_660
-			// v0.9.19: 165_940_672
+			// v0.9.22: 165_940_672
 			999_834_059_328
 		);
 	});

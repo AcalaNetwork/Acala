@@ -1027,75 +1027,90 @@ fn fungible_inspect_trait_should_work() {
 
 			// Test for Inspect::can_deposit
 			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &alice(), Bounded::max_value())
+				<Currencies as fungibles::Inspect<_>>::can_deposit(
+					NATIVE_CURRENCY_ID,
+					&alice(),
+					Bounded::max_value(),
+					false
+				) == DepositConsequence::Overflow
+			);
+			assert!(
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), Bounded::max_value(), false)
 					== DepositConsequence::Overflow
 			);
 			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), Bounded::max_value())
-					== DepositConsequence::Overflow
-			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &bob(), 1)
+				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &bob(), 1, false)
 					== DepositConsequence::BelowMinimum
 			);
 			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&bob(), 1)
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&bob(), 1, false)
 					== DepositConsequence::BelowMinimum
 			);
 			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &alice(), 100)
+				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &alice(), 100, false)
 					== DepositConsequence::Success
 			);
 			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), 100)
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), 100, false)
 					== DepositConsequence::Success
 			);
 			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &alice(), 0)
+				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &alice(), 0, false)
 					== DepositConsequence::Success
 			);
 			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), 0) == DepositConsequence::Success
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), 0, false)
+					== DepositConsequence::Success
 			);
 
 			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), Bounded::max_value())
+				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), Bounded::max_value(), false)
 					== DepositConsequence::Overflow
 			);
 			assert!(
-				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), Bounded::max_value())
+				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), Bounded::max_value(), false)
 					== DepositConsequence::Overflow
 			);
 			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 100)
+				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 100, false)
 					== DepositConsequence::Success
 			);
 			assert!(
-				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 100)
+				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 100, false)
 					== DepositConsequence::Success
 			);
 			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 0)
+				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 0, false)
 					== DepositConsequence::Success
 			);
 			assert!(
-				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 0) == DepositConsequence::Success
+				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 0, false)
+					== DepositConsequence::Success
 			);
 
 			assert!(
 				<Currencies as fungibles::Inspect<_>>::can_deposit(
 					CurrencyId::Erc20(erc20_address()),
 					&alice(),
-					Bounded::max_value()
+					Bounded::max_value(),
+					false
 				) == DepositConsequence::Overflow
 			);
 			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(CurrencyId::Erc20(erc20_address()), &alice(), 100)
-					== DepositConsequence::Success
+				<Currencies as fungibles::Inspect<_>>::can_deposit(
+					CurrencyId::Erc20(erc20_address()),
+					&alice(),
+					100,
+					false
+				) == DepositConsequence::Success
 			);
 			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(CurrencyId::Erc20(erc20_address()), &alice(), 0)
-					== DepositConsequence::Success
+				<Currencies as fungibles::Inspect<_>>::can_deposit(
+					CurrencyId::Erc20(erc20_address()),
+					&alice(),
+					0,
+					false
+				) == DepositConsequence::Success
 			);
 
 			// TODO: update test code to assert_eq! for this: https://github.com/AcalaNetwork/Acala/issues/2038
