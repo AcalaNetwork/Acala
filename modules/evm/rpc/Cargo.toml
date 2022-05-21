@@ -5,8 +5,7 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-jsonrpc-core = "18.0.0"
-jsonrpc-derive = "18.0.0"
+jsonrpsee = { version = "0.13.0", features = ["server", "macros"] }
 rustc-hex = "2.1.0"
 serde = { version = "1.0.136", features = ["derive"] }
 

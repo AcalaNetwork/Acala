@@ -19,7 +19,11 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use frame_support::log;
-use jsonrpc_core::{Error, ErrorCode, Result, Value};
+use jsonrpsee::{
+	core::{async_trait, Error as JsonRpseeError, RpcResult},
+	proc_macros::rpc,
+	types::error::{CallError, ErrorCode, ErrorObject},
+};
 use pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi;
 use rustc_hex::ToHex;
 use sc_rpc_api::DenyUnsafe;
@@ -40,52 +44,71 @@ pub use module_evm::{ExitError, ExitReason};
 pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
 use primitives::evm::{BlockLimits, EstimateResourcesRequest};
 
-pub use crate::evm_api::{EVMApi as EVMApiT, EVMApiServer};
-
 mod call_request;
-mod evm_api;
+// mod evm_api;
 
-fn internal_err<T: ToString>(message: T) -> Error {
-	Error {
-		code: ErrorCode::InternalError,
-		message: message.to_string(),
-		data: None,
-	}
+/// EVM rpc interface.
+#[rpc(client, server)]
+pub trait EVMApi<BlockHash> {
+	/// Call contract, returning the output data.
+	#[method(name = "evm_call")]
+	fn call(&self, call_request: CallRequest, at: Option<BlockHash>) -> RpcResult<Bytes>;
+
+	/// Estimate resources needed for execution of given contract.
+	#[method(name = "evm_estimateResources")]
+	fn estimate_resources(
+		&self,
+		from: H160,
+		unsigned_extrinsic: Bytes,
+		at: Option<BlockHash>,
+	) -> RpcResult<EstimateResourcesResponse>;
+
+	/// Get max gas and storage limits per transaction
+	#[method(name = "evm_blockLimits")]
+	fn block_limits(&self, at: Option<BlockHash>) -> RpcResult<BlockLimits>;
+}
+
+fn internal_err<T: ToString>(message: T) -> JsonRpseeError {
+	JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+		ErrorCode::InternalError.code(),
+		message.to_string(),
+		None::<()>,
+	)))
 }
 
 #[allow(dead_code)]
-fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
+fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> RpcResult<()> {
 	match reason {
 		ExitReason::Succeed(_) => Ok(()),
 		ExitReason::Error(e) => {
 			if *e == ExitError::OutOfGas {
 				// `ServerError(0)` will be useful in estimate gas
-				return Err(Error {
-					code: ErrorCode::ServerError(0),
-					message: "out of gas".to_string(),
-					data: None,
-				});
+				Err(JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+					ErrorCode::ServerError(0).code(),
+					"out of gas".to_string(),
+					None::<()>,
+				))))
+			} else {
+				Err(JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+					ErrorCode::InternalError.code(),
+					format!("execution error: {:?}", e),
+					Some("0x".to_string()),
+				))))
 			}
-			Err(Error {
-				code: ErrorCode::InternalError,
-				message: format!("execution error: {:?}", e),
-				data: Some(Value::String("0x".to_string())),
-			})
 		}
 		ExitReason::Revert(_) => {
 			let message = "VM Exception while processing transaction: execution revert".to_string();
-			Err(Error {
-				code: ErrorCode::InternalError,
-				message: decode_revert_message(data)
-					.map_or(message.clone(), |reason| format!("{} {}", message, reason)),
-				data: Some(Value::String(format!("0x{}", data.to_hex::<String>()))),
-			})
+			Err(JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+				ErrorCode::InternalError.code(),
+				decode_revert_message(data).map_or(message.clone(), |reason| format!("{} {}", message, reason)),
+				Some(format!("0x{}", data.to_hex::<String>())),
+			))))
 		}
-		ExitReason::Fatal(e) => Err(Error {
-			code: ErrorCode::InternalError,
-			message: format!("execution fatal: {:?}", e),
-			data: Some(Value::String("0x".to_string())),
-		}),
+		ExitReason::Fatal(e) => Err(JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+			ErrorCode::InternalError.code(),
+			format!("execution fatal: {:?}", e),
+			Some("0x".to_string()),
+		)))),
 	}
 }
 
@@ -108,13 +131,13 @@ fn decode_revert_message(data: &[u8]) -> Option<String> {
 	None
 }
 
-pub struct EVMApi<B, C, Balance> {
+pub struct EVMRpc<B, C, Balance> {
 	client: Arc<C>,
 	_deny_unsafe: DenyUnsafe,
 	_marker: PhantomData<(B, Balance)>,
 }
 
-impl<B, C, Balance> EVMApi<B, C, Balance> {
+impl<B, C, Balance> EVMRpc<B, C, Balance> {
 	pub fn new(client: Arc<C>, _deny_unsafe: DenyUnsafe) -> Self {
 		Self {
 			client,
@@ -128,7 +151,8 @@ fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
 	val.into_u256().try_into().map_err(|_| ())
 }
 
-impl<B, C, Balance> EVMApiT<<B as BlockT>::Hash> for EVMApi<B, C, Balance>
+#[async_trait]
+impl<B, C, Balance> EVMApiServer<<B as BlockT>::Hash> for EVMRpc<B, C, Balance>
 where
 	B: BlockT,
 	C: ProvideRuntimeApi<B> + HeaderBackend<B> + Send + Sync + 'static,
@@ -136,7 +160,7 @@ where
 	C::Api: TransactionPaymentApi<B, Balance>,
 	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128> + Into<U256>,
 {
-	fn call(&self, request: CallRequest, at: Option<<B as BlockT>::Hash>) -> Result<Bytes> {
+	fn call(&self, request: CallRequest, at: Option<<B as BlockT>::Hash>) -> RpcResult<Bytes> {
 		let api = self.client.runtime_api();
 
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
@@ -162,19 +186,19 @@ where
 
 		let gas_limit = gas_limit.unwrap_or(gas_limit_cap);
 		if gas_limit > gas_limit_cap {
-			return Err(Error {
-				code: ErrorCode::InvalidParams,
-				message: format!("GasLimit exceeds capped allowance: {}", gas_limit_cap),
-				data: None,
-			});
+			return Err(JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+				ErrorCode::InvalidParams.code(),
+				format!("GasLimit exceeds capped allowance: {}", gas_limit_cap),
+				None::<()>,
+			))));
 		}
 		let storage_limit = storage_limit.unwrap_or(block_limits.max_storage_limit);
 		if storage_limit > block_limits.max_storage_limit {
-			return Err(Error {
-				code: ErrorCode::InvalidParams,
-				message: format!("StorageLimit exceeds allowance: {}", block_limits.max_storage_limit),
-				data: None,
-			});
+			return Err(JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+				ErrorCode::InvalidParams.code(),
+				format!("StorageLimit exceeds allowance: {}", block_limits.max_storage_limit),
+				None::<()>,
+			))));
 		}
 		let data = data.map(|d| d.0).unwrap_or_default();
 
@@ -184,10 +208,12 @@ where
 			Ok(Default::default())
 		};
 
-		let balance_value = balance_value.map_err(|_| Error {
-			code: ErrorCode::InvalidParams,
-			message: format!("Invalid parameter value: {:?}", value),
-			data: None,
+		let balance_value = balance_value.map_err(|_| {
+			JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+				ErrorCode::InvalidParams.code(),
+				format!("Invalid parameter value: {:?}", value),
+				None::<()>,
+			)))
 		})?;
 
 		match to {
@@ -248,7 +274,7 @@ where
 		from: H160,
 		unsigned_extrinsic: Bytes,
 		at: Option<<B as BlockT>::Hash>,
-	) -> Result<EstimateResourcesResponse> {
+	) -> RpcResult<EstimateResourcesResponse> {
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
 		let block_id = BlockId::Hash(hash);
@@ -299,7 +325,7 @@ where
 		}
 
 		// Create a helper to check if a gas allowance results in an executable transaction
-		let executable = move |request: CallRequest, gas: u64| -> Result<ExecutableResult> {
+		let executable = move |request: CallRequest, gas: u64| -> RpcResult<ExecutableResult> {
 			let CallRequest {
 				from,
 				to,
@@ -324,10 +350,12 @@ where
 				Ok(Default::default())
 			};
 
-			let balance_value = balance_value.map_err(|_| Error {
-				code: ErrorCode::InvalidParams,
-				message: format!("Invalid parameter value: {:?}", value),
-				data: None,
+			let balance_value = balance_value.map_err(|_| {
+				JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+					ErrorCode::InvalidParams.code(),
+					format!("Invalid parameter value: {:?}", value),
+					None::<()>,
+				)))
 			})?;
 
 			let (exit_reason, data, used_gas, used_storage) = match to {
@@ -450,20 +478,24 @@ where
 			}
 		}
 
-		let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*unsigned_extrinsic).map_err(|e| Error {
-			code: ErrorCode::InternalError,
-			message: "Unable to dry run extrinsic.".into(),
-			data: Some(format!("{:?}", e).into()),
+		let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*unsigned_extrinsic).map_err(|e| {
+			JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+				ErrorCode::InternalError.code(),
+				"Unable to dry run extrinsic.",
+				Some(e.to_string()),
+			)))
 		})?;
 
 		let fee = self
 			.client
 			.runtime_api()
 			.query_fee_details(&block_id, uxt, unsigned_extrinsic.len() as u32)
-			.map_err(|e| Error {
-				code: ErrorCode::InternalError,
-				message: "Unable to query fee details.".into(),
-				data: Some(format!("{:?}", e).into()),
+			.map_err(|e| {
+				JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+					ErrorCode::InternalError.code(),
+					"Unable to query fee details.",
+					Some(e.to_string()),
+				)))
 			})?;
 
 		let adjusted_weight_fee = fee
@@ -477,7 +509,7 @@ where
 		})
 	}
 
-	fn block_limits(&self, at: Option<<B as BlockT>::Hash>) -> Result<BlockLimits> {
+	fn block_limits(&self, at: Option<<B as BlockT>::Hash>) -> RpcResult<BlockLimits> {
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
 		let block_id = BlockId::Hash(hash);
@@ -495,10 +527,12 @@ where
 			})?;
 
 		let block_limits = if version > 1 {
-			self.client.runtime_api().block_limits(&block_id).map_err(|e| Error {
-				code: ErrorCode::InternalError,
-				message: "Unable to query block limits.".into(),
-				data: Some(format!("{:?}", e).into()),
+			self.client.runtime_api().block_limits(&block_id).map_err(|e| {
+				JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+					ErrorCode::InternalError.code(),
+					"Unable to query block limits.",
+					Some(e.to_string()),
+				)))
 			})?
 		} else {
 			BlockLimits {

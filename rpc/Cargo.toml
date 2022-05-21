@@ -5,7 +5,8 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-jsonrpc-core = "18.0.0"
+futures = "0.3.21"
+jsonrpsee = { version = "0.13.0", features = ["server", "macros"] }
 codec = { package = "parity-scale-codec", version = "3.0.0" }
 primitives = { package = "acala-primitives", path = "../primitives" }
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }

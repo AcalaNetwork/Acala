@@ -18,32 +18,32 @@
 
 //! EVM rpc interface.
 
-use jsonrpc_core::Result;
-use jsonrpc_derive::rpc;
+use jsonrpsee::{
+	core::RpcResult,
+	proc_macros::rpc,
+};
 use primitives::evm::BlockLimits;
 use sp_core::{Bytes, H160};
-
-pub use rpc_impl_EVMApi::gen_server::EVMApi as EVMApiServer;
 
 use crate::call_request::{CallRequest, EstimateResourcesResponse};
 
 /// EVM rpc interface.
-#[rpc(server)]
+#[rpc(client, server)]
 pub trait EVMApi<BlockHash> {
 	/// Call contract, returning the output data.
-	#[rpc(name = "evm_call")]
-	fn call(&self, _: CallRequest, at: Option<BlockHash>) -> Result<Bytes>;
+	#[method(name = "evm_call")]
+	fn call(&self, call_request: CallRequest, at: Option<BlockHash>) -> RpcResult<Bytes>;
 
 	/// Estimate resources needed for execution of given contract.
-	#[rpc(name = "evm_estimateResources")]
+	#[method(name = "evm_estimateResources")]
 	fn estimate_resources(
 		&self,
 		from: H160,
 		unsigned_extrinsic: Bytes,
 		at: Option<BlockHash>,
-	) -> Result<EstimateResourcesResponse>;
+	) -> RpcResult<EstimateResourcesResponse>;
 
 	/// Get max gas and storage limits per transaction
-	#[rpc(name = "evm_blockLimits")]
-	fn block_limits(&self, at: Option<BlockHash>) -> Result<BlockLimits>;
+	#[method(name = "evm_blockLimits")]
+	fn block_limits(&self, at: Option<BlockHash>) -> RpcResult<BlockLimits>;
 }
