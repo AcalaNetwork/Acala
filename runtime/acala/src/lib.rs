@@ -1099,12 +1099,13 @@ impl module_dex::Config for Runtime {
 impl module_aggregated_dex::Config for Runtime {
 	type DEX = Dex;
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
 	type WeightInfo = ();
 }
 
-pub type AcalaSwap = module_aggregated_dex::DexSwap<Runtime>;
+pub type AcalaSwap = module_aggregated_dex::AggregatedSwap<Runtime>;
 
 impl module_dex_oracle::Config for Runtime {
 	type DEX = Dex;
