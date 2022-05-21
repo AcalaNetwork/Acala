@@ -74,6 +74,8 @@ fn statemine_min_xcm_fee_matched() {
 
 #[test]
 fn transfer_from_relay_chain() {
+	let child_1000: AccountId = ParaId::from(1000).into_account();
+
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
@@ -89,6 +91,7 @@ fn transfer_from_relay_chain() {
 			Box::new((Here, dollar(KSM)).into()),
 			0
 		));
+		assert_eq!(dollar(KSM), kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	Statemine::execute_with(|| {
@@ -96,6 +99,95 @@ fn transfer_from_relay_chain() {
 			dollar(KSM) - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
+	});
+}
+
+#[test]
+fn statemine_transfer_ksm_to_karura_failed() {
+	TestNet::reset();
+
+	let para_2000: AccountId = Sibling::from(2000).into_account();
+	let child_2000: AccountId = ParaId::from(2000).into_account();
+	let child_1000: AccountId = ParaId::from(1000).into_account();
+
+	Statemine::execute_with(|| {
+		Balances::make_free_balance_be(&ALICE.into(), 2 * dollar(KSM));
+		Balances::make_free_balance_be(&para_2000, 2 * dollar(KSM));
+
+		assert_ok!(statemine_runtime::PolkadotXcm::reserve_transfer_assets(
+			statemine_runtime::Origin::signed(ALICE.into()),
+			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
+			Box::new(
+				Junction::AccountId32 {
+					id: BOB,
+					network: NetworkId::Any
+				}
+				.into()
+				.into()
+			),
+			Box::new((Parent, dollar(KSM)).into()),
+			0
+		));
+		assert_eq!(
+			dollar(KSM),
+			statemine_runtime::Balances::free_balance(&AccountId::from(ALICE))
+		);
+		assert_eq!(3 * dollar(KSM), statemine_runtime::Balances::free_balance(&para_2000));
+	});
+
+	// UntrustedReserveLocation
+	KusamaNet::execute_with(|| {
+		assert_eq!(2 * dollar(KSM), kusama_runtime::Balances::free_balance(&child_2000));
+		assert_eq!(0, kusama_runtime::Balances::free_balance(&child_1000));
+	});
+
+	Karura::execute_with(|| {
+		assert_eq!(0, Tokens::free_balance(KSM, &AccountId::from(BOB)));
+	});
+}
+
+#[test]
+fn karura_transfer_ksm_to_statemine() {
+	TestNet::reset();
+
+	let child_2000: AccountId = ParaId::from(2000).into_account();
+	let child_1000: AccountId = ParaId::from(1000).into_account();
+
+	KusamaNet::execute_with(|| {
+		assert_eq!(2 * UNIT, kusama_runtime::Balances::free_balance(&child_2000));
+		assert_eq!(0, kusama_runtime::Balances::free_balance(&child_1000));
+	});
+
+	// Karura transfer KSM to statemine, it's kind of A-[B]-C scene.
+	Karura::execute_with(|| {
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			KSM,
+			dollar(KSM),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(1000),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			4_000_000_000
+		));
+	});
+
+	KusamaNet::execute_with(|| {
+		assert_eq!(UNIT, kusama_runtime::Balances::free_balance(&child_2000));
+		assert_eq!(999_834_059_328, kusama_runtime::Balances::free_balance(&child_1000));
+	});
+
+	Statemine::execute_with(|| {
+		assert_eq!(999_823_392_664, Balances::free_balance(&AccountId::from(BOB)));
 	});
 }
 
