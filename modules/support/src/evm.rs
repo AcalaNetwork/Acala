@@ -152,6 +152,9 @@ pub trait EVMAccountsManager<AccountId> {
 	/// Returns the EvmAddress associated with a given AccountId or the underlying EvmAddress of the
 	/// AccountId.
 	fn get_evm_address(account_id: &AccountId) -> Option<EvmAddress>;
+	/// Returns the EVM address associated with an account ID and generates an account mapping if no
+	/// association exists.
+	fn claim_default_evm_address(account_id: &AccountId) -> Result<EvmAddress, DispatchError>;
 }
 
 /// A mapping between `AccountId` and `EvmAddress`.
