@@ -90,6 +90,10 @@ pub mod module {
 		InvalidSwapPath,
 	}
 
+	/// The specific swap paths for  AggregatedSwap do aggreated_swap to swap TokenA to TokenB
+	///
+	/// AggregatedSwapPaths: Map: (token_a: CurrencyId, token_b: CurrencyId) => paths: Vec<SwapPath>
+
 	#[pallet::storage]
 	#[pallet::getter(fn aggregated_swap_paths)]
 	pub type AggregatedSwapPaths<T: Config> =
@@ -130,6 +134,12 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Update the aggregated swap paths for AggregatedSwap to swap TokenA to TokenB.
+		///
+		/// Requires `GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `updates`:  Vec<((TokenA, TokenB), Option<Vec<SwapPath>>)>
 		#[pallet::weight(<T as Config>::WeightInfo::update_aggregated_swap_paths(updates.len() as u32))]
 		#[transactional]
 		pub fn update_aggregated_swap_paths(
@@ -291,9 +301,7 @@ impl<T: Config> Pallet<T> {
 		None
 	}
 
-	/// Swap by the the swap aggregated by DEX and Taiga.
-	/// Note: TaigaSwap dosen't support ExactTarget swap yet, so just the swap at `ExactSupply`
-	/// works.
+	/// Aggregated swap by DEX and Taiga.
 	#[transactional]
 	fn do_aggregated_swap(
 		who: &T::AccountId,
@@ -303,6 +311,7 @@ impl<T: Config> Pallet<T> {
 		Self::check_swap_paths(paths)?;
 
 		match swap_limit {
+			// do swap directly one by one according to the SwapPaths
 			SwapLimit::ExactSupply(exact_supply_amount, min_target_amount) => {
 				let mut output_amount: Balance = exact_supply_amount;
 
@@ -343,6 +352,7 @@ impl<T: Config> Pallet<T> {
 
 				Ok((exact_supply_amount, output_amount))
 			}
+			// Calculate the supply amount first, then execute swap with ExactSupply
 			SwapLimit::ExactTarget(max_supply_amount, exact_target_amount) => {
 				let mut input_amount: Balance = exact_target_amount;
 
@@ -372,7 +382,7 @@ impl<T: Config> Pallet<T> {
 					}
 				}
 
-				// the result must meet the swap_limit.
+				// the result must meet the SwapLimit.
 				ensure!(
 					!input_amount.is_zero() && input_amount <= max_supply_amount,
 					Error::<T>::CannotSwap
@@ -499,10 +509,10 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
 /// Choose DEX or Taiga to fully execute the swap by which price is better.
 pub struct EitherDexOrTaigaSwap<T>(PhantomData<T>);
 
-pub(crate) struct DexOrTaigaSwapParams {
-	pub(crate) dex_result: Option<(Balance, Balance)>,
-	pub(crate) taiga_result: Option<(Balance, Balance)>,
-	pub(crate) swap_amount: Option<(Balance, Balance)>,
+struct DexOrTaigaSwapParams {
+	dex_result: Option<(Balance, Balance)>,
+	taiga_result: Option<(Balance, Balance)>,
+	swap_amount: Option<(Balance, Balance)>,
 }
 
 impl<T: Config> EitherDexOrTaigaSwap<T> {
@@ -576,14 +586,17 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for EitherDexOrTaigaSwap
 	}
 }
 
-pub struct AggregatedSwap<T>(PhantomData<T>);
+/// Choose the best price to execute swap:
+/// 1. fully execute the swap by DEX
+/// 2. fully execute the swap by Taiga
+/// 3. aggregated swap by DEX and Taiga
+struct AggregatedSwap<T>(PhantomData<T>);
 
-#[derive(Debug, PartialEq)]
-pub(crate) struct AggregatedSwapParams {
-	pub(crate) dex_result: Option<(Balance, Balance)>,
-	pub(crate) taiga_result: Option<(Balance, Balance)>,
-	pub(crate) aggregated_result: Option<(Balance, Balance)>,
-	pub(crate) swap_amount: Option<(Balance, Balance)>,
+struct AggregatedSwapParams {
+	dex_result: Option<(Balance, Balance)>,
+	taiga_result: Option<(Balance, Balance)>,
+	aggregated_result: Option<(Balance, Balance)>,
+	swap_amount: Option<(Balance, Balance)>,
 }
 
 impl<T: Config> AggregatedSwap<T> {
