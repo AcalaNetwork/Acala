@@ -82,9 +82,10 @@ fn transfer_to_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&AccountId::from(BOB)),
-			// v0.9.18: 106_666_660
-			// v0.9.22: 165_940_672
-			999_834_059_328
+			// v0.9.18: 1_000_000_000_000-999_893_333_340=106_666_660
+			// v0.9.19: 1_000_000_000_000-999_834_059_328=165_940_672
+			// v0.9.22: 1_000_000_000_000-999_988_476_752=11_523_248
+			999_988_476_752
 		);
 	});
 }
@@ -623,7 +624,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 		// Unspent fund from the 1 dollar XCM fee is returned to the sovereign account.
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1_000 * dollar(RELAY_CHAIN_CURRENCY) + 999_377_722_480
+			1_000 * dollar(RELAY_CHAIN_CURRENCY) + 999_601_783_448
 		);
 	});
 }

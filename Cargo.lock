@@ -10715,6 +10715,7 @@ dependencies = [
  "hex-literal",
  "karura-runtime",
  "kusama-runtime",
+ "kusama-runtime-constants 0.9.22 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.22)",
  "libsecp256k1",
  "log",
  "mandala-runtime",

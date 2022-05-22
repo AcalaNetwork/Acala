@@ -140,6 +140,7 @@ statemine-runtime = { git = "https://github.com/paritytech/cumulus", branch = "p
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22" }
 polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22" }
 kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22" }
+kusama-runtime-constants = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22" }
 polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22" }
 
 xcm-emulator = { git = "https://github.com/zqhxuyuan/xcm-simulator", rev = "d257f048b5952d988efcc6d51bdde274a878696f" }
