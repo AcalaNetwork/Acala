@@ -79,7 +79,7 @@ where
 		command_sink,
 	} = deps;
 
-	module.merge(SystemRpc::new(client.clone(), pool.clone(), deny_unsafe).into_rpc())?;
+	module.merge(SystemRpc::new(client.clone(), pool, deny_unsafe).into_rpc())?;
 	module.merge(TransactionPaymentRpc::new(client.clone()).into_rpc())?;
 
 	// Making synchronous calls in light client freezes the browser currently,
