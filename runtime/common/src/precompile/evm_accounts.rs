@@ -288,11 +288,11 @@ mod tests {
 
 			// call again, the evm address already mapped
 			assert_noop!(
-				EVMAccountsPrecompile::execute(&input, Some(10_000), &context, false),
+				EVMAccountsPrecompile::execute(&input, Some(100_000), &context, false),
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "AccountIdHasMapped".into(),
-					cost: target_gas_limit(Some(10_000)).unwrap(),
+					cost: target_gas_limit(Some(100_000)).unwrap(),
 				}
 			);
 		});
