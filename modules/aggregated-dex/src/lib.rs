@@ -590,7 +590,7 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for EitherDexOrTaigaSwap
 /// 1. fully execute the swap by DEX
 /// 2. fully execute the swap by Taiga
 /// 3. aggregated swap by DEX and Taiga
-struct AggregatedSwap<T>(PhantomData<T>);
+pub struct AggregatedSwap<T>(PhantomData<T>);
 
 struct AggregatedSwapParams {
 	dex_result: Option<(Balance, Balance)>,
