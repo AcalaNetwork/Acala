@@ -116,13 +116,8 @@ where
 					currency_id_a, currency_id_b
 				);
 
-				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_liquidity_token_address(currency_id_a, currency_id_b)
-					.ok_or_else(||
-								PrecompileFailure::Revert {
-									exit_status: ExitRevert::Reverted,
-									output: "Dex get_liquidity_token_address failed".into(),
-									cost: target_gas_limit(target_gas).unwrap_or_default(),
-								})?;
+				// If it does not exist, return address(0x0). Keep the behavior the same as mapping[key]
+				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_liquidity_token_address(currency_id_a, currency_id_b).unwrap_or_default();
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -145,14 +140,10 @@ where
 					path, supply_amount
 				);
 
+				// If get_swap_amount fail, return 0.
 				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_swap_amount(&path, SwapLimit::ExactSupply(supply_amount, Balance::MIN))
 					.map(|(_, target)| target)
-					.ok_or_else(||
-								PrecompileFailure::Revert {
-									exit_status: ExitRevert::Reverted,
-									output: "Dex get_swap_target_amount failed".into(),
-									cost: target_gas_limit(target_gas).unwrap_or_default(),
-								})?;
+					.unwrap_or_default();
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -175,14 +166,10 @@ where
 					path, target_amount
 				);
 
+				// If get_swap_amount fail, return 0.
 				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_swap_amount(&path, SwapLimit::ExactTarget(Balance::MAX, target_amount))
 					.map(|(supply, _)| supply)
-					.ok_or_else(||
-								PrecompileFailure::Revert {
-									exit_status: ExitRevert::Reverted,
-									output: "Dex get_swap_supply_amount failed".into(),
-									cost: target_gas_limit(target_gas).unwrap_or_default(),
-								})?;
+					.unwrap_or_default();
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
