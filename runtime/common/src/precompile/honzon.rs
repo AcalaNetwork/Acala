@@ -34,6 +34,17 @@ use primitives::{Amount, Balance, CurrencyId, Position};
 use sp_runtime::{traits::Convert, FixedPointNumber, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
+/// The Honzon precomnpile
+///
+/// `input` data starts with `action`.
+///
+/// Actions:
+///  - Adjust loan. `input` bytes: `who`, `currency_id`, `collateral_adjustment`,
+///    `debit_adjustment`.
+///  - Close loan by dex. `input` bytes: `who`, `currency_id`, `max_collateral_amount`.
+///  - Get position. `input` bytes: `who`, `currency_id`.
+///  - Get liquidation ratio. `input` bytes: `currency_id`.
+///  - Get current collateral ratio. `input` bytes: `who`, `currency_id`.
 pub struct HonzonPrecompile<R>(PhantomData<R>);
 
 #[module_evm_utility_macro::generate_function_selector]
