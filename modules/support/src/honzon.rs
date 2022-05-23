@@ -152,18 +152,19 @@ pub trait EmergencyShutdown {
 
 /// Functionality of Honzon Protocol to be exposed to EVM+.
 pub trait HonzonManager<AccountId, CurrencyId, Amount, Balance> {
+	/// Adjust CDP loan
 	fn adjust_loan(
 		who: &AccountId,
 		currency_id: CurrencyId,
 		collateral_adjustment: Amount,
 		debit_adjustment: Amount,
 	) -> DispatchResult;
-
+	/// Close CDP loan using DEX
 	fn close_loan_by_dex(who: AccountId, currency_id: CurrencyId, max_collateral_amount: Balance) -> DispatchResult;
-
+	/// Get open CDP corresponding to an account and collateral `CurrencyId`
 	fn get_position(who: &AccountId, currency_id: CurrencyId) -> Position;
-
+	/// Get liquidation ratio for collateral `CurrencyId`
 	fn get_liquidation_ratio(currency_id: CurrencyId) -> Option<Ratio>;
-
+	/// Get current ratio of collateral to debit of open CDP
 	fn get_current_collateral_ratio(who: &AccountId, currency_id: CurrencyId) -> Option<Ratio>;
 }

@@ -31,6 +31,7 @@ use sp_std::prelude::*;
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
+pub const HALF_PARAM_BYTES: usize = 16;
 pub const ACTION_INDEX: usize = 0;
 
 pub trait InputT {
@@ -301,14 +302,14 @@ where
 }
 
 fn decode_i128(bytes: &[u8]) -> Option<i128> {
-	if bytes[0..16] == [0xff; 16] {
+	if bytes[0..HALF_PARAM_BYTES] == [0xff; HALF_PARAM_BYTES] {
 		if let Ok(v) = i128::try_from(!U256::from(bytes)) {
 			if let Some(v) = v.checked_neg() {
 				return v.checked_sub(1);
 			}
 		}
 		return None;
-	} else if bytes[0..16] == [0x00; 16] {
+	} else if bytes[0..HALF_PARAM_BYTES] == [0x00; HALF_PARAM_BYTES] {
 		return i128::try_from(U256::from_big_endian(bytes)).ok();
 	}
 	None
@@ -624,5 +625,10 @@ mod tests {
 		items.into_iter().for_each(|(input, value)| {
 			assert_eq!(decode_i128(&crate::from_hex(input).unwrap()), value);
 		});
+	}
+
+	#[test]
+	fn check_integrity_of_consts() {
+		assert!(PER_PARAM_BYTES > HALF_PARAM_BYTES);
 	}
 }
