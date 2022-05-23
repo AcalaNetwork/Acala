@@ -1875,36 +1875,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	EvmChainIdMigration,
->;
-
-// TODO: remove
-pub struct EvmChainIdMigration;
-impl OnRuntimeUpgrade for EvmChainIdMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		module_evm::ChainId::<Runtime>::put(595);
-
-		<Runtime as frame_system::Config>::BlockWeights::get().max_block
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		frame_support::ensure!(EvmChainId::<Runtime>::get() == 0, "must upgrade linearly");
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		frame_support::ensure!(EvmChainId::<Runtime>::get() == 595, "must upgrade");
-		Ok(())
-	}
-}
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 construct_runtime!(
 	pub enum Runtime where
