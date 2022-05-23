@@ -6212,6 +6212,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-fees"
+version = "2.6.3"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "paste",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-homa"
 version = "2.6.3"
 dependencies = [

@@ -184,6 +184,17 @@ pub enum ReserveIdentifier {
 	Count,
 }
 
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum IncomeSource {
+	TxFee,
+	XcmFee,
+	DexSwapFee,
+	HonzonStabilityFee,
+	HonzonLiquidationFee,
+	HomaStakingRewardFee,
+}
+
 pub type CashYieldIndex = u128;
 
 /// Convert any type that implements Into<U256> into byte representation ([u8, 32])
