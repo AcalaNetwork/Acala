@@ -17,7 +17,6 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use frame_support::ensure;
-use orml_traits::arithmetic::Zero;
 use sp_std::{marker::PhantomData, result::Result, vec, vec::Vec};
 
 use crate::WeightToGas;
@@ -155,42 +154,11 @@ where
 
 	fn i128_at(&self, index: usize) -> Result<i128, Self::Error> {
 		let param = self.nth_param(index, None)?;
-
-		// Gets first byte
-		let first_byte = param.get(0).ok_or(PrecompileFailure::Revert {
+		decode_i128(param).ok_or(PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
-			output: "empty input".into(),
+			output: "failed to decode i128".into(),
 			cost: self.target_gas.unwrap_or_default(),
-		})?;
-		// checks if most signifigant bit is 0, determining the sign of integer
-		let first_bit_zero = (first_byte >> 7_u8).is_zero();
-
-		let unsigned_value = if first_bit_zero {
-			U256::from_big_endian(param)
-		} else {
-			// flips bits of each byte, giving logical compliment
-			let complement_vec: Vec<u8> = param.iter().map(|x| !x).collect();
-			let compliment_uint = U256::from_big_endian(&complement_vec);
-			if compliment_uint == U256::MAX {
-				U256::zero()
-			} else {
-				compliment_uint.saturating_add(U256::one())
-			}
-		};
-
-		let mut signed_value: i128 = unsigned_value.try_into().map_err(|_| PrecompileFailure::Revert {
-			exit_status: ExitRevert::Reverted,
-			output: "failed to convert U256 to i128".into(),
-			cost: self.target_gas.unwrap_or_default(),
-		})?;
-		if !first_bit_zero {
-			signed_value = signed_value.checked_neg().ok_or(PrecompileFailure::Revert {
-				exit_status: ExitRevert::Reverted,
-				output: "failed to negate i128, should never happen".into(),
-				cost: self.target_gas.unwrap_or_default(),
-			})?;
-		}
-		Ok(signed_value)
+		})
 	}
 
 	fn u256_at(&self, index: usize) -> Result<U256, Self::Error> {
@@ -330,6 +298,20 @@ where
 		// EvmAccounts::Accounts
 		WeightToGas::convert(T::DbWeight::get().reads(count))
 	}
+}
+
+fn decode_i128(bytes: &[u8]) -> Option<i128> {
+	if bytes[0..16] == [0xff; 16] {
+		if let Ok(v) = i128::try_from(!U256::from(bytes)) {
+			if let Some(v) = v.checked_neg() {
+				return v.checked_sub(1);
+			}
+		}
+		return None;
+	} else if bytes[0..16] == [0x00; 16] {
+		return i128::try_from(U256::from_big_endian(bytes)).ok();
+	}
+	None
 }
 
 #[cfg(test)]
@@ -568,7 +550,7 @@ mod tests {
 			input.i128_at(2),
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
-				output: "failed to convert U256 to i128".into(),
+				output: "failed to decode i128".into(),
 				cost: 10,
 			})
 		);
@@ -578,10 +560,69 @@ mod tests {
 			input.i128_at(5),
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
-				output: "failed to convert U256 to i128".into(),
+				output: "failed to decode i128".into(),
 				cost: 10,
 			})
 		);
 		assert_ok!(input.i128_at(6), 0);
+	}
+
+	#[test]
+	fn decode_int128() {
+		let items = [
+			("ff00000000000000000000000000000000000000000000000000000000000000", None),
+			("0000000000000000000000000000000100000000000000000000000000000000", None),
+			("000000000000000000000000000000ff00000000000000000000000000000000", None),
+			(
+				"0000000000000000000000000000000010000000000000000000000000000000",
+				Some(21267647932558653966460912964485513216i128),
+			),
+			(
+				"fffffffffffffffffffffffffffffffff0000000000000000000000000000000",
+				Some(-21267647932558653966460912964485513216i128),
+			),
+			(
+				"0000000000000000000000000000000000000000000000000000000000000000",
+				Some(0),
+			),
+			(
+				"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+				Some(-1),
+			),
+			(
+				"0000000000000000000000000000000000000000000000000000000000000001",
+				Some(1),
+			),
+			(
+				"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0",
+				Some(-16),
+			),
+			(
+				"00000000000000000000000000000000000000000000000000000000000000ff",
+				Some(255),
+			),
+			(
+				"ffffffffffffffffffffffffffffffffffffffffffff000000000000000000ff",
+				Some(-1208925819614629174705921),
+			),
+			(
+				"00000000000000000000000000000000000000000000ffffffffffffffffff00",
+				Some(1208925819614629174705920),
+			),
+			(
+				"ffffffffffffffffffffffffffffffff80000000000000000000000000000000",
+				Some(i128::MIN),
+			),
+			(
+				"000000000000000000000000000000007fffffffffffffffffffffffffffffff",
+				Some(i128::MAX),
+			),
+			("00000000000000000000000000000000ffffffffffffffffffffffffffffffff", None),
+			("ffffffffffffffffffffffffffffffff00000000000000000000000000000000", None),
+		];
+
+		items.into_iter().for_each(|(input, value)| {
+			assert_eq!(decode_i128(&crate::from_hex(input).unwrap()), value);
+		});
 	}
 }
