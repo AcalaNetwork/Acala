@@ -116,23 +116,19 @@ where
 					currency_id_a, currency_id_b
 				);
 
-				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_liquidity_token_address(currency_id_a, currency_id_b)
-					.ok_or_else(||
-								PrecompileFailure::Revert {
-									exit_status: ExitRevert::Reverted,
-									output: "Dex get_liquidity_token_address failed".into(),
-									cost: target_gas_limit(target_gas).unwrap_or_default(),
-								})?;
+				// If it does not exist, return address(0x0). Keep the behavior the same as mapping[key]
+				let address = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_liquidity_token_address(currency_id_a, currency_id_b)
+					.unwrap_or_default();
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_address(&value),
+					output: Output::default().encode_address(&address),
 					logs: Default::default(),
 				})
 			}
 			Action::GetSwapTargetAmount => {
-				// solidity abi enocde array will add an offset at input[1]
+				// solidity abi encode array will add an offset at input[1]
 				let supply_amount = input.balance_at(2)?;
 				let path_len = input.u32_at(3)?;
 				let mut path = vec![];
@@ -145,24 +141,20 @@ where
 					path, supply_amount
 				);
 
-				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_swap_amount(&path, SwapLimit::ExactSupply(supply_amount, Balance::MIN))
+				// If get_swap_amount fail, return 0.
+				let target = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_swap_amount(&path, SwapLimit::ExactSupply(supply_amount, Balance::MIN))
 					.map(|(_, target)| target)
-					.ok_or_else(||
-								PrecompileFailure::Revert {
-									exit_status: ExitRevert::Reverted,
-									output: "Dex get_swap_target_amount failed".into(),
-									cost: target_gas_limit(target_gas).unwrap_or_default(),
-								})?;
+					.unwrap_or_default();
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(value),
+					output: Output::default().encode_u128(target),
 					logs: Default::default(),
 				})
 			}
 			Action::GetSwapSupplyAmount => {
-				// solidity abi enocde array will add an offset at input[1]
+				// solidity abi encode array will add an offset at input[1]
 				let target_amount = input.balance_at(2)?;
 				let path_len = input.u32_at(3)?;
 				let mut path = vec![];
@@ -175,19 +167,15 @@ where
 					path, target_amount
 				);
 
-				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_swap_amount(&path, SwapLimit::ExactTarget(Balance::MAX, target_amount))
+				// If get_swap_amount fail, return 0.
+				let supply = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::get_swap_amount(&path, SwapLimit::ExactTarget(Balance::MAX, target_amount))
 					.map(|(supply, _)| supply)
-					.ok_or_else(||
-								PrecompileFailure::Revert {
-									exit_status: ExitRevert::Reverted,
-									output: "Dex get_swap_supply_amount failed".into(),
-									cost: target_gas_limit(target_gas).unwrap_or_default(),
-								})?;
+					.unwrap_or_default();
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(value),
+					output: Output::default().encode_u128(supply),
 					logs: Default::default(),
 				})
 			}
@@ -225,7 +213,7 @@ where
 			}
 			Action::SwapWithExactTarget => {
 				let who = input.account_id_at(1)?;
-				// solidity abi enocde array will add an offset at input[2]
+				// solidity abi encode array will add an offset at input[2]
 				let target_amount = input.balance_at(3)?;
 				let max_supply_amount = input.balance_at(4)?;
 				let path_len = input.u32_at(5)?;
