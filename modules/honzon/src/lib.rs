@@ -34,10 +34,10 @@ use frame_system::pallet_prelude::*;
 use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier};
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
-	DispatchResult,
+	ArithmeticError, DispatchResult,
 };
 use sp_std::prelude::*;
-use support::EmergencyShutdown;
+use support::{CDPTreasury, EmergencyShutdown};
 
 mod mock;
 mod tests;
@@ -104,6 +104,12 @@ pub mod module {
 		},
 		/// Cancel all authorization.
 		UnAuthorizationAll { authorizer: T::AccountId },
+		/// Transfers debit between two CDPs
+		TransferDebit {
+			from_currency: CurrencyId,
+			to_currency: CurrencyId,
+			amount: Balance,
+		},
 	}
 
 	/// The authorization relationship map from
@@ -339,6 +345,38 @@ pub mod module {
 				collateral_adjustment,
 				debit_value_adjustment,
 			)?;
+			Ok(())
+		}
+
+		/// Transfers debit between two CDPs
+		///
+		/// - `from_currency`: Currency id that debit is transfered from
+		/// - `to_currency`: Currency id that debit is transfered to
+		/// - `debit_transfer`: Debit transfered across two CDPs
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_debit())]
+		#[transactional]
+		pub fn transfer_debit(
+			origin: OriginFor<T>,
+			from_currency: CurrencyId,
+			to_currency: CurrencyId,
+			debit_transfer: Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			let debit_amount: Amount = debit_transfer.try_into().map_err(|_| ArithmeticError::Overflow)?;
+			let negative_debit = debit_amount.checked_neg().ok_or(ArithmeticError::Overflow)?;
+			// Adds ausd to user account momentarily to adjust loan
+			<T as cdp_engine::Config>::CDPTreasury::issue_debit(&who, debit_transfer, true)?;
+
+			<cdp_engine::Pallet<T>>::adjust_position(&who, from_currency, Zero::zero(), negative_debit)?;
+			<cdp_engine::Pallet<T>>::adjust_position(&who, to_currency, Zero::zero(), debit_amount)?;
+			// Removes debit issued for debit transfer
+			<T as cdp_engine::Config>::CDPTreasury::burn_debit(&who, debit_transfer)?;
+
+			Self::deposit_event(Event::TransferDebit {
+				from_currency,
+				to_currency,
+				amount: debit_transfer,
+			});
 			Ok(())
 		}
 	}
