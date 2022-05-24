@@ -24,6 +24,7 @@ use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
 use sp_runtime::traits::BadOrigin;
+use support::SwapError;
 
 #[test]
 fn surplus_pool_work() {
@@ -230,7 +231,7 @@ fn swap_collateral_to_stable_work() {
 
 		assert_noop!(
 			CDPTreasuryModule::swap_collateral_to_stable(BTC, SwapLimit::ExactTarget(200, 399), false),
-			Error::<Runtime>::CannotSwap
+			SwapError::CannotSwap
 		);
 		assert_ok!(DEXModule::add_liquidity(
 			Origin::signed(ALICE),
@@ -251,7 +252,7 @@ fn swap_collateral_to_stable_work() {
 
 		assert_noop!(
 			CDPTreasuryModule::swap_collateral_to_stable(DOT, SwapLimit::ExactSupply(1000, 1000), false),
-			Error::<Runtime>::CannotSwap,
+			SwapError::CannotSwap
 		);
 
 		assert_eq!(
@@ -585,7 +586,7 @@ fn exchange_collateral_to_stable_work() {
 		);
 		assert_noop!(
 			CDPTreasuryModule::exchange_collateral_to_stable(Origin::signed(1), BTC, SwapLimit::ExactTarget(200, 1000)),
-			Error::<Runtime>::CannotSwap
+			SwapError::CannotSwap
 		);
 
 		assert_ok!(CDPTreasuryModule::exchange_collateral_to_stable(

@@ -152,6 +152,39 @@ fn adjust_loan_should_work() {
 }
 
 #[test]
+fn adjust_loan_by_debit_value_should_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+
+		assert_ok!(HonzonModule::adjust_loan_by_debit_value(
+			Origin::signed(ALICE),
+			BTC,
+			100,
+			50
+		));
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
+
+		assert_ok!(HonzonModule::adjust_loan_by_debit_value(
+			Origin::signed(ALICE),
+			BTC,
+			-10,
+			-5
+		));
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 90);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 450);
+	});
+}
+
+#[test]
 fn on_emergency_shutdown_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		mock_shutdown();

@@ -1,6 +1,6 @@
 [package]
 name = "runtime-common"
-version = "2.6.1"
+version = "2.6.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -53,7 +53,8 @@ module-prices = { path = "../../modules/prices", default-features = false }
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
 module-nft = { path = "../../modules/nft", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
-module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false, optional = true }
+module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
+module-homa = {path = "../../modules/homa", default-features = false }
 module-asset-registry = { path = "../../modules/asset-registry", default-features = false, optional = true }
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false, optional = true }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
@@ -108,6 +109,7 @@ std = [
 	"module-transaction-payment/std",
 	"module-nft/std",
 	"module-dex/std",
+	"module-homa/std",
 	"module-currencies/std",
 	"module-evm-accounts/std",
 	"module-asset-registry/std",
@@ -139,7 +141,6 @@ bench = [
 
 	"module-asset-registry",
 	"module-evm-bridge",
-	"module-evm-accounts",
 
 	"xcm/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",

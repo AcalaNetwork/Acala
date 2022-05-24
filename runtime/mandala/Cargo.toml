@@ -1,6 +1,6 @@
 [package]
 name = "mandala-runtime"
-version = "2.6.1"
+version = "2.6.3"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -94,6 +94,7 @@ orml-xtokens = { path = "../../orml/xtokens", default-features = false }
 orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
 orml-unknown-tokens = { path = "../../orml/unknown-tokens", default-features = false }
 orml-xcm = { path = "../../orml/xcm", default-features = false }
+orml-payments = { path = "../../orml/payments", default-features = false }
 
 # modules
 module-transaction-pause = { path = "../../modules/transaction-pause", default-features = false }
@@ -125,6 +126,7 @@ module-nominees-election = { path = "../../modules/nominees-election", default-f
 module-session-manager = { path = "../../modules/session-manager", default-features = false }
 module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["polkadot"]}
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
+module-aggregated-dex = { path = "../../modules/aggregated-dex", default-features = false }
 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
@@ -141,6 +143,7 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
 sp-trie = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
 
 cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.19" }
 cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.19" }
@@ -259,6 +262,7 @@ std = [
 	"module-session-manager/std",
 	"module-relaychain/std",
 	"module-idle-scheduler/std",
+	"module-aggregated-dex/std",
 	"primitives/std",
 	"runtime-common/std",
 
@@ -370,3 +374,9 @@ try-runtime = [
 	"ecosystem-starport/try-runtime",
 	"ecosystem-compound-cash/try-runtime",
 ]
+# By default some types have documentation, `no-metadata-docs` allows to reduce the documentation
+# in the metadata.
+no-metadata-docs = ["frame-support/no-metadata-docs"]
+# By default some types have documentation, `full-metadata-docs` allows to add documentation to
+# more types in the metadata.
+full-metadata-docs = ["frame-support/full-metadata-docs"]

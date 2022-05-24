@@ -30,7 +30,7 @@ use sp_runtime::{
 	offchain::{DbExternalities, StorageKind},
 	traits::BadOrigin,
 };
-use support::DEXManager;
+use support::{DEXManager, SwapError};
 
 pub const INIT_TIMESTAMP: u64 = 30_000;
 pub const BLOCK_TIME: u64 = 1000;
@@ -380,6 +380,53 @@ fn adjust_position_work() {
 }
 
 #[test]
+fn adjust_position_by_debit_value_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		setup_default_collateral(BTC);
+
+		assert_noop!(
+			CDPEngineModule::adjust_position_by_debit_value(&ALICE, ACA, 100, 5000),
+			Error::<Runtime>::InvalidCollateralType,
+		);
+
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+
+		assert_ok!(CDPEngineModule::adjust_position_by_debit_value(&ALICE, BTC, 100, 0));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+
+		assert_ok!(CDPEngineModule::adjust_position_by_debit_value(&ALICE, BTC, 100, 100));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 800);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 100);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 200);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 1000);
+
+		assert_ok!(CDPEngineModule::adjust_position_by_debit_value(&ALICE, BTC, 0, -30));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 800);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 70);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 200);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 700);
+
+		assert_noop!(
+			CDPEngineModule::adjust_position_by_debit_value(&ALICE, BTC, 0, -69),
+			Error::<Runtime>::RemainDebitValueTooSmall
+		);
+
+		// if payback value is over the actual debit, just payback the actual debit.
+		assert_ok!(CDPEngineModule::adjust_position_by_debit_value(&ALICE, BTC, 0, -999999));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 800);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 200);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+	});
+}
+
+#[test]
 fn expand_position_collateral_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		MockPriceSource::set_price(DOT, Some(Price::saturating_from_rational(10, 1)));
@@ -410,7 +457,7 @@ fn expand_position_collateral_work() {
 
 		assert_noop!(
 			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 0, 1),
-			Error::<Runtime>::CannotSwap
+			SwapError::CannotSwap
 		);
 
 		assert_ok!(DEXModule::add_liquidity(
@@ -425,7 +472,7 @@ fn expand_position_collateral_work() {
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (1000, 10000));
 		assert_noop!(
 			CDPEngineModule::expand_position_collateral(&ALICE, DOT, 250, 100),
-			Error::<Runtime>::CannotSwap
+			SwapError::CannotSwap
 		);
 
 		assert_ok!(CDPEngineModule::expand_position_collateral(&ALICE, DOT, 250, 20));
@@ -595,7 +642,7 @@ fn shrink_position_debit_work() {
 		MockPriceSource::set_price(DOT, Some(Price::saturating_from_rational(8, 1)));
 		assert_noop!(
 			CDPEngineModule::shrink_position_debit(&ALICE, DOT, 10, 0),
-			Error::<Runtime>::CannotSwap
+			SwapError::CannotSwap
 		);
 
 		assert_ok!(DEXModule::add_liquidity(
@@ -610,7 +657,7 @@ fn shrink_position_debit_work() {
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (1000, 8000));
 		assert_noop!(
 			CDPEngineModule::shrink_position_debit(&ALICE, DOT, 10, 80),
-			Error::<Runtime>::CannotSwap
+			SwapError::CannotSwap
 		);
 
 		assert_ok!(CDPEngineModule::shrink_position_debit(&ALICE, DOT, 10, 70));
@@ -1480,7 +1527,7 @@ fn close_cdp_has_debit_by_dex_work() {
 		// max collateral amount limit swap
 		assert_noop!(
 			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5),
-			cdp_treasury::Error::<Runtime>::CannotSwap,
+			SwapError::CannotSwap
 		);
 
 		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 1000));
@@ -1796,6 +1843,7 @@ fn minimal_collateral_works() {
 		);
 		assert_ok!(CDPEngineModule::check_position_valid(BTC, 9, 20, true));
 		assert_ok!(CDPEngineModule::check_position_valid(BTC, 10, 0, true));
+		assert_ok!(CDPEngineModule::check_position_valid(BTC, 0, 0, true));
 
 		// Adjust position fails if collateral is too small
 		assert_noop!(
@@ -1809,5 +1857,8 @@ fn minimal_collateral_works() {
 			CDPEngineModule::adjust_position(&ALICE, BTC, -1, 0),
 			Error::<Runtime>::CollateralAmountBelowMinimum,
 		);
+
+		// Allow the user to withdraw all assets
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, 0));
 	});
 }
