@@ -1756,6 +1756,15 @@ impl module_idle_scheduler::Config for Runtime {
 	type DisableBlockThreshold = ConstU32<6>;
 }
 
+impl module_fees::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type Currency = Balances;
+	type Currencies = Currencies;
+	type NetworkTreasuryPoolAccount = TreasuryAccount;
+}
+
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -1925,6 +1934,7 @@ construct_runtime!(
 		Currencies: module_currencies = 12,
 		Vesting: orml_vesting = 13,
 		TransactionPayment: module_transaction_payment = 14,
+		Fees: module_fees = 15,
 
 		// Treasury
 		Treasury: pallet_treasury = 20,

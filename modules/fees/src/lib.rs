@@ -31,7 +31,8 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, IncomeSource};
-use sp_runtime::{traits::Saturating, FixedPointNumber, Percent};
+use sp_runtime::FixedPointNumber;
+use sp_std::vec::Vec;
 use support::{FeeToTreasuryPool, Rate};
 
 pub use module::*;
@@ -47,7 +48,8 @@ pub struct PoolPercent<AccountId> {
 	rate: Rate,
 }
 
-type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+// type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as
+// frame_system::Config>::AccountId>>::Balance;
 
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
@@ -66,16 +68,17 @@ pub mod module {
 
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
-		#[pallet::constant]
-		type NativeCurrencyId: Get<CurrencyId>;
+		// #[pallet::constant]
+		// type NativeCurrencyId: Get<CurrencyId>;
 
-		type Currency: Currency<Self::AccountId>
-			+ MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+		type Currency: Currency<Self::AccountId>;
+
+		type Currencies: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		#[pallet::constant]
 		type NetworkTreasuryPoolAccount: Get<Self::AccountId>;
 
-		type OnUnbalanced: OnUnbalanced<NegativeImbalanceOf<Self>>;
+		// type OnUnbalanced: OnUnbalanced<NegativeImbalanceOf<Self>>;
 
 		type WeightInfo: WeightInfo;
 	}
@@ -137,6 +140,7 @@ pub mod module {
 			treasury_pool_rates: Vec<(T::AccountId, u32)>,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
+
 			Self::do_set_treasury_rate(income_source, treasury_pool_rates)
 		}
 
@@ -149,10 +153,11 @@ pub mod module {
 			incentive_pools: Vec<(T::AccountId, u32)>,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
+
 			Self::do_set_incentive_rate(treasury, incentive_pools)
 		}
 
-		/// Force transfer balance from treasury pool to incentive pool.
+		/// Force transfer token from treasury pool to incentive pool.
 		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn force_transfer_to_incentive(
@@ -219,7 +224,7 @@ impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balanc
 	// TODO: maybe use `Happened<(AccountId,CurrencyId,Balance)>` instead of new trait?
 	fn on_fee_changed(account_id: T::AccountId, currency_id: CurrencyId, amount: Balance) -> DispatchResult {
 		// TODO: use `IncomeSource` to determine destination
-		T::Currency::deposit(currency_id, &account_id, amount)
+		T::Currencies::deposit(currency_id, &account_id, amount)
 	}
 }
 

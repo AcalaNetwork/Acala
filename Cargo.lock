@@ -5514,6 +5514,7 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-evm-utility",
+ "module-fees",
  "module-homa",
  "module-honzon",
  "module-idle-scheduler",
