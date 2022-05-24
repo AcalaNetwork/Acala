@@ -48,9 +48,6 @@ pub struct PoolPercent<AccountId> {
 	rate: Rate,
 }
 
-// type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as
-// frame_system::Config>::AccountId>>::Balance;
-
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
@@ -67,9 +64,6 @@ pub mod module {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
-
-		// #[pallet::constant]
-		// type NativeCurrencyId: Get<CurrencyId>;
 
 		type Currency: Currency<Self::AccountId>;
 
@@ -222,13 +216,32 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	// TODO: maybe use `Happened<(AccountId,CurrencyId,Balance)>` instead of new trait?
-	fn on_fee_changed(account_id: &T::AccountId, currency_id: CurrencyId, amount: Balance) -> DispatchResult {
-		// TODO: use `IncomeSource` to determine destination
-		T::Currencies::deposit(currency_id, account_id, amount)
+	fn on_fee_changed(
+		income: IncomeSource,
+		account_id: Option<&T::AccountId>,
+		currency_id: CurrencyId,
+		amount: Balance,
+	) -> DispatchResult {
+		// TODO: remove manual account_id
+		if let Some(account_id) = account_id {
+			return T::Currencies::deposit(currency_id, account_id, amount);
+		}
+
+		// use `IncomeSource` to determine destination
+		let pools: BoundedVec<PoolPercent<T::AccountId>, MaxSize> = IncomeToTreasuries::<T>::get(income);
+		pools.into_iter().for_each(|pool| {
+			let pool_account = pool.pool;
+			let rate = pool.rate;
+			let amount_to_pool = rate.saturating_mul_int(amount);
+			// TODO: deal with result
+			let _ = T::Currencies::deposit(currency_id, &pool_account, amount_to_pool);
+		});
+		Ok(())
 	}
 }
 
-// Transaction payment module `OnTransactionPayment` distribution transaction fee
+/// Transaction payment module `OnTransactionPayment` distribution transaction fee.
+/// The `IncomeSource` is `TxFee`.
 impl<T: Config> OnUnbalanced<NegativeImbalanceOf<T>> for Pallet<T> {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalanceOf<T>>) {
 		if let Some(mut fees) = fees_then_tips.next() {

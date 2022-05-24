@@ -22,7 +22,7 @@
 
 use codec::FullCodec;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
-use primitives::{task::TaskResult, CurrencyId, Multiplier, ReserveIdentifier};
+use primitives::{task::TaskResult, CurrencyId, IncomeSource, Multiplier, ReserveIdentifier};
 use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
@@ -106,7 +106,12 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 }
 
 pub trait FeeToTreasuryPool<AccountId, CurrencyId, Balance> {
-	fn on_fee_changed(account_id: &AccountId, currency_id: CurrencyId, amount: Balance) -> DispatchResult;
+	fn on_fee_changed(
+		income: IncomeSource,
+		account_id: Option<&AccountId>,
+		currency_id: CurrencyId,
+		amount: Balance,
+	) -> DispatchResult;
 }
 
 /// Used to interface with the Compound's Cash module

@@ -33,7 +33,7 @@ use frame_support::{
 };
 use frame_system::{limits, EnsureRoot};
 pub use module_support::{ExchangeRate, FeeToTreasuryPool, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
+use primitives::{evm::is_system_contract, Balance, CurrencyId, IncomeSource, Nonce};
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
 use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, FixedPointNumber, Perbill};
@@ -363,7 +363,7 @@ where
 				// Ensure given treasury account have ed requirement for native asset, but don't need
 				// ed requirement for cross-chain asset because it's one of whitelist accounts.
 				// Ignore the result.
-				let _ = F::on_fee_changed(&T::get(), currency_id, amount);
+				let _ = F::on_fee_changed(IncomeSource::XcmFee, Some(&T::get()), currency_id, amount);
 			}
 		}
 	}
