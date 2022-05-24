@@ -98,8 +98,11 @@ where
 
 		match action {
 			Action::QueryName => {
-				// If get name failed, return ''
-				let name = Runtime::Erc20InfoMapping::name(currency_id).unwrap_or_default();
+				let name = Runtime::Erc20InfoMapping::name(currency_id).ok_or_else(|| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Get name failed".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
 				log::debug!(target: "evm", "multicurrency: name: {:?}", name);
 
 				Ok(PrecompileOutput {
@@ -110,8 +113,12 @@ where
 				})
 			}
 			Action::QuerySymbol => {
-				// If get symbol failed, return ''
-				let symbol = Runtime::Erc20InfoMapping::symbol(currency_id).unwrap_or_default();
+				let symbol =
+					Runtime::Erc20InfoMapping::symbol(currency_id).ok_or_else(|| PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Get symbol failed".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					})?;
 				log::debug!(target: "evm", "multicurrency: symbol: {:?}", symbol);
 
 				Ok(PrecompileOutput {
@@ -122,8 +129,12 @@ where
 				})
 			}
 			Action::QueryDecimals => {
-				// If get decimals failed, return 0
-				let decimals = Runtime::Erc20InfoMapping::decimals(currency_id).unwrap_or_default();
+				let decimals =
+					Runtime::Erc20InfoMapping::decimals(currency_id).ok_or_else(|| PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Get decimals failed".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					})?;
 				log::debug!(target: "evm", "multicurrency: decimals: {:?}", decimals);
 
 				Ok(PrecompileOutput {
