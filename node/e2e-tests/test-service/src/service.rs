@@ -343,12 +343,6 @@ pub async fn start_dev_node(
 		}
 	}
 
-	// let rpc_sinker = |rpc_sink: Sender<EngineCommand<H256>>| -> Result<RpcModule<()>, Box<dyn
-	// std::error::Error + Send + Sync>> { 	let mut io = RpcModule::new(());
-	// 	io.merge(ManualSeal::new(rpc_sink).into_rpc())?;
-	// 	Ok(io)
-	// };
-
 	let rpc_builder = {
 		let client = client.clone();
 		move |_, _| {

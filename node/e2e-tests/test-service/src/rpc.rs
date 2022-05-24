@@ -16,24 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Acala-specific RPCs implementation.
+//! Test service specific RPCs implementation.
 
 #![warn(missing_docs)]
 use super::*;
-
-// use node_primitives::{Block, Hash};
-// use sp_api::ProvideRuntimeApi;
-// use sp_block_builder::BlockBuilder;
-// use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
-// pub use sc_rpc::SubscriptionTaskExecutor;
-
-/// substrate rpc
-// use sc_transaction_pool_api::TransactionPool;
-// pub use sc_rpc::dev::Dev;
-// pub use sc_rpc_api::{dev::DevApiServer, DenyUnsafe};
-// use sc_consensus_manual_seal::rpc::{EngineCommand, ManualSeal, ManualSealApiServer};
-// use substrate_frame_rpc_system::{SystemApiServer, SystemRpc};
-// use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPaymentRpc};
 
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpsee::RpcModule<()>;
@@ -52,16 +38,9 @@ pub fn create_full<C>(deps: FullDeps<C>) -> Result<RpcExtension, Box<dyn std::er
 where
 	C: ProvideRuntimeApi<Block> + sc_client_api::BlockBackend<Block> + Send + Sync + 'static,
 	C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
-	// C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
-	// C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
-	// C::Api: BlockBuilder<Block>,
-	// P: TransactionPool + Sync + Send + 'static,
 {
 	let mut module = RpcExtension::new(());
 	let FullDeps { command_sink, .. } = deps;
-
-	// module.merge(SystemRpc::new(client.clone(), pool.clone(), deny_unsafe).into_rpc())?;
-	// module.merge(TransactionPaymentRpc::new(client.clone()).into_rpc())?;
 
 	module.merge(
 		// We provide the rpc handler with the sending end of the channel to allow the rpc

@@ -45,7 +45,6 @@ pub use module_evm_rpc_runtime_api::EVMRuntimeRPCApi;
 use primitives::evm::{BlockLimits, EstimateResourcesRequest};
 
 mod call_request;
-// mod evm_api;
 
 /// EVM rpc interface.
 #[rpc(client, server)]
@@ -131,13 +130,13 @@ fn decode_revert_message(data: &[u8]) -> Option<String> {
 	None
 }
 
-pub struct EVMRpc<B, C, Balance> {
+pub struct EVM<B, C, Balance> {
 	client: Arc<C>,
 	_deny_unsafe: DenyUnsafe,
 	_marker: PhantomData<(B, Balance)>,
 }
 
-impl<B, C, Balance> EVMRpc<B, C, Balance> {
+impl<B, C, Balance> EVM<B, C, Balance> {
 	pub fn new(client: Arc<C>, _deny_unsafe: DenyUnsafe) -> Self {
 		Self {
 			client,
@@ -152,7 +151,7 @@ fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
 }
 
 #[async_trait]
-impl<B, C, Balance> EVMApiServer<<B as BlockT>::Hash> for EVMRpc<B, C, Balance>
+impl<B, C, Balance> EVMApiServer<<B as BlockT>::Hash> for EVM<B, C, Balance>
 where
 	B: BlockT,
 	C: ProvideRuntimeApi<B> + HeaderBackend<B> + Send + Sync + 'static,

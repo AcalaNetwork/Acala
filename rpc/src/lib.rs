@@ -27,20 +27,20 @@ use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use std::sync::Arc;
 
+/// substrate rpc
 use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPaymentRpc};
 use sc_consensus_manual_seal::rpc::{EngineCommand, ManualSeal, ManualSealApiServer};
 pub use sc_rpc::dev::Dev;
 pub use sc_rpc_api::{dev::DevApiServer, DenyUnsafe};
-/// substrate rpc
 use sc_transaction_pool_api::TransactionPool;
 use substrate_frame_rpc_system::{SystemApiServer, SystemRpc};
 
 /// orml rpc
-use orml_oracle_rpc::{OracleApiServer, OracleRpc};
-use orml_tokens_rpc::{TokensApiServer, TokensRpc};
+use orml_oracle_rpc::{Oracle, OracleApiServer};
+use orml_tokens_rpc::{Tokens, TokensApiServer};
 
 /// module rpc
-pub use evm_rpc::{EVMApiServer, EVMRpc, EVMRuntimeRPCApi};
+pub use evm_rpc::{EVMApiServer, EVMRuntimeRPCApi, EVM};
 
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpsee::RpcModule<()>;
@@ -85,9 +85,9 @@ where
 	// Making synchronous calls in light client freezes the browser currently,
 	// more context: https://github.com/paritytech/substrate/pull/3480
 	// These RPCs should use an asynchronous caller instead.
-	module.merge(OracleRpc::new(client.clone()).into_rpc())?;
-	module.merge(TokensRpc::new(client.clone()).into_rpc())?;
-	module.merge(EVMRpc::new(client.clone(), deny_unsafe).into_rpc())?;
+	module.merge(Oracle::new(client.clone()).into_rpc())?;
+	module.merge(Tokens::new(client.clone()).into_rpc())?;
+	module.merge(EVM::new(client.clone(), deny_unsafe).into_rpc())?;
 	module.merge(Dev::new(client, deny_unsafe).into_rpc())?;
 
 	if let Some(command_sink) = command_sink {
