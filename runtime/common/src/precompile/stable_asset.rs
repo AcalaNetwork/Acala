@@ -32,6 +32,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use nutsfinance_stable_asset::traits::StableAsset;
 use nutsfinance_stable_asset::WeightInfo;
 use primitives::{Balance, CurrencyId};
+use sp_core::H160;
 use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
@@ -85,16 +86,19 @@ where
 			Action::GetStableAssetPoolTokens => {
 				let pool_id = input.u32_at(1)?;
 
-				// If pool_id doesn't exist, return [].
-				let assets = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id)
-					.map(|pool_info| {
-						pool_info
-							.assets
-							.iter()
-							.flat_map(|x| <Runtime as module_prices::Config>::Erc20InfoMapping::encode_evm_address(*x))
-							.collect()
-					})
-					.unwrap_or_default();
+				let pool_info =
+					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
+						PrecompileFailure::Revert {
+							exit_status: ExitRevert::Reverted,
+							output: "Pool not found".into(),
+							cost: target_gas_limit(target_gas).unwrap_or_default(),
+						}
+					})?;
+				let assets: Vec<H160> = pool_info
+					.assets
+					.iter()
+					.flat_map(|x| <Runtime as module_prices::Config>::Erc20InfoMapping::encode_evm_address(*x))
+					.collect();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
@@ -105,70 +109,90 @@ where
 			Action::GetStableAssetPoolTotalSupply => {
 				let pool_id = input.u32_at(1)?;
 
-				// If pool_id doesn't exist, return 0.
-				let total_supply = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id)
-					.map(|pool_info| pool_info.total_supply)
-					.unwrap_or_default();
+				let pool_info =
+					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
+						PrecompileFailure::Revert {
+							exit_status: ExitRevert::Reverted,
+							output: "Pool not found".into(),
+							cost: target_gas_limit(target_gas).unwrap_or_default(),
+						}
+					})?;
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(total_supply),
+					output: Output::default().encode_u128(pool_info.total_supply),
 					logs: Default::default(),
 				})
 			}
 			Action::GetStableAssetPoolPrecision => {
 				let pool_id = input.u32_at(1)?;
 
-				// If pool_id doesn't exist, return 0.
-				let precision = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id)
-					.map(|pool_info| pool_info.precision)
-					.unwrap_or_default();
+				let pool_info =
+					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
+						PrecompileFailure::Revert {
+							exit_status: ExitRevert::Reverted,
+							output: "Pool not found".into(),
+							cost: target_gas_limit(target_gas).unwrap_or_default(),
+						}
+					})?;
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(precision),
+					output: Output::default().encode_u128(pool_info.precision),
 					logs: Default::default(),
 				})
 			}
 			Action::GetStableAssetPoolMintFee => {
 				let pool_id = input.u32_at(1)?;
 
-				// If pool_id doesn't exist, return 0.
-				let mint_fee = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id)
-					.map(|pool_info| pool_info.mint_fee)
-					.unwrap_or_default();
+				let pool_info =
+					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
+						PrecompileFailure::Revert {
+							exit_status: ExitRevert::Reverted,
+							output: "Pool not found".into(),
+							cost: target_gas_limit(target_gas).unwrap_or_default(),
+						}
+					})?;
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(mint_fee),
+					output: Output::default().encode_u128(pool_info.mint_fee),
 					logs: Default::default(),
 				})
 			}
 			Action::GetStableAssetPoolSwapFee => {
 				let pool_id = input.u32_at(1)?;
 
-				// If pool_id doesn't exist, return 0.
-				let swap_fee = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id)
-					.map(|pool_info| pool_info.swap_fee)
-					.unwrap_or_default();
+				let pool_info =
+					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
+						PrecompileFailure::Revert {
+							exit_status: ExitRevert::Reverted,
+							output: "Pool not found".into(),
+							cost: target_gas_limit(target_gas).unwrap_or_default(),
+						}
+					})?;
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(swap_fee),
+					output: Output::default().encode_u128(pool_info.swap_fee),
 					logs: Default::default(),
 				})
 			}
 			Action::GetStableAssetPoolRedeemFee => {
 				let pool_id = input.u32_at(1)?;
 
-				// If pool_id doesn't exist, return 0.
-				let redeem_fee = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id)
-					.map(|pool_info| pool_info.redeem_fee)
-					.unwrap_or_default();
+				let pool_info =
+					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
+						PrecompileFailure::Revert {
+							exit_status: ExitRevert::Reverted,
+							output: "Pool not found".into(),
+							cost: target_gas_limit(target_gas).unwrap_or_default(),
+						}
+					})?;
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(redeem_fee),
+					output: Output::default().encode_u128(pool_info.redeem_fee),
 					logs: Default::default(),
 				})
 			}
