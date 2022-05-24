@@ -34,7 +34,6 @@ dependencies = [
  "cumulus-primitives-core",
  "frame-benchmarking-cli",
  "log",
- "orml-build-script-utils",
  "parity-scale-codec",
  "polkadot-cli",
  "polkadot-parachain",
@@ -46,6 +45,7 @@ dependencies = [
  "sc-tracing",
  "sp-core",
  "sp-runtime",
+ "substrate-build-script-utils",
  "try-runtime-cli",
 ]
 
@@ -7082,13 +7082,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "orml-build-script-utils"
-version = "0.4.1-dev"
-dependencies = [
- "platforms 1.1.0",
-]
-
-[[package]]
 name = "orml-currencies"
 version = "0.4.1-dev"
 dependencies = [
@@ -8767,12 +8760,6 @@ name = "pkg-config"
 version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58893f751c9b0412871a09abd62ecd2a00298c6c83befa223ef98c52aef40cbe"
-
-[[package]]
-name = "platforms"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "989d43012e2ca1c4a02507c67282691a0a3207f9dc67cec596b43fe925b3d325"
 
 [[package]]
 name = "platforms"
@@ -13409,7 +13396,7 @@ name = "substrate-build-script-utils"
 version = "3.0.0"
 source = "git+https://github.com/paritytech//substrate?rev=174735ea1bb5fc4513519c45181d8df63d86f613#174735ea1bb5fc4513519c45181d8df63d86f613"
 dependencies = [
- "platforms 2.0.0",
+ "platforms",
 ]
 
 [[package]]
