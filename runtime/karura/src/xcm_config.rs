@@ -19,8 +19,8 @@
 use super::{
 	constants::{fee::*, parachains},
 	AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event, ExistentialDeposits,
-	GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM,
+	Fees, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin, ParachainInfo,
+	ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -30,11 +30,11 @@ pub use frame_support::{
 	weights::Weight,
 };
 use module_support::HomaSubAccountXcm;
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
-use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil};
+use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil, XcmFeeToTreasury};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
@@ -98,24 +98,6 @@ pub type Barrier = (
 	// Subscriptions for version tracking are OK.
 	AllowSubscriptionsFrom<Everything>,
 );
-
-pub struct ToTreasury;
-impl TakeRevenue for ToTreasury {
-	fn take_revenue(revenue: MultiAsset) {
-		if let MultiAsset {
-			id: Concrete(location),
-			fun: Fungible(amount),
-		} = revenue
-		{
-			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
-				// Ensure KaruraTreasuryAccount have ed requirement for native asset, but don't need
-				// ed requirement for cross-chain asset because it's one of whitelist accounts.
-				// Ignore the result.
-				let _ = Currencies::deposit(currency_id, &KaruraTreasuryAccount::get(), amount);
-			}
-		}
-	}
-}
 
 parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
@@ -190,19 +172,21 @@ parameter_types! {
 	pub KarPerSecondAsBased: u128 = kar_per_second();
 }
 
+pub type XcmToTreasury = XcmFeeToTreasury<KaruraTreasuryAccount, CurrencyIdConvert, Fees>;
+
 #[cfg(not(feature = "integration-tests"))]
 pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
-	FixedRateOfFungible<KarPerSecond, ToTreasury>,
-	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<BncPerSecond, ToTreasury>,
-	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
-	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
-	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
+	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, XcmToTreasury>,
+	FixedRateOfFungible<KsmPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<KusdPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<KarPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<LksmPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<BncPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<VsksmPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<PHAPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<KbtcPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<KintPerSecond, XcmToTreasury>,
+	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, XcmToTreasury>,
 );
 
 pub struct XcmConfig;
@@ -222,7 +206,7 @@ impl xcm_executor::Config for XcmConfig {
 	type ResponseHandler = PolkadotXcm;
 	type AssetTrap = AcalaDropAssets<
 		PolkadotXcm,
-		ToTreasury,
+		XcmToTreasury,
 		CurrencyIdConvert,
 		GetNativeCurrencyId,
 		NativeTokenExistentialDeposit,

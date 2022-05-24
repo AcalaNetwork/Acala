@@ -32,7 +32,7 @@ use frame_support::{
 	RuntimeDebug,
 };
 use frame_system::{limits, EnsureRoot};
-pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
+pub use module_support::{ExchangeRate, FeeToTreasuryPool, PrecompileCallerFilter, Price, Rate, Ratio};
 use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
@@ -343,6 +343,29 @@ pub enum ProxyType {
 impl Default for ProxyType {
 	fn default() -> Self {
 		Self::Any
+	}
+}
+
+pub struct XcmFeeToTreasury<T, C, F>(PhantomData<(T, C, F)>);
+impl<T, C, F> TakeRevenue for XcmFeeToTreasury<T, C, F>
+where
+	T: Get<AccountId>,
+	C: Convert<MultiLocation, Option<CurrencyId>>,
+	F: FeeToTreasuryPool<AccountId, CurrencyId, Balance>,
+{
+	fn take_revenue(revenue: MultiAsset) {
+		if let MultiAsset {
+			id: Concrete(location),
+			fun: Fungible(amount),
+		} = revenue
+		{
+			if let Some(currency_id) = C::convert(location) {
+				// Ensure given treasury account have ed requirement for native asset, but don't need
+				// ed requirement for cross-chain asset because it's one of whitelist accounts.
+				// Ignore the result.
+				let _ = F::on_fee_changed(&T::get(), currency_id, amount);
+			}
+		}
 	}
 }
 

@@ -106,7 +106,7 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 }
 
 pub trait FeeToTreasuryPool<AccountId, CurrencyId, Balance> {
-	fn on_fee_changed(account_id: AccountId, currency_id: CurrencyId, amount: Balance) -> DispatchResult;
+	fn on_fee_changed(account_id: &AccountId, currency_id: CurrencyId, amount: Balance) -> DispatchResult;
 }
 
 /// Used to interface with the Compound's Cash module

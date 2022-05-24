@@ -18,7 +18,7 @@
 
 use super::{
 	constants::fee::*, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event,
-	ExistentialDeposits, FixedRateOfForeignAsset, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin,
+	ExistentialDeposits, Fees, FixedRateOfForeignAsset, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin,
 	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, TransactionFeePoolTrader, TreasuryAccount, UnknownTokens,
 	XcmpQueue, ACA,
 };
@@ -29,11 +29,11 @@ pub use frame_support::{
 	traits::{Everything, Get, Nothing},
 	weights::Weight,
 };
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
-use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil};
+use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil, XcmFeeToTreasury};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
@@ -93,24 +93,6 @@ pub type Barrier = (
 	AllowSubscriptionsFrom<Everything>,
 );
 
-pub struct ToTreasury;
-impl TakeRevenue for ToTreasury {
-	fn take_revenue(revenue: MultiAsset) {
-		if let MultiAsset {
-			id: Concrete(location),
-			fun: Fungible(amount),
-		} = revenue
-		{
-			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
-				// Ensure TreasuryAccount have ed requirement for native asset, but don't need
-				// ed requirement for cross-chain asset because it's one of whitelist accounts.
-				// Ignore the result.
-				let _ = Currencies::deposit(currency_id, &TreasuryAccount::get(), amount);
-			}
-		}
-	}
-}
-
 parameter_types! {
 	// One XCM operation is 1_000_000 weight - almost certainly a conservative estimate.
 	pub UnitWeightCost: Weight = 1_000_000;
@@ -127,11 +109,13 @@ parameter_types! {
 	pub AcaPerSecondAsBased: u128 = aca_per_second();
 }
 
+type XcmToTreasury = XcmFeeToTreasury<TreasuryAccount, CurrencyIdConvert, Fees>;
+
 pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
-	FixedRateOfFungible<DotPerSecond, ToTreasury>,
-	FixedRateOfFungible<AcaPerSecond, ToTreasury>,
-	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
+	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, XcmToTreasury>,
+	FixedRateOfFungible<DotPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<AcaPerSecond, XcmToTreasury>,
+	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, XcmToTreasury>,
 );
 
 pub struct XcmConfig;
@@ -152,7 +136,7 @@ impl xcm_executor::Config for XcmConfig {
 	type ResponseHandler = (); // Don't handle responses for now.
 	type AssetTrap = AcalaDropAssets<
 		PolkadotXcm,
-		ToTreasury,
+		XcmToTreasury,
 		CurrencyIdConvert,
 		GetNativeCurrencyId,
 		NativeTokenExistentialDeposit,

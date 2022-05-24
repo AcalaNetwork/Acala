@@ -222,12 +222,13 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	// TODO: maybe use `Happened<(AccountId,CurrencyId,Balance)>` instead of new trait?
-	fn on_fee_changed(account_id: T::AccountId, currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+	fn on_fee_changed(account_id: &T::AccountId, currency_id: CurrencyId, amount: Balance) -> DispatchResult {
 		// TODO: use `IncomeSource` to determine destination
-		T::Currencies::deposit(currency_id, &account_id, amount)
+		T::Currencies::deposit(currency_id, account_id, amount)
 	}
 }
 
+// Transaction payment module `OnTransactionPayment` distribution transaction fee
 impl<T: Config> OnUnbalanced<NegativeImbalanceOf<T>> for Pallet<T> {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalanceOf<T>>) {
 		if let Some(mut fees) = fees_then_tips.next() {

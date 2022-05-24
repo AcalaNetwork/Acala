@@ -1546,6 +1546,15 @@ impl module_idle_scheduler::Config for Runtime {
 	type DisableBlockThreshold = ConstU32<6>;
 }
 
+impl module_fees::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type Currency = Balances;
+	type Currencies = Currencies;
+	type NetworkTreasuryPoolAccount = KaruraTreasuryAccount;
+}
+
 parameter_types! {
 	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["0000000000000000000100000000000000000001"]));
 	pub const StableCoinCurrencyId: CurrencyId = KUSD;
@@ -1646,6 +1655,7 @@ construct_runtime!(
 		Currencies: module_currencies = 12,
 		Vesting: orml_vesting = 13,
 		TransactionPayment: module_transaction_payment = 14,
+		Fees: module_fees = 15,
 
 		// Treasury
 		Treasury: pallet_treasury = 20,

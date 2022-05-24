@@ -1202,34 +1202,13 @@ parameter_types! {
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
 
-type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
-pub struct DealWithFees;
-impl OnUnbalanced<NegativeImbalance> for DealWithFees {
-	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance>) {
-		if let Some(mut fees) = fees_then_tips.next() {
-			if let Some(tips) = fees_then_tips.next() {
-				tips.merge_into(&mut fees);
-			}
-			// for fees and tips, 80% to treasury, 20% to collator-selection pot.
-			let split = fees.ration(80, 20);
-			Treasury::on_unbalanced(split.0);
-
-			Balances::resolve_creating(&CollatorSelection::account_id(), split.1);
-			// Due to performance consideration remove the event.
-			// let numeric_amount = split.1.peek();
-			// let staking_pot = CollatorSelection::account_id();
-			// System::deposit_event(pallet_balances::Event::Deposit(staking_pot, numeric_amount));
-		}
-	}
-}
-
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
-	type OnTransactionPayment = DealWithFees;
+	type OnTransactionPayment = Fees;
 	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
 	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;

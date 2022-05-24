@@ -34,16 +34,16 @@ parameter_types! {
 }
 
 pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
-	FixedRateOfFungible<KarPerSecond, ToTreasury>,
-	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<BncPerSecond, ToTreasury>,
-	FixedRateOfFungible<BncPerSecondOfCanonicalLocation, ToTreasury>,
-	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
-	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
-	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
+	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, XcmToTreasury>,
+	FixedRateOfFungible<KsmPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<KusdPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<KarPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<LksmPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<BncPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<BncPerSecondOfCanonicalLocation, XcmToTreasury>,
+	FixedRateOfFungible<VsksmPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<PHAPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<KbtcPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<KintPerSecond, XcmToTreasury>,
+	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, XcmToTreasury>,
 );
