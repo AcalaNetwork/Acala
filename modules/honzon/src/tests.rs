@@ -253,27 +253,27 @@ fn transfer_debit_works() {
 		));
 
 		// set up two loans
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 500));
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
-		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 50);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
 
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), DOT, 100, 50));
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), DOT, 100, 500));
 		assert_eq!(LoansModule::positions(DOT, ALICE).collateral, 100);
-		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 50);
+		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 500);
 
 		// Will not work for account with no open CDP
 		assert_noop!(
-			HonzonModule::transfer_debit(Origin::signed(BOB), BTC, DOT, 100),
+			HonzonModule::transfer_debit(Origin::signed(BOB), BTC, DOT, 1000),
 			ArithmeticError::Underflow
 		);
 		// Won't work when transfering more debit than is present
 		assert_noop!(
-			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 1_000),
+			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 10_000),
 			ArithmeticError::Underflow
 		);
 		// Below minimum collateral threshold for the BTC CDP
 		assert_noop!(
-			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 50),
+			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 500),
 			cdp_engine::Error::<Runtime>::BelowRequiredCollateralRatio
 		);
 		// Too large of a transfer
@@ -283,21 +283,21 @@ fn transfer_debit_works() {
 		);
 		// Won't work for currency that is not collateral
 		assert_noop!(
-			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, ACA, 5),
+			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, ACA, 50),
 			cdp_engine::Error::<Runtime>::InvalidCollateralType
 		);
 
-		assert_ok!(HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 5));
+		assert_ok!(HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 50));
 		System::assert_last_event(Event::HonzonModule(crate::Event::<Runtime>::TransferDebit {
 			from_currency: BTC,
 			to_currency: DOT,
-			amount: 5,
+			amount: 50,
 		}));
 
-		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 55);
+		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 550);
 		assert_eq!(LoansModule::positions(DOT, ALICE).collateral, 100);
 
-		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 45);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 450);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
 	});
 }
@@ -326,13 +326,13 @@ fn transfer_debit_no_ausd() {
 		));
 
 		// set up two loans
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 500));
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
-		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 50);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
 
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), DOT, 100, 50));
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), DOT, 100, 500));
 		assert_eq!(LoansModule::positions(DOT, ALICE).collateral, 100);
-		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 50);
+		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 500);
 
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 100);
 		assert_ok!(Currencies::transfer(Origin::signed(ALICE), BOB, AUSD, 100));
