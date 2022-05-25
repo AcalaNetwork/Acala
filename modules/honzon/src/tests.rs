@@ -107,7 +107,7 @@ fn unauthorize_all_should_work() {
 fn transfer_loan_from_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
+			Origin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -137,7 +137,7 @@ fn transfer_unauthorization_loans_should_not_work() {
 fn adjust_loan_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
+			Origin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -155,7 +155,7 @@ fn adjust_loan_should_work() {
 fn adjust_loan_by_debit_value_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
+			Origin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -207,7 +207,7 @@ fn on_emergency_shutdown_should_work() {
 fn close_loan_has_debit_by_dex_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
+			Origin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),

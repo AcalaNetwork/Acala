@@ -27,10 +27,14 @@ use frame_support::{
 use module_evm::{ExitReason, ExitSucceed};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitive_types::H256;
+use primitives::{evm::EvmAddress, Balance};
 use sp_core::{H160, U256};
 use sp_runtime::{ArithmeticError, SaturatedConversion};
 use sp_std::vec::Vec;
-use support::{evm::limits::erc20, EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
+use support::{
+	evm::limits::{erc20, liquidation},
+	EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, LiquidationEvmBridge as LiquidationEvmBridgeT, EVM,
+};
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BalanceOf<T> = <<T as Config>::EVM as EVM<AccountIdOf<T>>>::Balance;
@@ -45,6 +49,9 @@ pub enum Action {
 	TotalSupply = "totalSupply()",
 	BalanceOf = "balanceOf(address)",
 	Transfer = "transfer(address,uint256)",
+	Liquidate = "liquidate(address,address,uint256,uint256)",
+	OnCollateralTransfer = "onCollateralTransfer(address,uint256)",
+	OnRepaymentRefund = "onRepaymentRefund(address,uint256)",
 }
 
 mod mock;
@@ -247,6 +254,77 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 
 	fn set_origin(origin: AccountIdOf<T>) {
 		T::EVM::set_origin(origin);
+	}
+}
+
+pub struct LiquidationEvmBridge<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: Config> LiquidationEvmBridgeT for LiquidationEvmBridge<T> {
+	fn liquidate(
+		context: InvokeContext,
+		collateral: EvmAddress,
+		repay_dest: EvmAddress,
+		amount: Balance,
+		min_repayment: Balance,
+	) -> DispatchResult {
+		// liquidation contract method hash
+		let mut input = Into::<u32>::into(Action::Liquidate).to_be_bytes().to_vec();
+
+		// append collateral ERC20 address
+		input.extend_from_slice(H256::from(collateral).as_bytes());
+		// append repay dest address
+		input.extend_from_slice(H256::from(repay_dest).as_bytes());
+		// append collateral amount
+		input.extend_from_slice(H256::from_uint(&U256::from(amount)).as_bytes());
+		// append minimum repayment amount
+		input.extend_from_slice(H256::from_uint(&U256::from(min_repayment)).as_bytes());
+
+		let info = T::EVM::execute(
+			context,
+			input,
+			Default::default(),
+			liquidation::LIQUIDATE.gas,
+			liquidation::LIQUIDATE.storage,
+			ExecutionMode::Execute,
+		)?;
+
+		Pallet::<T>::handle_exit_reason(info.exit_reason)
+	}
+
+	fn on_collateral_transfer(context: InvokeContext, collateral: EvmAddress, amount: Balance) {
+		// liquidation contract method hash
+		let mut input = Into::<u32>::into(Action::OnCollateralTransfer).to_be_bytes().to_vec();
+		// append collateral ERC20 address
+		input.extend_from_slice(H256::from(collateral).as_bytes());
+		// append collateral amount
+		input.extend_from_slice(H256::from_uint(&U256::from(amount)).as_bytes());
+
+		let _ = T::EVM::execute(
+			context,
+			input,
+			Default::default(),
+			liquidation::ON_COLLATERAL_TRANSFER.gas,
+			liquidation::ON_COLLATERAL_TRANSFER.storage,
+			ExecutionMode::Execute,
+		);
+	}
+
+	fn on_repayment_refund(context: InvokeContext, collateral: EvmAddress, repayment: Balance) {
+		// liquidation contract method hash
+		let mut input = Into::<u32>::into(Action::OnRepaymentRefund).to_be_bytes().to_vec();
+		// append collateral ERC20 address
+		input.extend_from_slice(H256::from(collateral).as_bytes());
+		// append repayment amount
+		input.extend_from_slice(H256::from_uint(&U256::from(repayment)).as_bytes());
+
+		let _ = T::EVM::execute(
+			context,
+			input,
+			Default::default(),
+			liquidation::ON_REPAYMENT_REFUND.gas,
+			liquidation::ON_REPAYMENT_REFUND.storage,
+			ExecutionMode::Execute,
+		);
 	}
 }
 

@@ -29,7 +29,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use codec::MaxEncodedLen;
-use frame_support::{log, pallet_prelude::*, traits::UnixTime, transactional};
+use frame_support::{log, pallet_prelude::*, traits::UnixTime, transactional, BoundedVec, PalletId};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
@@ -37,7 +37,7 @@ use frame_system::{
 use loans::Position;
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_utilities::OffchainErr;
-use primitives::{Amount, Balance, CurrencyId};
+use primitives::{evm::EvmAddress, Amount, Balance, CurrencyId};
 use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
 	ChaChaRng,
@@ -49,16 +49,17 @@ use sp_runtime::{
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{Bounded, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
+	traits::{AccountIdConversion, Bounded, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
 	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
-use sp_std::prelude::*;
+use sp_std::{marker::PhantomData, prelude::*};
 use support::{
-	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
-	RiskManager, SwapLimit,
+	AddressMapping, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, InvokeContext,
+	LiquidateCollateral, LiquidationEvmBridge as LiquidationEvmBridgeT, Price, PriceProvider, Rate, Ratio, RiskManager,
+	SwapLimit,
 };
 
 mod mock;
@@ -75,6 +76,7 @@ pub const LOCK_DURATION: u64 = 100;
 pub const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
 pub type LoansOf<T> = loans::Pallet<T>;
+pub type CurrencyOf<T> = <T as Config>::Currency;
 
 /// Risk management params
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo, MaxEncodedLen)]
@@ -184,6 +186,21 @@ pub mod module {
 		/// Dex
 		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
+		/// When settle collateral with smart contracts, he acceptable max slippage for the price
+		/// from oracle.
+		#[pallet::constant]
+		type MaxLiquidationContractSlippage: Get<Ratio>;
+
+		#[pallet::constant]
+		type MaxLiquidationContracts: Get<u32>;
+
+		type LiquidationEvmBridge: LiquidationEvmBridgeT;
+
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
+		type EvmAddressMapping: AddressMapping<Self::AccountId>;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -222,6 +239,12 @@ pub mod module {
 		NotEnoughDebitDecrement,
 		/// convert debit value to debit balance failed
 		ConvertDebitBalanceFailed,
+		/// Collateral liquidation failed.
+		LiquidationFailed,
+		/// Exceeds `T::MaxLiquidationContracts`.
+		TooManySettlementContracts,
+		/// Collateral ERC20 contract not found.
+		CollateralContractNotFound,
 	}
 
 	#[pallet::event]
@@ -273,6 +296,10 @@ pub mod module {
 			collateral_type: CurrencyId,
 			new_total_debit_value: Balance,
 		},
+		/// A new settlement contract is registered.
+		SettlementContractRegistered { address: EvmAddress },
+		/// A new settlement contract is deregistered.
+		SettlementContractDeregistered { address: EvmAddress },
 	}
 
 	/// Mapping from collateral type to its exchange rate of debit units and
@@ -296,6 +323,11 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn last_accumulation_secs)]
 	pub type LastAccumulationSecs<T: Config> = StorageValue<_, u64, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn settlement_contracts)]
+	pub type SettlementContracts<T: Config> =
+		StorageValue<_, BoundedVec<EvmAddress, T::MaxLiquidationContracts>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	#[cfg_attr(feature = "std", derive(Default))]
@@ -486,6 +518,28 @@ pub mod module {
 				});
 			}
 			CollateralParams::<T>::insert(currency_id, collateral_params);
+			Ok(())
+		}
+
+		//TODO: benchmarks
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn register_settlement_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			SettlementContracts::<T>::try_append(address).map_err(|()| Error::<T>::TooManySettlementContracts)?;
+			Self::deposit_event(Event::SettlementContractRegistered { address });
+			Ok(())
+		}
+
+		//TODO: benchmarks
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn deregister_settlement_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			SettlementContracts::<T>::mutate(|contracts| {
+				contracts.retain(|c| c != &address);
+			});
+			Self::deposit_event(Event::SettlementContractDeregistered { address });
 			Ok(())
 		}
 	}
@@ -1205,7 +1259,33 @@ impl<T: Config> Pallet<T> {
 			}
 			return Ok(());
 		}
+		LiquidateByPriority::<T>::liquidate(who, currency_id, amount, target_stable_amount)
+	}
 
+	pub fn get_collateral_currency_ids() -> Vec<CurrencyId> {
+		CollateralParams::<T>::iter_keys().collect()
+	}
+
+	fn account_id() -> T::AccountId {
+		<T as Config>::PalletId::get().into_account()
+	}
+
+	/// Pallet EVM address, derived from pallet id.
+	fn evm_address() -> EvmAddress {
+		T::EvmAddressMapping::get_or_create_evm_address(&Self::account_id())
+	}
+}
+
+type LiquidateByPriority<T> = (LiquidateViaDex<T>, LiquidateViaContracts<T>, LiquidateViaAuction<T>);
+
+pub struct LiquidateViaDex<T>(PhantomData<T>);
+impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaDex<T> {
+	fn liquidate(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+	) -> DispatchResult {
 		// calculate the supply limit by slippage limit for the price of oracle,
 		let max_supply_limit = Ratio::one()
 			.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
@@ -1213,51 +1293,158 @@ impl<T: Config> Pallet<T> {
 			.unwrap_or_else(Ratio::max_value)
 			.saturating_mul_int(
 				T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
-					.expect("the oracle price should be avalible because liquidation are triggered by it.")
+					.expect("the oracle price should be available because liquidation are triggered by it.")
 					.saturating_mul_int(target_stable_amount),
 			);
 		let collateral_supply = amount.min(max_supply_limit);
 
-		// try swap collateral to stable to settle debit swap succeed.
-		if let Ok((actual_supply_collateral, actual_target_amount)) =
-			<T as Config>::CDPTreasury::swap_collateral_to_stable(
-				currency_id,
-				SwapLimit::ExactTarget(collateral_supply, target_stable_amount),
-				false,
-			) {
-			let refund_collateral_amount = amount
-				.checked_sub(actual_supply_collateral)
-				.expect("swap success means collateral >= actual_supply_collateral; qed");
+		let (actual_supply_collateral, actual_target_amount) = <T as Config>::CDPTreasury::swap_collateral_to_stable(
+			currency_id,
+			SwapLimit::ExactTarget(collateral_supply, target_stable_amount),
+			false,
+		)?;
 
-			// refund remain collateral to CDP owner
-			if !refund_collateral_amount.is_zero() {
-				<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
-			}
+		let refund_collateral_amount = amount
+			.checked_sub(actual_supply_collateral)
+			.expect("swap success means collateral >= actual_supply_collateral; qed");
+		// refund remain collateral to CDP owner
+		if !refund_collateral_amount.is_zero() {
+			<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
+		}
 
-			// Note: for StableAsset, the swap of cdp treasury is always on `ExactSupply`
-			// regardless of this swap_limit params. There will be excess stablecoins that
-			// need to be returned to the `who` from cdp treasury account.
-			if actual_target_amount > target_stable_amount {
-				<T as Config>::CDPTreasury::withdraw_surplus(
-					who,
-					actual_target_amount.saturating_sub(target_stable_amount),
-				)?;
-			}
-		} else {
-			// if cannot liquidate by swap, create collateral auctions by cdp treasury
-			<T as Config>::CDPTreasury::create_collateral_auctions(
-				currency_id,
-				amount,
-				target_stable_amount,
-				who.clone(),
-				true,
+		// Note: for StableAsset, the swap of cdp treasury is always on `ExactSupply`
+		// regardless of this swap_limit params. There will be excess stablecoins that
+		// need to be returned to the `who` from cdp treasury account.
+		if actual_target_amount > target_stable_amount {
+			<T as Config>::CDPTreasury::withdraw_surplus(
+				who,
+				actual_target_amount.saturating_sub(target_stable_amount),
 			)?;
 		}
 
 		Ok(())
 	}
-	pub fn get_collateral_currency_ids() -> Vec<CurrencyId> {
-		CollateralParams::<T>::iter_keys().collect()
+}
+
+pub struct LiquidateViaContracts<T>(PhantomData<T>);
+impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
+	fn liquidate(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+	) -> DispatchResult {
+		let max_supply_limit = Ratio::one()
+			.saturating_sub(T::MaxLiquidationContractSlippage::get())
+			.reciprocal()
+			.unwrap_or_else(Ratio::max_value)
+			.saturating_mul_int(
+				T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
+					.expect("the oracle price should be available because liquidation are triggered by it.")
+					.saturating_mul_int(target_stable_amount),
+			);
+		let collateral_supply = amount.min(max_supply_limit);
+
+		let collateral = currency_id
+			.erc20_address()
+			.ok_or(Error::<T>::CollateralContractNotFound)?;
+		let repay_dest = Pallet::<T>::evm_address();
+		let repay_dest_account_id = Pallet::<T>::account_id();
+
+		let stable_coin = T::GetStableCurrencyId::get();
+
+		//TODO: randomly choose
+		for contract in Pallet::<T>::settlement_contracts().into_iter() {
+			let repay_dest_balance = CurrencyOf::<T>::free_balance(stable_coin, &repay_dest_account_id);
+			if let Ok(_) = T::LiquidationEvmBridge::liquidate(
+				InvokeContext {
+					contract,
+					sender: Default::default(),
+					origin: Default::default(),
+				},
+				collateral,
+				repay_dest,
+				collateral_supply,
+				target_stable_amount,
+			) {
+				let repayment = CurrencyOf::<T>::free_balance(stable_coin, &repay_dest_account_id)
+					.saturating_sub(repay_dest_balance);
+				let contract_account_id = T::EvmAddressMapping::get_account_id(&contract);
+				if repayment >= target_stable_amount {
+					// sufficient repayment, transfer collateral to contract and notify
+					if let Err(e) = <T as Config>::CDPTreasury::withdraw_collateral(
+						&contract_account_id,
+						currency_id,
+						collateral_supply,
+					) {
+						log::error!(
+							target: "cdp-engine",
+							"LiquidateViaContracts: transfer collateral to contract failed. \
+							Collateral: {:?}, amount: {:?} contract: {:?}, error: {:?}. \
+							This is unexpected, need extra action.",
+							currency_id, collateral_supply, contract, e,
+						);
+					} else {
+						// notify liquidation success
+						T::LiquidationEvmBridge::on_collateral_transfer(
+							InvokeContext {
+								contract,
+								sender: Default::default(),
+								origin: Default::default(),
+							},
+							collateral,
+							target_stable_amount,
+						);
+						// refund rest collateral to CDP owner
+						let refund_collateral_amount = amount
+							.checked_sub(collateral_supply)
+							.expect("Ensured collateral supply <= amount; qed");
+						if !refund_collateral_amount.is_zero() {
+							<T as Config>::CDPTreasury::withdraw_collateral(
+								who,
+								currency_id,
+								refund_collateral_amount,
+							)?;
+						}
+						return Ok(());
+					}
+				} else if repayment > 0 {
+					// insufficient repayment, refund
+					CurrencyOf::<T>::transfer(stable_coin, &repay_dest_account_id, &contract_account_id, repayment)?;
+					// notify liquidation failed
+					T::LiquidationEvmBridge::on_repayment_refund(
+						InvokeContext {
+							contract,
+							sender: Default::default(),
+							origin: Default::default(),
+						},
+						collateral,
+						repayment,
+					);
+				}
+			}
+		}
+
+		Err(Error::<T>::LiquidationFailed.into())
+	}
+}
+
+pub struct LiquidateViaAuction<T>(PhantomData<T>);
+impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaAuction<T> {
+	fn liquidate(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+	) -> DispatchResult {
+		<T as Config>::CDPTreasury::create_collateral_auctions(
+			currency_id,
+			amount,
+			target_stable_amount,
+			who.clone(),
+			true,
+		)
+		.map(|_| ())
 	}
 }
 

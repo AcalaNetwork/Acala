@@ -29,7 +29,7 @@ use frame_support::{
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, Moment, TokenSymbol, TradingPair};
-use sp_core::H256;
+use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
@@ -38,13 +38,13 @@ use sp_std::cell::RefCell;
 use support::mocks::MockStableAsset;
 use support::{AuctionManager, EmergencyShutdown};
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type AuctionId = u32;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const CAROL: AccountId = 3;
+pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId = AccountId32::new([2u8; 32]);
+pub const CAROL: AccountId = AccountId32::new([3u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
@@ -179,6 +179,14 @@ thread_local! {
 }
 
 pub struct MockAuctionManager;
+impl MockAuctionManager {
+	pub fn auction() -> Option<(AccountId, CurrencyId, Balance, Balance)> {
+		AUCTION.with(|v| {
+			let cloned = v.borrow().clone();
+			cloned
+		})
+	}
+}
 impl AuctionManager<AccountId> for MockAuctionManager {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
@@ -190,7 +198,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		amount: Self::Balance,
 		target: Self::Balance,
 	) -> DispatchResult {
-		AUCTION.with(|v| *v.borrow_mut() = Some((*refund_recipient, currency_id, amount, target)));
+		AUCTION.with(|v| *v.borrow_mut() = Some((refund_recipient.clone(), currency_id, amount, target)));
 		Ok(())
 	}
 
@@ -200,17 +208,11 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 
 	fn get_total_target_in_auction() -> Self::Balance {
-		AUCTION
-			.with(|v| *v.borrow())
-			.map(|auction| auction.3)
-			.unwrap_or_default()
+		Self::auction().map(|auction| auction.3).unwrap_or_default()
 	}
 
 	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
-		AUCTION
-			.with(|v| *v.borrow())
-			.map(|auction| auction.2)
-			.unwrap_or_default()
+		Self::auction().map(|auction| auction.2).unwrap_or_default()
 	}
 }
 
@@ -272,6 +274,15 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl evm_accounts::Config for Runtime {
+	type Event = Event;
+	type Currency = PalletBalances;
+	type ChainId = ();
+	type AddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
+	type TransferAll = Currencies;
+	type WeightInfo = ();
+}
+
 thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
@@ -288,7 +299,7 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 }
 
 ord_parameter_types! {
-	pub const One: AccountId = 1;
+	pub const One: AccountId = ALICE;
 }
 
 parameter_type_with_key! {
@@ -302,6 +313,8 @@ parameter_types! {
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
+	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(80, 100);
+	pub const CDPEnginePalletId: PalletId = PalletId(*b"aca/cdpe");
 }
 
 impl Config for Runtime {
@@ -321,6 +334,11 @@ impl Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = DEXModule;
+	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
+	type MaxLiquidationContracts = ConstU32<10>;
+	type LiquidationEvmBridge = ();
+	type PalletId = CDPEnginePalletId;
+	type EvmAddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
 	type WeightInfo = ();
 }
 
@@ -342,6 +360,7 @@ construct_runtime!(
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
 		DEXModule: dex::{Pallet, Storage, Call, Event<T>, Config<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		EvmAccounts: evm_accounts::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -407,10 +426,16 @@ impl ExtBuilder {
 
 	pub fn lots_of_accounts() -> Self {
 		let mut balances = Vec::new();
-		for i in 0..1001 {
-			let account_id: AccountId = i;
-			balances.push((account_id, BTC, 1000));
+		for i in 0..1001u32 {
+			balances.push((account_id_from_u32(i), BTC, 1000));
 		}
 		Self { balances }
 	}
+}
+
+pub fn account_id_from_u32(num: u32) -> AccountId {
+	let mut data = [0u8; 32];
+	let index = num.to_le_bytes();
+	data[0..4].copy_from_slice(&index[..]);
+	AccountId::new(data)
 }
