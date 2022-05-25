@@ -95,14 +95,8 @@ where
 				buf.copy_from_slice(&input_data[..]);
 				let account_id: Runtime::AccountId = AccountId32::from(buf).into();
 
-				let address =
-					module_evm_accounts::Pallet::<Runtime>::get_evm_address(&account_id).ok_or_else(|| {
-						PrecompileFailure::Revert {
-							exit_status: ExitRevert::Reverted,
-							output: "EvmAddress mapping not found".into(),
-							cost: target_gas_limit(target_gas).unwrap_or_default(),
-						}
-					})?;
+				// If it does not exist, return address(0x0). Keep the behavior the same as mapping[key]
+				let address = module_evm_accounts::Pallet::<Runtime>::get_evm_address(&account_id).unwrap_or_default();
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -243,14 +237,14 @@ mod tests {
 				0101010101010101010101010101010101010101010101010101010101010101
 			"};
 
-			assert_noop!(
-				EVMAccountsPrecompile::execute(&input, Some(10_000), &context, false),
-				PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "EvmAddress mapping not found".into(),
-					cost: target_gas_limit(Some(10_000)).unwrap(),
-				}
-			);
+			// expect output is address(0)
+			let expected_output = hex! {"
+				000000000000000000000000 0000000000000000000000000000000000000000
+			"};
+
+			let resp = EVMAccountsPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 
