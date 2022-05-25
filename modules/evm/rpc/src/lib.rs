@@ -75,6 +75,14 @@ fn internal_err<T: ToString>(message: T) -> JsonRpseeError {
 	)))
 }
 
+fn invalid_params<T: ToString>(message: T) -> JsonRpseeError {
+	JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+		ErrorCode::InvalidParams.code(),
+		message.to_string(),
+		None::<()>,
+	)))
+}
+
 #[allow(dead_code)]
 fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> RpcResult<()> {
 	match reason {
@@ -185,19 +193,17 @@ where
 
 		let gas_limit = gas_limit.unwrap_or(gas_limit_cap);
 		if gas_limit > gas_limit_cap {
-			return Err(JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
-				ErrorCode::InvalidParams.code(),
-				format!("GasLimit exceeds capped allowance: {}", gas_limit_cap),
-				None::<()>,
-			))));
+			return Err(invalid_params(format!(
+				"GasLimit exceeds capped allowance: {}",
+				gas_limit_cap
+			)));
 		}
 		let storage_limit = storage_limit.unwrap_or(block_limits.max_storage_limit);
 		if storage_limit > block_limits.max_storage_limit {
-			return Err(JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
-				ErrorCode::InvalidParams.code(),
-				format!("StorageLimit exceeds allowance: {}", block_limits.max_storage_limit),
-				None::<()>,
-			))));
+			return Err(invalid_params(format!(
+				"StorageLimit exceeds allowance: {}",
+				block_limits.max_storage_limit
+			)));
 		}
 		let data = data.map(|d| d.0).unwrap_or_default();
 
@@ -207,13 +213,8 @@ where
 			Ok(Default::default())
 		};
 
-		let balance_value = balance_value.map_err(|_| {
-			JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
-				ErrorCode::InvalidParams.code(),
-				format!("Invalid parameter value: {:?}", value),
-				None::<()>,
-			)))
-		})?;
+		let balance_value =
+			balance_value.map_err(|_| invalid_params(format!("Invalid parameter value: {:?}", value)))?;
 
 		match to {
 			Some(to) => {
@@ -349,13 +350,8 @@ where
 				Ok(Default::default())
 			};
 
-			let balance_value = balance_value.map_err(|_| {
-				JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
-					ErrorCode::InvalidParams.code(),
-					format!("Invalid parameter value: {:?}", value),
-					None::<()>,
-				)))
-			})?;
+			let balance_value =
+				balance_value.map_err(|_| invalid_params(format!("Invalid parameter value: {:?}", value)))?;
 
 			let (exit_reason, data, used_gas, used_storage) = match to {
 				Some(to) => {
@@ -477,25 +473,14 @@ where
 			}
 		}
 
-		let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*unsigned_extrinsic).map_err(|e| {
-			JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
-				ErrorCode::InternalError.code(),
-				"Unable to dry run extrinsic.",
-				Some(e.to_string()),
-			)))
-		})?;
+		let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*unsigned_extrinsic)
+			.map_err(|e| internal_err(format!("execution error: Unable to dry run extrinsic {:?}", e)))?;
 
 		let fee = self
 			.client
 			.runtime_api()
 			.query_fee_details(&block_id, uxt, unsigned_extrinsic.len() as u32)
-			.map_err(|e| {
-				JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
-					ErrorCode::InternalError.code(),
-					"Unable to query fee details.",
-					Some(e.to_string()),
-				)))
-			})?;
+			.map_err(|e| internal_err(format!("runtime error: Unable to query fee details {:?}", e)))?;
 
 		let adjusted_weight_fee = fee
 			.inclusion_fee
@@ -526,13 +511,10 @@ where
 			})?;
 
 		let block_limits = if version > 1 {
-			self.client.runtime_api().block_limits(&block_id).map_err(|e| {
-				JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
-					ErrorCode::InternalError.code(),
-					"Unable to query block limits.",
-					Some(e.to_string()),
-				)))
-			})?
+			self.client
+				.runtime_api()
+				.block_limits(&block_id)
+				.map_err(|e| internal_err(format!("runtime error: Unable to query block limits {:?}", e)))?
 		} else {
 			BlockLimits {
 				max_gas_limit: 20_000_000,    // 20M
