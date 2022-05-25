@@ -30,7 +30,7 @@ use karura_runtime::{AssetRegistry, KaruraTreasuryAccount};
 use module_relaychain::RelayChainCallBuilder;
 use module_support::CallBuilder;
 use orml_traits::MultiCurrency;
-use primitives::currency::AssetMetadata;
+use primitives::currency::{AssetMetadata, ForeignAssetExtraMetadata, BNC};
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert;
 
@@ -96,6 +96,32 @@ fn transfer_sibling_chain_asset() {
 	fn karura_reserve_account() -> AccountId {
 		polkadot_parachain::primitives::Sibling::from(2000).into_account()
 	}
+	Sibling::execute_with(|| {
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),).into()),
+			Box::new(AssetMetadata {
+				name: b"Sibling BNC".to_vec(),
+				symbol: b"SBNC".to_vec(),
+				decimals: 12,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
+			})
+		));
+		assert_ok!(AssetRegistry::set_foreign_asset_extra_metadata(
+			Origin::root(),
+			0,
+			Box::new(Some(ForeignAssetExtraMetadata {
+				maybe_currency_id: Some(BNC),
+				maybe_location: Some(MultiLocation::new(
+					1,
+					X2(
+						Parachain(parachains::bifrost::ID),
+						GeneralKey(parachains::bifrost::BNC_KEY.to_vec())
+					),
+				))
+			}))
+		));
+	});
 
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100_000_000_000_000));
@@ -131,7 +157,7 @@ fn transfer_sibling_chain_asset() {
 
 	Sibling::execute_with(|| {
 		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 90_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 9_989_760_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 9_999_360_000_000);
 
 		assert_ok!(XTokens::transfer(
 			Origin::signed(BOB.into()),
@@ -154,7 +180,7 @@ fn transfer_sibling_chain_asset() {
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 95_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 4_989_760_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 4_999_360_000_000);
 	});
 
 	Karura::execute_with(|| {
@@ -368,19 +394,55 @@ fn test_asset_registry_module() {
 		// register foreign asset
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(1, X2(Parachain(2001), GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),).into()),
 			Box::new(AssetMetadata {
-				name: b"Sibling Token".to_vec(),
-				symbol: b"ST".to_vec(),
+				name: b"Sibling BNC".to_vec(),
+				symbol: b"BNC".to_vec(),
 				decimals: 12,
 				minimal_balance: Balances::minimum_balance() / 10, // 10%
 			})
 		));
-
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
-			0
-		);
+		assert_ok!(AssetRegistry::set_foreign_asset_extra_metadata(
+			Origin::root(),
+			0,
+			Box::new(Some(ForeignAssetExtraMetadata {
+				maybe_currency_id: Some(BNC),
+				maybe_location: Some(MultiLocation::new(
+					1,
+					X2(
+						Parachain(parachains::bifrost::ID),
+						GeneralKey(parachains::bifrost::BNC_KEY.to_vec())
+					),
+				))
+			}))
+		));
+	});
+	Sibling::execute_with(|| {
+		// register foreign asset
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),).into()),
+			Box::new(AssetMetadata {
+				name: b"Karura BNC".to_vec(),
+				symbol: b"BNC".to_vec(),
+				decimals: 12,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
+			})
+		));
+		assert_ok!(AssetRegistry::set_foreign_asset_extra_metadata(
+			Origin::root(),
+			0,
+			Box::new(Some(ForeignAssetExtraMetadata {
+				maybe_currency_id: Some(BNC),
+				maybe_location: Some(MultiLocation::new(
+					1,
+					X2(
+						Parachain(parachains::bifrost::ID),
+						GeneralKey(parachains::bifrost::BNC_KEY.to_vec())
+					),
+				))
+			}))
+		));
 	});
 
 	Sibling::execute_with(|| {
@@ -413,19 +475,13 @@ fn test_asset_registry_module() {
 	});
 
 	Karura::execute_with(|| {
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			4_989_760_000_000
-		);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 4_989_760_000_000);
 		// ToTreasury
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
-			10_240_000_000
-		);
+		assert_eq!(Tokens::free_balance(BNC, &TreasuryAccount::get()), 10_240_000_000);
 
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
-			CurrencyId::ForeignAsset(0),
+			BNC,
 			1_000_000_000_000,
 			Box::new(
 				MultiLocation::new(
@@ -443,36 +499,12 @@ fn test_asset_registry_module() {
 			1_000_000_000,
 		));
 
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			3_989_760_000_000
-		);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 3_989_760_000_000);
 	});
 
 	Sibling::execute_with(|| {
 		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 4_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 95_989_760_000_000);
-	});
-
-	// remove it
-	Karura::execute_with(|| {
-		// register foreign asset
-		assert_ok!(AssetRegistry::update_foreign_asset(
-			Origin::root(),
-			0,
-			Box::new(MultiLocation::new(1, X2(Parachain(2001), GeneralKey(BNC_KEY.to_vec()))).into()),
-			Box::new(AssetMetadata {
-				name: b"Sibling Token".to_vec(),
-				symbol: b"ST".to_vec(),
-				decimals: 12,
-				minimal_balance: 0, // buy_weight 0
-			})
-		));
-	});
-
-	Sibling::execute_with(|| {
-		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 4_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 95_989_760_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 95_999_360_000_000);
 
 		assert_ok!(XTokens::transfer(
 			Origin::signed(BOB.into()),
@@ -495,20 +527,14 @@ fn test_asset_registry_module() {
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 9_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 90_989_760_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 90_999_360_000_000);
 	});
 
 	Karura::execute_with(|| {
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			8_979_520_000_000
-		);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 8_979_520_000_000);
 
 		// ToTreasury
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
-			20_480_000_000
-		);
+		assert_eq!(Tokens::free_balance(BNC, &TreasuryAccount::get()), 20_480_000_000);
 	});
 }
 

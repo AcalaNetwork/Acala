@@ -157,14 +157,6 @@ parameter_types! {
 		// BNC:KSM = 80:1
 		ksm_per_second() * 80
 	);
-	pub BncPerSecondOfCanonicalLocation: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
-		).into(),
-		// BNC:KSM = 80:1
-		ksm_per_second() * 80
-	);
 	pub VsksmPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
@@ -201,7 +193,6 @@ pub type Trader = (
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
 	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
-	FixedRateOfFungible<BncPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
@@ -445,16 +436,13 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			MultiLocation {
 				parents: 0,
 				interior: X1(GeneralKey(key)),
-			} => match &key[..] {
-				parachains::bifrost::BNC_KEY => Some(Token(BNC)),
-				key => {
-					let currency_id = CurrencyId::decode(&mut &*key).ok()?;
-					match currency_id {
-						Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
-						_ => None,
-					}
+			} => {
+				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+				match currency_id {
+					Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+					_ => None,
 				}
-			},
+			}
 			_ => None,
 		}
 	}
