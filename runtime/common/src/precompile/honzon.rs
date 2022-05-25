@@ -259,7 +259,7 @@ where
 					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::GetCurrentCollateralRatio => {
-				/*let read_account = InputPricer::<Runtime>::read_accounts(1);
+				let read_account = InputPricer::<Runtime>::read_accounts(1);
 				let currency_id = input.currency_id_at(2)?;
 				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
 				let weight = <Runtime as module_honzon::Config>::WeightInfo::precompile_get_current_collateral_ratio();
@@ -267,9 +267,7 @@ where
 				Self::BASE_COST
 					.saturating_add(read_account)
 					.saturating_add(read_currency)
-					.saturating_add(WeightToGas::convert(weight))*/
-
-				1
+					.saturating_add(WeightToGas::convert(weight))
 			}
 		};
 		Ok(cost)
