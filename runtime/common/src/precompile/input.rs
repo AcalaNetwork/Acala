@@ -243,6 +243,11 @@ impl Output {
 		ethabi::encode(&[out])
 	}
 
+	pub fn encode_fixed_bytes(&self, b: &[u8]) -> Vec<u8> {
+		let out = Token::FixedBytes(b.to_vec());
+		ethabi::encode(&[out])
+	}
+
 	pub fn encode_address(&self, b: &H160) -> Vec<u8> {
 		let out = Token::Address(H160::from_slice(b.as_bytes()));
 		ethabi::encode(&[out])

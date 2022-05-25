@@ -56,7 +56,7 @@ jobs:
         id: srtool_build
         uses: chevdor/srtool-actions@master
         env:
-          BUILD_OPTS: "--features on-chain-release-build"
+          BUILD_OPTS: "--features on-chain-release-build,no-metadata-docs"
         with:
           chain: ${{ github.event.inputs.chain }}
           tag: ${{ github.event.inputs.srtool_image }}
