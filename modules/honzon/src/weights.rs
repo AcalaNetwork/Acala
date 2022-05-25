@@ -34,24 +34,39 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --template=./templates/runtime-weight-template.hbs
+// --template=./templates/module-weight-template.hbs
 // --output=./modules/honzon/src/weights.rs
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
+#![allow(clippy::unnecessary_cast)]
 
-use frame_support::{traits::Get, weights::Weight};
+use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use sp_std::marker::PhantomData;
 
-/// Weight functions for module_honzon.
-pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
+/// Weight functions needed for module_honzon.
+pub trait WeightInfo {
+	fn authorize() -> Weight;
+	fn unauthorize() -> Weight;
+	fn unauthorize_all(c: u32, ) -> Weight;
+	fn adjust_loan() -> Weight;
+	fn transfer_loan_from() -> Weight;
+	fn close_loan_has_debit_by_dex() -> Weight;
+	fn expand_position_collateral() -> Weight;
+	fn shrink_position_debit() -> Weight;
+	fn transfer_debit() -> Weight;
+	fn precompile_get_current_collateral_ratio() -> Weight;
+}
+
+/// Weights for module_honzon using the Acala node and recommended hardware.
+pub struct AcalaWeight<T>(PhantomData<T>);
+impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Honzon Authorization (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn authorize() -> Weight {
-		(32_014_000 as Weight)
+		(30_239_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
@@ -59,7 +74,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Honzon Authorization (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn unauthorize() -> Weight {
-		(34_547_000 as Weight)
+		(32_095_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
@@ -67,9 +82,9 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Balances Reserves (r:1 w:0)
 	// Storage: Honzon Authorization (r:0 w:1)
 	fn unauthorize_all(c: u32, ) -> Weight {
-		(27_839_000 as Weight)
-			// Standard Error: 391_000
-			.saturating_add((2_513_000 as Weight).saturating_mul(c as Weight))
+		(24_913_000 as Weight)
+			// Standard Error: 328_000
+			.saturating_add((3_381_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
@@ -89,7 +104,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: AcalaOracle Values (r:1 w:0)
 	// Storage: AssetRegistry AssetMetadatas (r:2 w:0)
 	fn adjust_loan() -> Weight {
-		(101_566_000 as Weight)
+		(107_041_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(16 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
@@ -107,7 +122,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	// Storage: Loans TotalPositions (r:1 w:1)
 	fn transfer_loan_from() -> Weight {
-		(89_111_000 as Weight)
+		(91_702_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(17 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
@@ -135,7 +150,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: StableAsset Pools (r:1 w:0)
 	// Storage: AggregatedDex AggregatedSwapPaths (r:1 w:0)
 	fn close_loan_has_debit_by_dex() -> Weight {
-		(256_419_000 as Weight)
+		(269_601_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(35 as Weight))
 			.saturating_add(T::DbWeight::get().writes(16 as Weight))
 	}
@@ -157,7 +172,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: AcalaOracle Values (r:1 w:0)
 	// Storage: AssetRegistry AssetMetadatas (r:2 w:0)
 	fn expand_position_collateral() -> Weight {
-		(168_666_000 as Weight)
+		(172_811_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(23 as Weight))
 			.saturating_add(T::DbWeight::get().writes(12 as Weight))
 	}
@@ -176,7 +191,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Loans TotalPositions (r:1 w:1)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	fn shrink_position_debit() -> Weight {
-		(168_193_000 as Weight)
+		(177_477_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(19 as Weight))
 			.saturating_add(T::DbWeight::get().writes(13 as Weight))
 	}
@@ -194,7 +209,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Homa ToBondPool (r:1 w:0)
 	// Storage: Homa TotalVoidLiquid (r:1 w:0)
 	fn transfer_debit() -> Weight {
-		(144_918_000 as Weight)
+		(151_555_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(21 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
@@ -208,7 +223,63 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Homa TotalVoidLiquid (r:1 w:0)
 	// Storage: CdpEngine DebitExchangeRate (r:1 w:0)
 	fn precompile_get_current_collateral_ratio() -> Weight {
-		(32_674_000 as Weight)
+		(32_723_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
+	}
+}
+
+// For backwards compatibility and tests
+impl WeightInfo for () {
+	fn authorize() -> Weight {
+		(30_239_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+	}
+	fn unauthorize() -> Weight {
+		(32_095_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+	}
+	fn unauthorize_all(c: u32, ) -> Weight {
+		(24_913_000 as Weight)
+			// Standard Error: 328_000
+			.saturating_add((3_381_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+	}
+	fn adjust_loan() -> Weight {
+		(107_041_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(16 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(8 as Weight))
+	}
+	fn transfer_loan_from() -> Weight {
+		(91_702_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(17 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(8 as Weight))
+	}
+	fn close_loan_has_debit_by_dex() -> Weight {
+		(269_601_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(35 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(16 as Weight))
+	}
+	fn expand_position_collateral() -> Weight {
+		(172_811_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(23 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(12 as Weight))
+	}
+	fn shrink_position_debit() -> Weight {
+		(177_477_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(19 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(13 as Weight))
+	}
+	fn transfer_debit() -> Weight {
+		(151_555_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(21 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
+	}
+	fn precompile_get_current_collateral_ratio() -> Weight {
+		(32_723_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
 	}
 }
