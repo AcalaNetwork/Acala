@@ -157,7 +157,7 @@ where
 				// SCHEDULER,
 				DEX,
 				// STABLE_ASSET,
-				// Homa,
+				// HOMA,
 				EVM_ACCOUNTS,
 				// HONZON
 			]),

@@ -48,11 +48,10 @@ pub use primitives::{
 use scale_info::TypeInfo;
 use sp_core::{H160, H256};
 use sp_runtime::{
-	testing::TestXt,
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
 	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent,
 };
-use sp_std::{cell::RefCell, prelude::*};
+use sp_std::prelude::*;
 use xcm::latest::prelude::*;
 
 pub type AccountId = AccountId32;
@@ -432,7 +431,7 @@ impl module_cdp_engine::Config for Test {
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
-	type DEX = ();
+	type DEX = DexModule;
 	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
 	type WeightInfo = ();
 }
@@ -465,18 +464,10 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 }
 
-thread_local! {
-	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
-}
-
-pub fn mock_shutdown() {
-	IS_SHUTDOWN.with(|v| *v.borrow_mut() = true)
-}
-
 pub struct MockEmergencyShutdown;
 impl EmergencyShutdown for MockEmergencyShutdown {
 	fn is_shutdown() -> bool {
-		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+		false
 	}
 }
 
@@ -494,7 +485,7 @@ impl module_cdp_treasury::Config for Test {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type DEX = ();
+	type DEX = DexModule;
 	type MaxAuctionsCount = ConstU32<10_000>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = CDPTreasuryAccount;
@@ -694,8 +685,8 @@ parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![0, 1, 2];
 	pub const BondingDuration: EraIndex = 28;
-	pub static MintThreshold: Balance = 0;
-	pub static RedeemThreshold: Balance = 0;
+	pub const MintThreshold: Balance = 0;
+	pub const RedeemThreshold: Balance = 0;
 }
 
 impl module_homa::Config for Test {
@@ -792,15 +783,12 @@ frame_support::construct_runtime!(
 	}
 );
 
-/// An extrinsic type used for tests.
-pub type Extrinsic = TestXt<Call, ()>;
-
 impl<LocalCall> SendTransactionTypes<LocalCall> for Test
 where
 	Call: From<LocalCall>,
 {
 	type OverarchingCall = Call;
-	type Extrinsic = Extrinsic;
+	type Extrinsic = UncheckedExtrinsic;
 }
 
 #[cfg(test)]

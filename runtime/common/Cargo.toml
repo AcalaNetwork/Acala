@@ -62,6 +62,7 @@ nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path =
 module-honzon = { path = "../../modules/honzon", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
 module-cdp-engine = { path = "../../modules/cdp-engine", default-features = false }
+module-cdp-treasury = { path = "../../modules/cdp-treasury", default-features = false, optional = true }
 
 # orml
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -70,9 +71,6 @@ orml-bencher = { path = "../../orml/bencher", default-features = false, optional
 orml-tokens = { path = "../../orml/tokens", default-features = false, optional = true }
 orml-nft = { path = "../../orml/nft", default-features = false, optional = true }
 orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }
-
-[dev-dependencies]
-module-cdp-treasury = { path = "../../modules/cdp-treasury" }
 
 [features]
 default = ["std"]
@@ -123,6 +121,7 @@ std = [
 	"module-loans/std",
 	"module-cdp-engine/std",
 	"module-honzon/std",
+	"module-cdp-treasury/std",
 
 	"xcm/std",
 	"xcm-executor/std",
@@ -150,6 +149,7 @@ bench = [
 
 	"module-asset-registry",
 	"module-evm-bridge",
+	"module-cdp-treasury",
 
 	"xcm/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
