@@ -115,6 +115,27 @@ pub mod module {
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub incomes: Vec<(IncomeSource, Vec<(T::AccountId, u32)>)>,
+		pub treasuries: Vec<(T::AccountId, Vec<(T::AccountId, u32)>)>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig {
+				incomes: Default::default(),
+				treasuries: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {}
+	}
+
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_: T::BlockNumber) -> Weight {
@@ -215,7 +236,6 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balance> for Pallet<T> {
-	// TODO: maybe use `Happened<(AccountId,CurrencyId,Balance)>` instead of new trait?
 	fn on_fee_changed(
 		income: IncomeSource,
 		account_id: Option<&T::AccountId>,
@@ -256,10 +276,10 @@ where
 				tips.merge_into(&mut fees);
 			}
 
-			let split = fees.ration(100 - TP::get(), TP::get());
-			let _ = <T as Config>::Currency::resolve_creating(&T::NetworkTreasuryPoolAccount::get(), split.0);
-			let _ = <T as Config>::Currency::resolve_creating(&TC::get(), split.1);
-			// TODO: deposit event
+			let split = fees.ration(100_u32.saturating_sub(TP::get()), TP::get());
+			<T as Config>::Currency::resolve_creating(&T::NetworkTreasuryPoolAccount::get(), split.0);
+			<T as Config>::Currency::resolve_creating(&TC::get(), split.1);
+			// TODO: deposit event?
 		}
 	}
 }
@@ -273,8 +293,8 @@ impl<T: Config> OnUnbalanced<NegativeImbalanceOf<T>> for Pallet<T> {
 			}
 
 			// Must resolve into existing but better to be safe.
-			let _ = T::Currency::resolve_creating(&T::NetworkTreasuryPoolAccount::get(), fees);
-			// TODO: deposit event
+			T::Currency::resolve_creating(&T::NetworkTreasuryPoolAccount::get(), fees);
+			// TODO: deposit event?
 		}
 	}
 }

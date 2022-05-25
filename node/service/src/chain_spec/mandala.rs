@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
+use acala_primitives::{orml_traits::GetByKey, AccountId, Balance, IncomeSource, TokenSymbol};
 use coins_bip39::{English, Mnemonic, Wordlist};
 use elliptic_curve::sec1::ToEncodedPoint;
 use hex_literal::hex;
@@ -24,14 +24,21 @@ use k256::{
 	ecdsa::{SigningKey, VerifyingKey},
 	EncodedPoint as K256PublicKey,
 };
-use runtime_common::evm_genesis;
+use mandala_runtime::{FeesConfig, TreasuryPalletId};
+use runtime_common::{
+	evm_genesis, CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonInsuranceRewardPool,
+	HonzonLiquitationRewardPool, HonzonTreasuryPool, NetworkTreasuryPool, StakingRewardPool,
+};
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, sr25519, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
-use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
+use sp_runtime::{
+	traits::{AccountIdConversion, Zero},
+	FixedPointNumber, FixedU128,
+};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 use tiny_keccak::{Hasher, Keccak};
 
@@ -498,6 +505,7 @@ fn testnet_genesis(
 			safe_xcm_version: Some(2),
 		},
 		phragmen_election: Default::default(),
+		fees: fees_config(),
 	}
 }
 
@@ -680,5 +688,49 @@ fn mandala_genesis(
 			safe_xcm_version: Some(2),
 		},
 		phragmen_election: Default::default(),
+		fees: fees_config(),
+	}
+}
+
+fn fees_config() -> FeesConfig {
+	FeesConfig {
+		incomes: vec![
+			(
+				IncomeSource::TxFee,
+				vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
+			),
+			(IncomeSource::XcmFee, vec![(NetworkTreasuryPool::get(), 100)]),
+			(IncomeSource::DexSwapFee, vec![(NetworkTreasuryPool::get(), 100)]),
+			(
+				IncomeSource::HonzonStabilityFee,
+				vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 30)],
+			),
+			(
+				IncomeSource::HonzonLiquidationFee,
+				vec![(NetworkTreasuryPool::get(), 30), (HonzonTreasuryPool::get(), 70)],
+			),
+			(
+				IncomeSource::HomaStakingRewardFee,
+				vec![(NetworkTreasuryPool::get(), 70), (HomaTreasuryPool::get(), 30)],
+			),
+		],
+		treasuries: vec![
+			(
+				NetworkTreasuryPool::get(),
+				vec![
+					(StakingRewardPool::get(), 70),
+					(CollatorsRewardPool::get(), 10),
+					(EcosystemRewardPool::get(), 10),
+					(TreasuryPalletId::get().into_account(), 10),
+				],
+			),
+			(
+				HonzonTreasuryPool::get(),
+				vec![
+					(HonzonInsuranceRewardPool::get(), 30),
+					(HonzonLiquitationRewardPool::get(), 70),
+				],
+			),
+		],
 	}
 }

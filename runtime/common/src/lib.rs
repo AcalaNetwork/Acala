@@ -20,40 +20,20 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub use check_nonce::CheckNonce;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::Get;
 use frame_support::{
 	parameter_types,
-	traits::{Contains, EnsureOneOf},
+	traits::{Contains, EnsureOneOf, Get},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 		DispatchClass, Weight,
 	},
-	RuntimeDebug,
+	PalletId, RuntimeDebug,
 };
 use frame_system::{limits, EnsureRoot};
-pub use module_support::{ExchangeRate, FeeToTreasuryPool, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{evm::is_system_contract, Balance, CurrencyId, IncomeSource, Nonce};
-use scale_info::TypeInfo;
-use sp_core::{Bytes, H160};
-use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, FixedPointNumber, Perbill};
-use sp_std::collections::btree_map::BTreeMap;
-use static_assertions::const_assert;
-
-#[cfg(feature = "std")]
-use sp_core::bytes::from_hex;
-#[cfg(feature = "std")]
-use std::str::FromStr;
-
-pub mod bench;
-pub mod check_nonce;
-pub mod precompile;
-
-#[cfg(test)]
-mod mock;
-
-pub use check_nonce::CheckNonce;
 use module_evm::GenesisAccount;
+pub use module_support::{ExchangeRate, FeeToTreasuryPool, PrecompileCallerFilter, Price, Rate, Ratio};
 use orml_traits::GetByKey;
 pub use precompile::{
 	AllPrecompiles, DEXPrecompile, EVMPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile,
@@ -63,12 +43,32 @@ pub use primitives::{
 	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
 	AccountId,
 };
+use primitives::{evm::is_system_contract, Balance, CurrencyId, IncomeSource, Nonce};
+use scale_info::TypeInfo;
+use sp_core::{Bytes, H160};
+use sp_runtime::{
+	traits::{AccountIdConversion, Convert},
+	transaction_validity::TransactionPriority,
+	FixedPointNumber, Perbill,
+};
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::{marker::PhantomData, prelude::*};
+use static_assertions::const_assert;
 pub use xcm::latest::prelude::*;
 pub use xcm_builder::TakeRevenue;
 pub use xcm_executor::{traits::DropAssets, Assets};
 
+#[cfg(feature = "std")]
+use sp_core::bytes::from_hex;
+#[cfg(feature = "std")]
+use std::str::FromStr;
+
+pub mod bench;
+pub mod check_nonce;
 mod gas_to_weight_ratio;
+#[cfg(test)]
+mod mock;
+pub mod precompile;
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
@@ -488,6 +488,20 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 	}
 
 	accounts
+}
+
+// Fee distribution related system account.
+parameter_types! {
+	// Treasury pools
+	pub NetworkTreasuryPool: AccountId = PalletId(*b"aca/nktp").into_account();
+	pub HonzonTreasuryPool: AccountId = PalletId(*b"aca/hztp").into_account();
+	pub HomaTreasuryPool: AccountId = PalletId(*b"aca/hmtp").into_account();
+	// Incentive reward Pools
+	pub HonzonInsuranceRewardPool: AccountId = PalletId(*b"aca/hirp").into_account();
+	pub HonzonLiquitationRewardPool: AccountId = PalletId(*b"aca/hlrp").into_account();
+	pub StakingRewardPool: AccountId = PalletId(*b"aca/strp").into_account();
+	pub CollatorsRewardPool: AccountId = PalletId(*b"aca/clrp").into_account();
+	pub EcosystemRewardPool: AccountId = PalletId(*b"aca/esrp").into_account();
 }
 
 #[cfg(test)]

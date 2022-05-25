@@ -83,6 +83,7 @@ ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
 module-collator-selection = { path = "../../modules/collator-selection" }
 module-evm = { path = "../../modules/evm" }
 module-nft = { path = "../../modules/nft" }
+#fees = { path = "../../modules/fees" }
 orml-oracle-rpc = { path = "../../orml/oracle/rpc" }
 orml-tokens-rpc = { path = "../../orml/tokens/rpc" }
 acala-primitives = { path = "../../primitives" }

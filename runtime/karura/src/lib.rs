@@ -97,15 +97,16 @@ pub use primitives::{
 	TradingPair,
 };
 pub use runtime_common::{
-	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles,
-	EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil,
-	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
-	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
+	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles, CollatorsRewardPool,
+	EcosystemRewardPool, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
+	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
+	EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
 	ExistentialDepositsTimesOneHundred, FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight,
 	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
-	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
-	RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	HomaTreasuryPool, HonzonInsuranceRewardPool, HonzonLiquitationRewardPool, HonzonTreasuryPool, MaxTipsOfPriority,
+	NetworkTreasuryPool, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
+	RuntimeBlockLength, RuntimeBlockWeights, StakingRewardPool, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
 	PHA, RENBTC, VSKSM,
 };
@@ -192,6 +193,15 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
 		HonzonBridgePalletId::get().into_account(),
+		// treasury pools and incentive pools
+		NetworkTreasuryPool::get(),
+		HonzonTreasuryPool::get(),
+		HomaTreasuryPool::get(),
+		HonzonInsuranceRewardPool::get(),
+		HonzonLiquitationRewardPool::get(),
+		StakingRewardPool::get(),
+		CollatorsRewardPool::get(),
+		EcosystemRewardPool::get(),
 	]
 }
 
