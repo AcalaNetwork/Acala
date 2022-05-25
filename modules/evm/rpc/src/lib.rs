@@ -174,6 +174,18 @@ where
 
 		let block_id = BlockId::Hash(hash);
 
+		if !self
+			.client
+			.runtime_api()
+			.has_api::<dyn EVMRuntimeRPCApi<B, Balance>>(&block_id)
+			.unwrap_or(false)
+		{
+			return Err(internal_err(format!(
+				"Could not find `EVMRuntimeRPCApi` api for block `{:?}`.",
+				&block_id
+			)));
+		}
+
 		log::debug!(target: "evm", "rpc call, request: {:?}", request);
 
 		let CallRequest {
@@ -278,6 +290,18 @@ where
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
 		let block_id = BlockId::Hash(hash);
+
+		if !self
+			.client
+			.runtime_api()
+			.has_api::<dyn EVMRuntimeRPCApi<B, Balance>>(&block_id)
+			.unwrap_or(false)
+		{
+			return Err(internal_err(format!(
+				"Could not find `EVMRuntimeRPCApi` api for block `{:?}`.",
+				&block_id
+			)));
+		}
 
 		let block_limits = self.block_limits(at)?;
 
