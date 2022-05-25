@@ -1200,7 +1200,11 @@ parameter_types! {
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT, RENBTC];
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
+	pub ToCollcator: AccountId = CollatorPotId::get().into_account();
+	pub const ToCollatorPercent: u32 = 20;
 }
+
+pub type DealWithFees = module_fees::DealWithTxFees<Runtime, ToCollcator, ToCollatorPercent>;
 
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
@@ -1208,7 +1212,7 @@ impl module_transaction_payment::Config for Runtime {
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
-	type OnTransactionPayment = Fees;
+	type OnTransactionPayment = DealWithFees;
 	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
 	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;

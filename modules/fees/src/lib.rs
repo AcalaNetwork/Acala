@@ -240,8 +240,31 @@ impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balanc
 	}
 }
 
-/// Transaction payment module `OnTransactionPayment` distribution transaction fee.
-/// The `IncomeSource` is `TxFee`.
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct DealWithTxFees<T: Config + Send + Sync, TC, TP>(PhantomData<(T, TC, TP)>);
+
+/// Transaction fee distribution to treasury pool and selected collator.
+impl<T: Config + Send + Sync, TC, TP> OnUnbalanced<NegativeImbalanceOf<T>> for DealWithTxFees<T, TC, TP>
+where
+	TC: Get<T::AccountId>,
+	TP: Get<u32>,
+{
+	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalanceOf<T>>) {
+		if let Some(mut fees) = fees_then_tips.next() {
+			if let Some(tips) = fees_then_tips.next() {
+				tips.merge_into(&mut fees);
+			}
+
+			let split = fees.ration(100 - TP::get(), TP::get());
+			let _ = <T as Config>::Currency::resolve_creating(&T::NetworkTreasuryPoolAccount::get(), split.0);
+			let _ = <T as Config>::Currency::resolve_creating(&TC::get(), split.1);
+			// TODO: deposit event
+		}
+	}
+}
+
+/// Transaction fee all distribution to treasury pool account.
 impl<T: Config> OnUnbalanced<NegativeImbalanceOf<T>> for Pallet<T> {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalanceOf<T>>) {
 		if let Some(mut fees) = fees_then_tips.next() {
