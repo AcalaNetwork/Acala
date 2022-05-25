@@ -453,6 +453,7 @@ parameter_types! {
 impl Config for Runtime {
 	type DEX = Dex;
 	type StableAsset = MockStableAsset;
+	type GovernanceOrigin = EnsureSignedBy<Admin, AccountId>;
 	type DexSwapJointList = DexSwapJointList;
 	type SwapPathLimit = ConstU32<3>;
 	type WeightInfo = ();

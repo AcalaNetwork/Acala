@@ -53,7 +53,7 @@ use frame_system::{EnsureRoot, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::BasicCurrencyAdapter;
-use module_evm::{CallInfo, CreateInfo, EvmChainId, EvmTask, Runner};
+use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask};
@@ -125,7 +125,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2063,
+	spec_version: 2064,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1099,12 +1099,13 @@ impl module_dex::Config for Runtime {
 impl module_aggregated_dex::Config for Runtime {
 	type DEX = Dex;
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
 	type WeightInfo = ();
 }
 
-pub type AcalaSwap = module_aggregated_dex::DexSwap<Runtime>;
+pub type AcalaSwap = module_aggregated_dex::AggregatedSwap<Runtime>;
 
 impl module_dex_oracle::Config for Runtime {
 	type DEX = Dex;
@@ -1726,36 +1727,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	EvmChainIdMigration,
->;
-
-// TODO: remove
-pub struct EvmChainIdMigration;
-impl OnRuntimeUpgrade for EvmChainIdMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		module_evm::ChainId::<Runtime>::put(787);
-
-		<Runtime as frame_system::Config>::BlockWeights::get().max_block
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		frame_support::ensure!(EvmChainId::<Runtime>::get() == 0, "must upgrade linearly");
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		frame_support::ensure!(EvmChainId::<Runtime>::get() == 787, "must upgrade");
-		Ok(())
-	}
-}
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -1942,33 +1915,19 @@ impl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			estimate: bool,
+			_estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			if estimate {
-				module_evm::runner::stack::Runner::<Runtime>::call(
-					from,
-					from,
-					to,
-					data,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					<Runtime as module_evm::Config>::config(),
-				)
-			} else {
-				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_call(
-					from,
-					from,
-					to,
-					data,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					<Runtime as module_evm::Config>::config(),
-				)
-			}
+			<Runtime as module_evm::Config>::Runner::rpc_call(
+				from,
+				from,
+				to,
+				data,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				<Runtime as module_evm::Config>::config(),
+			)
 		}
 
 		fn create(
@@ -1978,29 +1937,17 @@ impl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			estimate: bool,
+			_estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
-			if estimate {
-				module_evm::runner::stack::Runner::<Runtime>::create(
-					from,
-					data,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					<Runtime as module_evm::Config>::config(),
-				)
-			} else {
-				<module_evm::runner::stack::Runner::<Runtime> as module_evm::runner::RunnerExtended<Runtime>>::rpc_create(
-					from,
-					data,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					<Runtime as module_evm::Config>::config(),
-				)
-			}
+			<Runtime as module_evm::Config>::Runner::rpc_create(
+				from,
+				data,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				<Runtime as module_evm::Config>::config(),
+			)
 		}
 
 		fn get_estimate_resources_request(extrinsic: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError> {
