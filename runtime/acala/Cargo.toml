@@ -1,6 +1,6 @@
 [package]
 name = "acala-runtime"
-version = "2.6.2"
+version = "2.6.4"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -118,6 +118,7 @@ module-xcm-interface = { path = "../../modules/xcm-interface", default-features 
 module-session-manager = { path = "../../modules/session-manager", default-features = false }
 module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["polkadot"] }
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
+module-aggregated-dex = { path = "../../modules/aggregated-dex", default-features = false }
 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
@@ -242,6 +243,7 @@ std = [
 	"module-session-manager/std",
 	"module-relaychain/std",
 	"module-idle-scheduler/std",
+	"module-aggregated-dex/std",
 	"primitives/std",
 	"runtime-common/std",
 

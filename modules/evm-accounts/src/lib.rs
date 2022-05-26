@@ -86,7 +86,7 @@ pub mod module {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(fn deposit_event)]
+	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Mapping between Substrate accounts and EVM accounts
 		/// claim account.
@@ -182,17 +182,7 @@ pub mod module {
 		#[pallet::weight(T::WeightInfo::claim_default_account())]
 		pub fn claim_default_account(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-
-			// ensure account_id has not been mapped
-			ensure!(!EvmAddresses::<T>::contains_key(&who), Error::<T>::AccountIdHasMapped);
-
-			let eth_address = T::AddressMapping::get_or_create_evm_address(&who);
-
-			Self::deposit_event(Event::ClaimAccount {
-				account_id: who,
-				evm_address: eth_address,
-			});
-
+			let _ = Self::do_claim_default_evm_address(who)?;
 			Ok(())
 		}
 	}
@@ -256,6 +246,20 @@ impl<T: Config> Pallet<T> {
 		domain_seperator_msg.extend_from_slice(&to_bytes(T::ChainId::get())); // chain id
 		domain_seperator_msg.extend_from_slice(frame_system::Pallet::<T>::block_hash(T::BlockNumber::zero()).as_ref()); // genesis block hash
 		keccak_256(domain_seperator_msg.as_slice())
+	}
+
+	fn do_claim_default_evm_address(who: T::AccountId) -> Result<EvmAddress, DispatchError> {
+		// ensure account_id has not been mapped
+		ensure!(!EvmAddresses::<T>::contains_key(&who), Error::<T>::AccountIdHasMapped);
+
+		let eth_address = T::AddressMapping::get_or_create_evm_address(&who);
+
+		Self::deposit_event(Event::ClaimAccount {
+			account_id: who,
+			evm_address: eth_address,
+		});
+
+		Ok(eth_address)
 	}
 }
 
@@ -371,5 +375,11 @@ impl<T: Config> EVMAccountsManager<T::AccountId> for Pallet<T> {
 	/// AccountId.
 	fn get_evm_address(account_id: &T::AccountId) -> Option<EvmAddress> {
 		T::AddressMapping::get_evm_address(account_id)
+	}
+
+	/// Claim account mapping between AccountId and a generated EvmAddress based off of the
+	/// AccountId.
+	fn claim_default_evm_address(account_id: &T::AccountId) -> Result<EvmAddress, DispatchError> {
+		Self::do_claim_default_evm_address(account_id.clone())
 	}
 }

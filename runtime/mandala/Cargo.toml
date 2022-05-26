@@ -1,6 +1,6 @@
 [package]
 name = "mandala-runtime"
-version = "2.6.2"
+version = "2.6.4"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -126,6 +126,7 @@ module-nominees-election = { path = "../../modules/nominees-election", default-f
 module-session-manager = { path = "../../modules/session-manager", default-features = false }
 module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["polkadot"]}
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
+module-aggregated-dex = { path = "../../modules/aggregated-dex", default-features = false }
 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
@@ -142,6 +143,7 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
 sp-trie = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
 
 cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.19" }
 cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.19" }
@@ -260,6 +262,7 @@ std = [
 	"module-session-manager/std",
 	"module-relaychain/std",
 	"module-idle-scheduler/std",
+	"module-aggregated-dex/std",
 	"primitives/std",
 	"runtime-common/std",
 

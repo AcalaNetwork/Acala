@@ -112,7 +112,7 @@ pub mod module {
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// DEX to supply liquidity info
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
 		/// Emergency shutdown.
 		type EmergencyShutdown: EmergencyShutdown;

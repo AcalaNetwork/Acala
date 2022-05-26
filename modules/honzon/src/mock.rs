@@ -38,7 +38,7 @@ use sp_runtime::{
 };
 use sp_std::cell::RefCell;
 use support::mocks::MockStableAsset;
-use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio};
+use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio, SpecificJointsSwap};
 
 mod honzon {
 	pub use super::super::*;
@@ -202,6 +202,9 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 	pub TreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![AUSD],
+	];
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -211,6 +214,7 @@ impl cdp_treasury::Config for Runtime {
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();
+	type Swap = SpecificJointsSwap<(), AlternativeSwapPathJointList>;
 	type MaxAuctionsCount = ConstU32<10_000>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
@@ -271,6 +275,7 @@ impl cdp_engine::Config for Runtime {
 	type LiquidationEvmBridge = ();
 	type PalletId = CDPEnginePalletId;
 	type EvmAddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
+	type Swap = SpecificJointsSwap<(), AlternativeSwapPathJointList>;
 	type WeightInfo = ();
 }
 
