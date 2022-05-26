@@ -1368,7 +1368,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 			// can't fail as ensured `settlement_contracts_len` non-zero
 			let start_at = (now as usize) % settlement_contracts_len;
 			let mut all: Vec<EvmAddress> = settlement_contracts.into();
-			let mut right = all.split_off(start_at.into());
+			let mut right = all.split_off(start_at);
 			right.append(&mut all);
 			right
 		};
@@ -1376,7 +1376,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 		// try liquidation on each contract
 		for contract in contracts_by_priority.into_iter() {
 			let repay_dest_balance = CurrencyOf::<T>::free_balance(stable_coin, &repay_dest_account_id);
-			if let Ok(_) = T::LiquidationEvmBridge::liquidate(
+			if T::LiquidationEvmBridge::liquidate(
 				InvokeContext {
 					contract,
 					sender: Default::default(),
@@ -1386,7 +1386,9 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 				repay_dest,
 				collateral_supply,
 				target_stable_amount,
-			) {
+			)
+			.is_ok()
+			{
 				let repayment = CurrencyOf::<T>::free_balance(stable_coin, &repay_dest_account_id)
 					.saturating_sub(repay_dest_balance);
 				let contract_account_id = T::EvmAddressMapping::get_account_id(&contract);
