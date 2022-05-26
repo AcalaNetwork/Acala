@@ -49,11 +49,13 @@ use sp_runtime::{
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{AccountIdConversion, Bounded, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
+	traits::{
+		AccountIdConversion, BlockNumberProvider, Bounded, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero,
+	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
-	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
+	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 use support::{
@@ -1334,6 +1336,12 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 		amount: Balance,
 		target_stable_amount: Balance,
 	) -> DispatchResult {
+		let settlement_contracts = Pallet::<T>::settlement_contracts();
+		let settlement_contracts_len = settlement_contracts.len();
+		if settlement_contracts_len.is_zero() {
+			return Err(Error::<T>::LiquidationFailed.into());
+		}
+
 		let max_supply_limit = Ratio::one()
 			.saturating_sub(T::MaxLiquidationContractSlippage::get())
 			.reciprocal()
@@ -1353,8 +1361,20 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 
 		let stable_coin = T::GetStableCurrencyId::get();
 
-		//TODO: randomly choose
-		for contract in Pallet::<T>::settlement_contracts().into_iter() {
+		let contracts_by_priority = {
+			let now: u32 = frame_system::Pallet::<T>::current_block_number()
+				.try_into()
+				.map_err(|_| ArithmeticError::Overflow)?;
+			// can't fail as ensured `settlement_contracts_len` non-zero
+			let start_at = (now as usize) % settlement_contracts_len;
+			let mut all: Vec<EvmAddress> = settlement_contracts.into();
+			let mut right = all.split_off(start_at.into());
+			right.append(&mut all);
+			right
+		};
+
+		// try liquidation on each contract
+		for contract in contracts_by_priority.into_iter() {
 			let repay_dest_balance = CurrencyOf::<T>::free_balance(stable_coin, &repay_dest_account_id);
 			if let Ok(_) = T::LiquidationEvmBridge::liquidate(
 				InvokeContext {
