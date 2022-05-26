@@ -145,7 +145,7 @@ test-ts: build-mandala-internal-release
 
 .PHONY: test-benchmarking
 test-benchmarking:
-	cargo test --features bench --package module-evm
+	cargo bench --features bench --package module-evm --package runtime-common
 	cargo test --features runtime-benchmarks --features with-all-runtime --features --all benchmarking
 
 .PHONY: test-all
