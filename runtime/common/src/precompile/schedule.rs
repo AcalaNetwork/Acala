@@ -234,7 +234,7 @@ where
 			}
 			Action::Cancel => {
 				let from = input.evm_address_at(1)?;
-				// solidity abi enocde bytes will add an length at input[2]
+				// solidity abi encode bytes will add an length at input[2]
 				let task_id_len = input.u32_at(3)?;
 				let task_id = input.bytes_at(4, task_id_len as usize)?;
 
