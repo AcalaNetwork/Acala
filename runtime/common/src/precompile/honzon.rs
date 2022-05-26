@@ -51,7 +51,7 @@ pub struct HonzonPrecompile<R>(PhantomData<R>);
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
-	AdjustLoan = "adjustLoan(address,address,int256,int256)",
+	AdjustLoan = "adjustLoan(address,address,int128,int128)",
 	CloseLoanByDex = "closeLoanByDex(address,address,uint256)",
 	GetPosition = "getPosition(address,address)",
 	GetLiquidationRatio = "getLiquidationRatio(address)",
@@ -316,9 +316,13 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			// 0xaf174446
+			// adjustLoan(address,address,uint256,uint256) => 0xd20a1c87
+			// who
+			// currency_id
+			// collateral_adjustment
+			// debit_adjustment
 			let input = hex! {"
-				af174446
+				d20a1c87
 				000000000000000000000000 1000000000000000000000000000000000000001
 				000000000000000000000000 0000000000000000000100000000000000000002
 				00000000000000000000000000000000 00000000000000000000000010000000
@@ -378,6 +382,10 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
+			// closeLoanByDex(address,address,uint256) => 0xbf0ea731
+			// who
+			// currency_id
+			// max_collateral_amount
 			let input = hex! {"
 				bf0ea731
 				000000000000000000000000 1000000000000000000000000000000000000001
@@ -423,6 +431,9 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
+			// getPosition(address,address) => 0xb33dc190
+			// who
+			// currency_id
 			let input = hex! {"
 				b33dc190
 				000000000000000000000000 1000000000000000000000000000000000000001
@@ -459,7 +470,8 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			// 0xc4ba4c3a
+			// getLiquidationRatio(address) => 0xc4ba4c3a
+			// currency_id
 			let input = hex! {"
 				c4ba4c3a
 				000000000000000000000000 0000000000000000000100000000000000000002
@@ -506,7 +518,9 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			// 0x1384ed17
+			// getCurrentCollateralRatio(address,address) => 0x1384ed17
+			// who
+			// currency_id
 			let input = hex! {"
 				1384ed17
 				000000000000000000000000 1000000000000000000000000000000000000001
