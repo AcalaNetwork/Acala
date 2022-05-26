@@ -30,6 +30,11 @@ build-full: githooks
 build-all:
 	cargo build --locked --features with-all-runtime
 
+.PHONY: build-benches
+build-benches:
+	cargo bench --locked --no-run --features bench --package module-evm
+	cargo bench --locked --no-run --features bench --package runtime-common
+
 .PHONY: build-release
 build-release:
 	cargo build --locked --features with-all-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
@@ -145,7 +150,7 @@ test-ts: build-mandala-internal-release
 
 .PHONY: test-benchmarking
 test-benchmarking:
-	cargo bench --features bench --package module-evm --package runtime-common
+	cargo test --features bench --package module-evm --package runtime-common
 	cargo test --features runtime-benchmarks --features with-all-runtime --features --all benchmarking
 
 .PHONY: test-all
