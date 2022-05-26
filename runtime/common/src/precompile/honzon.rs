@@ -94,12 +94,17 @@ where
 					who, currency_id, collateral_adjustment, debit_adjustment
 				);
 
-				<module_honzon::Pallet<Runtime> as HonzonManager<Runtime::AccountId, CurrencyId, Amount, Balance>>::adjust_loan(&who, currency_id, collateral_adjustment, debit_adjustment).map_err(|e|
-                    PrecompileFailure::Revert {
-                        exit_status: ExitRevert::Reverted,
-                        output: Into::<&str>::into(e).as_bytes().to_vec(),
-                        cost: target_gas_limit(target_gas).unwrap_or_default(),
-                    }
+				<module_honzon::Pallet<Runtime> as HonzonManager<
+					Runtime::AccountId,
+					CurrencyId,
+					Amount,
+					Balance,
+				>>::adjust_loan(&who, currency_id, collateral_adjustment, debit_adjustment).map_err(|e|
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					}
                 )?;
 
 				Ok(PrecompileOutput {
@@ -120,12 +125,17 @@ where
 					who, currency_id, max_collateral_amount
 				);
 
-				<module_honzon::Pallet<Runtime> as HonzonManager<Runtime::AccountId, CurrencyId, Amount, Balance>>::close_loan_by_dex(who, currency_id, max_collateral_amount).map_err(|e|
-                    PrecompileFailure::Revert {
-                        exit_status: ExitRevert::Reverted,
-                        output: Into::<&str>::into(e).as_bytes().to_vec(),
-                        cost: target_gas_limit(target_gas).unwrap_or_default(),
-                    }
+				<module_honzon::Pallet<Runtime> as HonzonManager<
+					Runtime::AccountId,
+					CurrencyId,
+					Amount,
+					Balance,
+				>>::close_loan_by_dex(who, currency_id, max_collateral_amount).map_err(|e|
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					}
                 )?;
 
 				Ok(PrecompileOutput {
@@ -161,11 +171,7 @@ where
 					Amount,
 					Balance,
 				>>::get_liquidation_ratio(currency_id)
-				.ok_or(PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Honzon get liquidation ratio failed".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
-				})?;
+				.unwrap_or_default();
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -183,11 +189,7 @@ where
 					Amount,
 					Balance,
 				>>::get_current_collateral_ratio(&who, currency_id)
-				.ok_or(PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Honzon get current collateral ratio failed, no price feed".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
-				})?;
+				.unwrap_or_default();
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
