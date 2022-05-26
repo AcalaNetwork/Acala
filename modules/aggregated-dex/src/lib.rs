@@ -124,13 +124,33 @@ pub mod module {
 		pub fn swap_with_exact_supply(
 			origin: OriginFor<T>,
 			paths: Vec<SwapPath>,
-			supply_amount: Balance,
-			min_target_amount: Balance,
+			#[pallet::compact] supply_amount: Balance,
+			#[pallet::compact] min_target_amount: Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let paths: BoundedVec<SwapPath, T::SwapPathLimit> =
 				paths.try_into().map_err(|_| Error::<T>::InvalidSwapPath)?;
 			let _ = Self::do_aggregated_swap(&who, &paths, SwapLimit::ExactSupply(supply_amount, min_target_amount))?;
+			Ok(())
+		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(
+			paths.iter().fold(0, |u, swap_path| match swap_path {
+				SwapPath::Dex(v) => u + (v.len() as u32),
+				SwapPath::Taiga(_, _, _) => u + 1
+			})
+		))]
+		#[transactional]
+		pub fn swap_with_exact_target(
+			origin: OriginFor<T>,
+			paths: Vec<SwapPath>,
+			#[pallet::compact] target_amount: Balance,
+			#[pallet::compact] max_supply_amount: Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			let paths: BoundedVec<SwapPath, T::SwapPathLimit> =
+				paths.try_into().map_err(|_| Error::<T>::InvalidSwapPath)?;
+			let _ = Self::do_aggregated_swap(&who, &paths, SwapLimit::ExactTarget(max_supply_amount, target_amount))?;
 			Ok(())
 		}
 
@@ -353,43 +373,12 @@ impl<T: Config> Pallet<T> {
 				Ok((exact_supply_amount, output_amount))
 			}
 			// Calculate the supply amount first, then execute swap with ExactSupply
-			SwapLimit::ExactTarget(max_supply_amount, exact_target_amount) => {
-				let mut input_amount: Balance = exact_target_amount;
-
-				for path in paths.iter().rev() {
-					match path {
-						SwapPath::Dex(dex_path) => {
-							// calculate the supply amount
-							let (supply_amount, _) = T::DEX::get_swap_amount(
-								dex_path,
-								SwapLimit::ExactTarget(Balance::max_value(), input_amount),
-							)
-							.ok_or(Error::<T>::CannotSwap)?;
-
-							input_amount = supply_amount;
-						}
-						SwapPath::Taiga(pool_id, supply_asset_index, target_asset_index) => {
-							let swap_result = T::StableAsset::get_swap_input_amount(
-								*pool_id,
-								*supply_asset_index,
-								*target_asset_index,
-								input_amount,
-							)
-							.ok_or(Error::<T>::CannotSwap)?;
-
-							input_amount = swap_result.dx;
-						}
-					}
-				}
-
-				// the result must meet the SwapLimit.
-				ensure!(
-					!input_amount.is_zero() && input_amount <= max_supply_amount,
-					Error::<T>::CannotSwap
-				);
+			SwapLimit::ExactTarget(_max_supply_amount, exact_target_amount) => {
+				let (supply_amount, _) =
+					Self::get_aggregated_swap_amount(paths, swap_limit).ok_or(Error::<T>::CannotSwap)?;
 
 				// actually swap by `ExactSupply` limit
-				Self::do_aggregated_swap(who, paths, SwapLimit::ExactSupply(input_amount, exact_target_amount))
+				Self::do_aggregated_swap(who, paths, SwapLimit::ExactSupply(supply_amount, exact_target_amount))
 			}
 		}
 	}
