@@ -449,7 +449,12 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
 					T::StableAsset::get_swap_input_amount(pool_id, input_index, output_index, target_amount)
 				{
 					if !swap_result.dx.is_zero() && swap_result.dx <= max_supply_amount {
-						return Some((swap_result.dx, swap_result.dy));
+						// actually swap by `ExactSupply` limit
+						return Self::get_swap_amount(
+							supply_currency_id,
+							target_currency_id,
+							SwapLimit::ExactSupply(swap_result.dx, target_amount),
+						);
 					}
 				}
 			}
