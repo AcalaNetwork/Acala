@@ -1057,5 +1057,15 @@ fn aggregated_swap_swap_work() {
 		assert_eq!(Tokens::free_balance(DOT, &ALICE), 95_000_000_000u128);
 		assert_eq!(Tokens::free_balance(LDOT, &ALICE), 25_000_000_000u128);
 		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 30_000_000_000u128);
+
+		assert_ok!(AggregatedSwap::<Runtime>::swap(
+			&ALICE,
+			DOT,
+			AUSD,
+			SwapLimit::ExactTarget(u128::MAX, 10_000_000_000u128)
+		));
+		assert_eq!(Tokens::free_balance(DOT, &ALICE), 92_000_000_000u128);
+		assert_eq!(Tokens::free_balance(LDOT, &ALICE), 25_000_000_000u128);
+		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 40_000_000_000u128);
 	});
 }
