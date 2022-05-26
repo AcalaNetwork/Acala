@@ -37,8 +37,8 @@ use support::{FeeToTreasuryPool, Rate};
 
 pub use module::*;
 
-// mod mock;
-// mod tests;
+mod mock;
+mod tests;
 pub mod weights;
 pub use weights::WeightInfo;
 
