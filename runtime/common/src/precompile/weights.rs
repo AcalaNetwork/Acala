@@ -29,30 +29,30 @@ impl<T: frame_system::Config> PrecompileWeights<T> {
 	// AssetRegistry::AssetMetadatas (r: 1, w: 0)
 	// Oracle::Values (r: 1, w: 0)
 	pub fn oracle_get_price() -> Weight {
-		(20_404_000 as Weight)
+		(10_923_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 	}
 	pub fn evm_query_new_contract_extra_bytes() -> Weight {
-		(1_692_000 as Weight)
+		(985_000 as Weight)
 	}
 	pub fn evm_query_storage_deposit_per_byte() -> Weight {
-		(2_046_000 as Weight)
+		(925_000 as Weight)
 	}
 	// EVMModule::Accounts (r: 1, w: 0)
 	pub fn evm_query_maintainer() -> Weight {
-		(7_454_000 as Weight)
+		(4_146_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 	}
 	pub fn evm_query_developer_deposit() -> Weight {
-		(1_736_000 as Weight)
+		(907_000 as Weight)
 	}
 	pub fn evm_query_publication_fee() -> Weight {
-		(1_680_000 as Weight)
+		(941_000 as Weight)
 	}
 	// Balances::Reserves (r: 1, w: 0)
 	// EvmAccounts::Accounts (r: 1, w: 0)
 	pub fn evm_query_developer_status() -> Weight {
-		(8_439_000 as Weight)
+		(4_755_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 	}
 }
