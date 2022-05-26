@@ -44,6 +44,14 @@ fn whitelist_keys(b: &mut Bencher, caller: Option<H160>) {
 			true,
 		);
 	}
+
+	// unknown key
+	b.whitelist(
+		hex_literal::hex!("3a7472616e73616374696f6e5f6c6576656c3a").to_vec(),
+		true,
+		true,
+	);
+
 	// System::Number
 	b.whitelist(
 		hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec(),
