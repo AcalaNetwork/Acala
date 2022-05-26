@@ -234,7 +234,7 @@ fn transfer_debit_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
+			Origin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -243,7 +243,7 @@ fn transfer_debit_works() {
 			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
+			Origin::signed(ALICE),
 			DOT,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -307,7 +307,7 @@ fn transfer_debit_no_ausd() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
+			Origin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -316,7 +316,7 @@ fn transfer_debit_no_ausd() {
 			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(1),
+			Origin::signed(ALICE),
 			DOT,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
