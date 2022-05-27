@@ -31,7 +31,7 @@ use sp_std::prelude::*;
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
-pub const HALF_PARAM_BYTES: usize = 16;
+pub const HALF_PARAM_BYTES: usize = PER_PARAM_BYTES / 2;
 pub const ACTION_INDEX: usize = 0;
 
 pub trait InputT {
@@ -625,10 +625,5 @@ mod tests {
 		items.into_iter().for_each(|(input, value)| {
 			assert_eq!(decode_i128(&crate::from_hex(input).unwrap()), value);
 		});
-	}
-
-	#[test]
-	fn check_integrity_of_consts() {
-		assert!(PER_PARAM_BYTES > HALF_PARAM_BYTES);
 	}
 }

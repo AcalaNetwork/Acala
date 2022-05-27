@@ -316,7 +316,7 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			// adjustLoan(address,address,uint256,uint256) => 0xd20a1c87
+			// adjustLoan(address,address,int128,int128) => 0xd20a1c87
 			// who
 			// currency_id
 			// collateral_adjustment
