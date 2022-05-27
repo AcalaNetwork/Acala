@@ -35,6 +35,7 @@ use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, Mu
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
+use primitives::evm::is_system_contract;
 use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
@@ -344,10 +345,11 @@ pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::Token;
+		use CurrencyId::{Erc20, ForeignAsset, Token};
 		match id {
 			Token(KSM) => Some(MultiLocation::parent()),
 			Token(KAR) | Token(KUSD) | Token(LKSM) => Some(native_currency_location(id)),
+			Erc20(address) if !is_system_contract(address) => Some(native_currency_location(id)),
 			// Bifrost native token
 			Token(BNC) => Some(MultiLocation::new(
 				1,
@@ -382,7 +384,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 					GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec()),
 				),
 			)),
-			CurrencyId::ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
+			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
 	}
@@ -391,7 +393,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::Token;
+		use CurrencyId::{Erc20, Token};
 
 		if location == MultiLocation::parent() {
 			return Some(Token(KSM));
@@ -418,6 +420,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
 								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+								Erc20(address) if !is_system_contract(address) => Some(currency_id),
 								_ => None,
 							}
 						} else {
@@ -437,10 +440,12 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 0,
 				interior: X1(GeneralKey(key)),
 			} => {
-				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
-				match currency_id {
-					Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
-					_ => None,
+					let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+					match currency_id {
+						Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+						Erc20(address) if !is_system_contract(address) => Some(currency_id),
+						_ => None,
+					}
 				}
 			}
 			_ => None,
