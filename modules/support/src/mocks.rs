@@ -387,7 +387,7 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 		_output_asset: Self::AssetId,
 		_input_amount: Self::Balance,
 	) -> Option<(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex, Self::Balance)> {
-		unimplemented!()
+		None
 	}
 
 	fn get_swap_output_amount(

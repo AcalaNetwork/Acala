@@ -312,6 +312,35 @@ runtime_benchmarks! {
 			debit_amount.try_into().unwrap(),
 		)?;
 	}: _(RawOrigin::Signed(sender), currency_id, collateral_amount / 5, 0)
+
+	transfer_debit {
+		let sender: AccountId = whitelisted_caller();
+		set_balance(STAKING, &sender, 100_000 * dollar(STAKING));
+		set_balance(LIQUID, &sender, 100_000 * dollar(LIQUID));
+
+		CdpEngine::set_collateral_params(
+			RawOrigin::Root.into(),
+			STAKING,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(10_000 * dollar(STABLECOIN)),
+		)?;
+		CdpEngine::set_collateral_params(
+			RawOrigin::Root.into(),
+			LIQUID,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(10_000 * dollar(STABLECOIN)),
+		)?;
+		feed_price(vec![(STAKING, Price::one())])?;
+
+		Honzon::adjust_loan(RawOrigin::Signed(sender.clone()).into(), STAKING, (10_000 * dollar(STAKING)).try_into().unwrap(), (1_000 * dollar(STABLECOIN)).try_into().unwrap())?;
+		Honzon::adjust_loan(RawOrigin::Signed(sender.clone()).into(), LIQUID, (10_000 * dollar(LIQUID)).try_into().unwrap(), (1_000 * dollar(STABLECOIN)).try_into().unwrap())?;
+	}: _(RawOrigin::Signed(sender), LIQUID, STAKING, dollar(STABLECOIN))
 }
 
 #[cfg(test)]
