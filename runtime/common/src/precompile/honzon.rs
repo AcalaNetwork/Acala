@@ -105,7 +105,7 @@ where
 						output: Into::<&str>::into(e).as_bytes().to_vec(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
-                )?;
+				)?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -136,7 +136,7 @@ where
 						output: Into::<&str>::into(e).as_bytes().to_vec(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
-                )?;
+				)?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -327,7 +327,7 @@ mod tests {
 				000000000000000000000000 0000000000000000000100000000000000000002
 				00000000000000000000000000000000 00000000000000000000000010000000
 				00000000000000000000000000000000 00000000000000000000000000001000
-            "};
+			"};
 
 			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
