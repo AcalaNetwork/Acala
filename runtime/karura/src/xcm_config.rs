@@ -440,12 +440,11 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 0,
 				interior: X1(GeneralKey(key)),
 			} => {
-					let currency_id = CurrencyId::decode(&mut &*key).ok()?;
-					match currency_id {
-						Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
-						Erc20(address) if !is_system_contract(address) => Some(currency_id),
-						_ => None,
-					}
+				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+				match currency_id {
+					Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+					Erc20(address) if !is_system_contract(address) => Some(currency_id),
+					_ => None,
 				}
 			}
 			_ => None,
