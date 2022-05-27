@@ -25,7 +25,7 @@ use frame_support::assert_ok;
 use sp_runtime::traits::AccountIdConversion;
 use xcm_builder::ParentIsPreset;
 
-use karura_runtime::parachains::bifrost::BNC_KEY;
+use karura_runtime::parachains::bifrost::{BNC_KEY, ID as BIFROST_ID};
 use karura_runtime::{AssetRegistry, KaruraTreasuryAccount};
 use module_relaychain::RelayChainCallBuilder;
 use module_support::CallBuilder;
@@ -99,7 +99,7 @@ fn transfer_sibling_chain_asset() {
 	Sibling::execute_with(|| {
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(0, X1(GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),).into()),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec())),).into()),
 			Box::new(AssetMetadata {
 				name: b"Sibling BNC".to_vec(),
 				symbol: b"SBNC".to_vec(),
@@ -111,13 +111,10 @@ fn transfer_sibling_chain_asset() {
 			Origin::root(),
 			0,
 			Box::new(Some(ForeignAssetExtraMetadata {
-				maybe_currency_id: Some(BNC),
-				maybe_location: Some(MultiLocation::new(
+				override_currency_id: Some(BNC),
+				override_multi_location: Some(MultiLocation::new(
 					1,
-					X2(
-						Parachain(parachains::bifrost::ID),
-						GeneralKey(parachains::bifrost::BNC_KEY.to_vec())
-					),
+					X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec())),
 				))
 			}))
 		));
@@ -391,10 +388,10 @@ fn test_asset_registry_module() {
 	}
 
 	Karura::execute_with(|| {
-		// register foreign asset
+		// register foreign asset on Karura chain
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(0, X1(GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),).into()),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec())),).into()),
 			Box::new(AssetMetadata {
 				name: b"Sibling BNC".to_vec(),
 				symbol: b"BNC".to_vec(),
@@ -406,22 +403,19 @@ fn test_asset_registry_module() {
 			Origin::root(),
 			0,
 			Box::new(Some(ForeignAssetExtraMetadata {
-				maybe_currency_id: Some(BNC),
-				maybe_location: Some(MultiLocation::new(
+				override_currency_id: Some(BNC),
+				override_multi_location: Some(MultiLocation::new(
 					1,
-					X2(
-						Parachain(parachains::bifrost::ID),
-						GeneralKey(parachains::bifrost::BNC_KEY.to_vec())
-					),
+					X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec())),
 				))
 			}))
 		));
 	});
 	Sibling::execute_with(|| {
-		// register foreign asset
+		// register foreign asset on Sibling chain
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(0, X1(GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),).into()),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec())),).into()),
 			Box::new(AssetMetadata {
 				name: b"Karura BNC".to_vec(),
 				symbol: b"BNC".to_vec(),
@@ -433,13 +427,10 @@ fn test_asset_registry_module() {
 			Origin::root(),
 			0,
 			Box::new(Some(ForeignAssetExtraMetadata {
-				maybe_currency_id: Some(BNC),
-				maybe_location: Some(MultiLocation::new(
+				override_currency_id: Some(BNC),
+				override_multi_location: Some(MultiLocation::new(
 					1,
-					X2(
-						Parachain(parachains::bifrost::ID),
-						GeneralKey(parachains::bifrost::BNC_KEY.to_vec())
-					),
+					X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec())),
 				))
 			}))
 		));
@@ -450,6 +441,7 @@ fn test_asset_registry_module() {
 		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 0);
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 100_000_000_000_000);
 
+		// Transfer some tokens from Sibling(BOB) to Karura(ALICE)
 		assert_ok!(XTokens::transfer(
 			Origin::signed(BOB.into()),
 			BNC,
@@ -476,9 +468,10 @@ fn test_asset_registry_module() {
 
 	Karura::execute_with(|| {
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 4_989_760_000_000);
-		// ToTreasury
+		// XCM fee is sent ToTreasury
 		assert_eq!(Tokens::free_balance(BNC, &TreasuryAccount::get()), 10_240_000_000);
 
+		// Transfer the same token back to Sibling chain
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
 			BNC,
@@ -505,19 +498,24 @@ fn test_asset_registry_module() {
 	Sibling::execute_with(|| {
 		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 4_000_000_000_000);
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 95_999_360_000_000);
+	});
 
+	Karura::execute_with(|| {
+		// ForeignAsset(0) is registered to match to BNC.
+		// BNC is deducted from sender's account.
+		// Output location uses the registered overridden MultiLocation
 		assert_ok!(XTokens::transfer(
-			Origin::signed(BOB.into()),
-			BNC,
-			5_000_000_000_000,
+			Origin::signed(ALICE.into()),
+			CurrencyId::ForeignAsset(0),
+			1_000_000_000_000,
 			Box::new(
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2000),
+						Parachain(2001),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
-							id: ALICE.into(),
+							id: BOB.into(),
 						}
 					)
 				)
@@ -526,15 +524,66 @@ fn test_asset_registry_module() {
 			1_000_000_000,
 		));
 
-		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 9_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 90_999_360_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 2_989_760_000_000);
+	});
+
+	Sibling::execute_with(|| {
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 3_000_000_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 96_998_720_000_000);
+
+		// Test currency ID override for registered foreign currencies
+		// Set foreign asset 0 to a different override currency
+		assert_ok!(AssetRegistry::set_foreign_asset_extra_metadata(
+			Origin::root(),
+			0,
+			Box::new(Some(ForeignAssetExtraMetadata {
+				override_currency_id: Some(KAR),
+				override_multi_location: None,
+			}))
+		));
+		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&karura_reserve_account(), 2 * dollar(KAR));
 	});
 
 	Karura::execute_with(|| {
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 8_979_520_000_000);
+		// Karura(alice) transfers BNC to sibling chain
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			CurrencyId::ForeignAsset(0),
+			1_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2001),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			1_000_000_000,
+		));
 
-		// ToTreasury
-		assert_eq!(Tokens::free_balance(BNC, &TreasuryAccount::get()), 20_480_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 1_989_760_000_000);
+	});
+
+	Sibling::execute_with(|| {
+		// Due to the currency ID override, received tokens are treated as KAR transfer instead.
+
+		// Reserve account balances of KAR reduced.
+		assert_eq!(
+			Currencies::free_balance(KAR, &karura_reserve_account()),
+			1_000_000_000_000
+		);
+		// Reserve account balance of BNC remains unchanged.
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 3_000_000_000_000);
+
+		// BOB received the transfer as KAR tokens.
+		assert_eq!(Currencies::free_balance(KAR, &AccountId::from(BOB)), 999_360_000_000);
+		// BOB's BNC balance should be unchanged.
+		assert_eq!(Currencies::free_balance(BNC, &AccountId::from(BOB)), 96_998_720_000_000);
 	});
 }
 
@@ -782,10 +831,7 @@ fn sibling_trap_assets_works() {
 			},
 			WithdrawAsset(
 				(
-					(
-						Parent,
-						X2(Parachain(2001), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
-					),
+					(Parent, X2(Parachain(2001), GeneralKey(BNC_KEY.to_vec()))),
 					bnc_asset_amount,
 				)
 					.into(),

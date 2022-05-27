@@ -433,6 +433,6 @@ pub struct AssetMetadata<Balance> {
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
 pub struct ForeignAssetExtraMetadata {
-	pub maybe_currency_id: Option<CurrencyId>,
-	pub maybe_location: Option<xcm::latest::MultiLocation>,
+	pub override_currency_id: Option<CurrencyId>,
+	pub override_multi_location: Option<xcm::latest::MultiLocation>,
 }

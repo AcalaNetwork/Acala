@@ -162,8 +162,8 @@ runtime_benchmarks! {
 			minimal_balance: 1,
 		};
 		let extra_metadata = ForeignAssetExtraMetadata {
-			maybe_currency_id: Some(CurrencyId::Token(TokenSymbol::DOT)),
-			maybe_location: Some(MultiLocation::here())
+			override_currency_id: Some(CurrencyId::Token(TokenSymbol::DOT)),
+			override_multi_location: Some(MultiLocation::here())
 		};
 		AssetRegistry::register_foreign_asset(RawOrigin::Root.into(), Box::new(location), Box::new(asset_metadata));
 	}: _(RawOrigin::Root, 0, Box::new(Some(extra_metadata)))

@@ -591,8 +591,8 @@ impl<T: Config> AssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata<Bala
 	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation> {
 		// Check if the foreign asset has output location set in extra metadata
 		if let Some(ForeignAssetExtraMetadata {
-			maybe_currency_id: _,
-			maybe_location: Some(location),
+			override_currency_id: _,
+			override_multi_location: Some(location),
 		}) = Pallet::<T>::foreign_asset_extra_metadatas(AssetIds::ForeignAssetId(foreign_asset_id))
 		{
 			return Some(location);
@@ -606,8 +606,8 @@ impl<T: Config> AssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata<Bala
 		let maybe_asset_id = Pallet::<T>::location_to_currency_ids(multi_location);
 		if let Some(CurrencyId::ForeignAsset(id)) = maybe_asset_id {
 			if let Some(ForeignAssetExtraMetadata {
-				maybe_currency_id: Some(currency_id),
-				maybe_location: _,
+				override_currency_id: Some(currency_id),
+				override_multi_location: _,
 			}) = Pallet::<T>::foreign_asset_extra_metadatas(AssetIds::ForeignAssetId(id))
 			{
 				return Some(currency_id);
