@@ -21,6 +21,7 @@
 #![cfg(test)]
 
 use crate as fees;
+use frame_support::pallet_prelude::*;
 use frame_support::traits::Nothing;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
@@ -29,7 +30,7 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{AccountId, Amount, Balance, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
+use primitives::{AccountId, Amount, Balance, BlockNumber, CurrencyId, IncomeSource, ReserveIdentifier, TokenSymbol};
 use sp_runtime::traits::AccountIdConversion;
 use support::mocks::MockAddressMapping;
 
@@ -119,8 +120,17 @@ impl module_currencies::Config for Runtime {
 }
 
 parameter_types! {
-	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
-	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub TreasuryAccount: AccountId = PalletId(*b"aca/trsy").into_account();
+	// Treasury pools
+	pub NetworkTreasuryPool: AccountId = PalletId(*b"aca/nktp").into_account();
+	pub HonzonTreasuryPool: AccountId = PalletId(*b"aca/hztp").into_account();
+	pub HomaTreasuryPool: AccountId = PalletId(*b"aca/hmtp").into_account();
+	// Incentive reward Pools
+	pub HonzonInsuranceRewardPool: AccountId = PalletId(*b"aca/hirp").into_account();
+	pub HonzonLiquitationRewardPool: AccountId = PalletId(*b"aca/hlrp").into_account();
+	pub StakingRewardPool: AccountId = PalletId(*b"aca/strp").into_account();
+	pub CollatorsRewardPool: AccountId = PalletId(*b"aca/clrp").into_account();
+	pub EcosystemRewardPool: AccountId = PalletId(*b"aca/esrp").into_account();
 }
 
 impl fees::Config for Runtime {
@@ -160,10 +170,10 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	// pub fn balances(mut self, balances: Vec<(AccountId, Balance)>) -> Self {
-	// 	self.balances = balances;
-	// 	self
-	// }
+	pub fn balances(mut self, balances: Vec<(AccountId, Balance)>) -> Self {
+		self.balances = balances;
+		self
+	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::default()
@@ -172,6 +182,19 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self.balances.into_iter().collect::<Vec<_>>(),
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		fees::GenesisConfig::<Runtime> {
+			incomes: vec![
+				(
+					IncomeSource::TxFee,
+					vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
+				),
+				(IncomeSource::XcmFee, vec![(NetworkTreasuryPool::get(), 100)]),
+			],
+			treasuries: vec![],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

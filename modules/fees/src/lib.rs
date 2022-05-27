@@ -133,7 +133,14 @@ pub mod module {
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {}
+		fn build(&self) {
+			self.incomes.iter().for_each(|(income, pools)| {
+				let _ = <Pallet<T>>::do_set_treasury_rate(*income, pools.clone());
+			});
+			self.treasuries.iter().for_each(|(treasury, pools)| {
+				let _ = <Pallet<T>>::do_set_incentive_rate(treasury.clone(), pools.clone());
+			});
+		}
 	}
 
 	#[pallet::hooks]
@@ -192,6 +199,8 @@ impl<T: Config> Pallet<T> {
 		income_source: IncomeSource,
 		treasury_pool_rates: Vec<(T::AccountId, u32)>,
 	) -> DispatchResult {
+		ensure!(!treasury_pool_rates.is_empty(), Error::<T>::InvalidParams);
+
 		let pools: Vec<PoolPercent<T::AccountId>> = treasury_pool_rates
 			.into_iter()
 			.map(|p| {
@@ -215,6 +224,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn do_set_incentive_rate(treasury: T::AccountId, incentive_pools: Vec<(T::AccountId, u32)>) -> DispatchResult {
+		ensure!(!incentive_pools.is_empty(), Error::<T>::InvalidParams);
+
 		let pools: Vec<PoolPercent<T::AccountId>> = incentive_pools
 			.into_iter()
 			.map(|p| {
@@ -236,24 +247,28 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balance> for Pallet<T> {
+	/// Params:
+	/// - income: Income source, normally means existing modules.
+	/// - account_id: If given account, then the whole fee amount directly deposit to it.
+	/// - currency_id: currency type.
+	/// - amount: fee amount.
 	fn on_fee_changed(
 		income: IncomeSource,
 		account_id: Option<&T::AccountId>,
 		currency_id: CurrencyId,
 		amount: Balance,
 	) -> DispatchResult {
-		// TODO: remove manual account_id
 		if let Some(account_id) = account_id {
 			return T::Currencies::deposit(currency_id, account_id, amount);
 		}
 
-		// use `IncomeSource` to determine destination
+		// use `IncomeSource` to distribution fee to different treasury pool based on percentage.
 		let pools: BoundedVec<PoolPercent<T::AccountId>, MaxSize> = IncomeToTreasuries::<T>::get(income);
+		ensure!(!pools.is_empty(), Error::<T>::InvalidParams);
+
 		pools.into_iter().for_each(|pool| {
 			let pool_account = pool.pool;
-			let rate = pool.rate;
-			let amount_to_pool = rate.saturating_mul_int(amount);
-			// TODO: deal with result
+			let amount_to_pool = pool.rate.saturating_mul_int(amount);
 			let _ = T::Currencies::deposit(currency_id, &pool_account, amount_to_pool);
 		});
 		Ok(())
