@@ -26,6 +26,7 @@ use module_evm::{precompiles::Precompile, Context};
 use module_support::AddressMapping;
 use orml_bencher::{benches, Bencher};
 use orml_traits::DataFeeder;
+use primitives::currency::{AssetMetadata, TokenInfo};
 use sp_core::{H160, H256};
 
 fn whitelist_keys(b: &mut Bencher, caller: Option<H160>) {
@@ -43,6 +44,14 @@ fn whitelist_keys(b: &mut Bencher, caller: Option<H160>) {
 			true,
 		);
 	}
+
+	// unknown key
+	b.whitelist(
+		hex_literal::hex!("3a7472616e73616374696f6e5f6c6576656c3a").to_vec(),
+		true,
+		true,
+	);
+
 	// System::Number
 	b.whitelist(
 		hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec(),
@@ -83,6 +92,17 @@ fn oracle_get_price(b: &mut Bencher) {
 
 	let price = Price::from(30_000);
 	assert_ok!(Oracle::feed_value(ALICE, RENBTC, price));
+
+	assert_ok!(AssetRegistry::register_native_asset(
+		Origin::signed(CouncilAccount::get()),
+		RENBTC,
+		sp_std::boxed::Box::new(AssetMetadata {
+			name: RENBTC.name().unwrap().into(),
+			symbol: RENBTC.symbol().unwrap().into(),
+			decimals: RENBTC.decimals().unwrap(),
+			minimal_balance: 0
+		})
+	));
 
 	// getPrice(address) -> 0x41976e09
 	// RENBTC
