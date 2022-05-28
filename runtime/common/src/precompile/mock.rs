@@ -561,8 +561,8 @@ parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![0, 1, 2];
 	pub const BondingDuration: EraIndex = 28;
-	pub static MintThreshold: Balance = 0;
-	pub static RedeemThreshold: Balance = 0;
+	pub const MintThreshold: Balance = 0;
+	pub const RedeemThreshold: Balance = 0;
 }
 
 impl module_homa::Config for Test {
