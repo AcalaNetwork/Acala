@@ -19,7 +19,7 @@
 use super::xcm_config::*;
 use super::{
 	constants::{fee::*, parachains},
-	FixedRateOfForeignAsset, Runtime, TransactionFeePoolTrader,
+	FixedRateOfAssetRegistry, Runtime, TransactionFeePoolTrader,
 };
 use xcm::latest::prelude::*;
 
@@ -45,5 +45,6 @@ pub type Trader = (
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
 	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
+	FixedRateOfAssetRegistry<Runtime, ForeignAssetUnitsPerSecond, ToTreasury, ForeignAssetMinimumBalance<Runtime>>,
+	FixedRateOfAssetRegistry<Runtime, ForeignAssetUnitsPerSecond, ToTreasury, Erc20MinimumBalance<Runtime>>,
 );
