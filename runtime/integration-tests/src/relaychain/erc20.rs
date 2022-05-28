@@ -79,7 +79,6 @@ pub fn deploy_erc20_contracts() {
 	));
 }
 
-#[cfg(feature = "with-karura-runtime")]
 #[test]
 fn test_evm_module() {
 	// evm alice
@@ -120,7 +119,7 @@ fn test_evm_module() {
 
 #[test]
 fn erc20_xtokens_transfer() {
-	// env_logger::init();
+	env_logger::init();
 	TestNet::reset();
 
 	Karura::execute_with(|| {
@@ -152,15 +151,15 @@ fn erc20_xtokens_transfer() {
 			Origin::signed(alith),
 			MultiAddress::Id(AccountId::from(CHARLIE)),
 			CurrencyId::Erc20(erc20_address_0()),
-			1_000_000
+			1_000_000_000_000_000
 		));
 		assert_eq!(
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE)),
-			1_000_000
+			1_000_000_000_000_000
 		);
 
 		// TODO: Failed execute transfer message with FailedToTransactAsset("Erc20InvalidOperation")
-		let _ = XTokens::transfer(
+		let _ = XTokens::transfer_reserve(
 			Origin::signed(CHARLIE.into()),
 			CurrencyId::Erc20(erc20_address_0()),
 			10_000_000_000_000,
