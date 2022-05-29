@@ -42,14 +42,7 @@ pub fn deploy_erc20_contracts() {
 		serde_json::from_str(include_str!("../../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
 
-	assert_ok!(EVM::create(
-		Origin::signed(alice()),
-		code.clone(),
-		0,
-		2100_000,
-		100000,
-		vec![]
-	));
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2100_000, 100000, vec![]));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created {
 		from: EvmAddress::from_str("0xbf0b5a4099f0bf6c8bc4252ebec548bae95602ea").unwrap(),
@@ -75,52 +68,46 @@ pub fn deploy_erc20_contracts() {
 	assert_ok!(AssetRegistry::register_erc20_asset(
 		Origin::root(),
 		erc20_address_0(),
-		1
+		100_000_000_000
 	));
-}
-
-#[test]
-fn test_evm_module() {
-	// evm alice
-	let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
-
-	ExtBuilder::default()
-		.balances(vec![
-			(alice(), NATIVE_CURRENCY, 1_000_000 * dollar(NATIVE_CURRENCY)),
-			(alith.clone(), NATIVE_CURRENCY, (1_000_000_000_000_000_000u128)),
-		])
-		.build()
-		.execute_with(|| {
-			deploy_erc20_contracts();
-
-			// Erc20
-			assert_ok!(EvmAccounts::claim_account(
-				Origin::signed(AccountId::from(ALICE)),
-				EvmAccounts::eth_address(&alice_key()),
-				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
-			));
-
-			<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
-			let bob = AccountId::new([1u8; 32]);
-
-			// Currencies `transfer` dispatch call
-			assert_ok!(Currencies::transfer(
-				Origin::signed(alith),
-				MultiAddress::Id(bob.clone()),
-				CurrencyId::Erc20(erc20_address_0()),
-				1_000_000
-			));
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &bob),
-				1_000_000
-			);
-		});
 }
 
 #[test]
 fn erc20_xtokens_transfer() {
 	env_logger::init();
 	TestNet::reset();
+
+	fn sibling_reserve_account() -> AccountId {
+		polkadot_parachain::primitives::Sibling::from(2001).into_account()
+	}
+
+	Sibling::execute_with(|| {
+		let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&alice(),
+			1_000_000 * dollar(NATIVE_CURRENCY)
+		));
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&alith.clone(),
+			1_000_000 * dollar(NATIVE_CURRENCY)
+		));
+
+		deploy_erc20_contracts();
+
+		// Erc20 claim account for Bob
+		assert_ok!(EvmAccounts::claim_account(
+			Origin::signed(AccountId::from(BOB)),
+			EvmAccounts::eth_address(&bob_key()),
+			EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB))
+		));
+
+		assert_eq!(
+			0,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
+		);
+	});
 
 	Karura::execute_with(|| {
 		let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
@@ -158,8 +145,8 @@ fn erc20_xtokens_transfer() {
 			1_000_000_000_000_000
 		);
 
-		// TODO: Failed execute transfer message with FailedToTransactAsset("Erc20InvalidOperation")
-		let _ = XTokens::transfer_reserve(
+		// transfer erc20 token to sibling
+		assert_ok!(XTokens::transfer_reserve(
 			Origin::signed(CHARLIE.into()),
 			CurrencyId::Erc20(erc20_address_0()),
 			10_000_000_000_000,
@@ -177,6 +164,23 @@ fn erc20_xtokens_transfer() {
 				.into(),
 			),
 			1_000_000_000,
+		));
+
+		assert_eq!(
+			990_000_000_000_000,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE))
+		);
+		assert_eq!(
+			10_000_000_000_000,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
+		);
+	});
+
+	Sibling::execute_with(|| {
+		// Due to Sibling not support DepositAsset for erc20, it go to UnknownTokens.
+		assert_eq!(
+			0,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
 	});
 }

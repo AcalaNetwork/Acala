@@ -568,7 +568,9 @@ where
 	fn minimum_balance(location: MultiLocation) -> Option<u128> {
 		if let Some(CurrencyId::ForeignAsset(foreign_asset_id)) = Pallet::<T>::location_to_currency_ids(location) {
 			if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::ForeignAssetId(foreign_asset_id)) {
-				return Some(asset_metadata.minimal_balance.into());
+				let minimum = asset_metadata.minimal_balance.into();
+				log::debug!("ForeignAsset: {}, MinimumBalance: {}", foreign_asset_id, minimum);
+				return Some(minimum);
 			}
 		}
 		None
@@ -586,21 +588,22 @@ where
 			MultiLocation {
 				parents: 1,
 				interior: X2(Junction::Parachain(_para_id), Junction::GeneralKey(key)),
-			} => match &key[..] {
-				key => {
-					let currency_id = CurrencyId::decode(&mut &*key).ok()?;
-					match currency_id {
-						CurrencyId::Erc20(address) if !is_system_contract(address) => {
-							if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::Erc20(address)) {
-								Some(asset_metadata.minimal_balance.into())
-							} else {
-								None
-							}
+			} => {
+				let key = &key[..];
+				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+				match currency_id {
+					CurrencyId::Erc20(address) if !is_system_contract(address) => {
+						if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::Erc20(address)) {
+							let minimum = asset_metadata.minimal_balance.into();
+							log::debug!("Erc20: {}, MinimumBalance: {}", address, minimum);
+							Some(minimum)
+						} else {
+							None
 						}
-						_ => None,
 					}
+					_ => None,
 				}
-			},
+			}
 			_ => None,
 		}
 	}
