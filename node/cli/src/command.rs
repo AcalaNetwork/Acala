@@ -23,7 +23,7 @@ use crate::cli::{Cli, RelayChainCli, Subcommand};
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
-use frame_benchmarking_cli::BenchmarkCmd;
+use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams, NetworkParams, Result,
@@ -309,6 +309,9 @@ pub fn run() -> sc_cli::Result<()> {
 							cmd.run(config, partials.client.clone(), db, storage)
 						}),
 						BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
+						BenchmarkCmd::Machine(cmd) => {
+							runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()))
+						}
 					}
 				}
 			})

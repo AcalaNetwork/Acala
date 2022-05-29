@@ -54,6 +54,8 @@ jobs:
         run: cargo clippy --features with-karura-runtime -- -D warnings
       - name: Run acala-runtime clippy
         run: cargo clippy --features with-acala-runtime -- -D warnings
+      - name: Run build benches
+        run: make build-benches
   benchmarking:
     runs-on: [self-hosted, linux]
     env:

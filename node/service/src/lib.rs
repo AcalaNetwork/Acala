@@ -34,6 +34,7 @@ use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvid
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
 use cumulus_relay_chain_rpc_interface::RelayChainRPCInterface;
+use jsonrpsee::RpcModule;
 use sc_consensus::LongestChain;
 use sc_consensus_aura::ImportQueueParams;
 use sc_executor::WasmExecutor;
@@ -360,7 +361,13 @@ async fn build_relay_chain_interface(
 			Arc::new(RelayChainRPCInterface::new(relay_chain_url).await?) as Arc<_>,
 			None,
 		)),
-		None => build_inprocess_relay_chain(polkadot_config, parachain_config, telemetry_worker_handle, task_manager),
+		None => build_inprocess_relay_chain(
+			polkadot_config,
+			parachain_config,
+			telemetry_worker_handle,
+			task_manager,
+			None,
+		),
 	}
 }
 
@@ -379,9 +386,7 @@ async fn start_node_impl<RB, RuntimeApi, BIC>(
 	build_consensus: BIC,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
-	RB: Fn(Arc<FullClient<RuntimeApi>>) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error>
-		+ Send
-		+ 'static,
+	RB: Fn(Arc<FullClient<RuntimeApi>>) -> Result<RpcModule<()>, sc_service::Error> + Send + 'static,
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
@@ -439,11 +444,11 @@ where
 		warp_sync: None,
 	})?;
 
-	let rpc_extensions_builder = {
+	let rpc_builder = {
 		let client = client.clone();
 		let transaction_pool = transaction_pool.clone();
 
-		Box::new(move |deny_unsafe, _| {
+		move |deny_unsafe, _| {
 			let deps = acala_rpc::FullDeps {
 				client: client.clone(),
 				pool: transaction_pool.clone(),
@@ -451,8 +456,8 @@ where
 				command_sink: None,
 			};
 
-			Ok(acala_rpc::create_full(deps))
-		})
+			acala_rpc::create_full(deps).map_err(Into::into)
+		}
 	};
 
 	if parachain_config.offchain_worker.enabled {
@@ -465,7 +470,7 @@ where
 	};
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
-		rpc_extensions_builder,
+		rpc_builder: Box::new(rpc_builder),
 		client: client.clone(),
 		transaction_pool: transaction_pool.clone(),
 		task_manager: &mut task_manager,
@@ -551,7 +556,7 @@ where
 		polkadot_config,
 		collator_options,
 		id,
-		|_| Ok(Default::default()),
+		|_| Ok(RpcModule::new(())),
 		|client,
 		 prometheus_registry,
 		 telemetry,
@@ -880,7 +885,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		let client = client.clone();
 		let transaction_pool = transaction_pool.clone();
 
-		Box::new(move |deny_unsafe, _| {
+		move |deny_unsafe, _| {
 			let deps = acala_rpc::FullDeps {
 				client: client.clone(),
 				pool: transaction_pool.clone(),
@@ -888,12 +893,12 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 				command_sink: command_sink.clone(),
 			};
 
-			Ok(acala_rpc::create_full(deps))
-		})
+			acala_rpc::create_full(deps).map_err(Into::into)
+		}
 	};
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
-		rpc_extensions_builder,
+		rpc_builder: Box::new(rpc_extensions_builder),
 		client,
 		transaction_pool,
 		task_manager: &mut task_manager,
