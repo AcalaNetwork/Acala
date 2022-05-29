@@ -22,6 +22,7 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 
 use frame_support::assert_ok;
+use karura_runtime::AssetRegistry;
 use module_support::EVM as EVMTrait;
 use orml_traits::MultiCurrency;
 use primitives::evm::EvmAddress;
@@ -73,8 +74,7 @@ pub fn deploy_erc20_contracts() {
 }
 
 #[test]
-fn erc20_xtokens_transfer() {
-	env_logger::init();
+fn erc20_transfer_to_sibling() {
 	TestNet::reset();
 
 	fn sibling_reserve_account() -> AccountId {
@@ -82,31 +82,18 @@ fn erc20_xtokens_transfer() {
 	}
 
 	Sibling::execute_with(|| {
-		let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
-		assert_ok!(Currencies::deposit(
-			NATIVE_CURRENCY,
-			&alice(),
-			1_000_000 * dollar(NATIVE_CURRENCY)
+		let erc20_as_foreign_asset = CurrencyId::Erc20(erc20_address_0());
+		// register Karura's erc20 as foreign asset
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(MultiLocation::new(1, X2(Parachain(2000), GeneralKey(erc20_as_foreign_asset.encode()))).into()),
+			Box::new(AssetMetadata {
+				name: b"Karura USDC".to_vec(),
+				symbol: b"kUSDC".to_vec(),
+				decimals: 12,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
+			})
 		));
-		assert_ok!(Currencies::deposit(
-			NATIVE_CURRENCY,
-			&alith.clone(),
-			1_000_000 * dollar(NATIVE_CURRENCY)
-		));
-
-		deploy_erc20_contracts();
-
-		// Erc20 claim account for Bob
-		assert_ok!(EvmAccounts::claim_account(
-			Origin::signed(AccountId::from(BOB)),
-			EvmAccounts::eth_address(&bob_key()),
-			EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB))
-		));
-
-		assert_eq!(
-			0,
-			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
-		);
 	});
 
 	Karura::execute_with(|| {
@@ -177,10 +164,107 @@ fn erc20_xtokens_transfer() {
 	});
 
 	Sibling::execute_with(|| {
-		// Due to Sibling not support DepositAsset for erc20, it go to UnknownTokens.
 		assert_eq!(
-			0,
-			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
+			9_999_360_000_000,
+			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
+		);
+	});
+}
+
+#[test]
+fn erc20_transfer_from_sibling() {
+	TestNet::reset();
+
+	fn sibling_reserve_account() -> AccountId {
+		polkadot_parachain::primitives::Sibling::from(2000).into_account()
+	}
+
+	Karura::execute_with(|| {
+		let erc20_as_foreign_asset = CurrencyId::Erc20(erc20_address_0());
+		// register Karura's erc20 as foreign asset
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(MultiLocation::new(1, X2(Parachain(2001), GeneralKey(erc20_as_foreign_asset.encode()))).into()),
+			Box::new(AssetMetadata {
+				name: b"Sibling USDC".to_vec(),
+				symbol: b"sUSDC".to_vec(),
+				decimals: 12,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
+			})
+		));
+	});
+
+	Sibling::execute_with(|| {
+		let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&alice(),
+			1_000_000 * dollar(NATIVE_CURRENCY)
+		));
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&alith.clone(),
+			1_000_000 * dollar(NATIVE_CURRENCY)
+		));
+
+		deploy_erc20_contracts();
+
+		// Erc20 claim account
+		assert_ok!(EvmAccounts::claim_account(
+			Origin::signed(AccountId::from(ALICE)),
+			EvmAccounts::eth_address(&alice_key()),
+			EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
+		));
+
+		<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
+
+		// use Currencies `transfer` dispatch call to transfer erc20 token to bob.
+		assert_ok!(Currencies::transfer(
+			Origin::signed(alith),
+			MultiAddress::Id(AccountId::from(CHARLIE)),
+			CurrencyId::Erc20(erc20_address_0()),
+			1_000_000_000_000_000
+		));
+		assert_eq!(
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE)),
+			1_000_000_000_000_000
+		);
+
+		// transfer erc20 token to Karura
+		assert_ok!(XTokens::transfer_reserve(
+			Origin::signed(CHARLIE.into()),
+			CurrencyId::Erc20(erc20_address_0()),
+			10_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2000),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						},
+					),
+				)
+				.into(),
+			),
+			1_000_000_000,
+		));
+
+		assert_eq!(
+			990_000_000_000_000,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE))
+		);
+		assert_eq!(
+			10_000_000_000_000,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
+		);
+	});
+
+	Karura::execute_with(|| {
+		assert_eq!(
+			9_999_360_000_000,
+			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});
 }

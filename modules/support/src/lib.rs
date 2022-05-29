@@ -188,7 +188,3 @@ pub trait OnNewEra<EraIndex> {
 pub trait NomineesProvider<AccountId> {
 	fn nominees() -> Vec<AccountId>;
 }
-
-pub trait MinimumBalance {
-	fn minimum_balance(location: MultiLocation) -> Option<u128>;
-}

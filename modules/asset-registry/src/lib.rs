@@ -33,7 +33,7 @@ use frame_support::{
 	weights::constants::WEIGHT_PER_SECOND,
 };
 use frame_system::pallet_prelude::*;
-use module_support::{AssetIdMapping, EVMBridge, Erc20InfoMapping, InvokeContext, MinimumBalance};
+use module_support::{AssetIdMapping, EVMBridge, Erc20InfoMapping, InvokeContext};
 use primitives::{
 	currency::{
 		AssetIds, AssetMetadata, CurrencyIdType, DexShare, DexShareType, Erc20Id, ForeignAssetId, Lease,
@@ -53,10 +53,7 @@ use sp_std::{boxed::Box, vec::Vec};
 // NOTE:v1::MultiLocation is used in storages, we would need to do migration if upgrade the
 // MultiLocation in the future.
 use xcm::opaque::latest::{prelude::XcmError, AssetId, Fungibility::Fungible, MultiAsset};
-use xcm::{
-	v1::{Junction, Junctions::X2, MultiLocation},
-	VersionedMultiLocation,
-};
+use xcm::{v1::MultiLocation, VersionedMultiLocation};
 use xcm_builder::TakeRevenue;
 use xcm_executor::{traits::WeightTrader, Assets};
 
@@ -559,70 +556,19 @@ impl<T: Config> AssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata<Bala
 	}
 }
 
-pub struct ForeignAssetMinimumBalance<T>(sp_std::marker::PhantomData<T>);
-
-impl<T: Config> MinimumBalance for ForeignAssetMinimumBalance<T>
-where
-	BalanceOf<T>: Into<u128>,
-{
-	fn minimum_balance(location: MultiLocation) -> Option<u128> {
-		if let Some(CurrencyId::ForeignAsset(foreign_asset_id)) = Pallet::<T>::location_to_currency_ids(location) {
-			if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::ForeignAssetId(foreign_asset_id)) {
-				let minimum = asset_metadata.minimal_balance.into();
-				log::debug!("ForeignAsset: {}, MinimumBalance: {}", foreign_asset_id, minimum);
-				return Some(minimum);
-			}
-		}
-		None
-	}
-}
-
-pub struct Erc20MinimumBalance<T>(sp_std::marker::PhantomData<T>);
-
-impl<T: Config> MinimumBalance for Erc20MinimumBalance<T>
-where
-	BalanceOf<T>: Into<u128>,
-{
-	fn minimum_balance(location: MultiLocation) -> Option<u128> {
-		match location {
-			MultiLocation {
-				parents: 1,
-				interior: X2(Junction::Parachain(_para_id), Junction::GeneralKey(key)),
-			} => {
-				let key = &key[..];
-				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
-				match currency_id {
-					CurrencyId::Erc20(address) if !is_system_contract(address) => {
-						if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::Erc20(address)) {
-							let minimum = asset_metadata.minimal_balance.into();
-							log::debug!("Erc20: {}, MinimumBalance: {}", address, minimum);
-							Some(minimum)
-						} else {
-							None
-						}
-					}
-					_ => None,
-				}
-			}
-			_ => None,
-		}
-	}
-}
-
 /// Simple fee calculator that requires payment in a single fungible at a fixed rate.
 ///
 /// The constant `FixedRate` type parameter should be the concrete fungible ID and the amount of it
 /// required for one second of weight.
-pub struct FixedRateOfAssetRegistry<T: Config, FixedRate: Get<u128>, R: TakeRevenue, M: MinimumBalance> {
+pub struct FixedRateOfForeignAsset<T, FixedRate: Get<u128>, R: TakeRevenue> {
 	weight: Weight,
 	amount: u128,
 	ed_ratio: FixedU128,
 	multi_location: Option<MultiLocation>,
-	_marker: PhantomData<(T, FixedRate, R, M)>,
+	_marker: PhantomData<(T, FixedRate, R)>,
 }
 
-impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue, M: MinimumBalance> WeightTrader
-	for FixedRateOfAssetRegistry<T, FixedRate, R, M>
+impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue> WeightTrader for FixedRateOfForeignAsset<T, FixedRate, R>
 where
 	BalanceOf<T>: Into<u128>,
 {
@@ -649,33 +595,39 @@ where
 		if let AssetId::Concrete(ref multi_location) = asset_id {
 			log::debug!(target: "asset-registry::weight", "buy_weight multi_location: {:?}", multi_location);
 
-			if let Some(minimum_balance) = M::minimum_balance(multi_location.clone()) {
-				// The integration tests can ensure the ed is non-zero.
-				let ed_ratio =
-					FixedU128::saturating_from_rational(minimum_balance, T::Currency::minimum_balance().into());
+			if let Some(CurrencyId::ForeignAsset(foreign_asset_id)) =
+				Pallet::<T>::location_to_currency_ids(multi_location.clone())
+			{
+				if let Some(asset_metadatas) = Pallet::<T>::asset_metadatas(AssetIds::ForeignAssetId(foreign_asset_id))
+				{
+					// The integration tests can ensure the ed is non-zero.
+					let ed_ratio = FixedU128::saturating_from_rational(
+						asset_metadatas.minimal_balance.into(),
+						T::Currency::minimum_balance().into(),
+					);
+					// The WEIGHT_PER_SECOND is non-zero.
+					let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
+					let amount = ed_ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
 
-				// The WEIGHT_PER_SECOND is non-zero.
-				let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
-				let amount = ed_ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
+					let required = MultiAsset {
+						id: asset_id.clone(),
+						fun: Fungible(amount),
+					};
 
-				let required = MultiAsset {
-					id: asset_id.clone(),
-					fun: Fungible(amount),
-				};
-
-				log::trace!(
-					target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}, fixed_rate: {:?}, ed_ratio: {:?}, weight_ratio: {:?}",
-					payment, required, FixedRate::get(), ed_ratio, weight_ratio
-				);
-				let unused = payment
-					.clone()
-					.checked_sub(required)
-					.map_err(|_| XcmError::TooExpensive)?;
-				self.weight = self.weight.saturating_add(weight);
-				self.amount = self.amount.saturating_add(amount);
-				self.ed_ratio = ed_ratio;
-				self.multi_location = Some(multi_location.clone());
-				return Ok(unused);
+					log::trace!(
+						target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}, fixed_rate: {:?}, ed_ratio: {:?}, weight_ratio: {:?}",
+						payment, required, FixedRate::get(), ed_ratio, weight_ratio
+					);
+					let unused = payment
+						.clone()
+						.checked_sub(required)
+						.map_err(|_| XcmError::TooExpensive)?;
+					self.weight = self.weight.saturating_add(weight);
+					self.amount = self.amount.saturating_add(amount);
+					self.ed_ratio = ed_ratio;
+					self.multi_location = Some(multi_location.clone());
+					return Ok(unused);
+				}
 			}
 		}
 
@@ -712,9 +664,7 @@ where
 	}
 }
 
-impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue, M: MinimumBalance> Drop
-	for FixedRateOfAssetRegistry<T, FixedRate, R, M>
-{
+impl<T, FixedRate: Get<u128>, R: TakeRevenue> Drop for FixedRateOfForeignAsset<T, FixedRate, R> {
 	fn drop(&mut self) {
 		log::trace!(target: "asset-registry::weight", "take revenue, weight: {:?}, amount: {:?}, multi_location: {:?}", self.weight, self.amount, self.multi_location);
 		if self.amount > 0 && self.multi_location.is_some() {

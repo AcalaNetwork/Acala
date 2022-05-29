@@ -346,10 +346,6 @@ impl Default for ProxyType {
 	}
 }
 
-pub fn native_currency_location(para_id: u32, id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(para_id), GeneralKey(id.encode())))
-}
-
 /// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.
 ///
 /// parameters type:

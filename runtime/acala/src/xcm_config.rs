@@ -18,7 +18,7 @@
 
 use super::{
 	constants::fee::*, AcalaTreasuryAccount, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert,
-	Currencies, CurrencyId, Event, ExistentialDeposits, FixedRateOfAssetRegistry, GetNativeCurrencyId,
+	Currencies, CurrencyId, Event, ExistentialDeposits, FixedRateOfForeignAsset, GetNativeCurrencyId,
 	NativeTokenExistentialDeposit, Origin, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
 	TransactionFeePoolTrader, UnknownTokens, XcmpQueue, ACA, AUSD,
 };
@@ -29,7 +29,6 @@ pub use frame_support::{
 	traits::{Everything, Get, Nothing},
 	weights::Weight,
 };
-use module_asset_registry::{Erc20MinimumBalance, ForeignAssetMinimumBalance};
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
@@ -142,8 +141,7 @@ pub type Trader = (
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<AcaPerSecond, ToTreasury>,
-	FixedRateOfAssetRegistry<Runtime, ForeignAssetUnitsPerSecond, ToTreasury, ForeignAssetMinimumBalance<Runtime>>,
-	FixedRateOfAssetRegistry<Runtime, ForeignAssetUnitsPerSecond, ToTreasury, Erc20MinimumBalance<Runtime>>,
+	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
 
 pub struct XcmConfig;

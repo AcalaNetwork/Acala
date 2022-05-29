@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::type_complexity)]
-use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, MinimumBalance, TransactionPayment};
+use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, TransactionPayment};
 use codec::Encode;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use nutsfinance_stable_asset::{
@@ -35,7 +35,6 @@ use sp_std::{marker::PhantomData, vec::Vec};
 
 #[cfg(feature = "std")]
 use frame_support::traits::Imbalance;
-use xcm::latest::MultiLocation;
 
 pub struct MockAddressMapping;
 
@@ -407,19 +406,5 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 		_dy_bal: Self::Balance,
 	) -> Option<SwapResult<Self::Balance>> {
 		unimplemented!()
-	}
-}
-
-pub struct MockNoneMinimumBalance;
-impl MinimumBalance for MockNoneMinimumBalance {
-	fn minimum_balance(_: MultiLocation) -> Option<u128> {
-		None
-	}
-}
-
-pub struct MockFixedMinimumBalance;
-impl MinimumBalance for MockFixedMinimumBalance {
-	fn minimum_balance(_: MultiLocation) -> Option<u128> {
-		Some(1_u128)
 	}
 }
