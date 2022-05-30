@@ -108,7 +108,7 @@ impl<T: Config> Runner<T> {
 		// Execute the EVM call.
 		let (reason, retv) = f(&mut executor);
 
-		let used_gas = U256::from(executor.used_gas());
+		let used_gas = executor.used_gas();
 		log::debug!(
 			target: "evm",
 			"Execution {:?} [source: {:?}, value: {}, gas_limit: {}, used_gas: {}]",

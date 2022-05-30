@@ -373,7 +373,7 @@ where
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-					(info.exit_reason, info.value, info.used_gas.as_u64(), info.used_storage)
+					(info.exit_reason, info.value, info.used_gas, info.used_storage)
 				}
 				None => {
 					let info = self
@@ -392,7 +392,7 @@ where
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-					(info.exit_reason, Vec::new(), info.used_gas.as_u64(), info.used_storage)
+					(info.exit_reason, Vec::new(), info.used_gas, info.used_storage)
 				}
 			};
 

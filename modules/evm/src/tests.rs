@@ -735,7 +735,7 @@ fn publish_factory() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_gas.as_u64(), 155_879u64);
+		assert_eq!(result.used_gas, 155_879u64);
 		assert_eq!(result.used_storage, 461);
 		assert_eq!(
 			balance(alice()),
@@ -1679,7 +1679,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(142_445),
+				used_gas: 142_445,
 				used_storage: expected_used_storage,
 				logs: vec![]
 			}
@@ -1706,7 +1706,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(259_561),
+				used_gas: 259_561,
 				used_storage: expected_used_storage,
 				logs: vec![]
 			}
@@ -1766,7 +1766,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(110_469),
+				used_gas: 110_469,
 				used_storage: expected_used_storage,
 				logs: vec![]
 			}
@@ -1809,7 +1809,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(93_369),
+				used_gas: 93_369,
 				used_storage: expected_used_storage,
 				logs: vec![]
 			}

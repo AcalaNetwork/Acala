@@ -60,7 +60,7 @@ pub struct Vicinity {
 pub struct ExecutionInfo<T> {
 	pub exit_reason: ExitReason,
 	pub value: T,
-	pub used_gas: U256,
+	pub used_gas: u64,
 	pub used_storage: i32,
 	pub logs: Vec<Log>,
 }

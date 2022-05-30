@@ -609,7 +609,7 @@ pub mod module {
 					Ok(().into())
 				}
 				Ok(info) => {
-					let used_gas: u64 = info.used_gas.unique_saturated_into();
+					let used_gas: u64 = info.used_gas;
 
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Executed {
@@ -699,7 +699,7 @@ pub mod module {
 					Ok(().into())
 				}
 				Ok(info) => {
-					let used_gas: u64 = info.used_gas.unique_saturated_into();
+					let used_gas: u64 = info.used_gas;
 
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Executed {
@@ -787,7 +787,7 @@ pub mod module {
 					Ok(().into())
 				}
 				Ok(info) => {
-					let used_gas: u64 = info.used_gas.unique_saturated_into();
+					let used_gas: u64 = info.used_gas;
 
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Created {
@@ -861,7 +861,7 @@ pub mod module {
 					Ok(().into())
 				}
 				Ok(info) => {
-					let used_gas: u64 = info.used_gas.unique_saturated_into();
+					let used_gas: u64 = info.used_gas;
 
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Created {
@@ -947,7 +947,7 @@ pub mod module {
 					Ok(().into())
 				}
 				Ok(info) => {
-					let used_gas: u64 = info.used_gas.unique_saturated_into();
+					let used_gas: u64 = info.used_gas;
 
 					if info.exit_reason.is_succeed() {
 						NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
@@ -1037,7 +1037,7 @@ pub mod module {
 					Ok(().into())
 				}
 				Ok(info) => {
-					let used_gas: u64 = info.used_gas.unique_saturated_into();
+					let used_gas: u64 = info.used_gas;
 					let contract = info.value;
 
 					if info.exit_reason.is_succeed() {
@@ -1741,7 +1741,7 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 								from: context.sender,
 								contract: context.contract,
 								logs: info.logs.clone(),
-								used_gas: info.used_gas.unique_saturated_into(),
+								used_gas: info.used_gas,
 								used_storage: info.used_storage,
 							});
 							TransactionOutcome::Commit(Ok(info))
@@ -1752,7 +1752,7 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 								exit_reason: info.exit_reason.clone(),
 								output: info.value.clone(),
 								logs: info.logs.clone(),
-								used_gas: info.used_gas.unique_saturated_into(),
+								used_gas: info.used_gas,
 								used_storage: Default::default(),
 							});
 							TransactionOutcome::Rollback(Ok(info))
