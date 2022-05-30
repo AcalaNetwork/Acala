@@ -40,8 +40,8 @@ use sp_std::{marker::PhantomData, prelude::*};
 /// `input` data starts with `action`.
 ///
 /// Actions:
-/// - Mint. Rest `input bytes: `who`, `amount`.
-/// - Request redeem. Rest `input bytes: `who`, `amount`, `fast_match`.
+/// - Mint. Rest `input` bytes: `who`, `amount`.
+/// - Request redeem. Rest `input` bytes: `who`, `amount`, `fast_match`.
 /// - Get exchange rate.
 /// - Get estimated reward rate.
 /// - Get commission rate.
