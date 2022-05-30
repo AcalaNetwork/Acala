@@ -22,8 +22,8 @@
 
 use super::*;
 use frame_support::{
-	ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Contains, Everything, Nothing},
+	match_types, ord_parameter_types, parameter_types,
+	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -151,11 +151,10 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 	}
 }
 
-pub struct IsLiquidToken;
-impl Contains<CurrencyId> for IsLiquidToken {
-	fn contains(currency_id: &CurrencyId) -> bool {
-		matches!(currency_id, CurrencyId::Token(TokenSymbol::LDOT))
-	}
+match_types! {
+	pub type IsLiquidToken: impl Contains<CurrencyId> = {
+		CurrencyId::Token(TokenSymbol::LDOT)
+	};
 }
 
 type RebaseTokens = orml_tokens::Combiner<
