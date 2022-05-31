@@ -420,22 +420,6 @@ fn get_staking_currency_soft_cap_works() {
 }
 
 #[test]
-fn get_total_bonded_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Homa::reset_ledgers(
-			Origin::signed(HomaAdmin::get()),
-			vec![
-				(0, Some(1_000_000), None),
-				(1, Some(2_000_000), None),
-				(2, Some(1_000_000), None),
-				(3, None, Some(vec![UnlockChunk { value: 1_000, era: 1 }]))
-			]
-		));
-		assert_eq!(Homa::get_total_bonded(), 4_000_000);
-	});
-}
-
-#[test]
 fn get_total_staking_currency_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(Homa::reset_ledgers(

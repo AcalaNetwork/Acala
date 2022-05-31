@@ -265,7 +265,7 @@ pub mod module {
 	///
 	/// TotalStakingBonded value: Balance
 	#[pallet::storage]
-	#[pallet::getter(fn total_staking)]
+	#[pallet::getter(fn get_total_bonded)]
 	pub type TotalStakingBonded<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The total staking currency to bond on relaychain when new era,
@@ -746,14 +746,9 @@ pub mod module {
 				.saturating_mul(T::ActiveSubAccountsIndexList::get().len() as Balance)
 		}
 
-		/// Calculate the total amount of bonded staking currency.
-		pub fn get_total_bonded() -> Balance {
-			TotalStakingBonded::<T>::get()
-		}
-
 		/// Calculate the total amount of staking currency belong to Homa.
 		pub fn get_total_staking_currency() -> Balance {
-			Self::get_total_bonded().saturating_add(Self::to_bond_pool())
+			TotalStakingBonded::<T>::get().saturating_add(Self::to_bond_pool())
 		}
 
 		/// Calculate the total amount of liquid currency.
@@ -898,7 +893,7 @@ pub mod module {
 					let liquid_currency_id = T::LiquidCurrencyId::get();
 					let commission_staking_amount = commission_rate.saturating_mul_int(total_reward_staking);
 					let commission_ratio =
-						Ratio::checked_from_rational(commission_staking_amount, Self::get_total_bonded())
+						Ratio::checked_from_rational(commission_staking_amount, TotalStakingBonded::<T>::get())
 							.unwrap_or_else(Ratio::min_value);
 					let inflate_rate = commission_ratio
 						.checked_div(&Ratio::one().saturating_sub(commission_ratio))
@@ -1004,7 +999,7 @@ pub mod module {
 		#[transactional]
 		pub fn process_redeem_requests(new_era: EraIndex) -> DispatchResult {
 			let era_index_to_expire = new_era + T::BondingDuration::get();
-			let total_bonded = Self::get_total_bonded();
+			let total_bonded = TotalStakingBonded::<T>::get();
 			let mut total_redeem_amount: Balance = Zero::zero();
 			let mut remain_total_bonded = total_bonded;
 
