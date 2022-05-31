@@ -75,7 +75,6 @@ pub fn deploy_erc20_contracts() {
 
 #[test]
 fn erc20_transfer_between_sibling() {
-	env_logger::init();
 	TestNet::reset();
 
 	fn sibling_reserve_account() -> AccountId {

@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::type_complexity)]
-use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, MinimumBalance, TransactionPayment};
+use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, MinimumBalanceRatio, Rate, TransactionPayment};
 use codec::Encode;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use nutsfinance_stable_asset::{
@@ -30,7 +30,7 @@ use primitives::{
 };
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
-use sp_runtime::{transaction_validity::TransactionValidityError, DispatchError, DispatchResult};
+use sp_runtime::{traits::One, transaction_validity::TransactionValidityError, DispatchError, DispatchResult};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 #[cfg(feature = "std")]
@@ -411,15 +411,15 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 }
 
 pub struct MockNoneMinimumBalance;
-impl MinimumBalance for MockNoneMinimumBalance {
-	fn minimum_balance(_: MultiLocation) -> Option<u128> {
+impl MinimumBalanceRatio for MockNoneMinimumBalance {
+	fn minimum_balance_ratio(_: MultiLocation) -> Option<Rate> {
 		None
 	}
 }
 
 pub struct MockFixedMinimumBalance;
-impl MinimumBalance for MockFixedMinimumBalance {
-	fn minimum_balance(_: MultiLocation) -> Option<u128> {
-		Some(1_u128)
+impl MinimumBalanceRatio for MockFixedMinimumBalance {
+	fn minimum_balance_ratio(_: MultiLocation) -> Option<Rate> {
+		Some(Rate::one())
 	}
 }
