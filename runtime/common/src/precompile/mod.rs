@@ -223,6 +223,16 @@ where
 		if !self.is_precompile(address) {
 			return None;
 		}
+
+		// Filter known precompile addresses except Ethereum officials
+		if address > BLAKE2F && context.address != address {
+			return Some(Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "cannot be called with DELEGATECALL or CALLCODE".into(),
+				cost: target_gas.unwrap_or_default(),
+			}));
+		}
+
 		log::trace!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}", address, input, target_gas, context);
 
 		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
