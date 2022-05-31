@@ -56,6 +56,7 @@ pub enum Action {
 	GetPosition = "getPosition(address,address)",
 	GetLiquidationRatio = "getLiquidationRatio(address)",
 	GetCurrentCollateralRatio = "getCurrentCollateralRatio(address,address)",
+	GetDebitExchangeRate = "getDebitExchangeRate(address)",
 }
 
 impl<Runtime> Precompile for HonzonPrecompile<Runtime>
@@ -198,6 +199,22 @@ where
 					logs: Default::default(),
 				})
 			}
+			Action::GetDebitExchangeRate => {
+				let currency_id = input.currency_id_at(1)?;
+				let exchange_rate = <module_honzon::Pallet<Runtime> as HonzonManager<
+					Runtime::AccountId,
+					CurrencyId,
+					Amount,
+					Balance,
+				>>::get_debit_exchange_rate(currency_id);
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: Output::default().encode_u128(exchange_rate.into_inner()),
+					logs: Default::default(),
+				})
+			}
 		}
 	}
 }
@@ -268,6 +285,15 @@ where
 
 				Self::BASE_COST
 					.saturating_add(read_account)
+					.saturating_add(read_currency)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::GetDebitExchangeRate => {
+				let currency_id = input.currency_id_at(1)?;
+				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
+				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+
+				Self::BASE_COST
 					.saturating_add(read_currency)
 					.saturating_add(WeightToGas::convert(weight))
 			}
