@@ -180,14 +180,6 @@ pub mod module {
 	pub type AssetMetadatas<T: Config> =
 		StorageMap<_, Twox64Concat, AssetIds, AssetMetadata<BalanceOf<T>>, OptionQuery>;
 
-	/// Additional extra metadata for ForeignAssets.
-	///
-	/// ForeignAssetExtraMetadatas: map AssetIds => Option<ForeignAssetExtraMetadata>
-	#[pallet::storage]
-	#[pallet::getter(fn foreign_asset_extra_metadatas)]
-	pub type ForeignAssetExtraMetadatas<T: Config> =
-		StorageMap<_, Twox64Concat, AssetIds, ForeignAssetExtraMetadata, OptionQuery>;
-
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
@@ -368,35 +360,6 @@ pub mod module {
 
 			Self::deposit_event(Event::<T>::AssetUpdated {
 				asset_id: AssetIds::NativeAssetId(currency_id),
-				metadata: *metadata,
-			});
-			Ok(())
-		}
-
-		#[pallet::weight(T::WeightInfo::set_foreign_asset_extra_metadata())]
-		#[transactional]
-		pub fn set_foreign_asset_extra_metadata(
-			origin: OriginFor<T>,
-			foreign_asset_id: ForeignAssetId,
-			metadata: Box<Option<ForeignAssetExtraMetadata>>,
-		) -> DispatchResult {
-			T::RegisterOrigin::ensure_origin(origin)?;
-
-			ensure!(
-				Self::asset_metadatas(AssetIds::ForeignAssetId(foreign_asset_id)).is_some(),
-				Error::<T>::AssetIdNotExists
-			);
-
-			ForeignAssetExtraMetadatas::<T>::try_mutate(
-				AssetIds::ForeignAssetId(foreign_asset_id),
-				|maybe_metadatas| -> DispatchResult {
-					*maybe_metadatas = *metadata.clone();
-					Ok(())
-				},
-			)?;
-
-			Self::deposit_event(Event::<T>::ForeignAssetExtraMetadataSet {
-				asset_id: foreign_asset_id,
 				metadata: *metadata,
 			});
 			Ok(())
@@ -589,32 +552,11 @@ impl<T: Config> AssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata<Bala
 	}
 
 	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation> {
-		// Check if the foreign asset has output location set in extra metadata
-		if let Some(ForeignAssetExtraMetadata {
-			override_currency_id: _,
-			override_multi_location: Some(location),
-		}) = Pallet::<T>::foreign_asset_extra_metadatas(AssetIds::ForeignAssetId(foreign_asset_id))
-		{
-			return Some(location);
-		};
-
 		Pallet::<T>::foreign_asset_locations(foreign_asset_id)
 	}
 
 	fn get_currency_id(multi_location: MultiLocation) -> Option<CurrencyId> {
-		// Check if the corresponding foreign currency has CurrencyId set in its extra metadata
-		let maybe_asset_id = Pallet::<T>::location_to_currency_ids(multi_location);
-		if let Some(CurrencyId::ForeignAsset(id)) = maybe_asset_id {
-			if let Some(ForeignAssetExtraMetadata {
-				override_currency_id: Some(currency_id),
-				override_multi_location: _,
-			}) = Pallet::<T>::foreign_asset_extra_metadatas(AssetIds::ForeignAssetId(id))
-			{
-				return Some(currency_id);
-			};
-		}
-
-		maybe_asset_id
+		Pallet::<T>::location_to_currency_ids(multi_location)
 	}
 }
 

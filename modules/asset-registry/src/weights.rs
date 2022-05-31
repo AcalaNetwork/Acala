@@ -54,7 +54,6 @@ pub trait WeightInfo {
 	fn update_erc20_asset() -> Weight;
 	fn register_native_asset() -> Weight;
 	fn update_native_asset() -> Weight;
-	fn set_foreign_asset_extra_metadata() -> Weight;
 }
 
 /// Weights for module_asset_registry using the Acala node and recommended hardware.
@@ -117,13 +116,6 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	// Storage: AssetRegistry AssetMetadatas (r:1 w:1)
-	fn set_foreign_asset_extra_metadata() -> Weight {
-		(13_815_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-
 }
 
 // For backwards compatibility and tests
@@ -164,11 +156,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn update_native_asset() -> Weight {
-		(13_815_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn set_foreign_asset_extra_metadata() -> Weight {
 		(13_815_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))

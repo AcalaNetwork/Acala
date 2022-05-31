@@ -150,23 +150,6 @@ runtime_benchmarks! {
 
 		AssetRegistry::register_native_asset(RawOrigin::Root.into(), currency_id, Box::new(asset_metadata.clone()))?;
 	}: _(RawOrigin::Root, currency_id, Box::new(asset_metadata))
-	set_foreign_asset_extra_metadata {
-		let location = VersionedMultiLocation::V1(MultiLocation {
-			parents: 0,
-			interior: xcm::v1::Junctions::X1(xcm::v1::Junction::Parachain(1000)),
-		});
-		let asset_metadata = AssetMetadata {
-			name: b"Token Name".to_vec(),
-			symbol: b"TN".to_vec(),
-			decimals: 12,
-			minimal_balance: 1,
-		};
-		let extra_metadata = ForeignAssetExtraMetadata {
-			override_currency_id: Some(CurrencyId::Token(TokenSymbol::DOT)),
-			override_multi_location: Some(MultiLocation::here())
-		};
-		AssetRegistry::register_foreign_asset(RawOrigin::Root.into(), Box::new(location), Box::new(asset_metadata));
-	}: _(RawOrigin::Root, 0, Box::new(Some(extra_metadata)))
 }
 
 #[cfg(test)]
