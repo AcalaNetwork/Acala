@@ -209,8 +209,11 @@ where
 				cost.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::GetExchangeRate => {
+				// Homa::TotalVoidLiquid (r: 1)
+				// Homa::ToBondPool (r: 1)
+				// Tokens::TotalIssuance(r: 1)
 				// Homa::TotalStakingBonded(r: 1)
-				WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
+				WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(4))
 			}
 			Action::GetEstimatedRewardRate => {
 				// Homa::EstimatedRewardRatePerEra (r: 1)
