@@ -32,6 +32,7 @@ pub use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
 pub use module_honzon_bridge::*;
 pub use module_support::mocks::MockAddressMapping;
 pub use orml_traits::parameter_type_with_key;
+use sp_core::H160;
 
 pub use primitives::{AccountId, Amount, BlockNumber, TokenSymbol};
 
@@ -107,7 +108,7 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACALA;
-	pub Erc20HoldingAccount: AccountId = AccountId::new([0u8; 32]);
+	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
 impl module_currencies::Config for Runtime {

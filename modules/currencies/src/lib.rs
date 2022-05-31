@@ -91,7 +91,7 @@ pub mod module {
 		type GetNativeCurrencyId: Get<CurrencyId>;
 
 		/// Used as temporary account for ERC20 token `withdraw` and `deposit`.
-		type Erc20HoldingAccount: Get<Self::AccountId>;
+		type Erc20HoldingAccount: Get<EvmAddress>;
 
 		/// Weight information for extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -365,7 +365,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		match currency_id {
 			CurrencyId::Erc20(_) => <Self as MultiCurrency<T::AccountId>>::transfer(
 				currency_id,
-				&T::Erc20HoldingAccount::get(),
+				&T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get()),
 				who,
 				amount,
 			),
@@ -383,7 +383,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			CurrencyId::Erc20(_) => <Self as MultiCurrency<T::AccountId>>::transfer(
 				currency_id,
 				who,
-				&T::Erc20HoldingAccount::get(),
+				&T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get()),
 				amount,
 			),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::withdraw(who, amount),

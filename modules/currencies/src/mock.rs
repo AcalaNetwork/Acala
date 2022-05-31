@@ -179,9 +179,7 @@ impl module_evm_bridge::Config for Runtime {
 }
 
 parameter_types! {
-	// EvmAddress: 1000000000000000000000000000000000000000
-	// AccountId: 5EMjsczPP5NF4tMHxCEnhBYD4C3ZxmeZBZnmmzG92f67hRZN
-	pub Erc20HoldingAccount: AccountId = AccountId::from_str("65766d3a10000000000000000000000000000000000000000000000000000000").unwrap();
+	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
 impl Config for Runtime {

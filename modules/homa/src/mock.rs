@@ -29,7 +29,7 @@ use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
-use sp_core::H256;
+use sp_core::{H160, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 use xcm::latest::prelude::*;
 
@@ -140,7 +140,7 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
-	pub Erc20HoldingAccount: AccountId = AccountId::new([0u8; 32]);
+	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
 impl module_currencies::Config for Runtime {

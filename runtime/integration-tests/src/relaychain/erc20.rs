@@ -22,7 +22,8 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 
 use frame_support::assert_ok;
-use karura_runtime::{AssetRegistry, Erc20HoldingAccount};
+use karura_runtime::{AssetRegistry, Erc20HoldingAccount, KaruraTreasuryAccount};
+use module_evm_accounts::EvmAddressMapping;
 use module_support::EVM as EVMTrait;
 use orml_traits::MultiCurrency;
 use primitives::evm::EvmAddress;
@@ -161,6 +162,8 @@ fn erc20_transfer_between_sibling() {
 			10_000_000_000_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
 		);
+
+		System::reset_events();
 	});
 
 	Sibling::execute_with(|| {
@@ -198,18 +201,42 @@ fn erc20_transfer_between_sibling() {
 	});
 
 	Karura::execute_with(|| {
+		use karura_runtime::{Event, System};
+		let erc20_holding_account = EvmAddressMapping::<Runtime>::get_account_id(&Erc20HoldingAccount::get());
 		assert_eq!(
 			5_000_000_000_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
 		);
 		assert_eq!(
 			6_400_000_000,
-			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &Erc20HoldingAccount::get())
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &KaruraTreasuryAccount::get())
 		);
 		assert_eq!(
 			4_993_600_000_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
+		assert_eq!(
+			0,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &erc20_holding_account)
+		);
+		System::assert_has_event(Event::Currencies(module_currencies::Event::Transferred {
+			currency_id: CurrencyId::Erc20(erc20_address_0()),
+			from: sibling_reserve_account(),
+			to: erc20_holding_account.clone(),
+			amount: 5_000_000_000_000,
+		}));
+		System::assert_has_event(Event::Currencies(module_currencies::Event::Transferred {
+			currency_id: CurrencyId::Erc20(erc20_address_0()),
+			from: erc20_holding_account.clone(),
+			to: AccountId::from(BOB),
+			amount: 4_993_600_000_000,
+		}));
+		System::assert_has_event(Event::Currencies(module_currencies::Event::Transferred {
+			currency_id: CurrencyId::Erc20(erc20_address_0()),
+			from: erc20_holding_account,
+			to: KaruraTreasuryAccount::get(),
+			amount: 6_400_000_000,
+		}));
 	});
 }
 

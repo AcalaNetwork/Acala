@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate::mock::erc20_holding_account;
+use crate::mock::{erc20_holding_account, Erc20HoldingAccount};
 use frame_support::{assert_noop, assert_ok, weights::GetDispatchInfo};
 use mock::{
 	alice, bob, deploy_contracts, erc20_address, eva, AccountId, AdaptedBasicCurrency, CouncilAccount, Currencies,
@@ -33,6 +33,7 @@ use sp_runtime::{
 	traits::{BadOrigin, Bounded},
 	ModuleError,
 };
+use support::mocks::MockAddressMapping;
 use support::EVM as EVMTrait;
 
 #[test]
@@ -869,30 +870,33 @@ fn erc20_withdraw_deposit_works() {
 			deploy_contracts();
 			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 
+			let erc20_holding_account = Erc20HoldingAccount::get();
+			let erc20_account = MockAddressMapping::get_account_id(&erc20_holding_account);
+
 			assert_ok!(Currencies::transfer(
 				Origin::signed(alice()),
-				erc20_holding_account(),
+				erc20_account.clone(),
 				CurrencyId::Erc20(erc20_address()),
 				100
 			));
 
 			assert_eq!(
 				100,
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account())
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_account)
 			);
 
 			assert_ok!(Currencies::withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 100),);
 
 			assert_eq!(
 				200,
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account())
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_account)
 			);
 
 			assert_ok!(Currencies::deposit(CurrencyId::Erc20(erc20_address()), &bob(), 100),);
 
 			assert_eq!(
 				100,
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account())
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_account)
 			);
 			assert_eq!(
 				100,

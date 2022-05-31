@@ -192,7 +192,7 @@ pub type AdaptedBasicCurrency =
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACALA;
-	pub Erc20HoldingAccount: AccountId = AccountId::new([0u8; 32]);
+	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
 impl module_currencies::Config for NoFeeRuntime {
