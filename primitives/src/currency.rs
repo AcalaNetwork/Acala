@@ -430,9 +430,3 @@ pub struct AssetMetadata<Balance> {
 	pub decimals: u8,
 	pub minimal_balance: Balance,
 }
-
-#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
-pub struct ForeignAssetExtraMetadata {
-	pub override_currency_id: Option<CurrencyId>,
-	pub override_multi_location: Option<xcm::latest::MultiLocation>,
-}

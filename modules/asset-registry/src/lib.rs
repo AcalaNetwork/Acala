@@ -36,8 +36,8 @@ use frame_system::pallet_prelude::*;
 use module_support::{AssetIdMapping, EVMBridge, Erc20InfoMapping, InvokeContext};
 use primitives::{
 	currency::{
-		AssetIds, AssetMetadata, CurrencyIdType, DexShare, DexShareType, Erc20Id, ForeignAssetExtraMetadata,
-		ForeignAssetId, Lease, StableAssetPoolId, TokenInfo,
+		AssetIds, AssetMetadata, CurrencyIdType, DexShare, DexShareType, Erc20Id, ForeignAssetId, Lease,
+		StableAssetPoolId, TokenInfo,
 	},
 	evm::{
 		is_system_contract, EvmAddress, H160_POSITION_CURRENCY_ID_TYPE, H160_POSITION_DEXSHARE_LEFT_FIELD,
@@ -130,10 +130,6 @@ pub mod module {
 		AssetUpdated {
 			asset_id: AssetIds,
 			metadata: AssetMetadata<BalanceOf<T>>,
-		},
-		ForeignAssetExtraMetadataSet {
-			asset_id: ForeignAssetId,
-			metadata: Option<ForeignAssetExtraMetadata>,
 		},
 	}
 

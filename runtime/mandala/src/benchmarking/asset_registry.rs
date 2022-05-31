@@ -24,10 +24,7 @@ use frame_system::RawOrigin;
 use module_evm::EvmAddress;
 use module_support::AddressMapping;
 use orml_benchmarking::runtime_benchmarks;
-use primitives::{
-	currency::{AssetMetadata, ForeignAssetExtraMetadata},
-	TokenSymbol,
-};
+use primitives::{currency::AssetMetadata, TokenSymbol};
 use sp_std::{boxed::Box, str::FromStr, vec};
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
