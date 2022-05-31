@@ -635,19 +635,19 @@ pub mod module {
 		) -> sp_std::result::Result<R, E> {
 			StakingLedgers::<T>::try_mutate_exists(sub_account_index, |maybe_ledger| {
 				let mut ledger = maybe_ledger.take().unwrap_or_default();
-				let bonded_amount = ledger.bonded;
+				let old_bonded_amount = ledger.bonded;
 
 				f(&mut ledger).map(move |result| {
 					*maybe_ledger = if ledger == Default::default() {
 						TotalStakingBonded::<T>::mutate(|staking_balance| {
-							*staking_balance = staking_balance.saturating_sub(bonded_amount)
+							*staking_balance = staking_balance.saturating_sub(old_bonded_amount)
 						});
 						None
 					} else {
 						TotalStakingBonded::<T>::mutate(|staking_balance| {
 							*staking_balance = staking_balance
 								.saturating_add(ledger.bonded)
-								.saturating_sub(bonded_amount)
+								.saturating_sub(old_bonded_amount)
 						});
 						Some(ledger)
 					};
