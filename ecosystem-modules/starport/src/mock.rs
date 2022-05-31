@@ -119,7 +119,7 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACALA;
-	pub AccountForTransfer: AccountId = AccountId::new([0u8; 32]);
+	pub Erc20HoldingAccount: AccountId = AccountId::new([0u8; 32]);
 }
 
 impl module_currencies::Config for Runtime {
@@ -127,7 +127,7 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type AccountForTransfer = AccountForTransfer;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = ();

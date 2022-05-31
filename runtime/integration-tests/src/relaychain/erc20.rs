@@ -22,7 +22,7 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 
 use frame_support::assert_ok;
-use karura_runtime::AssetRegistry;
+use karura_runtime::{AssetRegistry, Erc20HoldingAccount};
 use module_support::EVM as EVMTrait;
 use orml_traits::MultiCurrency;
 use primitives::evm::EvmAddress;
@@ -199,8 +199,16 @@ fn erc20_transfer_between_sibling() {
 	});
 
 	Karura::execute_with(|| {
-		println!(
-			"{}",
+		assert_eq!(
+			5_000_000_000_000,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
+		);
+		assert_eq!(
+			6_400_000_000,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &Erc20HoldingAccount::get())
+		);
+		assert_eq!(
+			4_993_600_000_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
 	});

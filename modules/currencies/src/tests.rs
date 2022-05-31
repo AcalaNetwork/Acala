@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate::mock::evm_for_transfer;
+use crate::mock::erc20_holding_account;
 use frame_support::{assert_noop, assert_ok, weights::GetDispatchInfo};
 use mock::{
 	alice, bob, deploy_contracts, erc20_address, eva, AccountId, AdaptedBasicCurrency, CouncilAccount, Currencies,
@@ -862,7 +862,7 @@ fn erc20_withdraw_deposit_works() {
 		.balances(vec![
 			(alice(), NATIVE_CURRENCY_ID, 100000),
 			(bob(), NATIVE_CURRENCY_ID, 100000),
-			(evm_for_transfer(), NATIVE_CURRENCY_ID, 100000),
+			(erc20_holding_account(), NATIVE_CURRENCY_ID, 100000),
 		])
 		.build()
 		.execute_with(|| {
@@ -871,28 +871,28 @@ fn erc20_withdraw_deposit_works() {
 
 			assert_ok!(Currencies::transfer(
 				Origin::signed(alice()),
-				evm_for_transfer(),
+				erc20_holding_account(),
 				CurrencyId::Erc20(erc20_address()),
 				100
 			));
 
 			assert_eq!(
 				100,
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &evm_for_transfer())
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account())
 			);
 
 			assert_ok!(Currencies::withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 100),);
 
 			assert_eq!(
 				200,
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &evm_for_transfer())
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account())
 			);
 
 			assert_ok!(Currencies::deposit(CurrencyId::Erc20(erc20_address()), &bob(), 100),);
 
 			assert_eq!(
 				100,
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &evm_for_transfer())
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account())
 			);
 			assert_eq!(
 				100,

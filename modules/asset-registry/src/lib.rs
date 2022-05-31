@@ -54,7 +54,7 @@ use sp_std::{boxed::Box, vec::Vec};
 // MultiLocation in the future.
 use xcm::opaque::latest::{prelude::XcmError, AssetId, Fungibility::Fungible, MultiAsset};
 use xcm::{
-	v1::{Junction, Junctions::X2, MultiLocation},
+	v1::{Junction, Junctions::*, MultiLocation},
 	VersionedMultiLocation,
 };
 use xcm_builder::TakeRevenue;
@@ -586,8 +586,8 @@ where
 	fn minimum_balance(location: MultiLocation) -> Option<u128> {
 		match location {
 			MultiLocation {
-				parents: 1,
-				interior: X2(Junction::Parachain(_para_id), Junction::GeneralKey(key)),
+				parents: 0,
+				interior: X1(Junction::GeneralKey(key)),
 			} => {
 				let key = &key[..];
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;

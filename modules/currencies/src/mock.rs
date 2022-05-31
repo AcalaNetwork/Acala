@@ -181,7 +181,7 @@ impl module_evm_bridge::Config for Runtime {
 parameter_types! {
 	// EvmAddress: 1000000000000000000000000000000000000000
 	// AccountId: 5EMjsczPP5NF4tMHxCEnhBYD4C3ZxmeZBZnmmzG92f67hRZN
-	pub AccountForTransfer: AccountId = AccountId::from_str("65766d3a10000000000000000000000000000000000000000000000000000000").unwrap();
+	pub Erc20HoldingAccount: AccountId = AccountId::from_str("65766d3a10000000000000000000000000000000000000000000000000000000").unwrap();
 }
 
 impl Config for Runtime {
@@ -189,7 +189,7 @@ impl Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type AccountForTransfer = AccountForTransfer;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
@@ -221,19 +221,11 @@ frame_support::construct_runtime!(
 	}
 );
 
-pub fn _zero() -> AccountId {
-	<Runtime as Config>::AddressMapping::get_account_id(&_zero_evm_addr())
+pub fn erc20_holding_account() -> AccountId {
+	<Runtime as Config>::AddressMapping::get_account_id(&erc20_holding_account_addr())
 }
 
-pub fn _zero_evm_addr() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000000000000").unwrap()
-}
-
-pub fn evm_for_transfer() -> AccountId {
-	<Runtime as Config>::AddressMapping::get_account_id(&evm_for_transfer_addr())
-}
-
-pub fn evm_for_transfer_addr() -> EvmAddress {
+pub fn erc20_holding_account_addr() -> EvmAddress {
 	EvmAddress::from_str("1000000000000000000000000000000000000000").unwrap()
 }
 
