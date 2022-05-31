@@ -163,6 +163,7 @@ pub const LP_ACA_AUSD: CurrencyId =
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub AccountForTransfer: AccountId = AccountId::new([0u8; 32]);
 }
 
 impl module_currencies::Config for Test {
@@ -170,6 +171,7 @@ impl module_currencies::Config for Test {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type AccountForTransfer = AccountForTransfer;
 	type WeightInfo = ();
 	type AddressMapping = EvmAddressMapping<Test>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;

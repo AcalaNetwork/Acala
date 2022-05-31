@@ -178,11 +178,18 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
+parameter_types! {
+	// EvmAddress: 1000000000000000000000000000000000000000
+	// AccountId: 5EMjsczPP5NF4tMHxCEnhBYD4C3ZxmeZBZnmmzG92f67hRZN
+	pub AccountForTransfer: AccountId = AccountId::from_str("65766d3a10000000000000000000000000000000000000000000000000000000").unwrap();
+}
+
 impl Config for Runtime {
 	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type AccountForTransfer = AccountForTransfer;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
@@ -213,6 +220,22 @@ frame_support::construct_runtime!(
 		EVMBridge: module_evm_bridge::{Pallet},
 	}
 );
+
+pub fn _zero() -> AccountId {
+	<Runtime as Config>::AddressMapping::get_account_id(&_zero_evm_addr())
+}
+
+pub fn _zero_evm_addr() -> EvmAddress {
+	EvmAddress::from_str("0000000000000000000000000000000000000000").unwrap()
+}
+
+pub fn evm_for_transfer() -> AccountId {
+	<Runtime as Config>::AddressMapping::get_account_id(&evm_for_transfer_addr())
+}
+
+pub fn evm_for_transfer_addr() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000000").unwrap()
+}
 
 pub fn alice() -> AccountId {
 	<Runtime as Config>::AddressMapping::get_account_id(&alice_evm_addr())
