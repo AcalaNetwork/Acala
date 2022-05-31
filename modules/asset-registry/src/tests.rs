@@ -28,7 +28,6 @@ use mock::{
 };
 use primitives::TokenSymbol;
 use sp_core::H160;
-use sp_runtime::traits::BadOrigin;
 use std::str::{from_utf8, FromStr};
 
 #[test]

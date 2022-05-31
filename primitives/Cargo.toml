@@ -22,7 +22,6 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
 
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22", default-features = false}
 
 orml-traits = { path = "../orml/traits", default-features = false }
 
@@ -50,7 +49,6 @@ std = [
 	"sp-api/std",
 
 	"frame-support/std",
-	"xcm/std",
 
 	"orml-traits/std",
 	"module-evm-utility/std",
