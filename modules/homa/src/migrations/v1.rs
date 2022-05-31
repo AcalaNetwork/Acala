@@ -65,5 +65,5 @@ pub fn pre_migrate<P: GetStorageVersion>() {
 /// Panics if anything goes wrong
 pub fn post_migrate<T: homa::Config, P: GetStorageVersion>() {
 	assert!(homa::TotalStakingBonded::<T>::exists());
-	assert_eq!(P::on_chain_storage_version(), 4);
+	assert_eq!(P::on_chain_storage_version(), 1);
 }
