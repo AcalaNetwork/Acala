@@ -134,7 +134,7 @@ fn erc20_transfer_between_sibling() {
 		);
 
 		// transfer erc20 token to Sibling
-		assert_ok!(XTokens::transfer_reserve(
+		assert_ok!(XTokens::transfer(
 			Origin::signed(CHARLIE.into()),
 			CurrencyId::Erc20(erc20_address_0()),
 			10_000_000_000_000,
@@ -266,7 +266,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 		);
 
 		// transfer erc20 token to Karura
-		assert_ok!(XTokens::transfer_reserve(
+		assert_ok!(XTokens::transfer(
 			Origin::signed(CHARLIE.into()),
 			CurrencyId::Erc20(erc20_address_0()),
 			10_000_000_000_000,
