@@ -562,4 +562,39 @@ mod tests {
 			assert_eq!(res.output, expected_output.to_vec());
 		});
 	}
+
+	#[test]
+	fn get_debit_exchange_rate_works() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(CDPEngine::set_collateral_params(
+				Origin::signed(One::get()),
+				DOT,
+				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+				Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+				Change::NewValue(1_000_000_000)
+			));
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+			// getDebitExchangeRate(address) => 0xd018f091
+			// currency_id
+			let input = hex! {"
+				d018f091
+				000000000000000000000000 0000000000000000000100000000000000000002
+			"};
+
+			// value for FixedU128 of (1/10), default value for exchange rate
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000de0b6b3a7640000
+			"};
+			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+			assert_eq!(res.output, expected_output.to_vec());
+		})
+	}
 }
