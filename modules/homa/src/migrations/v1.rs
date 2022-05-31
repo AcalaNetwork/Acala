@@ -25,6 +25,7 @@ use frame_support::{
 use primitives::Balance;
 use sp_runtime::traits::Zero;
 
+/// Puts correct value into storage for `TotalStakingBonded`
 pub fn migrate<T: homa::Config, P: GetStorageVersion + PalletInfoAccess>() -> Weight {
 	let on_chain_storage_version = <P as GetStorageVersion>::on_chain_storage_version();
 	log::info!(
@@ -59,7 +60,7 @@ pub fn pre_migrate<P: GetStorageVersion>() {
 	assert!(P::on_chain_storage_version() < 1);
 }
 
-/// Some checks prior to migration
+/// Some checks after the migration
 ///
 /// Panics if anything goes wrong
 pub fn post_migrate<T: homa::Config, P: GetStorageVersion>() {
