@@ -548,8 +548,6 @@ pub mod module {
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			// Counter for total staking currency bonded
-			let mut total_staking_bonded: Balance = Zero::zero();
 			for (sub_account_index, bonded_change, unlocking_change) in updates {
 				Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
 					if let Some(change) = bonded_change {
@@ -561,9 +559,6 @@ pub mod module {
 							});
 						}
 					}
-					// Increments new total staking currency
-					total_staking_bonded = total_staking_bonded.saturating_add(ledger.bonded);
-
 					if let Some(change) = unlocking_change {
 						if ledger.unlocking != change {
 							ledger.unlocking = change.clone();
@@ -576,7 +571,6 @@ pub mod module {
 					Ok(())
 				})?;
 			}
-			TotalStakingBonded::<T>::set(total_staking_bonded);
 
 			Ok(())
 		}
@@ -641,10 +635,20 @@ pub mod module {
 		) -> sp_std::result::Result<R, E> {
 			StakingLedgers::<T>::try_mutate_exists(sub_account_index, |maybe_ledger| {
 				let mut ledger = maybe_ledger.take().unwrap_or_default();
+				let bonded_amount = ledger.bonded;
+
 				f(&mut ledger).map(move |result| {
 					*maybe_ledger = if ledger == Default::default() {
+						TotalStakingBonded::<T>::mutate(|staking_balance| {
+							*staking_balance = staking_balance.saturating_sub(bonded_amount)
+						});
 						None
 					} else {
+						TotalStakingBonded::<T>::mutate(|staking_balance| {
+							*staking_balance = staking_balance
+								.saturating_add(ledger.bonded)
+								.saturating_sub(bonded_amount)
+						});
 						Some(ledger)
 					};
 					result
@@ -880,9 +884,6 @@ pub mod module {
 							before.bonded = before.bonded.saturating_add(reward_staking);
 							Ok(())
 						})?;
-						TotalStakingBonded::<T>::mutate(|staking_balance| {
-							*staking_balance = staking_balance.saturating_add(reward_staking)
-						});
 
 						total_reward_staking = total_reward_staking.saturating_add(reward_staking);
 					}
@@ -922,11 +923,6 @@ pub mod module {
 
 					// update ledger
 					Self::do_update_ledger(sub_account_index, |before| -> DispatchResult {
-						TotalStakingBonded::<T>::mutate(|staking_balance| {
-							*staking_balance = staking_balance
-								.saturating_sub(before.bonded)
-								.saturating_add(new_ledger.bonded)
-						});
 						*before = new_ledger;
 						Ok(())
 					})?;
@@ -980,9 +976,6 @@ pub mod module {
 						// update ledger
 						Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
 							ledger.bonded = ledger.bonded.saturating_add(bond_amount);
-							TotalStakingBonded::<T>::mutate(|staking_balance| {
-								*staking_balance = staking_balance.saturating_add(bond_amount)
-							});
 							Ok(())
 						})?;
 					}
@@ -1041,9 +1034,6 @@ pub mod module {
 					// update ledger
 					Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
 						ledger.bonded = ledger.bonded.saturating_sub(unbond_amount);
-						TotalStakingBonded::<T>::mutate(|staking_amount| {
-							*staking_amount = staking_amount.saturating_sub(unbond_amount)
-						});
 						ledger.unlocking.push(UnlockChunk {
 							value: unbond_amount,
 							era: era_index_to_expire,

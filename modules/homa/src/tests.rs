@@ -440,7 +440,7 @@ fn get_total_staking_currency_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(Homa::reset_ledgers(
 			Origin::signed(HomaAdmin::get()),
-			vec![(0, Some(1_000_000), None), (0, Some(2_000_000), None)]
+			vec![(0, Some(1_000_000), None), (1, Some(2_000_000), None)]
 		));
 		ToBondPool::<Runtime>::put(2_000_000);
 		assert_eq!(Homa::get_total_staking_currency(), 5_000_000);
