@@ -406,6 +406,28 @@ impl StableAssetT for MockStableAsset {
 			})
 		})
 	}
+
+	fn xcm_mint(
+		_who: &Self::AccountId,
+		_target_pool_id: StableAssetPoolId,
+		_amounts: Vec<Self::Balance>,
+		_min_mint_amount: Self::Balance,
+		_source_pool_id: StableAssetPoolId,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn xcm_redeem_single(
+		_who: &Self::AccountId,
+		_pool_id: StableAssetPoolId,
+		_amount: Self::Balance,
+		_i: PoolTokenIndex,
+		_min_redeem_amount: Self::Balance,
+		_asset_length: u32,
+		_source_pool_id: StableAssetPoolId,
+	) -> DispatchResult {
+		unimplemented!()
+	}
 }
 
 pub fn set_taiga_swap(currency_id_0: CurrencyId, currency_id_1: CurrencyId, exchange_rate_1_for_0: ExchangeRate) {

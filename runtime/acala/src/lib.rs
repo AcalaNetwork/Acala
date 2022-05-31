@@ -66,7 +66,9 @@ use orml_traits::{
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 pub use frame_support::{
-	construct_runtime, log,
+	construct_runtime,
+	dispatch::Dispatchable,
+	log,
 	pallet_prelude::InvalidTransaction,
 	parameter_types,
 	traits::{
@@ -1564,6 +1566,91 @@ type RebaseTokens = orml_tokens::Combiner<
 	Currencies,
 >;
 
+pub struct StableAssetXcmInterface;
+impl nutsfinance_stable_asset::traits::XcmInterface for StableAssetXcmInterface {
+	type Balance = Balance;
+	type AccountId = AccountId;
+	fn send_mint_call_to_xcm(
+		account_id: Self::AccountId,
+		pool_id: u32,
+		amounts: Vec<Self::Balance>,
+		min_mint_amount: Self::Balance,
+		source_pool_id: u32,
+	) -> DispatchResult {
+		let raw_origin = RawOrigin::Signed(account_id.clone());
+		let origin: Origin = raw_origin.into();
+		let call = Call::StableAsset(nutsfinance_stable_asset::Call::process_xcm_mint {
+			account_id,
+			target_pool_id: pool_id,
+			amounts,
+			min_mint_amount,
+			source_pool_id,
+		});
+		call.dispatch(origin.clone()).map_err(|x| x.error)?;
+		Ok(().into())
+	}
+
+	fn send_mint_result_to_xcm(
+		account_id: Self::AccountId,
+		source_pool_id: u32,
+		mint_amount: Option<Self::Balance>,
+		amounts: Vec<Self::Balance>,
+	) -> DispatchResult {
+		let raw_origin = RawOrigin::Signed(account_id.clone());
+		let origin: Origin = raw_origin.into();
+		let call = Call::StableAsset(nutsfinance_stable_asset::Call::receive_mint_from_xcm {
+			account_id,
+			source_pool_id,
+			mint_amount_opt: mint_amount,
+			amounts,
+		});
+		call.dispatch(origin.clone()).map_err(|x| x.error)?;
+		Ok(().into())
+	}
+
+	fn send_redeem_single_call_to_xcm(
+		account_id: Self::AccountId,
+		target_pool_id: u32,
+		amount: Self::Balance,
+		i: u32,
+		min_redeem_amount: Self::Balance,
+		asset_length: u32,
+		source_pool_id: u32,
+	) -> DispatchResult {
+		let raw_origin = RawOrigin::Signed(account_id.clone());
+		let origin: Origin = raw_origin.into();
+		let call = Call::StableAsset(nutsfinance_stable_asset::Call::process_xcm_redeem_single {
+			account_id,
+			target_pool_id,
+			amount,
+			i,
+			min_redeem_amount,
+			asset_length,
+			source_pool_id,
+		});
+		call.dispatch(origin.clone()).map_err(|x| x.error)?;
+		Ok(().into())
+	}
+
+	fn send_redeem_single_result_to_xcm(
+		account_id: Self::AccountId,
+		source_pool_id: u32,
+		redeem_amount: Option<Self::Balance>,
+		burn_amount: Self::Balance,
+	) -> DispatchResult {
+		let raw_origin = RawOrigin::Signed(account_id.clone());
+		let origin: Origin = raw_origin.into();
+		let call = Call::StableAsset(nutsfinance_stable_asset::Call::receive_redeem_single_from_xcm {
+			account_id,
+			source_pool_id,
+			redeem_amount_opt: redeem_amount,
+			burn_amount,
+		});
+		call.dispatch(origin.clone()).map_err(|x| x.error)?;
+		Ok(().into())
+	}
+}
+
 impl nutsfinance_stable_asset::Config for Runtime {
 	type Event = Event;
 	type AssetId = CurrencyId;
@@ -1579,6 +1666,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
+	type XcmInterface = StableAssetXcmInterface;
 }
 
 construct_runtime!(

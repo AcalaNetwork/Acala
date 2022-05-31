@@ -513,6 +513,51 @@ impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoo
 	}
 }
 
+pub struct StableAssetXcmInterface;
+impl nutsfinance_stable_asset::traits::XcmInterface for StableAssetXcmInterface {
+	type Balance = Balance;
+	type AccountId = AccountId;
+	fn send_mint_call_to_xcm(
+		_account_id: Self::AccountId,
+		_pool_id: u32,
+		_amounts: Vec<Self::Balance>,
+		_min_mint_amount: Self::Balance,
+		_source_pool_id: u32,
+	) -> DispatchResult {
+		Ok(().into())
+	}
+
+	fn send_mint_result_to_xcm(
+		_account_id: Self::AccountId,
+		_source_pool_id: u32,
+		_mint_amount: Option<Self::Balance>,
+		_amounts: Vec<Self::Balance>,
+	) -> DispatchResult {
+		Ok(().into())
+	}
+
+	fn send_redeem_single_call_to_xcm(
+		_account_id: Self::AccountId,
+		_target_pool_id: u32,
+		_amount: Self::Balance,
+		_i: u32,
+		_min_redeem_amount: Self::Balance,
+		_asset_length: u32,
+		_source_pool_id: u32,
+	) -> DispatchResult {
+		Ok(().into())
+	}
+
+	fn send_redeem_single_result_to_xcm(
+		_account_id: Self::AccountId,
+		_source_pool_id: u32,
+		_redeem_amount: Option<Self::Balance>,
+		_burn_amount: Self::Balance,
+	) -> DispatchResult {
+		Ok(().into())
+	}
+}
+
 impl nutsfinance_stable_asset::Config for Test {
 	type Event = Event;
 	type AssetId = CurrencyId;
@@ -528,6 +573,7 @@ impl nutsfinance_stable_asset::Config for Test {
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
+	type XcmInterface = StableAssetXcmInterface;
 }
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
