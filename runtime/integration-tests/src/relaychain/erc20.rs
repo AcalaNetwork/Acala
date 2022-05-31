@@ -74,7 +74,8 @@ pub fn deploy_erc20_contracts() {
 }
 
 #[test]
-fn erc20_transfer_to_sibling() {
+fn erc20_transfer_between_sibling() {
+	env_logger::init();
 	TestNet::reset();
 
 	fn sibling_reserve_account() -> AccountId {
@@ -132,7 +133,7 @@ fn erc20_transfer_to_sibling() {
 			1_000_000_000_000_000
 		);
 
-		// transfer erc20 token to sibling
+		// transfer erc20 token to Sibling
 		assert_ok!(XTokens::transfer_reserve(
 			Origin::signed(CHARLIE.into()),
 			CurrencyId::Erc20(erc20_address_0()),
@@ -164,15 +165,49 @@ fn erc20_transfer_to_sibling() {
 	});
 
 	Sibling::execute_with(|| {
+		// Sibling will take (1, 2000, GeneralKey(Erc20(address))) as foreign asset
 		assert_eq!(
 			9_999_360_000_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
+		);
+
+		// transfer erc20 token back to Karura
+		assert_ok!(XTokens::transfer(
+			Origin::signed(BOB.into()),
+			CurrencyId::ForeignAsset(0),
+			5_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2000),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						},
+					),
+				)
+				.into(),
+			),
+			1_000_000_000,
+		));
+
+		assert_eq!(
+			4_999_360_000_000,
+			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
+		);
+	});
+
+	Karura::execute_with(|| {
+		println!(
+			"{}",
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
 	});
 }
 
 #[test]
-fn erc20_transfer_from_sibling() {
+fn sibling_erc20_to_self_as_foreign_asset() {
 	TestNet::reset();
 
 	fn sibling_reserve_account() -> AccountId {

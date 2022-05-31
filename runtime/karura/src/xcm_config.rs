@@ -29,13 +29,14 @@ pub use frame_support::{
 	traits::{Everything, Get, Nothing},
 	weights::Weight,
 };
+pub use module_asset_registry::{Erc20MinimumBalance, ForeignAssetMinimumBalance};
 use module_support::HomaSubAccountXcm;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use primitives::evm::is_system_contract;
-use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil};
+use runtime_common::{native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
@@ -47,7 +48,7 @@ pub use xcm_builder::{
 use xcm_executor::XcmExecutor;
 
 #[cfg(not(feature = "integration-tests"))]
-use super::{FixedRateOfForeignAsset, TransactionFeePoolTrader};
+use super::{FixedRateOfAssetRegistry, TransactionFeePoolTrader};
 #[cfg(feature = "integration-tests")]
 use crate::integration_tests_config::*;
 
@@ -203,7 +204,8 @@ pub type Trader = (
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
 	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
+	FixedRateOfAssetRegistry<Runtime, ForeignAssetUnitsPerSecond, ToTreasury, ForeignAssetMinimumBalance<Runtime>>,
+	FixedRateOfAssetRegistry<Runtime, ForeignAssetUnitsPerSecond, ToTreasury, Erc20MinimumBalance<Runtime>>,
 );
 
 pub struct XcmConfig;
@@ -341,10 +343,6 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 	DepositToAlternative<KaruraTreasuryAccount, Currencies, CurrencyId, AccountId, Balance>,
 >;
 
-fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
-}
-
 pub struct CurrencyIdConvert;
 
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
@@ -353,8 +351,10 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use CurrencyId::{Erc20, ForeignAsset, Token};
 		match id {
 			Token(KSM) => Some(MultiLocation::parent()),
-			Token(KAR) | Token(KUSD) | Token(LKSM) => Some(native_currency_location(id)),
-			Erc20(address) if !is_system_contract(address) => Some(native_currency_location(id)),
+			Token(KAR) | Token(KUSD) | Token(LKSM) => Some(native_currency_location(ParachainInfo::get().into(), id)),
+			Erc20(address) if !is_system_contract(address) => {
+				Some(native_currency_location(ParachainInfo::get().into(), id))
+			}
 			// Bifrost native token
 			Token(BNC) => Some(MultiLocation::new(
 				1,
