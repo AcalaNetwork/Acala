@@ -29,7 +29,7 @@ pub use frame_support::{
 	traits::{Everything, Get, Nothing},
 	weights::Weight,
 };
-pub use module_asset_registry::{Erc20MinimumBalance, ForeignAssetMinimumBalance};
+pub use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset};
 use module_support::HomaSubAccountXcm;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
@@ -204,8 +204,8 @@ pub type Trader = (
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
 	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfAssetRegistry<Runtime, ForeignAssetUnitsPerSecond, ToTreasury, ForeignAssetMinimumBalance<Runtime>>,
-	FixedRateOfAssetRegistry<Runtime, ForeignAssetUnitsPerSecond, ToTreasury, Erc20MinimumBalance<Runtime>>,
+	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
+	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
 );
 
 pub struct XcmConfig;

@@ -863,7 +863,6 @@ fn erc20_withdraw_deposit_works() {
 		.balances(vec![
 			(alice(), NATIVE_CURRENCY_ID, 100000),
 			(bob(), NATIVE_CURRENCY_ID, 100000),
-			(erc20_holding_account(), NATIVE_CURRENCY_ID, 100000),
 		])
 		.build()
 		.execute_with(|| {

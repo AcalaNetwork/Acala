@@ -33,7 +33,7 @@ use frame_support::{
 	weights::constants::WEIGHT_PER_SECOND,
 };
 use frame_system::pallet_prelude::*;
-use module_support::{AssetIdMapping, EVMBridge, Erc20InfoMapping, InvokeContext, MinimumBalanceRatio, Rate};
+use module_support::{AssetIdMapping, BuyWeightRate, EVMBridge, Erc20InfoMapping, InvokeContext, Rate};
 use primitives::{
 	currency::{
 		AssetIds, AssetMetadata, CurrencyIdType, DexShare, DexShareType, Erc20Id, ForeignAssetId, Lease,
@@ -559,13 +559,13 @@ impl<T: Config> AssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata<Bala
 	}
 }
 
-pub struct ForeignAssetMinimumBalance<T>(sp_std::marker::PhantomData<T>);
+pub struct BuyWeightRateOfForeignAsset<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: Config> MinimumBalanceRatio for ForeignAssetMinimumBalance<T>
+impl<T: Config> BuyWeightRate for BuyWeightRateOfForeignAsset<T>
 where
 	BalanceOf<T>: Into<u128>,
 {
-	fn minimum_balance_ratio(location: MultiLocation) -> Option<Rate> {
+	fn calculate_rate(location: MultiLocation) -> Option<Rate> {
 		if let Some(CurrencyId::ForeignAsset(foreign_asset_id)) = Pallet::<T>::location_to_currency_ids(location) {
 			if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::ForeignAssetId(foreign_asset_id)) {
 				let minimum_balance = asset_metadata.minimal_balance.into();
@@ -578,13 +578,13 @@ where
 	}
 }
 
-pub struct Erc20MinimumBalance<T>(sp_std::marker::PhantomData<T>);
+pub struct BuyWeightRateOfErc20<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: Config> MinimumBalanceRatio for Erc20MinimumBalance<T>
+impl<T: Config> BuyWeightRate for BuyWeightRateOfErc20<T>
 where
 	BalanceOf<T>: Into<u128>,
 {
-	fn minimum_balance_ratio(location: MultiLocation) -> Option<Rate> {
+	fn calculate_rate(location: MultiLocation) -> Option<Rate> {
 		match location {
 			MultiLocation {
 				parents: 0,
@@ -618,16 +618,16 @@ where
 ///
 /// The constant `FixedRate` type parameter should be the concrete fungible ID and the amount of it
 /// required for one second of weight.
-pub struct FixedRateOfAssetRegistry<T: Config, FixedRate: Get<u128>, R: TakeRevenue, M: MinimumBalanceRatio> {
+pub struct FixedRateOfAssetRegistry<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> {
 	weight: Weight,
 	amount: u128,
 	ed_ratio: FixedU128,
 	multi_location: Option<MultiLocation>,
-	_marker: PhantomData<(T, FixedRate, R, M)>,
+	_marker: PhantomData<(FixedRate, R, M)>,
 }
 
-impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue, M: MinimumBalanceRatio> WeightTrader
-	for FixedRateOfAssetRegistry<T, FixedRate, R, M>
+impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader
+	for FixedRateOfAssetRegistry<FixedRate, R, M>
 {
 	fn new() -> Self {
 		Self {
@@ -652,7 +652,7 @@ impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue, M: MinimumBalanceRatio> We
 		if let AssetId::Concrete(ref multi_location) = asset_id {
 			log::debug!(target: "asset-registry::weight", "buy_weight multi_location: {:?}", multi_location);
 
-			if let Some(ed_ratio) = M::minimum_balance_ratio(multi_location.clone()) {
+			if let Some(ed_ratio) = M::calculate_rate(multi_location.clone()) {
 				// The WEIGHT_PER_SECOND is non-zero.
 				let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
 				let amount = ed_ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
@@ -711,9 +711,7 @@ impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue, M: MinimumBalanceRatio> We
 	}
 }
 
-impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue, M: MinimumBalanceRatio> Drop
-	for FixedRateOfAssetRegistry<T, FixedRate, R, M>
-{
+impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateOfAssetRegistry<FixedRate, R, M> {
 	fn drop(&mut self) {
 		log::trace!(target: "asset-registry::weight", "take revenue, weight: {:?}, amount: {:?}, multi_location: {:?}", self.weight, self.amount, self.multi_location);
 		if self.amount > 0 && self.multi_location.is_some() {

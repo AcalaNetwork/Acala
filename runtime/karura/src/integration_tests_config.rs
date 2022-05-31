@@ -45,6 +45,6 @@ pub type Trader = (
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
 	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfAssetRegistry<Runtime, ForeignAssetUnitsPerSecond, ToTreasury, ForeignAssetMinimumBalance<Runtime>>,
-	FixedRateOfAssetRegistry<Runtime, ForeignAssetUnitsPerSecond, ToTreasury, Erc20MinimumBalance<Runtime>>,
+	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
+	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
 );

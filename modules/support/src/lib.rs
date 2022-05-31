@@ -189,6 +189,6 @@ pub trait NomineesProvider<AccountId> {
 	fn nominees() -> Vec<AccountId>;
 }
 
-pub trait MinimumBalanceRatio {
-	fn minimum_balance_ratio(location: MultiLocation) -> Option<Rate>;
+pub trait BuyWeightRate {
+	fn calculate_rate(location: MultiLocation) -> Option<Rate>;
 }

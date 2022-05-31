@@ -219,14 +219,6 @@ frame_support::construct_runtime!(
 	}
 );
 
-pub fn erc20_holding_account() -> AccountId {
-	<Runtime as Config>::AddressMapping::get_account_id(&erc20_holding_account_addr())
-}
-
-pub fn erc20_holding_account_addr() -> EvmAddress {
-	EvmAddress::from_str("1000000000000000000000000000000000000000").unwrap()
-}
-
 pub fn alice() -> AccountId {
 	<Runtime as Config>::AddressMapping::get_account_id(&alice_evm_addr())
 }
