@@ -45,8 +45,8 @@ pub fn migrate<T: homa::Config, P: GetStorageVersion + PalletInfoAccess>() -> We
 		<T as frame_system::Config>::BlockWeights::get().max_block
 	} else {
 		log::warn!(
-			target: "runtime::tips",
-			"Attempted to apply migration to v4 but failed because storage version is {:?}",
+			target: "runtime::homa",
+			"Attempted to apply migration to v1 but failed because storage version is {:?}",
 			on_chain_storage_version,
 		);
 		0
