@@ -56,7 +56,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	FixedPointNumber, FixedPointOperand, MultiSignature, Percent, Perquintill,
+	FixedPointNumber, FixedPointOperand, Percent, Perquintill,
 };
 use sp_std::prelude::*;
 use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
@@ -605,7 +605,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			call: Box<CallOf<T>>,
 			_payer_addr: T::AccountId,
-			_payer_sig: MultiSignature,
+			_payer_encode_call: Vec<u8>,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin.clone())?;
 			call.dispatch(origin)
@@ -834,7 +834,7 @@ where
 			Some(Call::with_fee_paid_by {
 				call: _,
 				payer_addr,
-				payer_sig: _,
+				payer_encode_call: _,
 			}) => {
 				// validate payer signature in runtime side, because `SignedExtension` between different runtime
 				// may be different.

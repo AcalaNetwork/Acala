@@ -98,6 +98,7 @@ pub use constants::{fee::*, time::*};
 pub use primitives::{
 	currency::AssetIds,
 	evm::{BlockLimits, EstimateResourcesRequest},
+	signature::AcalaMultiSignature,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
 	DataProviderId, EraIndex, Hash, Lease, Moment, Multiplier, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
 	TradingPair,
@@ -1825,7 +1826,7 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 		if let Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
 			call,
 			payer_addr,
-			payer_sig,
+			payer_encode_call,
 		}) = call
 		{
 			let payer_account: [u8; 32] = payer_addr
@@ -1833,10 +1834,34 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 				.as_slice()
 				.try_into()
 				.map_err(|_| InvalidTransaction::BadSigner)?;
-			// payer signature is aim at inner call of `with_fee_paid_by` call.
-			let raw_payload = SignedPayload::new(*call, extra).map_err(|_| InvalidTransaction::BadSigner)?;
-			if !raw_payload.using_encoded(|payload| payer_sig.verify(payload, &payer_account.into())) {
-				return Err(InvalidTransaction::BadProof);
+
+			let signed_unsubmit_extrinsic: generic::UncheckedExtrinsic<
+				Address,
+				Call,
+				AcalaMultiSignature,
+				SignedExtra,
+			> = <generic::UncheckedExtrinsic<Address, Call, AcalaMultiSignature, SignedExtra>>::decode(
+				&mut payer_encode_call.as_slice(),
+			)
+			.map_err(|_e| InvalidTransaction::Call)?;
+			if let Some((relayer, payer_sig, old_extra)) = signed_unsubmit_extrinsic.signature {
+				let (_, _, _, _, mortality, old_check_nonce, _, _, _) = old_extra.clone();
+				let (_, _, _, _, _, check_nonce, _, _, ..) = extra.clone();
+
+				// make sure nonce keep no changed.
+				if old_check_nonce.nonce != check_nonce.nonce {
+					return Err(InvalidTransaction::BadProof);
+				}
+				// make sure relayer/payer address is correct.
+				if relayer != sp_runtime::MultiAddress::Id(payer_addr) {
+					return Err(InvalidTransaction::BadProof);
+				}
+				// TODO: verify era lifetime is not expire
+
+				let raw_payload = SignedPayload::new(*call, old_extra).map_err(|_| InvalidTransaction::BadSigner)?;
+				if !raw_payload.using_encoded(|payload| payer_sig.verify(payload, &payer_account.into())) {
+					return Err(InvalidTransaction::BadProof);
+				}
 			}
 		}
 		Ok(())
@@ -2540,6 +2565,7 @@ mod tests {
 	#[test]
 	fn payer_signature_verify() {
 		use sp_core::Pair;
+		use sp_runtime::traits::Extrinsic;
 
 		let extra: SignedExtra = (
 			frame_system::CheckNonZeroSender::<Runtime>::new(),
@@ -2553,9 +2579,22 @@ mod tests {
 			module_evm::SetEvmOrigin::<Runtime>::new(),
 		);
 
+		let new_extra: SignedExtra = (
+			frame_system::CheckNonZeroSender::<Runtime>::new(),
+			frame_system::CheckSpecVersion::<Runtime>::new(),
+			frame_system::CheckTxVersion::<Runtime>::new(),
+			frame_system::CheckGenesis::<Runtime>::new(),
+			frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
+			runtime_common::CheckNonce::<Runtime>::from(1),
+			frame_system::CheckWeight::<Runtime>::new(),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
+			module_evm::SetEvmOrigin::<Runtime>::new(),
+		);
+
 		// correct payer signature
 		new_test_ext().execute_with(|| {
-			let payer = sp_keyring::AccountKeyring::Charlie;
+			let payer = sp_keyring::ed25519::Keyring::Charlie;
+			let payer_account = payer.to_account_id();
 
 			let call = Call::Balances(pallet_balances::Call::transfer {
 				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Bob.to_account_id()),
@@ -2565,17 +2604,36 @@ mod tests {
 			let raw_payload = SignedPayload::new(call.clone(), extra.clone()).unwrap();
 			let payer_signature = raw_payload.using_encoded(|payload| payer.pair().sign(payload));
 
+			let extrinsic = AcalaUncheckedExtrinsic::<
+				Call,
+				SignedExtra,
+				ConvertEthereumTx,
+				StorageDepositPerByte,
+				TxFeePerGas,
+				PayerSignatureVerification,
+			>::new(
+				call.clone(),
+				Some((
+					sp_runtime::MultiAddress::Id(payer_account),
+					AcalaMultiSignature::Ed25519(payer_signature),
+					extra.clone(),
+				)),
+			)
+			.unwrap();
+			let payer_encode_call = extrinsic.encode();
+
 			let fee_call = Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
 				call: Box::new(call),
 				payer_addr: payer.to_account_id(),
-				payer_sig: sp_runtime::MultiSignature::Sr25519(payer_signature),
+				payer_encode_call,
 			});
 			assert!(PayerSignatureVerification::convert((fee_call, extra.clone())).is_ok());
 		});
 
 		// wrong payer signature
 		new_test_ext().execute_with(|| {
-			let hacker = sp_keyring::AccountKeyring::Dave;
+			let hacker = sp_keyring::ed25519::Keyring::Dave;
+			let hacker_account = hacker.to_account_id();
 
 			let call = Call::Balances(pallet_balances::Call::transfer {
 				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Bob.to_account_id()),
@@ -2588,13 +2646,69 @@ mod tests {
 
 			let raw_payload = SignedPayload::new(hacker_call.clone(), extra.clone()).unwrap();
 			let payer_signature = raw_payload.using_encoded(|payload| hacker.pair().sign(payload));
+			let extrinsic = AcalaUncheckedExtrinsic::<
+				Call,
+				SignedExtra,
+				ConvertEthereumTx,
+				StorageDepositPerByte,
+				TxFeePerGas,
+				PayerSignatureVerification,
+			>::new(
+				call.clone(),
+				Some((
+					sp_runtime::MultiAddress::Id(hacker_account),
+					AcalaMultiSignature::Ed25519(payer_signature),
+					extra.clone(),
+				)),
+			)
+			.unwrap();
+			let hacker_encode_call = extrinsic.encode();
 
 			let fee_call = Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
 				call: Box::new(call),
 				payer_addr: hacker.to_account_id(),
-				payer_sig: sp_runtime::MultiSignature::Sr25519(payer_signature),
+				payer_encode_call: hacker_encode_call,
 			});
-			assert!(PayerSignatureVerification::convert((fee_call, extra)).is_err());
+			assert!(PayerSignatureVerification::convert((fee_call, extra.clone())).is_err());
+		});
+
+		// sender nonce changed
+		new_test_ext().execute_with(|| {
+			let payer = sp_keyring::ed25519::Keyring::Charlie;
+			let payer_account = payer.to_account_id();
+
+			let call = Call::Balances(pallet_balances::Call::transfer {
+				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Bob.to_account_id()),
+				value: 100,
+			});
+
+			let raw_payload = SignedPayload::new(call.clone(), extra.clone()).unwrap();
+			let payer_signature = raw_payload.using_encoded(|payload| payer.pair().sign(payload));
+
+			let extrinsic = AcalaUncheckedExtrinsic::<
+				Call,
+				SignedExtra,
+				ConvertEthereumTx,
+				StorageDepositPerByte,
+				TxFeePerGas,
+				PayerSignatureVerification,
+			>::new(
+				call.clone(),
+				Some((
+					sp_runtime::MultiAddress::Id(payer_account),
+					AcalaMultiSignature::Ed25519(payer_signature),
+					extra.clone(),
+				)),
+			)
+			.unwrap();
+			let payer_encode_call = extrinsic.encode();
+
+			let fee_call = Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+				call: Box::new(call),
+				payer_addr: payer.to_account_id(),
+				payer_encode_call,
+			});
+			assert!(PayerSignatureVerification::convert((fee_call, new_extra)).is_err());
 		});
 	}
 }

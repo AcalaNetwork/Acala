@@ -92,6 +92,7 @@ use primitives::currency::AssetIds;
 pub use primitives::{
 	define_combined_task,
 	evm::{AccessListItem, BlockLimits, EstimateResourcesRequest, EthereumTransactionMessage},
+	signature::AcalaMultiSignature,
 	task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
@@ -2154,7 +2155,7 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 		if let Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
 			call,
 			payer_addr,
-			payer_sig,
+			payer_encode_call,
 		}) = call
 		{
 			let payer_account: [u8; 32] = payer_addr
@@ -2162,10 +2163,33 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 				.as_slice()
 				.try_into()
 				.map_err(|_| InvalidTransaction::BadSigner)?;
-			// payer signature is aim at inner call of `with_fee_paid_by` call.
-			let raw_payload = SignedPayload::new(*call, extra).map_err(|_| InvalidTransaction::BadSigner)?;
-			if !raw_payload.using_encoded(|payload| payer_sig.verify(payload, &payer_account.into())) {
-				return Err(InvalidTransaction::BadProof);
+
+			let signed_unsubmit_extrinsic: generic::UncheckedExtrinsic<
+				Address,
+				Call,
+				AcalaMultiSignature,
+				SignedExtra,
+			> = <generic::UncheckedExtrinsic<Address, Call, AcalaMultiSignature, SignedExtra>>::decode(
+				&mut payer_encode_call.as_slice(),
+			)
+			.map_err(|_e| InvalidTransaction::Call)?;
+			if let Some((relayer, payer_sig, old_extra)) = signed_unsubmit_extrinsic.signature {
+				let (_, _, _, _, _, old_check_nonce, _, _, _) = old_extra.clone();
+				let (_, _, _, _, _, check_nonce, _, _, ..) = extra.clone();
+
+				// make sure nonce keep no changed.
+				if old_check_nonce.nonce != check_nonce.nonce {
+					return Err(InvalidTransaction::BadProof);
+				}
+				// make sure relayer/payer address is correct.
+				if relayer != sp_runtime::MultiAddress::Id(payer_addr) {
+					return Err(InvalidTransaction::BadProof);
+				}
+
+				let raw_payload = SignedPayload::new(*call, old_extra).map_err(|_| InvalidTransaction::BadSigner)?;
+				if !raw_payload.using_encoded(|payload| payer_sig.verify(payload, &payer_account.into())) {
+					return Err(InvalidTransaction::BadProof);
+				}
 			}
 		}
 		Ok(())
