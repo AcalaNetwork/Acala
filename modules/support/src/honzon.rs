@@ -25,8 +25,7 @@ use sp_std::{
 	prelude::*,
 };
 
-use crate::dex::*;
-use crate::Ratio;
+use crate::{dex::*, ExchangeRate, Ratio};
 
 pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
 	fn get_debit_value(currency_id: CurrencyId, debit_balance: DebitBalance) -> Balance;
@@ -167,4 +166,6 @@ pub trait HonzonManager<AccountId, CurrencyId, Amount, Balance> {
 	fn get_liquidation_ratio(currency_id: CurrencyId) -> Option<Ratio>;
 	/// Get current ratio of collateral to debit of open CDP
 	fn get_current_collateral_ratio(who: &AccountId, currency_id: CurrencyId) -> Option<Ratio>;
+	/// Get exchange rate of debit units to debit value for a currency_id
+	fn get_debit_exchange_rate(currency_id: CurrencyId) -> ExchangeRate;
 }
