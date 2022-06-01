@@ -869,37 +869,52 @@ fn erc20_withdraw_deposit_works() {
 			deploy_contracts();
 			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 
-			let erc20_holding_account = Erc20HoldingAccount::get();
-			let erc20_account = MockAddressMapping::get_account_id(&erc20_holding_account);
+			let erc20_holding_account = MockAddressMapping::get_account_id(&Erc20HoldingAccount::get());
 
+			// transfer to all-zero account failed.
+			assert_noop!(
+				Currencies::transfer(
+					Origin::signed(alice()),
+					MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
+					CurrencyId::Erc20(erc20_address()),
+					100
+				),
+				module_evm_bridge::Error::<Runtime>::ExecutionRevert
+			);
+			// transfer to non-all-zero account ok.
 			assert_ok!(Currencies::transfer(
 				Origin::signed(alice()),
-				erc20_account.clone(),
+				erc20_holding_account.clone(),
 				CurrencyId::Erc20(erc20_address()),
 				100
 			));
-
 			assert_eq!(
 				100,
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_account)
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account)
 			);
 
-			assert_ok!(Currencies::withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 100),);
-
+			// withdraw: sender to erc20 holding account
+			assert_ok!(Currencies::withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 100));
 			assert_eq!(
 				200,
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_account)
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account)
 			);
 
-			assert_ok!(Currencies::deposit(CurrencyId::Erc20(erc20_address()), &bob(), 100),);
-
+			// deposit: erc20 holding account to receiver
+			assert_ok!(Currencies::deposit(CurrencyId::Erc20(erc20_address()), &bob(), 100));
 			assert_eq!(
 				100,
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_account)
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account)
 			);
 			assert_eq!(
 				100,
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &bob())
+			);
+
+			// deposit failed, because erc20 holding account balance not enough
+			assert_noop!(
+				Currencies::deposit(CurrencyId::Erc20(erc20_address()), &bob(), 101),
+				module_evm_bridge::Error::<Runtime>::ExecutionRevert
 			);
 		});
 }

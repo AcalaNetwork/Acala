@@ -839,7 +839,7 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
-	pub Erc20HoldingAccount: H160 = primitives::evm::MIRRORED_TOKENS_ADDRESS_START;
+	pub Erc20HoldingAccount: H160 = H160(hex_literal::hex!("000000000000000000ff00000000000000000000"));
 }
 
 impl module_currencies::Config for Runtime {

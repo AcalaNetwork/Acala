@@ -5800,6 +5800,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
+ "hex-literal",
  "module-evm",
  "module-evm-bridge",
  "module-support",
