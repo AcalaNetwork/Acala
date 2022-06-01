@@ -34,12 +34,22 @@ use primitives::currency::{AssetMetadata, BNC};
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert;
 
+pub const KARURA_ID: u32 = 2000;
+pub const SIBLING_ID: u32 = 2002;
+
+fn karura_reserve_account() -> AccountId {
+	polkadot_parachain::primitives::Sibling::from(KARURA_ID).into_account()
+}
+fn sibling_reserve_account() -> AccountId {
+	polkadot_parachain::primitives::Sibling::from(SIBLING_ID).into_account()
+}
+
 #[test]
 fn transfer_from_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(KARURA_ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
 					id: BOB,
@@ -94,13 +104,6 @@ fn transfer_to_relay_chain() {
 fn transfer_sibling_chain_asset() {
 	TestNet::reset();
 
-	fn karura_reserve_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2000).into_account()
-	}
-	fn sibling_reserve_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2002).into_account()
-	}
-
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100_000_000_000_000));
 	});
@@ -133,7 +136,7 @@ fn transfer_sibling_chain_asset() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2002),
+						Parachain(SIBLING_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -176,7 +179,7 @@ fn transfer_sibling_chain_asset() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2000),
+						Parachain(KARURA_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: ALICE.into(),
@@ -213,7 +216,7 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(KARURA_ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
 					id: BOB,
@@ -261,7 +264,7 @@ fn xcm_transfer_execution_barrier_trader_works() {
 				network: NetworkId::Any,
 				id: ALICE.into(),
 			}),
-			Parachain(2000).into(),
+			Parachain(KARURA_ID).into(),
 			message
 		));
 	});
@@ -343,7 +346,7 @@ fn subscribe_version_notify_works() {
 	KusamaNet::execute_with(|| {
 		let r = pallet_xcm::Pallet::<kusama_runtime::Runtime>::force_subscribe_version_notify(
 			kusama_runtime::Origin::root(),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(KARURA_ID).into().into()),
 		);
 		assert_ok!(r);
 	});
@@ -352,7 +355,7 @@ fn subscribe_version_notify_works() {
 			pallet_xcm::Event::SupportedVersionChanged(
 				MultiLocation {
 					parents: 0,
-					interior: X1(Parachain(2000)),
+					interior: X1(Parachain(KARURA_ID)),
 				},
 				2,
 			),
@@ -383,7 +386,7 @@ fn subscribe_version_notify_works() {
 	Karura::execute_with(|| {
 		let r = pallet_xcm::Pallet::<karura_runtime::Runtime>::force_subscribe_version_notify(
 			Origin::root(),
-			Box::new((Parent, Parachain(2002)).into()),
+			Box::new((Parent, Parachain(SIBLING_ID)).into()),
 		);
 		assert_ok!(r);
 	});
@@ -405,13 +408,6 @@ fn subscribe_version_notify_works() {
 #[test]
 fn test_asset_registry_module() {
 	TestNet::reset();
-
-	fn karura_reserve_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2000).into_account()
-	}
-	fn sibling_reserve_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2002).into_account()
-	}
 
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100_000_000_000_000));
@@ -477,7 +473,7 @@ fn test_asset_registry_module() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2002),
+						Parachain(SIBLING_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -522,7 +518,7 @@ fn test_asset_registry_module() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2000),
+						Parachain(KARURA_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: ALICE.into(),
@@ -705,7 +701,7 @@ fn trap_assets_larger_than_ed_works() {
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
-			Parachain(2000).into(),
+			Parachain(KARURA_ID).into(),
 			Xcm(xcm),
 		));
 	});
@@ -753,7 +749,7 @@ fn trap_assets_lower_than_ed_works() {
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
-			Parachain(2000).into(),
+			Parachain(KARURA_ID).into(),
 			Xcm(xcm),
 		));
 	});
@@ -785,7 +781,7 @@ fn sibling_trap_assets_works() {
 	let (bnc_asset_amount, kar_asset_amount) = (cent(BNC) / 10, cent(KAR));
 
 	fn sibling_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2002).into_account()
+		polkadot_parachain::primitives::Sibling::from(SIBLING_ID).into_account()
 	}
 
 	Karura::execute_with(|| {
@@ -812,7 +808,7 @@ fn sibling_trap_assets_works() {
 		];
 		assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(
 			Here,
-			(Parent, Parachain(2000)),
+			(Parent, Parachain(KARURA_ID)),
 			Xcm(xcm),
 		));
 	});
