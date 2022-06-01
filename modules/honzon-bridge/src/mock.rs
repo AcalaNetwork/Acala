@@ -108,7 +108,7 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACALA;
-	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
+	pub Erc20HoldingAccount: H160 = primitives::evm::MIRRORED_TOKENS_ADDRESS_START;
 }
 
 impl module_currencies::Config for Runtime {

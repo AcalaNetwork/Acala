@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate::mock::{erc20_holding_account, Erc20HoldingAccount};
+use crate::mock::Erc20HoldingAccount;
 use frame_support::{assert_noop, assert_ok, weights::GetDispatchInfo};
 use mock::{
 	alice, bob, deploy_contracts, erc20_address, eva, AccountId, AdaptedBasicCurrency, CouncilAccount, Currencies,
