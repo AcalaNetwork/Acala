@@ -2219,8 +2219,8 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 			)
 			.map_err(|_e| InvalidTransaction::Call)?;
 			if let Some((relayer, payer_sig, old_extra)) = signed_unsubmit_extrinsic.signature {
-				let (_, _, _, _, _, old_check_nonce, _, _, _) = old_extra.clone();
-				let (_, _, _, _, _, check_nonce, _, _, ..) = extra.clone();
+				let (_, _, _, _, _mortality, old_check_nonce, ..) = old_extra.clone();
+				let (_, _, _, _, _, check_nonce, ..) = extra.clone();
 
 				// make sure nonce keep no changed.
 				if old_check_nonce.nonce != check_nonce.nonce {
@@ -2235,6 +2235,8 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 				if !raw_payload.using_encoded(|payload| payer_sig.verify(payload, &payer_account.into())) {
 					return Err(InvalidTransaction::BadProof);
 				}
+			} else {
+				return Err(InvalidTransaction::Call);
 			}
 		}
 		Ok(())
