@@ -898,7 +898,7 @@ impl module_prices::Config for Runtime {
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
-	pub Erc20HoldingAccount: H160 = H160(hex_literal::hex!("000000000000000000ff00000000000000000000"));
+	pub Erc20HoldingAccount: H160 = primitives::evm::ERC20_HOLDING_ACCOUNT;
 }
 
 impl module_currencies::Config for Runtime {

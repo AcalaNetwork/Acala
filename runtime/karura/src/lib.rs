@@ -854,7 +854,7 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = KUSD;
 	pub const GetLiquidCurrencyId: CurrencyId = LKSM;
 	pub const GetStakingCurrencyId: CurrencyId = KSM;
-	pub Erc20HoldingAccount: H160 = H160(hex_literal::hex!("000000000000000000ff00000000000000000000"));
+	pub Erc20HoldingAccount: H160 = primitives::evm::ERC20_HOLDING_ACCOUNT;
 }
 
 impl module_currencies::Config for Runtime {
