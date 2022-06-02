@@ -185,7 +185,7 @@ pub fn construct_extrinsic(
 		frame_system::CheckSpecVersion::<Runtime>::new(),
 		frame_system::CheckTxVersion::<Runtime>::new(),
 		frame_system::CheckGenesis::<Runtime>::new(),
-		frame_system::CheckEra::<Runtime>::from(Era::mortal(period, current_block)),
+		runtime_common::CheckEra::<Runtime>::from(Era::mortal(period, current_block)),
 		runtime_common::CheckNonce::<Runtime>::from(nonce),
 		frame_system::CheckWeight::<Runtime>::new(),
 		module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),

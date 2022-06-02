@@ -39,7 +39,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, AccountIdLookup, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion,
-		StaticLookup, Verify,
+		SignedExtension, StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
@@ -995,7 +995,7 @@ where
 			frame_system::CheckSpecVersion::<Runtime>::new(),
 			frame_system::CheckTxVersion::<Runtime>::new(),
 			frame_system::CheckGenesis::<Runtime>::new(),
-			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
+			runtime_common::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			runtime_common::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
@@ -1708,7 +1708,7 @@ pub type SignedExtra = (
 	frame_system::CheckSpecVersion<Runtime>,
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
-	frame_system::CheckEra<Runtime>,
+	runtime_common::CheckEra<Runtime>,
 	runtime_common::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>,
@@ -2115,7 +2115,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 
 				let (_, _, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
 
-				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
+				if mortality != runtime_common::CheckEra::from(sp_runtime::generic::Era::Immortal) {
 					// require immortal
 					return Err(InvalidTransaction::BadProof);
 				}
@@ -2174,8 +2174,8 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 			)
 			.map_err(|_e| InvalidTransaction::Call)?;
 			if let Some((relayer, payer_sig, old_extra)) = signed_unsubmit_extrinsic.signature {
-				let (_, _, _, _, _mortality, old_check_nonce, ..) = old_extra.clone();
-				let (_, _, _, _, _, check_nonce, ..) = extra.clone();
+				let (_, _, _, _, old_mortality, old_check_nonce, ..) = old_extra.clone();
+				let (_, _, _, _, _, check_nonce, ..) = extra;
 
 				// make sure nonce keep no changed.
 				if old_check_nonce.nonce != check_nonce.nonce {
@@ -2183,6 +2183,16 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 				}
 				// make sure relayer/payer address is correct.
 				if relayer != sp_runtime::MultiAddress::Id(payer_addr) {
+					return Err(InvalidTransaction::BadProof);
+				}
+				// verify era lifetime is not expire
+				let old_block_hash = old_mortality
+					.additional_signed()
+					.map_err(|_e| InvalidTransaction::BadSigner)?;
+				let current_block = <frame_system::Pallet<Runtime>>::block_number();
+				let birth_block = old_mortality.0.birth(current_block as u64);
+				let birth_block_hash = <frame_system::Pallet<Runtime>>::block_hash(birth_block as u32);
+				if birth_block_hash != old_block_hash {
 					return Err(InvalidTransaction::BadProof);
 				}
 

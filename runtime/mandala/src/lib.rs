@@ -91,7 +91,7 @@ use sp_version::RuntimeVersion;
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
+pub use sp_runtime::{traits::SignedExtension, Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
@@ -1845,8 +1845,8 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 			)
 			.map_err(|_e| InvalidTransaction::Call)?;
 			if let Some((relayer, payer_sig, old_extra)) = signed_unsubmit_extrinsic.signature {
-				let (_, _, _, _, mortality, old_check_nonce, ..) = old_extra.clone();
-				let (_, _, _, _, _, check_nonce, ..) = extra.clone();
+				let (_, _, _, _, old_mortality, old_check_nonce, ..) = old_extra.clone();
+				let (_, _, _, _, _, check_nonce, ..) = extra;
 
 				// make sure nonce keep no changed.
 				if old_check_nonce.nonce != check_nonce.nonce {
@@ -1856,7 +1856,16 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 				if relayer != sp_runtime::MultiAddress::Id(payer_addr) {
 					return Err(InvalidTransaction::BadProof);
 				}
-				// TODO: verify era lifetime is not expire
+				// verify era lifetime is not expire
+				let old_block_hash = old_mortality
+					.additional_signed()
+					.map_err(|_e| InvalidTransaction::BadSigner)?;
+				let current_block = <frame_system::Pallet<Runtime>>::block_number();
+				let birth_block = old_mortality.0.birth(current_block as u64);
+				let birth_block_hash = <frame_system::Pallet<Runtime>>::block_hash(birth_block as u32);
+				if birth_block_hash != old_block_hash {
+					return Err(InvalidTransaction::BadProof);
+				}
 
 				let raw_payload = SignedPayload::new(*call, old_extra).map_err(|_| InvalidTransaction::BadSigner)?;
 				if !raw_payload.using_encoded(|payload| payer_sig.verify(payload, &payer_account.into())) {
@@ -2450,6 +2459,23 @@ mod tests {
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
+	}
+
+	#[test]
+	fn era_test() {
+		let b1 = 1;
+		let era = generic::Era::mortal(32, b1);
+		let b2 = era.birth(b1);
+		assert_eq!(b1, b2);
+		let b2 = era.birth(32);
+		assert_eq!(b1, b2);
+
+		let b1 = 33;
+		let era = generic::Era::mortal(32, b1);
+		let b2 = era.birth(b1);
+		assert_eq!(b1, b2);
+		let b2 = era.birth(64);
+		assert_eq!(b1, b2);
 	}
 
 	#[test]
