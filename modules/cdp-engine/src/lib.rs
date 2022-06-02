@@ -526,8 +526,7 @@ pub mod module {
 			Ok(())
 		}
 
-		//TODO: benchmarks
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::register_settlement_contract())]
 		#[transactional]
 		pub fn register_settlement_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
@@ -536,8 +535,7 @@ pub mod module {
 			Ok(())
 		}
 
-		//TODO: benchmarks
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::deregister_settlement_contract())]
 		#[transactional]
 		pub fn deregister_settlement_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;

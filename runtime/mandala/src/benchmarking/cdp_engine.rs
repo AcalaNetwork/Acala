@@ -281,6 +281,13 @@ runtime_benchmarks! {
 		// shutdown
 		EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into())?;
 	}: _(RawOrigin::None, STAKING, owner_lookup)
+
+	register_settlement_contract {
+	}: _(RawOrigin::Root, H160::default())
+
+	deregister_settlement_contract {
+		CdpEngine::register_settlement_contract(RawOrigin::Root.into(), H160::default())?;
+	}: _(RawOrigin::Root, H160::default())
 }
 
 #[cfg(test)]

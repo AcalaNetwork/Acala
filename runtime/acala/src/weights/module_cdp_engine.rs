@@ -140,4 +140,14 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(15 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
+	fn register_settlement_contract() -> Weight {
+		(94_660_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(15 as Weight))
+			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+	}
+	fn deregister_settlement_contract() -> Weight {
+		(94_660_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(15 as Weight))
+			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+	}
 }
