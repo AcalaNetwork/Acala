@@ -18,21 +18,103 @@
 
 //! Common xcm implementation
 
+use codec::Encode;
 use frame_support::{
 	traits::Get,
 	weights::{constants::WEIGHT_PER_SECOND, Weight},
 };
-use module_support::BuyWeightRate;
+use module_support::{BuyWeightRate, Ratio};
+use orml_traits::GetByKey;
+use primitives::{Balance, CurrencyId};
+use sp_runtime::traits::Convert;
 use sp_runtime::{FixedPointNumber, FixedU128};
-use sp_std::marker::PhantomData;
+use sp_std::{marker::PhantomData, prelude::*};
 use xcm::latest::prelude::*;
 use xcm_builder::TakeRevenue;
+use xcm_executor::traits::DropAssets;
 use xcm_executor::{traits::WeightTrader, Assets};
+
+pub fn native_currency_location(para_id: u32, id: CurrencyId) -> MultiLocation {
+	MultiLocation::new(1, X2(Parachain(para_id), GeneralKey(id.encode())))
+}
+
+pub fn calculate_asset_ratio(foreign_asset: (AssetId, u128), native_asset: (AssetId, u128)) -> Ratio {
+	Ratio::saturating_from_rational(foreign_asset.1, native_asset.1)
+}
+
+/// `ExistentialDeposit` for tokens, give priority to match native token, then handled by
+/// `ExistentialDeposits`.
+///
+/// parameters type:
+/// - `NC`: native currency_id type.
+/// - `NB`: the ExistentialDeposit amount of native currency_id.
+/// - `GK`: the ExistentialDeposit amount of tokens.
+pub struct ExistentialDepositsForDropAssets<NC, NB, GK>(PhantomData<(NC, NB, GK)>);
+impl<NC, NB, GK> ExistentialDepositsForDropAssets<NC, NB, GK>
+where
+	NC: Get<CurrencyId>,
+	NB: Get<Balance>,
+	GK: GetByKey<CurrencyId, Balance>,
+{
+	fn get(currency_id: &CurrencyId) -> Balance {
+		if currency_id == &NC::get() {
+			NB::get()
+		} else {
+			GK::get(currency_id)
+		}
+	}
+}
+
+/// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.
+///
+/// parameters type:
+/// - `NC`: native currency_id type.
+/// - `NB`: the ExistentialDeposit amount of native currency_id.
+/// - `GK`: the ExistentialDeposit amount of tokens.
+pub struct AcalaDropAssets<X, T, C, NC, NB, GK>(PhantomData<(X, T, C, NC, NB, GK)>);
+impl<X, T, C, NC, NB, GK> DropAssets for AcalaDropAssets<X, T, C, NC, NB, GK>
+where
+	X: DropAssets,
+	T: TakeRevenue,
+	C: Convert<MultiLocation, Option<CurrencyId>>,
+	NC: Get<CurrencyId>,
+	NB: Get<Balance>,
+	GK: GetByKey<CurrencyId, Balance>,
+{
+	fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
+		let multi_assets: Vec<MultiAsset> = assets.into();
+		let mut asset_traps: Vec<MultiAsset> = vec![];
+		for asset in multi_assets {
+			if let MultiAsset {
+				id: Concrete(location),
+				fun: Fungible(amount),
+			} = asset.clone()
+			{
+				let currency_id = C::convert(location);
+				// burn asset(do nothing here) if convert result is None
+				if let Some(currency_id) = currency_id {
+					let ed = ExistentialDepositsForDropAssets::<NC, NB, GK>::get(&currency_id);
+					if amount < ed {
+						T::take_revenue(asset);
+					} else {
+						asset_traps.push(asset);
+					}
+				}
+			}
+		}
+		if !asset_traps.is_empty() {
+			X::drop_assets(origin, asset_traps.into());
+		}
+		0
+	}
+}
 
 /// Simple fee calculator that requires payment in a single fungible at a fixed rate.
 ///
-/// The constant `FixedRate` type parameter should be the concrete fungible ID and the amount of it
+/// - The `FixedRate` constant should be the concrete fungible ID and the amount of it
 /// required for one second of weight.
+/// - The `TakeRevenue` trait is used to collecting xcm execution fee.
+/// - The `BuyWeightRate` trait is used to calculate ratio by location.
 pub struct FixedRateOfAssetRegistry<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> {
 	weight: Weight,
 	amount: u128,
