@@ -74,7 +74,11 @@ mod mandala_imports {
 	);
 	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::ACA;
 	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
-	pub type TransactionFeePoolTrader = FixedRateOfAssetRegistry<Runtime, CurrencyIdConvert, NativeTokenPerSecond, ()>;
+	pub type TransactionFeePoolTrader = FixedRateOfAssetRegistry<
+		NativeTokenPerSecond,
+		(),
+		BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>,
+	>;
 	pub const ALTERNATIVE_SURPLUS: Percent = AlternativeFeeSurplus::get();
 }
 
