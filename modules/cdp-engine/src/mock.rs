@@ -34,7 +34,7 @@ use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
 };
-use sp_std::cell::RefCell;
+use sp_std::{cell::RefCell, str::FromStr};
 use support::mocks::MockStableAsset;
 use support::{AuctionManager, EmergencyShutdown, SpecificJointsSwap};
 
@@ -290,10 +290,72 @@ pub fn mock_shutdown() {
 	IS_SHUTDOWN.with(|v| *v.borrow_mut() = true)
 }
 
+pub fn liquidation_contract_addr() -> EvmAddress {
+	EvmAddress::from_str(&"0x1000000000000000000000000000000000000000").unwrap()
+}
+
 pub struct MockEmergencyShutdown;
 impl EmergencyShutdown for MockEmergencyShutdown {
 	fn is_shutdown() -> bool {
 		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+	}
+}
+
+thread_local! {
+	static LIQUIDATED: RefCell<(EvmAddress, EvmAddress, Balance, Balance)> = RefCell::new((EvmAddress::default(), EvmAddress::default(), 0, 0));
+	static TRANSFERRED: RefCell<(EvmAddress, Balance)> = RefCell::new((EvmAddress::default(), 0));
+	static REFUNDED: RefCell<(EvmAddress, Balance)> = RefCell::new((EvmAddress::default(), 0));
+	static LIQUIDATION_RESULT: RefCell<DispatchResult> = RefCell::new(Err(Error::<Runtime>::LiquidationFailed.into()));
+	static REPAYMENT: RefCell<Option<Balance>> = RefCell::new(None);
+}
+
+pub struct MockLiquidationEvmBridge;
+impl MockLiquidationEvmBridge {
+	pub fn liquidated() -> (EvmAddress, EvmAddress, Balance, Balance) {
+		LIQUIDATED.with(|v| v.borrow().clone())
+	}
+	pub fn transferred() -> (EvmAddress, Balance) {
+		TRANSFERRED.with(|v| v.borrow().clone())
+	}
+	pub fn refunded() -> (EvmAddress, Balance) {
+		REFUNDED.with(|v| v.borrow().clone())
+	}
+	pub fn reset() {
+		LIQUIDATION_RESULT.with(|v| *v.borrow_mut() = Err(Error::<Runtime>::LiquidationFailed.into()));
+		REPAYMENT.with(|v| *v.borrow_mut() = None);
+	}
+	pub fn set_liquidation_result(r: DispatchResult) {
+		LIQUIDATION_RESULT.with(|v| *v.borrow_mut() = r);
+	}
+	pub fn set_repayment(repayment: Balance) {
+		REPAYMENT.with(|v| *v.borrow_mut() = Some(repayment));
+	}
+}
+impl LiquidationEvmBridgeT for MockLiquidationEvmBridge {
+	fn liquidate(
+		_context: InvokeContext,
+		collateral: EvmAddress,
+		repay_dest: EvmAddress,
+		amount: Balance,
+		min_repayment: Balance,
+	) -> DispatchResult {
+		let result = LIQUIDATION_RESULT.with(|v| v.borrow().clone());
+		if result.is_ok() {
+			let repayment = if let Some(r) = REPAYMENT.with(|v| v.borrow().clone()) {
+				r
+			} else {
+				min_repayment
+			};
+			let _ = Currencies::deposit(GetStableCurrencyId::get(), &CDPEngineModule::account_id(), repayment);
+		}
+		LIQUIDATED.with(|v| *v.borrow_mut() = (collateral, repay_dest, amount, min_repayment));
+		result
+	}
+	fn on_collateral_transfer(_context: InvokeContext, collateral: EvmAddress, amount: Balance) {
+		TRANSFERRED.with(|v| *v.borrow_mut() = (collateral, amount));
+	}
+	fn on_repayment_refund(_context: InvokeContext, collateral: EvmAddress, repayment: Balance) {
+		REFUNDED.with(|v| *v.borrow_mut() = (collateral, repayment));
 	}
 }
 
@@ -335,7 +397,7 @@ impl Config for Runtime {
 	type DEX = DEXModule;
 	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
 	type MaxLiquidationContracts = ConstU32<10>;
-	type LiquidationEvmBridge = ();
+	type LiquidationEvmBridge = MockLiquidationEvmBridge;
 	type PalletId = CDPEnginePalletId;
 	type EvmAddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
@@ -420,6 +482,8 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
+
+		MockLiquidationEvmBridge::reset();
 
 		t.into()
 	}

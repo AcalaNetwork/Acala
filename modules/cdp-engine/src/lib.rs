@@ -247,7 +247,7 @@ pub mod module {
 		/// Collateral liquidation failed.
 		LiquidationFailed,
 		/// Exceeds `T::MaxLiquidationContracts`.
-		TooManySettlementContracts,
+		TooManyLiquidationContracts,
 		/// Collateral ERC20 contract not found.
 		CollateralContractNotFound,
 	}
@@ -301,10 +301,10 @@ pub mod module {
 			collateral_type: CurrencyId,
 			new_total_debit_value: Balance,
 		},
-		/// A new settlement contract is registered.
-		SettlementContractRegistered { address: EvmAddress },
-		/// A new settlement contract is deregistered.
-		SettlementContractDeregistered { address: EvmAddress },
+		/// A new liquidation contract is registered.
+		LiquidationContractRegistered { address: EvmAddress },
+		/// A new liquidation contract is deregistered.
+		LiquidationContractDeregistered { address: EvmAddress },
 	}
 
 	/// Mapping from collateral type to its exchange rate of debit units and
@@ -330,8 +330,8 @@ pub mod module {
 	pub type LastAccumulationSecs<T: Config> = StorageValue<_, u64, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn settlement_contracts)]
-	pub type SettlementContracts<T: Config> =
+	#[pallet::getter(fn liquidation_contracts)]
+	pub type LiquidationContracts<T: Config> =
 		StorageValue<_, BoundedVec<EvmAddress, T::MaxLiquidationContracts>, ValueQuery>;
 
 	#[pallet::genesis_config]
@@ -528,21 +528,21 @@ pub mod module {
 
 		#[pallet::weight(<T as Config>::WeightInfo::register_settlement_contract())]
 		#[transactional]
-		pub fn register_settlement_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
+		pub fn register_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			SettlementContracts::<T>::try_append(address).map_err(|()| Error::<T>::TooManySettlementContracts)?;
-			Self::deposit_event(Event::SettlementContractRegistered { address });
+			LiquidationContracts::<T>::try_append(address).map_err(|()| Error::<T>::TooManyLiquidationContracts)?;
+			Self::deposit_event(Event::LiquidationContractRegistered { address });
 			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::deregister_settlement_contract())]
 		#[transactional]
-		pub fn deregister_settlement_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
+		pub fn deregister_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			SettlementContracts::<T>::mutate(|contracts| {
+			LiquidationContracts::<T>::mutate(|contracts| {
 				contracts.retain(|c| c != &address);
 			});
-			Self::deposit_event(Event::SettlementContractDeregistered { address });
+			Self::deposit_event(Event::LiquidationContractDeregistered { address });
 			Ok(())
 		}
 	}
@@ -1345,9 +1345,9 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 		amount: Balance,
 		target_stable_amount: Balance,
 	) -> DispatchResult {
-		let settlement_contracts = Pallet::<T>::settlement_contracts();
-		let settlement_contracts_len = settlement_contracts.len();
-		if settlement_contracts_len.is_zero() {
+		let liquidation_contracts = Pallet::<T>::liquidation_contracts();
+		let liquidation_contracts_len = liquidation_contracts.len();
+		if liquidation_contracts_len.is_zero() {
 			return Err(Error::<T>::LiquidationFailed.into());
 		}
 
@@ -1374,9 +1374,9 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 			let now: u32 = frame_system::Pallet::<T>::current_block_number()
 				.try_into()
 				.map_err(|_| ArithmeticError::Overflow)?;
-			// can't fail as ensured `settlement_contracts_len` non-zero
-			let start_at = (now as usize) % settlement_contracts_len;
-			let mut all: Vec<EvmAddress> = settlement_contracts.into();
+			// can't fail as ensured `liquidation_contracts_len` non-zero
+			let start_at = (now as usize) % liquidation_contracts_len;
+			let mut all: Vec<EvmAddress> = liquidation_contracts.into();
 			let mut right = all.split_off(start_at);
 			right.append(&mut all);
 			right
@@ -1415,30 +1415,25 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 							This is unexpected, need extra action.",
 							currency_id, collateral_supply, contract, e,
 						);
-					} else {
-						// notify liquidation success
-						T::LiquidationEvmBridge::on_collateral_transfer(
-							InvokeContext {
-								contract,
-								sender: Default::default(),
-								origin: Default::default(),
-							},
-							collateral,
-							target_stable_amount,
-						);
-						// refund rest collateral to CDP owner
-						let refund_collateral_amount = amount
-							.checked_sub(collateral_supply)
-							.expect("Ensured collateral supply <= amount; qed");
-						if !refund_collateral_amount.is_zero() {
-							<T as Config>::CDPTreasury::withdraw_collateral(
-								who,
-								currency_id,
-								refund_collateral_amount,
-							)?;
-						}
-						return Ok(());
 					}
+					// notify liquidation success
+					T::LiquidationEvmBridge::on_collateral_transfer(
+						InvokeContext {
+							contract,
+							sender: Default::default(),
+							origin: Default::default(),
+						},
+						collateral,
+						target_stable_amount,
+					);
+					// refund rest collateral to CDP owner
+					let refund_collateral_amount = amount
+						.checked_sub(collateral_supply)
+						.expect("Ensured collateral supply <= amount; qed");
+					if !refund_collateral_amount.is_zero() {
+						<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
+					}
+					return Ok(());
 				} else if repayment > 0 {
 					// insufficient repayment, refund
 					CurrencyOf::<T>::transfer(stable_coin, &repay_dest_account_id, &contract_account_id, repayment)?;

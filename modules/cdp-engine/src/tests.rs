@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok};
 use mock::{Call as MockCall, Event, *};
 use orml_traits::MultiCurrency;
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
@@ -1860,5 +1860,134 @@ fn minimal_collateral_works() {
 
 		// Allow the user to withdraw all assets
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, 0));
+	});
+}
+
+#[test]
+fn register_liquidation_contract_works() {
+	let address = liquidation_contract_addr();
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
+		assert_ok!(CDPEngineModule::register_liquidation_contract(
+			Origin::signed(ALICE),
+			address,
+		));
+		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidationContractRegistered {
+			address,
+		}));
+	});
+}
+
+#[test]
+fn register_liquidation_contract_fails_if_not_update_origin() {
+	let address = liquidation_contract_addr();
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			CDPEngineModule::register_liquidation_contract(Origin::signed(BOB), address,),
+			BadOrigin
+		);
+	});
+}
+
+#[test]
+fn deregister_liquidation_contract_works() {
+	let address = liquidation_contract_addr();
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
+		assert_ok!(LiquidationContracts::<Runtime>::try_append(address));
+		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
+
+		assert_ok!(CDPEngineModule::deregister_liquidation_contract(
+			Origin::signed(ALICE),
+			address,
+		));
+		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![],);
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidationContractDeregistered {
+			address,
+		}));
+	});
+}
+
+#[test]
+fn deregister_liquidation_contract_fails_if_not_update_origin() {
+	let address = liquidation_contract_addr();
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
+		assert_ok!(LiquidationContracts::<Runtime>::try_append(address));
+		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
+
+		assert_noop!(
+			CDPEngineModule::deregister_liquidation_contract(Origin::signed(BOB), address,),
+			BadOrigin
+		);
+	});
+}
+
+#[test]
+fn liquidation_via_contracts_works() {
+	let address = liquidation_contract_addr();
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(Currencies::deposit(DOT, &CDPTreasuryModule::account_id(), 1000));
+		assert_ok!(LiquidationContracts::<Runtime>::try_append(address));
+		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
+		MockLiquidationEvmBridge::set_liquidation_result(Ok(()));
+
+		assert_ok!(LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000));
+		let contract_account_id =
+			<evm_accounts::EvmAddressMapping<Runtime> as AddressMapping<AccountId>>::get_account_id(&address);
+		assert_eq!(Currencies::free_balance(DOT, &contract_account_id), 100);
+	});
+}
+
+#[test]
+fn liquidation_fails_if_no_liquidation_contracts() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(Currencies::deposit(DOT, &CDPTreasuryModule::account_id(), 1000));
+		MockLiquidationEvmBridge::set_liquidation_result(Ok(()));
+
+		assert_noop!(
+			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000),
+			Error::<Runtime>::LiquidationFailed
+		);
+	});
+}
+
+#[test]
+fn liquidation_fails_if_no_liquidation_contracts_can_liquidate() {
+	let address = liquidation_contract_addr();
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(Currencies::deposit(DOT, &CDPTreasuryModule::account_id(), 1000));
+		assert_ok!(LiquidationContracts::<Runtime>::try_append(address));
+		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
+
+		assert_err!(
+			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000),
+			Error::<Runtime>::LiquidationFailed
+		);
+	});
+}
+
+#[test]
+fn liquidation_fails_if_insufficient_repayment() {
+	let address = liquidation_contract_addr();
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(Currencies::deposit(DOT, &CDPTreasuryModule::account_id(), 1000));
+		assert_ok!(LiquidationContracts::<Runtime>::try_append(address));
+		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
+		MockLiquidationEvmBridge::set_liquidation_result(Ok(()));
+		MockLiquidationEvmBridge::set_repayment(1);
+
+		assert_err!(
+			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000),
+			Error::<Runtime>::LiquidationFailed
+		);
 	});
 }
