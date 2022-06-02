@@ -91,6 +91,7 @@ pub mod module {
 		type GetNativeCurrencyId: Get<CurrencyId>;
 
 		/// Used as temporary account for ERC20 token `withdraw` and `deposit`.
+		#[pallet::constant]
 		type Erc20HoldingAccount: Get<EvmAddress>;
 
 		/// Weight information for extrinsics in this module.
