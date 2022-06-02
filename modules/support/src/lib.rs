@@ -188,3 +188,7 @@ pub trait OnNewEra<EraIndex> {
 pub trait NomineesProvider<AccountId> {
 	fn nominees() -> Vec<AccountId>;
 }
+
+pub trait BuyWeightRate {
+	fn calculate_rate(location: MultiLocation) -> Option<Rate>;
+}

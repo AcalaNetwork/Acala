@@ -100,7 +100,6 @@ fn transfer_from_relay_chain() {
 
 #[test]
 fn karura_statemine_transfer_works() {
-	env_logger::init();
 	TestNet::reset();
 	let para_2000: AccountId = Sibling::from(2000).into_account();
 	let child_2000: AccountId = ParaId::from(2000).into_account();

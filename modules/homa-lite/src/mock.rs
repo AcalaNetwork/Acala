@@ -30,7 +30,7 @@ pub use module_relaychain::RelayChainCallBuilder;
 pub use module_support::mocks::MockAddressMapping;
 pub use orml_traits::{parameter_type_with_key, XcmTransfer};
 pub use primitives::{Amount, TokenSymbol};
-pub use sp_core::H256;
+pub use sp_core::{H160, H256};
 pub use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
 pub use cumulus_primitives_core::ParaId;
@@ -243,6 +243,7 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACALA;
+	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
 impl module_currencies::Config for Runtime {
@@ -250,6 +251,7 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = ();
