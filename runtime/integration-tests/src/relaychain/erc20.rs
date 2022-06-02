@@ -76,6 +76,7 @@ pub fn deploy_erc20_contracts() {
 
 #[test]
 fn erc20_transfer_between_sibling() {
+	env_logger::init();
 	TestNet::reset();
 
 	fn sibling_reserve_account() -> AccountId {
@@ -109,6 +110,16 @@ fn erc20_transfer_between_sibling() {
 			&alith.clone(),
 			1_000_000 * dollar(NATIVE_CURRENCY)
 		));
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&AccountId::from(BOB),
+			1_000_000 * dollar(NATIVE_CURRENCY)
+		));
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&sibling_reserve_account(),
+			1_000_000 * dollar(NATIVE_CURRENCY)
+		));
 
 		deploy_erc20_contracts();
 
@@ -119,23 +130,27 @@ fn erc20_transfer_between_sibling() {
 			EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 		));
 
-		<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
+		let total = 100_000_000_000_000_000_000_000u128;
+
+		// <EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
 
 		// use Currencies `transfer` dispatch call to transfer erc20 token to bob.
-		assert_ok!(Currencies::transfer(
-			Origin::signed(alith),
-			MultiAddress::Id(AccountId::from(CHARLIE)),
-			CurrencyId::Erc20(erc20_address_0()),
-			1_000_000_000_000_000
-		));
+		// assert_ok!(Currencies::transfer(
+		// 	Origin::signed(alith),
+		// 	MultiAddress::Id(AccountId::from(CHARLIE)),
+		// 	CurrencyId::Erc20(erc20_address_0()),
+		// 	1_000_000_000_000_000
+		// ));
+		// println!("{}", Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith));
+		// println!("{}", Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alice()));
 		assert_eq!(
-			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE)),
-			1_000_000_000_000_000
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith),
+			total
 		);
 
 		// transfer erc20 token to Sibling
 		assert_ok!(XTokens::transfer(
-			Origin::signed(CHARLIE.into()),
+			Origin::signed(alith.clone()),
 			CurrencyId::Erc20(erc20_address_0()),
 			10_000_000_000_000,
 			Box::new(
@@ -154,10 +169,15 @@ fn erc20_transfer_between_sibling() {
 			1_000_000_000,
 		));
 
-		assert_eq!(
-			990_000_000_000_000,
-			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE))
+		println!(
+			"{}",
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith)
 		);
+
+		// assert_eq!(
+		// 	total - 10_000_000_000_000,
+		// 	Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith)
+		// );
 		assert_eq!(
 			10_000_000_000_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())

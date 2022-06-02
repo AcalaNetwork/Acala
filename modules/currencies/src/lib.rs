@@ -333,8 +333,16 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
 				let sender = T::AddressMapping::get_evm_address(from).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
-				let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
+				// withdraw to or deposit from erc20 holding account
+				let erc20_holding_account = T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get());
+				let origin_address = if erc20_holding_account == from.clone() {
+					T::AddressMapping::get_or_create_evm_address(to)
+				} else if erc20_holding_account == to.clone() {
+					T::AddressMapping::get_or_create_evm_address(from)
+				} else {
+					let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
+					T::AddressMapping::get_or_create_evm_address(&origin)
+				};
 				let address = T::AddressMapping::get_or_create_evm_address(to);
 				T::EVMBridge::transfer(
 					InvokeContext {
