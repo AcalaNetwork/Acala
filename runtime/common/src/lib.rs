@@ -38,8 +38,7 @@ use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
 use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
-use sp_std::collections::btree_map::BTreeMap;
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, prelude::*};
 use static_assertions::const_assert;
 
 pub use check_nonce::CheckNonce;

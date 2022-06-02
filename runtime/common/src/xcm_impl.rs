@@ -26,13 +26,14 @@ use frame_support::{
 use module_support::{BuyWeightRate, Ratio};
 use orml_traits::GetByKey;
 use primitives::{Balance, CurrencyId};
-use sp_runtime::traits::Convert;
-use sp_runtime::{FixedPointNumber, FixedU128};
+use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::latest::prelude::*;
 use xcm_builder::TakeRevenue;
-use xcm_executor::traits::DropAssets;
-use xcm_executor::{traits::WeightTrader, Assets};
+use xcm_executor::{
+	traits::{DropAssets, WeightTrader},
+	Assets,
+};
 
 pub fn native_currency_location(para_id: u32, id: CurrencyId) -> MultiLocation {
 	MultiLocation::new(1, X2(Parachain(para_id), GeneralKey(id.encode())))
