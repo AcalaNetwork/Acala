@@ -47,12 +47,14 @@ use sp_core::bytes::from_hex;
 use std::str::FromStr;
 
 pub mod bench;
+pub mod check_mortality;
 pub mod check_nonce;
 pub mod precompile;
 
 #[cfg(test)]
 mod mock;
 
+pub use check_mortality::CheckMortality as CheckEra;
 pub use check_nonce::CheckNonce;
 use module_evm::GenesisAccount;
 use orml_traits::GetByKey;

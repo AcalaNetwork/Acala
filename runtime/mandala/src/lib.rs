@@ -1045,7 +1045,7 @@ where
 			frame_system::CheckSpecVersion::<Runtime>::new(),
 			frame_system::CheckTxVersion::<Runtime>::new(),
 			frame_system::CheckGenesis::<Runtime>::new(),
-			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
+			runtime_common::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			runtime_common::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
@@ -1786,7 +1786,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 
 				let (_, _, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
 
-				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
+				if mortality != runtime_common::CheckEra::from(sp_runtime::generic::Era::Immortal) {
 					// require immortal
 					return Err(InvalidTransaction::BadProof);
 				}
@@ -1845,7 +1845,7 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 			)
 			.map_err(|_e| InvalidTransaction::Call)?;
 			if let Some((relayer, payer_sig, old_extra)) = signed_unsubmit_extrinsic.signature {
-				let (_, _, _, _, _mortality, old_check_nonce, ..) = old_extra.clone();
+				let (_, _, _, _, mortality, old_check_nonce, ..) = old_extra.clone();
 				let (_, _, _, _, _, check_nonce, ..) = extra.clone();
 
 				// make sure nonce keep no changed.
@@ -1884,7 +1884,7 @@ pub type SignedExtra = (
 	frame_system::CheckSpecVersion<Runtime>,
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
-	frame_system::CheckEra<Runtime>,
+	runtime_common::CheckEra<Runtime>,
 	runtime_common::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>,
@@ -2485,7 +2485,7 @@ mod tests {
 				frame_system::CheckSpecVersion::<Runtime>::new(),
 				frame_system::CheckTxVersion::<Runtime>::new(),
 				frame_system::CheckGenesis::<Runtime>::new(),
-				frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
+				runtime_common::CheckEra::<Runtime>::from(generic::Era::Immortal),
 				runtime_common::CheckNonce::<Runtime>::from(3),
 				frame_system::CheckWeight::<Runtime>::new(),
 				module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
@@ -2574,7 +2574,7 @@ mod tests {
 			frame_system::CheckSpecVersion::<Runtime>::new(),
 			frame_system::CheckTxVersion::<Runtime>::new(),
 			frame_system::CheckGenesis::<Runtime>::new(),
-			frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
+			runtime_common::CheckEra::<Runtime>::from(generic::Era::Immortal),
 			runtime_common::CheckNonce::<Runtime>::from(0),
 			frame_system::CheckWeight::<Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
@@ -2586,7 +2586,7 @@ mod tests {
 			frame_system::CheckSpecVersion::<Runtime>::new(),
 			frame_system::CheckTxVersion::<Runtime>::new(),
 			frame_system::CheckGenesis::<Runtime>::new(),
-			frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
+			runtime_common::CheckEra::<Runtime>::from(generic::Era::Immortal),
 			runtime_common::CheckNonce::<Runtime>::from(1),
 			frame_system::CheckWeight::<Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
