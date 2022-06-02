@@ -33,12 +33,15 @@ use frame_support::{
 	RuntimeDebug,
 };
 use frame_system::{limits, EnsureRoot};
+use module_evm::GenesisAccount;
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
+use orml_traits::GetByKey;
 use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
 use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, FixedPointNumber, Perbill};
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::{marker::PhantomData, prelude::*};
 use static_assertions::const_assert;
 
 #[cfg(feature = "std")]
@@ -49,13 +52,12 @@ use std::str::FromStr;
 pub mod bench;
 pub mod check_nonce;
 pub mod precompile;
+pub mod xcm_impl;
 
 #[cfg(test)]
 mod mock;
 
 pub use check_nonce::CheckNonce;
-use module_evm::GenesisAccount;
-use orml_traits::GetByKey;
 pub use precompile::{
 	AllPrecompiles, DEXPrecompile, EVMPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile,
 	SchedulePrecompile, StableAssetPrecompile,
@@ -64,10 +66,10 @@ pub use primitives::{
 	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
 	AccountId,
 };
-use sp_std::{marker::PhantomData, prelude::*};
 pub use xcm::latest::prelude::*;
 pub use xcm_builder::TakeRevenue;
 pub use xcm_executor::{traits::DropAssets, Assets};
+pub use xcm_impl::FixedRateOfAssetRegistry;
 
 mod gas_to_weight_ratio;
 

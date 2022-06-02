@@ -50,14 +50,14 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, RawOrigin};
-use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfAssetRegistry};
+use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask};
-use module_transaction_payment::{TargetedFeeAdjustment, TransactionFeePoolTrader};
+use module_transaction_payment::TargetedFeeAdjustment;
 
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use orml_traits::{

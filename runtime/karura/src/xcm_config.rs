@@ -48,7 +48,7 @@ pub use xcm_builder::{
 use xcm_executor::XcmExecutor;
 
 #[cfg(not(feature = "integration-tests"))]
-use super::{FixedRateOfAssetRegistry, TransactionFeePoolTrader};
+use super::{BuyWeightRateOfTransactionFeePool, FixedRateOfAssetRegistry};
 #[cfg(feature = "integration-tests")]
 use crate::integration_tests_config::*;
 
@@ -188,13 +188,16 @@ parameter_types! {
 		(ksm_per_second() * 4) / 3
 	);
 
-	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
-	pub KarPerSecondAsBased: u128 = kar_per_second();
+	pub NativeTokenPerSecond: u128 = kar_per_second();
 }
 
 #[cfg(not(feature = "integration-tests"))]
 pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
+	FixedRateOfAssetRegistry<
+		NativeTokenPerSecond,
+		ToTreasury,
+		BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>,
+	>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
@@ -204,8 +207,8 @@ pub type Trader = (
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
 	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
+	FixedRateOfAssetRegistry<NativeTokenPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
+	FixedRateOfAssetRegistry<NativeTokenPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
 );
 
 pub struct XcmConfig;

@@ -18,9 +18,8 @@
 
 use super::{
 	constants::fee::*, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event,
-	ExistentialDeposits, FixedRateOfAssetRegistry, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin,
-	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, TransactionFeePoolTrader, TreasuryAccount, UnknownTokens,
-	XcmpQueue, ACA,
+	ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin, ParachainInfo, ParachainSystem,
+	PolkadotXcm, Runtime, TreasuryAccount, UnknownTokens, XcmpQueue, ACA,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -30,12 +29,13 @@ pub use frame_support::{
 	weights::Weight,
 };
 use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset};
+use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use primitives::evm::is_system_contract;
-use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil};
+use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil, FixedRateOfAssetRegistry};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
@@ -125,16 +125,19 @@ parameter_types! {
 		).into(),
 		aca_per_second()
 	);
-	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
-	pub AcaPerSecondAsBased: u128 = aca_per_second();
+	pub NativeTokenPerSecond: u128 = aca_per_second();
 }
 
 pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
+	FixedRateOfAssetRegistry<
+		NativeTokenPerSecond,
+		ToTreasury,
+		BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>,
+	>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AcaPerSecond, ToTreasury>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
+	FixedRateOfAssetRegistry<NativeTokenPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
+	FixedRateOfAssetRegistry<NativeTokenPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
 );
 
 pub struct XcmConfig;

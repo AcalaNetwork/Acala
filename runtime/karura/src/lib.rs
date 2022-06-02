@@ -51,14 +51,14 @@ use sp_version::RuntimeVersion;
 
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_system::{EnsureRoot, RawOrigin};
-use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfAssetRegistry};
+use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
-use module_transaction_payment::{TargetedFeeAdjustment, TransactionFeePoolTrader};
+use module_transaction_payment::{BuyWeightRateOfTransactionFeePool, TargetedFeeAdjustment};
 
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use orml_traits::{
@@ -102,12 +102,12 @@ pub use runtime_common::{
 	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
-	ExistentialDepositsTimesOneHundred, FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight,
-	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
-	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
-	RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
-	PHA, RENBTC, VSKSM,
+	ExistentialDepositsTimesOneHundred, FinancialCouncilInstance, FinancialCouncilMembershipInstance,
+	FixedRateOfAssetRegistry, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
+	HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority, OperationalFeeMultiplier,
+	OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights,
+	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
+	TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
 };
 pub use xcm::latest::prelude::*;
 

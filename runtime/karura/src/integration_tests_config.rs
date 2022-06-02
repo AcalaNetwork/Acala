@@ -19,7 +19,7 @@
 use super::xcm_config::*;
 use super::{
 	constants::{fee::*, parachains},
-	FixedRateOfAssetRegistry, Runtime, TransactionFeePoolTrader,
+	BuyWeightRateOfTransactionFeePool, FixedRateOfAssetRegistry, Runtime,
 };
 use xcm::latest::prelude::*;
 
@@ -34,7 +34,11 @@ parameter_types! {
 }
 
 pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
+	FixedRateOfAssetRegistry<
+		NativeTokenPerSecond,
+		ToTreasury,
+		BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>,
+	>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
@@ -45,6 +49,6 @@ pub type Trader = (
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
 	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
+	FixedRateOfAssetRegistry<NativeTokenPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
+	FixedRateOfAssetRegistry<NativeTokenPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
 );

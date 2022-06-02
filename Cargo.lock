@@ -10635,6 +10635,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "log",
  "module-asset-registry",
  "module-cdp-engine",
  "module-cdp-treasury",
