@@ -59,6 +59,7 @@ mod mandala_imports {
 		Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic,
 		Utility, Vesting, XcmInterface, EVM, NFT,
 	};
+	use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 	pub use runtime_common::{cent, dollar, millicent, FixedRateOfAssetRegistry, ACA, AUSD, DOT, KSM, LDOT, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
 	use sp_runtime::Percent;
@@ -156,6 +157,7 @@ mod acala_imports {
 		TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM, LCDOT, NFT,
 	};
 	pub use frame_support::parameter_types;
+	use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 	pub use primitives::TradingPair;
 	pub use runtime_common::{cent, dollar, millicent, FixedRateOfAssetRegistry, ACA, AUSD, DOT, LDOT};
 	pub use sp_runtime::traits::AccountIdConversion;
