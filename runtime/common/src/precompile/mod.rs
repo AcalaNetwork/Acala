@@ -73,6 +73,8 @@ pub const BN_MUL: H160 = H160(hex!("0000000000000000000000000000000000000007"));
 pub const BN_PAIRING: H160 = H160(hex!("0000000000000000000000000000000000000008"));
 pub const BLAKE2F: H160 = H160(hex!("0000000000000000000000000000000000000009"));
 
+pub const ETH_PRECOMPILE_END: H160 = BLAKE2F;
+
 pub const ECRECOVER_PUBLICKEY: H160 = H160(hex!("0000000000000000000000000000000000000080"));
 pub const SHA3_256: H160 = H160(hex!("0000000000000000000000000000000000000081"));
 pub const SHA3_512: H160 = H160(hex!("0000000000000000000000000000000000000082"));
@@ -223,6 +225,16 @@ where
 		if !self.is_precompile(address) {
 			return None;
 		}
+
+		// Filter known precompile addresses except Ethereum officials
+		if address > ETH_PRECOMPILE_END && context.address != address {
+			return Some(Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "cannot be called with DELEGATECALL or CALLCODE".into(),
+				cost: target_gas.unwrap_or_default(),
+			}));
+		}
+
 		log::trace!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}", address, input, target_gas, context);
 
 		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
