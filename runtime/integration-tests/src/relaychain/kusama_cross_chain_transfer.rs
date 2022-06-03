@@ -780,13 +780,9 @@ fn sibling_trap_assets_works() {
 	let mut kar_treasury_amount = 0;
 	let (bnc_asset_amount, kar_asset_amount) = (cent(BNC) / 10, cent(KAR));
 
-	fn sibling_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(SIBLING_ID).into_account()
-	}
-
 	Karura::execute_with(|| {
-		assert_ok!(Tokens::deposit(BNC, &sibling_account(), dollar(BNC)));
-		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&sibling_account(), dollar(KAR));
+		assert_ok!(Tokens::deposit(BNC, &sibling_reserve_account(), dollar(BNC)));
+		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&sibling_reserve_account(), dollar(KAR));
 		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
 	});
 
@@ -828,5 +824,92 @@ fn sibling_trap_assets_works() {
 			Currencies::free_balance(BNC, &KaruraTreasuryAccount::get()),
 			bnc_asset_amount
 		);
+	});
+}
+
+#[test]
+fn transfer_native_chain_asset() {
+	TestNet::reset();
+
+	MockBifrost::execute_with(|| {
+		// Register native BNC's incoming address as a foreign asset so it can receive BNC
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(AssetMetadata {
+				name: b"Native BNC".to_vec(),
+				symbol: b"BNC".to_vec(),
+				decimals: 12,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
+			})
+		));
+		assert_ok!(Tokens::deposit(
+			CurrencyId::ForeignAsset(0),
+			&karura_reserve_account(),
+			100_000_000_000_000
+		));
+
+		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100_000_000_000_000));
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			BNC,
+			10_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(KARURA_ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			1_000_000_000,
+		));
+
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90_000_000_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 10_000_000_000_000);
+	});
+
+	Karura::execute_with(|| {
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 9_989_760_000_000);
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(BOB.into()),
+			BNC,
+			5_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2001),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: ALICE.into(),
+						}
+					)
+				)
+				.into()
+			),
+			1_000_000_000,
+		));
+
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 4_989_760_000_000);
+	});
+
+	MockBifrost::execute_with(|| {
+		// Due to the re-anchoring, BNC came back as registered ForeignAsset(0)
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90_000_000_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 10_000_000_000_000);
+
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
+			4_999_360_000_000
+		);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90_000_000_000_000);
 	});
 }
