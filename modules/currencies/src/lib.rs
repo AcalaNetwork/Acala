@@ -90,6 +90,10 @@ pub mod module {
 		#[pallet::constant]
 		type GetNativeCurrencyId: Get<CurrencyId>;
 
+		/// Used as temporary account for ERC20 token `withdraw` and `deposit`.
+		#[pallet::constant]
+		type Erc20HoldingAccount: Get<EvmAddress>;
+
 		/// Weight information for extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
@@ -360,7 +364,12 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			return Ok(());
 		}
 		match currency_id {
-			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
+			CurrencyId::Erc20(_) => <Self as MultiCurrency<T::AccountId>>::transfer(
+				currency_id,
+				&T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get()),
+				who,
+				amount,
+			),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::deposit(who, amount),
 			_ => T::MultiCurrency::deposit(currency_id, who, amount),
 		}
@@ -372,7 +381,12 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		}
 
 		match currency_id {
-			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
+			CurrencyId::Erc20(_) => <Self as MultiCurrency<T::AccountId>>::transfer(
+				currency_id,
+				who,
+				&T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get()),
+				amount,
+			),
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::withdraw(who, amount),
 			_ => T::MultiCurrency::withdraw(currency_id, who, amount),
 		}

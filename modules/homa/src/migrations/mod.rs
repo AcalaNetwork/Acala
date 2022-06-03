@@ -16,17 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#[cfg(feature = "with-karura-runtime")]
-mod kusama_cross_chain_transfer;
-#[cfg(feature = "with-karura-runtime")]
-pub mod kusama_test_net;
-#[cfg(feature = "with-acala-runtime")]
-mod polkadot_cross_chain_transfer;
-#[cfg(feature = "with-acala-runtime")]
-pub mod polkadot_test_net;
-mod relay_chain;
-#[cfg(feature = "with-karura-runtime")]
-mod statemine;
-
-#[cfg(feature = "with-karura-runtime")]
-mod erc20;
+/// Version 1
+///
+/// Adds TotalStakingBonded to homa storage
+pub mod v1;
