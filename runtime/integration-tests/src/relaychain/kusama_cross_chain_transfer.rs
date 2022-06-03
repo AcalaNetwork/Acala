@@ -35,6 +35,7 @@ use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert;
 
 pub const KARURA_ID: u32 = 2000;
+pub const MOCK_BIFROST_ID: u32 = 2001;
 pub const SIBLING_ID: u32 = 2002;
 
 fn karura_reserve_account() -> AccountId {
@@ -886,7 +887,7 @@ fn transfer_native_chain_asset() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2001),
+						Parachain(MOCK_BIFROST_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: ALICE.into(),
