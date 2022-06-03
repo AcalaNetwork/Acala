@@ -334,15 +334,18 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			CurrencyId::Erc20(contract) => {
 				let sender = T::AddressMapping::get_evm_address(from).ok_or(Error::<T>::EvmAccountNotFound)?;
 				let erc20_holding_account = T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get());
-				let origin_address = if erc20_holding_account == from.clone() {
-					// deposit from erc20 holding account to receiver(to)
-					T::AddressMapping::get_or_create_evm_address(to)
-				} else if erc20_holding_account == to.clone() {
-					// withdraw from sender(from) to erc20 holding account
+				let origin_address = if erc20_holding_account == to.clone() {
+					// withdraw **from** sender to erc20 holding account. in xcm case which receive erc20 from sibling
+					// parachain, sender is sibling parachain sovereign account. As the origin here is used to charge
+					// storage fee, we must make sure sibling parachain sovereign account has enough token to charge
+					// storage fee.
 					T::AddressMapping::get_or_create_evm_address(from)
+				} else if erc20_holding_account == from.clone() {
+					// deposit from erc20 holding account **to** receiver. the same as xcm case above, but we choose
+					// receiver to charge storage fee.
+					T::AddressMapping::get_or_create_evm_address(to)
 				} else {
-					// none-cross-chain erc20 transfer, or erc20 xtokens transfer by `TransferReserveAsset` xcm
-					// instruction.
+					// local or xtokens erc20 transfer
 					let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
 					T::AddressMapping::get_or_create_evm_address(&origin)
 				};
