@@ -343,6 +343,10 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 				} else if erc20_holding_account == from.clone() {
 					// deposit from erc20 holding account **to** receiver. the same as xcm case above, but we choose
 					// receiver to charge storage fee.
+					ensure!(
+						!Self::free_balance(currency_id, &erc20_holding_account).is_zero(),
+						Error::<T>::RealOriginNotFound
+					);
 					T::AddressMapping::get_or_create_evm_address(to)
 				} else {
 					// local or xtokens erc20 transfer
