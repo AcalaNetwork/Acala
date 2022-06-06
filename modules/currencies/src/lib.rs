@@ -368,19 +368,18 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 				// deposit from erc20 holding account to receiver(who). in xcm case which receive erc20 from sibling
 				// parachain, we choose receiver to charge storage fee. we must make sure receiver has enough native
 				// token to charge storage fee.
-				let from = T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get());
-				let sender = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let sender = T::Erc20HoldingAccount::get();
+				let from = T::AddressMapping::get_account_id(&sender);
 				ensure!(
 					!Self::free_balance(currency_id, &from).is_zero(),
 					Error::<T>::RealOriginNotFound
 				);
-				let origin = T::AddressMapping::get_or_create_evm_address(who);
 				let receiver = T::AddressMapping::get_or_create_evm_address(who);
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
 						sender,
-						origin,
+						origin: receiver.clone(),
 					},
 					receiver,
 					amount,
@@ -409,24 +408,21 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 				// parachain, sender is sibling parachain sovereign account. As the origin here is used to charge
 				// storage fee, we must make sure sibling parachain sovereign account has enough native token to
 				// charge storage fee.
+				let receiver = T::Erc20HoldingAccount::get();
 				let sender = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let to = T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get());
-
-				let origin = T::AddressMapping::get_or_create_evm_address(&who);
-				let receiver = T::AddressMapping::get_or_create_evm_address(&to);
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
-						sender,
-						origin,
+						sender: sender.clone(),
+						origin: sender,
 					},
-					receiver,
+					receiver.clone(),
 					amount,
 				)?;
 				Self::deposit_event(Event::Transferred {
 					currency_id,
 					from: who.clone(),
-					to,
+					to: T::AddressMapping::get_account_id(&receiver),
 					amount,
 				});
 				Ok(())
