@@ -379,7 +379,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					InvokeContext {
 						contract,
 						sender,
-						origin: receiver.clone(),
+						origin: receiver,
 					},
 					receiver,
 					amount,
@@ -413,10 +413,10 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
-						sender: sender.clone(),
+						sender,
 						origin: sender,
 					},
-					receiver.clone(),
+					receiver,
 					amount,
 				)?;
 				Self::deposit_event(Event::Transferred {
