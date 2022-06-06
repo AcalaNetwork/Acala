@@ -1774,10 +1774,6 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 	fn set_origin(origin: T::AccountId) {
 		ExtrinsicOrigin::<T>::set(Some(origin));
 	}
-
-	fn clear_origin() {
-		ExtrinsicOrigin::<T>::kill();
-	}
 }
 
 pub struct EvmChainId<T>(PhantomData<T>);

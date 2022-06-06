@@ -333,26 +333,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
 				let sender = T::AddressMapping::get_evm_address(from).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let erc20_holding_account = T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get());
-				let origin_address = if erc20_holding_account == to.clone() {
-					// withdraw **from** sender to erc20 holding account. in xcm case which receive erc20 from sibling
-					// parachain, sender is sibling parachain sovereign account. As the origin here is used to charge
-					// storage fee, we must make sure sibling parachain sovereign account has enough token to charge
-					// storage fee.
-					T::AddressMapping::get_or_create_evm_address(from)
-				} else if erc20_holding_account == from.clone() {
-					// deposit from erc20 holding account **to** receiver. the same as xcm case above, but we choose
-					// receiver to charge storage fee.
-					ensure!(
-						!Self::free_balance(currency_id, &erc20_holding_account).is_zero(),
-						Error::<T>::RealOriginNotFound
-					);
-					T::AddressMapping::get_or_create_evm_address(to)
-				} else {
-					// local or xtokens erc20 transfer
-					let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
-					T::AddressMapping::get_or_create_evm_address(&origin)
-				};
+				let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
+				let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
 				let address = T::AddressMapping::get_or_create_evm_address(to);
 				T::EVMBridge::transfer(
 					InvokeContext {
@@ -382,12 +364,35 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			return Ok(());
 		}
 		match currency_id {
-			CurrencyId::Erc20(_) => <Self as MultiCurrency<T::AccountId>>::transfer(
-				currency_id,
-				&T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get()),
-				who,
-				amount,
-			),
+			CurrencyId::Erc20(contract) => {
+				// deposit from erc20 holding account to receiver(who). in xcm case which receive erc20 from sibling
+				// parachain, we choose receiver to charge storage fee. we must make sure receiver has enough native
+				// token to charge storage fee.
+				let from = T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get());
+				let sender = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::EvmAccountNotFound)?;
+				ensure!(
+					!Self::free_balance(currency_id, &from).is_zero(),
+					Error::<T>::RealOriginNotFound
+				);
+				let origin = T::AddressMapping::get_or_create_evm_address(who);
+				let receiver = T::AddressMapping::get_or_create_evm_address(who);
+				T::EVMBridge::transfer(
+					InvokeContext {
+						contract,
+						sender,
+						origin,
+					},
+					receiver,
+					amount,
+				)?;
+				Self::deposit_event(Event::Transferred {
+					currency_id,
+					from,
+					to: who.clone(),
+					amount,
+				});
+				Ok(())
+			}
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::deposit(who, amount),
 			_ => T::MultiCurrency::deposit(currency_id, who, amount),
 		}
@@ -399,12 +404,33 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		}
 
 		match currency_id {
-			CurrencyId::Erc20(_) => <Self as MultiCurrency<T::AccountId>>::transfer(
-				currency_id,
-				who,
-				&T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get()),
-				amount,
-			),
+			CurrencyId::Erc20(contract) => {
+				// withdraw from sender(who) to erc20 holding account. in xcm case which receive erc20 from sibling
+				// parachain, sender is sibling parachain sovereign account. As the origin here is used to charge
+				// storage fee, we must make sure sibling parachain sovereign account has enough native token to
+				// charge storage fee.
+				let sender = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let to = T::AddressMapping::get_account_id(&T::Erc20HoldingAccount::get());
+
+				let origin = T::AddressMapping::get_or_create_evm_address(&who);
+				let receiver = T::AddressMapping::get_or_create_evm_address(&to);
+				T::EVMBridge::transfer(
+					InvokeContext {
+						contract,
+						sender,
+						origin,
+					},
+					receiver,
+					amount,
+				)?;
+				Self::deposit_event(Event::Transferred {
+					currency_id,
+					from: who.clone(),
+					to,
+					amount,
+				});
+				Ok(())
+			}
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::withdraw(who, amount),
 			_ => T::MultiCurrency::withdraw(currency_id, who, amount),
 		}

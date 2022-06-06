@@ -54,8 +54,6 @@ pub trait EVM<AccountId> {
 	fn get_origin() -> Option<AccountId>;
 	/// Provide a method to set origin for `on_initialize`
 	fn set_origin(origin: AccountId);
-	/// Clear the origin account. used by tests.
-	fn clear_origin();
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
@@ -95,7 +93,6 @@ pub trait EVMBridge<AccountId, Balance> {
 	fn get_origin() -> Option<AccountId>;
 	/// Provide a method to set origin for `on_initialize`
 	fn set_origin(origin: AccountId);
-	fn clear_origin();
 }
 
 #[cfg(feature = "std")]
@@ -122,7 +119,6 @@ impl<AccountId, Balance: Default> EVMBridge<AccountId, Balance> for () {
 		None
 	}
 	fn set_origin(_origin: AccountId) {}
-	fn clear_origin() {}
 }
 
 /// An abstraction of EVMManager

@@ -198,8 +198,6 @@ fn erc20_transfer_between_sibling() {
 		);
 
 		System::reset_events();
-		// clear origin storage, to mock xcm execution don't need origin info.
-		<EVM as EVMTrait<AccountId>>::clear_origin();
 	});
 
 	Sibling::execute_with(|| {

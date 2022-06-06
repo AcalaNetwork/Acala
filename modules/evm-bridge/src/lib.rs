@@ -248,10 +248,6 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 	fn set_origin(origin: AccountIdOf<T>) {
 		T::EVM::set_origin(origin);
 	}
-
-	fn clear_origin() {
-		T::EVM::clear_origin();
-	}
 }
 
 impl<T: Config> Pallet<T> {
