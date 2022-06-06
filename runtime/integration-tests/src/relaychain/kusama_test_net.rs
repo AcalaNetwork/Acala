@@ -47,12 +47,22 @@ decl_test_parachain! {
 }
 
 decl_test_parachain! {
-	pub struct Sibling {
+	pub struct MockBifrost {
 		Runtime = Runtime,
 		Origin = Origin,
 		XcmpMessageHandler = karura_runtime::XcmpQueue,
 		DmpMessageHandler = karura_runtime::DmpQueue,
 		new_ext = para_ext(2001),
+	}
+}
+
+decl_test_parachain! {
+	pub struct Sibling {
+		Runtime = Runtime,
+		Origin = Origin,
+		XcmpMessageHandler = karura_runtime::XcmpQueue,
+		DmpMessageHandler = karura_runtime::DmpQueue,
+		new_ext = para_ext(2002),
 	}
 }
 
@@ -72,7 +82,8 @@ decl_test_network! {
 		parachains = vec![
 			(1000, Statemine),
 			(2000, Karura),
-			(2001, Sibling),
+			(2001, MockBifrost),
+			(2002, Sibling),
 		],
 	}
 }

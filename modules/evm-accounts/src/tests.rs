@@ -159,6 +159,10 @@ fn account_to_evm_with_create_default() {
 			EvmAddressMapping::<Runtime>::get_or_create_evm_address(&ALICE),
 			default_evm_account
 		);
+		System::assert_last_event(Event::EvmAccountsModule(crate::Event::ClaimAccount {
+			account_id: ALICE,
+			evm_address: default_evm_account,
+		}));
 		assert_eq!(
 			EvmAddressMapping::<Runtime>::get_evm_address(&ALICE),
 			Some(default_evm_account)
