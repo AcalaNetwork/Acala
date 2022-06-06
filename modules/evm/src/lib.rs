@@ -1611,8 +1611,6 @@ impl<T: Config> Pallet<T> {
 		);
 
 		T::ChargeTransactionPayment::reserve_fee(&user, amount, Some(RESERVE_ID_STORAGE_DEPOSIT))?;
-		let reserved = T::Currency::reserved_balance_named(&RESERVE_ID_STORAGE_DEPOSIT, &user);
-		log::info!(target: "evm", "reserved amount:{:?}", reserved);
 		Ok(())
 	}
 
