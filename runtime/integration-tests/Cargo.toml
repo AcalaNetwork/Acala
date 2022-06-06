@@ -148,7 +148,7 @@ xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "5a04d6
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 
 [features]
-default = ["std", "with-karura-runtime"]
+default = ["std"]
 no_std = []
 with-mandala-runtime = [
 	"mandala-runtime",
