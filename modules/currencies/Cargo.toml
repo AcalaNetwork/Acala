@@ -5,6 +5,7 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
+log = { version = "0.4.17", default-features = false }
 serde = { version = "1.0.136", optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
 scale-info = { version = "2.1", default-features = false, features = ["derive"] }
@@ -37,6 +38,7 @@ module-evm-bridge = { path = "../evm-bridge" }
 default = ["std"]
 std = [
 	"serde",
+	"log/std",
 	"codec/std",
 	"scale-info/std",
 	"sp-core/std",

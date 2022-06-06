@@ -249,14 +249,14 @@ fn erc20_transfer_between_sibling() {
 			0,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &erc20_holding_account)
 		);
-		// withdraw erc20 need charge storage fee
+		// withdraw erc20 need charge storage fee. but we let recipient to undertake this fee.
 		assert_eq!(
-			initial_native_amount - storage_fee,
+			initial_native_amount,
 			Currencies::free_balance(NATIVE_CURRENCY, &sibling_reserve_account())
 		);
 		// deposit erc20 need charge storage fee
 		assert_eq!(
-			initial_native_amount - storage_fee,
+			initial_native_amount - storage_fee * 2,
 			Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB))
 		);
 		// deposit reserve and unreserve storage fee, so the native token not changed.
@@ -284,6 +284,12 @@ fn erc20_transfer_between_sibling() {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
 			from: erc20_holding_account,
 			to: KaruraTreasuryAccount::get(),
+			amount: 6_400_000_000,
+		}));
+		// Receiver refund storage charge fee(native token) to sibling account
+		System::assert_has_event(Event::Balances(pallet_balances::Event::Transfer {
+			from: AccountId::from(BOB),
+			to: sibling_reserve_account(),
 			amount: 6_400_000_000,
 		}));
 	});
