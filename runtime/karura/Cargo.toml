@@ -344,8 +344,6 @@ try-runtime = [
 	"module-session-manager/try-runtime",
 	"module-honzon-bridge/try-runtime",
 ]
-
-integration-tests = []
 # By default some types have documentation, `no-metadata-docs` allows to reduce the documentation
 # in the metadata.
 no-metadata-docs = ["frame-support/no-metadata-docs"]
