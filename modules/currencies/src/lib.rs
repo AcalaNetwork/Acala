@@ -137,6 +137,18 @@ pub mod module {
 			to: T::AccountId,
 			amount: BalanceOf<T>,
 		},
+		/// Withdrawn some balances from an account
+		Withdrawn {
+			currency_id: CurrencyId,
+			who: T::AccountId,
+			amount: BalanceOf<T>,
+		},
+		/// Deposited some balance into an account
+		Deposited {
+			currency_id: CurrencyId,
+			who: T::AccountId,
+			amount: BalanceOf<T>,
+		},
 		/// Dust swept.
 		DustSwept {
 			currency_id: CurrencyId,
@@ -384,10 +396,14 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					receiver,
 					amount,
 				)?;
-				Self::deposit_event(Event::Transferred {
+				Self::deposit_event(Event::Withdrawn {
 					currency_id,
-					from,
-					to: who.clone(),
+					who: from,
+					amount,
+				});
+				Self::deposit_event(Event::Deposited {
+					currency_id,
+					who: who.clone(),
 					amount,
 				});
 				Ok(())
@@ -419,10 +435,14 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					receiver,
 					amount,
 				)?;
-				Self::deposit_event(Event::Transferred {
+				Self::deposit_event(Event::Withdrawn {
 					currency_id,
-					from: who.clone(),
-					to: T::AddressMapping::get_account_id(&receiver),
+					who: who.clone(),
+					amount,
+				});
+				Self::deposit_event(Event::Deposited {
+					currency_id,
+					who: T::AddressMapping::get_account_id(&receiver),
 					amount,
 				});
 				Ok(())
