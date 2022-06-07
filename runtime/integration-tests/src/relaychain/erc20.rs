@@ -270,24 +270,21 @@ fn erc20_transfer_between_sibling() {
 		);
 
 		// withdraw operation transfer from sibling parachain account to erc20 holding account
-		System::assert_has_event(Event::Currencies(module_currencies::Event::Transferred {
+		System::assert_has_event(Event::Currencies(module_currencies::Event::Withdrawn {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
-			from: sibling_reserve_account(),
-			to: erc20_holding_account.clone(),
+			who: sibling_reserve_account(),
 			amount: 5_000_000_000_000,
 		}));
 		// deposit operation transfer from erc20 holding account to recipient
-		System::assert_has_event(Event::Currencies(module_currencies::Event::Transferred {
+		System::assert_has_event(Event::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
-			from: erc20_holding_account.clone(),
-			to: AccountId::from(BOB),
+			who: AccountId::from(BOB),
 			amount: 4_993_600_000_000,
 		}));
 		// TakeRevenue deposit from erc20 holding account to treasury account
-		System::assert_has_event(Event::Currencies(module_currencies::Event::Transferred {
+		System::assert_has_event(Event::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
-			from: erc20_holding_account,
-			to: KaruraTreasuryAccount::get(),
+			who: KaruraTreasuryAccount::get(),
 			amount: 6_400_000_000,
 		}));
 	});
