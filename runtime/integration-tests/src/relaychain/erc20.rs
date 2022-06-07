@@ -31,12 +31,22 @@ use sp_core::{H256, U256};
 use std::str::FromStr;
 use xcm_emulator::TestExt;
 
+pub const SIBLING_ID: u32 = 2002;
+pub const KARURA_ID: u32 = 2000;
+
 pub fn erc20_address_0() -> EvmAddress {
 	EvmAddress::from_str("0x5e0b4bfa0b55932a3587e648c3552a6515ba56b1").unwrap()
 }
 
 pub fn alice_evm_addr() -> EvmAddress {
 	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
+}
+
+fn sibling_reserve_account() -> AccountId {
+	polkadot_parachain::primitives::Sibling::from(SIBLING_ID).into_account()
+}
+fn karura_reserve_account() -> AccountId {
+	polkadot_parachain::primitives::Sibling::from(KARURA_ID).into_account()
 }
 
 pub fn deploy_erc20_contracts() {
@@ -77,10 +87,6 @@ pub fn deploy_erc20_contracts() {
 #[test]
 fn erc20_transfer_between_sibling() {
 	TestNet::reset();
-
-	fn sibling_reserve_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2001).into_account()
-	}
 
 	Sibling::execute_with(|| {
 		let erc20_as_foreign_asset = CurrencyId::Erc20(erc20_address_0());
@@ -142,7 +148,7 @@ fn erc20_transfer_between_sibling() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2001),
+						Parachain(SIBLING_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -244,16 +250,12 @@ fn erc20_transfer_between_sibling() {
 fn sibling_erc20_to_self_as_foreign_asset() {
 	TestNet::reset();
 
-	fn sibling_reserve_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2000).into_account()
-	}
-
 	Karura::execute_with(|| {
 		let erc20_as_foreign_asset = CurrencyId::Erc20(erc20_address_0());
 		// register Karura's erc20 as foreign asset
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(1, X2(Parachain(2001), GeneralKey(erc20_as_foreign_asset.encode()))).into()),
+			Box::new(MultiLocation::new(1, X2(Parachain(2002), GeneralKey(erc20_as_foreign_asset.encode()))).into()),
 			Box::new(AssetMetadata {
 				name: b"Sibling USDC".to_vec(),
 				symbol: b"sUSDC".to_vec(),
@@ -326,7 +328,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 		);
 		assert_eq!(
 			10_000_000_000_000,
-			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &karura_reserve_account())
 		);
 	});
 

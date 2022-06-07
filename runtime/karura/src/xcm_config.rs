@@ -19,8 +19,8 @@
 use super::{
 	constants::{fee::*, parachains},
 	AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event, ExistentialDeposits,
-	GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM,
+	FixedRateOfAssetRegistry, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin,
+	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -31,6 +31,7 @@ pub use frame_support::{
 };
 pub use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset};
 use module_support::HomaSubAccountXcm;
+use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
@@ -46,11 +47,6 @@ pub use xcm_builder::{
 	TakeRevenue, TakeWeightCredit,
 };
 use xcm_executor::XcmExecutor;
-
-#[cfg(not(feature = "integration-tests"))]
-use super::{BuyWeightRateOfTransactionFeePool, FixedRateOfAssetRegistry};
-#[cfg(feature = "integration-tests")]
-use crate::integration_tests_config::*;
 
 parameter_types! {
 	pub KsmLocation: MultiLocation = MultiLocation::parent();
@@ -191,7 +187,6 @@ parameter_types! {
 	pub NativeTokenPerSecond: u128 = kar_per_second();
 }
 
-#[cfg(not(feature = "integration-tests"))]
 pub type Trader = (
 	FixedRateOfAssetRegistry<
 		NativeTokenPerSecond,
@@ -447,18 +442,14 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			MultiLocation {
 				parents: 0,
 				interior: X1(GeneralKey(key)),
-			} => match &key[..] {
-				#[cfg(feature = "integration-tests")]
-				parachains::bifrost::BNC_KEY => Some(Token(BNC)),
-				key => {
-					let currency_id = CurrencyId::decode(&mut &*key).ok()?;
-					match currency_id {
-						Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
-						Erc20(address) if !is_system_contract(address) => Some(currency_id),
-						_ => None,
-					}
+			} => {
+				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+				match currency_id {
+					Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+					Erc20(address) if !is_system_contract(address) => Some(currency_id),
+					_ => None,
 				}
-			},
+			}
 			_ => None,
 		}
 	}

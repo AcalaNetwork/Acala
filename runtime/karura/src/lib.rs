@@ -58,7 +58,7 @@ use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTa
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
-use module_transaction_payment::{BuyWeightRateOfTransactionFeePool, TargetedFeeAdjustment};
+use module_transaction_payment::TargetedFeeAdjustment;
 
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use orml_traits::{
@@ -113,9 +113,6 @@ pub use xcm::latest::prelude::*;
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
-
-#[cfg(feature = "integration-tests")]
-mod integration_tests_config;
 
 mod authority;
 mod benchmarking;

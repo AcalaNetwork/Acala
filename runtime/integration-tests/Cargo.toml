@@ -157,7 +157,6 @@ with-mandala-runtime = [
 ]
 with-karura-runtime = [
 	"karura-runtime",
-	"karura-runtime/integration-tests",
 	"acala-service/with-karura-runtime",
 	"module-relaychain/kusama"
 ]
