@@ -372,7 +372,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 				let from = T::AddressMapping::get_account_id(&sender);
 				ensure!(
 					!Self::free_balance(currency_id, &from).is_zero(),
-					Error::<T>::RealOriginNotFound
+					Error::<T>::DepositFailed
 				);
 				let receiver = T::AddressMapping::get_or_create_evm_address(who);
 				T::EVMBridge::transfer(

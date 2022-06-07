@@ -1334,7 +1334,7 @@ fn fungible_mutate_trait_should_work() {
 			// but here erc20 holding account don't have enough balance.
 			assert_noop!(
 				<Currencies as fungibles::Mutate<_>>::mint_into(CurrencyId::Erc20(erc20_address()), &alice(), 1),
-				Error::<Runtime>::RealOriginNotFound
+				Error::<Runtime>::DepositFailed
 			);
 
 			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::total_issuance(), 101000);
