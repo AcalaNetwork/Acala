@@ -101,9 +101,9 @@ fn transfer_from_relay_chain() {
 #[test]
 fn karura_statemine_transfer_works() {
 	TestNet::reset();
-	let para_2000: AccountId = Sibling::from(2000).into_account();
-	let child_2000: AccountId = ParaId::from(2000).into_account();
-	let child_1000: AccountId = ParaId::from(1000).into_account();
+	let para_2000: AccountId = Sibling::from(2000).into_account_truncating();
+	let child_2000: AccountId = ParaId::from(2000).into_account_truncating();
+	let child_1000: AccountId = ParaId::from(1000).into_account_truncating();
 
 	// minimum asset should be: FEE_WEIGHT+FEE_KUSAMA+max(KUSAMA_ED,STATEMINE_ED+FEE_STATEMINE).
 	// but due to current half fee, sender asset should at lease: FEE_WEIGHT + 2 * FEE_KUSAMA
@@ -185,7 +185,7 @@ fn karura_side(fee_amount: u128) {
 fn statemine_side(para_2000_init_amount: u128) {
 	register_asset();
 
-	let para_acc: AccountId = Sibling::from(2000).into_account();
+	let para_acc: AccountId = Sibling::from(2000).into_account_truncating();
 
 	Statemine::execute_with(|| {
 		use statemine_runtime::*;

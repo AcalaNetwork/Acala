@@ -37,8 +37,8 @@ use frame_support::{
 	},
 	transactional,
 	weights::{
-		constants::WEIGHT_PER_SECOND, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient,
-		WeightToFeePolynomial,
+		constants::WEIGHT_PER_SECOND, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo,
+		WeightToFee as WeightToFeeT, WeightToFeeCoefficient, WeightToFeePolynomial,
 	},
 	BoundedVec, PalletId,
 };
@@ -767,7 +767,7 @@ where
 		// cap the weight to the maximum defined in runtime, otherwise it will be the
 		// `Bounded` maximum of its data type, which is not desired.
 		let capped_weight = weight.min(T::BlockWeights::get().max_block);
-		T::WeightToFee::calc(&capped_weight)
+		T::WeightToFee::weight_to_fee(&capped_weight)
 	}
 
 	/// If native asset is enough, return `None`, else return the fee amount should be swapped.
@@ -947,7 +947,7 @@ where
 
 	/// The sub account derivated by `PalletId`.
 	fn sub_account_id(id: CurrencyId) -> T::AccountId {
-		T::PalletId::get().into_sub_account(id)
+		T::PalletId::get().into_sub_account_truncating(id)
 	}
 
 	/// Calculate the new exchange rate.

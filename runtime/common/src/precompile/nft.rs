@@ -60,7 +60,7 @@ impl<Runtime> Precompile for NFTPrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config + module_nft::Config,
 	module_nft::Pallet<Runtime>: InspectExtended<Runtime::AccountId, Balance = NFTBalance>
-		+ Inspect<Runtime::AccountId, InstanceId = u64, ClassId = u32>
+		+ Inspect<Runtime::AccountId, ItemId = u64, CollectionId = u32>
 		+ Transfer<Runtime::AccountId>,
 {
 	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {

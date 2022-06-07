@@ -79,7 +79,7 @@ fn transfer_to_relay_chain() {
 		);
 		assert_eq!(
 			5 * dollar(DOT),
-			polkadot_runtime::Balances::free_balance(&ParaId::from(2000).into_account())
+			polkadot_runtime::Balances::free_balance(&ParaId::from(2000).into_account_truncating())
 		);
 	});
 }

@@ -103,7 +103,8 @@ fn initial_charge_fee_pool_works() {
 		.build()
 		.execute_with(|| {
 			let treasury_account = TreasuryAccount::get();
-			let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(RELAY_CHAIN_CURRENCY);
+			let fee_account1: AccountId =
+				TransactionPaymentPalletId::get().into_sub_account_truncating(RELAY_CHAIN_CURRENCY);
 			// FeePoolSize set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
 			let ed = NativeTokenExistentialDeposit::get();
 			let pool_size = fee_pool_size();
@@ -184,14 +185,14 @@ fn initial_charge_fee_pool_works() {
 				assert_eq!(
 					Currencies::free_balance(
 						NATIVE_CURRENCY,
-						&TransactionPaymentPalletId::get().into_sub_account(token.clone())
+						&TransactionPaymentPalletId::get().into_sub_account_truncating(token.clone())
 					),
 					pool_size
 				);
 				assert_eq!(
 					Currencies::free_balance(
 						token.clone(),
-						&TransactionPaymentPalletId::get().into_sub_account(token.clone())
+						&TransactionPaymentPalletId::get().into_sub_account_truncating(token.clone())
 					),
 					ed
 				);
@@ -199,14 +200,14 @@ fn initial_charge_fee_pool_works() {
 			assert_eq!(
 				Currencies::free_balance(
 					NATIVE_CURRENCY,
-					&TransactionPaymentPalletId::get().into_sub_account(LIQUID_CURRENCY)
+					&TransactionPaymentPalletId::get().into_sub_account_truncating(LIQUID_CURRENCY)
 				),
 				0
 			);
 			assert_eq!(
 				Currencies::free_balance(
 					LIQUID_CURRENCY,
-					&TransactionPaymentPalletId::get().into_sub_account(LIQUID_CURRENCY)
+					&TransactionPaymentPalletId::get().into_sub_account_truncating(LIQUID_CURRENCY)
 				),
 				0
 			);
@@ -282,7 +283,8 @@ fn trader_works() {
 		.build()
 		.execute_with(|| {
 			let treasury_account = TreasuryAccount::get();
-			let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(RELAY_CHAIN_CURRENCY);
+			let fee_account1: AccountId =
+				TransactionPaymentPalletId::get().into_sub_account_truncating(RELAY_CHAIN_CURRENCY);
 			// FeePoolSize set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
 			let ed = NativeTokenExistentialDeposit::get();
 			let relay_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(RELAY_CHAIN_CURRENCY);
@@ -345,7 +347,7 @@ fn charge_transaction_payment_and_threshold_works() {
 	let relay_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(RELAY_CHAIN_CURRENCY);
 
 	let treasury_account = TreasuryAccount::get();
-	let sub_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(RELAY_CHAIN_CURRENCY);
+	let sub_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account_truncating(RELAY_CHAIN_CURRENCY);
 	let bob_relay_balance = 100 * dollar(RELAY_CHAIN_CURRENCY);
 
 	ExtBuilder::default()

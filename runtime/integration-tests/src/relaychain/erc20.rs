@@ -43,10 +43,10 @@ pub fn alice_evm_addr() -> EvmAddress {
 }
 
 fn sibling_reserve_account() -> AccountId {
-	polkadot_parachain::primitives::Sibling::from(SIBLING_ID).into_account()
+	polkadot_parachain::primitives::Sibling::from(SIBLING_ID).into_account_truncating()
 }
 fn karura_reserve_account() -> AccountId {
-	polkadot_parachain::primitives::Sibling::from(KARURA_ID).into_account()
+	polkadot_parachain::primitives::Sibling::from(KARURA_ID).into_account_truncating()
 }
 
 pub fn deploy_erc20_contracts() {

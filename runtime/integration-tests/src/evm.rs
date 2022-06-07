@@ -804,7 +804,7 @@ fn test_default_evm_address_in_evm_accounts_module() {
 fn transaction_payment_module_works_with_evm_contract() {
 	let dex_share = CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Token(NATIVE_TOKEN_SYMBOL));
 	let sub_account: AccountId =
-		TransactionPaymentPalletId::get().into_sub_account(CurrencyId::Erc20(erc20_address_0()));
+		TransactionPaymentPalletId::get().into_sub_account_truncating(CurrencyId::Erc20(erc20_address_0()));
 
 	ExtBuilder::default()
 		.balances(vec![

@@ -39,10 +39,10 @@ pub const MOCK_BIFROST_ID: u32 = 2001;
 pub const SIBLING_ID: u32 = 2002;
 
 fn karura_reserve_account() -> AccountId {
-	polkadot_parachain::primitives::Sibling::from(KARURA_ID).into_account()
+	polkadot_parachain::primitives::Sibling::from(KARURA_ID).into_account_truncating()
 }
 fn sibling_reserve_account() -> AccountId {
-	polkadot_parachain::primitives::Sibling::from(SIBLING_ID).into_account()
+	polkadot_parachain::primitives::Sibling::from(SIBLING_ID).into_account_truncating()
 }
 
 #[test]
