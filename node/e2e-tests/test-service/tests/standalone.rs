@@ -44,7 +44,7 @@ async fn simple_balances_dev_test() {
 		.await;
 
 	let bob = MultiSigner::from(Bob.public());
-	let bob_account_id = bob.into_account_truncating();
+	let bob_account_id = bob.into_account();
 	let amount = 1_000_000_000_000;
 
 	type Balances = pallet_balances::Pallet<node_runtime::Runtime>;
@@ -78,7 +78,7 @@ async fn transaction_pool_priority_order_test() {
 		.await;
 
 	let bob = MultiSigner::from(Bob.public());
-	let bob_account_id = bob.into_account_truncating();
+	let bob_account_id = bob.into_account();
 
 	// send operational extrinsic
 	let operational_tx_hash = node
