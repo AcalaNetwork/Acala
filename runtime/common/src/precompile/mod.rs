@@ -41,6 +41,9 @@ use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
 pub mod dex;
 pub mod evm;
+pub mod evm_accounts;
+pub mod homa;
+pub mod honzon;
 pub mod input;
 pub mod multicurrency;
 pub mod nft;
@@ -51,6 +54,9 @@ pub mod stable_asset;
 use crate::SystemContractsFilter;
 pub use dex::DEXPrecompile;
 pub use evm::EVMPrecompile;
+pub use evm_accounts::EVMAccountsPrecompile;
+pub use homa::HomaPrecompile;
+pub use honzon::HonzonPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
@@ -67,6 +73,8 @@ pub const BN_MUL: H160 = H160(hex!("0000000000000000000000000000000000000007"));
 pub const BN_PAIRING: H160 = H160(hex!("0000000000000000000000000000000000000008"));
 pub const BLAKE2F: H160 = H160(hex!("0000000000000000000000000000000000000009"));
 
+pub const ETH_PRECOMPILE_END: H160 = BLAKE2F;
+
 pub const ECRECOVER_PUBLICKEY: H160 = H160(hex!("0000000000000000000000000000000000000080"));
 pub const SHA3_256: H160 = H160(hex!("0000000000000000000000000000000000000081"));
 pub const SHA3_512: H160 = H160(hex!("0000000000000000000000000000000000000082"));
@@ -78,6 +86,9 @@ pub const ORACLE: H160 = H160(hex!("0000000000000000000000000000000000000403"));
 pub const SCHEDULER: H160 = H160(hex!("0000000000000000000000000000000000000404"));
 pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000405"));
 pub const STABLE_ASSET: H160 = H160(hex!("0000000000000000000000000000000000000406"));
+pub const HOMA: H160 = H160(hex!("0000000000000000000000000000000000000407"));
+pub const EVM_ACCOUNTS: H160 = H160(hex!("0000000000000000000000000000000000000408"));
+pub const HONZON: H160 = H160(hex!("0000000000000000000000000000000000000409"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
 	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
@@ -115,6 +126,10 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
+				// STABLE_ASSET,
+				// HOMA,
+				EVM_ACCOUNTS,
+				// HONZON
 			]),
 			_marker: Default::default(),
 		}
@@ -143,6 +158,10 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
+				// STABLE_ASSET,
+				// HOMA,
+				EVM_ACCOUNTS,
+				// HONZON
 			]),
 			_marker: Default::default(),
 		}
@@ -172,6 +191,9 @@ where
 				SCHEDULER,
 				DEX,
 				STABLE_ASSET,
+				HOMA,
+				EVM_ACCOUNTS,
+				HONZON,
 			]),
 			_marker: Default::default(),
 		}
@@ -184,10 +206,13 @@ where
 	MultiCurrencyPrecompile<R>: Precompile,
 	NFTPrecompile<R>: Precompile,
 	EVMPrecompile<R>: Precompile,
+	EVMAccountsPrecompile<R>: Precompile,
 	OraclePrecompile<R>: Precompile,
 	DEXPrecompile<R>: Precompile,
 	StableAssetPrecompile<R>: Precompile,
 	SchedulePrecompile<R>: Precompile,
+	HomaPrecompile<R>: Precompile,
+	HonzonPrecompile<R>: Precompile,
 {
 	fn execute(
 		&self,
@@ -200,6 +225,16 @@ where
 		if !self.is_precompile(address) {
 			return None;
 		}
+
+		// Filter known precompile addresses except Ethereum officials
+		if address > ETH_PRECOMPILE_END && context.address != address {
+			return Some(Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "cannot be called with DELEGATECALL or CALLCODE".into(),
+				cost: target_gas.unwrap_or_default(),
+			}));
+		}
+
 		log::trace!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}", address, input, target_gas, context);
 
 		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
@@ -263,6 +298,14 @@ where
 				Some(StableAssetPrecompile::<R>::execute(
 					input, target_gas, context, is_static,
 				))
+			} else if address == HOMA {
+				Some(HomaPrecompile::<R>::execute(input, target_gas, context, is_static))
+			} else if address == EVM_ACCOUNTS {
+				Some(EVMAccountsPrecompile::<R>::execute(
+					input, target_gas, context, is_static,
+				))
+			} else if address == HONZON {
+				Some(HonzonPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else {
 				None
 			}

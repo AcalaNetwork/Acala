@@ -19,6 +19,7 @@
 //! Common runtime code for Acala, Karura and Mandala.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::Get;
@@ -346,6 +347,10 @@ impl Default for ProxyType {
 	}
 }
 
+pub fn native_currency_location(para_id: u32, id: CurrencyId) -> MultiLocation {
+	MultiLocation::new(1, X2(Parachain(para_id), GeneralKey(id.encode())))
+}
+
 /// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.
 ///
 /// parameters type:
@@ -410,6 +415,23 @@ where
 		} else {
 			GK::get(currency_id)
 		}
+	}
+}
+
+pub struct EvmLimits<T>(PhantomData<T>);
+impl<T> EvmLimits<T>
+where
+	T: frame_system::Config,
+{
+	pub fn max_gas_limit() -> u64 {
+		let weights = T::BlockWeights::get();
+		let normal_weight = weights.get(DispatchClass::Normal);
+		WeightToGas::convert(normal_weight.max_extrinsic.unwrap_or(weights.max_block))
+	}
+
+	pub fn max_storage_limit() -> u32 {
+		let length = T::BlockLength::get();
+		*length.max.get(DispatchClass::Normal)
 	}
 }
 

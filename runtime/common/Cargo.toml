@@ -1,6 +1,6 @@
 [package]
 name = "runtime-common"
-version = "2.6.1"
+version = "2.6.4"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -20,28 +20,28 @@ ethabi = { version = "17.0.0", default-features = false }
 scale-info = { version = "2.1", default-features = false, features = ["derive"] }
 
 # substrate
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false }
-pallet-scheduler  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false }
-pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false }
-pallet-membership = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false, optional = true }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false, optional = true }
-pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false, optional = true }
-pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false, optional = true }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
+pallet-scheduler  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
+pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
+pallet-membership = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false, optional = true }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false, optional = true }
+pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false, optional = true }
+pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false, optional = true }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
 
 # cumulus
-cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.19", default-features = false }
+cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.22", default-features = false }
 
 # polkadot
-pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.19", default-features = false, optional = true }
-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.19", default-features = false }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.19", default-features = false }
-xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.19", default-features = false }
+pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22", default-features = false, optional = true }
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22", default-features = false }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22", default-features = false }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22", default-features = false }
 
 # modules
 module-currencies = { path = "../../modules/currencies", default-features = false }
@@ -53,11 +53,16 @@ module-prices = { path = "../../modules/prices", default-features = false }
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
 module-nft = { path = "../../modules/nft", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
-module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false, optional = true }
+module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
+module-homa = {path = "../../modules/homa", default-features = false }
 module-asset-registry = { path = "../../modules/asset-registry", default-features = false, optional = true }
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false, optional = true }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
+module-honzon = { path = "../../modules/honzon", default-features = false }
+module-loans = { path = "../../modules/loans", default-features = false }
+module-cdp-engine = { path = "../../modules/cdp-engine", default-features = false }
+module-cdp-treasury = { path = "../../modules/cdp-treasury", default-features = false, optional = true }
 
 # orml
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -108,10 +113,15 @@ std = [
 	"module-transaction-payment/std",
 	"module-nft/std",
 	"module-dex/std",
+	"module-homa/std",
 	"module-currencies/std",
 	"module-evm-accounts/std",
 	"module-asset-registry/std",
 	"module-evm-bridge/std",
+	"module-loans/std",
+	"module-cdp-engine/std",
+	"module-honzon/std",
+	"module-cdp-treasury/std",
 
 	"xcm/std",
 	"xcm-executor/std",
@@ -139,7 +149,7 @@ bench = [
 
 	"module-asset-registry",
 	"module-evm-bridge",
-	"module-evm-accounts",
+	"module-cdp-treasury",
 
 	"xcm/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",

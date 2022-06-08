@@ -16,29 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! EVM rpc interface.
-
-use jsonrpc_core::Result;
-use jsonrpc_derive::rpc;
-use sp_core::{Bytes, H160};
-
-pub use rpc_impl_EVMApi::gen_server::EVMApi as EVMApiServer;
-
-use crate::call_request::{CallRequest, EstimateResourcesResponse};
-
-/// EVM rpc interface.
-#[rpc(server)]
-pub trait EVMApi<BlockHash> {
-	/// Call contract, returning the output data.
-	#[rpc(name = "evm_call")]
-	fn call(&self, _: CallRequest, at: Option<BlockHash>) -> Result<Bytes>;
-
-	/// Estimate resources needed for execution of given contract.
-	#[rpc(name = "evm_estimateResources")]
-	fn estimate_resources(
-		&self,
-		from: H160,
-		unsigned_extrinsic: Bytes,
-		at: Option<BlockHash>,
-	) -> Result<EstimateResourcesResponse>;
-}
+/// Version 1
+///
+/// Adds TotalStakingBonded to homa storage
+pub mod v1;

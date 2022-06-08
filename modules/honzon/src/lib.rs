@@ -31,13 +31,13 @@
 
 use frame_support::{pallet_prelude::*, traits::NamedReservableCurrency, transactional};
 use frame_system::pallet_prelude::*;
-use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier};
+use primitives::{Amount, Balance, CurrencyId, Position, ReserveIdentifier};
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
-	DispatchResult,
+	ArithmeticError, DispatchResult,
 };
 use sp_std::prelude::*;
-use support::EmergencyShutdown;
+use support::{CDPTreasury, EmergencyShutdown, ExchangeRate, HonzonManager, PriceProvider, Ratio};
 
 mod mock;
 mod tests;
@@ -104,6 +104,12 @@ pub mod module {
 		},
 		/// Cancel all authorization.
 		UnAuthorizationAll { authorizer: T::AccountId },
+		/// Transfers debit between two CDPs
+		TransferDebit {
+			from_currency: CurrencyId,
+			to_currency: CurrencyId,
+			amount: Balance,
+		},
 	}
 
 	/// The authorization relationship map from
@@ -148,13 +154,7 @@ pub mod module {
 			debit_adjustment: Amount,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-
-			// not allowed to adjust the debit after system shutdown
-			if !debit_adjustment.is_zero() {
-				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-			}
-			<cdp_engine::Pallet<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
-			Ok(())
+			Self::do_adjust_loan(&who, currency_id, collateral_adjustment, debit_adjustment)
 		}
 
 		/// Close caller's CDP which has debit but still in safe by use collateral to swap
@@ -171,9 +171,7 @@ pub mod module {
 			#[pallet::compact] max_collateral_amount: Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(who, currency_id, max_collateral_amount)?;
-			Ok(())
+			Self::do_close_loan_by_dex(who, currency_id, max_collateral_amount)
 		}
 
 		/// Transfer the whole CDP of `from` under `currency_id` to caller's CDP
@@ -215,19 +213,17 @@ pub mod module {
 			}
 
 			Authorization::<T>::try_mutate_exists(&from, (currency_id, &to), |maybe_reserved| -> DispatchResult {
-				if maybe_reserved.is_none() {
-					let reserve_amount = T::DepositPerAuthorization::get();
-					<T as Config>::Currency::reserve_named(&RESERVE_ID, &from, reserve_amount)?;
-					*maybe_reserved = Some(reserve_amount);
-					Self::deposit_event(Event::Authorization {
-						authorizer: from.clone(),
-						authorizee: to.clone(),
-						collateral_type: currency_id,
-					});
-					Ok(())
-				} else {
-					Err(Error::<T>::AlreadyAuthorized.into())
-				}
+				ensure!(maybe_reserved.is_none(), Error::<T>::AlreadyAuthorized);
+
+				let reserve_amount = T::DepositPerAuthorization::get();
+				<T as Config>::Currency::reserve_named(&RESERVE_ID, &from, reserve_amount)?;
+				*maybe_reserved = Some(reserve_amount);
+				Self::deposit_event(Event::Authorization {
+					authorizer: from.clone(),
+					authorizee: to.clone(),
+					collateral_type: currency_id,
+				});
+				Ok(())
 			})?;
 			Ok(())
 		}
@@ -290,7 +286,7 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Sell ​​the collateral locked in CDP to get stable coin to repay the debit.
+		/// Sell the collateral locked in CDP to get stable coin to repay the debit.
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `decrease_collateral`: the specific decreased collateral amount for CDP
@@ -312,6 +308,69 @@ pub mod module {
 			)?;
 			Ok(())
 		}
+
+		/// Adjust the loans of `currency_id` by specific
+		/// `collateral_adjustment` and `debit_value_adjustment`
+		///
+		/// - `currency_id`: collateral currency id.
+		/// - `collateral_adjustment`: signed amount, positive means to deposit collateral currency
+		///   into CDP, negative means withdraw collateral currency from CDP.
+		/// - `debit_value_adjustment`: signed amount, positive means to issue some amount of
+		///   stablecoin, negative means caller will payback some amount of stablecoin to CDP.
+		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
+		#[transactional]
+		pub fn adjust_loan_by_debit_value(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			collateral_adjustment: Amount,
+			debit_value_adjustment: Amount,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			// not allowed to adjust the debit after system shutdown
+			if !debit_value_adjustment.is_zero() {
+				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
+			}
+			<cdp_engine::Pallet<T>>::adjust_position_by_debit_value(
+				&who,
+				currency_id,
+				collateral_adjustment,
+				debit_value_adjustment,
+			)?;
+			Ok(())
+		}
+
+		/// Transfers debit between two CDPs
+		///
+		/// - `from_currency`: Currency id that debit is transfered from
+		/// - `to_currency`: Currency id that debit is transfered to
+		/// - `debit_transfer`: Debit transfered across two CDPs
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_debit())]
+		#[transactional]
+		pub fn transfer_debit(
+			origin: OriginFor<T>,
+			from_currency: CurrencyId,
+			to_currency: CurrencyId,
+			debit_transfer: Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			let debit_amount: Amount = debit_transfer.try_into().map_err(|_| ArithmeticError::Overflow)?;
+			let negative_debit = debit_amount.checked_neg().ok_or(ArithmeticError::Overflow)?;
+			// Adds ausd to user account momentarily to adjust loan
+			<T as cdp_engine::Config>::CDPTreasury::issue_debit(&who, debit_transfer, true)?;
+
+			<cdp_engine::Pallet<T>>::adjust_position(&who, from_currency, Zero::zero(), negative_debit)?;
+			<cdp_engine::Pallet<T>>::adjust_position(&who, to_currency, Zero::zero(), debit_amount)?;
+			// Removes debit issued for debit transfer
+			<T as cdp_engine::Config>::CDPTreasury::burn_debit(&who, debit_transfer)?;
+
+			Self::deposit_event(Event::TransferDebit {
+				from_currency,
+				to_currency,
+				amount: debit_transfer,
+			});
+			Ok(())
+		}
 	}
 }
 
@@ -323,5 +382,64 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::NoPermission
 		);
 		Ok(())
+	}
+
+	fn do_adjust_loan(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
+		debit_adjustment: Amount,
+	) -> DispatchResult {
+		// not allowed to adjust the debit after system shutdown
+		if !debit_adjustment.is_zero() {
+			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
+		}
+		<cdp_engine::Pallet<T>>::adjust_position(who, currency_id, collateral_adjustment, debit_adjustment)?;
+		Ok(())
+	}
+
+	fn do_close_loan_by_dex(
+		who: T::AccountId,
+		currency_id: CurrencyId,
+		max_collateral_amount: Balance,
+	) -> DispatchResult {
+		ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
+		<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(who, currency_id, max_collateral_amount)?;
+		Ok(())
+	}
+}
+
+impl<T: Config> HonzonManager<T::AccountId, CurrencyId, Amount, Balance> for Pallet<T> {
+	fn adjust_loan(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
+		debit_adjustment: Amount,
+	) -> DispatchResult {
+		Self::do_adjust_loan(who, currency_id, collateral_adjustment, debit_adjustment)
+	}
+
+	fn close_loan_by_dex(who: T::AccountId, currency_id: CurrencyId, max_collateral_amount: Balance) -> DispatchResult {
+		Self::do_close_loan_by_dex(who, currency_id, max_collateral_amount)
+	}
+
+	fn get_position(who: &T::AccountId, currency_id: CurrencyId) -> Position {
+		<loans::Pallet<T>>::positions(currency_id, who)
+	}
+
+	fn get_liquidation_ratio(currency_id: CurrencyId) -> Option<Ratio> {
+		<cdp_engine::Pallet<T>>::collateral_params(currency_id).and_then(|risk_params| risk_params.liquidation_ratio)
+	}
+
+	fn get_current_collateral_ratio(who: &T::AccountId, currency_id: CurrencyId) -> Option<Ratio> {
+		let Position { collateral, debit } = <loans::Pallet<T>>::positions(currency_id, &who);
+		let stable_currency_id = T::GetStableCurrencyId::get();
+
+		T::PriceSource::get_relative_price(currency_id, stable_currency_id)
+			.map(|price| <cdp_engine::Pallet<T>>::calculate_collateral_ratio(currency_id, collateral, debit, price))
+	}
+
+	fn get_debit_exchange_rate(currency_id: CurrencyId) -> ExchangeRate {
+		<cdp_engine::Pallet<T>>::get_debit_exchange_rate(currency_id)
 	}
 }

@@ -19,6 +19,17 @@
 use crate::setup::*;
 
 #[test]
+fn currency_id_encode_decode() {
+	let erc20 = CurrencyId::Erc20(H160::from_low_u64_be(1));
+	let encode_key = erc20.encode();
+	let key = &encode_key[..];
+	let currency_id1 = CurrencyId::decode(&mut &*encode_key).ok().unwrap();
+	let currency_id2 = CurrencyId::decode(&mut &*key).ok().unwrap();
+	assert_eq!(currency_id1, currency_id2);
+	assert_eq!(currency_id1, erc20);
+}
+
+#[test]
 fn currency_id_convert() {
 	ExtBuilder::default().build().execute_with(|| {
 		let id: u32 = ParachainInfo::get().into();

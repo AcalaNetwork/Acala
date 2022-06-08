@@ -268,6 +268,17 @@ impl sc_client_api::BlockBackend<Block> for Client {
 			Self::Acala(client) => client.block_indexed_body(id),
 		}
 	}
+
+	fn requires_full_sync(&self) -> bool {
+		match self {
+			#[cfg(feature = "with-mandala-runtime")]
+			Self::Mandala(client) => client.requires_full_sync(),
+			#[cfg(feature = "with-karura-runtime")]
+			Self::Karura(client) => client.requires_full_sync(),
+			#[cfg(feature = "with-acala-runtime")]
+			Self::Acala(client) => client.requires_full_sync(),
+		}
+	}
 }
 
 impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {

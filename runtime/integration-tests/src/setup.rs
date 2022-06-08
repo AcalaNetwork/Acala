@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-pub use codec::Encode;
+pub use codec::{Decode, Encode};
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::traits::{GenesisBuild, OnFinalize, OnIdle, OnInitialize};
 pub use frame_support::{assert_noop, assert_ok, traits::Currency};
@@ -336,6 +336,7 @@ impl ExtBuilder {
 		.unwrap();
 
 		module_evm::GenesisConfig::<Runtime> {
+			chain_id: 595u64,
 			accounts: evm_genesis_accounts,
 		}
 		.assimilate_storage(&mut t)

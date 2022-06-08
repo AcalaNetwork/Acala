@@ -27,9 +27,11 @@ use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc2
 use primitives::{Balance, CurrencyId, DexShare};
 use sp_core::{H160, U256};
 use sp_runtime::traits::Convert;
+use sp_std::prelude::*;
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
+pub const HALF_PARAM_BYTES: usize = PER_PARAM_BYTES / 2;
 pub const ACTION_INDEX: usize = 0;
 
 pub trait InputT {
@@ -44,6 +46,7 @@ pub trait InputT {
 	fn evm_address_at(&self, index: usize) -> Result<H160, Self::Error>;
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error>;
 
+	fn i128_at(&self, index: usize) -> Result<i128, Self::Error>;
 	fn u256_at(&self, index: usize) -> Result<U256, Self::Error>;
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error>;
@@ -52,6 +55,7 @@ pub trait InputT {
 	fn u32_at(&self, index: usize) -> Result<u32, Self::Error>;
 
 	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error>;
+	fn bool_at(&self, index: usize) -> Result<bool, Self::Error>;
 }
 
 pub struct Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping> {
@@ -149,6 +153,15 @@ where
 		})
 	}
 
+	fn i128_at(&self, index: usize) -> Result<i128, Self::Error> {
+		let param = self.nth_param(index, None)?;
+		decode_i128(param).ok_or(PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "failed to decode i128".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})
+	}
+
 	fn u256_at(&self, index: usize) -> Result<U256, Self::Error> {
 		let param = self.nth_param(index, None)?;
 		Ok(U256::from_big_endian(param))
@@ -185,6 +198,11 @@ where
 		let bytes = self.nth_param(index, Some(len))?;
 
 		Ok(bytes.to_vec())
+	}
+
+	fn bool_at(&self, index: usize) -> Result<bool, Self::Error> {
+		let param = self.u256_at(index)?;
+		Ok(!param.is_zero())
 	}
 }
 
@@ -237,6 +255,11 @@ impl Output {
 		ethabi::encode(&[out])
 	}
 
+	pub fn encode_fixed_bytes(&self, b: &[u8]) -> Vec<u8> {
+		let out = Token::FixedBytes(b.to_vec());
+		ethabi::encode(&[out])
+	}
+
 	pub fn encode_address(&self, b: &H160) -> Vec<u8> {
 		let out = Token::Address(H160::from_slice(b.as_bytes()));
 		ethabi::encode(&[out])
@@ -276,6 +299,20 @@ where
 		// EvmAccounts::Accounts
 		WeightToGas::convert(T::DbWeight::get().reads(count))
 	}
+}
+
+fn decode_i128(bytes: &[u8]) -> Option<i128> {
+	if bytes[0..HALF_PARAM_BYTES] == [0xff; HALF_PARAM_BYTES] {
+		if let Ok(v) = i128::try_from(!U256::from(bytes)) {
+			if let Some(v) = v.checked_neg() {
+				return v.checked_sub(1);
+			}
+		}
+		return None;
+	} else if bytes[0..HALF_PARAM_BYTES] == [0x00; HALF_PARAM_BYTES] {
+		return i128::try_from(U256::from_big_endian(bytes)).ok();
+	}
+	None
 }
 
 #[cfg(test)]
@@ -495,5 +532,98 @@ mod tests {
 				cost: 10,
 			})
 		);
+	}
+
+	#[test]
+	fn i128_works() {
+		let data = hex_literal::hex! {"
+			00000000
+			00000000000000000000000000000000 0000000000000000000000000000007f
+			0fffffffffffffffffffffffffffffff 00000000000000000000000000000001
+			ffffffffffffffffffffffffffffffff ffffffffffffffffffffffffffffffff
+			ffffffffffffffffffffffffffffffff fffffffffffffffffffffffffffffff0
+			ff000000000000000000000000000000 ffffffffffffffffffffffffffffffff
+			00000000000000000000000000000000 00000000000000000000000000000000
+		"};
+		let input = TestInput::new(&data[..], Some(10));
+		assert_ok!(input.i128_at(1), 127_i128);
+		assert_eq!(
+			input.i128_at(2),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to decode i128".into(),
+				cost: 10,
+			})
+		);
+		assert_ok!(input.i128_at(3), -1_i128);
+		assert_ok!(input.i128_at(4), -16_i128);
+		assert_eq!(
+			input.i128_at(5),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to decode i128".into(),
+				cost: 10,
+			})
+		);
+		assert_ok!(input.i128_at(6), 0);
+	}
+
+	#[test]
+	fn decode_int128() {
+		let items = [
+			("ff00000000000000000000000000000000000000000000000000000000000000", None),
+			("0000000000000000000000000000000100000000000000000000000000000000", None),
+			("000000000000000000000000000000ff00000000000000000000000000000000", None),
+			(
+				"0000000000000000000000000000000010000000000000000000000000000000",
+				Some(21267647932558653966460912964485513216i128),
+			),
+			(
+				"fffffffffffffffffffffffffffffffff0000000000000000000000000000000",
+				Some(-21267647932558653966460912964485513216i128),
+			),
+			(
+				"0000000000000000000000000000000000000000000000000000000000000000",
+				Some(0),
+			),
+			(
+				"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+				Some(-1),
+			),
+			(
+				"0000000000000000000000000000000000000000000000000000000000000001",
+				Some(1),
+			),
+			(
+				"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0",
+				Some(-16),
+			),
+			(
+				"00000000000000000000000000000000000000000000000000000000000000ff",
+				Some(255),
+			),
+			(
+				"ffffffffffffffffffffffffffffffffffffffffffff000000000000000000ff",
+				Some(-1208925819614629174705921),
+			),
+			(
+				"00000000000000000000000000000000000000000000ffffffffffffffffff00",
+				Some(1208925819614629174705920),
+			),
+			(
+				"ffffffffffffffffffffffffffffffff80000000000000000000000000000000",
+				Some(i128::MIN),
+			),
+			(
+				"000000000000000000000000000000007fffffffffffffffffffffffffffffff",
+				Some(i128::MAX),
+			),
+			("00000000000000000000000000000000ffffffffffffffffffffffffffffffff", None),
+			("ffffffffffffffffffffffffffffffff00000000000000000000000000000000", None),
+		];
+
+		items.into_iter().for_each(|(input, value)| {
+			assert_eq!(decode_i128(&crate::from_hex(input).unwrap()), value);
+		});
 	}
 }
