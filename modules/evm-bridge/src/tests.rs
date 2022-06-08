@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_err, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok};
 use mock::*;
 
 #[test]
@@ -324,5 +324,32 @@ fn on_repayment_refund_works() {
 				used_gas: 23595,
 				used_storage: 0,
 			}));
+		});
+}
+
+#[test]
+fn liquidation_err_fails_as_expected() {
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_liquidation_err_contracts();
+			let collateral = EvmAddress::from_str("1000000000000000000000000000000000000111").unwrap();
+			let repay_dest = EvmAddress::from_str("1000000000000000000000000000000000000112").unwrap();
+
+			assert_noop!(
+				LiquidationEvmBridge::<Runtime>::liquidate(
+					InvokeContext {
+						contract: erc20_address(),
+						sender: Default::default(),
+						origin: Default::default(),
+					},
+					collateral,
+					repay_dest,
+					100,
+					100,
+				),
+				Error::<Runtime>::ExecutionRevert,
+			);
 		});
 }

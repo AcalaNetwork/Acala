@@ -228,6 +228,26 @@ pub fn deploy_liquidation_ok_contracts() {
 	));
 }
 
+pub fn deploy_liquidation_err_contracts() {
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../ts-tests/build/LiquidationErr.json")).unwrap();
+	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000, vec![]));
+
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: alice_evm_addr(),
+		contract: erc20_address(),
+		logs: vec![],
+		used_gas: 228284,
+		used_storage: 818,
+	}));
+
+	assert_ok!(EVM::publish_free(
+		Origin::signed(CouncilAccount::get()),
+		erc20_address()
+	));
+}
+
 impl ExtBuilder {
 	pub fn balances(mut self, balances: Vec<(AccountId, Balance)>) -> Self {
 		self.balances = balances;
