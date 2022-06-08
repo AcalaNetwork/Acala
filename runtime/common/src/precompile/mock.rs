@@ -26,7 +26,7 @@ use frame_support::{
 		ConstU128, ConstU32, ConstU64, EqualPrivilegeOnly, Everything, InstanceFilter, Nothing, OnFinalize,
 		OnInitialize, SortedMembers,
 	},
-	weights::{ConstantMultiplier, IdentityFee},
+	weights::IdentityFee,
 	PalletId, RuntimeDebug,
 };
 use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
@@ -268,7 +268,7 @@ impl module_transaction_payment::Config for Test {
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type AlternativeFeeSwapDeposit = ExistenceRequirement;
 	type WeightToFee = IdentityFee<Balance>;
-	type LengthToFee = ConstantMultiplier<Balance, ConstU128<10>>;
+	type TransactionByteFee = ConstU128<10>;
 	type FeeMultiplierUpdate = ();
 	type DEX = DexModule;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;

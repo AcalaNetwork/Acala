@@ -256,6 +256,10 @@ pub mod module {
 		/// transaction fee paid, the second is the tip paid, if any.
 		type OnTransactionPayment: OnUnbalanced<NegativeImbalanceOf<Self>>;
 
+		/// The fee to be paid for making a transaction; the per-byte portion.
+		#[pallet::constant]
+		type TransactionByteFee: Get<PalletBalanceOf<Self>>;
+
 		/// A fee mulitplier for `Operational` extrinsics to compute "virtual tip" to boost their
 		/// `priority`
 		///
@@ -296,9 +300,6 @@ pub mod module {
 		/// Convert a weight value into a deductible fee based on the currency
 		/// type.
 		type WeightToFee: WeightToFee<Balance = PalletBalanceOf<Self>>;
-
-		/// Convert a length value into a deductible fee based on the currency type.
-		type LengthToFee: WeightToFee<Balance = PalletBalanceOf<Self>>;
 
 		/// Update the multiplier of the next block, based on the previous
 		/// block's weight.
@@ -720,8 +721,11 @@ where
 		class: DispatchClass,
 	) -> FeeDetails<PalletBalanceOf<T>> {
 		if pays_fee == Pays::Yes {
+			let len = <PalletBalanceOf<T>>::from(len);
+			let per_byte = T::TransactionByteFee::get();
+
 			// length fee. this is not adjusted.
-			let fixed_len_fee = Self::length_to_fee(len);
+			let fixed_len_fee = per_byte.saturating_mul(len);
 
 			// the adjustable part of the fee.
 			let unadjusted_weight_fee = Self::weight_to_fee(weight);
@@ -744,10 +748,6 @@ where
 				tip,
 			}
 		}
-	}
-
-	fn length_to_fee(length: u32) -> PalletBalanceOf<T> {
-		T::LengthToFee::weight_to_fee(&(length as Weight))
 	}
 
 	pub fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {

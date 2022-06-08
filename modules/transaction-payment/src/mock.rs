@@ -25,7 +25,7 @@ pub use crate as transaction_payment;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
-	weights::{ConstantMultiplier, WeightToFeeCoefficients, WeightToFeePolynomial},
+	weights::{WeightToFeeCoefficients, WeightToFeePolynomial},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -191,6 +191,7 @@ impl module_dex::Config for Runtime {
 
 parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(1, 2);
+	pub static TransactionByteFee: u128 = 1;
 	pub static TipPerWeightStep: u128 = 1;
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
 	pub AusdFeeSwapPath: Vec<CurrencyId> = vec![AUSD, ACA];
@@ -262,7 +263,7 @@ impl Config for Runtime {
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type WeightToFee = WeightToFee;
-	type LengthToFee = ConstantMultiplier<Balance, ConstU128<1>>;
+	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
@@ -279,7 +280,7 @@ impl Config for Runtime {
 
 thread_local! {
 	static WEIGHT_TO_FEE: RefCell<u128> = RefCell::new(1);
-	static TRANSACTION_BYTE_FEE: RefCell<u128> = RefCell::new(1);
+	// static TRANSACTION_BYTE_FEE: RefCell<u128> = RefCell::new(1);
 }
 
 pub struct WeightToFee;
