@@ -56,7 +56,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, MultiSignature, Percent, Perquintill,
 };
 use sp_std::prelude::*;
-use support::{BuyWeightRate, DEXManager, PriceProvider, Rate, Ratio, SwapLimit, TransactionPayment};
+use support::{BuyWeightRate, DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
 use xcm::opaque::latest::MultiLocation;
 
 mod mock;
@@ -1069,18 +1069,14 @@ where
 	}
 }
 
+/// Calculate the exchange rate of token in transaction fee pool.
 pub struct BuyWeightRateOfTransactionFeePool<T, C>(sp_std::marker::PhantomData<(T, C)>);
-
 impl<T: Config, C> BuyWeightRate for BuyWeightRateOfTransactionFeePool<T, C>
 where
 	C: Convert<MultiLocation, Option<CurrencyId>>,
 {
-	fn calculate_rate(multi_location: MultiLocation) -> Option<Rate> {
-		if let Some(token_id) = C::convert(multi_location) {
-			TokenExchangeRate::<T>::get(token_id)
-		} else {
-			None
-		}
+	fn calculate_rate(multi_location: MultiLocation) -> Option<Ratio> {
+		C::convert(multi_location).and_then(|token_id| TokenExchangeRate::<T>::get(token_id))
 	}
 }
 

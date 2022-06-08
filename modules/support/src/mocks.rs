@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::type_complexity)]
-use crate::{AddressMapping, BuyWeightRate, CurrencyId, Erc20InfoMapping, Rate, TransactionPayment};
+use crate::{AddressMapping, BuyWeightRate, CurrencyId, Erc20InfoMapping, Ratio, TransactionPayment};
 use codec::Encode;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use nutsfinance_stable_asset::{
@@ -412,14 +412,14 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 
 pub struct MockNoneMinimumBalance;
 impl BuyWeightRate for MockNoneMinimumBalance {
-	fn calculate_rate(_: MultiLocation) -> Option<Rate> {
+	fn calculate_rate(_: MultiLocation) -> Option<Ratio> {
 		None
 	}
 }
 
 pub struct MockFixedMinimumBalance;
 impl BuyWeightRate for MockFixedMinimumBalance {
-	fn calculate_rate(_: MultiLocation) -> Option<Rate> {
-		Some(Rate::one())
+	fn calculate_rate(_: MultiLocation) -> Option<Ratio> {
+		Some(Ratio::one())
 	}
 }

@@ -23,7 +23,7 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::WEIGHT_PER_SECOND, Weight},
 };
-use module_support::{BuyWeightRate, Ratio};
+use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
@@ -37,10 +37,6 @@ use xcm_executor::{
 
 pub fn native_currency_location(para_id: u32, id: CurrencyId) -> MultiLocation {
 	MultiLocation::new(1, X2(Parachain(para_id), GeneralKey(id.encode())))
-}
-
-pub fn calculate_asset_ratio(foreign_asset: (AssetId, u128), native_asset: (AssetId, u128)) -> Ratio {
-	Ratio::saturating_from_rational(foreign_asset.1, native_asset.1)
 }
 
 /// `ExistentialDeposit` for tokens, give priority to match native token, then handled by
@@ -116,7 +112,7 @@ where
 /// required for one second of weight.
 /// - The `TakeRevenue` trait is used to collecting xcm execution fee.
 /// - The `BuyWeightRate` trait is used to calculate ratio by location.
-pub struct FixedRateOfAssetRegistry<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> {
+pub struct FixedRateOfAsset<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> {
 	weight: Weight,
 	amount: u128,
 	ratio: FixedU128,
@@ -124,9 +120,7 @@ pub struct FixedRateOfAssetRegistry<FixedRate: Get<u128>, R: TakeRevenue, M: Buy
 	_marker: PhantomData<(FixedRate, R, M)>,
 }
 
-impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader
-	for FixedRateOfAssetRegistry<FixedRate, R, M>
-{
+impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for FixedRateOfAsset<FixedRate, R, M> {
 	fn new() -> Self {
 		Self {
 			weight: 0,
@@ -138,7 +132,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader
 	}
 
 	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
-		log::trace!(target: "asset-registry::weight", "buy_weight weight: {:?}, payment: {:?}", weight, payment);
+		log::trace!(target: "xcm::weight", "buy_weight weight: {:?}, payment: {:?}", weight, payment);
 
 		// only support first fungible assets now.
 		let asset_id = payment
@@ -148,7 +142,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader
 			.map_or(Err(XcmError::TooExpensive), |v| Ok(v.0))?;
 
 		if let AssetId::Concrete(ref multi_location) = asset_id {
-			log::debug!(target: "asset-registry::weight", "buy_weight multi_location: {:?}", multi_location);
+			log::debug!(target: "xcm::weight", "buy_weight multi_location: {:?}", multi_location);
 
 			if let Some(ratio) = M::calculate_rate(multi_location.clone()) {
 				// The WEIGHT_PER_SECOND is non-zero.
@@ -161,7 +155,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader
 				};
 
 				log::trace!(
-					target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}, fixed_rate: {:?}, ratio: {:?}, weight_ratio: {:?}",
+					target: "xcm::weight", "buy_weight payment: {:?}, required: {:?}, fixed_rate: {:?}, ratio: {:?}, weight_ratio: {:?}",
 					payment, required, FixedRate::get(), ratio, weight_ratio
 				);
 				let unused = payment
@@ -176,13 +170,13 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader
 			}
 		}
 
-		log::trace!(target: "asset-registry::weight", "no concrete fungible asset");
+		log::trace!(target: "xcm::weight", "no concrete fungible asset");
 		Err(XcmError::TooExpensive)
 	}
 
 	fn refund_weight(&mut self, weight: Weight) -> Option<MultiAsset> {
 		log::trace!(
-			target: "asset-registry::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, ratio: {:?}, multi_location: {:?}",
+			target: "xcm::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, ratio: {:?}, multi_location: {:?}",
 			weight, self.weight, self.amount, self.ratio, self.multi_location
 		);
 		let weight = weight.min(self.weight);
@@ -194,7 +188,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader
 		self.weight = self.weight.saturating_sub(weight);
 		self.amount = self.amount.saturating_sub(amount);
 
-		log::trace!(target: "asset-registry::weight", "refund_weight amount: {:?}", amount);
+		log::trace!(target: "xcm::weight", "refund_weight amount: {:?}", amount);
 		if amount > 0 && self.multi_location.is_some() {
 			Some(
 				(
@@ -209,9 +203,9 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader
 	}
 }
 
-impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateOfAssetRegistry<FixedRate, R, M> {
+impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateOfAsset<FixedRate, R, M> {
 	fn drop(&mut self) {
-		log::trace!(target: "asset-registry::weight", "take revenue, weight: {:?}, amount: {:?}, multi_location: {:?}", self.weight, self.amount, self.multi_location);
+		log::trace!(target: "xcm::weight", "take revenue, weight: {:?}, amount: {:?}, multi_location: {:?}", self.weight, self.amount, self.multi_location);
 		if self.amount > 0 && self.multi_location.is_some() {
 			R::take_revenue(
 				(

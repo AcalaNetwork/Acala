@@ -32,7 +32,7 @@ use frame_support::{
 	transactional,
 };
 use frame_system::pallet_prelude::*;
-use module_support::{AssetIdMapping, BuyWeightRate, EVMBridge, Erc20InfoMapping, InvokeContext, Rate};
+use module_support::{AssetIdMapping, BuyWeightRate, EVMBridge, Erc20InfoMapping, InvokeContext, Ratio};
 use primitives::{
 	currency::{
 		AssetIds, AssetMetadata, CurrencyIdType, DexShare, DexShareType, Erc20Id, ForeignAssetId, Lease,
@@ -559,7 +559,7 @@ impl<T: Config> BuyWeightRate for BuyWeightRateOfForeignAsset<T>
 where
 	BalanceOf<T>: Into<u128>,
 {
-	fn calculate_rate(location: MultiLocation) -> Option<Rate> {
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio> {
 		if let Some(CurrencyId::ForeignAsset(foreign_asset_id)) = Pallet::<T>::location_to_currency_ids(location) {
 			if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::ForeignAssetId(foreign_asset_id)) {
 				let minimum_balance = asset_metadata.minimal_balance.into();
@@ -578,7 +578,7 @@ impl<T: Config> BuyWeightRate for BuyWeightRateOfErc20<T>
 where
 	BalanceOf<T>: Into<u128>,
 {
-	fn calculate_rate(location: MultiLocation) -> Option<Rate> {
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio> {
 		match location {
 			MultiLocation {
 				parents: 0,
