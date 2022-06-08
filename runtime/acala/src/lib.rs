@@ -2185,16 +2185,18 @@ impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSigna
 			payer_sig,
 		}) = call
 		{
-			let payer_account: [u8; 32] = payer_addr
-				.encode()
-				.as_slice()
-				.try_into()
-				.map_err(|_| InvalidTransaction::BadSigner)?;
-			// payer signature is aim at inner call of `with_fee_paid_by` call.
-			let raw_payload = SignedPayload::new(*call, extra).map_err(|_| InvalidTransaction::BadSigner)?;
-			if !raw_payload.using_encoded(|payload| payer_sig.verify(payload, &payer_account.into())) {
-				return Err(InvalidTransaction::BadProof);
-			}
+			// Disabled for now
+			return Err(InvalidTransaction::BadProof);
+			// let payer_account: [u8; 32] = payer_addr
+			// 	.encode()
+			// 	.as_slice()
+			// 	.try_into()
+			// 	.map_err(|_| InvalidTransaction::BadSigner)?;
+			// // payer signature is aim at inner call of `with_fee_paid_by` call.
+			// let raw_payload = SignedPayload::new(*call, extra).map_err(|_|
+			// InvalidTransaction::BadSigner)?; if !raw_payload.using_encoded(|payload|
+			// payer_sig.verify(payload, &payer_account.into())) { 	return Err(InvalidTransaction::
+			// BadProof); }
 		}
 		Ok(())
 	}
