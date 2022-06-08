@@ -39,7 +39,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, AccountIdLookup, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion,
-		StaticLookup, Verify,
+		StaticLookup,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
@@ -2220,11 +2220,11 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 pub struct PayerSignatureVerification;
 
 impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSignatureVerification {
-	fn convert((call, extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
+	fn convert((call, _extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
 		if let Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
-			call,
-			payer_addr,
-			payer_sig,
+			_call,
+			_payer_addr,
+			_payer_sig,
 		}) = call
 		{
 			// Disabled for now
