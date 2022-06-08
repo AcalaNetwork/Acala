@@ -290,8 +290,8 @@ pub mod limits {
 	pub mod liquidation {
 		use super::*;
 
-		pub const LIQUIDATE: Limit = Limit::new(200_000, 960);
-		pub const ON_COLLATERAL_TRANSFER: Limit = Limit::new(200_000, 960);
-		pub const ON_REPAYMENT_REFUND: Limit = Limit::new(200_000, 960);
+		pub const LIQUIDATE: Limit = Limit::new(200_000, 0);
+		pub const ON_COLLATERAL_TRANSFER: Limit = Limit::new(200_000, 0);
+		pub const ON_REPAYMENT_REFUND: Limit = Limit::new(200_000, 0);
 	}
 }

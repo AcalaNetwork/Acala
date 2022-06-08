@@ -29,7 +29,7 @@ use frame_system::EnsureSignedBy;
 use primitives::{evm::convert_decimals_to_evm, evm::EvmAddress, ReserveIdentifier};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
-use sp_std::str::FromStr;
+pub use sp_std::str::FromStr;
 use support::{mocks::MockAddressMapping, AddressMapping};
 
 pub type AccountId = AccountId32;
@@ -200,6 +200,26 @@ pub fn deploy_contracts() {
 		}],
 		used_gas: 1306611,
 		used_storage: 5462,
+	}));
+
+	assert_ok!(EVM::publish_free(
+		Origin::signed(CouncilAccount::get()),
+		erc20_address()
+	));
+}
+
+pub fn deploy_liquidation_ok_contracts() {
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../ts-tests/build/LiquidationOk.json")).unwrap();
+	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000, vec![]));
+
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: alice_evm_addr(),
+		contract: erc20_address(),
+		logs: vec![],
+		used_gas: 235274,
+		used_storage: 844,
 	}));
 
 	assert_ok!(EVM::publish_free(
