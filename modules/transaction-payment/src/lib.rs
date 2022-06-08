@@ -1076,7 +1076,7 @@ where
 	C: Convert<MultiLocation, Option<CurrencyId>>,
 {
 	fn calculate_rate(multi_location: MultiLocation) -> Option<Ratio> {
-		C::convert(multi_location).and_then(|token_id| TokenExchangeRate::<T>::get(token_id))
+		C::convert(multi_location).and_then(TokenExchangeRate::<T>::get)
 	}
 }
 

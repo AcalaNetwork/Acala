@@ -217,3 +217,48 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateO
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::mock::new_test_ext;
+	use frame_support::{assert_noop, assert_ok, parameter_types};
+	use module_support::Ratio;
+	use sp_runtime::traits::One;
+
+	pub struct MockNoneBuyWeightRate;
+	impl BuyWeightRate for MockNoneBuyWeightRate {
+		fn calculate_rate(_: MultiLocation) -> Option<Ratio> {
+			None
+		}
+	}
+
+	pub struct MockFixedBuyWeightRate<T: Get<Ratio>>(PhantomData<T>);
+	impl<T: Get<Ratio>> BuyWeightRate for MockFixedBuyWeightRate<T> {
+		fn calculate_rate(_: MultiLocation) -> Option<Ratio> {
+			Some(T::get())
+		}
+	}
+
+	parameter_types! {
+		const FixedBasedRate: u128 = 10;
+		FixedRate: Ratio = Ratio::one();
+	}
+
+	#[test]
+	fn buy_weight_rate_mock_works() {
+		new_test_ext().execute_with(|| {
+			let asset: MultiAsset = (Parent, 100).into();
+			let assets: Assets = asset.into();
+			let mut trader = <FixedRateOfAsset<(), (), MockNoneBuyWeightRate>>::new();
+			let buy_weight = trader.buy_weight(WEIGHT_PER_SECOND, assets.clone());
+			assert_noop!(buy_weight, XcmError::TooExpensive);
+
+			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockFixedBuyWeightRate<FixedRate>>>::new();
+			let buy_weight = trader.buy_weight(WEIGHT_PER_SECOND, assets.clone());
+			let asset: MultiAsset = (Parent, 90).into();
+			let assets: Assets = asset.into();
+			assert_ok!(buy_weight, assets.clone());
+		});
+	}
+}

@@ -23,7 +23,7 @@
 use super::*;
 use crate::mock::{AlternativeFeeSurplus, AusdFeeSwapPath, CustomFeeSurplus, DotFeeSwapPath};
 use frame_support::{
-	assert_noop, assert_ok, parameter_types,
+	assert_noop, assert_ok,
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
@@ -39,10 +39,9 @@ use sp_runtime::{
 	testing::TestXt,
 	traits::{One, UniqueSaturatedInto},
 };
-use support::{Price, TransactionPayment as TransactionPaymentT};
+use support::{BuyWeightRate, Price, TransactionPayment as TransactionPaymentT};
 use xcm::latest::prelude::*;
 use xcm::prelude::GeneralKey;
-use xcm_executor::Assets;
 
 const CALL: <Runtime as frame_system::Config>::Call = Call::Currencies(module_currencies::Call::transfer {
 	dest: BOB,
@@ -1360,6 +1359,27 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			_ => None,
 		}
 	}
+}
+
+#[test]
+fn buy_weight_transaction_fee_pool_works() {
+	builder_with_dex_and_fee_pool(true).execute_with(|| {
+		// Location convert return None.
+		let location = MultiLocation::new(1, X1(Junction::Parachain(2000)));
+		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
+		assert_eq!(rate, None);
+
+		// Token not in charge fee pool
+		let currency_id = CurrencyId::Token(TokenSymbol::LDOT);
+		let location = MultiLocation::new(1, X1(GeneralKey(currency_id.encode())));
+		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
+		assert_eq!(rate, None);
+
+		// DOT Token is in charge fee pool.
+		let location = MultiLocation::parent();
+		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
+		assert_eq!(rate, Some(Ratio::saturating_from_rational(1, 10)));
+	});
 }
 
 #[test]
