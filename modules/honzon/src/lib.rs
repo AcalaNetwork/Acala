@@ -68,7 +68,6 @@ pub mod module {
 		type DepositPerAuthorization: Get<Balance>;
 
 		/// The list of valid collateral currency types
-		#[pallet::constant]
 		type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
 
 		/// Weight information for the extrinsics in this module.
