@@ -1019,7 +1019,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(fee, 16000000800);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(fee, 2500000800);
+			assert_eq!(fee, 2500001166);
 			#[cfg(feature = "with-acala-runtime")]
 			assert_eq!(fee, 2500000800);
 
@@ -1172,7 +1172,7 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 #[test]
 fn evm_limits() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 33_319_444);
+		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 33_323_800);
 		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_storage_limit(), 3_670_016);
 	});
 }
