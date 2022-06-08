@@ -22,17 +22,16 @@
 
 use super::*;
 use frame_support::{
-	ord_parameter_types, parameter_types,
-	traits::{ConstU32, ConstU64, Everything, Nothing},
+	match_types, ord_parameter_types, parameter_types,
+	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 	PalletId,
 };
-use frame_system::{EnsureSignedBy, RawOrigin};
-use nutsfinance_stable_asset::{RedeemProportionResult, StableAssetPoolInfo, SwapResult};
+use frame_system::EnsureSignedBy;
 pub use orml_traits::{parameter_type_with_key, MultiCurrency};
 use primitives::{Amount, TokenSymbol, TradingPair};
 use sp_runtime::{
 	testing::{Header, H256},
-	traits::IdentityLookup,
+	traits::{Bounded, IdentityLookup},
 	AccountId32, FixedPointNumber,
 };
 pub use support::ExchangeRate;
@@ -124,340 +123,82 @@ impl module_dex::Config for Runtime {
 	type OnLiquidityPoolUpdated = ();
 }
 
-#[derive(Clone)]
-pub struct TaigaSwapStatus {
-	pub currency_id_0: CurrencyId,
-	pub currency_id_1: CurrencyId,
-	pub stable_asset_id: CurrencyId,
-	pub exchange_rate_1_for_0: ExchangeRate,
+pub struct EnsurePoolAssetId;
+impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoolAssetId {
+	fn validate(currency_id: CurrencyId) -> bool {
+		matches!(currency_id, CurrencyId::StableAssetPoolToken(_))
+	}
 }
 
-pub struct MockStableAsset;
-impl StableAssetT for MockStableAsset {
+pub struct ConvertBalanceHoma;
+impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 	type AssetId = CurrencyId;
-	type AtLeast64BitUnsigned = Balance;
-	type Balance = Balance;
-	type AccountId = AccountId;
-	type BlockNumber = BlockNumber;
 
-	fn pool_count() -> StableAssetPoolId {
-		unimplemented!()
-	}
-
-	fn pool(
-		_id: StableAssetPoolId,
-	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
-		TaigaConfig::get().map(|taiga_config| StableAssetPoolInfo {
-			pool_asset: taiga_config.stable_asset_id,
-			assets: vec![taiga_config.currency_id_0, taiga_config.currency_id_1],
-			precisions: vec![],
-			mint_fee: Default::default(),
-			swap_fee: Default::default(),
-			redeem_fee: Default::default(),
-			total_supply: Default::default(),
-			a: Default::default(),
-			a_block: Default::default(),
-			future_a: Default::default(),
-			future_a_block: Default::default(),
-			balances: Default::default(),
-			fee_recipient: BOB,
-			account_id: BOB,
-			yield_recipient: BOB,
-			precision: Default::default(),
-		})
-	}
-
-	fn create_pool(
-		_pool_asset: Self::AssetId,
-		_assets: Vec<Self::AssetId>,
-		_precisions: Vec<Self::Balance>,
-		_mint_fee: Self::Balance,
-		_swap_fee: Self::Balance,
-		_redeem_fee: Self::Balance,
-		_initial_a: Self::Balance,
-		_fee_recipient: Self::AccountId,
-		_yield_recipient: Self::AccountId,
-		_precision: Self::Balance,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn mint(
-		_who: &Self::AccountId,
-		_pool_id: StableAssetPoolId,
-		_amounts: Vec<Self::Balance>,
-		_min_mint_amount: Self::Balance,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn swap(
-		who: &Self::AccountId,
-		_pool_id: StableAssetPoolId,
-		i: PoolTokenIndex,
-		j: PoolTokenIndex,
-		dx: Self::Balance,
-		min_dy: Self::Balance,
-		_asset_length: u32,
-	) -> sp_std::result::Result<(Self::Balance, Self::Balance), DispatchError> {
-		if let Some(taiga_config) = TaigaConfig::get() {
-			let (supply_currency_id, target_currency_id, swap_exchange_rate) = match (i, j) {
-				(0, 1) => (
-					taiga_config.currency_id_0,
-					taiga_config.currency_id_1,
-					taiga_config.exchange_rate_1_for_0,
-				),
-				(1, 0) => (
-					taiga_config.currency_id_1,
-					taiga_config.currency_id_0,
-					taiga_config.exchange_rate_1_for_0.reciprocal().unwrap(),
-				),
-				_ => return Err(Error::<Runtime>::CannotSwap.into()),
-			};
-			let actual_target = swap_exchange_rate.saturating_mul_int(dx);
-			ensure!(actual_target >= min_dy, Error::<Runtime>::CannotSwap);
-
-			Tokens::withdraw(supply_currency_id, who, dx)?;
-			Tokens::deposit(target_currency_id, who, actual_target)?;
-
-			Ok((dx, actual_target))
-		} else {
-			Err(Error::<Runtime>::CannotSwap.into())
+	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			LDOT => ExchangeRate::saturating_from_rational(1, 10)
+				.checked_mul_int(balance)
+				.unwrap_or(Bounded::max_value()),
+			_ => balance,
 		}
 	}
 
-	fn redeem_proportion(
-		_who: &Self::AccountId,
-		_pool_id: StableAssetPoolId,
-		_amount: Self::Balance,
-		_min_redeem_amounts: Vec<Self::Balance>,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn redeem_single(
-		_who: &Self::AccountId,
-		_pool_id: StableAssetPoolId,
-		_amount: Self::Balance,
-		_i: PoolTokenIndex,
-		_min_redeem_amount: Self::Balance,
-		_asset_length: u32,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn redeem_multi(
-		_who: &Self::AccountId,
-		_pool_id: StableAssetPoolId,
-		_amounts: Vec<Self::Balance>,
-		_max_redeem_amount: Self::Balance,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn collect_fee(
-		_pool_id: StableAssetPoolId,
-		_pool_info: &mut StableAssetPoolInfo<
-			Self::AssetId,
-			Self::Balance,
-			Self::Balance,
-			Self::AccountId,
-			Self::BlockNumber,
-		>,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn update_balance(
-		_pool_id: StableAssetPoolId,
-		_pool_info: &mut StableAssetPoolInfo<
-			Self::AssetId,
-			Self::Balance,
-			Self::Balance,
-			Self::AccountId,
-			Self::BlockNumber,
-		>,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn collect_yield(
-		_pool_id: StableAssetPoolId,
-		_pool_info: &mut StableAssetPoolInfo<
-			Self::AssetId,
-			Self::Balance,
-			Self::Balance,
-			Self::AccountId,
-			Self::BlockNumber,
-		>,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn modify_a(_pool_id: StableAssetPoolId, _a: Self::Balance, _future_a_block: Self::BlockNumber) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn get_collect_yield_amount(
-		_pool_info: &StableAssetPoolInfo<
-			Self::AssetId,
-			Self::Balance,
-			Self::Balance,
-			Self::AccountId,
-			Self::BlockNumber,
-		>,
-	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
-		unimplemented!()
-	}
-
-	fn get_balance_update_amount(
-		_pool_info: &StableAssetPoolInfo<
-			Self::AssetId,
-			Self::Balance,
-			Self::Balance,
-			Self::AccountId,
-			Self::BlockNumber,
-		>,
-	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
-		unimplemented!()
-	}
-
-	fn get_redeem_proportion_amount(
-		_pool_info: &StableAssetPoolInfo<
-			Self::AssetId,
-			Self::Balance,
-			Self::Balance,
-			Self::AccountId,
-			Self::BlockNumber,
-		>,
-		_amount_bal: Self::Balance,
-	) -> Option<RedeemProportionResult<Self::Balance>> {
-		unimplemented!()
-	}
-
-	fn get_best_route(
-		input_asset: Self::AssetId,
-		output_asset: Self::AssetId,
-		input_amount: Self::Balance,
-	) -> Option<(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex, Self::Balance)> {
-		TaigaConfig::get().and_then(|taiga_config| {
-			if input_asset == taiga_config.currency_id_0 && output_asset == taiga_config.currency_id_1 {
-				Some((
-					0,
-					0,
-					1,
-					taiga_config.exchange_rate_1_for_0.saturating_mul_int(input_amount),
-				))
-			} else if output_asset == taiga_config.currency_id_0 && input_asset == taiga_config.currency_id_1 {
-				Some((
-					0,
-					1,
-					0,
-					taiga_config
-						.exchange_rate_1_for_0
-						.reciprocal()
-						.unwrap()
-						.saturating_mul_int(input_amount),
-				))
-			} else {
-				None
-			}
-		})
-	}
-
-	fn get_swap_output_amount(
-		_pool_id: StableAssetPoolId,
-		input_index: PoolTokenIndex,
-		output_index: PoolTokenIndex,
-		dx_bal: Self::Balance,
-	) -> Option<SwapResult<Self::Balance>> {
-		TaigaConfig::get().and_then(|taiga_config| {
-			let input_to_output_rate = match (input_index, output_index) {
-				(0, 1) => taiga_config.exchange_rate_1_for_0,
-				(1, 0) => taiga_config.exchange_rate_1_for_0.reciprocal().unwrap(),
-				_ => return None,
-			};
-			let target_amount = input_to_output_rate.saturating_mul_int(dx_bal);
-
-			Some(SwapResult {
-				dx: dx_bal,
-				dy: target_amount,
-				..Default::default()
-			})
-		})
-	}
-
-	fn get_swap_input_amount(
-		_pool_id: StableAssetPoolId,
-		input_index: PoolTokenIndex,
-		output_index: PoolTokenIndex,
-		dy_bal: Self::Balance,
-	) -> Option<SwapResult<Self::Balance>> {
-		TaigaConfig::get().and_then(|taiga_config| {
-			let output_to_input_rate = match (input_index, output_index) {
-				(0, 1) => taiga_config.exchange_rate_1_for_0.reciprocal().unwrap(),
-				(1, 0) => taiga_config.exchange_rate_1_for_0,
-				_ => return None,
-			};
-			let supply_amount = output_to_input_rate.saturating_mul_int(dy_bal);
-
-			Some(SwapResult {
-				dx: supply_amount,
-				dy: dy_bal,
-				..Default::default()
-			})
-		})
+	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			LDOT => ExchangeRate::saturating_from_rational(10, 1)
+				.checked_mul_int(balance)
+				.unwrap_or(Bounded::max_value()),
+			_ => balance,
+		}
 	}
 }
 
-pub fn set_taiga_swap(currency_id_0: CurrencyId, currency_id_1: CurrencyId, exchange_rate_1_for_0: ExchangeRate) {
-	TaigaConfig::set(Some(TaigaSwapStatus {
-		currency_id_0,
-		currency_id_1,
-		stable_asset_id: STABLE_ASSET,
-		exchange_rate_1_for_0,
-	}));
+match_types! {
+	pub type IsLiquidToken: impl Contains<CurrencyId> = {
+		CurrencyId::Token(TokenSymbol::LDOT)
+	};
 }
 
-pub fn set_dex_swap_joint_list(joints: Vec<Vec<CurrencyId>>) {
-	DexSwapJointList::set(joints);
+type RebaseTokens = orml_tokens::Combiner<
+	AccountId,
+	IsLiquidToken,
+	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoma, Balance, GetLiquidCurrencyId>,
+	Tokens,
+>;
+
+parameter_types! {
+	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 }
 
-pub fn inject_liquidity(
-	currency_id_a: CurrencyId,
-	currency_id_b: CurrencyId,
-	max_amount_a: Balance,
-	max_amount_b: Balance,
-) -> Result<(), &'static str> {
-	// set balance
-	Tokens::deposit(currency_id_a, &BOB, max_amount_a)?;
-	Tokens::deposit(currency_id_b, &BOB, max_amount_b)?;
+impl nutsfinance_stable_asset::Config for Runtime {
+	type Event = Event;
+	type AssetId = CurrencyId;
+	type Balance = Balance;
+	type Assets = RebaseTokens;
+	type PalletId = StableAssetPalletId;
 
-	let _ = Dex::enable_trading_pair(RawOrigin::Signed(BOB.clone()).into(), currency_id_a, currency_id_b);
-	Dex::add_liquidity(
-		RawOrigin::Signed(BOB).into(),
-		currency_id_a,
-		currency_id_b,
-		max_amount_a,
-		max_amount_b,
-		Default::default(),
-		false,
-	)?;
-
-	Ok(())
+	type AtLeast64BitUnsigned = u128;
+	type FeePrecision = ConstU128<10_000_000_000>; // 10 decimals
+	type APrecision = ConstU128<100>; // 2 decimals
+	type PoolAssetLimit = ConstU32<5>;
+	type SwapExactOverAmount = ConstU128<100>;
+	type WeightInfo = ();
+	type ListingOrigin = EnsureSignedBy<Admin, AccountId>;
+	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
 parameter_types! {
 	pub static DexSwapJointList: Vec<Vec<CurrencyId>> = vec![];
-	pub static TaigaConfig: Option<TaigaSwapStatus> = None;
+	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 }
 
 impl Config for Runtime {
 	type DEX = Dex;
-	type StableAsset = MockStableAsset;
+	type StableAsset = StableAsset;
 	type GovernanceOrigin = EnsureSignedBy<Admin, AccountId>;
 	type DexSwapJointList = DexSwapJointList;
 	type SwapPathLimit = ConstU32<3>;
+	type RebaseTokenAmountConvertor = ConvertBalanceHoma;
 	type WeightInfo = ();
 }
 
@@ -474,6 +215,7 @@ frame_support::construct_runtime!(
 		AggregatedDex: aggregated_dex::{Pallet, Call, Storage},
 		Dex: module_dex::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

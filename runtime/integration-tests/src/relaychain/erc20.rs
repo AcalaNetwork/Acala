@@ -103,47 +103,65 @@ fn erc20_transfer_between_sibling() {
 		));
 	});
 
+	let initial_native_amount = 1_000_000_000_000u128;
+	let storage_fee = 6_400_000_000u128;
+
 	Karura::execute_with(|| {
 		let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
+		let total_erc20 = 100_000_000_000_000_000_000_000u128;
+		let transfer_amount = 10 * dollar(NATIVE_CURRENCY);
+
+		// used to deploy contracts
 		assert_ok!(Currencies::deposit(
 			NATIVE_CURRENCY,
 			&alice(),
 			1_000_000 * dollar(NATIVE_CURRENCY)
 		));
+		// when transfer erc20 cross chain, the origin `alith` is used to charge storage
 		assert_ok!(Currencies::deposit(
 			NATIVE_CURRENCY,
 			&alith.clone(),
-			1_000_000 * dollar(NATIVE_CURRENCY)
+			initial_native_amount
+		));
+		// when withdraw sibling parachain account, the origin `sibling_reserve_account` is used to charge
+		// storage
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&sibling_reserve_account(),
+			initial_native_amount
+		));
+		// when deposit to recipient, the origin is recipient `BOB`, and is used to charge storage.
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&AccountId::from(BOB),
+			initial_native_amount
+		));
+		// when xcm finished, deposit to treasury account, the origin is `treasury account`, and is used to
+		// charge storage.
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&KaruraTreasuryAccount::get(),
+			initial_native_amount
 		));
 
 		deploy_erc20_contracts();
 
-		// Erc20 claim account
-		assert_ok!(EvmAccounts::claim_account(
-			Origin::signed(AccountId::from(ALICE)),
-			EvmAccounts::eth_address(&alice_key()),
-			EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
-		));
-
+		// `transfer` invoked by `TransferReserveAsset` xcm instruction need to passing origin check.
+		// In frontend/js, when issue xtokens extrinsic, it have `EvmSetOrigin` SignedExtra to `set_origin`.
+		// In testcase, we're manual invoke `set_origin` here. because in erc20 xtokens transfer,
+		// the `from` or `to` is not erc20 holding account. so we need make sure origin exists.
 		<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
 
-		// use Currencies `transfer` dispatch call to transfer erc20 token to bob.
-		assert_ok!(Currencies::transfer(
-			Origin::signed(alith),
-			MultiAddress::Id(AccountId::from(CHARLIE)),
-			CurrencyId::Erc20(erc20_address_0()),
-			1_000_000_000_000_000
-		));
 		assert_eq!(
-			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE)),
-			1_000_000_000_000_000
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith),
+			total_erc20
 		);
 
 		// transfer erc20 token to Sibling
 		assert_ok!(XTokens::transfer(
-			Origin::signed(CHARLIE.into()),
+			Origin::signed(alith.clone()),
 			CurrencyId::Erc20(erc20_address_0()),
-			10_000_000_000_000,
+			transfer_amount,
 			Box::new(
 				MultiLocation::new(
 					1,
@@ -160,13 +178,23 @@ fn erc20_transfer_between_sibling() {
 			1_000_000_000,
 		));
 
+		// using native token to charge storage fee
 		assert_eq!(
-			990_000_000_000_000,
-			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE))
+			initial_native_amount - storage_fee,
+			Currencies::free_balance(NATIVE_CURRENCY, &alith)
 		);
 		assert_eq!(
-			10_000_000_000_000,
+			total_erc20 - transfer_amount,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith)
+		);
+		assert_eq!(
+			transfer_amount,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
+		);
+		// initial_native_amount + ed
+		assert_eq!(
+			1_100_000_000_000,
+			Currencies::free_balance(NATIVE_CURRENCY, &KaruraTreasuryAccount::get())
 		);
 
 		System::reset_events();
@@ -222,25 +250,45 @@ fn erc20_transfer_between_sibling() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
 		assert_eq!(
+			9_324_000_000,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &KaruraTreasuryAccount::get())
+		);
+		assert_eq!(
 			0,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &erc20_holding_account)
 		);
-		System::assert_has_event(Event::Currencies(module_currencies::Event::Transferred {
+		// withdraw erc20 need charge storage fee
+		assert_eq!(
+			initial_native_amount - storage_fee,
+			Currencies::free_balance(NATIVE_CURRENCY, &sibling_reserve_account())
+		);
+		// deposit erc20 need charge storage fee
+		assert_eq!(
+			initial_native_amount - storage_fee,
+			Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB))
+		);
+		// deposit reserve and unreserve storage fee, so the native token not changed.
+		assert_eq!(
+			1_100_000_000_000,
+			Currencies::free_balance(NATIVE_CURRENCY, &KaruraTreasuryAccount::get())
+		);
+
+		// withdraw operation transfer from sibling parachain account to erc20 holding account
+		System::assert_has_event(Event::Currencies(module_currencies::Event::Withdrawn {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
-			from: sibling_reserve_account(),
-			to: erc20_holding_account.clone(),
+			who: sibling_reserve_account(),
 			amount: 5_000_000_000_000,
 		}));
-		System::assert_has_event(Event::Currencies(module_currencies::Event::Transferred {
+		// deposit operation transfer from erc20 holding account to recipient
+		System::assert_has_event(Event::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
-			from: erc20_holding_account.clone(),
-			to: AccountId::from(BOB),
+			who: AccountId::from(BOB),
 			amount: 4_990_676_000_000,
 		}));
-		System::assert_has_event(Event::Currencies(module_currencies::Event::Transferred {
+		// TakeRevenue deposit from erc20 holding account to treasury account
+		System::assert_has_event(Event::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
-			from: erc20_holding_account,
-			to: KaruraTreasuryAccount::get(),
+			who: KaruraTreasuryAccount::get(),
 			amount: 9_324_000_000,
 		}));
 	});
