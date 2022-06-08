@@ -18,9 +18,9 @@ support = { package = "module-support", path = "../support", default-features = 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 nutsfinance-stable-asset = { path = "../../ecosystem-modules/stable-asset/lib/stable-asset", version = "0.1.0", default-features = false }
 module-dex = { package = "module-dex", path = "../dex", default-features = false }
+orml-tokens = { path = "../../orml/tokens", default-features = false }
 
 [dev-dependencies]
-orml-tokens = { path = "../../orml/tokens" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
@@ -36,6 +36,7 @@ std = [
 	"frame-system/std",
 	"sp-std/std",
 	"orml-traits/std",
+	"orml-tokens/std",
 	"support/std",
 	"primitives/std",
 	"nutsfinance-stable-asset/std",
