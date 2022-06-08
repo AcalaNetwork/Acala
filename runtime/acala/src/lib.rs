@@ -2180,9 +2180,9 @@ pub struct PayerSignatureVerification;
 impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSignatureVerification {
 	fn convert((call, _extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
 		if let Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
-			_call,
-			_payer_addr,
-			_payer_sig,
+			call: _,
+			payer_addr: _,
+			payer_sig: _,
 		}) = call
 		{
 			// Disabled for now
