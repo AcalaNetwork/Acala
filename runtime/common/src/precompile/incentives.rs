@@ -21,15 +21,17 @@ use super::{
 	target_gas_limit,
 };
 use crate::WeightToGas;
+use frame_support::traits::Get;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
 	Context, ExitError, ExitRevert, ExitSucceed,
 };
+use module_incentives::WeightInfo;
 use module_support::{IncentivesManager, PoolId};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
-use sp_runtime::{traits::Convert, RuntimeDebug};
+use sp_runtime::{traits::Convert, FixedPointNumber, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 pub struct IncentivesPrecompile<R>(PhantomData<R>);
@@ -38,11 +40,11 @@ pub struct IncentivesPrecompile<R>(PhantomData<R>);
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
-	GetIncentiveRewardAmount = "getIncentiveRewardAmount()",
-	GetDexRewardRate = "getDexRewardRate()",
-	DepositDexShare = "depositDexShare()",
-	WithdrawDexShare = "withdrawDexShare()",
-	ClaimRewards = "claimRewards()",
+	GetIncentiveRewardAmount = "getIncentiveRewardAmount(PoolId,address,address)",
+	GetDexRewardRate = "getDexRewardRate(PoolId,address)",
+	DepositDexShare = "depositDexShare(address,address,uint128)",
+	WithdrawDexShare = "withdrawDexShare(address,address,uint128)",
+	ClaimRewards = "claimRewards(address,PoolId,address)",
 }
 
 impl<Runtime> Precompile for IncentivesPrecompile<Runtime>
@@ -69,36 +71,118 @@ where
 		let action = input.action()?;
 
 		match action {
-			Action::GetIncentiveRewardAmount => Ok(PrecompileOutput {
-				exit_status: ExitSucceed::Returned,
-				cost: gas_cost,
-				output: vec![],
-				logs: Default::default(),
-			}),
-			Action::GetDexRewardRate => Ok(PrecompileOutput {
-				exit_status: ExitSucceed::Returned,
-				cost: gas_cost,
-				output: vec![],
-				logs: Default::default(),
-			}),
-			Action::DepositDexShare => Ok(PrecompileOutput {
-				exit_status: ExitSucceed::Returned,
-				cost: gas_cost,
-				output: vec![],
-				logs: Default::default(),
-			}),
-			Action::WithdrawDexShare => Ok(PrecompileOutput {
-				exit_status: ExitSucceed::Returned,
-				cost: gas_cost,
-				output: vec![],
-				logs: Default::default(),
-			}),
-			Action::ClaimRewards => Ok(PrecompileOutput {
-				exit_status: ExitSucceed::Returned,
-				cost: gas_cost,
-				output: vec![],
-				logs: Default::default(),
-			}),
+			Action::GetIncentiveRewardAmount => {
+				let pool = input.u32_at(1)?;
+				let pool_currency_id = input.currency_id_at(2)?;
+				let reward_currency_id = input.currency_id_at(3)?;
+				let pool_id = init_pool_id(pool, pool_currency_id, target_gas)?;
+
+				let value = <module_incentives::Pallet<Runtime> as IncentivesManager<
+					Runtime::AccountId,
+					Balance,
+					CurrencyId,
+					PoolId,
+				>>::get_incentive_reward_amount(pool_id, reward_currency_id);
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: Output::default().encode_u128(value),
+					logs: Default::default(),
+				})
+			}
+			Action::GetDexRewardRate => {
+				let pool = input.u32_at(1)?;
+				let pool_currency_id = input.currency_id_at(2)?;
+				let pool_id = init_pool_id(pool, pool_currency_id, target_gas)?;
+
+				let value = <module_incentives::Pallet<Runtime> as IncentivesManager<
+					Runtime::AccountId,
+					Balance,
+					CurrencyId,
+					PoolId,
+				>>::get_dex_reward_rate(pool_id);
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: Output::default().encode_u128(value.into_inner()),
+					logs: Default::default(),
+				})
+			}
+			Action::DepositDexShare => {
+				let who = input.account_id_at(1)?;
+				let lp_currency_id = input.currency_id_at(2)?;
+				let amount = input.balance_at(3)?;
+
+				<module_incentives::Pallet<Runtime> as IncentivesManager<
+					Runtime::AccountId,
+					Balance,
+					CurrencyId,
+					PoolId,
+				>>::deposit_dex_share(&who, lp_currency_id, amount)
+				.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: vec![],
+					logs: Default::default(),
+				})
+			}
+			Action::WithdrawDexShare => {
+				let who = input.account_id_at(1)?;
+				let lp_currency_id = input.currency_id_at(2)?;
+				let amount = input.balance_at(3)?;
+
+				<module_incentives::Pallet<Runtime> as IncentivesManager<
+					Runtime::AccountId,
+					Balance,
+					CurrencyId,
+					PoolId,
+				>>::withdraw_dex_share(&who, lp_currency_id, amount)
+				.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: vec![],
+					logs: Default::default(),
+				})
+			}
+			Action::ClaimRewards => {
+				let who = input.account_id_at(1)?;
+				let pool = input.u32_at(2)?;
+				let pool_currency_id = input.currency_id_at(3)?;
+				let pool_id = init_pool_id(pool, pool_currency_id, target_gas)?;
+
+				<module_incentives::Pallet<Runtime> as IncentivesManager<
+					Runtime::AccountId,
+					Balance,
+					CurrencyId,
+					PoolId,
+				>>::claim_rewards(who, pool_id)
+				.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: vec![],
+					logs: Default::default(),
+				})
+			}
 		}
 	}
 }
@@ -117,12 +201,83 @@ where
 		let action = input.action()?;
 
 		let cost: u64 = match action {
-			Action::GetIncentiveRewardAmount => 0,
-			Action::GetDexRewardRate => 0,
-			Action::DepositDexShare => 0,
-			Action::WithdrawDexShare => 0,
-			Action::ClaimRewards => 0,
+			Action::GetIncentiveRewardAmount => {
+				let pool_currency_id = input.currency_id_at(2)?;
+				let reward_currency_id = input.currency_id_at(3)?;
+				let read_pool_currency = InputPricer::<Runtime>::read_currency(pool_currency_id);
+				let read_reward_currency = InputPricer::<Runtime>::read_currency(reward_currency_id);
+
+				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+
+				Self::BASE_COST
+					.saturating_add(read_pool_currency)
+					.saturating_add(read_reward_currency)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::GetDexRewardRate => {
+				let pool_currency_id = input.currency_id_at(2)?;
+				let read_pool_currency = InputPricer::<Runtime>::read_currency(pool_currency_id);
+
+				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+
+				Self::BASE_COST
+					.saturating_add(read_pool_currency)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::DepositDexShare => {
+				let read_account = InputPricer::<Runtime>::read_accounts(1);
+				let lp_currency_id = input.currency_id_at(2)?;
+				let read_lp_currency = InputPricer::<Runtime>::read_currency(lp_currency_id);
+
+				let weight = <Runtime as module_incentives::Config>::WeightInfo::deposit_dex_share();
+
+				Self::BASE_COST
+					.saturating_add(read_lp_currency)
+					.saturating_add(read_account)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::WithdrawDexShare => {
+				let read_account = InputPricer::<Runtime>::read_accounts(1);
+				let lp_currency_id = input.currency_id_at(2)?;
+				let read_lp_currency = InputPricer::<Runtime>::read_currency(lp_currency_id);
+
+				let weight = <Runtime as module_incentives::Config>::WeightInfo::withdraw_dex_share();
+
+				Self::BASE_COST
+					.saturating_add(read_lp_currency)
+					.saturating_add(read_account)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::ClaimRewards => {
+				let read_account = InputPricer::<Runtime>::read_accounts(1);
+				let pool_currency_id = input.currency_id_at(3)?;
+				let read_pool_currency = InputPricer::<Runtime>::read_currency(pool_currency_id);
+
+				let weight = <Runtime as module_incentives::Config>::WeightInfo::claim_rewards();
+
+				Self::BASE_COST
+					.saturating_add(read_pool_currency)
+					.saturating_add(read_account)
+					.saturating_add(WeightToGas::convert(weight))
+			}
 		};
 		Ok(cost)
+	}
+}
+
+fn init_pool_id(
+	pool_id_number: u32,
+	pool_currency_id: CurrencyId,
+	target_gas: Option<u64>,
+) -> Result<PoolId, PrecompileFailure> {
+	match pool_id_number {
+		0 => Ok(PoolId::Loans(pool_currency_id)),
+		1 => Ok(PoolId::Dex(pool_currency_id)),
+		// Shouldn't happen as solidity compiler should not allow nonexistent enum value
+		_ => Err(PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "Incentives: Invalid enum value".into(),
+			cost: target_gas_limit(target_gas).unwrap_or_default(),
+		}),
 	}
 }
