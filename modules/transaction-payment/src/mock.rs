@@ -25,7 +25,7 @@ pub use crate as transaction_payment;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
-	weights::WeightToFeeCoefficients,
+	weights::{ConstantMultiplier, WeightToFeeCoefficients},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -189,7 +189,6 @@ impl module_dex::Config for Runtime {
 
 parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(1, 2);
-	pub static TransactionByteFee: u128 = 1;
 	pub static TipPerWeightStep: u128 = 1;
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
 	pub AusdFeeSwapPath: Vec<CurrencyId> = vec![AUSD, ACA];
@@ -257,11 +256,11 @@ impl Config for Runtime {
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
-	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = ConstU64<5>;
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type WeightToFee = WeightToFee;
+	type LengthToFee = ConstantMultiplier<Balance, ConstU128<1>>;
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;

@@ -65,7 +65,9 @@ fn transfer_from_relay_chain() {
 	});
 
 	Karura::execute_with(|| {
-		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 999_872_000_000);
+		// v0.9.22: 1_000_000_000_000-128_000_000=999_872_000_000
+		// v0.9.23: 1_000_000_000_000-186_480_000=999_813_520_000
+		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 999_813_520_000);
 	});
 }
 
@@ -272,10 +274,10 @@ fn xcm_transfer_execution_barrier_trader_works() {
 	Karura::execute_with(|| {
 		assert!(System::events().iter().any(|r| matches!(
 			r.event,
-			Event::DmpQueue(cumulus_pallet_dmp_queue::Event::ExecutedDownward(
-				_,
-				Outcome::Error(XcmError::Barrier)
-			))
+			Event::DmpQueue(cumulus_pallet_dmp_queue::Event::ExecutedDownward {
+				outcome: Outcome::Error(XcmError::Barrier),
+				..
+			})
 		)));
 	});
 

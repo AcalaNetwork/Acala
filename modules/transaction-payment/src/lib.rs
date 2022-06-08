@@ -36,10 +36,7 @@ use frame_support::{
 		WithdrawReasons,
 	},
 	transactional,
-	weights::{
-		constants::WEIGHT_PER_SECOND, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo,
-		WeightToFee as WeightToFeeT, WeightToFeeCoefficient, WeightToFeePolynomial,
-	},
+	weights::{constants::WEIGHT_PER_SECOND, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFee},
 	BoundedVec, PalletId,
 };
 use frame_system::pallet_prelude::*;
@@ -259,10 +256,6 @@ pub mod module {
 		/// transaction fee paid, the second is the tip paid, if any.
 		type OnTransactionPayment: OnUnbalanced<NegativeImbalanceOf<Self>>;
 
-		/// The fee to be paid for making a transaction; the per-byte portion.
-		#[pallet::constant]
-		type TransactionByteFee: Get<PalletBalanceOf<Self>>;
-
 		/// A fee mulitplier for `Operational` extrinsics to compute "virtual tip" to boost their
 		/// `priority`
 		///
@@ -302,7 +295,10 @@ pub mod module {
 
 		/// Convert a weight value into a deductible fee based on the currency
 		/// type.
-		type WeightToFee: WeightToFeePolynomial<Balance = PalletBalanceOf<Self>>;
+		type WeightToFee: WeightToFee<Balance = PalletBalanceOf<Self>>;
+
+		/// Convert a length value into a deductible fee based on the currency type.
+		type LengthToFee: WeightToFee<Balance = PalletBalanceOf<Self>>;
 
 		/// Update the multiplier of the next block, based on the previous
 		/// block's weight.
@@ -347,16 +343,6 @@ pub mod module {
 
 		/// The origin which change swap balance threshold or enable charge fee pool.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
-	}
-
-	#[pallet::extra_constants]
-	impl<T: Config> Pallet<T> {
-		//TODO: rename to snake case after https://github.com/paritytech/substrate/issues/8826 fixed.
-		#[allow(non_snake_case)]
-		/// The polynomial that is applied in order to derive fee from weight.
-		fn WeightToFee() -> Vec<WeightToFeeCoefficient<PalletBalanceOf<T>>> {
-			T::WeightToFee::polynomial().to_vec()
-		}
 	}
 
 	#[pallet::type_value]
@@ -734,11 +720,8 @@ where
 		class: DispatchClass,
 	) -> FeeDetails<PalletBalanceOf<T>> {
 		if pays_fee == Pays::Yes {
-			let len = <PalletBalanceOf<T>>::from(len);
-			let per_byte = T::TransactionByteFee::get();
-
 			// length fee. this is not adjusted.
-			let fixed_len_fee = per_byte.saturating_mul(len);
+			let fixed_len_fee = Self::length_to_fee(len);
 
 			// the adjustable part of the fee.
 			let unadjusted_weight_fee = Self::weight_to_fee(weight);
@@ -761,6 +744,10 @@ where
 				tip,
 			}
 		}
+	}
+
+	fn length_to_fee(length: u32) -> PalletBalanceOf<T> {
+		T::LengthToFee::weight_to_fee(&(length as Weight))
 	}
 
 	pub fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {

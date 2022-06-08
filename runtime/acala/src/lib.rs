@@ -75,7 +75,7 @@ pub use frame_support::{
 		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
 		U128CurrencyToVote,
 	},
-	weights::{constants::RocksDbWeight, IdentityFee, Weight},
+	weights::{constants::RocksDbWeight, ConstantMultiplier, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
 };
 
@@ -1174,11 +1174,11 @@ impl module_transaction_payment::Config for Runtime {
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
 	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
-	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = MaxTipsOfPriority;
 	type WeightToFee = WeightToFee;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type DEX = Dex;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;

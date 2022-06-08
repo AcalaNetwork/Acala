@@ -54,19 +54,19 @@ fn init_statemine_xcm_interface() {
 #[test]
 fn statemine_min_xcm_fee_matched() {
 	Statemine::execute_with(|| {
-		use frame_support::weights::{IdentityFee, WeightToFeePolynomial};
+		use frame_support::weights::{IdentityFee, WeightToFee};
 
 		init_statemine_xcm_interface();
 		let weight = FEE_WEIGHT as u64;
 
-		let fee: Balance = IdentityFee::calc(&weight);
+		let fee: Balance = IdentityFee::weight_to_fee(&weight);
 		let statemine: MultiLocation = (1, Parachain(parachains::statemine::ID)).into();
 		let bifrost: MultiLocation = (1, Parachain(parachains::bifrost::ID)).into();
 
-		let statemine_fee: u128 = ParachainMinFee::get(&statemine);
+		let statemine_fee: u128 = ParachainMinFee::get(&statemine).unwrap();
 		assert_eq!(fee, statemine_fee);
 
-		let bifrost_fee: u128 = ParachainMinFee::get(&bifrost);
+		let bifrost_fee: u128 = ParachainMinFee::get(&bifrost).unwrap();
 		assert_eq!(u128::MAX, bifrost_fee);
 	});
 }

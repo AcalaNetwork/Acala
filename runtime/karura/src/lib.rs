@@ -74,7 +74,7 @@ pub use frame_support::{
 		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
 		U128CurrencyToVote,
 	},
-	weights::{constants::RocksDbWeight, IdentityFee, Weight},
+	weights::{constants::RocksDbWeight, ConstantMultiplier, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
 };
 
@@ -361,6 +361,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
+	/// The fee to be paid for making a transaction; the per-byte portion.
 	pub TransactionByteFee: Balance = millicent(KAR);
 	/// The portion of the `NORMAL_DISPATCH_RATIO` that we adjust the fees with. Blocks filled less
 	/// than this will decrease the weight and more will increase.
@@ -1186,11 +1187,11 @@ impl module_transaction_payment::Config for Runtime {
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
 	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
-	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = MaxTipsOfPriority;
 	type WeightToFee = WeightToFee;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type DEX = Dex;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
