@@ -32,7 +32,7 @@ use xcm_emulator::TestExt;
 pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
-pub const FEE_STATEMINE: Balance = 10_666_664;
+pub const FEE_STATEMINE: Balance = 15_540_916;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
@@ -66,8 +66,8 @@ fn statemine_min_xcm_fee_matched() {
 		let statemine_fee: u128 = ParachainMinFee::get(&statemine).unwrap();
 		assert_eq!(fee, statemine_fee);
 
-		let bifrost_fee: u128 = ParachainMinFee::get(&bifrost).unwrap();
-		assert_eq!(u128::MAX, bifrost_fee);
+		let bifrost_fee: Option<u128> = ParachainMinFee::get(&bifrost);
+		assert_eq!(None, bifrost_fee);
 	});
 }
 
@@ -137,7 +137,7 @@ fn karura_statemine_transfer_works() {
 			UNIT + FEE_WEIGHT - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(996022666670, Balances::free_balance(&para_2000));
+		assert_eq!(996_017_792_418, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -147,7 +147,7 @@ fn karura_side(fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			9_999_936_000_000,
+			9_999_906_760_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough KSM balance to be charged as fee
@@ -174,7 +174,7 @@ fn karura_side(fee_amount: u128) {
 		));
 
 		assert_eq!(
-			8_999_936_000_000,
+			8_999_906_760_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - fee_amount, Tokens::free_balance(KSM, &AccountId::from(BOB)));
