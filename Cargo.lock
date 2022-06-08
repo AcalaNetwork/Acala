@@ -10647,6 +10647,7 @@ dependencies = [
  "module-homa",
  "module-honzon",
  "module-idle-scheduler",
+ "module-incentives",
  "module-loans",
  "module-nft",
  "module-prices",

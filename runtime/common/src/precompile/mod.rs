@@ -44,6 +44,7 @@ pub mod evm;
 pub mod evm_accounts;
 pub mod homa;
 pub mod honzon;
+pub mod incentives;
 pub mod input;
 pub mod multicurrency;
 pub mod nft;
@@ -89,6 +90,7 @@ pub const STABLE_ASSET: H160 = H160(hex!("00000000000000000000000000000000000004
 pub const HOMA: H160 = H160(hex!("0000000000000000000000000000000000000407"));
 pub const EVM_ACCOUNTS: H160 = H160(hex!("0000000000000000000000000000000000000408"));
 pub const HONZON: H160 = H160(hex!("0000000000000000000000000000000000000409"));
+pub const INCENTIVES: H160 = H160(hex!("000000000000000000000000000000000000040a"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
 	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
@@ -129,7 +131,8 @@ where
 				// STABLE_ASSET,
 				// HOMA,
 				EVM_ACCOUNTS,
-				// HONZON
+				/* HONZON
+				 * INCENTIVES */
 			]),
 			_marker: Default::default(),
 		}
@@ -161,7 +164,8 @@ where
 				// STABLE_ASSET,
 				// HOMA,
 				EVM_ACCOUNTS,
-				// HONZON
+				/* HONZON
+				 * INCENTIVES */
 			]),
 			_marker: Default::default(),
 		}
@@ -194,6 +198,7 @@ where
 				HOMA,
 				EVM_ACCOUNTS,
 				HONZON,
+				INCENTIVES,
 			]),
 			_marker: Default::default(),
 		}
