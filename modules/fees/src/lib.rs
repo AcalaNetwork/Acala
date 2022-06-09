@@ -30,7 +30,10 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, IncomeSource, PoolPercent};
-use sp_runtime::FixedPointNumber;
+use sp_runtime::{
+	traits::{One, Saturating, Zero},
+	FixedPointNumber, FixedU128,
+};
 use sp_std::vec::Vec;
 use support::FeeToTreasuryPool;
 
@@ -198,11 +201,12 @@ impl<T: Config> Pallet<T> {
 		treasury_pool_rates: Vec<PoolPercent<T::AccountId>>,
 	) -> DispatchResult {
 		ensure!(!treasury_pool_rates.is_empty(), Error::<T>::InvalidParams);
+		Self::check_rates(&treasury_pool_rates)?;
+
 		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = treasury_pool_rates
 			.clone()
 			.try_into()
 			.map_err(|_| Error::<T>::InvalidParams)?;
-
 		IncomeToTreasuries::<T>::try_mutate(income, |maybe_pool_rates| -> DispatchResult {
 			*maybe_pool_rates = pool_rates;
 			Ok(())
@@ -220,11 +224,12 @@ impl<T: Config> Pallet<T> {
 		incentive_pool_rates: Vec<PoolPercent<T::AccountId>>,
 	) -> DispatchResult {
 		ensure!(!incentive_pool_rates.is_empty(), Error::<T>::InvalidParams);
+		Self::check_rates(&incentive_pool_rates)?;
+
 		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = incentive_pool_rates
 			.clone()
 			.try_into()
 			.map_err(|_| Error::<T>::InvalidParams)?;
-
 		TreasuryToIncentives::<T>::try_mutate(&treasury, |maybe_pool_rates| -> DispatchResult {
 			*maybe_pool_rates = pool_rates;
 			Ok(())
@@ -234,6 +239,15 @@ impl<T: Config> Pallet<T> {
 			treasury,
 			pools: incentive_pool_rates,
 		});
+		Ok(())
+	}
+
+	fn check_rates(pool_rates: &Vec<PoolPercent<T::AccountId>>) -> DispatchResult {
+		let mut sum = FixedU128::zero();
+		pool_rates.iter().for_each(|pool_rate| {
+			sum = sum.saturating_add(pool_rate.rate);
+		});
+		ensure!(One::is_one(&sum), Error::<T>::InvalidParams);
 		Ok(())
 	}
 }
@@ -255,13 +269,12 @@ impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balanc
 		}
 
 		// use `IncomeSource` to distribution fee to different treasury pool based on percentage.
-		let pools: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = IncomeToTreasuries::<T>::get(income);
-		ensure!(!pools.is_empty(), Error::<T>::InvalidParams);
+		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = IncomeToTreasuries::<T>::get(income);
+		ensure!(!pool_rates.is_empty(), Error::<T>::InvalidParams);
 
-		pools.into_iter().for_each(|pool| {
-			let pool_account = pool.pool;
-			let amount_to_pool = pool.rate.saturating_mul_int(amount);
-			let _ = T::Currencies::deposit(currency_id, &pool_account, amount_to_pool);
+		pool_rates.into_iter().for_each(|pool_rate| {
+			let amount_to_pool = pool_rate.rate.saturating_mul_int(amount);
+			let _ = T::Currencies::deposit(currency_id, &pool_rate.pool, amount_to_pool);
 		});
 		Ok(())
 	}

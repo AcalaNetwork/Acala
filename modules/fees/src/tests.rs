@@ -113,6 +113,65 @@ fn set_treasury_pool_works() {
 }
 
 #[test]
+fn invalid_pool_rates_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			Fees::set_income_fee(
+				Origin::signed(ALICE),
+				IncomeSource::TxFee,
+				vec![
+					PoolPercent {
+						pool: NetworkTreasuryPool::get(),
+						rate: FixedU128::saturating_from_rational(70, 100)
+					},
+					PoolPercent {
+						pool: HonzonTreasuryPool::get(),
+						rate: FixedU128::saturating_from_rational(20, 100)
+					}
+				]
+			),
+			Error::<Runtime>::InvalidParams
+		);
+
+		assert_noop!(
+			Fees::set_income_fee(
+				Origin::signed(ALICE),
+				IncomeSource::TxFee,
+				vec![
+					PoolPercent {
+						pool: NetworkTreasuryPool::get(),
+						rate: FixedU128::saturating_from_rational(70, 100)
+					},
+					PoolPercent {
+						pool: HonzonTreasuryPool::get(),
+						rate: FixedU128::saturating_from_rational(40, 100)
+					}
+				]
+			),
+			Error::<Runtime>::InvalidParams
+		);
+
+		assert_noop!(
+			Fees::set_treasury_pool(
+				Origin::signed(ALICE),
+				NetworkTreasuryPool::get(),
+				vec![
+					PoolPercent {
+						pool: StakingRewardPool::get(),
+						rate: FixedU128::saturating_from_rational(70, 100)
+					},
+					PoolPercent {
+						pool: CollatorsRewardPool::get(),
+						rate: FixedU128::saturating_from_rational(40, 100)
+					}
+				]
+			),
+			Error::<Runtime>::InvalidParams
+		);
+	});
+}
+
+#[test]
 fn on_fee_change_works() {
 	ExtBuilder::default()
 		.balances(vec![(ALICE, 10000)])
