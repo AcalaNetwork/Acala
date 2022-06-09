@@ -21,11 +21,11 @@
 #![cfg(test)]
 
 use crate as fees;
-use frame_support::pallet_prelude::*;
-use frame_support::traits::Nothing;
 use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything},
+	construct_runtime, ord_parameter_types,
+	pallet_prelude::*,
+	parameter_types,
+	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -33,8 +33,7 @@ use orml_traits::parameter_type_with_key;
 use primitives::{
 	AccountId, Amount, Balance, BlockNumber, CurrencyId, IncomeSource, PoolPercent, ReserveIdentifier, TokenSymbol,
 };
-use sp_runtime::traits::AccountIdConversion;
-use sp_runtime::{FixedPointNumber, FixedU128};
+use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedU128};
 use support::mocks::MockAddressMapping;
 
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);

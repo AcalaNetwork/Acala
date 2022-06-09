@@ -21,11 +21,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::traits::Imbalance;
 use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
-	traits::{Currency, OnUnbalanced},
+	traits::{Currency, Imbalance, OnUnbalanced},
 	transactional,
 };
 use frame_system::pallet_prelude::*;
@@ -35,8 +34,6 @@ use sp_runtime::FixedPointNumber;
 use sp_std::vec::Vec;
 use support::FeeToTreasuryPool;
 
-pub use module::*;
-
 mod mock;
 mod tests;
 pub mod weights;
@@ -44,6 +41,13 @@ pub use weights::WeightInfo;
 
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
+pub type Incomes<T> = Vec<(IncomeSource, Vec<PoolPercent<<T as frame_system::Config>::AccountId>>)>;
+pub type Treasuries<T> = Vec<(
+	<T as frame_system::Config>::AccountId,
+	Vec<PoolPercent<<T as frame_system::Config>::AccountId>>,
+)>;
+
+pub use module::*;
 
 #[frame_support::pallet]
 pub mod module {
@@ -111,8 +115,8 @@ pub mod module {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub incomes: Vec<(IncomeSource, Vec<PoolPercent<T::AccountId>>)>,
-		pub treasuries: Vec<(T::AccountId, Vec<PoolPercent<T::AccountId>>)>,
+		pub incomes: Incomes<T>,
+		pub treasuries: Treasuries<T>,
 	}
 
 	#[cfg(feature = "std")]

@@ -55,11 +55,11 @@ fn set_income_fee_works() {
 			pools: vec![
 				PoolPercent {
 					pool: NetworkTreasuryPool::get(),
-					rate: Rate::saturating_from_rational(70, 100),
+					rate: FixedU128::saturating_from_rational(70, 100),
 				},
 				PoolPercent {
 					pool: HonzonTreasuryPool::get(),
-					rate: Rate::saturating_from_rational(30, 100),
+					rate: FixedU128::saturating_from_rational(30, 100),
 				},
 			],
 		}));
@@ -101,11 +101,11 @@ fn set_treasury_pool_works() {
 				pools: vec![
 					PoolPercent {
 						pool: StakingRewardPool::get(),
-						rate: Rate::saturating_from_rational(70, 100),
+						rate: FixedU128::saturating_from_rational(70, 100),
 					},
 					PoolPercent {
 						pool: CollatorsRewardPool::get(),
-						rate: Rate::saturating_from_rational(30, 100),
+						rate: FixedU128::saturating_from_rational(30, 100),
 					},
 				],
 			}));
