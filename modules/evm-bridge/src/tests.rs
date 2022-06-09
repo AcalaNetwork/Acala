@@ -215,7 +215,7 @@ fn liquidation_works() {
 				InvokeContext {
 					contract: erc20_address(),
 					sender: Default::default(),
-					origin: Default::default(),
+					origin: alice_evm_addr(),
 				},
 				collateral,
 				repay_dest,
@@ -259,7 +259,7 @@ fn on_collateral_transfer_works() {
 				InvokeContext {
 					contract: erc20_address(),
 					sender: Default::default(),
-					origin: Default::default(),
+					origin: alice_evm_addr(),
 				},
 				collateral,
 				100,
@@ -299,7 +299,7 @@ fn on_repayment_refund_works() {
 				InvokeContext {
 					contract: erc20_address(),
 					sender: Default::default(),
-					origin: Default::default(),
+					origin: alice_evm_addr(),
 				},
 				collateral,
 				100,
@@ -342,7 +342,7 @@ fn liquidation_err_fails_as_expected() {
 					InvokeContext {
 						contract: erc20_address(),
 						sender: Default::default(),
-						origin: Default::default(),
+						origin: alice_evm_addr(),
 					},
 					collateral,
 					repay_dest,

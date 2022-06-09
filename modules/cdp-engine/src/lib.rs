@@ -1388,8 +1388,8 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 			if T::LiquidationEvmBridge::liquidate(
 				InvokeContext {
 					contract,
-					sender: Default::default(),
-					origin: Default::default(),
+					sender: Pallet::<T>::evm_address(),
+					origin: contract,
 				},
 				collateral,
 				repay_dest,
@@ -1420,8 +1420,8 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 					T::LiquidationEvmBridge::on_collateral_transfer(
 						InvokeContext {
 							contract,
-							sender: Default::default(),
-							origin: Default::default(),
+							sender: Pallet::<T>::evm_address(),
+							origin: contract,
 						},
 						collateral,
 						target_stable_amount,
@@ -1441,8 +1441,8 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 					T::LiquidationEvmBridge::on_repayment_refund(
 						InvokeContext {
 							contract,
-							sender: Default::default(),
-							origin: Default::default(),
+							sender: Pallet::<T>::evm_address(),
+							origin: contract,
 						},
 						collateral,
 						repayment,
