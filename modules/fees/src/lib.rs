@@ -35,7 +35,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedU128,
 };
 use sp_std::vec::Vec;
-use support::FeeToTreasuryPool;
+use support::{DEXManager, FeeToTreasuryPool};
 
 mod mock;
 mod tests;
@@ -72,6 +72,9 @@ pub mod module {
 
 		#[pallet::constant]
 		type NetworkTreasuryPoolAccount: Get<Self::AccountId>;
+
+		/// DEX to exchange currencies.
+		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
 		// type OnUnbalanced: OnUnbalanced<NegativeImbalanceOf<Self>>;
 
@@ -282,29 +285,39 @@ impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balanc
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub struct DealWithTxFees<T: Config + Send + Sync, TC, TP>(PhantomData<(T, TC, TP)>);
+pub struct DealWithTxFees<T: Config + Send + Sync>(PhantomData<T>);
 
 /// Transaction fee distribution to treasury pool and selected collator.
-impl<T: Config + Send + Sync, TC, TP> OnUnbalanced<NegativeImbalanceOf<T>> for DealWithTxFees<T, TC, TP>
-where
-	TC: Get<T::AccountId>,
-	TP: Get<u32>,
-{
+impl<T: Config + Send + Sync> OnUnbalanced<NegativeImbalanceOf<T>> for DealWithTxFees<T> {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalanceOf<T>>) {
 		if let Some(mut fees) = fees_then_tips.next() {
 			if let Some(tips) = fees_then_tips.next() {
 				tips.merge_into(&mut fees);
 			}
 
-			let split = fees.ration(100_u32.saturating_sub(TP::get()), TP::get());
-			<T as Config>::Currency::resolve_creating(&T::NetworkTreasuryPoolAccount::get(), split.0);
-			<T as Config>::Currency::resolve_creating(&TC::get(), split.1);
-			// TODO: deposit event?
+			let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> =
+				IncomeToTreasuries::<T>::get(IncomeSource::TxFee);
+			let pool_rates = pool_rates.into_iter().collect::<Vec<_>>();
+
+			if let Some(pool) = pool_rates.get(0) {
+				let pool_id: &T::AccountId = &pool.pool;
+				let pool_rate: FixedU128 = pool.rate;
+				let pool_amount = pool_rate.saturating_mul_int(100u32);
+				let amount_other = 100u32.saturating_sub(pool_amount);
+				let split = fees.ration(pool_amount, amount_other);
+				<T as Config>::Currency::resolve_creating(&pool_id, split.0);
+
+				// Current only support two treasury pool account for tx fee.
+				if let Some(pool) = pool_rates.get(1) {
+					let pool_id: &T::AccountId = &pool.pool;
+					<T as Config>::Currency::resolve_creating(&pool_id, split.1);
+				}
+			}
 		}
 	}
 }
 
-/// Transaction fee all distribution to treasury pool account.
+/// All transaction fee distribute to treasury pool account.
 impl<T: Config> OnUnbalanced<NegativeImbalanceOf<T>> for Pallet<T> {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalanceOf<T>>) {
 		if let Some(mut fees) = fees_then_tips.next() {

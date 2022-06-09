@@ -1214,10 +1214,9 @@ parameter_types! {
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 	// 20% of tx fee deposit to collator, 80% to treasury.
 	pub ToCollcator: AccountId = CollatorPotId::get().into_account();
-	pub const ToCollatorPercent: u32 = 20;
 }
 
-pub type DealWithFees = module_fees::DealWithTxFees<Runtime, ToCollcator, ToCollatorPercent>;
+pub type DealWithFees = module_fees::DealWithTxFees<Runtime>;
 
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
@@ -1758,6 +1757,7 @@ impl module_fees::Config for Runtime {
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type Currency = Balances;
 	type Currencies = Currencies;
+	type DEX = Dex;
 	type NetworkTreasuryPoolAccount = TreasuryAccount;
 }
 

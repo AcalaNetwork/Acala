@@ -22,9 +22,20 @@
 
 use super::*;
 use crate::mock::*;
+use frame_support::traits::{ExistenceRequirement, WithdrawReasons};
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, ExtBuilder, Origin, Runtime, System};
+use primitives::AccountId;
 use sp_runtime::FixedU128;
+
+fn build_pool_percents(list: Vec<(AccountId, u32)>) -> Vec<PoolPercent<AccountId>> {
+	list.iter()
+		.map(|data| PoolPercent {
+			pool: data.clone().0,
+			rate: FixedU128::saturating_from_rational(data.clone().1, 100),
+		})
+		.collect()
+}
 
 #[test]
 fn set_income_fee_works() {
@@ -34,34 +45,17 @@ fn set_income_fee_works() {
 			Error::<Runtime>::InvalidParams,
 		);
 
+		let pools = build_pool_percents(vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 30)]);
 		assert_ok!(Fees::set_income_fee(
 			Origin::signed(ALICE),
 			IncomeSource::TxFee,
-			vec![
-				PoolPercent {
-					pool: NetworkTreasuryPool::get(),
-					rate: FixedU128::saturating_from_rational(70, 100)
-				},
-				PoolPercent {
-					pool: HonzonTreasuryPool::get(),
-					rate: FixedU128::saturating_from_rational(30, 100)
-				}
-			]
+			pools.clone()
 		));
 		let incomes = IncomeToTreasuries::<Runtime>::get(IncomeSource::TxFee);
 		assert_eq!(incomes.len(), 2);
 		System::assert_last_event(Event::Fees(crate::Event::IncomeFeeSet {
 			income: IncomeSource::TxFee,
-			pools: vec![
-				PoolPercent {
-					pool: NetworkTreasuryPool::get(),
-					rate: FixedU128::saturating_from_rational(70, 100),
-				},
-				PoolPercent {
-					pool: HonzonTreasuryPool::get(),
-					rate: FixedU128::saturating_from_rational(30, 100),
-				},
-			],
+			pools,
 		}));
 	});
 }
@@ -80,34 +74,17 @@ fn set_treasury_pool_works() {
 				Error::<Runtime>::InvalidParams,
 			);
 
+			let pools = build_pool_percents(vec![(StakingRewardPool::get(), 70), (CollatorsRewardPool::get(), 30)]);
 			assert_ok!(Fees::set_treasury_pool(
 				Origin::signed(ALICE),
 				NetworkTreasuryPool::get(),
-				vec![
-					PoolPercent {
-						pool: StakingRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(70, 100)
-					},
-					PoolPercent {
-						pool: CollatorsRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(30, 100)
-					}
-				]
+				pools.clone()
 			));
 			let incentives = TreasuryToIncentives::<Runtime>::get(NetworkTreasuryPool::get());
 			assert_eq!(incentives.len(), 2);
 			System::assert_last_event(Event::Fees(crate::Event::TreasuryPoolSet {
 				treasury: NetworkTreasuryPool::get(),
-				pools: vec![
-					PoolPercent {
-						pool: StakingRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(70, 100),
-					},
-					PoolPercent {
-						pool: CollatorsRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(30, 100),
-					},
-				],
+				pools,
 			}));
 		});
 }
@@ -115,60 +92,98 @@ fn set_treasury_pool_works() {
 #[test]
 fn invalid_pool_rates_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			Fees::set_income_fee(
-				Origin::signed(ALICE),
-				IncomeSource::TxFee,
-				vec![
-					PoolPercent {
-						pool: NetworkTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(70, 100)
-					},
-					PoolPercent {
-						pool: HonzonTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(20, 100)
-					}
-				]
-			),
-			Error::<Runtime>::InvalidParams
-		);
+		let pools1 = build_pool_percents(vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 20)]);
+		let pools2 = build_pool_percents(vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 40)]);
+		let pools3 = build_pool_percents(vec![(StakingRewardPool::get(), 70), (CollatorsRewardPool::get(), 20)]);
 
 		assert_noop!(
-			Fees::set_income_fee(
-				Origin::signed(ALICE),
-				IncomeSource::TxFee,
-				vec![
-					PoolPercent {
-						pool: NetworkTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(70, 100)
-					},
-					PoolPercent {
-						pool: HonzonTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(40, 100)
-					}
-				]
-			),
+			Fees::set_income_fee(Origin::signed(ALICE), IncomeSource::TxFee, pools1),
 			Error::<Runtime>::InvalidParams
 		);
-
 		assert_noop!(
-			Fees::set_treasury_pool(
-				Origin::signed(ALICE),
-				NetworkTreasuryPool::get(),
-				vec![
-					PoolPercent {
-						pool: StakingRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(70, 100)
-					},
-					PoolPercent {
-						pool: CollatorsRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(40, 100)
-					}
-				]
-			),
+			Fees::set_income_fee(Origin::signed(ALICE), IncomeSource::TxFee, pools2),
+			Error::<Runtime>::InvalidParams
+		);
+		assert_noop!(
+			Fees::set_treasury_pool(Origin::signed(ALICE), NetworkTreasuryPool::get(), pools3),
 			Error::<Runtime>::InvalidParams
 		);
 	});
+}
+
+#[test]
+fn tx_fee_allocation_works() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, 10000)])
+		.build()
+		.execute_with(|| {
+			let pool_rates: BoundedVec<PoolPercent<AccountId>, MaxPoolSize> =
+				IncomeToTreasuries::<Runtime>::get(IncomeSource::TxFee);
+			assert_eq!(2, pool_rates.len());
+
+			assert_eq!(0, Balances::free_balance(&NetworkTreasuryPool::get()));
+			assert_eq!(0, Balances::free_balance(&CollatorsRewardPool::get()));
+
+			// Tx fee has two configuration in mock.rs setup.
+			let negative_balance = Balances::withdraw(
+				&ALICE,
+				1000,
+				WithdrawReasons::TRANSACTION_PAYMENT,
+				ExistenceRequirement::KeepAlive,
+			);
+			match negative_balance {
+				Ok(imbalance) => {
+					DealWithTxFees::<Runtime>::on_unbalanceds(Some(imbalance).into_iter());
+					assert_eq!(800, Balances::free_balance(&NetworkTreasuryPool::get()));
+					assert_eq!(200, Balances::free_balance(&CollatorsRewardPool::get()));
+				}
+				Err(_) => {}
+			}
+
+			// Update tx fee only to NetworkTreasuryPool account.
+			let pools = build_pool_percents(vec![(NetworkTreasuryPool::get(), 100)]);
+			assert_ok!(Fees::set_income_fee(
+				Origin::signed(ALICE),
+				IncomeSource::TxFee,
+				pools.clone()
+			));
+			let negative_balance = Balances::withdraw(
+				&ALICE,
+				1000,
+				WithdrawReasons::TRANSACTION_PAYMENT,
+				ExistenceRequirement::KeepAlive,
+			);
+			match negative_balance {
+				Ok(imbalance) => {
+					DealWithTxFees::<Runtime>::on_unbalanceds(Some(imbalance).into_iter());
+					assert_eq!(1800, Balances::free_balance(&NetworkTreasuryPool::get()));
+					assert_eq!(200, Balances::free_balance(&CollatorsRewardPool::get()));
+				}
+				Err(_) => {}
+			}
+
+			// Update tx fee to NetworkTreasuryPool and CollatorsRewardPool both 50%.
+			let pools = build_pool_percents(vec![(NetworkTreasuryPool::get(), 50), (CollatorsRewardPool::get(), 50)]);
+			assert_ok!(Fees::set_income_fee(
+				Origin::signed(ALICE),
+				IncomeSource::TxFee,
+				pools.clone()
+			));
+			let negative_balance = Balances::withdraw(
+				&ALICE,
+				1000,
+				WithdrawReasons::TRANSACTION_PAYMENT,
+				ExistenceRequirement::KeepAlive,
+			);
+			match negative_balance {
+				Ok(imbalance) => {
+					DealWithTxFees::<Runtime>::on_unbalanceds(Some(imbalance).into_iter());
+					assert_eq!(2300, Balances::free_balance(&NetworkTreasuryPool::get()));
+					assert_eq!(700, Balances::free_balance(&CollatorsRewardPool::get()));
+				}
+				Err(_) => {}
+			}
+		});
 }
 
 #[test]
