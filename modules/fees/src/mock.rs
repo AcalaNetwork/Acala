@@ -30,8 +30,11 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{AccountId, Amount, Balance, BlockNumber, CurrencyId, IncomeSource, ReserveIdentifier, TokenSymbol};
+use primitives::{
+	AccountId, Amount, Balance, BlockNumber, CurrencyId, IncomeSource, PoolPercent, ReserveIdentifier, TokenSymbol,
+};
 use sp_runtime::traits::AccountIdConversion;
+use sp_runtime::{FixedPointNumber, FixedU128};
 use support::mocks::MockAddressMapping;
 
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
@@ -190,9 +193,24 @@ impl ExtBuilder {
 			incomes: vec![
 				(
 					IncomeSource::TxFee,
-					vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
+					vec![
+						PoolPercent {
+							pool: NetworkTreasuryPool::get(),
+							rate: FixedU128::saturating_from_rational(80, 100),
+						},
+						PoolPercent {
+							pool: CollatorsRewardPool::get(),
+							rate: FixedU128::saturating_from_rational(20, 100),
+						},
+					],
 				),
-				(IncomeSource::XcmFee, vec![(NetworkTreasuryPool::get(), 100)]),
+				(
+					IncomeSource::XcmFee,
+					vec![PoolPercent {
+						pool: NetworkTreasuryPool::get(),
+						rate: FixedU128::saturating_from_rational(100, 100),
+					}],
+				),
 			],
 			treasuries: vec![],
 		}

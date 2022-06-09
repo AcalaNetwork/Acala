@@ -195,6 +195,13 @@ pub enum IncomeSource {
 	HomaStakingRewardFee,
 }
 
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct PoolPercent<AccountId> {
+	pub pool: AccountId,
+	pub rate: FixedU128,
+}
+
 pub type CashYieldIndex = u128;
 
 /// Convert any type that implements Into<U256> into byte representation ([u8, 32])

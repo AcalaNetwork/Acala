@@ -24,6 +24,7 @@ use super::*;
 use crate::mock::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, ExtBuilder, Origin, Runtime, System};
+use sp_runtime::FixedU128;
 
 #[test]
 fn set_income_fee_works() {
@@ -36,7 +37,16 @@ fn set_income_fee_works() {
 		assert_ok!(Fees::set_income_fee(
 			Origin::signed(ALICE),
 			IncomeSource::TxFee,
-			vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 30)]
+			vec![
+				PoolPercent {
+					pool: NetworkTreasuryPool::get(),
+					rate: FixedU128::saturating_from_rational(70, 100)
+				},
+				PoolPercent {
+					pool: HonzonTreasuryPool::get(),
+					rate: FixedU128::saturating_from_rational(30, 100)
+				}
+			]
 		));
 		let incomes = IncomeToTreasuries::<Runtime>::get(IncomeSource::TxFee);
 		assert_eq!(incomes.len(), 2);
@@ -73,7 +83,16 @@ fn set_treasury_pool_works() {
 			assert_ok!(Fees::set_treasury_pool(
 				Origin::signed(ALICE),
 				NetworkTreasuryPool::get(),
-				vec![(StakingRewardPool::get(), 70), (CollatorsRewardPool::get(), 30)]
+				vec![
+					PoolPercent {
+						pool: StakingRewardPool::get(),
+						rate: FixedU128::saturating_from_rational(70, 100)
+					},
+					PoolPercent {
+						pool: CollatorsRewardPool::get(),
+						rate: FixedU128::saturating_from_rational(30, 100)
+					}
+				]
 			));
 			let incentives = TreasuryToIncentives::<Runtime>::get(NetworkTreasuryPool::get());
 			assert_eq!(incentives.len(), 2);

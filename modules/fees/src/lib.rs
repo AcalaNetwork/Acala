@@ -30,10 +30,10 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
-use primitives::{Balance, CurrencyId, IncomeSource};
+use primitives::{Balance, CurrencyId, IncomeSource, PoolPercent};
 use sp_runtime::FixedPointNumber;
 use sp_std::vec::Vec;
-use support::{FeeToTreasuryPool, Rate};
+use support::FeeToTreasuryPool;
 
 pub use module::*;
 
@@ -41,12 +41,6 @@ mod mock;
 mod tests;
 pub mod weights;
 pub use weights::WeightInfo;
-
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-pub struct PoolPercent<AccountId> {
-	pool: AccountId,
-	rate: Rate,
-}
 
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
@@ -56,7 +50,7 @@ pub mod module {
 	use super::*;
 
 	parameter_types! {
-		pub const MaxSize: u8 = 10;
+		pub const MaxPoolSize: u8 = 10;
 	}
 
 	#[pallet::config]
@@ -101,7 +95,7 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn income_to_treasuries)]
 	pub type IncomeToTreasuries<T: Config> =
-		StorageMap<_, Twox64Concat, IncomeSource, BoundedVec<PoolPercent<T::AccountId>, MaxSize>, ValueQuery>;
+		StorageMap<_, Twox64Concat, IncomeSource, BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize>, ValueQuery>;
 
 	/// Treasury pool allocation mapping to different income pools.
 	///
@@ -109,7 +103,7 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn treasury_to_incentives)]
 	pub type TreasuryToIncentives<T: Config> =
-		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<PoolPercent<T::AccountId>, MaxSize>, ValueQuery>;
+		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize>, ValueQuery>;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
@@ -117,8 +111,8 @@ pub mod module {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub incomes: Vec<(IncomeSource, Vec<(T::AccountId, u32)>)>,
-		pub treasuries: Vec<(T::AccountId, Vec<(T::AccountId, u32)>)>,
+		pub incomes: Vec<(IncomeSource, Vec<PoolPercent<T::AccountId>>)>,
+		pub treasuries: Vec<(T::AccountId, Vec<PoolPercent<T::AccountId>>)>,
 	}
 
 	#[cfg(feature = "std")]
@@ -159,7 +153,7 @@ pub mod module {
 		pub fn set_income_fee(
 			origin: OriginFor<T>,
 			income_source: IncomeSource,
-			treasury_pool_rates: Vec<(T::AccountId, u32)>,
+			treasury_pool_rates: Vec<PoolPercent<T::AccountId>>,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
@@ -172,7 +166,7 @@ pub mod module {
 		pub fn set_treasury_pool(
 			origin: OriginFor<T>,
 			treasury: T::AccountId,
-			incentive_pools: Vec<(T::AccountId, u32)>,
+			incentive_pools: Vec<PoolPercent<T::AccountId>>,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
@@ -196,58 +190,52 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	fn do_set_treasury_rate(
-		income_source: IncomeSource,
-		treasury_pool_rates: Vec<(T::AccountId, u32)>,
+		income: IncomeSource,
+		treasury_pool_rates: Vec<PoolPercent<T::AccountId>>,
 	) -> DispatchResult {
 		ensure!(!treasury_pool_rates.is_empty(), Error::<T>::InvalidParams);
+		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = treasury_pool_rates
+			.clone()
+			.try_into()
+			.map_err(|_| Error::<T>::InvalidParams)?;
 
-		let pools: Vec<PoolPercent<T::AccountId>> = treasury_pool_rates
-			.into_iter()
-			.map(|p| {
-				let rate = Rate::saturating_from_rational(p.1, 100);
-				PoolPercent { pool: p.0, rate }
-			})
-			.collect();
-
-		IncomeToTreasuries::<T>::try_mutate(income_source, |rates| -> DispatchResult {
-			let percents: BoundedVec<PoolPercent<T::AccountId>, MaxSize> =
-				pools.clone().try_into().map_err(|_| Error::<T>::InvalidParams)?;
-			*rates = percents;
+		IncomeToTreasuries::<T>::try_mutate(income, |maybe_pool_rates| -> DispatchResult {
+			*maybe_pool_rates = pool_rates;
 			Ok(())
 		})?;
 
 		Self::deposit_event(Event::IncomeFeeSet {
-			income: income_source,
-			pools,
+			income,
+			pools: treasury_pool_rates,
 		});
 		Ok(())
 	}
 
-	fn do_set_incentive_rate(treasury: T::AccountId, incentive_pools: Vec<(T::AccountId, u32)>) -> DispatchResult {
-		ensure!(!incentive_pools.is_empty(), Error::<T>::InvalidParams);
+	fn do_set_incentive_rate(
+		treasury: T::AccountId,
+		incentive_pool_rates: Vec<PoolPercent<T::AccountId>>,
+	) -> DispatchResult {
+		ensure!(!incentive_pool_rates.is_empty(), Error::<T>::InvalidParams);
+		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = incentive_pool_rates
+			.clone()
+			.try_into()
+			.map_err(|_| Error::<T>::InvalidParams)?;
 
-		let pools: Vec<PoolPercent<T::AccountId>> = incentive_pools
-			.into_iter()
-			.map(|p| {
-				let rate = Rate::saturating_from_rational(p.1, 100);
-				PoolPercent { pool: p.0, rate }
-			})
-			.collect();
-
-		TreasuryToIncentives::<T>::try_mutate(&treasury, |rates| -> DispatchResult {
-			let percents: BoundedVec<PoolPercent<T::AccountId>, MaxSize> =
-				pools.clone().try_into().map_err(|_| Error::<T>::InvalidParams)?;
-			*rates = percents;
+		TreasuryToIncentives::<T>::try_mutate(&treasury, |maybe_pool_rates| -> DispatchResult {
+			*maybe_pool_rates = pool_rates;
 			Ok(())
 		})?;
 
-		Self::deposit_event(Event::TreasuryPoolSet { treasury, pools });
+		Self::deposit_event(Event::TreasuryPoolSet {
+			treasury,
+			pools: incentive_pool_rates,
+		});
 		Ok(())
 	}
 }
 
 impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balance> for Pallet<T> {
-	/// Params:
+	/// Parameters:
 	/// - income: Income source, normally means existing modules.
 	/// - account_id: If given account, then the whole fee amount directly deposit to it.
 	/// - currency_id: currency type.
@@ -263,7 +251,7 @@ impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balanc
 		}
 
 		// use `IncomeSource` to distribution fee to different treasury pool based on percentage.
-		let pools: BoundedVec<PoolPercent<T::AccountId>, MaxSize> = IncomeToTreasuries::<T>::get(income);
+		let pools: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = IncomeToTreasuries::<T>::get(income);
 		ensure!(!pools.is_empty(), Error::<T>::InvalidParams);
 
 		pools.into_iter().for_each(|pool| {
