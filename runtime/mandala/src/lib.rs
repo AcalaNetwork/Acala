@@ -55,7 +55,7 @@ use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
+use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, PoolId};
 use module_transaction_payment::{TargetedFeeAdjustment, TransactionFeePoolTrader};
 use scale_info::TypeInfo;
 
@@ -1293,7 +1293,7 @@ impl module_asset_registry::Config for Runtime {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolId = module_incentives::PoolId;
+	type PoolId = PoolId;
 	type CurrencyId = CurrencyId;
 	type Handler = Incentives;
 }

@@ -285,8 +285,8 @@ fn init_pool_id(
 mod tests {
 	use super::*;
 	use crate::precompile::mock::{
-		alice, alice_evm_addr, bob, new_test_ext, Currencies, Incentives, Origin, Rewards, Test, ACA, ALICE, DOT,
-		LP_ACA_AUSD,
+		alice, alice_evm_addr, bob, new_test_ext, Currencies, Incentives, Origin, Rewards, Test, Tokens, ACA, ALICE,
+		AUSD, DOT, LP_ACA_AUSD,
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
@@ -447,35 +447,34 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 
-			assert_ok!(Currencies::deposit(ACA, &alice(), 1_000_000_000));
-			assert_ok!(Currencies::deposit(ACA, &bob(), 1_000_000_000));
-			assert_ok!(Currencies::deposit(ACA, &Incentives::account_id(), 1_000_000_000_000));
+			assert_ok!(Tokens::deposit(ACA, &alice(), 1_000));
+			assert_ok!(Tokens::deposit(ACA, &bob(), 1_000));
+			assert_ok!(Tokens::deposit(ACA, &Incentives::account_id(), 1_000_000));
+			assert_ok!(Tokens::deposit(AUSD, &Incentives::account_id(), 1_000_000));
 
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
 				Origin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(50, 100)),]
 			));
 			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
+			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000));
 			Rewards::add_share(&bob(), &PoolId::Loans(ACA), 100);
-			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000_000));
-			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
-			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000_000));
+			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000));
 
 			assert_eq!(
 				Rewards::pool_infos(PoolId::Loans(ACA)),
 				PoolInfo {
-					total_shares: 300,
-					rewards: vec![(ACA, (2_500_000, 500_000))].into_iter().collect(),
+					total_shares: 200,
+					rewards: vec![(ACA, (3_000, 1_000))].into_iter().collect(),
 				}
 			);
-			Rewards::remove_share(&alice(), &PoolId::Loans(ACA), 100);
 
 			// 0xe12eab9b
 			let input = hex! {"
                 e12eab9b
                 000000000000000000000000 1000000000000000000000000000000000000001
-                00000000000000000000000000000000 00000000000000000000000000000001
-                000000000000000000000000 0000000000000000000200000000000000000001
+                00000000000000000000000000000000 00000000000000000000000000000000
+                000000000000000000000000 0000000000000000000100000000000000000000
             "};
 
 			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
@@ -485,12 +484,12 @@ mod tests {
 				Rewards::pool_infos(PoolId::Loans(ACA)),
 				PoolInfo {
 					total_shares: 200,
-					rewards: vec![(ACA, (1_666_667, 833_333))].into_iter().collect(),
+					rewards: vec![(ACA, (3_750, 2_500))].into_iter().collect(),
 				}
 			);
 			assert_eq!(
 				Rewards::shares_and_withdrawn_rewards(PoolId::Loans(ACA), alice()),
-				(100, vec![(ACA, 833_333)].into_iter().collect())
+				(100, vec![(ACA, 1_500)].into_iter().collect())
 			);
 		});
 	}
