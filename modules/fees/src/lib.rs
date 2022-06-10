@@ -29,7 +29,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
-use primitives::{Balance, CurrencyId, IncomeSource, PoolPercent};
+use primitives::{Balance, CurrencyId, IncomeSource};
 use sp_runtime::{
 	traits::{One, Saturating, Zero},
 	FixedPointNumber, FixedU128,
@@ -42,13 +42,23 @@ mod tests;
 pub mod weights;
 pub use weights::WeightInfo;
 
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
-pub type Incomes<T> = Vec<(IncomeSource, Vec<PoolPercent<<T as frame_system::Config>::AccountId>>)>;
+pub type Incomes<T> = Vec<(IncomeSource, Vec<(<T as frame_system::Config>::AccountId, u32)>)>;
 pub type Treasuries<T> = Vec<(
 	<T as frame_system::Config>::AccountId,
-	Vec<PoolPercent<<T as frame_system::Config>::AccountId>>,
+	Vec<(<T as frame_system::Config>::AccountId, u32)>,
 )>;
+
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct PoolPercent<AccountId> {
+	pub pool: AccountId,
+	pub rate: FixedU128,
+}
 
 pub use module::*;
 
@@ -139,10 +149,24 @@ pub mod module {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			self.incomes.iter().for_each(|(income, pools)| {
-				let _ = <Pallet<T>>::do_set_treasury_rate(*income, pools.clone());
+				let pool_rates = pools
+					.iter()
+					.map(|pool_rate| PoolPercent {
+						pool: pool_rate.clone().0,
+						rate: FixedU128::saturating_from_rational(pool_rate.1, 100),
+					})
+					.collect();
+				let _ = <Pallet<T>>::do_set_treasury_rate(*income, pool_rates);
 			});
 			self.treasuries.iter().for_each(|(treasury, pools)| {
-				let _ = <Pallet<T>>::do_set_incentive_rate(treasury.clone(), pools.clone());
+				let pool_rates = pools
+					.iter()
+					.map(|pool_rate| PoolPercent {
+						pool: pool_rate.clone().0,
+						rate: FixedU128::saturating_from_rational(pool_rate.1, 100),
+					})
+					.collect();
+				let _ = <Pallet<T>>::do_set_incentive_rate(treasury.clone(), pool_rates);
 			});
 		}
 	}
@@ -245,7 +269,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	fn check_rates(pool_rates: &Vec<PoolPercent<T::AccountId>>) -> DispatchResult {
+	fn check_rates(pool_rates: &[PoolPercent<T::AccountId>]) -> DispatchResult {
 		let mut sum = FixedU128::zero();
 		pool_rates.iter().for_each(|pool_rate| {
 			sum = sum.saturating_add(pool_rate.rate);
@@ -287,7 +311,7 @@ impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balanc
 #[scale_info(skip_type_params(T))]
 pub struct DealWithTxFees<T: Config + Send + Sync>(PhantomData<T>);
 
-/// Transaction fee distribution to treasury pool and selected collator.
+/// Transaction payment fee distribution.
 impl<T: Config + Send + Sync> OnUnbalanced<NegativeImbalanceOf<T>> for DealWithTxFees<T> {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalanceOf<T>>) {
 		if let Some(mut fees) = fees_then_tips.next() {
@@ -305,12 +329,12 @@ impl<T: Config + Send + Sync> OnUnbalanced<NegativeImbalanceOf<T>> for DealWithT
 				let pool_amount = pool_rate.saturating_mul_int(100u32);
 				let amount_other = 100u32.saturating_sub(pool_amount);
 				let split = fees.ration(pool_amount, amount_other);
-				<T as Config>::Currency::resolve_creating(&pool_id, split.0);
+				<T as Config>::Currency::resolve_creating(pool_id, split.0);
 
-				// Current only support two treasury pool account for tx fee.
+				// Current only support at least two treasury pool account for tx fee.
 				if let Some(pool) = pool_rates.get(1) {
 					let pool_id: &T::AccountId = &pool.pool;
-					<T as Config>::Currency::resolve_creating(&pool_id, split.1);
+					<T as Config>::Currency::resolve_creating(pool_id, split.1);
 				}
 			}
 		}
@@ -327,7 +351,6 @@ impl<T: Config> OnUnbalanced<NegativeImbalanceOf<T>> for Pallet<T> {
 
 			// Must resolve into existing but better to be safe.
 			T::Currency::resolve_creating(&T::NetworkTreasuryPoolAccount::get(), fees);
-			// TODO: deposit event?
 		}
 	}
 }

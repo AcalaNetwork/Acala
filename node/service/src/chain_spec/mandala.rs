@@ -697,104 +697,38 @@ fn fees_config() -> FeesConfig {
 		incomes: vec![
 			(
 				IncomeSource::TxFee,
-				vec![
-					PoolPercent {
-						pool: NetworkTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(80, 100),
-					},
-					PoolPercent {
-						pool: CollatorsRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(20, 100),
-					},
-				],
+				vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
 			),
-			(
-				IncomeSource::XcmFee,
-				vec![PoolPercent {
-					pool: NetworkTreasuryPool::get(),
-					rate: FixedU128::saturating_from_rational(100, 100),
-				}],
-			),
-			(
-				IncomeSource::DexSwapFee,
-				vec![PoolPercent {
-					pool: NetworkTreasuryPool::get(),
-					rate: FixedU128::saturating_from_rational(100, 100),
-				}],
-			),
+			(IncomeSource::XcmFee, vec![(NetworkTreasuryPool::get(), 100)]),
+			(IncomeSource::DexSwapFee, vec![(NetworkTreasuryPool::get(), 100)]),
 			(
 				IncomeSource::HonzonStabilityFee,
-				vec![
-					PoolPercent {
-						pool: NetworkTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(70, 100),
-					},
-					PoolPercent {
-						pool: HonzonTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(30, 100),
-					},
-				],
+				vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 30)],
 			),
 			(
 				IncomeSource::HonzonLiquidationFee,
-				vec![
-					PoolPercent {
-						pool: NetworkTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(30, 100),
-					},
-					PoolPercent {
-						pool: HonzonTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(70, 100),
-					},
-				],
+				vec![(NetworkTreasuryPool::get(), 30), (HonzonTreasuryPool::get(), 70)],
 			),
 			(
 				IncomeSource::HomaStakingRewardFee,
-				vec![
-					PoolPercent {
-						pool: NetworkTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(70, 100),
-					},
-					PoolPercent {
-						pool: HomaTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(30, 100),
-					},
-				],
+				vec![(NetworkTreasuryPool::get(), 70), (HomaTreasuryPool::get(), 30)],
 			),
 		],
 		treasuries: vec![
 			(
 				NetworkTreasuryPool::get(),
 				vec![
-					PoolPercent {
-						pool: StakingRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(70, 100),
-					},
-					PoolPercent {
-						pool: CollatorsRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(10, 100),
-					},
-					PoolPercent {
-						pool: EcosystemRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(10, 100),
-					},
-					PoolPercent {
-						pool: TreasuryPalletId::get().into_account(),
-						rate: FixedU128::saturating_from_rational(10, 100),
-					},
+					(StakingRewardPool::get(), 70),
+					(CollatorsRewardPool::get(), 10),
+					(EcosystemRewardPool::get(), 10),
+					(TreasuryPalletId::get().into_account(), 10),
 				],
 			),
 			(
 				HonzonTreasuryPool::get(),
 				vec![
-					PoolPercent {
-						pool: HonzonInsuranceRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(30, 100),
-					},
-					PoolPercent {
-						pool: HonzonLiquitationRewardPool::get(),
-						rate: FixedU128::saturating_from_rational(70, 100),
-					},
+					(HonzonInsuranceRewardPool::get(), 30),
+					(HonzonLiquitationRewardPool::get(), 70),
 				],
 			),
 		],

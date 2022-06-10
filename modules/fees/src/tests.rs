@@ -63,7 +63,7 @@ fn set_income_fee_works() {
 #[test]
 fn set_treasury_pool_works() {
 	ExtBuilder::default()
-		.balances(vec![(ALICE, 10000)])
+		.balances(vec![(ALICE, ACA, 10000)])
 		.build()
 		.execute_with(|| {
 			let incentives = TreasuryToIncentives::<Runtime>::get(NetworkTreasuryPool::get());
@@ -114,7 +114,7 @@ fn invalid_pool_rates_works() {
 #[test]
 fn tx_fee_allocation_works() {
 	ExtBuilder::default()
-		.balances(vec![(ALICE, 10000)])
+		.balances(vec![(ALICE, ACA, 10000)])
 		.build()
 		.execute_with(|| {
 			let pool_rates: BoundedVec<PoolPercent<AccountId>, MaxPoolSize> =
@@ -183,20 +183,41 @@ fn tx_fee_allocation_works() {
 				}
 				Err(_) => {}
 			}
+
+			// emit deposit event, just validate for last on_unbalanced() action
+			System::assert_has_event(Event::Balances(pallet_balances::Event::Deposit {
+				who: NetworkTreasuryPool::get(),
+				amount: 500,
+			}));
+			System::assert_has_event(Event::Balances(pallet_balances::Event::Deposit {
+				who: CollatorsRewardPool::get(),
+				amount: 500,
+			}));
 		});
 }
 
 #[test]
-fn on_fee_change_works() {
+fn fee_to_treasury_pool_on_fee_changed_works() {
 	ExtBuilder::default()
-		.balances(vec![(ALICE, 10000)])
+		.balances(vec![(ALICE, ACA, 10000), (ALICE, DOT, 10000)])
 		.build()
 		.execute_with(|| {
+			// Native token tests
+			// FeeToTreasuryPool based on pre-configured treasury pool percentage.
 			assert_ok!(Pallet::<Runtime>::on_fee_changed(IncomeSource::TxFee, None, ACA, 10000));
 
 			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 8000);
 			assert_eq!(Currencies::free_balance(ACA, &CollatorsRewardPool::get()), 2000);
+			System::assert_has_event(Event::Balances(pallet_balances::Event::Deposit {
+				who: NetworkTreasuryPool::get(),
+				amount: 8000,
+			}));
+			System::assert_has_event(Event::Balances(pallet_balances::Event::Deposit {
+				who: CollatorsRewardPool::get(),
+				amount: 2000,
+			}));
 
+			// FeeToTreasuryPool direct to given account.
 			assert_ok!(Pallet::<Runtime>::on_fee_changed(
 				IncomeSource::TxFee,
 				Some(&TreasuryAccount::get()),
@@ -204,5 +225,40 @@ fn on_fee_change_works() {
 				10000
 			));
 			assert_eq!(Currencies::free_balance(ACA, &TreasuryAccount::get()), 10000);
+			System::assert_has_event(Event::Balances(pallet_balances::Event::Deposit {
+				who: TreasuryAccount::get(),
+				amount: 10000,
+			}));
+
+			// Non native token tests
+			// FeeToTreasuryPool based on pre-configured treasury pool percentage.
+			assert_ok!(Pallet::<Runtime>::on_fee_changed(IncomeSource::TxFee, None, DOT, 10000));
+
+			assert_eq!(Currencies::free_balance(DOT, &NetworkTreasuryPool::get()), 8000);
+			assert_eq!(Currencies::free_balance(DOT, &CollatorsRewardPool::get()), 2000);
+			System::assert_has_event(Event::Tokens(orml_tokens::Event::Deposited {
+				currency_id: DOT,
+				who: NetworkTreasuryPool::get(),
+				amount: 8000,
+			}));
+			System::assert_has_event(Event::Tokens(orml_tokens::Event::Deposited {
+				currency_id: DOT,
+				who: CollatorsRewardPool::get(),
+				amount: 2000,
+			}));
+
+			// FeeToTreasuryPool direct to given account.
+			assert_ok!(Pallet::<Runtime>::on_fee_changed(
+				IncomeSource::TxFee,
+				Some(&TreasuryAccount::get()),
+				DOT,
+				10000
+			));
+			assert_eq!(Currencies::free_balance(DOT, &TreasuryAccount::get()), 10000);
+			System::assert_has_event(Event::Tokens(orml_tokens::Event::Deposited {
+				currency_id: DOT,
+				who: TreasuryAccount::get(),
+				amount: 10000,
+			}));
 		});
 }

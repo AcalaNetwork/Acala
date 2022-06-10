@@ -1216,15 +1216,13 @@ parameter_types! {
 	pub ToCollcator: AccountId = CollatorPotId::get().into_account();
 }
 
-pub type DealWithFees = module_fees::DealWithTxFees<Runtime>;
-
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
-	type OnTransactionPayment = DealWithFees;
+	type OnTransactionPayment = module_fees::DealWithTxFees<Runtime>;
 	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
 	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;

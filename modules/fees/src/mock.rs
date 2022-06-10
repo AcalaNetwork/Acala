@@ -30,14 +30,13 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{
-	AccountId, Amount, Balance, BlockNumber, CurrencyId, IncomeSource, PoolPercent, ReserveIdentifier, TokenSymbol,
-};
-use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedU128};
+use primitives::{AccountId, Amount, Balance, BlockNumber, CurrencyId, IncomeSource, ReserveIdentifier, TokenSymbol};
+use sp_runtime::traits::AccountIdConversion;
 use support::mocks::MockAddressMapping;
 
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
@@ -163,7 +162,7 @@ construct_runtime!(
 );
 
 pub struct ExtBuilder {
-	balances: Vec<(AccountId, Balance)>,
+	balances: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
@@ -173,7 +172,7 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	pub fn balances(mut self, balances: Vec<(AccountId, Balance)>) -> Self {
+	pub fn balances(mut self, balances: Vec<(AccountId, CurrencyId, Balance)>) -> Self {
 		self.balances = balances;
 		self
 	}
@@ -183,8 +182,26 @@ impl ExtBuilder {
 			.build_storage::<Runtime>()
 			.unwrap();
 
+		let native_currency_id = ACA;
+
 		pallet_balances::GenesisConfig::<Runtime> {
-			balances: self.balances.into_iter().collect::<Vec<_>>(),
+			balances: self
+				.balances
+				.clone()
+				.into_iter()
+				.filter(|(_, currency_id, _)| *currency_id == native_currency_id)
+				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
+				.collect::<Vec<_>>(),
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		orml_tokens::GenesisConfig::<Runtime> {
+			balances: self
+				.balances
+				.into_iter()
+				.filter(|(_, currency_id, _)| *currency_id != native_currency_id)
+				.collect::<Vec<_>>(),
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
@@ -193,24 +210,9 @@ impl ExtBuilder {
 			incomes: vec![
 				(
 					IncomeSource::TxFee,
-					vec![
-						PoolPercent {
-							pool: NetworkTreasuryPool::get(),
-							rate: FixedU128::saturating_from_rational(80, 100),
-						},
-						PoolPercent {
-							pool: CollatorsRewardPool::get(),
-							rate: FixedU128::saturating_from_rational(20, 100),
-						},
-					],
+					vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
 				),
-				(
-					IncomeSource::XcmFee,
-					vec![PoolPercent {
-						pool: NetworkTreasuryPool::get(),
-						rate: FixedU128::saturating_from_rational(100, 100),
-					}],
-				),
+				(IncomeSource::XcmFee, vec![(NetworkTreasuryPool::get(), 100)]),
 			],
 			treasuries: vec![],
 		}
