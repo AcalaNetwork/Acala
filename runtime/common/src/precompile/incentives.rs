@@ -41,7 +41,7 @@ pub struct IncentivesPrecompile<R>(PhantomData<R>);
 #[repr(u32)]
 pub enum Action {
 	GetIncentiveRewardAmount = "getIncentiveRewardAmount(PoolId,address,address)",
-	GetDexRewardRate = "getDexRewardRate(PoolId,address)",
+	GetDexRewardRate = "getDexRewardRate(address)",
 	DepositDexShare = "depositDexShare(address,address,uint128)",
 	WithdrawDexShare = "withdrawDexShare(address,address,uint128)",
 	ClaimRewards = "claimRewards(address,PoolId,address)",
@@ -92,9 +92,8 @@ where
 				})
 			}
 			Action::GetDexRewardRate => {
-				let pool = input.u32_at(1)?;
-				let pool_currency_id = input.currency_id_at(2)?;
-				let pool_id = init_pool_id(pool, pool_currency_id, target_gas)?;
+				let pool_currency_id = input.currency_id_at(1)?;
+				let pool_id = PoolId::Dex(pool_currency_id);
 
 				let value = <module_incentives::Pallet<Runtime> as IncentivesManager<
 					Runtime::AccountId,
@@ -215,7 +214,7 @@ where
 					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::GetDexRewardRate => {
-				let pool_currency_id = input.currency_id_at(2)?;
+				let pool_currency_id = input.currency_id_at(1)?;
 				let read_pool_currency = InputPricer::<Runtime>::read_currency(pool_currency_id);
 
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
@@ -279,5 +278,220 @@ fn init_pool_id(
 			output: "Incentives: Invalid enum value".into(),
 			cost: target_gas_limit(target_gas).unwrap_or_default(),
 		}),
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::precompile::mock::{
+		alice, alice_evm_addr, bob, new_test_ext, Currencies, Incentives, Origin, Rewards, Test, ACA, ALICE, DOT,
+		LP_ACA_AUSD,
+	};
+	use frame_support::assert_ok;
+	use hex_literal::hex;
+	use module_support::Rate;
+	use orml_rewards::PoolInfo;
+	use orml_traits::MultiCurrency;
+	use sp_runtime::FixedU128;
+
+	type IncentivesPrecompile = super::IncentivesPrecompile<Test>;
+
+	#[test]
+	fn get_incentive_reward_amount_works() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			assert_ok!(Incentives::update_incentive_rewards(
+				Origin::signed(ALICE),
+				vec![(PoolId::Loans(DOT), vec![(DOT, 100)])]
+			));
+
+			// 0x7469000d
+			let input = hex! {"
+                7469000d
+                00000000000000000000000000000000 00000000000000000000000000000000
+                000000000000000000000000 0000000000000000000100000000000000000002
+                000000000000000000000000 0000000000000000000100000000000000000002
+            "};
+
+			// value of 100
+			let expected_output = hex! {"
+                00000000000000000000000000000000 00000000000000000000000000000064
+            "};
+
+			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+			assert_eq!(res.output, expected_output.to_vec());
+		});
+	}
+
+	#[test]
+	fn get_dex_reward_rate_works() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			assert_ok!(Incentives::update_dex_saving_rewards(
+				Origin::signed(ALICE),
+				vec![(PoolId::Dex(LP_ACA_AUSD), FixedU128::saturating_from_rational(1, 10))]
+			));
+
+			// 0x7ec93136
+			let input = hex! {"
+                7ec93136
+                000000000000000000000000 0000000000000000000200000000000000000001
+            "};
+
+			// value for FixedU128::saturating_from_rational(1,10)
+			let expected_output = hex! {"
+                00000000000000000000000000000000 0000000000000000016345785d8a0000
+            "};
+
+			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+			assert_eq!(res.output, expected_output.to_vec());
+		});
+	}
+
+	#[test]
+	fn deposit_dex_share_works() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			assert_ok!(Currencies::deposit(LP_ACA_AUSD, &alice(), 1_000_000_000));
+
+			// 0x8e78b279
+			let input = hex! {"
+                8e78b279
+                000000000000000000000000 1000000000000000000000000000000000000001
+                000000000000000000000000 0000000000000000000200000000000000000001
+                00000000000000000000000000000000 00000000000000000000000000100000
+            "};
+
+			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+
+			assert_eq!(
+				Rewards::pool_infos(PoolId::Dex(LP_ACA_AUSD)),
+				PoolInfo {
+					total_shares: 1048576,
+					..Default::default()
+				}
+			);
+			assert_eq!(
+				Rewards::shares_and_withdrawn_rewards(PoolId::Dex(LP_ACA_AUSD), alice()),
+				(1048576, Default::default())
+			);
+		});
+	}
+
+	#[test]
+	fn withdraw_dex_share_works() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			assert_ok!(Currencies::deposit(LP_ACA_AUSD, &alice(), 1_000_000_000));
+			assert_ok!(Incentives::deposit_dex_share(
+				Origin::signed(alice()),
+				LP_ACA_AUSD,
+				100_000
+			));
+
+			// 0x6b1c730c
+			let input = hex! {"
+                6b1c730c
+                000000000000000000000000 1000000000000000000000000000000000000001
+                000000000000000000000000 0000000000000000000200000000000000000001
+                00000000000000000000000000000000 00000000000000000000000000000100
+            "};
+
+			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+
+			assert_eq!(
+				Rewards::pool_infos(PoolId::Dex(LP_ACA_AUSD)),
+				PoolInfo {
+					total_shares: 99744,
+					..Default::default()
+				}
+			);
+			assert_eq!(
+				Rewards::shares_and_withdrawn_rewards(PoolId::Dex(LP_ACA_AUSD), alice()),
+				(99744, Default::default())
+			);
+		});
+	}
+
+	#[test]
+	fn claim_rewards_works() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			assert_ok!(Currencies::deposit(ACA, &alice(), 1_000_000_000));
+			assert_ok!(Currencies::deposit(ACA, &bob(), 1_000_000_000));
+			assert_ok!(Currencies::deposit(ACA, &Incentives::account_id(), 1_000_000_000_000));
+
+			assert_ok!(Incentives::update_claim_reward_deduction_rates(
+				Origin::signed(ALICE),
+				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(50, 100)),]
+			));
+			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
+			Rewards::add_share(&bob(), &PoolId::Loans(ACA), 100);
+			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000_000));
+			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
+			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000_000));
+
+			assert_eq!(
+				Rewards::pool_infos(PoolId::Loans(ACA)),
+				PoolInfo {
+					total_shares: 300,
+					rewards: vec![(ACA, (2_500_000, 500_000))].into_iter().collect(),
+				}
+			);
+			Rewards::remove_share(&alice(), &PoolId::Loans(ACA), 100);
+
+			// 0xe12eab9b
+			let input = hex! {"
+                e12eab9b
+                000000000000000000000000 1000000000000000000000000000000000000001
+                00000000000000000000000000000000 00000000000000000000000000000001
+                000000000000000000000000 0000000000000000000200000000000000000001
+            "};
+
+			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+
+			assert_eq!(
+				Rewards::pool_infos(PoolId::Loans(ACA)),
+				PoolInfo {
+					total_shares: 200,
+					rewards: vec![(ACA, (1_666_667, 833_333))].into_iter().collect(),
+				}
+			);
+			assert_eq!(
+				Rewards::shares_and_withdrawn_rewards(PoolId::Loans(ACA), alice()),
+				(100, vec![(ACA, 833_333)].into_iter().collect())
+			);
+		});
 	}
 }

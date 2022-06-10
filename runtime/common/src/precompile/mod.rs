@@ -58,6 +58,7 @@ pub use evm::EVMPrecompile;
 pub use evm_accounts::EVMAccountsPrecompile;
 pub use homa::HomaPrecompile;
 pub use honzon::HonzonPrecompile;
+pub use incentives::IncentivesPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
@@ -218,6 +219,7 @@ where
 	SchedulePrecompile<R>: Precompile,
 	HomaPrecompile<R>: Precompile,
 	HonzonPrecompile<R>: Precompile,
+	IncentivesPrecompile<R>: Precompile,
 {
 	fn execute(
 		&self,
@@ -311,6 +313,10 @@ where
 				))
 			} else if address == HONZON {
 				Some(HonzonPrecompile::<R>::execute(input, target_gas, context, is_static))
+			} else if address == INCENTIVES {
+				Some(IncentivesPrecompile::<R>::execute(
+					input, target_gas, context, is_static,
+				))
 			} else {
 				None
 			}

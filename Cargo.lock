@@ -10659,6 +10659,7 @@ dependencies = [
  "orml-currencies",
  "orml-nft",
  "orml-oracle",
+ "orml-rewards",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",

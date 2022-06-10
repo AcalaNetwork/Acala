@@ -72,6 +72,7 @@ orml-bencher = { path = "../../orml/bencher", default-features = false, optional
 orml-tokens = { path = "../../orml/tokens", default-features = false, optional = true }
 orml-nft = { path = "../../orml/nft", default-features = false, optional = true }
 orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }
+orml-rewards = { path = "../../orml/rewards", default-features = false, optional = true }
 
 [features]
 default = ["std"]
@@ -105,6 +106,7 @@ std = [
 	"orml-tokens/std",
 	"orml-nft/std",
 	"orml-currencies/std",
+	"orml-rewards/std",
 
 	"module-evm/std",
 	"module-idle-scheduler/std",
