@@ -45,6 +45,8 @@ pub enum Action {
 	DepositDexShare = "depositDexShare(address,address,uint128)",
 	WithdrawDexShare = "withdrawDexShare(address,address,uint128)",
 	ClaimRewards = "claimRewards(address,PoolId,address)",
+	GetClaimRewardDeductionRate = "getClaimRewardDeductionRate(PoolId,address)",
+	GetPendingRewards = "getPendingRewards(PoolId,address,address,address[])",
 }
 
 impl<Runtime> Precompile for IncentivesPrecompile<Runtime>
@@ -182,6 +184,51 @@ where
 					logs: Default::default(),
 				})
 			}
+			Action::GetClaimRewardDeductionRate => {
+				let pool = input.u32_at(1)?;
+				let pool_currency_id = input.currency_id_at(2)?;
+				let pool_id = init_pool_id(pool, pool_currency_id, target_gas)?;
+
+				let value = <module_incentives::Pallet<Runtime> as IncentivesManager<
+					Runtime::AccountId,
+					Balance,
+					CurrencyId,
+					PoolId,
+				>>::get_claim_reward_deduction_rate(pool_id);
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: Output::default().encode_u128(value.into_inner()),
+					logs: Default::default(),
+				})
+			}
+			Action::GetPendingRewards => {
+				let pool = input.u32_at(1)?;
+				let pool_currency_id = input.currency_id_at(2)?;
+				let pool_id = init_pool_id(pool, pool_currency_id, target_gas)?;
+				let who = input.account_id_at(3)?;
+				// solidity abi encode array will add an offset at input[4]
+				let reward_currency_ids_len = input.u32_at(5)?;
+				let mut reward_currency_ids = vec![];
+				for i in 0..reward_currency_ids_len {
+					reward_currency_ids.push(input.currency_id_at((6 + i) as usize)?);
+				}
+
+				let value = <module_incentives::Pallet<Runtime> as IncentivesManager<
+					Runtime::AccountId,
+					Balance,
+					CurrencyId,
+					PoolId,
+				>>::get_pending_rewards(pool_id, who, reward_currency_ids);
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: Output::default().encode_u128_array(value),
+					logs: Default::default(),
+				})
+			}
 		}
 	}
 }
@@ -257,6 +304,34 @@ where
 				Self::BASE_COST
 					.saturating_add(read_pool_currency)
 					.saturating_add(read_account)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::GetClaimRewardDeductionRate => {
+				let pool_currency_id = input.currency_id_at(2)?;
+				let read_pool_currency = InputPricer::<Runtime>::read_currency(pool_currency_id);
+
+				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+
+				Self::BASE_COST
+					.saturating_add(read_pool_currency)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::GetPendingRewards => {
+				let read_account = InputPricer::<Runtime>::read_accounts(1);
+				let reward_currency_ids_len = input.u32_at(5)?;
+				let pool_currency_id = input.currency_id_at(2)?;
+				let mut read_currency = InputPricer::<Runtime>::read_currency(pool_currency_id);
+
+				for i in 0..reward_currency_ids_len {
+					let currency_id = input.currency_id_at((6 + i) as usize)?;
+					read_currency = read_currency.saturating_add(InputPricer::<Runtime>::read_currency(currency_id));
+				}
+
+				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+
+				Self::BASE_COST
+					.saturating_add(read_account)
+					.saturating_add(read_currency)
 					.saturating_add(WeightToGas::convert(weight))
 			}
 		};
@@ -492,5 +567,98 @@ mod tests {
 				(100, vec![(ACA, 1_500)].into_iter().collect())
 			);
 		});
+	}
+
+	#[test]
+	fn get_claim_reward_deduction_rate_works() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			assert_ok!(Incentives::update_claim_reward_deduction_rates(
+				Origin::signed(ALICE),
+				vec![(PoolId::Dex(LP_ACA_AUSD), FixedU128::saturating_from_rational(1, 10))]
+			));
+
+			// 0xa2e2fc8e
+			let input = hex! {"
+                a2e2fc8e
+				00000000000000000000000000000000 00000000000000000000000000000001
+                000000000000000000000000 0000000000000000000200000000000000000001
+            "};
+
+			// value for FixedU128::saturating_from_rational(1,10)
+			let expected_output = hex! {"
+                00000000000000000000000000000000 0000000000000000016345785d8a0000
+            "};
+
+			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+			assert_eq!(res.output, expected_output.to_vec());
+		});
+	}
+
+	#[test]
+	fn get_pending_rewards_works() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			assert_ok!(Tokens::deposit(ACA, &alice(), 1_000));
+			assert_ok!(Tokens::deposit(ACA, &bob(), 1_000));
+			assert_ok!(Tokens::deposit(ACA, &Incentives::account_id(), 1_000_000));
+			assert_ok!(Tokens::deposit(AUSD, &Incentives::account_id(), 1_000_000));
+
+			assert_ok!(Incentives::update_claim_reward_deduction_rates(
+				Origin::signed(ALICE),
+				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(50, 100)),]
+			));
+			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
+			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000));
+			Rewards::add_share(&bob(), &PoolId::Loans(ACA), 100);
+			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), AUSD, 1_000));
+			Rewards::remove_share(&alice(), &PoolId::Loans(ACA), 100);
+
+			assert_eq!(
+				Incentives::get_pending_rewards(PoolId::Loans(ACA), alice(), vec![ACA, AUSD]),
+				vec![1000, 500]
+			);
+
+			// getPendingRewards(PoolId,address,address,address[]) -> 0xe9e89b8a
+			// PoolId
+			// pool_currency_id
+			// who
+			// offset
+			// currency_ids_len
+			// ACA
+			// AUSD
+			let input = hex! {"
+                e9e89b8a
+				00000000000000000000000000000000 00000000000000000000000000000000
+			    000000000000000000000000 0000000000000000000100000000000000000000
+				000000000000000000000000 1000000000000000000000000000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000000000000000000000000000 00000002
+				000000000000000000000000 0000000000000000000100000000000000000000
+				000000000000000000000000 0000000000000000000100000000000000000001
+			"};
+
+			// encoded array of [1000, 500]
+			let expected_output = hex! {"
+                00000000000000000000000000000000 000000000000000000000000000003e8
+				00000000000000000000000000000000 000000000000000000000000000001f4
+
+            "};
+
+			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+			assert_eq!(res.output, expected_output.to_vec());
+		})
 	}
 }

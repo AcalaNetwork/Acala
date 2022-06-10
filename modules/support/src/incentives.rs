@@ -21,6 +21,7 @@ use codec::{Decode, Encode};
 use primitives::CurrencyId;
 use scale_info::TypeInfo;
 use sp_runtime::{DispatchResult, RuntimeDebug};
+use sp_std::prelude::*;
 
 /// PoolId for various rewards pools
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
@@ -42,6 +43,10 @@ pub trait IncentivesManager<AccountId, Balance, CurrencyId, PoolId> {
 	fn withdraw_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
 
 	fn claim_rewards(who: AccountId, pool_id: PoolId) -> DispatchResult;
+
+	fn get_claim_reward_deduction_rate(pool_id: PoolId) -> Rate;
+
+	fn get_pending_rewards(pool_id: PoolId, who: AccountId, reward_currency: Vec<CurrencyId>) -> Vec<Balance>;
 }
 
 pub trait DEXIncentives<AccountId, CurrencyId, Balance> {

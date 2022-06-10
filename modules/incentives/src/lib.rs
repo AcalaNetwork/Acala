@@ -593,6 +593,20 @@ impl<T: Config> IncentivesManager<T::AccountId, Balance, CurrencyId, PoolId> for
 	fn claim_rewards(who: T::AccountId, pool_id: PoolId) -> DispatchResult {
 		Self::do_claim_rewards(who, pool_id)
 	}
+
+	fn get_claim_reward_deduction_rate(pool_id: PoolId) -> Rate {
+		ClaimRewardDeductionRates::<T>::get(pool_id)
+	}
+
+	fn get_pending_rewards(pool_id: PoolId, who: T::AccountId, reward_currencies: Vec<CurrencyId>) -> Vec<Balance> {
+		let rewards_map = PendingMultiRewards::<T>::get(pool_id, who);
+		let mut reward_balances = Vec::new();
+		for reward_currency in reward_currencies {
+			let reward_amount = rewards_map.get(&reward_currency).copied().unwrap_or_default();
+			reward_balances.push(reward_amount);
+		}
+		reward_balances
+	}
 }
 
 pub struct OnUpdateLoan<T>(sp_std::marker::PhantomData<T>);
