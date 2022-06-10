@@ -339,6 +339,7 @@ pub enum ProxyType {
 	DexLiquidity,
 	StableAssetSwap,
 	StableAssetLiquidity,
+	Homa,
 }
 
 impl Default for ProxyType {

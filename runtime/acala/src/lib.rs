@@ -1311,6 +1311,12 @@ impl InstanceFilter<Call> for ProxyType {
 				)
 			}
 			ProxyType::StableAssetLiquidity | ProxyType::StableAssetSwap => false,
+			ProxyType::Homa => {
+				matches!(
+					c,
+					Call::Homa(module_homa::Call::mint { .. }) | Call::Homa(module_homa::Call::request_redeem { .. })
+				)
+			}
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
