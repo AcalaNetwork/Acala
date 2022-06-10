@@ -18,7 +18,7 @@
 
 use super::{
 	constants::fee::*, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event,
-	ExistentialDeposits, FixedRateOfForeignAsset, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin,
+	ExistentialDeposits, FixedRateOfAssetRegistry, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin,
 	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, TransactionFeePoolTrader, TreasuryAccount, UnknownTokens,
 	XcmpQueue, ACA,
 };
@@ -29,10 +29,12 @@ pub use frame_support::{
 	traits::{Everything, Get, Nothing},
 	weights::Weight,
 };
+use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset};
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
+use primitives::evm::is_system_contract;
 use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
@@ -131,7 +133,8 @@ pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AcaPerSecond, ToTreasury>,
-	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
+	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
+	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
 );
 
 pub struct XcmConfig;
@@ -233,11 +236,12 @@ pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::Token;
+		use CurrencyId::{Erc20, ForeignAsset, Token};
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) | Token(TAI) => Some(native_currency_location(id)),
-			CurrencyId::ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
+			Erc20(address) if !is_system_contract(address) => Some(native_currency_location(id)),
+			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
 	}
@@ -245,7 +249,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::Token;
+		use CurrencyId::{Erc20, Token};
 
 		if location == MultiLocation::parent() {
 			return Some(Token(DOT));
@@ -265,6 +269,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 					// check if `currency_id` is cross-chain asset
 					match currency_id {
 						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) | Token(TAI) => Some(currency_id),
+						Erc20(address) if !is_system_contract(address) => Some(currency_id),
 						_ => None,
 					}
 				} else {
@@ -280,6 +285,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 					match currency_id {
 						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) | Token(TAI) => Some(currency_id),
+						Erc20(address) if !is_system_contract(address) => Some(currency_id),
 						_ => None,
 					}
 				} else {

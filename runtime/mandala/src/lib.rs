@@ -49,7 +49,7 @@ pub use frame_support::{
 };
 use frame_system::{EnsureRoot, RawOrigin};
 use hex_literal::hex;
-use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
+use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfAssetRegistry};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
@@ -132,7 +132,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2064,
+	spec_version: 2070,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -607,6 +607,7 @@ impl pallet_recovery::Config for Runtime {
 	type FriendDepositFactor = FriendDepositFactor;
 	type MaxFriends = ConstU32<9>;
 	type RecoveryDeposit = RecoveryDeposit;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -899,6 +900,7 @@ impl module_prices::Config for Runtime {
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub Erc20HoldingAccount: H160 = primitives::evm::ERC20_HOLDING_ACCOUNT;
 }
 
 impl module_currencies::Config for Runtime {
@@ -906,6 +908,7 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
@@ -1168,6 +1171,7 @@ impl module_aggregated_dex::Config for Runtime {
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
+	type RebaseTokenAmountConvertor = ConvertBalanceHoma;
 	type WeightInfo = ();
 }
 
@@ -1495,6 +1499,12 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_proportion { .. })
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_single { .. })
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_multi { .. })
+				)
+			}
+			ProxyType::Homa => {
+				matches!(
+					c,
+					Call::Homa(module_homa::Call::mint { .. }) | Call::Homa(module_homa::Call::request_redeem { .. })
 				)
 			}
 		}
@@ -1884,8 +1894,34 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	HomaTotalStakingMigration,
+>;
+
+pub struct HomaTotalStakingMigration;
+
+impl OnRuntimeUpgrade for HomaTotalStakingMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		module_homa::migrations::v1::migrate::<Runtime, Homa>()
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		module_homa::migrations::v1::pre_migrate::<Homa>();
+		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		module_homa::migrations::v1::post_migrate::<Runtime, Homa>();
+		Ok(())
+	}
+}
 
 construct_runtime!(
 	pub enum Runtime where

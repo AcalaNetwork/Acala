@@ -34,10 +34,9 @@ use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
 };
-use loans::Position;
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_utilities::OffchainErr;
-use primitives::{evm::EvmAddress, Amount, Balance, CurrencyId};
+use primitives::{evm::EvmAddress, Amount, Balance, CurrencyId, Position};
 use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
 	ChaChaRng,

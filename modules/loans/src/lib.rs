@@ -27,14 +27,12 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
-use primitives::{Amount, Balance, CurrencyId};
-use scale_info::TypeInfo;
+use primitives::{Amount, Balance, CurrencyId, Position};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
-	ArithmeticError, DispatchResult, RuntimeDebug,
+	ArithmeticError, DispatchResult,
 };
 use support::{CDPTreasury, RiskManager};
 
@@ -42,15 +40,6 @@ mod mock;
 mod tests;
 
 pub use module::*;
-
-/// A collateralized debit position.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default, MaxEncodedLen, TypeInfo)]
-pub struct Position {
-	/// The amount of collateral.
-	pub collateral: Balance,
-	/// The amount of debit.
-	pub debit: Balance,
-}
 
 #[frame_support::pallet]
 pub mod module {

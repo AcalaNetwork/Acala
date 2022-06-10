@@ -40,8 +40,8 @@ use sp_std::{marker::PhantomData, prelude::*};
 /// `input` data starts with `action`.
 ///
 /// Actions:
-/// - Mint. Rest `input bytes: `who`, `amount`.
-/// - Request redeem. Rest `input bytes: `who`, `amount`, `fast_match`.
+/// - Mint. Rest `input` bytes: `who`, `amount`.
+/// - Request redeem. Rest `input` bytes: `who`, `amount`, `fast_match`.
 /// - Get exchange rate.
 /// - Get estimated reward rate.
 /// - Get commission rate.
@@ -212,7 +212,7 @@ where
 				// Homa::TotalVoidLiquid (r: 1)
 				// Homa::ToBondPool (r: 1)
 				// Tokens::TotalIssuance(r: 1)
-				// Homa::StakingLedgers(r: ?)
+				// Homa::TotalStakingBonded(r: 1)
 				WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(4))
 			}
 			Action::GetEstimatedRewardRate => {

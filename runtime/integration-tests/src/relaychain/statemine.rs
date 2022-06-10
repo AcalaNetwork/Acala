@@ -33,7 +33,6 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE_STATEMINE: Balance = 10_666_664;
-pub const FEE_KUSAMA: Balance = 165_940_672;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
@@ -108,12 +107,13 @@ fn karura_statemine_transfer_works() {
 
 	// minimum asset should be: FEE_WEIGHT+FEE_KUSAMA+max(KUSAMA_ED,STATEMINE_ED+FEE_STATEMINE).
 	// but due to current half fee, sender asset should at lease: FEE_WEIGHT + 2 * FEE_KUSAMA
-	let asset = FEE_WEIGHT + 2 * FEE_KUSAMA;
+	let asset = FEE_WEIGHT + 2 * 31_488_122;
 
 	statemine_side(UNIT);
 
 	KusamaNet::execute_with(|| {
 		let _ = kusama_runtime::Balances::make_free_balance_be(&child_2000, TEN);
+		assert_eq!(0, kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	karura_side(asset);
@@ -123,10 +123,7 @@ fn karura_statemine_transfer_works() {
 			TEN - (asset - FEE_WEIGHT),
 			kusama_runtime::Balances::free_balance(&child_2000)
 		);
-		assert_eq!(
-			asset - FEE_WEIGHT - FEE_KUSAMA,
-			kusama_runtime::Balances::free_balance(&child_1000)
-		);
+		assert_eq!(33_333_334, kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	Statemine::execute_with(|| {
@@ -140,10 +137,7 @@ fn karura_statemine_transfer_works() {
 			UNIT + FEE_WEIGHT - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(
-			UNIT + asset - FEE_WEIGHT - FEE_KUSAMA - FEE_STATEMINE - FEE_WEIGHT,
-			Balances::free_balance(&para_2000)
-		);
+		assert_eq!(996022666670, Balances::free_balance(&para_2000));
 	});
 }
 
