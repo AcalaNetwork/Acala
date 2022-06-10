@@ -39,7 +39,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, AccountIdLookup, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion,
-		StaticLookup, Verify,
+		StaticLookup,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
@@ -125,7 +125,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2064,
+	spec_version: 2070,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1104,6 +1104,7 @@ impl module_aggregated_dex::Config for Runtime {
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
+	type RebaseTokenAmountConvertor = ConvertBalanceHoma;
 	type WeightInfo = ();
 }
 
@@ -1310,6 +1311,12 @@ impl InstanceFilter<Call> for ProxyType {
 				)
 			}
 			ProxyType::StableAssetLiquidity | ProxyType::StableAssetSwap => false,
+			ProxyType::Homa => {
+				matches!(
+					c,
+					Call::Homa(module_homa::Call::mint { .. }) | Call::Homa(module_homa::Call::request_redeem { .. })
+				)
+			}
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
@@ -2178,23 +2185,25 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 pub struct PayerSignatureVerification;
 
 impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSignatureVerification {
-	fn convert((call, extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
+	fn convert((call, _extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
 		if let Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
-			call,
-			payer_addr,
-			payer_sig,
+			call: _,
+			payer_addr: _,
+			payer_sig: _,
 		}) = call
 		{
-			let payer_account: [u8; 32] = payer_addr
-				.encode()
-				.as_slice()
-				.try_into()
-				.map_err(|_| InvalidTransaction::BadSigner)?;
-			// payer signature is aim at inner call of `with_fee_paid_by` call.
-			let raw_payload = SignedPayload::new(*call, extra).map_err(|_| InvalidTransaction::BadSigner)?;
-			if !raw_payload.using_encoded(|payload| payer_sig.verify(payload, &payer_account.into())) {
-				return Err(InvalidTransaction::BadProof);
-			}
+			// Disabled for now
+			return Err(InvalidTransaction::BadProof);
+			// let payer_account: [u8; 32] = payer_addr
+			// 	.encode()
+			// 	.as_slice()
+			// 	.try_into()
+			// 	.map_err(|_| InvalidTransaction::BadSigner)?;
+			// // payer signature is aim at inner call of `with_fee_paid_by` call.
+			// let raw_payload = SignedPayload::new(*call, extra).map_err(|_|
+			// InvalidTransaction::BadSigner)?; if !raw_payload.using_encoded(|payload|
+			// payer_sig.verify(payload, &payer_account.into())) { 	return Err(InvalidTransaction::
+			// BadProof); }
 		}
 		Ok(())
 	}

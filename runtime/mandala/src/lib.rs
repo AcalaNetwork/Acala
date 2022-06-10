@@ -132,7 +132,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2064,
+	spec_version: 2070,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1163,6 +1163,7 @@ impl module_aggregated_dex::Config for Runtime {
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
+	type RebaseTokenAmountConvertor = ConvertBalanceHoma;
 	type WeightInfo = ();
 }
 
@@ -1490,6 +1491,12 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_proportion { .. })
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_single { .. })
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_multi { .. })
+				)
+			}
+			ProxyType::Homa => {
+				matches!(
+					c,
+					Call::Homa(module_homa::Call::mint { .. }) | Call::Homa(module_homa::Call::request_redeem { .. })
 				)
 			}
 		}
