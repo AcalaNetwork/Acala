@@ -570,6 +570,9 @@ fn charges_fee_when_validate_with_fee_currency_call() {
 		let surplus = fee_perc.mul_ceil(fee);
 		let fee_amount = fee + surplus;
 
+		println!("{:?}", Currencies::free_balance(ACA, &ALICE));
+		println!("{:?}", Currencies::free_balance(AUSD, &ALICE));
+
 		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(
 			&ALICE,
 			&with_fee_currency_call(AUSD),
@@ -581,6 +584,8 @@ fn charges_fee_when_validate_with_fee_currency_call() {
 			sub_ausd_usd + fee_amount * 10,
 			Currencies::free_balance(AUSD, &ausd_acc)
 		);
+		println!("{:?}", Currencies::free_balance(ACA, &ALICE));
+		println!("{:?}", Currencies::free_balance(AUSD, &ALICE));
 
 		let fee_perc = CustomFeeSurplus::get();
 		let surplus = fee_perc.mul_ceil(fee);

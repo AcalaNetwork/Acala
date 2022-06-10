@@ -10833,6 +10833,7 @@ dependencies = [
  "module-evm-accounts",
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
+ "module-fees",
  "module-homa",
  "module-homa-lite",
  "module-honzon",

@@ -235,6 +235,7 @@ mod mandala_only_tests {
 	use super::*;
 	type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
 	use frame_support::{pallet_prelude::Decode, traits::OnUnbalanced};
+	use module_fees::DealWithTxFees;
 	use pallet_authorship::EventHandler;
 
 	#[test]
@@ -266,7 +267,7 @@ mod mandala_only_tests {
 				// Only 20% of the fee went into the pot
 				let tip = NegativeImbalance::new((min_reward - 1) * 10);
 				let fee = NegativeImbalance::new(0);
-				DealWithFees::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
+				DealWithTxFees::<Runtime>::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
 
 				// The amount above existential is below the `MinRewardDistributeAmount`.
 				assert_eq!(
@@ -285,7 +286,7 @@ mod mandala_only_tests {
 				let tip = NegativeImbalance::new(10);
 				let fee = NegativeImbalance::new(0);
 
-				DealWithFees::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
+				DealWithTxFees::<Runtime>::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
 
 				// Now the above existential is above the `MinRewardDistributeAmount`.
 				assert_eq!(

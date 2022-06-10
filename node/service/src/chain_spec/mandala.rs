@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{orml_traits::GetByKey, AccountId, Balance, IncomeSource, PoolPercent, TokenSymbol};
+use acala_primitives::{orml_traits::GetByKey, AccountId, Balance, IncomeSource, TokenSymbol};
 use coins_bip39::{English, Mnemonic, Wordlist};
 use elliptic_curve::sec1::ToEncodedPoint;
 use hex_literal::hex;
