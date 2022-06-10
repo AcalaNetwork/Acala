@@ -1,4 +1,4 @@
-FROM rust:buster as builder
+FROM --platform=$BUILDPLATFORM rust:buster as builder
 WORKDIR /app
 
 RUN rustup default nightly-2022-02-19 && \
@@ -19,7 +19,7 @@ RUN make $BUILD_ARGS
 
 # =============
 
-FROM phusion/baseimage:focal-1.2.0
+FROM --platform=$BUILDPLATFORM phusion/baseimage:focal-1.2.0
 LABEL maintainer="hello@acala.network"
 
 ARG PROFILE
