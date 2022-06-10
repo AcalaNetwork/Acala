@@ -802,8 +802,6 @@ where
 		call: &CallOf<T>,
 		reason: WithdrawReasons,
 	) -> Result<(T::AccountId, Balance), DispatchError> {
-		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
-		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
 		match call.is_sub_type() {
 			Some(Call::with_fee_path { fee_swap_path, .. }) => {
 				ensure!(
@@ -812,6 +810,9 @@ where
 						&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
 					Error::<T>::InvalidSwapPath
 				);
+				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
+				let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+				let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
 				T::DEX::swap_with_specific_path(
 					who,
 					fee_swap_path,
@@ -824,12 +825,15 @@ where
 					TokenExchangeRate::<T>::contains_key(currency_id),
 					Error::<T>::InvalidToken
 				);
-				let fee_amount = if T::DefaultFeeTokens::get().contains(currency_id) {
-					fee.saturating_add(T::AlternativeFeeSurplus::get().mul_ceil(fee))
+				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
+				let alternative_fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
+				let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+				let (fee_amount, fee_surplus) = if T::DefaultFeeTokens::get().contains(currency_id) {
+					(fee.saturating_add(alternative_fee_surplus), alternative_fee_surplus)
 				} else {
-					custom_fee_amount
+					(fee.saturating_add(custom_fee_surplus), custom_fee_surplus)
 				};
-				Self::swap_from_pool_or_dex(who, fee_amount, *currency_id).map(|_| (who.clone(), fee_amount))
+				Self::swap_from_pool_or_dex(who, fee_amount, *currency_id).map(|_| (who.clone(), fee_surplus))
 			}
 			Some(Call::with_fee_paid_by {
 				call: _,
