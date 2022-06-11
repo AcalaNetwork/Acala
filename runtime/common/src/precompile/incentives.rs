@@ -46,7 +46,7 @@ pub enum Action {
 	WithdrawDexShare = "withdrawDexShare(address,address,uint128)",
 	ClaimRewards = "claimRewards(address,PoolId,address)",
 	GetClaimRewardDeductionRate = "getClaimRewardDeductionRate(PoolId,address)",
-	GetPendingRewards = "getPendingRewards(PoolId,address,address,address[])",
+	GetPendingRewards = "getPendingRewards(address[],PoolId,address,address)",
 }
 
 impl<Runtime> Precompile for IncentivesPrecompile<Runtime>
@@ -204,11 +204,11 @@ where
 				})
 			}
 			Action::GetPendingRewards => {
-				let pool = input.u32_at(1)?;
-				let pool_currency_id = input.currency_id_at(2)?;
+				// solidity abi encode array will add an offset at input[1]
+				let pool = input.u32_at(2)?;
+				let pool_currency_id = input.currency_id_at(3)?;
 				let pool_id = init_pool_id(pool, pool_currency_id, target_gas)?;
-				let who = input.account_id_at(3)?;
-				// solidity abi encode array will add an offset at input[4]
+				let who = input.account_id_at(4)?;
 				let reward_currency_ids_len = input.u32_at(5)?;
 				let mut reward_currency_ids = vec![];
 				for i in 0..reward_currency_ids_len {
@@ -318,9 +318,9 @@ where
 			}
 			Action::GetPendingRewards => {
 				let read_account = InputPricer::<Runtime>::read_accounts(1);
-				let reward_currency_ids_len = input.u32_at(5)?;
-				let pool_currency_id = input.currency_id_at(2)?;
+				let pool_currency_id = input.currency_id_at(3)?;
 				let mut read_currency = InputPricer::<Runtime>::read_currency(pool_currency_id);
+				let reward_currency_ids_len = input.u32_at(5)?;
 
 				for i in 0..reward_currency_ids_len {
 					let currency_id = input.currency_id_at((6 + i) as usize)?;
@@ -630,20 +630,20 @@ mod tests {
 				vec![1000, 500]
 			);
 
-			// getPendingRewards(PoolId,address,address,address[]) -> 0xe9e89b8a
-			// PoolId
+			// getPendingRewards(address[],PoolId,address,address) -> 0xeb797b1
+			// offset
+			// pool_id
 			// pool_currency_id
 			// who
-			// offset
 			// currency_ids_len
 			// ACA
 			// AUSD
 			let input = hex! {"
-                e9e89b8a
+                0eb797b1
+				00000000000000000000000000000000 00000000000000000000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000000
 			    000000000000000000000000 0000000000000000000100000000000000000000
 				000000000000000000000000 1000000000000000000000000000000000000001
-				00000000000000000000000000000000 00000000000000000000000000000000
 				00000000000000000000000000000000000000000000000000000000 00000002
 				000000000000000000000000 0000000000000000000100000000000000000000
 				000000000000000000000000 0000000000000000000100000000000000000001
