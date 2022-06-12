@@ -525,7 +525,7 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::register_settlement_contract())]
+		#[pallet::weight(<T as Config>::WeightInfo::register_liquidation_contract())]
 		#[transactional]
 		pub fn register_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
@@ -534,7 +534,7 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::deregister_settlement_contract())]
+		#[pallet::weight(<T as Config>::WeightInfo::deregister_liquidation_contract())]
 		#[transactional]
 		pub fn deregister_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
