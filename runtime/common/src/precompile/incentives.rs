@@ -392,12 +392,12 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 				000000000000000000000000 0000000000000000000100000000000000000002
 				000000000000000000000000 0000000000000000000100000000000000000002
-            "};
+			"};
 
 			// value of 100
 			let expected_output = hex! {"
 				00000000000000000000000000000000 00000000000000000000000000000064
-            "};
+			"};
 
 			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
@@ -423,12 +423,12 @@ mod tests {
 			let input = hex! {"
 				7ec93136
 				000000000000000000000000 0000000000000000000200000000000000000001
-    		"};
+			"};
 
 			// value for FixedU128::saturating_from_rational(1,10)
 			let expected_output = hex! {"
 				00000000000000000000000000000000 0000000000000000016345785d8a0000
-    		"};
+			"};
 
 			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
@@ -453,7 +453,7 @@ mod tests {
 				000000000000000000000000 1000000000000000000000000000000000000001
     			000000000000000000000000 0000000000000000000200000000000000000001
     			00000000000000000000000000000000 00000000000000000000000000100000
-    		"};
+			"};
 
 			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
@@ -494,7 +494,7 @@ mod tests {
     			000000000000000000000000 1000000000000000000000000000000000000001
     			000000000000000000000000 0000000000000000000200000000000000000001
     			00000000000000000000000000000000 00000000000000000000000000000100
-    		"};
+			"};
 
 			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
@@ -550,7 +550,7 @@ mod tests {
     			000000000000000000000000 1000000000000000000000000000000000000001
     			00000000000000000000000000000000 00000000000000000000000000000000
     			000000000000000000000000 0000000000000000000100000000000000000000
-    		"};
+			"};
 
 			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
@@ -588,12 +588,12 @@ mod tests {
     			a2e2fc8e
 				00000000000000000000000000000000 00000000000000000000000000000001
     			000000000000000000000000 0000000000000000000200000000000000000001
-    		"};
+			"};
 
 			// value for FixedU128::saturating_from_rational(1,10)
 			let expected_output = hex! {"
     			00000000000000000000000000000000 0000000000000000016345785d8a0000
-    		"};
+			"};
 
 			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
