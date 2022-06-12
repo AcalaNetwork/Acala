@@ -55,7 +55,7 @@ fn inject_liquidity(
 }
 
 fn inital_taiga_dot_ldot_pool() -> DispatchResult {
-	<StableAsset as StableAssetT>::create_pool(
+	StableAssetWrapper::create_pool(
 		STABLE_ASSET,
 		vec![DOT, LDOT],
 		vec![1u128, 1u128],
@@ -71,38 +71,42 @@ fn inital_taiga_dot_ldot_pool() -> DispatchResult {
 	Tokens::deposit(DOT, &BOB, 100_000_000_000u128)?;
 	Tokens::deposit(LDOT, &BOB, 1_000_000_000_000u128)?;
 
-	<StableAsset as StableAssetT>::mint(&BOB, 0, vec![100_000_000_000u128, 100_000_000_000u128], 0)?;
+	StableAssetWrapper::mint(&BOB, 0, vec![100_000_000_000u128, 1_000_000_000_000u128], 0)?;
+	assert_eq!(
+		StableAssetWrapper::pool(0).map(|p| p.balances).unwrap(),
+		vec![100_000_000_000u128, 100_000_000_000u128]
+	);
 
 	Ok(())
 }
 
 #[test]
-fn rebase_token_amount_convert_work() {
+fn rebase_stable_asset_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(inital_taiga_dot_ldot_pool());
 
 		assert_eq!(
-			AggregatedDex::taiga_get_best_route(DOT, LDOT, 100_000_000u128),
+			StableAssetWrapper::get_best_route(DOT, LDOT, 100_000_000u128),
 			Some((0, 0, 1, 999_983_600u128))
 		);
 		assert_eq!(
-			AggregatedDex::taiga_get_best_route(LDOT, DOT, 1_000_000_000u128),
+			StableAssetWrapper::get_best_route(LDOT, DOT, 1_000_000_000u128),
 			Some((0, 1, 0, 99_998_360u128))
 		);
 
 		assert_eq!(
-			AggregatedDex::taiga_get_swap_input_amount(0, 0, 1, 999_983_600u128),
+			StableAssetWrapper::get_swap_input_amount(0, 0, 1, 999_983_600u128).map(|r| (r.dx, r.dy)),
 			Some((100_000_098u128, 999_983_600u128))
 		);
 		assert_eq!(
-			AggregatedDex::taiga_get_swap_output_amount(0, 0, 1, 100_000_000u128),
+			StableAssetWrapper::get_swap_output_amount(0, 0, 1, 100_000_000u128).map(|r| (r.dx, r.dy)),
 			Some((100_000_000u128, 999_983_600u128))
 		);
 
 		assert_eq!(Tokens::free_balance(DOT, &ALICE), 100_000_000_000u128);
 		assert_eq!(Tokens::free_balance(LDOT, &ALICE), 0);
 		assert_eq!(
-			AggregatedDex::taiga_swap(&ALICE, 0, 0, 1, 100_000_000u128, 0),
+			StableAssetWrapper::swap(&ALICE, 0, 0, 1, 100_000_000u128, 0, 2),
 			Ok((100_000_000u128, 999_983_600u128))
 		);
 		assert_eq!(Tokens::free_balance(DOT, &ALICE), 99_900_000_000u128);

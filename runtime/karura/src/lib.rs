@@ -1113,11 +1113,14 @@ impl module_dex::Config for Runtime {
 
 impl module_aggregated_dex::Config for Runtime {
 	type DEX = Dex;
-	type StableAsset = StableAsset;
+	type StableAsset = module_support::RebasedStableAsset<
+		StableAsset,
+		ConvertBalanceHoma,
+		module_aggregated_dex::RebasedStableAssetErrorConvertor<Runtime>,
+	>;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
-	type RebaseTokenAmountConvertor = ConvertBalanceHoma;
 	type WeightInfo = ();
 }
 
