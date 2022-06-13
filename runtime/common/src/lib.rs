@@ -33,7 +33,7 @@ use frame_support::{
 };
 use frame_system::{limits, EnsureRoot};
 use module_evm::GenesisAccount;
-pub use module_support::{ExchangeRate, FeeToTreasuryPool, PrecompileCallerFilter, Price, Rate, Ratio};
+pub use module_support::{ExchangeRate, OnFeeDeposit, PrecompileCallerFilter, Price, Rate, Ratio};
 use orml_traits::GetByKey;
 pub use precompile::{
 	AllPrecompiles, DEXPrecompile, EVMPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile,
@@ -351,7 +351,7 @@ impl<T, C, F> TakeRevenue for XcmFeeToTreasury<T, C, F>
 where
 	T: Get<AccountId>,
 	C: Convert<MultiLocation, Option<CurrencyId>>,
-	F: FeeToTreasuryPool<AccountId, CurrencyId, Balance>,
+	F: OnFeeDeposit<AccountId, CurrencyId, Balance>,
 {
 	fn take_revenue(revenue: MultiAsset) {
 		if let MultiAsset {
@@ -363,7 +363,7 @@ where
 				// Ensure given treasury account have ed requirement for native asset, but don't need
 				// ed requirement for cross-chain asset because it's one of whitelist accounts.
 				// Ignore the result.
-				let _ = F::on_fee_changed(IncomeSource::XcmFee, Some(&T::get()), currency_id, amount);
+				let _ = F::on_fee_deposit(IncomeSource::XcmFee, Some(&T::get()), currency_id, amount);
 			}
 		}
 	}

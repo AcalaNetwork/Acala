@@ -35,7 +35,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedU128,
 };
 use sp_std::vec::Vec;
-use support::{DEXManager, FeeToTreasuryPool};
+use support::{DEXManager, OnFeeDeposit};
 
 mod mock;
 mod tests;
@@ -279,13 +279,13 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config + Send + Sync> FeeToTreasuryPool<T::AccountId, CurrencyId, Balance> for Pallet<T> {
+impl<T: Config + Send + Sync> OnFeeDeposit<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	/// Parameters:
 	/// - income: Income source, normally means existing modules.
 	/// - account_id: If given account, then the whole fee amount directly deposit to it.
 	/// - currency_id: currency type.
 	/// - amount: fee amount.
-	fn on_fee_changed(
+	fn on_fee_deposit(
 		income: IncomeSource,
 		account_id: Option<&T::AccountId>,
 		currency_id: CurrencyId,

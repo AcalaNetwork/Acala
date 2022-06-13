@@ -105,8 +105,8 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 	fn apply_multiplier_to_fee(fee: Balance, multiplier: Option<Multiplier>) -> Balance;
 }
 
-pub trait FeeToTreasuryPool<AccountId, CurrencyId, Balance> {
-	fn on_fee_changed(
+pub trait OnFeeDeposit<AccountId, CurrencyId, Balance> {
+	fn on_fee_deposit(
 		income: IncomeSource,
 		account_id: Option<&AccountId>,
 		currency_id: CurrencyId,

@@ -197,14 +197,14 @@ fn tx_fee_allocation_works() {
 }
 
 #[test]
-fn fee_to_treasury_pool_on_fee_changed_works() {
+fn on_fee_deposit_works() {
 	ExtBuilder::default()
 		.balances(vec![(ALICE, ACA, 10000), (ALICE, DOT, 10000)])
 		.build()
 		.execute_with(|| {
 			// Native token tests
 			// FeeToTreasuryPool based on pre-configured treasury pool percentage.
-			assert_ok!(Pallet::<Runtime>::on_fee_changed(IncomeSource::TxFee, None, ACA, 10000));
+			assert_ok!(Pallet::<Runtime>::on_fee_deposit(IncomeSource::TxFee, None, ACA, 10000));
 
 			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 8000);
 			assert_eq!(Currencies::free_balance(ACA, &CollatorsRewardPool::get()), 2000);
@@ -218,7 +218,7 @@ fn fee_to_treasury_pool_on_fee_changed_works() {
 			}));
 
 			// FeeToTreasuryPool direct to given account.
-			assert_ok!(Pallet::<Runtime>::on_fee_changed(
+			assert_ok!(Pallet::<Runtime>::on_fee_deposit(
 				IncomeSource::TxFee,
 				Some(&TreasuryAccount::get()),
 				ACA,
@@ -232,7 +232,7 @@ fn fee_to_treasury_pool_on_fee_changed_works() {
 
 			// Non native token tests
 			// FeeToTreasuryPool based on pre-configured treasury pool percentage.
-			assert_ok!(Pallet::<Runtime>::on_fee_changed(IncomeSource::TxFee, None, DOT, 10000));
+			assert_ok!(Pallet::<Runtime>::on_fee_deposit(IncomeSource::TxFee, None, DOT, 10000));
 
 			assert_eq!(Currencies::free_balance(DOT, &NetworkTreasuryPool::get()), 8000);
 			assert_eq!(Currencies::free_balance(DOT, &CollatorsRewardPool::get()), 2000);
@@ -248,7 +248,7 @@ fn fee_to_treasury_pool_on_fee_changed_works() {
 			}));
 
 			// FeeToTreasuryPool direct to given account.
-			assert_ok!(Pallet::<Runtime>::on_fee_changed(
+			assert_ok!(Pallet::<Runtime>::on_fee_deposit(
 				IncomeSource::TxFee,
 				Some(&TreasuryAccount::get()),
 				DOT,
