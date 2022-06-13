@@ -34,6 +34,18 @@ use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Convert, FixedPointNumber, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
+/// The Incentives precompile
+///
+/// `input` data starts with `action`.
+///
+/// Actions:
+///  - GetIncentiveRewardAmount `input` bytes: `pool`, `pool_currency_id`, `reward_currency_id`.
+///  - GetDexRewardAmount `input` bytes: `lp_currency_id`.
+///  - DepositDexShare `input` bytes: `who`, `lp_currency_id`, `amount`.
+///  - WithdrawDexShare `input` bytes: `who`, `lp_currency_id`, `amount`.
+///  - ClaimRewards `input` bytes: `who`, `pool`, `pool_currency_id`.
+///  - GetClaimRewardDeductionRate `input` bytes: `pool`, `pool_currency_id`.
+///  - GetPendingRewards `input` bytes: `reward_currencies`, `pool`, `pool_currency_id`, `who`.
 pub struct IncentivesPrecompile<R>(PhantomData<R>);
 
 #[module_evm_utility_macro::generate_function_selector]
@@ -386,7 +398,10 @@ mod tests {
 				vec![(PoolId::Loans(DOT), vec![(DOT, 100)])]
 			));
 
-			// 0x7469000d
+			// getIncetiveRewardAmount(PoolId,address,addres) => 0x7469000d
+			// pool
+			// pool_currency_id
+			// reward_currency_id
 			let input = hex! {"
 				7469000d
 				00000000000000000000000000000000 00000000000000000000000000000000
@@ -419,7 +434,8 @@ mod tests {
 				vec![(PoolId::Dex(LP_ACA_AUSD), FixedU128::saturating_from_rational(1, 10))]
 			));
 
-			// 0x7ec93136
+			// getDexRewardRate(address) => 0x7ec93136
+			// lp_currency_id
 			let input = hex! {"
 				7ec93136
 				000000000000000000000000 0000000000000000000200000000000000000001
@@ -447,7 +463,10 @@ mod tests {
 
 			assert_ok!(Currencies::deposit(LP_ACA_AUSD, &alice(), 1_000_000_000));
 
-			// 0x8e78b279
+			// depositDexShare(address,address,uint128) => 0x8e78b279
+			// who
+			// lp_currency_id
+			// amount
 			let input = hex! {"
 				8e78b279
 				000000000000000000000000 1000000000000000000000000000000000000001
@@ -488,7 +507,10 @@ mod tests {
 				100_000
 			));
 
-			// 0x6b1c730c
+			// withdrawDexShare(address,address,uint128) => 0x6b1c730c
+			// who
+			// lp_currency_id
+			// amount
 			let input = hex! {"
 				6b1c730c
 				000000000000000000000000 1000000000000000000000000000000000000001
@@ -544,7 +566,10 @@ mod tests {
 				}
 			);
 
-			// 0xe12eab9b
+			// claimRewards(address,PoolId,address) => 0xe12eab9b
+			// who
+			// pool
+			// pool_currency_id
 			let input = hex! {"
 				e12eab9b
 				000000000000000000000000 1000000000000000000000000000000000000001
@@ -583,7 +608,9 @@ mod tests {
 				vec![(PoolId::Dex(LP_ACA_AUSD), FixedU128::saturating_from_rational(1, 10))]
 			));
 
-			// 0xa2e2fc8e
+			// getClaimRewardDeductionRate(PoolId,address) => 0xa2e2fc8e
+			// pool
+			// pool_currency_id
 			let input = hex! {"
 				a2e2fc8e
 				00000000000000000000000000000000 00000000000000000000000000000001
@@ -630,7 +657,7 @@ mod tests {
 				vec![1000, 500]
 			);
 
-			// getPendingRewards(address[],PoolId,address,address) -> 0xeb797b1
+			// getPendingRewards(address[],PoolId,address,address) -> 0x0eb797b1
 			// offset
 			// pool_id
 			// pool_currency_id
