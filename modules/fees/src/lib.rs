@@ -274,6 +274,20 @@ impl<T: Config> Pallet<T> {
 		ensure!(One::is_one(&sum), Error::<T>::InvalidParams);
 		Ok(())
 	}
+
+	fn distribution_fees(
+		pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize>,
+		currency_id: CurrencyId,
+		amount: Balance,
+	) -> DispatchResult {
+		ensure!(!pool_rates.is_empty(), Error::<T>::InvalidParams);
+
+		pool_rates.into_iter().for_each(|pool_rate| {
+			let amount_to_pool = pool_rate.rate.saturating_mul_int(amount);
+			let _ = T::Currencies::deposit(currency_id, &pool_rate.pool, amount_to_pool);
+		});
+		Ok(())
+	}
 }
 
 impl<T: Config + Send + Sync> OnFeeDeposit<T::AccountId, CurrencyId, Balance> for Pallet<T> {
@@ -294,13 +308,7 @@ impl<T: Config + Send + Sync> OnFeeDeposit<T::AccountId, CurrencyId, Balance> fo
 
 		// use `IncomeSource` to distribution fee to different treasury pool based on percentage.
 		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = IncomeToTreasuries::<T>::get(income);
-		ensure!(!pool_rates.is_empty(), Error::<T>::InvalidParams);
-
-		pool_rates.into_iter().for_each(|pool_rate| {
-			let amount_to_pool = pool_rate.rate.saturating_mul_int(amount);
-			let _ = T::Currencies::deposit(currency_id, &pool_rate.pool, amount_to_pool);
-		});
-		Ok(())
+		Pallet::<T>::distribution_fees(pool_rates, currency_id, amount)
 	}
 }
 
