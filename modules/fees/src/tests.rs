@@ -133,7 +133,7 @@ fn tx_fee_allocation_works() {
 			);
 			match negative_balance {
 				Ok(imbalance) => {
-					DealWithTxFees::<Runtime>::on_unbalanceds(Some(imbalance).into_iter());
+					DistributeTxFees::<Runtime>::on_unbalanceds(Some(imbalance).into_iter());
 					assert_eq!(800, Balances::free_balance(&NetworkTreasuryPool::get()));
 					assert_eq!(200, Balances::free_balance(&CollatorsRewardPool::get()));
 				}
@@ -155,7 +155,7 @@ fn tx_fee_allocation_works() {
 			);
 			match negative_balance {
 				Ok(imbalance) => {
-					DealWithTxFees::<Runtime>::on_unbalanceds(Some(imbalance).into_iter());
+					DistributeTxFees::<Runtime>::on_unbalanceds(Some(imbalance).into_iter());
 					assert_eq!(1800, Balances::free_balance(&NetworkTreasuryPool::get()));
 					assert_eq!(200, Balances::free_balance(&CollatorsRewardPool::get()));
 				}
@@ -177,7 +177,7 @@ fn tx_fee_allocation_works() {
 			);
 			match negative_balance {
 				Ok(imbalance) => {
-					DealWithTxFees::<Runtime>::on_unbalanceds(Some(imbalance).into_iter());
+					DistributeTxFees::<Runtime>::on_unbalanceds(Some(imbalance).into_iter());
 					assert_eq!(2300, Balances::free_balance(&NetworkTreasuryPool::get()));
 					assert_eq!(700, Balances::free_balance(&CollatorsRewardPool::get()));
 				}

@@ -1222,7 +1222,7 @@ impl module_transaction_payment::Config for Runtime {
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
-	type OnTransactionPayment = module_fees::DealWithTxFees<Runtime>;
+	type OnTransactionPayment = module_fees::DistributeTxFees<Runtime>;
 	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
 	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
@@ -1756,7 +1756,6 @@ impl module_fees::Config for Runtime {
 	type Currency = Balances;
 	type Currencies = Currencies;
 	type DEX = Dex;
-	type NetworkTreasuryPoolAccount = TreasuryAccount;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}

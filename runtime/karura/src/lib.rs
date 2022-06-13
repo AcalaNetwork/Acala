@@ -1564,7 +1564,6 @@ impl module_fees::Config for Runtime {
 	type Currency = Balances;
 	type Currencies = Currencies;
 	type DEX = Dex;
-	type NetworkTreasuryPoolAccount = KaruraTreasuryAccount;
 }
 
 parameter_types! {

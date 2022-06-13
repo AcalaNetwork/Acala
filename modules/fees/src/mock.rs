@@ -140,7 +140,6 @@ impl fees::Config for Runtime {
 	type Currency = Balances;
 	type Currencies = Currencies;
 	type DEX = ();
-	type NetworkTreasuryPoolAccount = TreasuryAccount;
 	type WeightInfo = ();
 }
 

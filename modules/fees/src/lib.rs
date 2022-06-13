@@ -80,9 +80,6 @@ pub mod module {
 
 		type Currencies: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		#[pallet::constant]
-		type NetworkTreasuryPoolAccount: Get<Self::AccountId>;
-
 		/// DEX to exchange currencies.
 		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
@@ -309,10 +306,10 @@ impl<T: Config + Send + Sync> OnFeeDeposit<T::AccountId, CurrencyId, Balance> fo
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub struct DealWithTxFees<T: Config + Send + Sync>(PhantomData<T>);
+pub struct DistributeTxFees<T: Config + Send + Sync>(PhantomData<T>);
 
 /// Transaction payment fee distribution.
-impl<T: Config + Send + Sync> OnUnbalanced<NegativeImbalanceOf<T>> for DealWithTxFees<T> {
+impl<T: Config + Send + Sync> OnUnbalanced<NegativeImbalanceOf<T>> for DistributeTxFees<T> {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalanceOf<T>>) {
 		if let Some(mut fees) = fees_then_tips.next() {
 			if let Some(tips) = fees_then_tips.next() {
@@ -341,8 +338,14 @@ impl<T: Config + Send + Sync> OnUnbalanced<NegativeImbalanceOf<T>> for DealWithT
 	}
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct DealTxFeesWithAccount<T: Config + Send + Sync, A>(PhantomData<(T, A)>);
+
 /// All transaction fee distribute to treasury pool account.
-impl<T: Config> OnUnbalanced<NegativeImbalanceOf<T>> for Pallet<T> {
+impl<T: Config + Send + Sync, A: Get<T::AccountId>> OnUnbalanced<NegativeImbalanceOf<T>>
+	for DealTxFeesWithAccount<T, A>
+{
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalanceOf<T>>) {
 		if let Some(mut fees) = fees_then_tips.next() {
 			if let Some(tips) = fees_then_tips.next() {
@@ -350,7 +353,7 @@ impl<T: Config> OnUnbalanced<NegativeImbalanceOf<T>> for Pallet<T> {
 			}
 
 			// Must resolve into existing but better to be safe.
-			T::Currency::resolve_creating(&T::NetworkTreasuryPoolAccount::get(), fees);
+			T::Currency::resolve_creating(&A::get(), fees);
 		}
 	}
 }
