@@ -54,8 +54,8 @@ pub struct IncentivesPrecompile<R>(PhantomData<R>);
 pub enum Action {
 	GetIncentiveRewardAmount = "getIncentiveRewardAmount(PoolId,address,address)",
 	GetDexRewardRate = "getDexRewardRate(address)",
-	DepositDexShare = "depositDexShare(address,address,uint128)",
-	WithdrawDexShare = "withdrawDexShare(address,address,uint128)",
+	DepositDexShare = "depositDexShare(address,address,uint256)",
+	WithdrawDexShare = "withdrawDexShare(address,address,uint256)",
 	ClaimRewards = "claimRewards(address,PoolId,address)",
 	GetClaimRewardDeductionRate = "getClaimRewardDeductionRate(PoolId,address)",
 	GetPendingRewards = "getPendingRewards(address[],PoolId,address,address)",
@@ -463,12 +463,12 @@ mod tests {
 
 			assert_ok!(Currencies::deposit(LP_ACA_AUSD, &alice(), 1_000_000_000));
 
-			// depositDexShare(address,address,uint128) => 0x8e78b279
+			// depositDexShare(address,address,uint256) => 0xc17ca2a6
 			// who
 			// lp_currency_id
 			// amount
 			let input = hex! {"
-				8e78b279
+				c17ca2a6
 				000000000000000000000000 1000000000000000000000000000000000000001
 				000000000000000000000000 0000000000000000000200000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000100000
@@ -507,12 +507,12 @@ mod tests {
 				100_000
 			));
 
-			// withdrawDexShare(address,address,uint128) => 0x6b1c730c
+			// withdrawDexShare(address,address,uint256) => 0xdae3ac69
 			// who
 			// lp_currency_id
 			// amount
 			let input = hex! {"
-				6b1c730c
+				dae3ac69
 				000000000000000000000000 1000000000000000000000000000000000000001
 				000000000000000000000000 0000000000000000000200000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000000100
