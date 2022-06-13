@@ -506,26 +506,27 @@ fn charges_fee_when_validate_with_fee_path_call() {
 	// Enable dex with Alice, and initialize tx charge fee pool
 	builder_with_dex_and_fee_pool(true).execute_with(|| {
 		let dex_acc: AccountId = PalletId(*b"aca/dexm").into_account();
-		let dex_ausd = Currencies::free_balance(ACA, &dex_acc);
+		let dex_aca = Currencies::free_balance(ACA, &dex_acc);
 
-		let fee: Balance = 50 * 2 + 100;
-		let fee_perc = CustomFeeSurplus::get();
-		let surplus = fee_perc.mul_ceil(fee);
-		let fee_surplus = fee + surplus;
+		let fee: Balance = 50 * 2 + 100 + 10;
+		let fee_surplus = fee + CustomFeeSurplus::get().mul_ceil(fee);
+		assert_eq!(315, fee_surplus);
+
+		assert_ok!(Currencies::update_balance(Origin::root(), BOB, AUSD, 10000));
 
 		// AUSD - ACA
 		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(
-			&ALICE,
+			&BOB,
 			&with_fee_path_call(vec![AUSD, ACA]),
 			&INFO2,
 			50
 		));
 		System::assert_has_event(crate::mock::Event::DEXModule(module_dex::Event::Swap {
-			trader: ALICE,
+			trader: BOB,
 			path: vec![AUSD, ACA],
-			liquidity_changes: vec![31, fee_surplus], // 31 AUSD - 300 ACA
+			liquidity_changes: vec![33, fee_surplus], // 33 AUSD - 315 ACA
 		}));
-		assert_eq!(dex_ausd - fee_surplus, Currencies::free_balance(ACA, &dex_acc));
+		assert_eq!(dex_aca - fee_surplus, Currencies::free_balance(ACA, &dex_acc));
 
 		// DOT - ACA swap dex is invalid
 		assert_noop!(
@@ -539,18 +540,26 @@ fn charges_fee_when_validate_with_fee_path_call() {
 		);
 
 		// DOT - AUSD - ACA
+		let fee: Balance = 50 * 2 + 100;
+		let fee_surplus2 = fee + CustomFeeSurplus::get().mul_ceil(fee);
+		assert_eq!(300, fee_surplus2);
+
+		assert_ok!(Currencies::update_balance(Origin::root(), BOB, DOT, 10000));
 		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(
-			&ALICE,
+			&BOB,
 			&with_fee_path_call(vec![DOT, AUSD, ACA]),
 			&INFO2,
 			50
 		));
 		System::assert_has_event(crate::mock::Event::DEXModule(module_dex::Event::Swap {
-			trader: ALICE,
+			trader: BOB,
 			path: vec![DOT, AUSD, ACA],
-			liquidity_changes: vec![4, 33, fee_surplus], // 4 DOT - 33 AUSD - 300 ACA
+			liquidity_changes: vec![4, 34, fee_surplus2], // 4 DOT - 34 AUSD - 300 ACA
 		}));
-		assert_eq!(dex_ausd - fee_surplus * 2, Currencies::free_balance(ACA, &dex_acc));
+		assert_eq!(
+			dex_aca - fee_surplus - fee_surplus2,
+			Currencies::free_balance(ACA, &dex_acc)
+		);
 	});
 }
 
@@ -565,28 +574,48 @@ fn charges_fee_when_validate_with_fee_currency_call() {
 		let sub_dot_aca = Currencies::free_balance(ACA, &dot_acc);
 		let sub_dot_dot = Currencies::free_balance(DOT, &dot_acc);
 
-		let fee: Balance = 50 * 2 + 100;
+		let fee: Balance = 50 * 2 + 100 + 10;
 		let fee_perc = AlternativeFeeSurplus::get();
-		let surplus = fee_perc.mul_ceil(fee);
-		let fee_amount = fee + surplus;
+		let surplus = fee_perc.mul_ceil(fee); // 53
+		let fee_amount = fee + surplus; // 263
 
+		assert_ok!(Currencies::update_balance(Origin::root(), BOB, AUSD, 10000));
+		assert_eq!(0, Currencies::free_balance(ACA, &BOB));
 		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(
-			&ALICE,
+			&BOB,
 			&with_fee_currency_call(AUSD),
 			&INFO2,
 			50
 		));
+		assert_eq!(10, Currencies::free_balance(ACA, &BOB)); // ED
+		assert_eq!(7370, Currencies::free_balance(AUSD, &BOB));
+		System::assert_has_event(crate::mock::Event::Tokens(orml_tokens::Event::Transfer {
+			currency_id: AUSD,
+			from: BOB,
+			to: ausd_acc.clone(),
+			amount: 2630,
+		}));
+		System::assert_has_event(crate::mock::Event::PalletBalances(pallet_balances::Event::Transfer {
+			from: ausd_acc.clone(),
+			to: BOB,
+			amount: 263,
+		}));
+
 		assert_eq!(sub_ausd_aca - fee_amount, Currencies::free_balance(ACA, &ausd_acc));
 		assert_eq!(
 			sub_ausd_usd + fee_amount * 10,
 			Currencies::free_balance(AUSD, &ausd_acc)
 		);
 
+		let fee: Balance = 50 * 2 + 100;
 		let fee_perc = CustomFeeSurplus::get();
 		let surplus = fee_perc.mul_ceil(fee);
 		let fee_amount = fee + surplus;
+
+		assert_ok!(Currencies::update_balance(Origin::root(), BOB, DOT, 10000));
+		assert_eq!(10, Currencies::free_balance(ACA, &BOB));
 		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(
-			&ALICE,
+			&BOB,
 			&with_fee_currency_call(DOT),
 			&INFO2,
 			50
