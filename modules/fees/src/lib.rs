@@ -293,7 +293,6 @@ impl<T: Config> Pallet<T> {
 		pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize>,
 		currency_id: CurrencyId,
 		amount: Balance,
-		store_tokens: bool,
 	) -> DispatchResult {
 		ensure!(!pool_rates.is_empty(), Error::<T>::InvalidParams);
 
@@ -302,8 +301,7 @@ impl<T: Config> Pallet<T> {
 			let amount_to_pool = pool_rate.rate.saturating_mul_int(amount);
 
 			let deposit = T::Currencies::deposit(currency_id, &treasury_account, amount_to_pool);
-
-			if deposit.is_ok() && store_tokens {
+			if deposit.is_ok() {
 				// record token type for treasury account, used when distribute to incentive pools.
 				let _ = TreasuryTokens::<T>::try_mutate(&treasury_account, |maybe_tokens| -> DispatchResult {
 					if !maybe_tokens.contains(&currency_id) {
@@ -329,7 +327,13 @@ impl<T: Config> Pallet<T> {
 				total_native = total_native.saturating_add(native_amount);
 			}
 		});
-		let _ = Self::distribution_fees(pool_rates, native_token, total_native.unique_saturated_into(), false);
+
+		pool_rates.into_iter().for_each(|pool_rate| {
+			let treasury_account = pool_rate.pool;
+			let amount_to_pool = pool_rate.rate.saturating_mul_int(total_native);
+
+			let _ = T::Currencies::transfer(native_token, &treasury, &treasury_account, amount_to_pool);
+		});
 
 		Self::deposit_event(Event::IncentiveDistribution {
 			treasury,
@@ -345,8 +349,7 @@ impl<T: Config> Pallet<T> {
 		} else {
 			let amount = T::Currencies::free_balance(token, treasury);
 			let limit = SwapLimit::ExactSupply(amount, 0);
-			let swap_path =
-				T::DEX::get_best_price_swap_path(token, T::NativeCurrencyId::get(), limit, T::DexSwapJointList::get());
+			let swap_path = T::DEX::get_best_price_swap_path(token, native_token, limit, T::DexSwapJointList::get());
 			if let Some((swap_path, _, _)) = swap_path {
 				if let Ok((_, native_amount)) = T::DEX::swap_with_specific_path(treasury, &swap_path, limit) {
 					return Some(native_amount);
@@ -375,7 +378,7 @@ impl<T: Config + Send + Sync> OnFeeDeposit<T::AccountId, CurrencyId, Balance> fo
 
 		// use `IncomeSource` to distribution fee to different treasury pool based on percentage.
 		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = IncomeToTreasuries::<T>::get(income);
-		Pallet::<T>::distribution_fees(pool_rates, currency_id, amount, true)
+		Pallet::<T>::distribution_fees(pool_rates, currency_id, amount)
 	}
 }
 
