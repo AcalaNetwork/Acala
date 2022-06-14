@@ -16,6 +16,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false }
 
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
+orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
 
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
@@ -40,6 +41,7 @@ std = [
 	"sp-core/std",
 	"sp-std/std",
 	"orml-traits/std",
+	"orml-tokens/std",
 	"support/std",
 	"primitives/std",
 ]

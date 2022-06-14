@@ -1755,6 +1755,7 @@ impl module_fees::Config for Runtime {
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type Currency = Balances;
 	type Currencies = Currencies;
+	type NativeCurrencyId = GetNativeCurrencyId;
 	type DEX = Dex;
 }
 

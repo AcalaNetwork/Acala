@@ -139,6 +139,7 @@ impl fees::Config for Runtime {
 	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 	type Currency = Balances;
 	type Currencies = Currencies;
+	type NativeCurrencyId = GetNativeCurrencyId;
 	type DEX = ();
 	type WeightInfo = ();
 }

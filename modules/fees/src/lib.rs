@@ -35,7 +35,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedU128,
 };
 use sp_std::vec::Vec;
-use support::{DEXManager, OnFeeDeposit};
+use support::{DEXManager, OnFeeDeposit, SwapLimit};
 
 mod mock;
 mod tests;
@@ -44,6 +44,7 @@ pub use weights::WeightInfo;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::traits::UniqueSaturatedInto;
 
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
@@ -68,6 +69,7 @@ pub mod module {
 
 	parameter_types! {
 		pub const MaxPoolSize: u8 = 10;
+		pub const MaxTokenSize: u8 = 100;
 	}
 
 	#[pallet::config]
@@ -80,10 +82,11 @@ pub mod module {
 
 		type Currencies: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
+		#[pallet::constant]
+		type NativeCurrencyId: Get<CurrencyId>;
+
 		/// DEX to exchange currencies.
 		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
-
-		// type OnUnbalanced: OnUnbalanced<NegativeImbalanceOf<Self>>;
 
 		type WeightInfo: WeightInfo;
 	}
@@ -121,6 +124,14 @@ pub mod module {
 	#[pallet::getter(fn treasury_to_incentives)]
 	pub type TreasuryToIncentives<T: Config> =
 		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize>, ValueQuery>;
+
+	/// Treasury pool tokens list.
+	///
+	/// TreasuryTokens: map AccountId => Vec<CurrencyId>
+	#[pallet::storage]
+	#[pallet::getter(fn treasury_tokens)]
+	pub type TreasuryTokens<T: Config> =
+		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<CurrencyId, MaxTokenSize>, ValueQuery>;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
@@ -207,14 +218,10 @@ pub mod module {
 		/// Force transfer token from treasury pool to incentive pool.
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn force_transfer_to_incentive(
-			origin: OriginFor<T>,
-			_treasury: T::AccountId,
-			_incentive: T::AccountId,
-		) -> DispatchResult {
+		pub fn force_transfer_to_incentive(origin: OriginFor<T>, treasury: T::AccountId) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
-			Ok(())
+			Self::distribution_treasury(treasury)
 		}
 	}
 }
@@ -279,14 +286,66 @@ impl<T: Config> Pallet<T> {
 		pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize>,
 		currency_id: CurrencyId,
 		amount: Balance,
+		store_tokens: bool,
 	) -> DispatchResult {
 		ensure!(!pool_rates.is_empty(), Error::<T>::InvalidParams);
 
 		pool_rates.into_iter().for_each(|pool_rate| {
+			let treasury_account = pool_rate.pool;
 			let amount_to_pool = pool_rate.rate.saturating_mul_int(amount);
-			let _ = T::Currencies::deposit(currency_id, &pool_rate.pool, amount_to_pool);
+
+			let deposit = T::Currencies::deposit(currency_id, &treasury_account, amount_to_pool);
+
+			if deposit.is_ok() && store_tokens {
+				// record token type for treasury account, used when distribute to incentive pools.
+				let _ = TreasuryTokens::<T>::try_mutate(treasury_account, |maybe_tokens| -> DispatchResult {
+					if maybe_tokens.contains(&currency_id) {
+						maybe_tokens
+							.try_push(currency_id)
+							.map_err(|_| Error::<T>::InvalidParams)?;
+					}
+					Ok(())
+				});
+			}
 		});
 		Ok(())
+	}
+
+	fn distribution_treasury(treasury: T::AccountId) -> DispatchResult {
+		let native_token = T::NativeCurrencyId::get();
+		let tokens = TreasuryTokens::<T>::get(&treasury);
+		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = TreasuryToIncentives::<T>::get(&treasury);
+
+		let mut total_native: Balance = 0;
+		tokens.into_iter().for_each(|token| {
+			if let Some(native_amount) = Self::get_native_account(&treasury, native_token, token) {
+				total_native = total_native.saturating_add(native_amount);
+			}
+		});
+		let _ = Self::distribution_fees(
+			pool_rates.clone(),
+			native_token,
+			total_native.unique_saturated_into(),
+			false,
+		);
+		Ok(())
+	}
+
+	fn get_native_account(treasury: &T::AccountId, native_token: CurrencyId, token: CurrencyId) -> Option<Balance> {
+		if native_token == token {
+			let amount = T::Currency::free_balance(treasury);
+			Some(amount.unique_saturated_into())
+		} else {
+			let amount = T::Currencies::free_balance(token, treasury);
+			let limit = SwapLimit::ExactSupply(amount, 0);
+			let swap_path = T::DEX::get_best_price_swap_path(token, T::NativeCurrencyId::get(), limit, vec![]);
+			if let Some((swap_path, _, _)) = swap_path {
+				if let Ok((_, native_amount)) = T::DEX::swap_with_specific_path(treasury, &swap_path, limit) {
+					return Some(native_amount);
+				}
+			}
+			None
+		}
 	}
 }
 
@@ -308,7 +367,7 @@ impl<T: Config + Send + Sync> OnFeeDeposit<T::AccountId, CurrencyId, Balance> fo
 
 		// use `IncomeSource` to distribution fee to different treasury pool based on percentage.
 		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = IncomeToTreasuries::<T>::get(income);
-		Pallet::<T>::distribution_fees(pool_rates, currency_id, amount)
+		Pallet::<T>::distribution_fees(pool_rates, currency_id, amount, true)
 	}
 }
 
