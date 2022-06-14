@@ -290,7 +290,7 @@ fn trader_works() {
 		let unspent: Vec<MultiAsset> = result_assets.into();
 		assert_eq!(vec![expect_unspent.clone()], unspent);
 
-		let mut period_trader = PeriodTrader::new();
+		let mut period_trader = TransactionFeePoolTrader::new();
 		let result_assets = period_trader.buy_weight(xcm_weight, assets.clone());
 		assert!(result_assets.is_err());
 	});
@@ -374,7 +374,7 @@ fn trader_works() {
 			let expect_unspent: MultiAsset = (Parent, total_balance - spent as u128).into();
 
 			// the newly `TransactionFeePoolTrader` works fine as first priority
-			let mut period_trader = PeriodTrader::new();
+			let mut period_trader = TransactionFeePoolTrader::new();
 			let result_assets = period_trader.buy_weight(xcm_weight, assets);
 			let unspent: Vec<MultiAsset> = result_assets.unwrap().into();
 			assert_eq!(vec![expect_unspent.clone()], unspent);

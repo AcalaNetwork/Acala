@@ -190,5 +190,5 @@ pub trait NomineesProvider<AccountId> {
 }
 
 pub trait BuyWeightRate {
-	fn calculate_rate(location: MultiLocation) -> Option<Rate>;
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio>;
 }

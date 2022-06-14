@@ -20,8 +20,6 @@ support = { package = "module-support", path = "../support", default-features = 
 
 orml-traits = { path = "../../orml/traits", default-features = false }
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.23", default-features = false }
-xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.23", default-features = false }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.23", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23" }
@@ -48,7 +46,5 @@ std = [
 	"support/std",
 	"orml-traits/std",
 	"xcm/std",
-	"xcm-builder/std",
-	"xcm-executor/std",
 ]
 try-runtime = ["frame-support/try-runtime"]

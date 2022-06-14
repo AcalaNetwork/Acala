@@ -12,6 +12,7 @@ required-features = ["bench"]
 [dependencies]
 hex-literal = "0.3.1"
 static_assertions = "1.1.0"
+log = { version = "0.4.17", default-features = false }
 num_enum = { version = "0.5.1", default-features = false }
 serde = { version = "1.0.136", optional = true, default-features = false }
 serde_json = { version = "1.0.68", default-features = false, features = ["alloc"] }
@@ -76,6 +77,7 @@ orml-currencies = { path = "../../orml/currencies", default-features = false, op
 default = ["std"]
 std = [
 	"num_enum/std",
+	"log/std",
 	"serde",
 	"serde_json/std",
 	"codec/std",

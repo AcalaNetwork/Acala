@@ -22,10 +22,9 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::Get;
 use frame_support::{
 	parameter_types,
-	traits::{Contains, EnsureOneOf},
+	traits::{Contains, EnsureOneOf, Get},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 		DispatchClass, Weight,
@@ -33,13 +32,26 @@ use frame_support::{
 	RuntimeDebug,
 };
 use frame_system::{limits, EnsureRoot};
-pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
+use module_evm::GenesisAccount;
+use orml_traits::GetByKey;
 use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
-use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, FixedPointNumber, Perbill};
-use sp_std::collections::btree_map::BTreeMap;
+use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
+use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, prelude::*};
 use static_assertions::const_assert;
+
+pub use check_nonce::CheckNonce;
+pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
+pub use precompile::{
+	AllPrecompiles, DEXPrecompile, EVMPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile,
+	SchedulePrecompile, StableAssetPrecompile,
+};
+pub use primitives::{
+	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
+	AccountId,
+};
+pub use xcm_impl::{native_currency_location, AcalaDropAssets, FixedRateOfAsset};
 
 #[cfg(feature = "std")]
 use sp_core::bytes::from_hex;
@@ -49,27 +61,11 @@ use std::str::FromStr;
 pub mod bench;
 pub mod check_nonce;
 pub mod precompile;
-
-#[cfg(test)]
-mod mock;
-
-pub use check_nonce::CheckNonce;
-use module_evm::GenesisAccount;
-use orml_traits::GetByKey;
-pub use precompile::{
-	AllPrecompiles, DEXPrecompile, EVMPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile,
-	SchedulePrecompile, StableAssetPrecompile,
-};
-pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
-	AccountId,
-};
-use sp_std::{marker::PhantomData, prelude::*};
-pub use xcm::latest::prelude::*;
-pub use xcm_builder::TakeRevenue;
-pub use xcm_executor::{traits::DropAssets, Assets};
+pub mod xcm_impl;
 
 mod gas_to_weight_ratio;
+#[cfg(test)]
+mod mock;
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
@@ -205,10 +201,6 @@ pub fn microcent(currency_id: CurrencyId) -> Balance {
 	millicent(currency_id) / 1000
 }
 
-pub fn calculate_asset_ratio(foreign_asset: (AssetId, u128), native_asset: (AssetId, u128)) -> Ratio {
-	Ratio::saturating_from_rational(foreign_asset.1, native_asset.1)
-}
-
 pub type GeneralCouncilInstance = pallet_collective::Instance1;
 pub type FinancialCouncilInstance = pallet_collective::Instance2;
 pub type HomaCouncilInstance = pallet_collective::Instance3;
@@ -339,82 +331,12 @@ pub enum ProxyType {
 	DexLiquidity,
 	StableAssetSwap,
 	StableAssetLiquidity,
+	Homa,
 }
 
 impl Default for ProxyType {
 	fn default() -> Self {
 		Self::Any
-	}
-}
-
-pub fn native_currency_location(para_id: u32, id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(para_id), GeneralKey(id.encode())))
-}
-
-/// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.
-///
-/// parameters type:
-/// - `NC`: native currency_id type.
-/// - `NB`: the ExistentialDeposit amount of native currency_id.
-/// - `GK`: the ExistentialDeposit amount of tokens.
-pub struct AcalaDropAssets<X, T, C, NC, NB, GK>(PhantomData<(X, T, C, NC, NB, GK)>);
-impl<X, T, C, NC, NB, GK> DropAssets for AcalaDropAssets<X, T, C, NC, NB, GK>
-where
-	X: DropAssets,
-	T: TakeRevenue,
-	C: Convert<MultiLocation, Option<CurrencyId>>,
-	NC: Get<CurrencyId>,
-	NB: Get<Balance>,
-	GK: GetByKey<CurrencyId, Balance>,
-{
-	fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
-		let multi_assets: Vec<MultiAsset> = assets.into();
-		let mut asset_traps: Vec<MultiAsset> = vec![];
-		for asset in multi_assets {
-			if let MultiAsset {
-				id: Concrete(location),
-				fun: Fungible(amount),
-			} = asset.clone()
-			{
-				let currency_id = C::convert(location);
-				// burn asset(do nothing here) if convert result is None
-				if let Some(currency_id) = currency_id {
-					let ed = ExistentialDepositsForDropAssets::<NC, NB, GK>::get(&currency_id);
-					if amount < ed {
-						T::take_revenue(asset);
-					} else {
-						asset_traps.push(asset);
-					}
-				}
-			}
-		}
-		if !asset_traps.is_empty() {
-			X::drop_assets(origin, asset_traps.into());
-		}
-		0
-	}
-}
-
-/// `ExistentialDeposit` for tokens, give priority to match native token, then handled by
-/// `ExistentialDeposits`.
-///
-/// parameters type:
-/// - `NC`: native currency_id type.
-/// - `NB`: the ExistentialDeposit amount of native currency_id.
-/// - `GK`: the ExistentialDeposit amount of tokens.
-pub struct ExistentialDepositsForDropAssets<NC, NB, GK>(PhantomData<(NC, NB, GK)>);
-impl<NC, NB, GK> ExistentialDepositsForDropAssets<NC, NB, GK>
-where
-	NC: Get<CurrencyId>,
-	NB: Get<Balance>,
-	GK: GetByKey<CurrencyId, Balance>,
-{
-	fn get(currency_id: &CurrencyId) -> Balance {
-		if currency_id == &NC::get() {
-			NB::get()
-		} else {
-			GK::get(currency_id)
-		}
 	}
 }
 

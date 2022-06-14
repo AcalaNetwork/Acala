@@ -18,9 +18,8 @@
 
 use super::{
 	constants::fee::*, AcalaTreasuryAccount, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert,
-	Currencies, CurrencyId, Event, ExistentialDeposits, FixedRateOfAssetRegistry, GetNativeCurrencyId,
-	NativeTokenExistentialDeposit, Origin, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
-	TransactionFeePoolTrader, UnknownTokens, XcmpQueue, ACA, AUSD,
+	Currencies, CurrencyId, Event, ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin,
+	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmpQueue, ACA, AUSD,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -30,12 +29,13 @@ pub use frame_support::{
 	weights::Weight,
 };
 use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset};
+use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use primitives::evm::is_system_contract;
-use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil};
+use runtime_common::{native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil, FixedRateOfAsset};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
@@ -133,17 +133,16 @@ parameter_types! {
 		).into(),
 		aca_per_second()
 	);
-	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
-	pub AcaPerSecondAsBased: u128 = aca_per_second();
+	pub BaseRate: u128 = aca_per_second();
 }
 
 pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<AcaPerSecond, ToTreasury>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
 );
 
 pub struct XcmConfig;
@@ -234,11 +233,6 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 	DepositToAlternative<AcalaTreasuryAccount, Currencies, CurrencyId, AccountId, Balance>,
 >;
 
-//TODO: use token registry currency type encoding
-fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
-}
-
 pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
@@ -246,8 +240,10 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use CurrencyId::{Erc20, ForeignAsset, Token};
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
-			Token(ACA) | Token(AUSD) | Token(LDOT) => Some(native_currency_location(id)),
-			Erc20(address) if !is_system_contract(address) => Some(native_currency_location(id)),
+			Token(ACA) | Token(AUSD) | Token(LDOT) => Some(native_currency_location(ParachainInfo::get().into(), id)),
+			Erc20(address) if !is_system_contract(address) => {
+				Some(native_currency_location(ParachainInfo::get().into(), id))
+			}
 			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
