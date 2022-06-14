@@ -1464,6 +1464,10 @@ impl module_homa::Config for Runtime {
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+	pub const AllocationPeriod: BlockNumber = 7 * DAYS;
+}
+
 impl module_fees::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = ();
@@ -1471,7 +1475,7 @@ impl module_fees::Config for Runtime {
 	type Currency = Balances;
 	type Currencies = Currencies;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type AllocationPeriod = ConstU32<10>;
+	type AllocationPeriod = AllocationPeriod;
 	type DEX = Dex;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 }
@@ -1792,6 +1796,7 @@ mod benches {
 		[module_cdp_engine, benchmarking::cdp_engine]
 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
 		[module_evm, benchmarking::evm]
+		[module_fees, benchmarking::fees]
 		[module_homa, benchmarking::homa]
 		[module_honzon, benchmarking::honzon]
 		[module_cdp_treasury, benchmarking::cdp_treasury]

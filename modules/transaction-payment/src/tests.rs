@@ -605,8 +605,6 @@ fn charges_fee_when_validate_with_fee_currency_call() {
 			sub_ausd_usd + fee_amount * 10,
 			Currencies::free_balance(AUSD, &ausd_acc)
 		);
-		println!("{:?}", Currencies::free_balance(ACA, &ALICE));
-		println!("{:?}", Currencies::free_balance(AUSD, &ALICE));
 
 		let fee: Balance = 50 * 2 + 100;
 		let fee_perc = CustomFeeSurplus::get();

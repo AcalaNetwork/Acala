@@ -675,9 +675,6 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 	}
 }
 
-parameter_types! {
-	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![];
-}
 impl module_fees::Config for Test {
 	type Event = Event;
 	type UpdateOrigin = EnsureRoot<AccountId>;
