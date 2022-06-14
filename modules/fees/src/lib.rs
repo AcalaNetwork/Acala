@@ -86,10 +86,11 @@ pub mod module {
 		#[pallet::constant]
 		type NativeCurrencyId: Get<CurrencyId>;
 
+		/// Allocation period from treasury to incentive pools.
 		#[pallet::constant]
-		type AccumulatePeriod: Get<Self::BlockNumber>;
+		type AllocationPeriod: Get<Self::BlockNumber>;
 
-		/// DEX to exchange currencies.
+		/// DEX to exchange currencies when allocation.
 		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
 		#[pallet::constant]
@@ -129,8 +130,10 @@ pub mod module {
 		StorageMap<_, Twox64Concat, IncomeSource, BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize>, ValueQuery>;
 
 	/// Treasury pool allocation mapping to different income pools.
+	/// Only allocation token from treasury pool account to income pool accounts when native token
+	/// of treasury pool account is large than threshold.
 	///
-	/// TreasuryToIncentives: map AccountId => Vec<PoolPercent>
+	/// TreasuryToIncentives: map AccountId => (Balance, Vec<PoolPercent>)
 	#[pallet::storage]
 	#[pallet::getter(fn treasury_to_incentives)]
 	pub type TreasuryToIncentives<T: Config> = StorageMap<
@@ -198,7 +201,7 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(now: T::BlockNumber) -> Weight {
-			if now % T::AccumulatePeriod::get() == Zero::zero() {
+			if now % T::AllocationPeriod::get() == Zero::zero() {
 				Self::distribute_incentives();
 				<T as Config>::WeightInfo::force_transfer_to_incentive()
 			} else {

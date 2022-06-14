@@ -1750,6 +1750,10 @@ impl module_idle_scheduler::Config for Runtime {
 	type DisableBlockThreshold = ConstU32<6>;
 }
 
+parameter_types! {
+	pub const AllocationPeriod: BlockNumber = DAYS;
+}
+
 impl module_fees::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = ();
@@ -1757,7 +1761,7 @@ impl module_fees::Config for Runtime {
 	type Currency = Balances;
 	type Currencies = Currencies;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type AccumulatePeriod = ConstU64<10>;
+	type AllocationPeriod = AllocationPeriod;
 	type DEX = Dex;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 }

@@ -78,8 +78,23 @@ fn set_treasury_pool_works() {
 				100,
 				pools.clone()
 			));
-			let (_, incentives) = TreasuryToIncentives::<Runtime>::get(NetworkTreasuryPool::get());
+			let (threshold, incentives) = TreasuryToIncentives::<Runtime>::get(NetworkTreasuryPool::get());
 			assert_eq!(incentives.len(), 2);
+			assert_eq!(threshold, 100);
+			System::assert_last_event(Event::Fees(crate::Event::TreasuryPoolSet {
+				treasury: NetworkTreasuryPool::get(),
+				pools: pools.clone(),
+			}));
+
+			assert_ok!(Fees::set_treasury_pool(
+				Origin::signed(ALICE),
+				NetworkTreasuryPool::get(),
+				10,
+				pools.clone()
+			));
+			let (threshold, incentives) = TreasuryToIncentives::<Runtime>::get(NetworkTreasuryPool::get());
+			assert_eq!(incentives.len(), 2);
+			assert_eq!(threshold, 10);
 			System::assert_last_event(Event::Fees(crate::Event::TreasuryPoolSet {
 				treasury: NetworkTreasuryPool::get(),
 				pools,

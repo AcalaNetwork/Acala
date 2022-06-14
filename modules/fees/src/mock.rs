@@ -146,7 +146,7 @@ impl fees::Config for Runtime {
 	type Currency = Balances;
 	type Currencies = Currencies;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type AccumulatePeriod = ConstU64<10>;
+	type AllocationPeriod = ConstU64<10>;
 	type DEX = DEX;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
