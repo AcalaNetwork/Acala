@@ -29,20 +29,21 @@ use frame_support::{
 	weights::IdentityFee,
 	PalletId, RuntimeDebug,
 };
-use frame_system::{EnsureRoot, EnsureSignedBy};
+use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
+use module_cdp_engine::CollateralCurrencyIds;
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
-	AddressMapping as AddressMappingT, DEXIncentives, DispatchableTask, ExchangeRate, ExchangeRateProvider,
-	HomaSubAccountXcm, Rate,
+	mocks::MockStableAsset, AddressMapping as AddressMappingT, AuctionManager, DEXIncentives, DispatchableTask,
+	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, PriceProvider, Rate, SpecificJointsSwap,
 };
 use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 pub use primitives::{
 	define_combined_task,
 	evm::{convert_decimals_to_evm, EvmAddress},
 	task::TaskResult,
-	Address, Amount, BlockNumber, CurrencyId, DexShare, EraIndex, Header, Lease, Moment, Nonce, ReserveIdentifier,
-	Signature, TokenSymbol, TradingPair,
+	Address, Amount, AuctionId, BlockNumber, CurrencyId, DexShare, EraIndex, Header, Lease, Moment, Nonce,
+	ReserveIdentifier, Signature, TokenSymbol, TradingPair,
 };
 use scale_info::TypeInfo;
 use sp_core::{H160, H256};
@@ -163,6 +164,7 @@ pub const LP_ACA_AUSD: CurrencyId =
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
 impl module_currencies::Config for Test {
@@ -170,6 +172,7 @@ impl module_currencies::Config for Test {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = ();
 	type AddressMapping = EvmAddressMapping<Test>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
@@ -379,6 +382,129 @@ impl module_dex::Config for Test {
 }
 
 parameter_types! {
+	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
+}
+
+impl module_loans::Config for Test {
+	type Event = Event;
+	type Currency = Tokens;
+	type RiskManager = CDPEngine;
+	type CDPTreasury = CDPTreasury;
+	type PalletId = LoansPalletId;
+	type OnUpdateLoan = ();
+}
+
+pub struct MockPriceSource;
+impl PriceProvider<CurrencyId> for MockPriceSource {
+	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
+		Some(Price::one())
+	}
+
+	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
+		Some(Price::one())
+	}
+}
+
+parameter_type_with_key! {
+	pub MinimumCollateralAmount: |_currency_id: CurrencyId| -> Balance {
+		10
+	};
+}
+
+parameter_types! {
+	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
+	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::one();
+	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
+}
+
+impl module_cdp_engine::Config for Test {
+	type Event = Event;
+	type PriceSource = MockPriceSource;
+	type DefaultLiquidationRatio = DefaultLiquidationRatio;
+	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
+	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
+	type MinimumDebitValue = ConstU128<2>;
+	type MinimumCollateralAmount = MinimumCollateralAmount;
+	type GetStableCurrencyId = GetStableCurrencyId;
+	type CDPTreasury = CDPTreasury;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
+	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
+	type EmergencyShutdown = MockEmergencyShutdown;
+	type UnixTime = Timestamp;
+	type Currency = Currencies;
+	type DEX = DexModule;
+	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
+	type WeightInfo = ();
+}
+
+pub struct MockAuctionManager;
+impl AuctionManager<AccountId> for MockAuctionManager {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type AuctionId = AuctionId;
+
+	fn new_collateral_auction(
+		_refund_recipient: &AccountId,
+		_currency_id: Self::CurrencyId,
+		_amount: Self::Balance,
+		_target: Self::Balance,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
+		Ok(())
+	}
+
+	fn get_total_target_in_auction() -> Self::Balance {
+		Default::default()
+	}
+
+	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
+		Default::default()
+	}
+}
+
+pub struct MockEmergencyShutdown;
+impl EmergencyShutdown for MockEmergencyShutdown {
+	fn is_shutdown() -> bool {
+		false
+	}
+}
+
+parameter_types! {
+	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
+	pub CDPTreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![AUSD],
+	];
+}
+
+impl module_cdp_treasury::Config for Test {
+	type Event = Event;
+	type Currency = Currencies;
+	type GetStableCurrencyId = GetStableCurrencyId;
+	type AuctionManagerHandler = MockAuctionManager;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type DEX = DexModule;
+	type MaxAuctionsCount = ConstU32<10_000>;
+	type PalletId = CDPTreasuryPalletId;
+	type TreasuryAccount = CDPTreasuryAccount;
+	type WeightInfo = ();
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
+	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
+}
+
+impl module_honzon::Config for Test {
+	type Event = Event;
+	type Currency = Balances;
+	type DepositPerAuthorization = ConstU128<100>;
+	type CollateralCurrencyIds = CollateralCurrencyIds<Test>;
+	type WeightInfo = ();
+}
+
+parameter_types! {
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 }
 
@@ -576,8 +702,8 @@ parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![0, 1, 2];
 	pub const BondingDuration: EraIndex = 28;
-	pub static MintThreshold: Balance = 0;
-	pub static RedeemThreshold: Balance = 0;
+	pub const MintThreshold: Balance = 0;
+	pub const RedeemThreshold: Balance = 0;
 }
 
 impl module_homa::Config for Test {
@@ -653,6 +779,10 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens exclude_parts { Call },
 		Balances: pallet_balances,
 		Currencies: module_currencies,
+		CDPEngine: module_cdp_engine,
+		CDPTreasury: module_cdp_treasury,
+		Loans: module_loans,
+		Honzon: module_honzon,
 		EVMBridge: module_evm_bridge exclude_parts { Call },
 		AssetRegistry: module_asset_registry,
 		NFTModule: module_nft,
@@ -670,6 +800,14 @@ frame_support::construct_runtime!(
 		Fees: module_fees,
 	}
 );
+
+impl<LocalCall> SendTransactionTypes<LocalCall> for Test
+where
+	Call: From<LocalCall>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = UncheckedExtrinsic;
+}
 
 #[cfg(test)]
 // This function basically just builds a genesis storage key/value store

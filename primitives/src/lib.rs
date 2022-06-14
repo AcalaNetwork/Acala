@@ -169,6 +169,14 @@ impl Decode for TradingPair {
 	}
 }
 
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default, MaxEncodedLen, TypeInfo)]
+pub struct Position {
+	/// The amount of collateral.
+	pub collateral: Balance,
+	/// The amount of debit.
+	pub debit: Balance,
+}
+
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, MaxEncodedLen, TypeInfo)]
 #[repr(u8)]
 pub enum ReserveIdentifier {

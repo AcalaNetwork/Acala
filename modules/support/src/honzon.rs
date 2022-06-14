@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::FullCodec;
+use primitives::Position;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -24,8 +25,7 @@ use sp_std::{
 	prelude::*,
 };
 
-use crate::dex::*;
-use crate::Ratio;
+use crate::{dex::*, ExchangeRate, Ratio};
 
 pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
 	fn get_debit_value(currency_id: CurrencyId, debit_balance: DebitBalance) -> Balance;
@@ -147,4 +147,25 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 
 pub trait EmergencyShutdown {
 	fn is_shutdown() -> bool;
+}
+
+/// Functionality of Honzon Protocol to be exposed to EVM+.
+pub trait HonzonManager<AccountId, CurrencyId, Amount, Balance> {
+	/// Adjust CDP loan
+	fn adjust_loan(
+		who: &AccountId,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
+		debit_adjustment: Amount,
+	) -> DispatchResult;
+	/// Close CDP loan using DEX
+	fn close_loan_by_dex(who: AccountId, currency_id: CurrencyId, max_collateral_amount: Balance) -> DispatchResult;
+	/// Get open CDP corresponding to an account and collateral `CurrencyId`
+	fn get_position(who: &AccountId, currency_id: CurrencyId) -> Position;
+	/// Get liquidation ratio for collateral `CurrencyId`
+	fn get_liquidation_ratio(currency_id: CurrencyId) -> Option<Ratio>;
+	/// Get current ratio of collateral to debit of open CDP
+	fn get_current_collateral_ratio(who: &AccountId, currency_id: CurrencyId) -> Option<Ratio>;
+	/// Get exchange rate of debit units to debit value for a currency_id
+	fn get_debit_exchange_rate(currency_id: CurrencyId) -> ExchangeRate;
 }
