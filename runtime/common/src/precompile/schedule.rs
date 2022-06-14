@@ -228,7 +228,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().encode_bytes(&task_id),
+					output: Output::encode_bytes(&task_id),
 					logs: Default::default(),
 				})
 			}

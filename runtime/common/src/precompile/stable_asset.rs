@@ -102,7 +102,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_address_array(assets),
+					output: Output::encode_address_array(assets),
 					logs: Default::default(),
 				})
 			}
@@ -120,7 +120,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(pool_info.total_supply),
+					output: Output::encode_uint(pool_info.total_supply),
 					logs: Default::default(),
 				})
 			}
@@ -138,7 +138,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(pool_info.precision),
+					output: Output::encode_uint(pool_info.precision),
 					logs: Default::default(),
 				})
 			}
@@ -156,7 +156,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(pool_info.mint_fee),
+					output: Output::encode_uint(pool_info.mint_fee),
 					logs: Default::default(),
 				})
 			}
@@ -174,7 +174,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(pool_info.swap_fee),
+					output: Output::encode_uint(pool_info.swap_fee),
 					logs: Default::default(),
 				})
 			}
@@ -192,7 +192,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(pool_info.redeem_fee),
+					output: Output::encode_uint(pool_info.redeem_fee),
 					logs: Default::default(),
 				})
 			}
@@ -222,7 +222,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128_tuple(input, output),
+					output: Output::encode_uint_tuple(vec![input, output]),
 					logs: Default::default(),
 				})
 			}
@@ -251,7 +251,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u8(0u8),
+					output: Output::encode_uint(0u8),
 					logs: Default::default(),
 				})
 			}
@@ -280,7 +280,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u8(0u8),
+					output: Output::encode_uint(0u8),
 					logs: Default::default(),
 				})
 			}
