@@ -88,6 +88,9 @@ pub mod module {
 		/// DEX to exchange currencies.
 		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
+		#[pallet::constant]
+		type DexSwapJointList: Get<Vec<Vec<CurrencyId>>>;
+
 		type WeightInfo: WeightInfo;
 	}
 
@@ -106,6 +109,10 @@ pub mod module {
 		TreasuryPoolSet {
 			treasury: T::AccountId,
 			pools: Vec<PoolPercent<T::AccountId>>,
+		},
+		IncentiveDistribution {
+			treasury: T::AccountId,
+			amount: Balance,
 		},
 	}
 
@@ -221,7 +228,7 @@ pub mod module {
 		pub fn force_transfer_to_incentive(origin: OriginFor<T>, treasury: T::AccountId) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
-			Self::distribution_treasury(treasury)
+			Self::distribution_incentive(treasury)
 		}
 	}
 }
@@ -298,8 +305,8 @@ impl<T: Config> Pallet<T> {
 
 			if deposit.is_ok() && store_tokens {
 				// record token type for treasury account, used when distribute to incentive pools.
-				let _ = TreasuryTokens::<T>::try_mutate(treasury_account, |maybe_tokens| -> DispatchResult {
-					if maybe_tokens.contains(&currency_id) {
+				let _ = TreasuryTokens::<T>::try_mutate(&treasury_account, |maybe_tokens| -> DispatchResult {
+					if !maybe_tokens.contains(&currency_id) {
 						maybe_tokens
 							.try_push(currency_id)
 							.map_err(|_| Error::<T>::InvalidParams)?;
@@ -311,7 +318,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	fn distribution_treasury(treasury: T::AccountId) -> DispatchResult {
+	fn distribution_incentive(treasury: T::AccountId) -> DispatchResult {
 		let native_token = T::NativeCurrencyId::get();
 		let tokens = TreasuryTokens::<T>::get(&treasury);
 		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = TreasuryToIncentives::<T>::get(&treasury);
@@ -322,12 +329,12 @@ impl<T: Config> Pallet<T> {
 				total_native = total_native.saturating_add(native_amount);
 			}
 		});
-		let _ = Self::distribution_fees(
-			pool_rates.clone(),
-			native_token,
-			total_native.unique_saturated_into(),
-			false,
-		);
+		let _ = Self::distribution_fees(pool_rates, native_token, total_native.unique_saturated_into(), false);
+
+		Self::deposit_event(Event::IncentiveDistribution {
+			treasury,
+			amount: total_native,
+		});
 		Ok(())
 	}
 
@@ -338,7 +345,8 @@ impl<T: Config> Pallet<T> {
 		} else {
 			let amount = T::Currencies::free_balance(token, treasury);
 			let limit = SwapLimit::ExactSupply(amount, 0);
-			let swap_path = T::DEX::get_best_price_swap_path(token, T::NativeCurrencyId::get(), limit, vec![]);
+			let swap_path =
+				T::DEX::get_best_price_swap_path(token, T::NativeCurrencyId::get(), limit, T::DexSwapJointList::get());
 			if let Some((swap_path, _, _)) = swap_path {
 				if let Ok((_, native_amount)) = T::DEX::swap_with_specific_path(treasury, &swap_path, limit) {
 					return Some(native_amount);

@@ -1565,6 +1565,7 @@ impl module_fees::Config for Runtime {
 	type Currencies = Currencies;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DEX = Dex;
+	type DexSwapJointList = AlternativeSwapPathJointList;
 }
 
 parameter_types! {

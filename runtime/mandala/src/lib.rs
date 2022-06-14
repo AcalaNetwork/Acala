@@ -1757,6 +1757,7 @@ impl module_fees::Config for Runtime {
 	type Currencies = Currencies;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DEX = Dex;
+	type DexSwapJointList = AlternativeSwapPathJointList;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}

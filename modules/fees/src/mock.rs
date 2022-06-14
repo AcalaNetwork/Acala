@@ -30,11 +30,14 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{AccountId, Amount, Balance, BlockNumber, CurrencyId, IncomeSource, ReserveIdentifier, TokenSymbol};
+use primitives::{
+	AccountId, Amount, Balance, BlockNumber, CurrencyId, IncomeSource, ReserveIdentifier, TokenSymbol, TradingPair,
+};
 use sp_runtime::traits::AccountIdConversion;
 use support::mocks::MockAddressMapping;
 
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
+pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
@@ -101,6 +104,7 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const GetStakingCurrencyId: CurrencyId = DOT;
 }
 
 ord_parameter_types! {
@@ -132,6 +136,8 @@ parameter_types! {
 	pub StakingRewardPool: AccountId = PalletId(*b"aca/strp").into_account();
 	pub CollatorsRewardPool: AccountId = PalletId(*b"aca/clrp").into_account();
 	pub EcosystemRewardPool: AccountId = PalletId(*b"aca/esrp").into_account();
+
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![vec![GetStakingCurrencyId::get()]];
 }
 
 impl fees::Config for Runtime {
@@ -140,8 +146,33 @@ impl fees::Config for Runtime {
 	type Currency = Balances;
 	type Currencies = Currencies;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DEX = ();
+	type DEX = DEX;
+	type DexSwapJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub const GetExchangeFee: (u32, u32) = (0, 100);
+	pub EnabledTradingPairs: Vec<TradingPair> = vec![
+		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
+		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+	];
+	pub const TradingPathLimit: u32 = 4;
+}
+
+impl module_dex::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type GetExchangeFee = GetExchangeFee;
+	type TradingPathLimit = TradingPathLimit;
+	type PalletId = DEXPalletId;
+	type Erc20InfoMapping = ();
+	type DEXIncentives = ();
+	type WeightInfo = ();
+	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type ExtendedProvisioningBlocks = ConstU64<0>;
+	type OnLiquidityPoolUpdated = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -158,6 +189,7 @@ construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
 		Fees: fees::{Pallet, Storage, Call, Event<T>, Config<T>},
+		DEX: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
 	}
 );
 
@@ -214,7 +246,22 @@ impl ExtBuilder {
 				),
 				(IncomeSource::XcmFee, vec![(NetworkTreasuryPool::get(), 100)]),
 			],
-			treasuries: vec![],
+			treasuries: vec![(
+				NetworkTreasuryPool::get(),
+				vec![
+					(StakingRewardPool::get(), 80),
+					(CollatorsRewardPool::get(), 10),
+					(EcosystemRewardPool::get(), 10),
+				],
+			)],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		module_dex::GenesisConfig::<Runtime> {
+			initial_listing_trading_pairs: vec![],
+			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+			initial_added_liquidity_pools: vec![],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

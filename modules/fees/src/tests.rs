@@ -216,6 +216,14 @@ fn on_fee_deposit_works() {
 				who: CollatorsRewardPool::get(),
 				amount: 2000,
 			}));
+			assert_eq!(
+				crate::TreasuryTokens::<Runtime>::get(&NetworkTreasuryPool::get()).to_vec(),
+				vec![ACA]
+			);
+			assert_eq!(
+				crate::TreasuryTokens::<Runtime>::get(&CollatorsRewardPool::get()).to_vec(),
+				vec![ACA]
+			);
 
 			// FeeToTreasuryPool direct to given account.
 			assert_ok!(Pallet::<Runtime>::on_fee_deposit(
@@ -246,6 +254,14 @@ fn on_fee_deposit_works() {
 				who: CollatorsRewardPool::get(),
 				amount: 2000,
 			}));
+			assert_eq!(
+				crate::TreasuryTokens::<Runtime>::get(&NetworkTreasuryPool::get()).to_vec(),
+				vec![ACA, DOT]
+			);
+			assert_eq!(
+				crate::TreasuryTokens::<Runtime>::get(&CollatorsRewardPool::get()).to_vec(),
+				vec![ACA, DOT]
+			);
 
 			// FeeToTreasuryPool direct to given account.
 			assert_ok!(Pallet::<Runtime>::on_fee_deposit(
@@ -260,5 +276,56 @@ fn on_fee_deposit_works() {
 				who: TreasuryAccount::get(),
 				amount: 10000,
 			}));
+		});
+}
+
+#[test]
+fn distribution_incentive_works() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, ACA, 100000), (ALICE, AUSD, 10000), (ALICE, DOT, 10000)])
+		.build()
+		.execute_with(|| {
+			let pool_rates = IncomeToTreasuries::<Runtime>::get(IncomeSource::TxFee);
+
+			assert_ok!(Pallet::<Runtime>::distribution_fees(
+				pool_rates.clone(),
+				ACA,
+				1000,
+				true
+			));
+			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 800);
+			assert_eq!(Currencies::free_balance(ACA, &CollatorsRewardPool::get()), 200);
+
+			assert_ok!(Pallet::<Runtime>::distribution_incentive(NetworkTreasuryPool::get()));
+			System::assert_has_event(Event::Fees(crate::Event::IncentiveDistribution {
+				treasury: NetworkTreasuryPool::get(),
+				amount: 800,
+			}));
+			assert_eq!(Currencies::free_balance(ACA, &StakingRewardPool::get()), 640);
+			assert_eq!(Currencies::free_balance(ACA, &CollatorsRewardPool::get()), 280);
+			assert_eq!(Currencies::free_balance(ACA, &EcosystemRewardPool::get()), 80);
+
+			assert_ok!(DEX::add_liquidity(
+				Origin::signed(ALICE),
+				ACA,
+				AUSD,
+				10000,
+				1000,
+				0,
+				false
+			));
+			assert_ok!(DEX::add_liquidity(
+				Origin::signed(ALICE),
+				DOT,
+				AUSD,
+				100,
+				1000,
+				0,
+				false
+			));
+
+			assert_ok!(Pallet::<Runtime>::distribution_fees(pool_rates, DOT, 1000, true));
+			assert_eq!(Currencies::free_balance(DOT, &NetworkTreasuryPool::get()), 800);
+			assert_eq!(Currencies::free_balance(DOT, &CollatorsRewardPool::get()), 200);
 		});
 }

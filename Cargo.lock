@@ -6221,6 +6221,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-currencies",
+ "module-dex",
  "module-support",
  "orml-tokens",
  "orml-traits",

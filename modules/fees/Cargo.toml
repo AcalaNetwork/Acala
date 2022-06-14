@@ -28,6 +28,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19" }
 orml-tokens = { path = "../../orml/tokens" }
 module-currencies = { path = "../../modules/currencies" }
+module-dex = { path = "../../modules/dex" }
 
 [features]
 default = ["std"]
