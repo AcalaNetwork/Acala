@@ -70,7 +70,7 @@ pub use frame_support::{
 	pallet_prelude::InvalidTransaction,
 	parameter_types,
 	traits::{
-		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency,
+		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Contains, ContainsLengthBound, Currency as PalletCurrency,
 		EnsureOrigin, EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType,
 		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
 		U128CurrencyToVote,
@@ -1444,7 +1444,6 @@ impl module_homa::Config for Runtime {
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type PalletId = HomaPalletId;
-	type TreasuryAccount = HomaTreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 	type BondingDuration = ConstU32<28>;
@@ -1452,7 +1451,20 @@ impl module_homa::Config for Runtime {
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type XcmInterface = XcmInterface;
+	type OnFeeDeposit = Fees;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
+}
+
+impl module_fees::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type Currency = Balances;
+	type Currencies = Currencies;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type AllocationPeriod = ConstU32<10>;
+	type DEX = Dex;
+	type DexSwapJointList = AlternativeSwapPathJointList;
 }
 
 pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
@@ -1605,6 +1617,7 @@ construct_runtime!(
 		Currencies: module_currencies = 12,
 		Vesting: orml_vesting = 13,
 		TransactionPayment: module_transaction_payment = 14,
+		Fees: module_fees = 15,
 
 		// Treasury
 		Treasury: pallet_treasury = 20,

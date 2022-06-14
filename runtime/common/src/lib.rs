@@ -500,7 +500,8 @@ parameter_types! {
 	pub HonzonInsuranceRewardPool: AccountId = PalletId(*b"aca/hirp").into_account();
 	pub HonzonLiquitationRewardPool: AccountId = PalletId(*b"aca/hlrp").into_account();
 	pub StakingRewardPool: AccountId = PalletId(*b"aca/strp").into_account();
-	pub CollatorsRewardPool: AccountId = PalletId(*b"aca/clrp").into_account();
+	pub CollatorsRewardPoolPalletId: PalletId = PalletId(*b"aca/clrp");
+	pub CollatorsRewardPool: AccountId = CollatorsRewardPoolPalletId::get().into_account();
 	pub EcosystemRewardPool: AccountId = PalletId(*b"aca/esrp").into_account();
 }
 

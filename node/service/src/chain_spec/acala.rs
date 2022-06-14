@@ -194,5 +194,6 @@ fn acala_dev_genesis(
 		polkadot_xcm: PolkadotXcmConfig {
 			safe_xcm_version: Some(2),
 		},
+		fees: Default::default(),
 	}
 }

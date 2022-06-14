@@ -33,7 +33,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use codec::{Decode, DecodeLimit, Encode};
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use frame_support::pallet_prelude::InvalidTransaction;
-use frame_support::traits::ConstU64;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
@@ -105,7 +104,7 @@ pub use primitives::{
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles, CollatorsRewardPool,
-	EcosystemRewardPool, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
+	CollatorsRewardPoolPalletId, EcosystemRewardPool, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
 	EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
@@ -168,7 +167,6 @@ parameter_types! {
 	pub const HomaPalletId: PalletId = PalletId(*b"aca/homa");
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
-	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const PhragmenElectionPalletId: LockIdentifier = *b"aca/phre";
@@ -195,7 +193,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		HomaTreasuryPalletId::get().into_account(),
 		IncentivesPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
-		CollatorPotId::get().into_account(),
 		StarportPalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
@@ -298,7 +295,7 @@ impl module_collator_selection::Config for Runtime {
 	type Currency = Balances;
 	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
-	type PotId = CollatorPotId;
+	type PotId = CollatorsRewardPoolPalletId;
 	type MinCandidates = ConstU32<5>;
 	type MaxCandidates = ConstU32<200>;
 	type MaxInvulnerables = ConstU32<50>;
@@ -1213,8 +1210,6 @@ parameter_types! {
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT, RENBTC];
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
-	// 20% of tx fee deposit to collator, 80% to treasury.
-	pub ToCollcator: AccountId = CollatorPotId::get().into_account();
 }
 
 impl module_transaction_payment::Config for Runtime {
@@ -1341,7 +1336,6 @@ impl module_homa::Config for Runtime {
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type PalletId = HomaPalletId;
-	type TreasuryAccount = HomaTreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 	type BondingDuration = ConstU32<28>;
@@ -1349,6 +1343,7 @@ impl module_homa::Config for Runtime {
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type XcmInterface = XcmInterface;
+	type OnFeeDeposit = Fees;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 

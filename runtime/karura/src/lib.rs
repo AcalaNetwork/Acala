@@ -66,7 +66,6 @@ use orml_traits::{
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
-use frame_support::traits::ConstU64;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
@@ -1483,7 +1482,6 @@ impl module_homa::Config for Runtime {
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type PalletId = HomaPalletId;
-	type TreasuryAccount = HomaTreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 	type BondingDuration = ConstU32<28>;
@@ -1491,6 +1489,7 @@ impl module_homa::Config for Runtime {
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type XcmInterface = XcmInterface;
+	type OnFeeDeposit = Fees;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 

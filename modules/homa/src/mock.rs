@@ -168,10 +168,24 @@ ord_parameter_types! {
 }
 
 parameter_types! {
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![];
+}
+impl module_fees::Config for Runtime {
+	type Event = Event;
+	type UpdateOrigin = EnsureRoot<AccountId>;
+	type Currency = Balances;
+	type Currencies = Currencies;
+	type DEX = ();
+	type WeightInfo = ();
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type AllocationPeriod = ConstU64<10>;
+	type DexSwapJointList = AlternativeSwapPathJointList;
+}
+
+parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = STAKING_CURRENCY_ID;
 	pub const LiquidCurrencyId: CurrencyId = LIQUID_CURRENCY_ID;
 	pub const HomaPalletId: PalletId = PalletId(*b"aca/homa");
-	pub const TreasuryAccount: AccountId = HOMA_TREASURY;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![0, 1, 2];
 	pub const BondingDuration: EraIndex = 28;
@@ -187,7 +201,6 @@ impl Config for Runtime {
 	type StakingCurrencyId = StakingCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;
 	type PalletId = HomaPalletId;
-	type TreasuryAccount = TreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 	type BondingDuration = BondingDuration;
@@ -195,6 +208,7 @@ impl Config for Runtime {
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type XcmInterface = MockHomaSubAccountXcm;
+	type OnFeeDeposit = Fees;
 	type WeightInfo = ();
 }
 
@@ -207,11 +221,12 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Homa: homa::{Pallet, Call, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Currencies: module_currencies::{Pallet, Call, Event<T>},
+		System: frame_system,
+		Homa: homa,
+		Balances: pallet_balances,
+		Tokens: orml_tokens,
+		Currencies: module_currencies,
+		Fees: module_fees,
 	}
 );
 

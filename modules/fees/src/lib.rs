@@ -193,7 +193,7 @@ pub mod module {
 						rate: FixedU128::saturating_from_rational(pool_rate.1, 100),
 					})
 					.collect();
-				let _ = <Pallet<T>>::do_set_incentive_rate(treasury.clone(), threshold.clone(), pool_rates);
+				let _ = <Pallet<T>>::do_set_incentive_rate(treasury.clone(), *threshold, pool_rates);
 			});
 		}
 	}

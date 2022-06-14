@@ -237,6 +237,7 @@ mod mandala_only_tests {
 	use frame_support::{pallet_prelude::Decode, traits::OnUnbalanced};
 	use module_fees::DistributeTxFees;
 	use pallet_authorship::EventHandler;
+	use runtime_common::{CollatorsRewardPool, NetworkTreasuryPool};
 
 	#[test]
 	fn treasury_handles_collator_rewards_correctly() {
@@ -251,7 +252,8 @@ mod mandala_only_tests {
 					AccountId::from(ALICE)
 				)));
 
-				let pot_account_id = CollatorSelection::account_id();
+				let pot_account_id = CollatorsRewardPool::get();
+				let network_treasury = NetworkTreasuryPool::get();
 				// Currently pot has ExistentialDeposits
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
@@ -274,11 +276,19 @@ mod mandala_only_tests {
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
 					299_999_999_998
 				);
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &network_treasury),
+					899_999_999_992
+				);
 
 				CollatorSelection::note_author(AccountId::from(BOB));
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
 					299_999_999_998
+				);
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &network_treasury),
+					899_999_999_992
 				);
 				assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)), 0);
 
@@ -293,13 +303,21 @@ mod mandala_only_tests {
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
 					300_000_000_000
 				);
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &network_treasury),
+					900_000_000_000
+				);
 
-				// Splits half of 300_000_000_000 to BOB
+				// Splits half of available pot to BOB: (pot - ED) / 2 = (30c - 10c) / 2 = 10c
 				CollatorSelection::note_author(AccountId::from(BOB));
 
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
 					200_000_000_000
+				);
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &network_treasury),
+					900_000_000_000
 				);
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)),
