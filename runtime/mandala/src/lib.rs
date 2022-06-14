@@ -33,6 +33,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use codec::{Decode, DecodeLimit, Encode};
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use frame_support::pallet_prelude::InvalidTransaction;
+use frame_support::traits::ConstU64;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
@@ -1756,6 +1757,7 @@ impl module_fees::Config for Runtime {
 	type Currency = Balances;
 	type Currencies = Currencies;
 	type NativeCurrencyId = GetNativeCurrencyId;
+	type AccumulatePeriod = ConstU64<10>;
 	type DEX = Dex;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 }

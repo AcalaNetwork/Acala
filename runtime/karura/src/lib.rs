@@ -66,6 +66,7 @@ use orml_traits::{
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
+use frame_support::traits::ConstU64;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
@@ -1564,6 +1565,7 @@ impl module_fees::Config for Runtime {
 	type Currency = Balances;
 	type Currencies = Currencies;
 	type NativeCurrencyId = GetNativeCurrencyId;
+	type AccumulatePeriod = ConstU64<10>;
 	type DEX = Dex;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 }

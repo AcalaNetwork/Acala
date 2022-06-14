@@ -51,6 +51,7 @@ pub type NegativeImbalanceOf<T> =
 pub type Incomes<T> = Vec<(IncomeSource, Vec<(<T as frame_system::Config>::AccountId, u32)>)>;
 pub type Treasuries<T> = Vec<(
 	<T as frame_system::Config>::AccountId,
+	Balance,
 	Vec<(<T as frame_system::Config>::AccountId, u32)>,
 )>;
 
@@ -84,6 +85,9 @@ pub mod module {
 
 		#[pallet::constant]
 		type NativeCurrencyId: Get<CurrencyId>;
+
+		#[pallet::constant]
+		type AccumulatePeriod: Get<Self::BlockNumber>;
 
 		/// DEX to exchange currencies.
 		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
@@ -129,8 +133,13 @@ pub mod module {
 	/// TreasuryToIncentives: map AccountId => Vec<PoolPercent>
 	#[pallet::storage]
 	#[pallet::getter(fn treasury_to_incentives)]
-	pub type TreasuryToIncentives<T: Config> =
-		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize>, ValueQuery>;
+	pub type TreasuryToIncentives<T: Config> = StorageMap<
+		_,
+		Twox64Concat,
+		T::AccountId,
+		(Balance, BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize>),
+		ValueQuery,
+	>;
 
 	/// Treasury pool tokens list.
 	///
@@ -173,7 +182,7 @@ pub mod module {
 					.collect();
 				let _ = <Pallet<T>>::do_set_treasury_rate(*income, pool_rates);
 			});
-			self.treasuries.iter().for_each(|(treasury, pools)| {
+			self.treasuries.iter().for_each(|(treasury, threshold, pools)| {
 				let pool_rates = pools
 					.iter()
 					.map(|pool_rate| PoolPercent {
@@ -181,23 +190,27 @@ pub mod module {
 						rate: FixedU128::saturating_from_rational(pool_rate.1, 100),
 					})
 					.collect();
-				let _ = <Pallet<T>>::do_set_incentive_rate(treasury.clone(), pool_rates);
+				let _ = <Pallet<T>>::do_set_incentive_rate(treasury.clone(), threshold.clone(), pool_rates);
 			});
 		}
 	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(_: T::BlockNumber) -> Weight {
-			// TODO: trigger transfer from treasury pool to incentive pools
-			<T as Config>::WeightInfo::on_initialize()
+		fn on_initialize(now: T::BlockNumber) -> Weight {
+			if now % T::AccumulatePeriod::get() == Zero::zero() {
+				Self::distribute_incentives();
+				<T as Config>::WeightInfo::force_transfer_to_incentive()
+			} else {
+				<T as Config>::WeightInfo::on_initialize()
+			}
 		}
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Set how much percentage of income fee go to different treasury pools
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_income_fee())]
 		#[transactional]
 		pub fn set_income_fee(
 			origin: OriginFor<T>,
@@ -210,20 +223,21 @@ pub mod module {
 		}
 
 		/// Set how much percentage of treasury pool go to different incentive pools
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_treasury_pool())]
 		#[transactional]
 		pub fn set_treasury_pool(
 			origin: OriginFor<T>,
 			treasury: T::AccountId,
+			threshold: Balance,
 			incentive_pools: Vec<PoolPercent<T::AccountId>>,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
-			Self::do_set_incentive_rate(treasury, incentive_pools)
+			Self::do_set_incentive_rate(treasury, threshold, incentive_pools)
 		}
 
 		/// Force transfer token from treasury pool to incentive pool.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::force_transfer_to_incentive())]
 		#[transactional]
 		pub fn force_transfer_to_incentive(origin: OriginFor<T>, treasury: T::AccountId) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
@@ -259,6 +273,7 @@ impl<T: Config> Pallet<T> {
 
 	fn do_set_incentive_rate(
 		treasury: T::AccountId,
+		threshold: Balance,
 		incentive_pool_rates: Vec<PoolPercent<T::AccountId>>,
 	) -> DispatchResult {
 		ensure!(!incentive_pool_rates.is_empty(), Error::<T>::InvalidParams);
@@ -268,8 +283,9 @@ impl<T: Config> Pallet<T> {
 			.clone()
 			.try_into()
 			.map_err(|_| Error::<T>::InvalidParams)?;
-		TreasuryToIncentives::<T>::try_mutate(&treasury, |maybe_pool_rates| -> DispatchResult {
+		TreasuryToIncentives::<T>::try_mutate(&treasury, |(maybe_threshold, maybe_pool_rates)| -> DispatchResult {
 			*maybe_pool_rates = pool_rates;
+			*maybe_threshold = threshold;
 			Ok(())
 		})?;
 
@@ -319,7 +335,7 @@ impl<T: Config> Pallet<T> {
 	fn distribution_incentive(treasury: T::AccountId) -> DispatchResult {
 		let native_token = T::NativeCurrencyId::get();
 		let tokens = TreasuryTokens::<T>::get(&treasury);
-		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = TreasuryToIncentives::<T>::get(&treasury);
+		let (threshold, pool_rates) = TreasuryToIncentives::<T>::get(&treasury);
 
 		let mut total_native: Balance = 0;
 		tokens.into_iter().for_each(|token| {
@@ -327,6 +343,10 @@ impl<T: Config> Pallet<T> {
 				total_native = total_native.saturating_add(native_amount);
 			}
 		});
+
+		if total_native < threshold {
+			return Ok(());
+		}
 
 		pool_rates.into_iter().for_each(|pool_rate| {
 			let treasury_account = pool_rate.pool;
@@ -357,6 +377,12 @@ impl<T: Config> Pallet<T> {
 			}
 			None
 		}
+	}
+
+	fn distribute_incentives() {
+		TreasuryToIncentives::<T>::iter_keys().for_each(|treasury| {
+			let _ = Self::distribution_incentive(treasury);
+		});
 	}
 }
 

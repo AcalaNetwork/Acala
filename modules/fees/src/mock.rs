@@ -146,6 +146,7 @@ impl fees::Config for Runtime {
 	type Currency = Balances;
 	type Currencies = Currencies;
 	type NativeCurrencyId = GetNativeCurrencyId;
+	type AccumulatePeriod = ConstU64<10>;
 	type DEX = DEX;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
@@ -248,6 +249,7 @@ impl ExtBuilder {
 			],
 			treasuries: vec![(
 				NetworkTreasuryPool::get(),
+				100,
 				vec![
 					(StakingRewardPool::get(), 80),
 					(CollatorsRewardPool::get(), 10),

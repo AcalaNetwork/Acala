@@ -66,11 +66,8 @@ fn set_treasury_pool_works() {
 		.balances(vec![(ALICE, ACA, 10000)])
 		.build()
 		.execute_with(|| {
-			let incentives = TreasuryToIncentives::<Runtime>::get(NetworkTreasuryPool::get());
-			assert_eq!(incentives.len(), 0);
-
 			assert_noop!(
-				Fees::set_treasury_pool(Origin::signed(ALICE), NetworkTreasuryPool::get(), vec![]),
+				Fees::set_treasury_pool(Origin::signed(ALICE), NetworkTreasuryPool::get(), 100, vec![]),
 				Error::<Runtime>::InvalidParams,
 			);
 
@@ -78,9 +75,10 @@ fn set_treasury_pool_works() {
 			assert_ok!(Fees::set_treasury_pool(
 				Origin::signed(ALICE),
 				NetworkTreasuryPool::get(),
+				100,
 				pools.clone()
 			));
-			let incentives = TreasuryToIncentives::<Runtime>::get(NetworkTreasuryPool::get());
+			let (_, incentives) = TreasuryToIncentives::<Runtime>::get(NetworkTreasuryPool::get());
 			assert_eq!(incentives.len(), 2);
 			System::assert_last_event(Event::Fees(crate::Event::TreasuryPoolSet {
 				treasury: NetworkTreasuryPool::get(),
@@ -105,7 +103,7 @@ fn invalid_pool_rates_works() {
 			Error::<Runtime>::InvalidParams
 		);
 		assert_noop!(
-			Fees::set_treasury_pool(Origin::signed(ALICE), NetworkTreasuryPool::get(), pools3),
+			Fees::set_treasury_pool(Origin::signed(ALICE), NetworkTreasuryPool::get(), 100, pools3),
 			Error::<Runtime>::InvalidParams
 		);
 	});
@@ -282,7 +280,7 @@ fn on_fee_deposit_works() {
 #[test]
 fn distribution_incentive_works() {
 	ExtBuilder::default()
-		.balances(vec![(ALICE, ACA, 100000), (ALICE, AUSD, 10000), (ALICE, DOT, 10000)])
+		.balances(vec![(ALICE, ACA, 100000), (ALICE, AUSD, 10000)])
 		.build()
 		.execute_with(|| {
 			let pool_rates = IncomeToTreasuries::<Runtime>::get(IncomeSource::TxFee);
@@ -309,15 +307,6 @@ fn distribution_incentive_works() {
 				0,
 				false
 			));
-			assert_ok!(DEX::add_liquidity(
-				Origin::signed(ALICE),
-				DOT,
-				AUSD,
-				100,
-				1000,
-				0,
-				false
-			));
 
 			assert_ok!(Pallet::<Runtime>::distribution_fees(pool_rates, AUSD, 100));
 			assert_eq!(Currencies::free_balance(AUSD, &NetworkTreasuryPool::get()), 80);
@@ -337,6 +326,87 @@ fn distribution_incentive_works() {
 				amount: 740,
 			}));
 			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 0);
+			assert_eq!(Currencies::free_balance(AUSD, &NetworkTreasuryPool::get()), 0);
+		});
+}
+
+#[test]
+fn distribution_incentive_threshold_works() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, ACA, 100000), (ALICE, AUSD, 10000)])
+		.build()
+		.execute_with(|| {
+			let pool_rates = IncomeToTreasuries::<Runtime>::get(IncomeSource::TxFee);
+
+			assert_ok!(Pallet::<Runtime>::distribution_fees(pool_rates.clone(), ACA, 100));
+			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 80);
+			assert_eq!(Currencies::free_balance(ACA, &CollatorsRewardPool::get()), 20);
+
+			assert_ok!(Pallet::<Runtime>::distribution_incentive(NetworkTreasuryPool::get()));
+			// due to native token less than threshold, not distribute to incentive pools.
+			// but swap still happened, so treasury account got native token.
+			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 80);
+			assert_eq!(Currencies::free_balance(ACA, &StakingRewardPool::get()), 0);
+			assert_eq!(Currencies::free_balance(ACA, &EcosystemRewardPool::get()), 0);
+
+			assert_ok!(Pallet::<Runtime>::distribution_fees(pool_rates.clone(), ACA, 25));
+			// now treasury account native token large than threshold
+			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 100);
+			assert_eq!(Currencies::free_balance(ACA, &CollatorsRewardPool::get()), 25);
+
+			assert_ok!(Pallet::<Runtime>::distribution_incentive(NetworkTreasuryPool::get()));
+			// then distribution to incentive pools
+			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 0);
+			System::assert_has_event(Event::Fees(crate::Event::IncentiveDistribution {
+				treasury: NetworkTreasuryPool::get(),
+				amount: 100,
+			}));
+			assert_eq!(Currencies::free_balance(ACA, &StakingRewardPool::get()), 80);
+			assert_eq!(Currencies::free_balance(ACA, &EcosystemRewardPool::get()), 10);
+			assert_eq!(Currencies::free_balance(ACA, &CollatorsRewardPool::get()), 25 + 10);
+			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 0);
+
+			assert_ok!(DEX::add_liquidity(
+				Origin::signed(ALICE),
+				ACA,
+				AUSD,
+				10000,
+				1000,
+				0,
+				false
+			));
+
+			// swapped out native token less then threshold
+			assert_ok!(Pallet::<Runtime>::distribution_fees(pool_rates.clone(), AUSD, 10));
+			assert_eq!(Currencies::free_balance(AUSD, &NetworkTreasuryPool::get()), 8);
+			assert_eq!(Currencies::free_balance(AUSD, &CollatorsRewardPool::get()), 2);
+			assert_ok!(Pallet::<Runtime>::distribution_incentive(NetworkTreasuryPool::get()));
+			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 79);
+			System::assert_has_event(Event::DEX(module_dex::Event::Swap {
+				trader: NetworkTreasuryPool::get(),
+				path: vec![AUSD, ACA],
+				liquidity_changes: vec![8, 79],
+			}));
+
+			assert_ok!(Pallet::<Runtime>::distribution_fees(pool_rates, AUSD, 10));
+			assert_eq!(Currencies::free_balance(AUSD, &NetworkTreasuryPool::get()), 8);
+			assert_eq!(Currencies::free_balance(AUSD, &CollatorsRewardPool::get()), 2 + 2);
+			assert_ok!(Pallet::<Runtime>::distribution_incentive(NetworkTreasuryPool::get()));
+			System::assert_has_event(Event::DEX(module_dex::Event::Swap {
+				trader: NetworkTreasuryPool::get(),
+				path: vec![AUSD, ACA],
+				liquidity_changes: vec![8, 78],
+			}));
+
+			assert_eq!(Currencies::free_balance(ACA, &StakingRewardPool::get()), 80 + 125);
+			assert_eq!(Currencies::free_balance(ACA, &CollatorsRewardPool::get()), 35 + 15);
+			assert_eq!(Currencies::free_balance(ACA, &EcosystemRewardPool::get()), 10 + 15);
+			System::assert_has_event(Event::Fees(crate::Event::IncentiveDistribution {
+				treasury: NetworkTreasuryPool::get(),
+				amount: 79 + 78,
+			}));
+			// due to percent round, there are some native token left in treasury account.
+			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 2);
 			assert_eq!(Currencies::free_balance(AUSD, &NetworkTreasuryPool::get()), 0);
 		});
 }

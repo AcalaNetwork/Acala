@@ -26,7 +26,7 @@ use k256::{
 };
 use mandala_runtime::{FeesConfig, TreasuryPalletId};
 use runtime_common::{
-	evm_genesis, CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonInsuranceRewardPool,
+	dollar, evm_genesis, CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonInsuranceRewardPool,
 	HonzonLiquitationRewardPool, HonzonTreasuryPool, NetworkTreasuryPool, StakingRewardPool,
 };
 use sc_chain_spec::ChainType;
@@ -693,6 +693,8 @@ fn mandala_genesis(
 }
 
 fn fees_config() -> FeesConfig {
+	use mandala_runtime::ACA;
+
 	FeesConfig {
 		incomes: vec![
 			(
@@ -717,6 +719,7 @@ fn fees_config() -> FeesConfig {
 		treasuries: vec![
 			(
 				NetworkTreasuryPool::get(),
+				1000 * dollar(ACA),
 				vec![
 					(StakingRewardPool::get(), 70),
 					(CollatorsRewardPool::get(), 10),
@@ -726,6 +729,7 @@ fn fees_config() -> FeesConfig {
 			),
 			(
 				HonzonTreasuryPool::get(),
+				1000 * dollar(ACA),
 				vec![
 					(HonzonInsuranceRewardPool::get(), 30),
 					(HonzonLiquitationRewardPool::get(), 70),
