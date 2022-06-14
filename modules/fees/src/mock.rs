@@ -33,6 +33,7 @@ use orml_traits::parameter_type_with_key;
 use primitives::{
 	AccountId, Amount, Balance, BlockNumber, CurrencyId, IncomeSource, ReserveIdentifier, TokenSymbol, TradingPair,
 };
+use sp_core::H160;
 use sp_runtime::traits::AccountIdConversion;
 use support::mocks::MockAddressMapping;
 
@@ -105,6 +106,7 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
+	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
 ord_parameter_types! {
@@ -118,6 +120,7 @@ impl module_currencies::Config for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type EVMBridge = ();
 	type GasToWeight = ();
 	type SweepOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
