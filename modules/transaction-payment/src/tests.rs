@@ -23,7 +23,7 @@
 use super::*;
 use crate::mock::{AlternativeFeeSurplus, AusdFeeSwapPath, CustomFeeSurplus, DotFeeSwapPath};
 use frame_support::{
-	assert_noop, assert_ok, parameter_types,
+	assert_noop, assert_ok,
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
@@ -39,10 +39,9 @@ use sp_runtime::{
 	testing::TestXt,
 	traits::{One, UniqueSaturatedInto},
 };
-use support::{Price, TransactionPayment as TransactionPaymentT};
+use support::{BuyWeightRate, Price, TransactionPayment as TransactionPaymentT};
 use xcm::latest::prelude::*;
 use xcm::prelude::GeneralKey;
-use xcm_executor::Assets;
 
 const CALL: <Runtime as frame_system::Config>::Call = Call::Currencies(module_currencies::Call::transfer {
 	dest: BOB,
@@ -1392,35 +1391,23 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 }
 
 #[test]
-fn period_rate_buy_refund_weight_works() {
-	parameter_types! {
-		pub const NativePerSecond: u128 = 8_000_000_000_000;
-	}
+fn buy_weight_transaction_fee_pool_works() {
 	builder_with_dex_and_fee_pool(true).execute_with(|| {
-		let mock_weight: Weight = 200_000_000;
-		let dot_rate = TokenExchangeRate::<Runtime>::get(DOT);
-		let usd_rate = TokenExchangeRate::<Runtime>::get(AUSD);
-		assert_eq!(dot_rate, Some(Ratio::saturating_from_rational(1, 10)));
-		assert_eq!(usd_rate, Some(Ratio::saturating_from_rational(10, 1)));
+		// Location convert return None.
+		let location = MultiLocation::new(1, X1(Junction::Parachain(2000)));
+		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
+		assert_eq!(rate, None);
 
-		// 1DOT=10KAR, rate=DOT/KAR=1/10, rate=0.1, amount=rate*kar_per_second*weight,
-		// amount=8*weight*rate=0.8*weight=160_000_000
-		let asset: MultiAsset = ((0, X1(GeneralKey(DOT.encode()))), 170_000_000).into();
-		let assets: Assets = asset.into();
-		let mut trader = TransactionFeePoolTrader::<Runtime, CurrencyIdConvert, NativePerSecond, ()>::new();
-		let unused = trader.buy_weight(mock_weight, assets);
-		let expect_asset: MultiAsset = ((0, X1(GeneralKey(DOT.encode()))), 10_000_000).into();
-		assert_eq!(unused.unwrap(), expect_asset.into());
-		assert_eq!(trader.amount, 160_000_000);
+		// Token not in charge fee pool
+		let currency_id = CurrencyId::Token(TokenSymbol::LDOT);
+		let location = MultiLocation::new(1, X1(GeneralKey(currency_id.encode())));
+		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
+		assert_eq!(rate, None);
 
-		// 1KAR=10AUSD, rate=AUSD/KAR=10, rate=10, amount=8*weight*rate=80*weight=16_000_000_000
-		let asset: MultiAsset = ((0, X1(GeneralKey(AUSD.encode()))), 17_000_000_000).into();
-		let assets: Assets = asset.into();
-		let mut trader = TransactionFeePoolTrader::<Runtime, CurrencyIdConvert, NativePerSecond, ()>::new();
-		let unused = trader.buy_weight(mock_weight, assets);
-		let expect_asset: MultiAsset = ((0, X1(GeneralKey(AUSD.encode()))), 1_000_000_000).into();
-		assert_eq!(unused.unwrap(), expect_asset.into());
-		assert_eq!(trader.amount, 16_000_000_000);
+		// DOT Token is in charge fee pool.
+		let location = MultiLocation::parent();
+		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
+		assert_eq!(rate, Some(Ratio::saturating_from_rational(1, 10)));
 	});
 }
 

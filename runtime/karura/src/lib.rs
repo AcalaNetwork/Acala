@@ -51,14 +51,14 @@ use sp_version::RuntimeVersion;
 
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_system::{EnsureRoot, RawOrigin};
-use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfAssetRegistry};
+use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
-use module_transaction_payment::{TargetedFeeAdjustment, TransactionFeePoolTrader};
+use module_transaction_payment::TargetedFeeAdjustment;
 
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use orml_traits::{
@@ -97,12 +97,12 @@ pub use primitives::{
 	TradingPair,
 };
 pub use runtime_common::{
-	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles,
-	EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil,
-	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
-	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
-	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
-	ExistentialDepositsTimesOneHundred, FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight,
+	cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles, EnsureRootOrAllGeneralCouncil,
+	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
+	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
+	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
+	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, ExistentialDepositsTimesOneHundred,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, FixedRateOfAsset, GasToWeight,
 	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
 	RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
@@ -2175,50 +2175,50 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 	fn convert(
 		(call, mut extra): (Call, SignedExtra),
 	) -> Result<(EthereumTransactionMessage, SignedExtra), InvalidTransaction> {
-		match call {
-			Call::EVM(module_evm::Call::eth_call {
-				action,
-				input,
-				value,
-				gas_limit,
-				storage_limit,
-				access_list,
-				valid_until,
-			}) => {
-				if System::block_number() > valid_until {
-					return Err(InvalidTransaction::Stale);
-				}
-
-				let (_, _, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
-
-				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
-					// require immortal
-					return Err(InvalidTransaction::BadProof);
-				}
-
-				let nonce = check_nonce.nonce;
-				let tip = charge.0;
-
-				extra.5.mark_as_ethereum_tx(valid_until);
-
-				Ok((
-					EthereumTransactionMessage {
-						chain_id: EVM::chain_id(),
-						genesis: System::block_hash(0),
-						nonce,
-						tip,
-						gas_limit,
-						storage_limit,
-						action,
-						value,
-						input,
-						valid_until,
-						access_list,
-					},
-					extra,
-				))
+		if let Call::EVM(module_evm::Call::eth_call {
+			action,
+			input,
+			value,
+			gas_limit,
+			storage_limit,
+			access_list,
+			valid_until,
+		}) = call
+		{
+			if System::block_number() > valid_until {
+				return Err(InvalidTransaction::Stale);
 			}
-			_ => Err(InvalidTransaction::BadProof),
+
+			let (_, _, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
+
+			if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
+				// require immortal
+				return Err(InvalidTransaction::BadProof);
+			}
+
+			let nonce = check_nonce.nonce;
+			let tip = charge.0;
+
+			extra.5.mark_as_ethereum_tx(valid_until);
+
+			Ok((
+				EthereumTransactionMessage {
+					chain_id: EVM::chain_id(),
+					genesis: System::block_hash(0),
+					nonce,
+					tip,
+					gas_limit,
+					storage_limit,
+					action,
+					value,
+					input,
+					valid_until,
+					access_list,
+				},
+				extra,
+			))
+		} else {
+			Err(InvalidTransaction::BadProof)
 		}
 	}
 }

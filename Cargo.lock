@@ -5685,8 +5685,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
- "xcm-builder",
- "xcm-executor",
 ]
 
 [[package]]
@@ -6376,8 +6374,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
- "xcm-builder",
- "xcm-executor",
 ]
 
 [[package]]
@@ -10635,6 +10631,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "log",
  "module-asset-registry",
  "module-cdp-engine",
  "module-cdp-treasury",

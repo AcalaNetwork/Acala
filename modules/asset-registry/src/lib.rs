@@ -30,10 +30,9 @@ use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, EnsureOrigin},
 	transactional,
-	weights::constants::WEIGHT_PER_SECOND,
 };
 use frame_system::pallet_prelude::*;
-use module_support::{AssetIdMapping, BuyWeightRate, EVMBridge, Erc20InfoMapping, InvokeContext, Rate};
+use module_support::{AssetIdMapping, BuyWeightRate, EVMBridge, Erc20InfoMapping, InvokeContext, Ratio};
 use primitives::{
 	currency::{
 		AssetIds, AssetMetadata, CurrencyIdType, DexShare, DexShareType, Erc20Id, ForeignAssetId, Lease,
@@ -50,15 +49,10 @@ use scale_info::prelude::format;
 use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedU128};
 use sp_std::{boxed::Box, vec::Vec};
 
-// NOTE:v1::MultiLocation is used in storages, we would need to do migration if upgrade the
-// MultiLocation in the future.
-use xcm::opaque::latest::{prelude::XcmError, AssetId, Fungibility::Fungible, MultiAsset};
 use xcm::{
 	v1::{Junction, Junctions::*, MultiLocation},
 	VersionedMultiLocation,
 };
-use xcm_builder::TakeRevenue;
-use xcm_executor::{traits::WeightTrader, Assets};
 
 mod mock;
 mod tests;
@@ -565,7 +559,7 @@ impl<T: Config> BuyWeightRate for BuyWeightRateOfForeignAsset<T>
 where
 	BalanceOf<T>: Into<u128>,
 {
-	fn calculate_rate(location: MultiLocation) -> Option<Rate> {
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio> {
 		if let Some(CurrencyId::ForeignAsset(foreign_asset_id)) = Pallet::<T>::location_to_currency_ids(location) {
 			if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::ForeignAssetId(foreign_asset_id)) {
 				let minimum_balance = asset_metadata.minimal_balance.into();
@@ -584,7 +578,7 @@ impl<T: Config> BuyWeightRate for BuyWeightRateOfErc20<T>
 where
 	BalanceOf<T>: Into<u128>,
 {
-	fn calculate_rate(location: MultiLocation) -> Option<Rate> {
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio> {
 		match location {
 			MultiLocation {
 				parents: 0,
@@ -609,118 +603,6 @@ where
 				}
 			}
 			_ => None,
-		}
-	}
-}
-
-/// Simple fee calculator that requires payment in a single fungible at a fixed rate.
-///
-/// The constant `FixedRate` type parameter should be the concrete fungible ID and the amount of it
-/// required for one second of weight.
-pub struct FixedRateOfAssetRegistry<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> {
-	weight: Weight,
-	amount: u128,
-	ed_ratio: FixedU128,
-	multi_location: Option<MultiLocation>,
-	_marker: PhantomData<(FixedRate, R, M)>,
-}
-
-impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader
-	for FixedRateOfAssetRegistry<FixedRate, R, M>
-{
-	fn new() -> Self {
-		Self {
-			weight: 0,
-			amount: 0,
-			ed_ratio: Default::default(),
-			multi_location: None,
-			_marker: PhantomData,
-		}
-	}
-
-	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
-		log::trace!(target: "asset-registry::weight", "buy_weight weight: {:?}, payment: {:?}", weight, payment);
-
-		// only support first fungible assets now.
-		let asset_id = payment
-			.fungible
-			.iter()
-			.next()
-			.map_or(Err(XcmError::TooExpensive), |v| Ok(v.0))?;
-
-		if let AssetId::Concrete(ref multi_location) = asset_id {
-			log::debug!(target: "asset-registry::weight", "buy_weight multi_location: {:?}", multi_location);
-
-			if let Some(ed_ratio) = M::calculate_rate(multi_location.clone()) {
-				// The WEIGHT_PER_SECOND is non-zero.
-				let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
-				let amount = ed_ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
-
-				let required = MultiAsset {
-					id: asset_id.clone(),
-					fun: Fungible(amount),
-				};
-
-				log::trace!(
-					target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}, fixed_rate: {:?}, ed_ratio: {:?}, weight_ratio: {:?}",
-					payment, required, FixedRate::get(), ed_ratio, weight_ratio
-				);
-				let unused = payment
-					.clone()
-					.checked_sub(required)
-					.map_err(|_| XcmError::TooExpensive)?;
-				self.weight = self.weight.saturating_add(weight);
-				self.amount = self.amount.saturating_add(amount);
-				self.ed_ratio = ed_ratio;
-				self.multi_location = Some(multi_location.clone());
-				return Ok(unused);
-			}
-		}
-
-		log::trace!(target: "asset-registry::weight", "no concrete fungible asset");
-		Err(XcmError::TooExpensive)
-	}
-
-	fn refund_weight(&mut self, weight: Weight) -> Option<MultiAsset> {
-		log::trace!(
-			target: "asset-registry::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, ed_ratio: {:?}, multi_location: {:?}",
-			weight, self.weight, self.amount, self.ed_ratio, self.multi_location
-		);
-		let weight = weight.min(self.weight);
-		let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
-		let amount = self
-			.ed_ratio
-			.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
-
-		self.weight = self.weight.saturating_sub(weight);
-		self.amount = self.amount.saturating_sub(amount);
-
-		log::trace!(target: "asset-registry::weight", "refund_weight amount: {:?}", amount);
-		if amount > 0 && self.multi_location.is_some() {
-			Some(
-				(
-					self.multi_location.as_ref().expect("checked is non-empty; qed").clone(),
-					amount,
-				)
-					.into(),
-			)
-		} else {
-			None
-		}
-	}
-}
-
-impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateOfAssetRegistry<FixedRate, R, M> {
-	fn drop(&mut self) {
-		log::trace!(target: "asset-registry::weight", "take revenue, weight: {:?}, amount: {:?}, multi_location: {:?}", self.weight, self.amount, self.multi_location);
-		if self.amount > 0 && self.multi_location.is_some() {
-			R::take_revenue(
-				(
-					self.multi_location.as_ref().expect("checked is non-empty; qed").clone(),
-					self.amount,
-				)
-					.into(),
-			);
 		}
 	}
 }
