@@ -163,7 +163,6 @@ parameter_types! {
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaPalletId: PalletId = PalletId(*b"aca/homa");
-	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
@@ -188,7 +187,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		DEXPalletId::get().into_account(),
 		CDPTreasuryPalletId::get().into_account(),
 		HonzonTreasuryPalletId::get().into_account(),
-		HomaTreasuryPalletId::get().into_account(),
 		IncentivesPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 		StarportPalletId::get().into_account(),
@@ -1323,7 +1321,6 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 }
 
 parameter_types! {
-	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
 		0,  // 15sr8Dvq3AT3Z2Z1y8FnQ4VipekAHhmQnrkgzegUr1tNgbcn
 	];

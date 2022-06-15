@@ -157,7 +157,6 @@ parameter_types! {
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaPalletId: PalletId = PalletId(*b"aca/homa");
-	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
 	pub const HonzonBridgePalletId: PalletId = PalletId(*b"aca/hzbg");
@@ -180,7 +179,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		CollatorPotId::get().into_account(),
 		DEXPalletId::get().into_account(),
 		HomaPalletId::get().into_account(),
-		HomaTreasuryPalletId::get().into_account(),
 		HonzonTreasuryPalletId::get().into_account(),
 		IncentivesPalletId::get().into_account(),
 		TreasuryPalletId::get().into_account(),
@@ -1469,7 +1467,6 @@ impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
 		0,  // HTAeD1dokCVs9MwnC1q9s2a7d2kQ52TAjrxE1y5mj5MFLLA
 		1,  // FDVu3RdH5WsE2yTdXN3QMq6v1XVDK8GKjhq5oFjXe8wZYpL

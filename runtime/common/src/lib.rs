@@ -403,7 +403,7 @@ parameter_types! {
 	// Treasury pools
 	pub NetworkTreasuryPool: AccountId = PalletId(*b"aca/nktp").into_account();
 	pub HonzonTreasuryPool: AccountId = PalletId(*b"aca/hztp").into_account();
-	pub HomaTreasuryPool: AccountId = PalletId(*b"aca/hmtp").into_account();
+	pub HomaTreasuryPool: AccountId = PalletId(*b"aca/hmtr").into_account();
 	// Incentive reward Pools
 	pub HonzonInsuranceRewardPool: AccountId = PalletId(*b"aca/hirp").into_account();
 	pub HonzonLiquitationRewardPool: AccountId = PalletId(*b"aca/hlrp").into_account();
