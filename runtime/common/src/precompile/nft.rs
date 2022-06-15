@@ -92,7 +92,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().encode_u128(balance),
+					output: Output::encode_uint(balance),
 					logs: Default::default(),
 				})
 			}
@@ -112,7 +112,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().encode_address(&owner),
+					output: Output::encode_address(owner),
 					logs: Default::default(),
 				})
 			}

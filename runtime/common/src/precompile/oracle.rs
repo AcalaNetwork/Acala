@@ -105,7 +105,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(output),
+					output: Output::encode_uint(output),
 					logs: Default::default(),
 				})
 			}
