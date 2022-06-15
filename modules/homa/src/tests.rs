@@ -1367,7 +1367,7 @@ fn bump_current_era_works() {
 fn staking_reward_fee_distribution_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		setup_fees_distribution();
-		// 100% sstaking reward and 100% commision rate
+		// 100% staking reward and 100% commission rate
 		assert_ok!(Homa::update_homa_params(
 			Origin::signed(HomaAdmin::get()),
 			Some(1_000_000_000),

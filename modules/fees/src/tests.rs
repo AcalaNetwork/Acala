@@ -28,15 +28,6 @@ use mock::{Event, ExtBuilder, Origin, Runtime, System};
 use primitives::AccountId;
 use sp_runtime::FixedU128;
 
-fn build_pool_percents(list: Vec<(AccountId, u32)>) -> Vec<PoolPercent<AccountId>> {
-	list.iter()
-		.map(|data| PoolPercent {
-			pool: data.clone().0,
-			rate: FixedU128::saturating_from_rational(data.clone().1, 100),
-		})
-		.collect()
-}
-
 #[test]
 fn set_income_fee_works() {
 	ExtBuilder::default().build().execute_with(|| {
@@ -45,7 +36,8 @@ fn set_income_fee_works() {
 			Error::<Runtime>::InvalidParams,
 		);
 
-		let pools = build_pool_percents(vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 30)]);
+		let pools =
+			build_pool_percents::<AccountId>(vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 30)]);
 		assert_ok!(Fees::set_income_fee(
 			Origin::signed(ALICE),
 			IncomeSource::TxFee,
@@ -71,7 +63,10 @@ fn set_treasury_pool_works() {
 				Error::<Runtime>::InvalidParams,
 			);
 
-			let pools = build_pool_percents(vec![(StakingRewardPool::get(), 70), (CollatorsRewardPool::get(), 30)]);
+			let pools = build_pool_percents::<AccountId>(vec![
+				(StakingRewardPool::get(), 70),
+				(CollatorsRewardPool::get(), 30),
+			]);
 			assert_ok!(Fees::set_treasury_pool(
 				Origin::signed(ALICE),
 				NetworkTreasuryPool::get(),
@@ -105,9 +100,12 @@ fn set_treasury_pool_works() {
 #[test]
 fn invalid_pool_rates_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		let pools1 = build_pool_percents(vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 20)]);
-		let pools2 = build_pool_percents(vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 40)]);
-		let pools3 = build_pool_percents(vec![(StakingRewardPool::get(), 70), (CollatorsRewardPool::get(), 20)]);
+		let pools1 =
+			build_pool_percents::<AccountId>(vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 20)]);
+		let pools2 =
+			build_pool_percents::<AccountId>(vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 40)]);
+		let pools3 =
+			build_pool_percents::<AccountId>(vec![(StakingRewardPool::get(), 70), (CollatorsRewardPool::get(), 20)]);
 
 		assert_noop!(
 			Fees::set_income_fee(Origin::signed(ALICE), IncomeSource::TxFee, pools1),
@@ -154,7 +152,7 @@ fn tx_fee_allocation_works() {
 			}
 
 			// Update tx fee only to NetworkTreasuryPool account.
-			let pools = build_pool_percents(vec![(NetworkTreasuryPool::get(), 100)]);
+			let pools = build_pool_percents::<AccountId>(vec![(NetworkTreasuryPool::get(), 100)]);
 			assert_ok!(Fees::set_income_fee(
 				Origin::signed(ALICE),
 				IncomeSource::TxFee,
@@ -176,7 +174,10 @@ fn tx_fee_allocation_works() {
 			}
 
 			// Update tx fee to NetworkTreasuryPool and CollatorsRewardPool both 50%.
-			let pools = build_pool_percents(vec![(NetworkTreasuryPool::get(), 50), (CollatorsRewardPool::get(), 50)]);
+			let pools = build_pool_percents::<AccountId>(vec![
+				(NetworkTreasuryPool::get(), 50),
+				(CollatorsRewardPool::get(), 50),
+			]);
 			assert_ok!(Fees::set_income_fee(
 				Origin::signed(ALICE),
 				IncomeSource::TxFee,

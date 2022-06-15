@@ -16,11 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Event, Runtime, System};
+use crate::{Event, Fees, Origin, Runtime, System};
 use frame_system::RawOrigin;
 use module_fees::PoolPercent;
+use module_support::OnFeeDeposit;
 use orml_benchmarking::runtime_benchmarks;
-use primitives::{AccountId, Balance, IncomeSource};
+use primitives::{AccountId, Balance, CurrencyId, IncomeSource, TokenSymbol};
 use sp_runtime::{FixedPointNumber, FixedU128};
 use sp_std::prelude::*;
 
@@ -58,6 +59,35 @@ runtime_benchmarks! {
 		assert_last_event(module_fees::Event::TreasuryPoolSet {
 			treasury,
 			pools,
+		}.into());
+	}
+
+	force_transfer_to_incentive {
+		let treasury: AccountId = runtime_common::NetworkTreasuryPool::get();
+
+		// set_income_fee
+		let pool = PoolPercent {
+			pool: runtime_common::NetworkTreasuryPool::get(),
+			rate: FixedU128::saturating_from_rational(1, 1),
+		};
+		let _ = Fees::set_income_fee(Origin::root(), IncomeSource::TxFee, vec![pool]);
+
+		// set_treasury_pool
+		let pool = PoolPercent {
+			pool: runtime_common::CollatorsRewardPool::get(),
+			rate: FixedU128::saturating_from_rational(1, 1),
+		};
+		let threshold: Balance = 100;
+		let pools = vec![pool];
+		let _ = Fees::set_treasury_pool(Origin::root(), treasury.clone(), threshold, pools.clone());
+
+		let _ = <Fees as OnFeeDeposit<AccountId, CurrencyId, Balance>>::on_fee_deposit(
+			IncomeSource::TxFee, None, CurrencyId::Token(TokenSymbol::ACA), 10000);
+	}: _(RawOrigin::Root, treasury.clone())
+	verify {
+		assert_last_event(module_fees::Event::IncentiveDistribution {
+			treasury,
+			amount: 100000010000,
 		}.into());
 	}
 }
