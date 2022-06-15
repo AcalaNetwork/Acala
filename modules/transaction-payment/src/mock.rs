@@ -280,7 +280,6 @@ impl Config for Runtime {
 
 thread_local! {
 	static WEIGHT_TO_FEE: RefCell<u128> = RefCell::new(1);
-	// static TRANSACTION_BYTE_FEE: RefCell<u128> = RefCell::new(1);
 }
 
 pub struct WeightToFee;
