@@ -728,7 +728,7 @@ fn trap_assets_larger_than_ed_works() {
 fn trap_assets_lower_than_ed_works() {
 	TestNet::reset();
 
-	// 233_100_000_000 * weight:600000000 / WEIGHT_PER_SECOND:10^12 = 0.2331 * 600000000 = 139_860_000
+	// 233_100_000_000 * weight(600000000) / WEIGHT_PER_SECOND(10^12) = 0.2331 * 600000000 = 139_860_000
 	let ksm_per_second = karura_runtime::ksm_per_second();
 	assert_eq!(233_100_000_000, ksm_per_second);
 
@@ -769,10 +769,10 @@ fn trap_assets_lower_than_ed_works() {
 			None
 		);
 
-		// assert_eq!(
-		// 	ksm_asset_amount + dollar(KSM),
-		// 	Currencies::free_balance(KSM, &KaruraTreasuryAccount::get())
-		// );
+		assert_eq!(
+			ksm_asset_amount + dollar(KSM),
+			Currencies::free_balance(KSM, &KaruraTreasuryAccount::get())
+		);
 		assert_eq!(
 			kar_asset_amount,
 			Currencies::free_balance(KAR, &KaruraTreasuryAccount::get()) - kar_treasury_amount
