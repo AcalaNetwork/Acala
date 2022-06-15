@@ -46,3 +46,27 @@ parachains:
     - --bob
   - flags:
     - --charlie
+- image: bifrostnetwork/bifrost:bifrost-v0.9.44
+  chain:
+    base: bifrost-local
+    sudo: alice
+  id: 3000
+  parachain: true
+  flags:
+    - --rpc-methods=unsafe
+    - --force-authoring
+    - --wasm-execution=compiled
+    - --execution=wasm
+  relaychainFlags:
+    - --wasm-execution=compiled
+    - --execution=wasm
+  env:
+    RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
+  volumePath: /data
+  nodes:
+  - flags:
+    - --alice
+  - flags:
+    - --bob
+  - flags:
+    - --charlie
