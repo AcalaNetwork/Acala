@@ -16,14 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Event, Fees, Origin, Runtime, System};
+use crate::{Event, Fees, GetNativeCurrencyId, Origin, Runtime, System};
 use frame_system::RawOrigin;
 use module_fees::PoolPercent;
 use module_support::OnFeeDeposit;
 use orml_benchmarking::runtime_benchmarks;
-use primitives::{AccountId, Balance, CurrencyId, IncomeSource, TokenSymbol};
+use primitives::{AccountId, Balance, CurrencyId, IncomeSource};
 use sp_runtime::{FixedPointNumber, FixedU128};
 use sp_std::prelude::*;
+
+const NATIVECOIN: CurrencyId = GetNativeCurrencyId::get();
 
 fn assert_last_event(generic_event: Event) {
 	System::assert_last_event(generic_event.into());
@@ -64,32 +66,35 @@ runtime_benchmarks! {
 
 	force_transfer_to_incentive {
 		let treasury: AccountId = runtime_common::NetworkTreasuryPool::get();
+		let incentive: AccountId = runtime_common::CollatorsRewardPool::get();
 
-		// set_income_fee
+		// set_income_fee: TxFee -> NetworkTreasuryPool
 		let pool = PoolPercent {
-			pool: runtime_common::NetworkTreasuryPool::get(),
+			pool: treasury.clone(),
 			rate: FixedU128::saturating_from_rational(1, 1),
 		};
 		let _ = Fees::set_income_fee(Origin::root(), IncomeSource::TxFee, vec![pool]);
 
-		// set_treasury_pool
+		let treasuries = Fees::income_to_treasuries(IncomeSource::TxFee);
+		assert_eq!(treasuries.len(), 1);
+
+		// set_treasury_pool: NetworkTreasuryPool -> CollatorsRewardPool
 		let pool = PoolPercent {
-			pool: runtime_common::CollatorsRewardPool::get(),
+			pool: incentive,
 			rate: FixedU128::saturating_from_rational(1, 1),
 		};
 		let threshold: Balance = 100;
 		let pools = vec![pool];
 		let _ = Fees::set_treasury_pool(Origin::root(), treasury.clone(), threshold, pools.clone());
 
+		let (store_threshod, incentives) = Fees::treasury_to_incentives(treasury.clone());
+		assert_eq!(incentives.len(), 1);
+		assert_eq!(store_threshod, threshold);
+
+		// distribution fee: TxFee
 		let _ = <Fees as OnFeeDeposit<AccountId, CurrencyId, Balance>>::on_fee_deposit(
-			IncomeSource::TxFee, None, CurrencyId::Token(TokenSymbol::ACA), 10000);
+			IncomeSource::TxFee, None, NATIVECOIN, 1_000_000_000);
 	}: _(RawOrigin::Root, treasury.clone())
-	verify {
-		assert_last_event(module_fees::Event::IncentiveDistribution {
-			treasury,
-			amount: 100000010000,
-		}.into());
-	}
 }
 
 #[cfg(test)]
