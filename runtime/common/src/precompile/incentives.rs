@@ -101,7 +101,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(value),
+					output: Output::encode_uint(value),
 					logs: Default::default(),
 				})
 			}
@@ -119,7 +119,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(value.into_inner()),
+					output: Output::encode_uint(value.into_inner()),
 					logs: Default::default(),
 				})
 			}
@@ -211,7 +211,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(value.into_inner()),
+					output: Output::encode_uint(value.into_inner()),
 					logs: Default::default(),
 				})
 			}
@@ -237,7 +237,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128_array(value),
+					output: Output::encode_uint_array(value),
 					logs: Default::default(),
 				})
 			}
@@ -677,7 +677,13 @@ mod tests {
 			"};
 
 			// encoded array of [1000, 500]
+			// offset
+			// array_len
+			// value_1
+			// value_2
 			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000020
+				00000000000000000000000000000000 00000000000000000000000000000002
 				00000000000000000000000000000000 000000000000000000000000000003e8
 				00000000000000000000000000000000 000000000000000000000000000001f4
 			"};
