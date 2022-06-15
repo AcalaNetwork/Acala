@@ -317,10 +317,25 @@ pub mod module {
 					(pending_reward.saturating_sub(deduction_amount), deduction_amount)
 				};
 
-				// transfer the actual reward(pending reward exclude deduction) to user from the pool. it should not
-				// affect the process, ignore the result to continue. if it fails, just the user will not
-				// be rewarded, there will not increase user balance.
-				T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount)?;
+				let res = T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount);
+				if let Err(e) = res {
+					log::warn!(
+						target: "incentives",
+						"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
+						This is unexpected but should be safe",
+						actual_amount, currency_id, Self::account_id(), who.clone(), e
+					);
+
+					// put back the rewards to pool.
+					if let Err(ee) = <orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, actual_amount)
+					{
+						log::error!(
+							target: "incentives",
+							"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
+							pool_id, currency_id, actual_amount, ee
+						);
+					}
+				}
 
 				Self::deposit_event(Event::ClaimRewards {
 					who: who.clone(),
