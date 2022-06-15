@@ -1,6 +1,6 @@
 [package]
 name = "module-asset-registry"
-version = "2.6.4"
+version = "2.7.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -16,8 +16,6 @@ frame-system = { git = "https://github.com/paritytech/substrate", branch = "polk
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22", default-features = false }
-xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22", default-features = false }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.22", default-features = false }
 
 module-support = { path = "../support", default-features = false }
 
@@ -46,8 +44,6 @@ std = [
 	"frame-system/std",
 	"primitives/std",
 	"xcm/std",
-	"xcm-builder/std",
-	"xcm-executor/std",
 	"module-support/std",
 ]
 try-runtime = ["frame-support/try-runtime"]

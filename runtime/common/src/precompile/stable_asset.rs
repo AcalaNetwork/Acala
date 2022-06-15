@@ -102,7 +102,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_address_array(assets),
+					output: Output::encode_address_array(assets),
 					logs: Default::default(),
 				})
 			}
@@ -120,7 +120,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(pool_info.total_supply),
+					output: Output::encode_uint(pool_info.total_supply),
 					logs: Default::default(),
 				})
 			}
@@ -138,7 +138,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(pool_info.precision),
+					output: Output::encode_uint(pool_info.precision),
 					logs: Default::default(),
 				})
 			}
@@ -156,7 +156,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(pool_info.mint_fee),
+					output: Output::encode_uint(pool_info.mint_fee),
 					logs: Default::default(),
 				})
 			}
@@ -174,7 +174,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(pool_info.swap_fee),
+					output: Output::encode_uint(pool_info.swap_fee),
 					logs: Default::default(),
 				})
 			}
@@ -192,7 +192,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(pool_info.redeem_fee),
+					output: Output::encode_uint(pool_info.redeem_fee),
 					logs: Default::default(),
 				})
 			}
@@ -222,7 +222,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128_tuple(input, output),
+					output: Output::encode_uint_tuple(vec![input, output]),
 					logs: Default::default(),
 				})
 			}
@@ -251,7 +251,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u8(0u8),
+					output: Output::encode_uint(0u8),
 					logs: Default::default(),
 				})
 			}
@@ -280,7 +280,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u8(0u8),
+					output: Output::encode_uint(0u8),
 					logs: Default::default(),
 				})
 			}
@@ -387,12 +387,10 @@ mod tests {
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
 			let expected_output = hex! {"
-				000000000000000000000000
-				000000000000000000010000
-				000000000000000100000000
-				000000000000000000000000
-				000000000001000000000000
-				00000014
+				00000000000000000000000000000000 00000000000000000000000000000020
+				00000000000000000000000000000000 00000000000000000000000000000002
+				000000000000000000000000 0000000000000000000100000000000000000001
+				000000000000000000000000 0000000000000000000100000000000000000014
 			"};
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
