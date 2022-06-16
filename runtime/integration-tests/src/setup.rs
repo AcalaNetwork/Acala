@@ -113,7 +113,7 @@ mod karura_imports {
 			TradingPair::from_currency_ids(USD_CURRENCY, LIQUID_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY).unwrap(),
 		];
-		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 	}
 
 	pub const NATIVE_CURRENCY: CurrencyId = KAR;
@@ -165,7 +165,7 @@ mod acala_imports {
 			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, LCDOT).unwrap(),
 		];
-		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 	}
 
 	pub const NATIVE_CURRENCY: CurrencyId = ACA;

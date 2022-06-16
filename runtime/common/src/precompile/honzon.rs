@@ -160,7 +160,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128_tuple(collateral, debit),
+					output: Output::encode_uint_tuple(vec![collateral, debit]),
 					logs: Default::default(),
 				})
 			}
@@ -177,7 +177,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(ratio.into_inner()),
+					output: Output::encode_uint(ratio.into_inner()),
 					logs: Default::default(),
 				})
 			}
@@ -195,7 +195,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(ratio.into_inner()),
+					output: Output::encode_uint(ratio.into_inner()),
 					logs: Default::default(),
 				})
 			}
@@ -211,7 +211,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(exchange_rate.into_inner()),
+					output: Output::encode_uint(exchange_rate.into_inner()),
 					logs: Default::default(),
 				})
 			}
@@ -588,7 +588,7 @@ mod tests {
 				000000000000000000000000 0000000000000000000100000000000000000002
 			"};
 
-			// value for FixedU128 of (1/10), default value for exchange rate
+			// value for FixedU128 of 1, default value for exchange rate
 			let expected_output = hex! {"
 				00000000000000000000000000000000 00000000000000000de0b6b3a7640000
 			"};

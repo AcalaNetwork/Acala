@@ -35,7 +35,8 @@ use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
 	mocks::MockStableAsset, AddressMapping as AddressMappingT, AuctionManager, DEXIncentives, DispatchableTask,
-	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, PriceProvider, Rate, SpecificJointsSwap,
+	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, PoolId, PriceProvider, Rate,
+	SpecificJointsSwap,
 };
 use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 pub use primitives::{
@@ -49,7 +50,7 @@ use scale_info::TypeInfo;
 use sp_core::{H160, H256};
 use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
-	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent,
+	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill,
 };
 use sp_std::prelude::*;
 use xcm::latest::prelude::*;
@@ -140,6 +141,8 @@ impl orml_tokens::Config for Test {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 impl pallet_balances::Config for Test {
@@ -248,7 +251,7 @@ parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
-	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
@@ -261,12 +264,12 @@ impl module_transaction_payment::Config for Test {
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = ();
-	type TransactionByteFee = ConstU128<10>;
 	type OperationalFeeMultiplier = ConstU64<5>;
 	type TipPerWeightStep = ConstU128<1>;
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type AlternativeFeeSwapDeposit = ExistenceRequirement;
 	type WeightToFee = IdentityFee<Balance>;
+	type TransactionByteFee = ConstU128<10>;
 	type FeeMultiplierUpdate = ();
 	type DEX = DexModule;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
@@ -475,7 +478,7 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 
 parameter_types! {
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
-	pub CDPTreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
+	pub CDPTreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account_truncating();
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
 		vec![AUSD],
 	];
@@ -709,9 +712,43 @@ impl module_homa::Config for Test {
 	type WeightInfo = ();
 }
 
+impl orml_rewards::Config for Test {
+	type Share = Balance;
+	type Balance = Balance;
+	type PoolId = PoolId;
+	type CurrencyId = CurrencyId;
+	type Handler = Incentives;
+}
+
+parameter_types! {
+	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
+}
+
+ord_parameter_types! {
+	pub const EarnShareBooster: Permill = Permill::from_percent(50);
+	pub const RewardsSource: AccountId = REWARDS_SOURCE;
+}
+
+impl module_incentives::Config for Test {
+	type Event = Event;
+	type RewardsSource = RewardsSource;
+	type AccumulatePeriod = ConstU32<10>;
+	type StableCurrencyId = GetStableCurrencyId;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type EarnShareBooster = EarnShareBooster;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type CDPTreasury = CDPTreasury;
+	type Currency = Tokens;
+	type DEX = DexModule;
+	type EmergencyShutdown = MockEmergencyShutdown;
+	type PalletId = IncentivesPalletId;
+	type WeightInfo = ();
+}
+
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const EVA: AccountId = AccountId::new([5u8; 32]);
+pub const REWARDS_SOURCE: AccountId = AccountId::new([3u8; 32]);
 pub const HOMA_TREASURY: AccountId = AccountId::new([255u8; 32]);
 
 pub fn alice() -> AccountId {
@@ -781,6 +818,8 @@ frame_support::construct_runtime!(
 		EvmAccounts: module_evm_accounts,
 		IdleScheduler: module_idle_scheduler,
 		Homa: module_homa,
+		Incentives: module_incentives,
+		Rewards: orml_rewards,
 		StableAsset: nutsfinance_stable_asset,
 	}
 );

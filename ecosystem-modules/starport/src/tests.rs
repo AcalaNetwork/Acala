@@ -49,7 +49,7 @@ fn lock_works() {
 		// Locked ACALA are transferred from the user's account into Admin's account.
 		assert_eq!(Currencies::free_balance(ACALA, &ALICE), 0);
 		assert_eq!(
-			Currencies::free_balance(ACALA, &StarportPalletId::get().into_account()),
+			Currencies::free_balance(ACALA, &StarportPalletId::get().into_account_truncating()),
 			INITIAL_BALANCE
 		);
 
@@ -73,7 +73,7 @@ fn lock_works() {
 		// Locked ACALA are transferred from the user's account into Admin's account.
 		assert_eq!(Currencies::free_balance(CASH, &ALICE), 0);
 		assert_eq!(
-			Currencies::free_balance(CASH, &StarportPalletId::get().into_account()),
+			Currencies::free_balance(CASH, &StarportPalletId::get().into_account_truncating()),
 			0
 		);
 
@@ -104,7 +104,7 @@ fn lock_to_works() {
 		// Locked ACALA are transferred from the user's account into Admin's account.
 		assert_eq!(Currencies::free_balance(ACALA, &ALICE), 0);
 		assert_eq!(
-			Currencies::free_balance(ACALA, &StarportPalletId::get().into_account()),
+			Currencies::free_balance(ACALA, &StarportPalletId::get().into_account_truncating()),
 			INITIAL_BALANCE
 		);
 		// Supply caps are reduced accordingly.
