@@ -269,7 +269,7 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	/// Get account of cdp treasury module.
 	pub fn account_id() -> T::AccountId {
-		T::PalletId::get().into_account()
+		T::PalletId::get().into_account_truncating()
 	}
 
 	/// Get current total surplus of system.

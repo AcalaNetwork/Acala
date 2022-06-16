@@ -280,6 +280,15 @@ where
 				}));
 			}
 
+			if !module_evm::Pallet::<R>::is_contract(&context.caller) {
+				log::debug!(target: "evm", "Caller is not a system contract: {:?}", context.caller);
+				return Some(Err(PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Caller is not a system contract".into(),
+					cost: target_gas.unwrap_or_default(),
+				}));
+			}
+
 			if address == MULTI_CURRENCY {
 				Some(MultiCurrencyPrecompile::<R>::execute(
 					input, target_gas, context, is_static,

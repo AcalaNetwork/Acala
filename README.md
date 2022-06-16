@@ -213,7 +213,10 @@ yarn
 # generate docker-compose.yml and genesis
 # NOTE: If the docker image is not the latest, need to download it manually.
 # e.g.: docker pull acala/karura-node:latest
-yarn run start generate
+# karura testnet:
+yarn start generate
+# karura-bifrost testnet:
+yarn start generate --config=karura-bifrost.yml
 
 # start relaychain and parachain
 cd output

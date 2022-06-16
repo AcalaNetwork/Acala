@@ -52,13 +52,13 @@ use sc_consensus_manual_seal::{
 	rpc::{ManualSeal, ManualSealApiServer},
 	EngineCommand,
 };
-use sc_executor::NativeElseWasmExecutor;
+use sc_executor::{NativeElseWasmExecutor, WasmExecutionMethod, WasmtimeInstantiationStrategy};
 use sc_network::{config::TransportConfig, multiaddr, NetworkService};
 pub use sc_rpc::SubscriptionTaskExecutor;
 use sc_service::{
 	config::{
 		DatabaseSource, KeepBlocks, KeystoreConfig, MultiaddrWithPeerId, NetworkConfiguration, OffchainWorkerConfig,
-		PruningMode, WasmExecutionMethod,
+		PruningMode,
 	},
 	BasePath, ChainSpec, Configuration, PartialComponents, Role, RpcHandlers, SpawnTasksParams, TFullBackend,
 	TFullCallExecutor, TFullClient, TaskManager,

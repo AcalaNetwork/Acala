@@ -401,16 +401,16 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 // Fee distribution related system account.
 parameter_types! {
 	// Treasury pools
-	pub NetworkTreasuryPool: AccountId = PalletId(*b"aca/nktp").into_account();
-	pub HonzonTreasuryPool: AccountId = PalletId(*b"aca/hztp").into_account();
-	pub HomaTreasuryPool: AccountId = PalletId(*b"aca/hmtr").into_account();
+	pub NetworkTreasuryPool: AccountId = PalletId(*b"aca/nktp").into_account_truncating();
+	pub HonzonTreasuryPool: AccountId = PalletId(*b"aca/hztp").into_account_truncating();
+	pub HomaTreasuryPool: AccountId = PalletId(*b"aca/hmtr").into_account_truncating();
 	// Incentive reward Pools
-	pub HonzonInsuranceRewardPool: AccountId = PalletId(*b"aca/hirp").into_account();
-	pub HonzonLiquitationRewardPool: AccountId = PalletId(*b"aca/hlrp").into_account();
-	pub StakingRewardPool: AccountId = PalletId(*b"aca/strp").into_account();
+	pub HonzonInsuranceRewardPool: AccountId = PalletId(*b"aca/hirp").into_account_truncating();
+	pub HonzonLiquitationRewardPool: AccountId = PalletId(*b"aca/hlrp").into_account_truncating();
+	pub StakingRewardPool: AccountId = PalletId(*b"aca/strp").into_account_truncating();
 	pub CollatorsRewardPoolPalletId: PalletId = PalletId(*b"aca/clrp");
-	pub CollatorsRewardPool: AccountId = CollatorsRewardPoolPalletId::get().into_account();
-	pub EcosystemRewardPool: AccountId = PalletId(*b"aca/esrp").into_account();
+	pub CollatorsRewardPool: AccountId = CollatorsRewardPoolPalletId::get().into_account_truncating();
+	pub EcosystemRewardPool: AccountId = PalletId(*b"aca/esrp").into_account_truncating();
 }
 
 #[cfg(test)]

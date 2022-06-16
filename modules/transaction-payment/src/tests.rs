@@ -165,7 +165,7 @@ fn enable_dex_and_tx_fee_pool() {
 	// validate tx fee pool works
 	vec![AUSD, DOT].iter().for_each(|token| {
 		let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
-		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account(token.clone());
+		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account_truncating(token.clone());
 		assert_eq!(Currencies::free_balance(token.clone(), &treasury_account), 0);
 		assert_eq!(Currencies::free_balance(token.clone(), &sub_account), ed);
 		assert_eq!(Currencies::free_balance(ACA, &sub_account), init_balance);
@@ -504,7 +504,7 @@ fn refund_should_not_works() {
 fn charges_fee_when_validate_with_fee_path_call() {
 	// Enable dex with Alice, and initialize tx charge fee pool
 	builder_with_dex_and_fee_pool(true).execute_with(|| {
-		let dex_acc: AccountId = PalletId(*b"aca/dexm").into_account();
+		let dex_acc: AccountId = PalletId(*b"aca/dexm").into_account_truncating();
 		let dex_aca = Currencies::free_balance(ACA, &dex_acc);
 
 		let fee: Balance = 50 * 2 + 100 + 10;
@@ -1575,7 +1575,7 @@ fn swap_from_pool_and_dex_with_higher_threshold() {
 #[test]
 fn swap_from_pool_and_dex_with_midd_threshold() {
 	builder_with_dex_and_fee_pool(true).execute_with(|| {
-		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account(DOT);
+		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account_truncating(DOT);
 		let dot_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(DOT);
 		let trading_path = vec![DOT, AUSD, ACA];
 
@@ -1835,7 +1835,7 @@ fn charge_fee_pool_operation_works() {
 		));
 
 		let treasury_account: AccountId = <Runtime as Config>::TreasuryAccount::get();
-		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account(AUSD);
+		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account_truncating(AUSD);
 		let usd_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(AUSD);
 		let pool_size = FeePoolSize::get();
 		let swap_threshold = crate::mock::MiddSwapThreshold::get();

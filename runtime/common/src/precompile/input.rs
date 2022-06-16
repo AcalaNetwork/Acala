@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use frame_support::ensure;
-use sp_std::{marker::PhantomData, result::Result, vec, vec::Vec};
+use sp_std::{marker::PhantomData, result::Result, vec::Vec};
 
 use crate::WeightToGas;
 use ethabi::Token;
@@ -201,68 +201,68 @@ where
 	}
 
 	fn bool_at(&self, index: usize) -> Result<bool, Self::Error> {
+		const ONE: U256 = U256([1u64, 0, 0, 0]);
 		let param = self.u256_at(index)?;
-		Ok(!param.is_zero())
+		if param == ONE {
+			Ok(true)
+		} else if param.is_zero() {
+			Ok(false)
+		} else {
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to decode bool".into(),
+				cost: self.target_gas.unwrap_or_default(),
+			})
+		}
 	}
 }
 
-#[derive(Default, Clone, PartialEq, Debug)]
 pub struct Output;
 
 impl Output {
-	pub fn encode_bool(&self, b: bool) -> Vec<u8> {
-		let out = Token::Bool(b);
-		ethabi::encode(&[out])
+	pub fn encode_bool(b: bool) -> Vec<u8> {
+		ethabi::encode(&[Token::Bool(b)])
 	}
 
-	pub fn encode_u8(&self, b: u8) -> Vec<u8> {
-		let out = Token::Uint(U256::from(b));
-		ethabi::encode(&[out])
+	pub fn encode_uint<T>(b: T) -> Vec<u8>
+	where
+		U256: From<T>,
+	{
+		ethabi::encode(&[Token::Uint(U256::from(b))])
 	}
 
-	pub fn encode_u32(&self, b: u32) -> Vec<u8> {
-		let out = Token::Uint(U256::from(b));
-		ethabi::encode(&[out])
+	pub fn encode_uint_tuple<T>(b: Vec<T>) -> Vec<u8>
+	where
+		U256: From<T>,
+	{
+		ethabi::encode(&[Token::Tuple(b.into_iter().map(U256::from).map(Token::Uint).collect())])
 	}
 
-	pub fn encode_u128(&self, b: u128) -> Vec<u8> {
-		let out = Token::Uint(U256::from(b));
-		ethabi::encode(&[out])
+	pub fn encode_uint_array<T>(b: Vec<T>) -> Vec<u8>
+	where
+		U256: From<T>,
+	{
+		ethabi::encode(&[Token::Array(b.into_iter().map(U256::from).map(Token::Uint).collect())])
 	}
 
-	pub fn encode_u128_tuple(&self, b: u128, c: u128) -> Vec<u8> {
-		let out = Token::Tuple(vec![Token::Uint(U256::from(b)), Token::Uint(U256::from(c))]);
-		ethabi::encode(&[out])
+	pub fn encode_bytes(b: &[u8]) -> Vec<u8> {
+		ethabi::encode(&[Token::Bytes(b.to_vec())])
 	}
 
-	pub fn encode_u128_array(&self, b: Vec<u128>) -> Vec<u8> {
-		let result: Vec<Token> = b.iter().map(|x| Token::Uint(U256::from(*x))).collect();
-		let out = Token::FixedArray(result);
-		ethabi::encode(&[out])
+	pub fn encode_fixed_bytes(b: &[u8]) -> Vec<u8> {
+		ethabi::encode(&[Token::FixedBytes(b.to_vec())])
 	}
 
-	pub fn encode_address_array(&self, b: Vec<H160>) -> Vec<u8> {
-		let result: Vec<Token> = b
-			.iter()
-			.map(|x| Token::Address(H160::from_slice(x.as_bytes())))
-			.collect();
-		let out = Token::FixedArray(result);
-		ethabi::encode(&[out])
+	pub fn encode_address(b: H160) -> Vec<u8> {
+		ethabi::encode(&[Token::Address(b)])
 	}
 
-	pub fn encode_bytes(&self, b: &[u8]) -> Vec<u8> {
-		let out = Token::Bytes(b.to_vec());
-		ethabi::encode(&[out])
+	pub fn encode_address_tuple(b: Vec<H160>) -> Vec<u8> {
+		ethabi::encode(&[Token::Tuple(b.into_iter().map(Token::Address).collect())])
 	}
 
-	pub fn encode_fixed_bytes(&self, b: &[u8]) -> Vec<u8> {
-		let out = Token::FixedBytes(b.to_vec());
-		ethabi::encode(&[out])
-	}
-
-	pub fn encode_address(&self, b: &H160) -> Vec<u8> {
-		let out = Token::Address(H160::from_slice(b.as_bytes()));
-		ethabi::encode(&[out])
+	pub fn encode_address_array(b: Vec<H160>) -> Vec<u8> {
+		ethabi::encode(&[Token::Array(b.into_iter().map(Token::Address).collect())])
 	}
 }
 
@@ -566,6 +566,27 @@ mod tests {
 			})
 		);
 		assert_ok!(input.i128_at(6), 0);
+	}
+
+	#[test]
+	fn bool_works() {
+		let data = hex_literal::hex! {"
+			00000000
+			0000000000000000000000000000000000000000000000000000000000000000
+			0000000000000000000000000000000000000000000000000000000000000001
+			0000000000000000000000000000000000000000000000000000000000000002
+		"};
+		let input = TestInput::new(&data[..], Some(10));
+		assert_ok!(input.bool_at(1), false);
+		assert_ok!(input.bool_at(2), true);
+		assert_eq!(
+			input.bool_at(3),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to decode bool".into(),
+				cost: 10,
+			})
+		);
 	}
 
 	#[test]

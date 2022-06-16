@@ -28,12 +28,12 @@ use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use std::sync::Arc;
 
 /// substrate rpc
-use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPaymentRpc};
+use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 use sc_consensus_manual_seal::rpc::{EngineCommand, ManualSeal, ManualSealApiServer};
 pub use sc_rpc::dev::Dev;
 pub use sc_rpc_api::{dev::DevApiServer, DenyUnsafe};
 use sc_transaction_pool_api::TransactionPool;
-use substrate_frame_rpc_system::{SystemApiServer, SystemRpc};
+use substrate_frame_rpc_system::{System, SystemApiServer};
 
 /// orml rpc
 use orml_oracle_rpc::{Oracle, OracleApiServer};
@@ -79,8 +79,8 @@ where
 		command_sink,
 	} = deps;
 
-	module.merge(SystemRpc::new(client.clone(), pool, deny_unsafe).into_rpc())?;
-	module.merge(TransactionPaymentRpc::new(client.clone()).into_rpc())?;
+	module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
+	module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 
 	// Making synchronous calls in light client freezes the browser currently,
 	// more context: https://github.com/paritytech/substrate/pull/3480

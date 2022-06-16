@@ -724,7 +724,7 @@ fn fees_config() -> FeesConfig {
 					(StakingRewardPool::get(), 70),
 					(CollatorsRewardPool::get(), 10),
 					(EcosystemRewardPool::get(), 10),
-					(TreasuryPalletId::get().into_account(), 10),
+					(TreasuryPalletId::get().into_account_truncating(), 10),
 				],
 			),
 			(
