@@ -360,10 +360,6 @@ fn trader_works() {
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &fee_account1), pool_size);
 			assert_eq!(Currencies::free_balance(RELAY_CHAIN_CURRENCY, &fee_account1), relay_ed);
 
-			// base_token_per_second * (weight/WEIGHT_PER_SECOND) * relay_exchange_rate
-			// v0.9.22: base_per_second = 8*10^12, 8*10^12 * weight/10^12 * relay_exchange_rate =
-			// relay_exchange_rate * 8 * weight v0.9.24: base_per_second = 11.655*10^12, relay_exchange_rate *
-			// 11.655 * weight
 			let relay_exchange_rate: Ratio =
 				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(RELAY_CHAIN_CURRENCY).unwrap();
 			let weight_ratio = Ratio::saturating_from_rational(
