@@ -62,6 +62,16 @@ pub struct PoolPercent<AccountId> {
 	pub rate: FixedU128,
 }
 
+/// helper method to create `PoolPercent` list by tuple.
+pub fn build_pool_percents<AccountId: Clone>(list: Vec<(AccountId, u32)>) -> Vec<PoolPercent<AccountId>> {
+	list.iter()
+		.map(|data| PoolPercent {
+			pool: data.clone().0,
+			rate: FixedU128::saturating_from_rational(data.1, 100),
+		})
+		.collect()
+}
+
 pub use module::*;
 
 #[frame_support::pallet]
@@ -176,23 +186,11 @@ pub mod module {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			self.incomes.iter().for_each(|(income, pools)| {
-				let pool_rates = pools
-					.iter()
-					.map(|pool_rate| PoolPercent {
-						pool: pool_rate.clone().0,
-						rate: FixedU128::saturating_from_rational(pool_rate.1, 100),
-					})
-					.collect();
+				let pool_rates = build_pool_percents::<T::AccountId>(pools.clone());
 				let _ = <Pallet<T>>::do_set_treasury_rate(*income, pool_rates);
 			});
 			self.treasuries.iter().for_each(|(treasury, threshold, pools)| {
-				let pool_rates = pools
-					.iter()
-					.map(|pool_rate| PoolPercent {
-						pool: pool_rate.clone().0,
-						rate: FixedU128::saturating_from_rational(pool_rate.1, 100),
-					})
-					.collect();
+				let pool_rates = build_pool_percents::<T::AccountId>(pools.clone());
 				let _ = <Pallet<T>>::do_set_incentive_rate(treasury.clone(), *threshold, pool_rates);
 			});
 		}
@@ -395,16 +393,7 @@ impl<T: Config + Send + Sync> OnFeeDeposit<T::AccountId, CurrencyId, Balance> fo
 	/// - account_id: If given account, then the whole fee amount directly deposit to it.
 	/// - currency_id: currency type.
 	/// - amount: fee amount.
-	fn on_fee_deposit(
-		income: IncomeSource,
-		account_id: Option<&T::AccountId>,
-		currency_id: CurrencyId,
-		amount: Balance,
-	) -> DispatchResult {
-		if let Some(account_id) = account_id {
-			return T::Currencies::deposit(currency_id, account_id, amount);
-		}
-
+	fn on_fee_deposit(income: IncomeSource, currency_id: CurrencyId, amount: Balance) -> DispatchResult {
 		// use `IncomeSource` to distribution fee to different treasury pool based on percentage.
 		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = IncomeToTreasuries::<T>::get(income);
 		Pallet::<T>::distribution_fees(pool_rates, currency_id, amount)

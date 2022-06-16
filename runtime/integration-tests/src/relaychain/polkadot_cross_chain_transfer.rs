@@ -45,7 +45,7 @@ fn transfer_from_relay_chain() {
 	});
 
 	Acala::execute_with(|| {
-		assert_eq!(9_998_720_000, Tokens::free_balance(DOT, &AccountId::from(BOB)));
+		assert_eq!(9_998_135_200, Tokens::free_balance(DOT, &AccountId::from(BOB)));
 	});
 }
 
@@ -72,12 +72,14 @@ fn transfer_to_relay_chain() {
 
 	PolkadotNet::execute_with(|| {
 		assert_eq!(
-			49517228896,
+			// v0.9.19: 49_517_228_896
+			// v0.9.22: 49_530_582_548
+			49_530_582_548,
 			polkadot_runtime::Balances::free_balance(&AccountId::from(BOB))
 		);
 		assert_eq!(
 			5 * dollar(DOT),
-			polkadot_runtime::Balances::free_balance(&ParaId::from(2000).into_account())
+			polkadot_runtime::Balances::free_balance(&ParaId::from(2000).into_account_truncating())
 		);
 	});
 }

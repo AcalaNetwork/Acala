@@ -29,7 +29,7 @@ use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
-use sp_core::H256;
+use sp_core::{H160, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 use xcm::latest::prelude::*;
 
@@ -122,6 +122,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -140,6 +142,7 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
+	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
 impl module_currencies::Config for Runtime {
@@ -147,6 +150,7 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = ();

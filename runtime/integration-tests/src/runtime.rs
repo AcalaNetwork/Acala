@@ -19,6 +19,17 @@
 use crate::setup::*;
 
 #[test]
+fn currency_id_encode_decode() {
+	let erc20 = CurrencyId::Erc20(H160::from_low_u64_be(1));
+	let encode_key = erc20.encode();
+	let key = &encode_key[..];
+	let currency_id1 = CurrencyId::decode(&mut &*encode_key).ok().unwrap();
+	let currency_id2 = CurrencyId::decode(&mut &*key).ok().unwrap();
+	assert_eq!(currency_id1, currency_id2);
+	assert_eq!(currency_id1, erc20);
+}
+
+#[test]
 fn currency_id_convert() {
 	ExtBuilder::default().build().execute_with(|| {
 		let id: u32 = ParachainInfo::get().into();
@@ -212,7 +223,7 @@ fn currency_id_convert() {
 #[test]
 fn parachain_subaccounts_are_unique() {
 	ExtBuilder::default().build().execute_with(|| {
-		let parachain: AccountId = ParachainInfo::parachain_id().into_account();
+		let parachain: AccountId = ParachainInfo::parachain_id().into_account_truncating();
 		assert_eq!(
 			parachain,
 			hex_literal::hex!["70617261d0070000000000000000000000000000000000000000000000000000"].into()
@@ -398,7 +409,7 @@ mod mandala_only_tests {
 					bytes.len()
 				),
 				Ok(ValidTransaction {
-					priority: 62_878_701_600_000_000,
+					priority: 81_156_562_730_100_000,
 					requires: vec![],
 					provides: vec![],
 					longevity: 18_446_744_073_709_551_615,

@@ -1387,6 +1387,16 @@ impl<T: Config> Pallet<T> {
 		Self::codes(&Self::code_hash_at_address(address))
 	}
 
+	pub fn is_contract(address: &EvmAddress) -> bool {
+		matches!(
+			Self::accounts(address),
+			Some(AccountInfo {
+				contract_info: Some(_),
+				..
+			})
+		)
+	}
+
 	pub fn update_contract_storage_size(address: &EvmAddress, change: i32) {
 		if change == 0 {
 			return;
@@ -1644,7 +1654,7 @@ impl<T: Config> Pallet<T> {
 
 		let user = T::AddressMapping::get_account_id(caller);
 		let contract_acc = T::AddressMapping::get_account_id(contract);
-		let amount = Self::get_storage_deposit_per_byte().saturating_mul((storage.abs() as u32).into());
+		let amount = Self::get_storage_deposit_per_byte().saturating_mul(storage.unsigned_abs().into());
 
 		log::debug!(
 			target: "evm",

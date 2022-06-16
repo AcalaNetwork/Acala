@@ -27,8 +27,9 @@ use frame_support::{
 	ConsensusEngineId, PalletId,
 };
 use frame_system::EnsureSignedBy;
-use module_support::{mocks::MockAddressMapping, Price, PriceProvider};
-use orml_traits::parameter_type_with_key;
+use module_support::mocks::MockErc20InfoMapping;
+use module_support::{mocks::MockAddressMapping, DEXIncentives, Price, PriceProvider};
+use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
 	define_combined_task, Address, Amount, Block, BlockNumber, CurrencyId, Header, Multiplier, ReserveIdentifier,
 	Signature, TokenSymbol,
@@ -109,8 +110,10 @@ impl orml_tokens::Config for Runtime {
 	type OnDust = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -211,7 +214,7 @@ parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
-	pub KaruraTreasuryAccount: AccountId32 = TreasuryPalletId::get().into_account();
+	pub KaruraTreasuryAccount: AccountId32 = TreasuryPalletId::get().into_account_truncating();
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
@@ -239,14 +242,14 @@ impl module_transaction_payment::Config for Runtime {
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = ();
-	type TransactionByteFee = ConstU128<10>;
 	type OperationalFeeMultiplier = ConstU64<5>;
 	type TipPerWeightStep = ConstU128<1>;
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type AlternativeFeeSwapDeposit = ExistenceRequirement;
 	type WeightToFee = IdentityFee<Balance>;
+	type TransactionByteFee = ConstU128<10>;
 	type FeeMultiplierUpdate = ();
-	type DEX = ();
+	type DEX = Dex;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;
@@ -259,6 +262,37 @@ impl module_transaction_payment::Config for Runtime {
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
+pub struct MockDEXIncentives;
+impl DEXIncentives<AccountId32, CurrencyId, Balance> for MockDEXIncentives {
+	fn do_deposit_dex_share(who: &AccountId32, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		Tokens::reserve(lp_currency_id, who, amount)
+	}
+
+	fn do_withdraw_dex_share(who: &AccountId32, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		let _ = Tokens::unreserve(lp_currency_id, who, amount);
+		Ok(())
+	}
+}
+
+parameter_types! {
+	pub const GetExchangeFee: (u32, u32) = (1, 100);
+	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+}
+
+impl module_dex::Config for Runtime {
+	type Event = Event;
+	type Currency = Tokens;
+	type GetExchangeFee = GetExchangeFee;
+	type TradingPathLimit = TradingPathLimit;
+	type PalletId = DEXPalletId;
+	type Erc20InfoMapping = MockErc20InfoMapping;
+	type WeightInfo = ();
+	type DEXIncentives = MockDEXIncentives;
+	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId32>;
+	type ExtendedProvisioningBlocks = ConstU32<0>;
+	type OnLiquidityPoolUpdated = ();
+}
+
 pub type SignedExtra = (frame_system::CheckWeight<Runtime>,);
 pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
 
@@ -269,6 +303,7 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		Dex: module_dex::{Pallet, Call, Storage, Event<T>},
 		EVM: evm_mod::{Pallet, Config<T>, Call, Storage, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},

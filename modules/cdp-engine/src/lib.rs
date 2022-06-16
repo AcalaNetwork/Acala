@@ -34,10 +34,9 @@ use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
 };
-use loans::Position;
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_utilities::OffchainErr;
-use primitives::{Amount, Balance, CurrencyId, IncomeSource};
+use primitives::{Amount, Balance, CurrencyId, IncomeSource, Position};
 use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
 	ChaChaRng,
@@ -560,7 +559,6 @@ impl<T: Config> Pallet<T> {
 						// Staking rewards goes to T::OnFeeDeposit
 						let res = T::OnFeeDeposit::on_fee_deposit(
 							IncomeSource::HonzonStabilityFee,
-							None,
 							T::GetStableCurrencyId::get(),
 							issued_stable_coin_balance,
 						);

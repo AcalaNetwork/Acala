@@ -83,7 +83,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_fixed_bytes(output.into().as_ref()),
+					output: Output::encode_fixed_bytes(output.into().as_ref()),
 					logs: Default::default(),
 				})
 			}
@@ -101,7 +101,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_address(&address),
+					output: Output::encode_address(address),
 					logs: Default::default(),
 				})
 			}
@@ -125,7 +125,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_address(&address),
+					output: Output::encode_address(address),
 					logs: Default::default(),
 				})
 			}

@@ -123,7 +123,7 @@ runtime_benchmarks! {
 
 	sweep_dust {
 		let c in 1..3u32;
-		let treasury: AccountId = TreasuryPalletId::get().into_account();
+		let treasury: AccountId = TreasuryPalletId::get().into_account_truncating();
 		let accounts: Vec<AccountId> = vec!["alice", "bob", "charlie"].into_iter().map(|x| account(x, 0, SEED)).collect();
 		accounts.iter().for_each(|account| {
 			orml_tokens::Accounts::<Runtime>::insert(account, STAKING, orml_tokens::AccountData {

@@ -32,7 +32,7 @@ use xcm_emulator::TestExt;
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
 const XCM_WEIGHT: Weight = 20_000_000_000;
 const XCM_FEE: Balance = 10_000_000_000;
-const ACTUAL_XCM_FEE: Balance = 1_037_129_200;
+const ACTUAL_XCM_FEE: Balance = 784_425_782;
 
 fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<Weight>, Option<Balance>)> {
 	vec![
@@ -143,7 +143,7 @@ fn xcm_interface_transfer_staking_to_sub_account_works() {
 		// 1000 dollars (minus fee) are transferred into the Kusama chain
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-			999_999_834_059_328
+			999_999_988_476_752
 		);
 		// XCM fee is paid by the parachain account.
 		assert_eq!(

@@ -38,6 +38,7 @@ pub mod earning;
 pub mod emergency_shutdown;
 pub mod evm;
 pub mod evm_accounts;
+pub mod fees;
 pub mod homa;
 pub mod honzon;
 pub mod idle_scheduler;
@@ -57,7 +58,7 @@ pub mod tokens;
 pub mod vesting;
 
 pub fn get_vesting_account() -> super::AccountId {
-	super::TreasuryPalletId::get().into_account()
+	super::TreasuryPalletId::get().into_account_truncating()
 }
 
 pub fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {

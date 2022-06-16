@@ -25,14 +25,14 @@ pub use crate as transaction_payment;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
-	weights::WeightToFeeCoefficients,
+	weights::{WeightToFeeCoefficients, WeightToFeePolynomial},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
-use sp_core::{crypto::AccountId32, H256};
+use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup, One},
@@ -120,6 +120,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -138,6 +140,7 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
 impl module_currencies::Config for Runtime {
@@ -145,6 +148,7 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = ();
@@ -239,7 +243,7 @@ parameter_types! {
 	pub const HigerSwapThreshold: Balance = 9500;
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
-	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 ord_parameter_types! {
 	pub const ListingOrigin: AccountId = ALICE;
@@ -255,11 +259,11 @@ impl Config for Runtime {
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
-	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = ConstU64<5>;
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type WeightToFee = WeightToFee;
+	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;

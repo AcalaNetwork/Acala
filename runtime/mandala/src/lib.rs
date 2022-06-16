@@ -49,14 +49,14 @@ pub use frame_support::{
 };
 use frame_system::{EnsureRoot, RawOrigin};
 use hex_literal::hex;
-use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
+use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
-use module_transaction_payment::{TargetedFeeAdjustment, TransactionFeePoolTrader};
+use module_transaction_payment::TargetedFeeAdjustment;
 use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
@@ -103,18 +103,16 @@ pub use primitives::{
 	TradingPair,
 };
 pub use runtime_common::{
-	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles, CollatorsRewardPool,
-	CollatorsRewardPoolPalletId, EcosystemRewardPool, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
-	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
-	EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
-	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
-	ExistentialDepositsTimesOneHundred, FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight,
-	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
-	HomaTreasuryPool, HonzonInsuranceRewardPool, HonzonLiquitationRewardPool, HonzonTreasuryPool, MaxTipsOfPriority,
-	NetworkTreasuryPool, OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price,
-	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, StakingRewardPool, SystemContractsFilter,
-	TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD,
-	DOT, KSM, LDOT, RENBTC,
+	cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles, EnsureRootOrAllGeneralCouncil,
+	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
+	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
+	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
+	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, ExistentialDepositsTimesOneHundred,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
+	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
+	OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate,
+	Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT, RENBTC,
 };
 pub use xcm::latest::prelude::*;
 
@@ -134,7 +132,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2064,
+	spec_version: 2070,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -165,14 +163,13 @@ parameter_types! {
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaPalletId: PalletId = PalletId(*b"aca/homa");
-	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const PhragmenElectionPalletId: LockIdentifier = *b"aca/phre";
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
-	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
+	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account_truncating();
 	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
 	// because transaction payment pallet will ensure the accounts always have enough ED.
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
@@ -185,26 +182,25 @@ parameter_types! {
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
 	vec![
-		TreasuryPalletId::get().into_account(),
-		LoansPalletId::get().into_account(),
-		DEXPalletId::get().into_account(),
-		CDPTreasuryPalletId::get().into_account(),
-		HonzonTreasuryPalletId::get().into_account(),
-		HomaTreasuryPalletId::get().into_account(),
-		IncentivesPalletId::get().into_account(),
-		TreasuryReservePalletId::get().into_account(),
-		StarportPalletId::get().into_account(),
+		TreasuryPalletId::get().into_account_truncating(),
+		LoansPalletId::get().into_account_truncating(),
+		DEXPalletId::get().into_account_truncating(),
+		CDPTreasuryPalletId::get().into_account_truncating(),
+		HonzonTreasuryPalletId::get().into_account_truncating(),
+		IncentivesPalletId::get().into_account_truncating(),
+		TreasuryReservePalletId::get().into_account_truncating(),
+		StarportPalletId::get().into_account_truncating(),
 		UnreleasedNativeVaultAccountId::get(),
-		StableAssetPalletId::get().into_account(),
+		StableAssetPalletId::get().into_account_truncating(),
 		// treasury pools and incentive pools
-		NetworkTreasuryPool::get(),
-		HonzonTreasuryPool::get(),
-		HomaTreasuryPool::get(),
-		HonzonInsuranceRewardPool::get(),
-		HonzonLiquitationRewardPool::get(),
-		StakingRewardPool::get(),
-		CollatorsRewardPool::get(),
-		EcosystemRewardPool::get(),
+		runtime_common::NetworkTreasuryPool::get(),
+		runtime_common::HonzonTreasuryPool::get(),
+		runtime_common::HomaTreasuryPool::get(),
+		runtime_common::HonzonInsuranceRewardPool::get(),
+		runtime_common::HonzonLiquitationRewardPool::get(),
+		runtime_common::StakingRewardPool::get(),
+		runtime_common::CollatorsRewardPool::get(),
+		runtime_common::EcosystemRewardPool::get(),
 	]
 }
 
@@ -295,7 +291,7 @@ impl module_collator_selection::Config for Runtime {
 	type Currency = Balances;
 	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
-	type PotId = CollatorsRewardPoolPalletId;
+	type PotId = runtime_common::CollatorsRewardPoolPalletId;
 	type MinCandidates = ConstU32<5>;
 	type MaxCandidates = ConstU32<200>;
 	type MaxInvulnerables = ConstU32<50>;
@@ -614,6 +610,7 @@ impl pallet_recovery::Config for Runtime {
 	type FriendDepositFactor = FriendDepositFactor;
 	type MaxFriends = ConstU32<9>;
 	type RecoveryDeposit = RecoveryDeposit;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -846,7 +843,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -861,6 +858,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = DustRemovalWhitelist;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_type_with_key! {
@@ -906,6 +905,7 @@ impl module_prices::Config for Runtime {
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub Erc20HoldingAccount: H160 = primitives::evm::ERC20_HOLDING_ACCOUNT;
 }
 
 impl module_currencies::Config for Runtime {
@@ -913,6 +913,7 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
@@ -927,9 +928,9 @@ impl EnsureOrigin<Origin> for EnsureRootOrTreasury {
 
 	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
 		Into::<Result<RawOrigin<AccountId>, Origin>>::into(o).and_then(|o| match o {
-			RawOrigin::Root => Ok(TreasuryPalletId::get().into_account()),
+			RawOrigin::Root => Ok(TreasuryPalletId::get().into_account_truncating()),
 			RawOrigin::Signed(caller) => {
-				if caller == TreasuryPalletId::get().into_account() {
+				if caller == TreasuryPalletId::get().into_account_truncating() {
 					Ok(caller)
 				} else {
 					Err(Origin::from(Some(caller)))
@@ -1170,6 +1171,7 @@ impl module_aggregated_dex::Config for Runtime {
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
+	type RebaseTokenAmountConvertor = ConvertBalanceHoma;
 	type WeightInfo = ();
 }
 
@@ -1183,7 +1185,7 @@ impl module_dex_oracle::Config for Runtime {
 }
 
 parameter_types! {
-	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
+	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account_truncating();
 }
 
 impl module_cdp_treasury::Config for Runtime {
@@ -1221,11 +1223,11 @@ impl module_transaction_payment::Config for Runtime {
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = module_fees::DistributeTxFees<Runtime>;
 	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
-	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = MaxTipsOfPriority;
 	type WeightToFee = WeightToFee;
+	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 	type DEX = Dex;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
@@ -1316,13 +1318,12 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 		1,
 		X1(AccountId32 {
 			network: NetworkId::Any,
-			id: Utility::derivative_account_id(ParachainInfo::get().into_account(), index).into(),
+			id: Utility::derivative_account_id(ParachainInfo::get().into_account_truncating(), index).into(),
 		}),
 	)
 }
 
 parameter_types! {
-	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
 		0,  // 15sr8Dvq3AT3Z2Z1y8FnQ4VipekAHhmQnrkgzegUr1tNgbcn
 	];
@@ -1349,7 +1350,7 @@ impl module_homa::Config for Runtime {
 }
 
 parameter_types! {
-	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
+	pub ParachainAccount: AccountId = ParachainInfo::get().into_account_truncating();
 }
 
 pub struct SubAccountIndexMultiLocationConvertor;
@@ -1457,6 +1458,8 @@ impl InstanceFilter<Call> for ProxyType {
 					c,
 					Call::Honzon(module_honzon::Call::adjust_loan { .. })
 						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex { .. })
+						| Call::Honzon(module_honzon::Call::adjust_loan_by_debit_value { .. })
+						| Call::Honzon(module_honzon::Call::transfer_debit { .. })
 				)
 			}
 			ProxyType::DexLiquidity => {
@@ -1476,6 +1479,12 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_proportion { .. })
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_single { .. })
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_multi { .. })
+				)
+			}
+			ProxyType::Homa => {
+				matches!(
+					c,
+					Call::Homa(module_homa::Call::mint { .. }) | Call::Homa(module_homa::Call::request_redeem { .. })
 				)
 			}
 		}
@@ -1881,8 +1890,34 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	HomaTotalStakingMigration,
+>;
+
+pub struct HomaTotalStakingMigration;
+
+impl OnRuntimeUpgrade for HomaTotalStakingMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		module_homa::migrations::v1::migrate::<Runtime, Homa>()
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		module_homa::migrations::v1::pre_migrate::<Homa>();
+		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		module_homa::migrations::v1::post_migrate::<Runtime, Homa>();
+		Ok(())
+	}
+}
 
 construct_runtime!(
 	pub enum Runtime where
@@ -2029,6 +2064,7 @@ mod benches {
 		[module_earning, benchmarking::earning]
 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
 		[module_evm, benchmarking::evm]
+		[module_fees, benchmarking::fees]
 		[module_homa, benchmarking::homa]
 		[module_honzon, benchmarking::honzon]
 		[module_cdp_treasury, benchmarking::cdp_treasury]

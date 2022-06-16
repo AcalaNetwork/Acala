@@ -111,8 +111,10 @@ impl orml_tokens::Config for TestRuntime {
 	type OnDust = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {

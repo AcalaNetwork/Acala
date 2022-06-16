@@ -43,9 +43,12 @@ fn test_nft_module() {
 			));
 			let deposit =
 				Proxy::deposit(1u32) + CreateClassDeposit::get() + DataDepositPerByte::get() * (metadata.len() as u128);
-			assert_eq!(Balances::free_balance(&NftPalletId::get().into_sub_account(0)), 0);
 			assert_eq!(
-				Balances::reserved_balance(&NftPalletId::get().into_sub_account(0)),
+				Balances::free_balance(&NftPalletId::get().into_sub_account_truncating(0)),
+				0
+			);
+			assert_eq!(
+				Balances::reserved_balance(&NftPalletId::get().into_sub_account_truncating(0)),
 				deposit
 			);
 			assert_eq!(
@@ -54,11 +57,11 @@ fn test_nft_module() {
 			);
 			assert_eq!(Balances::reserved_balance(AccountId::from(ALICE)), 0);
 			assert_ok!(Balances::deposit_into_existing(
-				&NftPalletId::get().into_sub_account(0),
+				&NftPalletId::get().into_sub_account_truncating(0),
 				1 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
 			));
 			assert_ok!(NFT::mint(
-				Origin::signed(NftPalletId::get().into_sub_account(0)),
+				Origin::signed(NftPalletId::get().into_sub_account_truncating(0)),
 				MultiAddress::Id(AccountId::from(BOB)),
 				0,
 				metadata.clone(),
@@ -72,14 +75,14 @@ fn test_nft_module() {
 			);
 			assert_noop!(
 				NFT::destroy_class(
-					Origin::signed(NftPalletId::get().into_sub_account(0)),
+					Origin::signed(NftPalletId::get().into_sub_account_truncating(0)),
 					0,
 					MultiAddress::Id(AccountId::from(BOB))
 				),
 				pallet_proxy::Error::<Runtime>::NotFound
 			);
 			assert_ok!(NFT::destroy_class(
-				Origin::signed(NftPalletId::get().into_sub_account(0)),
+				Origin::signed(NftPalletId::get().into_sub_account_truncating(0)),
 				0,
 				MultiAddress::Id(AccountId::from(ALICE))
 			));

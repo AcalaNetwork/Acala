@@ -343,6 +343,18 @@ pub async fn start_dev_node(
 		}
 	}
 
+	let rpc_builder = {
+		let client = client.clone();
+		move |_, _| {
+			let deps = crate::rpc::FullDeps {
+				client: client.clone(),
+				command_sink: rpc_sink.clone(),
+				_marker: Default::default(),
+			};
+			crate::rpc::create_full(deps).map_err(Into::into)
+		}
+	};
+
 	let rpc_handlers = sc_service::spawn_tasks(SpawnTasksParams {
 		config,
 		client: client.clone(),
@@ -350,11 +362,7 @@ pub async fn start_dev_node(
 		task_manager: &mut task_manager,
 		keystore: keystore_container.sync_keystore(),
 		transaction_pool: transaction_pool.clone(),
-		rpc_extensions_builder: Box::new(move |_, _| {
-			let mut io = jsonrpc_core::IoHandler::default();
-			io.extend_with(ManualSealApi::to_delegate(ManualSeal::new(rpc_sink.clone())));
-			Ok(io)
-		}),
+		rpc_builder: Box::new(rpc_builder),
 		network: network.clone(),
 		system_rpc_tx,
 		telemetry: None,
@@ -426,7 +434,7 @@ pub async fn start_node_impl<RB>(
 	Sender<EngineCommand<H256>>,
 )>
 where
-	RB: Fn(Arc<Client>) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error> + Send + 'static,
+	RB: Fn(Arc<Client>) -> Result<RpcModule<()>, sc_service::Error> + Send + 'static,
 {
 	if matches!(parachain_config.role, Role::Light) {
 		return Err("Light client not supported!".into());
@@ -473,14 +481,14 @@ where
 		warp_sync: None,
 	})?;
 
-	let rpc_extensions_builder = {
+	let rpc_builder = {
 		let client = client.clone();
 
-		Box::new(move |_, _| rpc_ext_builder(client.clone()))
+		move |_, _| rpc_ext_builder(client.clone())
 	};
 
 	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
-		rpc_extensions_builder,
+		rpc_builder: Box::new(rpc_builder),
 		client: client.clone(),
 		transaction_pool: transaction_pool.clone(),
 		task_manager: &mut task_manager,

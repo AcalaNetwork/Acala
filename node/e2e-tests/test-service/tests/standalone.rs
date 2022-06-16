@@ -27,7 +27,7 @@ use sp_keyring::Sr25519Keyring::*;
 use sp_runtime::{traits::IdentifyAccount, MultiAddress, MultiSigner};
 use test_service::{ensure_event, SealMode};
 
-#[substrate_test_utils::test]
+#[substrate_test_utils::test(flavor = "multi_thread")]
 #[ignore] // TODO: Wasm binary must be built for testing, polkadot/node/test/service/src/chain_spec.rs:117:40
 async fn simple_balances_dev_test() {
 	let mut builder = sc_cli::LoggerBuilder::new("");
@@ -61,7 +61,7 @@ async fn simple_balances_dev_test() {
 	assert_eq!(old_balance + amount, new_balance);
 }
 
-#[substrate_test_utils::test]
+#[substrate_test_utils::test(flavor = "multi_thread")]
 #[ignore]
 async fn transaction_pool_priority_order_test() {
 	let mut builder = sc_cli::LoggerBuilder::new("");
@@ -138,7 +138,7 @@ async fn transaction_pool_priority_order_test() {
 
 /// this testcase will take too long to run, test with command:
 /// cargo test --release --package test-service -- evm_fill_block_test --nocapture --include-ignored
-#[substrate_test_utils::test]
+#[substrate_test_utils::test(flavor = "multi_thread")]
 #[ignore]
 async fn evm_fill_block_test() {
 	let mut builder = sc_cli::LoggerBuilder::new("");
@@ -204,7 +204,7 @@ async fn evm_fill_block_test() {
 /// this testcase will take too long to run, test with command:
 /// cargo test --release --package test-service -- evm_create_fill_block_test --nocapture
 /// --include-ignored
-#[substrate_test_utils::test]
+#[substrate_test_utils::test(flavor = "multi_thread")]
 #[ignore]
 async fn evm_create_fill_block_test() {
 	/*
@@ -257,7 +257,7 @@ async fn evm_create_fill_block_test() {
 
 /// this testcase will take too long to run, test with command:
 /// cargo test --release --package test-service -- evm_gas_limit_test --nocapture --include-ignored
-#[substrate_test_utils::test]
+#[substrate_test_utils::test(flavor = "multi_thread")]
 #[ignore]
 async fn evm_gas_limit_test() {
 	/*

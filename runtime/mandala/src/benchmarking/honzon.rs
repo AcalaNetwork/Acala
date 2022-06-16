@@ -28,6 +28,7 @@ use super::{
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
+use module_support::HonzonManager;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::{Change, GetByKey, MultiCurrencyExtended};
 use sp_runtime::{
@@ -238,7 +239,6 @@ runtime_benchmarks! {
 			(10 * collateral_amount).try_into().unwrap(),
 			debit_amount,
 		)?;
-
 	}: _(RawOrigin::Signed(sender), LIQUID, collateral_amount)
 
 	expand_position_collateral {
@@ -341,6 +341,46 @@ runtime_benchmarks! {
 		Honzon::adjust_loan(RawOrigin::Signed(sender.clone()).into(), STAKING, (10_000 * dollar(STAKING)).try_into().unwrap(), (1_000 * dollar(STABLECOIN)).try_into().unwrap())?;
 		Honzon::adjust_loan(RawOrigin::Signed(sender.clone()).into(), LIQUID, (10_000 * dollar(LIQUID)).try_into().unwrap(), (1_000 * dollar(STABLECOIN)).try_into().unwrap())?;
 	}: _(RawOrigin::Signed(sender), LIQUID, STAKING, dollar(STABLECOIN))
+
+	precompile_get_current_collateral_ratio {
+		let currency_id: CurrencyId = LIQUID;
+		let sender: AccountId = whitelisted_caller();
+		let maker: AccountId = account("maker", 0, SEED);
+		let debit_value = 100 * dollar(STABLECOIN);
+		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(LIQUID);
+		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
+		let debit_amount: Amount = debit_amount.unique_saturated_into();
+		let collateral_value = 10 * debit_value;
+		let collateral_amount = Price::saturating_from_rational(dollar(LIQUID), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
+
+		// set balance and inject liquidity
+		set_balance(LIQUID, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&LIQUID));
+		inject_liquidity(maker.clone(), LIQUID, STAKING, 10_000 * dollar(LIQUID), 10_000 * dollar(STAKING), false)?;
+		inject_liquidity(maker, STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN), false)?;
+
+		feed_price(vec![(STAKING, Price::one())])?;
+
+		// set risk params
+		CdpEngine::set_collateral_params(
+			RawOrigin::Root.into(),
+			LIQUID,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(debit_value * 100),
+		)?;
+
+		// initialize sender's loan
+		Honzon::adjust_loan(
+			RawOrigin::Signed(sender.clone()).into(),
+			LIQUID,
+			(10 * collateral_amount).try_into().unwrap(),
+			debit_amount,
+		)?;
+	}: {
+		Honzon::get_current_collateral_ratio(&sender, LIQUID);
+	}
 }
 
 #[cfg(test)]

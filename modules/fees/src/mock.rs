@@ -33,6 +33,7 @@ use orml_traits::parameter_type_with_key;
 use primitives::{
 	AccountId, Amount, Balance, BlockNumber, CurrencyId, IncomeSource, ReserveIdentifier, TokenSymbol, TradingPair,
 };
+use sp_core::H160;
 use sp_runtime::traits::AccountIdConversion;
 use support::mocks::MockAddressMapping;
 
@@ -98,6 +99,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
@@ -105,6 +108,7 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
+	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
 ord_parameter_types! {
@@ -118,6 +122,7 @@ impl module_currencies::Config for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type EVMBridge = ();
 	type GasToWeight = ();
 	type SweepOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
@@ -125,17 +130,17 @@ impl module_currencies::Config for Runtime {
 }
 
 parameter_types! {
-	pub TreasuryAccount: AccountId = PalletId(*b"aca/trsy").into_account();
+	pub TreasuryAccount: AccountId = PalletId(*b"aca/trsy").into_account_truncating();
 	// Treasury pools
-	pub NetworkTreasuryPool: AccountId = PalletId(*b"aca/nktp").into_account();
-	pub HonzonTreasuryPool: AccountId = PalletId(*b"aca/hztp").into_account();
-	pub HomaTreasuryPool: AccountId = PalletId(*b"aca/hmtp").into_account();
+	pub NetworkTreasuryPool: AccountId = PalletId(*b"aca/nktp").into_account_truncating();
+	pub HonzonTreasuryPool: AccountId = PalletId(*b"aca/hztp").into_account_truncating();
+	pub HomaTreasuryPool: AccountId = PalletId(*b"aca/hmtp").into_account_truncating();
 	// Incentive reward Pools
-	pub HonzonInsuranceRewardPool: AccountId = PalletId(*b"aca/hirp").into_account();
-	pub HonzonLiquitationRewardPool: AccountId = PalletId(*b"aca/hlrp").into_account();
-	pub StakingRewardPool: AccountId = PalletId(*b"aca/strp").into_account();
-	pub CollatorsRewardPool: AccountId = PalletId(*b"aca/clrp").into_account();
-	pub EcosystemRewardPool: AccountId = PalletId(*b"aca/esrp").into_account();
+	pub HonzonInsuranceRewardPool: AccountId = PalletId(*b"aca/hirp").into_account_truncating();
+	pub HonzonLiquitationRewardPool: AccountId = PalletId(*b"aca/hlrp").into_account_truncating();
+	pub StakingRewardPool: AccountId = PalletId(*b"aca/strp").into_account_truncating();
+	pub CollatorsRewardPool: AccountId = PalletId(*b"aca/clrp").into_account_truncating();
+	pub EcosystemRewardPool: AccountId = PalletId(*b"aca/esrp").into_account_truncating();
 
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![vec![GetStakingCurrencyId::get()]];
 }

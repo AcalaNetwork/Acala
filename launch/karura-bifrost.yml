@@ -1,0 +1,72 @@
+relaychain:
+  image: parity/polkadot:v0.9.22
+  chain: rococo-local
+  runtimeGenesisConfig:
+    configuration:
+      config:
+        validation_upgrade_cooldown: 10
+        validation_upgrade_delay: 10
+  env:
+    RUST_LOG: parachain::candidate-backing=trace,parachain::candidate-selection=trace,parachain::pvf=trace,parachain::collator-protocol=trace,parachain::provisioner=trace
+  flags:
+    - --rpc-methods=unsafe
+    - --wasm-execution=compiled
+    - --execution=wasm
+  nodes:
+    - name: alice
+    - name: bob
+    - name: charlie
+
+parachains:
+- image: acala/karura-node:2.7.0
+  chain:
+    base: karura-dev
+    collators:
+      - alice
+      - bob
+      - charlie
+    sudo: alice
+  id: 2000
+  parachain: true
+  flags:
+    - --rpc-methods=unsafe
+    - --force-authoring
+    - --wasm-execution=compiled
+    - --execution=wasm
+  relaychainFlags:
+    - --wasm-execution=compiled
+    - --execution=wasm
+  env:
+    RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
+  volumePath: /acala/data
+  nodes:
+  - flags:
+    - --alice
+  - flags:
+    - --bob
+  - flags:
+    - --charlie
+- image: bifrostnetwork/bifrost:bifrost-v0.9.44
+  chain:
+    base: bifrost-local
+    sudo: alice
+  id: 3000
+  parachain: true
+  flags:
+    - --rpc-methods=unsafe
+    - --force-authoring
+    - --wasm-execution=compiled
+    - --execution=wasm
+  relaychainFlags:
+    - --wasm-execution=compiled
+    - --execution=wasm
+  env:
+    RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
+  volumePath: /data
+  nodes:
+  - flags:
+    - --alice
+  - flags:
+    - --bob
+  - flags:
+    - --charlie

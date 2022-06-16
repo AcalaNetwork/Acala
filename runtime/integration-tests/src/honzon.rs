@@ -471,7 +471,7 @@ fn test_cdp_engine_module() {
 		});
 }
 
-// Honzon's surplus can be transfered and DebitExchangeRate updates accordingly
+// Honzon's surplus can be transferred and DebitExchangeRate updates accordingly
 #[test]
 fn cdp_treasury_handles_honzon_surplus_correctly() {
 	ExtBuilder::default()
