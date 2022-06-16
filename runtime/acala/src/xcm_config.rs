@@ -120,7 +120,7 @@ parameter_types! {
 	pub BaseRate: u128 = aca_per_second();
 }
 
-type XcmToTreasury = XcmFeeToTreasury<AcalaTreasuryAccount, CurrencyIdConvert, Fees>;
+type XcmToTreasury = XcmFeeToTreasury<CurrencyIdConvert, Fees>;
 
 pub type Trader = (
 	FixedRateOfAsset<BaseRate, XcmToTreasury, BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>,

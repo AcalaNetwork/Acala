@@ -217,7 +217,7 @@ fn on_fee_deposit_works() {
 		.execute_with(|| {
 			// Native token tests
 			// FeeToTreasuryPool based on pre-configured treasury pool percentage.
-			assert_ok!(Pallet::<Runtime>::on_fee_deposit(IncomeSource::TxFee, None, ACA, 10000));
+			assert_ok!(Pallet::<Runtime>::on_fee_deposit(IncomeSource::TxFee, ACA, 10000));
 
 			assert_eq!(Currencies::free_balance(ACA, &NetworkTreasuryPool::get()), 8000);
 			assert_eq!(Currencies::free_balance(ACA, &CollatorsRewardPool::get()), 2000);
@@ -238,22 +238,9 @@ fn on_fee_deposit_works() {
 				vec![ACA]
 			);
 
-			// FeeToTreasuryPool direct to given account.
-			assert_ok!(Pallet::<Runtime>::on_fee_deposit(
-				IncomeSource::TxFee,
-				Some(&TreasuryAccount::get()),
-				ACA,
-				10000
-			));
-			assert_eq!(Currencies::free_balance(ACA, &TreasuryAccount::get()), 10000);
-			System::assert_has_event(Event::Balances(pallet_balances::Event::Deposit {
-				who: TreasuryAccount::get(),
-				amount: 10000,
-			}));
-
 			// Non native token tests
 			// FeeToTreasuryPool based on pre-configured treasury pool percentage.
-			assert_ok!(Pallet::<Runtime>::on_fee_deposit(IncomeSource::TxFee, None, DOT, 10000));
+			assert_ok!(Pallet::<Runtime>::on_fee_deposit(IncomeSource::TxFee, DOT, 10000));
 
 			assert_eq!(Currencies::free_balance(DOT, &NetworkTreasuryPool::get()), 8000);
 			assert_eq!(Currencies::free_balance(DOT, &CollatorsRewardPool::get()), 2000);
@@ -275,20 +262,6 @@ fn on_fee_deposit_works() {
 				crate::TreasuryTokens::<Runtime>::get(&CollatorsRewardPool::get()).to_vec(),
 				vec![ACA, DOT]
 			);
-
-			// FeeToTreasuryPool direct to given account.
-			assert_ok!(Pallet::<Runtime>::on_fee_deposit(
-				IncomeSource::TxFee,
-				Some(&TreasuryAccount::get()),
-				DOT,
-				10000
-			));
-			assert_eq!(Currencies::free_balance(DOT, &TreasuryAccount::get()), 10000);
-			System::assert_has_event(Event::Tokens(orml_tokens::Event::Deposited {
-				currency_id: DOT,
-				who: TreasuryAccount::get(),
-				amount: 10000,
-			}));
 		});
 }
 

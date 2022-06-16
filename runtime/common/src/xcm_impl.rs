@@ -106,10 +106,9 @@ where
 	}
 }
 
-pub struct XcmFeeToTreasury<T, C, F>(PhantomData<(T, C, F)>);
-impl<T, C, F> TakeRevenue for XcmFeeToTreasury<T, C, F>
+pub struct XcmFeeToTreasury<C, F>(PhantomData<(C, F)>);
+impl<C, F> TakeRevenue for XcmFeeToTreasury<C, F>
 where
-	T: Get<AccountId>,
 	C: Convert<MultiLocation, Option<CurrencyId>>,
 	F: OnFeeDeposit<AccountId, CurrencyId, Balance>,
 {
@@ -123,7 +122,7 @@ where
 				// Ensure given treasury account have ed requirement for native asset, but don't need
 				// ed requirement for cross-chain asset because it's one of whitelist accounts.
 				// Ignore the result.
-				let _ = F::on_fee_deposit(IncomeSource::XcmFee, Some(&T::get()), currency_id, amount);
+				let _ = F::on_fee_deposit(IncomeSource::XcmFee, currency_id, amount);
 			}
 		}
 	}

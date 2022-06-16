@@ -93,7 +93,7 @@ runtime_benchmarks! {
 
 		// distribution fee: TxFee
 		let _ = <Fees as OnFeeDeposit<AccountId, CurrencyId, Balance>>::on_fee_deposit(
-			IncomeSource::TxFee, None, NATIVECOIN, 1_000_000_000);
+			IncomeSource::TxFee, NATIVECOIN, 1_000_000_000);
 	}: _(RawOrigin::Root, treasury.clone())
 }
 

@@ -393,16 +393,7 @@ impl<T: Config + Send + Sync> OnFeeDeposit<T::AccountId, CurrencyId, Balance> fo
 	/// - account_id: If given account, then the whole fee amount directly deposit to it.
 	/// - currency_id: currency type.
 	/// - amount: fee amount.
-	fn on_fee_deposit(
-		income: IncomeSource,
-		account_id: Option<&T::AccountId>,
-		currency_id: CurrencyId,
-		amount: Balance,
-	) -> DispatchResult {
-		if let Some(account_id) = account_id {
-			return T::Currencies::deposit(currency_id, account_id, amount);
-		}
-
+	fn on_fee_deposit(income: IncomeSource, currency_id: CurrencyId, amount: Balance) -> DispatchResult {
 		// use `IncomeSource` to distribution fee to different treasury pool based on percentage.
 		let pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize> = IncomeToTreasuries::<T>::get(income);
 		Pallet::<T>::distribution_fees(pool_rates, currency_id, amount)

@@ -106,12 +106,7 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 }
 
 pub trait OnFeeDeposit<AccountId, CurrencyId, Balance> {
-	fn on_fee_deposit(
-		income: IncomeSource,
-		account_id: Option<&AccountId>,
-		currency_id: CurrencyId,
-		amount: Balance,
-	) -> DispatchResult;
+	fn on_fee_deposit(income: IncomeSource, currency_id: CurrencyId, amount: Balance) -> DispatchResult;
 }
 
 /// Used to interface with the Compound's Cash module

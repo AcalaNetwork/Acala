@@ -902,7 +902,6 @@ pub mod module {
 					// Staking rewards goes to T::OnFeeDeposit
 					T::OnFeeDeposit::on_fee_deposit(
 						IncomeSource::HomaStakingRewardFee,
-						None,
 						liquid_currency_id,
 						inflate_liquid_amount,
 					)?;

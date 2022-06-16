@@ -368,10 +368,13 @@ impl ExtBuilder {
 		.unwrap();
 
 		module_fees::GenesisConfig::<Runtime> {
-			incomes: vec![(
-				IncomeSource::TxFee,
-				vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
-			)],
+			incomes: vec![
+				(
+					IncomeSource::TxFee,
+					vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
+				),
+				(IncomeSource::XcmFee, vec![(TreasuryAccount::get(), 100)]),
+			],
 			treasuries: vec![],
 		}
 		.assimilate_storage(&mut t)
