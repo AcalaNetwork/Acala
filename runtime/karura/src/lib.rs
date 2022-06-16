@@ -1782,34 +1782,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	HomaTotalStakingMigration,
->;
-
-pub struct HomaTotalStakingMigration;
-
-impl OnRuntimeUpgrade for HomaTotalStakingMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		module_homa::migrations::v1::migrate::<Runtime, Homa>()
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		module_homa::migrations::v1::pre_migrate::<Homa>();
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		module_homa::migrations::v1::post_migrate::<Runtime, Homa>();
-		Ok(())
-	}
-}
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
