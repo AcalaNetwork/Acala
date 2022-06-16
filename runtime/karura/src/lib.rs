@@ -751,6 +751,7 @@ parameter_type_with_key! {
 				TokenSymbol::LDOT |
 				TokenSymbol::RENBTC |
 				TokenSymbol::KAR |
+				TokenSymbol::TAP |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {

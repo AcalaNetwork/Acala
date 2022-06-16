@@ -722,6 +722,7 @@ parameter_type_with_key! {
 				TokenSymbol::AUSD => 10 * cent(*currency_id),
 				TokenSymbol::DOT => cent(*currency_id),
 				TokenSymbol::LDOT => 5 * cent(*currency_id),
+				TokenSymbol::TAP => dollar(*currency_id),
 
 				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
