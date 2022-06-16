@@ -274,7 +274,7 @@ fn trader_works() {
 
 	// ksm_per_second/kar_per_second=1/50
 	// v0.9.22: kar_per_second = 8*dollar(KAR), ksm_per_second = 0.16 * dollar(KAR), fee = 0.16 * weight
-	// = 0.16 * 800_000_000 = 128_000_000 v0.9.23: kar_per_second = 11.655*dollar(KAR), ksm_per_second =
+	// = 0.16 * 800_000_000 = 128_000_000 v0.9.24: kar_per_second = 11.655*dollar(KAR), ksm_per_second =
 	// 0.2331 * dollar(KAR), fee = 0.2331 * weight = 186_480_000
 	#[cfg(feature = "with-mandala-runtime")]
 	let expect_unspent: MultiAsset = (Parent, 999_533_800).into(); // 466200
@@ -361,7 +361,7 @@ fn trader_works() {
 
 			// base_token_per_second * (weight/WEIGHT_PER_SECOND) * relay_exchange_rate
 			// v0.9.22: base_per_second = 8*10^12, 8*10^12 * weight/10^12 * relay_exchange_rate =
-			// relay_exchange_rate * 8 * weight v0.9.23: base_per_second = 11.655*10^12, relay_exchange_rate *
+			// relay_exchange_rate * 8 * weight v0.9.24: base_per_second = 11.655*10^12, relay_exchange_rate *
 			// 11.655 * weight
 			let relay_exchange_rate: Ratio =
 				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(RELAY_CHAIN_CURRENCY).unwrap();

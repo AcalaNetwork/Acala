@@ -4539,6 +4539,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "kusama-runtime-constants"
+version = "0.9.24"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.24#22836e55d41eef24ed5917fd654ee82a683a7cfe"
+dependencies = [
+ "frame-support",
+ "polkadot-primitives",
+ "polkadot-runtime-common",
+ "smallvec",
+ "sp-runtime",
+]
+
+[[package]]
 name = "kv-log-macro"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10686,7 +10698,7 @@ dependencies = [
  "hex-literal",
  "karura-runtime",
  "kusama-runtime",
- "kusama-runtime-constants 0.9.23 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.23)",
+ "kusama-runtime-constants 0.9.24",
  "libsecp256k1",
  "log",
  "mandala-runtime",
