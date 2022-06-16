@@ -27,7 +27,7 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 	PalletId,
 };
-use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
+use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use primitives::{Balance, Moment, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
@@ -260,6 +260,19 @@ impl cdp_engine::Config for Runtime {
 	type Currency = Currencies;
 	type DEX = ();
 	type Swap = SpecificJointsSwap<(), AlternativeSwapPathJointList>;
+	type OnFeeDeposit = Fees;
+	type WeightInfo = ();
+}
+
+impl module_fees::Config for Runtime {
+	type Event = Event;
+	type UpdateOrigin = EnsureRoot<AccountId>;
+	type Currency = PalletBalances;
+	type Currencies = Currencies;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type AllocationPeriod = ConstU64<10>;
+	type DEX = ();
+	type DexSwapJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 }
 
@@ -280,15 +293,16 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		HonzonModule: honzon::{Pallet, Storage, Call, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
-		LoansModule: loans::{Pallet, Storage, Call, Event<T>},
-		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
-		CDPEngineModule: cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		System: frame_system,
+		HonzonModule: honzon,
+		Tokens: orml_tokens,
+		PalletBalances: pallet_balances,
+		Currencies: orml_currencies,
+		LoansModule: loans,
+		CDPTreasuryModule: cdp_treasury,
+		CDPEngineModule: cdp_engine,
+		Timestamp: pallet_timestamp,
+		Fees: module_fees,
 	}
 );
 

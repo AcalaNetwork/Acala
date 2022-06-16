@@ -23,6 +23,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Call as MockCall, Event, *};
+use module_fees::PoolPercent;
 use orml_traits::MultiCurrency;
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
 use sp_io::offchain;
@@ -55,6 +56,17 @@ fn setup_default_collateral(currency_id: CurrencyId) {
 		Change::NoChange,
 		Change::NoChange,
 		Change::NewValue(10000),
+	));
+}
+
+fn setup_fees_distribution() {
+	assert_ok!(Fees::set_income_fee(
+		Origin::root(),
+		IncomeSource::HonzonStabilityFee,
+		vec![PoolPercent {
+			pool: TreasuryAccount::get(),
+			rate: Rate::one(),
+		}],
 	));
 }
 
@@ -1347,6 +1359,8 @@ fn compound_interest_rate_work() {
 #[test]
 fn accumulate_interest_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
+
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
 			BTC,
@@ -1860,5 +1874,81 @@ fn minimal_collateral_works() {
 
 		// Allow the user to withdraw all assets
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, 0));
+	});
+}
+
+#[test]
+fn accumulated_interest_goes_to_on_fee_deposit() {
+	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
+			Change::NewValue(10000),
+		));
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			DOT,
+			Change::NewValue(Some(Rate::one())),
+			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
+			Change::NewValue(10000),
+		));
+		assert_eq!(
+			CDPEngineModule::get_interest_rate_per_sec(BTC),
+			Ok(Rate::saturating_from_rational(1, 100))
+		);
+		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(DOT), Ok(Rate::one()));
+
+		// Treasury starts off empty.
+		assert_eq!(Currencies::free_balance(BTC, &TreasuryAccount::get()), 0);
+		assert_eq!(Currencies::free_balance(DOT, &TreasuryAccount::get()), 0);
+
+		CDPEngineModule::accumulate_interest(1, 0);
+
+		// No debit generates no interest.
+		assert_eq!(Currencies::free_balance(BTC, &TreasuryAccount::get()), 0);
+		assert_eq!(Currencies::free_balance(DOT, &TreasuryAccount::get()), 0);
+
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 1000, 1000));
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, DOT, 1000, 1000));
+
+		CDPEngineModule::accumulate_interest(2, 1);
+		assert_eq!(CDPEngineModule::last_accumulation_secs(), 2);
+
+		// Generated interest = debit * debit_exchange_rate * interest_rate
+		//  = 1000 * 0.1 * 0.01 + 1000 * 0.1 * 1 = 101
+		assert_eq!(Currencies::free_balance(AUSD, &TreasuryAccount::get()), 101);
+
+		assert_eq!(
+			CDPEngineModule::get_debit_exchange_rate(BTC),
+			ExchangeRate::saturating_from_rational(101, 1000)
+		);
+		assert_eq!(
+			CDPEngineModule::get_debit_exchange_rate(DOT),
+			ExchangeRate::saturating_from_rational(2, 10)
+		);
+
+		CDPEngineModule::accumulate_interest(3, 2);
+		assert_eq!(CDPEngineModule::last_accumulation_secs(), 3);
+
+		// Generated interest = debit * debit_exchange_rate * interest_rate
+		//  = 1000 * 0.101 * 0.01 + 1000 * 0.2 * 1 = 201
+		assert_eq!(Currencies::free_balance(AUSD, &TreasuryAccount::get()), 302);
+
+		assert_eq!(
+			CDPEngineModule::get_debit_exchange_rate(BTC),
+			ExchangeRate::saturating_from_rational(10201, 100000)
+		);
+		assert_eq!(
+			CDPEngineModule::get_debit_exchange_rate(DOT),
+			ExchangeRate::saturating_from_rational(4, 10)
+		);
 	});
 }

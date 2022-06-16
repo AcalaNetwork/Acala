@@ -37,7 +37,7 @@ use frame_system::{
 use loans::Position;
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_utilities::OffchainErr;
-use primitives::{Amount, Balance, CurrencyId};
+use primitives::{Amount, Balance, CurrencyId, IncomeSource};
 use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
 	ChaChaRng,
@@ -57,8 +57,8 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 use support::{
-	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
-	RiskManager, Swap, SwapLimit,
+	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, OnFeeDeposit, Price, PriceProvider,
+	Rate, Ratio, RiskManager, Swap, SwapLimit,
 };
 
 mod mock;
@@ -186,6 +186,9 @@ pub mod module {
 
 		/// Swap
 		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
+
+		/// Where the fees are go to.
+		type OnFeeDeposit: OnFeeDeposit<Self::AccountId, CurrencyId, Balance>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -554,8 +557,13 @@ impl<T: Config> Pallet<T> {
 						let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(rate_to_accumulate);
 						let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(total_debits);
 
-						// issue stablecoin to surplus pool
-						let res = <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance);
+						// Staking rewards goes to T::OnFeeDeposit
+						let res = T::OnFeeDeposit::on_fee_deposit(
+							IncomeSource::HonzonStabilityFee,
+							None,
+							T::GetStableCurrencyId::get(),
+							issued_stable_coin_balance,
+						);
 						match res {
 							Ok(_) => {
 								// update exchange rate when issue success

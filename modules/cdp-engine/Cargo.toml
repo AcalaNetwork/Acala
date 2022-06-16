@@ -18,6 +18,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.19", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 loans = { package = "module-loans", path = "../loans", default-features = false }
+module-fees = { path = "../fees", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 rand_chacha = { version = "0.2", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
@@ -46,6 +47,7 @@ std = [
 	"sp-std/std",
 	"support/std",
 	"loans/std",
+	"module-fees/std",
 	"primitives/std",
 	"orml-utilities/std",
 ]

@@ -1077,6 +1077,7 @@ impl module_cdp_engine::Config for Runtime {
 	type Currency = Currencies;
 	type DEX = Dex;
 	type Swap = AcalaSwap;
+	type OnFeeDeposit = Fees;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 

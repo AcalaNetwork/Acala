@@ -17,6 +17,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
+use module_fees::PoolPercent;
+use primitives::IncomeSource;
+use sp_runtime::traits::One;
 
 fn setup_default_collateral(currency_id: CurrencyId) {
 	assert_ok!(CdpEngine::set_collateral_params(
@@ -27,6 +30,17 @@ fn setup_default_collateral(currency_id: CurrencyId) {
 		Change::NoChange,
 		Change::NoChange,
 		Change::NewValue(10000),
+	));
+}
+
+fn setup_fees_distribution() {
+	assert_ok!(Fees::set_income_fee(
+		Origin::root(),
+		IncomeSource::HonzonStabilityFee,
+		vec![PoolPercent {
+			pool: CdpTreasury::account_id(),
+			rate: Rate::one(),
+		}],
 	));
 }
 
@@ -476,6 +490,7 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 		])
 		.build()
 		.execute_with(|| {
+			setup_fees_distribution();
 			System::set_block_number(1);
 			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(100, 1))]);
 			assert_ok!(CdpEngine::set_collateral_params(
