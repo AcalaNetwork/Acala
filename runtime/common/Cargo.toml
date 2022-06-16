@@ -64,6 +64,7 @@ module-honzon = { path = "../../modules/honzon", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
 module-cdp-engine = { path = "../../modules/cdp-engine", default-features = false }
 module-cdp-treasury = { path = "../../modules/cdp-treasury", default-features = false, optional = true }
+module-incentives = { path = "../../modules/incentives", default-features = false }
 
 # orml
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -72,6 +73,7 @@ orml-bencher = { path = "../../orml/bencher", default-features = false, optional
 orml-tokens = { path = "../../orml/tokens", default-features = false, optional = true }
 orml-nft = { path = "../../orml/nft", default-features = false, optional = true }
 orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }
+orml-rewards = { path = "../../orml/rewards", default-features = false, optional = true }
 
 [features]
 default = ["std"]
@@ -106,6 +108,7 @@ std = [
 	"orml-tokens/std",
 	"orml-nft/std",
 	"orml-currencies/std",
+	"orml-rewards/std",
 
 	"module-evm/std",
 	"module-idle-scheduler/std",
@@ -124,6 +127,7 @@ std = [
 	"module-cdp-engine/std",
 	"module-honzon/std",
 	"module-cdp-treasury/std",
+	"module-incentives/std",
 
 	"xcm/std",
 	"xcm-executor/std",
