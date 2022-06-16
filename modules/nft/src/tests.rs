@@ -38,7 +38,7 @@ fn reserved_balance(who: &AccountId) -> Balance {
 }
 
 fn class_id_account() -> AccountId {
-	<Runtime as Config>::PalletId::get().into_sub_account(CLASS_ID)
+	<Runtime as Config>::PalletId::get().into_sub_account_truncating(CLASS_ID)
 }
 
 fn test_attr(x: u8) -> Attributes {

@@ -36,7 +36,7 @@ use frame_support::{
 		WithdrawReasons,
 	},
 	transactional,
-	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient, WeightToFeePolynomial},
+	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFee},
 	BoundedVec, PalletId,
 };
 use frame_system::pallet_prelude::*;
@@ -297,7 +297,7 @@ pub mod module {
 
 		/// Convert a weight value into a deductible fee based on the currency
 		/// type.
-		type WeightToFee: WeightToFeePolynomial<Balance = PalletBalanceOf<Self>>;
+		type WeightToFee: WeightToFee<Balance = PalletBalanceOf<Self>>;
 
 		/// Update the multiplier of the next block, based on the previous
 		/// block's weight.
@@ -342,16 +342,6 @@ pub mod module {
 
 		/// The origin which change swap balance threshold or enable charge fee pool.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
-	}
-
-	#[pallet::extra_constants]
-	impl<T: Config> Pallet<T> {
-		//TODO: rename to snake case after https://github.com/paritytech/substrate/issues/8826 fixed.
-		#[allow(non_snake_case)]
-		/// The polynomial that is applied in order to derive fee from weight.
-		fn WeightToFee() -> Vec<WeightToFeeCoefficient<PalletBalanceOf<T>>> {
-			T::WeightToFee::polynomial().to_vec()
-		}
 	}
 
 	#[pallet::type_value]
@@ -762,7 +752,7 @@ where
 		// cap the weight to the maximum defined in runtime, otherwise it will be the
 		// `Bounded` maximum of its data type, which is not desired.
 		let capped_weight = weight.min(T::BlockWeights::get().max_block);
-		T::WeightToFee::calc(&capped_weight)
+		T::WeightToFee::weight_to_fee(&capped_weight)
 	}
 
 	/// If native asset is enough, return `None`, else return the fee amount should be swapped.
@@ -946,7 +936,7 @@ where
 
 	/// The sub account derivated by `PalletId`.
 	fn sub_account_id(id: CurrencyId) -> T::AccountId {
-		T::PalletId::get().into_sub_account(id)
+		T::PalletId::get().into_sub_account_truncating(id)
 	}
 
 	/// Calculate the new exchange rate.

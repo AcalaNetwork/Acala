@@ -374,7 +374,12 @@ impl<T: Config> Pallet<T> {
 		// All other tokens are transferred to the admin's account.
 		match currency_id {
 			CurrencyId::Token(TokenSymbol::CASH) => T::Currency::withdraw(currency_id, &from, locked_amount),
-			_ => T::Currency::transfer(currency_id, &from, &T::PalletId::get().into_account(), locked_amount),
+			_ => T::Currency::transfer(
+				currency_id,
+				&from,
+				&T::PalletId::get().into_account_truncating(),
+				locked_amount,
+			),
 		}?;
 
 		// Fund locked. Now reduce the supply caps
@@ -399,11 +404,20 @@ impl<T: Config> Pallet<T> {
 			_ => {
 				// Ensure the admin has sufficient balance for the transfer
 				ensure!(
-					T::Currency::ensure_can_withdraw(currency_id, &T::PalletId::get().into_account(), unlock_amount)
-						.is_ok(),
+					T::Currency::ensure_can_withdraw(
+						currency_id,
+						&T::PalletId::get().into_account_truncating(),
+						unlock_amount
+					)
+					.is_ok(),
 					Error::<T>::InsufficientAssetToUnlock
 				);
-				T::Currency::transfer(currency_id, &T::PalletId::get().into_account(), &to, unlock_amount)
+				T::Currency::transfer(
+					currency_id,
+					&T::PalletId::get().into_account_truncating(),
+					&to,
+					unlock_amount,
+				)
 			}
 		}?;
 

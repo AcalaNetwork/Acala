@@ -62,7 +62,7 @@ fn test_mint() {
 			let ksm_target_amount = 10_000_123u128;
 			let lksm_target_amount = 10_000_456u128;
 			let exchange_rate = Homa::current_exchange_rate();
-			let account_id: AccountId = StableAssetPalletId::get().into_sub_account(0);
+			let account_id: AccountId = StableAssetPalletId::get().into_sub_account_truncating(0);
 			assert_ok!(StableAsset::mint(
 				Origin::signed(AccountId::from(ALICE)),
 				0,

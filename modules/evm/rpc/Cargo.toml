@@ -9,16 +9,16 @@ jsonrpsee = { version = "0.13.0", features = ["server", "macros"] }
 rustc-hex = "2.1.0"
 serde = { version = "1.0.136", features = ["derive"] }
 
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
-pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
-sc-rpc-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
-sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
-sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
-sp-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
-sp-storage = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23" }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23" }
+sc-rpc-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23" }
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23" }
+sp-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23" }
+sp-storage = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.23" }
 
 primitives = { package = "acala-primitives", path = "../../../primitives" }
 module-evm-rpc-runtime-api = { path = "runtime_api" }

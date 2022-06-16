@@ -79,16 +79,22 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 	fn into_origin(self) -> OriginCaller {
 		match self {
 			AuthoritysOriginId::Root => Origin::root().caller().clone(),
-			AuthoritysOriginId::Treasury => Origin::signed(TreasuryPalletId::get().into_account()).caller().clone(),
-			AuthoritysOriginId::HonzonTreasury => Origin::signed(HonzonTreasuryPalletId::get().into_account())
+			AuthoritysOriginId::Treasury => Origin::signed(TreasuryPalletId::get().into_account_truncating())
 				.caller()
 				.clone(),
-			AuthoritysOriginId::HomaTreasury => Origin::signed(HomaTreasuryPalletId::get().into_account())
+			AuthoritysOriginId::HonzonTreasury => {
+				Origin::signed(HonzonTreasuryPalletId::get().into_account_truncating())
+					.caller()
+					.clone()
+			}
+			AuthoritysOriginId::HomaTreasury => Origin::signed(HomaTreasuryPalletId::get().into_account_truncating())
 				.caller()
 				.clone(),
-			AuthoritysOriginId::TreasuryReserve => Origin::signed(TreasuryReservePalletId::get().into_account())
-				.caller()
-				.clone(),
+			AuthoritysOriginId::TreasuryReserve => {
+				Origin::signed(TreasuryReservePalletId::get().into_account_truncating())
+					.caller()
+					.clone()
+			}
 		}
 	}
 

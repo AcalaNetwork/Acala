@@ -626,7 +626,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		/// Module account id
 		pub fn account_id() -> T::AccountId {
-			T::PalletId::get().into_account()
+			T::PalletId::get().into_account_truncating()
 		}
 
 		pub fn do_update_ledger<R, E>(
