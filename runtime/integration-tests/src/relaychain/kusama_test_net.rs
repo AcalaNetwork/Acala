@@ -26,6 +26,7 @@ use polkadot_primitives::v2::{BlockNumber, MAX_CODE_SIZE, MAX_POV_SIZE};
 use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sp_runtime::traits::AccountIdConversion;
 
+use runtime_common::NetworkTreasuryPool;
 use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
 
 decl_test_relay_chain! {
@@ -166,6 +167,7 @@ pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 		.balances(vec![
 			(AccountId::from(ALICE), KSM, 10 * dollar(KSM)),
 			(karura_runtime::KaruraTreasuryAccount::get(), KSM, dollar(KSM)),
+			(NetworkTreasuryPool::get(), KSM, dollar(KSM)),
 		])
 		.parachain_id(parachain_id)
 		.build()

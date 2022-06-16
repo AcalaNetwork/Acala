@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
+use runtime_common::NetworkTreasuryPool;
 
 #[test]
 fn treasury_should_take_xcm_execution_revenue() {
@@ -70,7 +71,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), actual_amount);
 		assert_eq!(
-			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
+			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &NetworkTreasuryPool::get()),
 			dot_amount - actual_amount
 		);
 	});

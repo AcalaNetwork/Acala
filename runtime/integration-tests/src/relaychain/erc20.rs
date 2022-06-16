@@ -22,11 +22,12 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 
 use frame_support::assert_ok;
-use karura_runtime::{AssetRegistry, Erc20HoldingAccount, KaruraTreasuryAccount};
+use karura_runtime::{AssetRegistry, Erc20HoldingAccount};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::EVM as EVMTrait;
 use orml_traits::MultiCurrency;
 use primitives::evm::EvmAddress;
+use runtime_common::NetworkTreasuryPool;
 use sp_core::{H256, U256};
 use std::str::FromStr;
 use xcm_emulator::TestExt;
@@ -140,7 +141,7 @@ fn erc20_transfer_between_sibling() {
 		// charge storage.
 		assert_ok!(Currencies::deposit(
 			NATIVE_CURRENCY,
-			&KaruraTreasuryAccount::get(),
+			&NetworkTreasuryPool::get(),
 			initial_native_amount
 		));
 
@@ -194,7 +195,7 @@ fn erc20_transfer_between_sibling() {
 		// initial_native_amount + ed
 		assert_eq!(
 			1_100_000_000_000,
-			Currencies::free_balance(NATIVE_CURRENCY, &KaruraTreasuryAccount::get())
+			Currencies::free_balance(NATIVE_CURRENCY, &NetworkTreasuryPool::get())
 		);
 
 		System::reset_events();
@@ -247,7 +248,7 @@ fn erc20_transfer_between_sibling() {
 		);
 		assert_eq!(
 			9_324_000_000,
-			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &KaruraTreasuryAccount::get())
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &NetworkTreasuryPool::get())
 		);
 		assert_eq!(
 			0,
@@ -266,7 +267,7 @@ fn erc20_transfer_between_sibling() {
 		// deposit reserve and unreserve storage fee, so the native token not changed.
 		assert_eq!(
 			1_100_000_000_000,
-			Currencies::free_balance(NATIVE_CURRENCY, &KaruraTreasuryAccount::get())
+			Currencies::free_balance(NATIVE_CURRENCY, &NetworkTreasuryPool::get())
 		);
 
 		// withdraw operation transfer from sibling parachain account to erc20 holding account
@@ -284,7 +285,7 @@ fn erc20_transfer_between_sibling() {
 		// TakeRevenue deposit from erc20 holding account to treasury account
 		System::assert_has_event(Event::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
-			who: KaruraTreasuryAccount::get(),
+			who: NetworkTreasuryPool::get(),
 			amount: 9_324_000_000,
 		}));
 	});

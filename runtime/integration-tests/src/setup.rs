@@ -86,7 +86,6 @@ pub use karura_imports::*;
 mod karura_imports {
 	pub use frame_support::parameter_types;
 	pub use karura_runtime::xcm_config::*;
-	use karura_runtime::AlternativeFeeSurplus;
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine,
@@ -99,6 +98,7 @@ mod karura_imports {
 		TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM,
 		NFT,
 	};
+	use karura_runtime::{AlternativeFeeSurplus, KaruraTreasuryAccount};
 	use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 	pub use primitives::TradingPair;
 	pub use runtime_common::{cent, dollar, millicent, FixedRateOfAsset, KAR, KSM, KUSD, LKSM};
@@ -113,7 +113,7 @@ mod karura_imports {
 			TradingPair::from_currency_ids(USD_CURRENCY, LIQUID_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY).unwrap(),
 		];
-		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
+		pub TreasuryAccount: AccountId = KaruraTreasuryAccount::get();
 	}
 
 	pub const NATIVE_CURRENCY: CurrencyId = KAR;
@@ -138,7 +138,6 @@ use primitives::IncomeSource;
 #[cfg(feature = "with-acala-runtime")]
 mod acala_imports {
 	pub use acala_runtime::xcm_config::*;
-	use acala_runtime::AlternativeFeeSurplus;
 	pub use acala_runtime::{
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts, AcalaOracle, AccountId,
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine,
@@ -148,8 +147,9 @@ mod acala_imports {
 		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount,
 		ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio, Runtime, Scheduler, Session,
 		SessionManager, SevenDays, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment,
-		TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM, LCDOT, NFT,
+		TransactionPaymentPalletId, Utility, Vesting, XTokens, XcmInterface, EVM, LCDOT, NFT,
 	};
+	use acala_runtime::{AcalaTreasuryAccount, AlternativeFeeSurplus};
 	pub use frame_support::parameter_types;
 	use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 	pub use primitives::TradingPair;
@@ -167,7 +167,7 @@ mod acala_imports {
 			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, LCDOT).unwrap(),
 		];
-		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
+		pub TreasuryAccount: AccountId = AcalaTreasuryAccount::get();
 	}
 
 	pub const NATIVE_CURRENCY: CurrencyId = ACA;
@@ -373,7 +373,8 @@ impl ExtBuilder {
 					IncomeSource::TxFee,
 					vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
 				),
-				(IncomeSource::XcmFee, vec![(TreasuryAccount::get(), 100)]),
+				// xcm buy weight revenue deposit to NetworkTreasuryPool account
+				(IncomeSource::XcmFee, vec![(NetworkTreasuryPool::get(), 100)]),
 			],
 			treasuries: vec![],
 		}
