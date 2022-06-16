@@ -39,4 +39,34 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 		await contract.test_call(ecrecover, input, expect_addr);
 		await contract.test_delegate_call(ecrecover, input, expect_addr);
 	});
+
+
+	it('standard precompiles can be called directly', async function () {
+		expect(await context.provider.call({
+			to: ecrecover,
+			from: await alice.getAddress(),
+			data: input,
+		}), expect_pk);
+	});
+
+	it('Acala precompiles cannot be called directly', async function () {
+		await expect(context.provider.call({
+			to: '0x0000000000000000000000000000000000000400',
+			from: await alice.getAddress(),
+			data: input,
+		})).to.be.rejectedWith("NoPermission");
+
+		await expect(context.provider.call({
+			to: '0x0000000000000000000000000000000000000400',
+			from: '0x0000000000000000000111111111111111111111',
+			data: input,
+		})).to.be.rejectedWith("Caller is not a system contract");
+
+		// 41555344 -> AUSD
+		expect(await context.provider.call({
+			to: '0x0000000000000000000000000000000000000400',
+			from: '0x0000000000000000000100000000000000000001',
+			data: '0x95d89b410000000000000000000000000000000000000000000100000000000000000001',
+		})).to.be.eq("0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000044155534400000000000000000000000000000000000000000000000000000000");
+	});
 });
