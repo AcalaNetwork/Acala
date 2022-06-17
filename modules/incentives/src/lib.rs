@@ -285,6 +285,7 @@ pub mod module {
 		#[transactional]
 		pub fn claim_rewards(origin: OriginFor<T>, pool_id: PoolId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+
 			Self::do_claim_rewards(who, pool_id)
 		}
 
@@ -516,15 +517,29 @@ impl<T: Config> Pallet<T> {
 				let deduction_amount = deduction_rate.saturating_mul_int(pending_reward).min(pending_reward);
 				if !deduction_amount.is_zero() {
 					// re-accumulate deduction to rewards pool if deduction amount is not zero
-					<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, deduction_amount)?;
+					let _ = <orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, deduction_amount).map_err(|e| {
+						log::error!(
+							target: "incentives",
+							"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
+							pool_id, currency_id, deduction_amount, e
+						);
+					});
 				}
 				(pending_reward.saturating_sub(deduction_amount), deduction_amount)
 			};
 
-			// transfer the actual reward(pending reward exclude deduction) to user from the pool. it should not
-			// affect the process, ignore the result to continue. if it fails, just the user will not
-			// be rewarded, there will not increase user balance.
-			T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount)?;
+			// transfer to `who` maybe fail because of the reward amount is below ED and `who` is not alive.
+			// if transfer failed, do not throw err directly and try to put the tiny reward back to pool.
+			let res = T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount);
+			if res.is_err() {
+				let _ = <orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, actual_amount).map_err(|e| {
+					log::error!(
+						target: "incentives",
+						"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
+						pool_id, currency_id, actual_amount, e
+					);
+				});
+			}
 
 			Self::deposit_event(Event::ClaimRewards {
 				who: who.clone(),
