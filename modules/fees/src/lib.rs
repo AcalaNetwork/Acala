@@ -306,6 +306,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	/// Distribute/Deposit income to treasury pool account.
 	fn distribution_fees(
 		pool_rates: BoundedVec<PoolPercent<T::AccountId>, MaxPoolSize>,
 		currency_id: CurrencyId,
@@ -333,6 +334,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	/// Transfer balance from treasury pool account to incentive pool account.
 	fn distribution_incentive(treasury: T::AccountId) -> DispatchResult {
 		let native_token = T::NativeCurrencyId::get();
 		let tokens = TreasuryTokens::<T>::get(&treasury);
@@ -363,6 +365,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	// Use dex swap foreign token to native token, then treasury pool account only has native token.
 	fn get_native_account(treasury: &T::AccountId, native_token: CurrencyId, token: CurrencyId) -> Option<Balance> {
 		if native_token == token {
 			let amount = T::Currency::free_balance(treasury);
