@@ -64,7 +64,7 @@ fn setup_fees_distribution() {
 		Origin::root(),
 		IncomeSource::HonzonStabilityFee,
 		vec![PoolPercent {
-			pool: TreasuryAccount::get(),
+			pool: BOB,
 			rate: Rate::one(),
 		}],
 	));
@@ -1907,14 +1907,12 @@ fn accumulated_interest_goes_to_on_fee_deposit() {
 		assert_eq!(CDPEngineModule::get_interest_rate_per_sec(DOT), Ok(Rate::one()));
 
 		// Treasury starts off empty.
-		assert_eq!(Currencies::free_balance(BTC, &TreasuryAccount::get()), 0);
-		assert_eq!(Currencies::free_balance(DOT, &TreasuryAccount::get()), 0);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 0);
 
 		CDPEngineModule::accumulate_interest(1, 0);
 
 		// No debit generates no interest.
-		assert_eq!(Currencies::free_balance(BTC, &TreasuryAccount::get()), 0);
-		assert_eq!(Currencies::free_balance(DOT, &TreasuryAccount::get()), 0);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 0);
 
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 1000, 1000));
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, DOT, 1000, 1000));
@@ -1924,7 +1922,7 @@ fn accumulated_interest_goes_to_on_fee_deposit() {
 
 		// Generated interest = debit * debit_exchange_rate * interest_rate
 		//  = 1000 * 0.1 * 0.01 + 1000 * 0.1 * 1 = 101
-		assert_eq!(Currencies::free_balance(AUSD, &TreasuryAccount::get()), 101);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 101);
 
 		assert_eq!(
 			CDPEngineModule::get_debit_exchange_rate(BTC),
@@ -1940,7 +1938,7 @@ fn accumulated_interest_goes_to_on_fee_deposit() {
 
 		// Generated interest = debit * debit_exchange_rate * interest_rate
 		//  = 1000 * 0.101 * 0.01 + 1000 * 0.2 * 1 = 201
-		assert_eq!(Currencies::free_balance(AUSD, &TreasuryAccount::get()), 302);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 302);
 
 		assert_eq!(
 			CDPEngineModule::get_debit_exchange_rate(BTC),
