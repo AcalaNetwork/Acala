@@ -147,19 +147,19 @@ macro_rules! create_currency_id {
 			let mut acala_lp_tokens = vec![
 				Token {
 					symbol: "LP_ACA_AUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(ACA), DexShare::Token(AUSD))).unwrap(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(ACA), CurrencyId::Token(AUSD)).unwrap().dex_share_currency_id()).unwrap(),
 				},
 				Token {
 					symbol: "LP_DOT_AUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(DOT), DexShare::Token(AUSD))).unwrap(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(DOT), CurrencyId::Token(AUSD)).unwrap().dex_share_currency_id()).unwrap(),
 				},
 				Token {
 					symbol: "LP_LDOT_AUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(LDOT), DexShare::Token(AUSD))).unwrap(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(LDOT), CurrencyId::Token(AUSD)).unwrap().dex_share_currency_id()).unwrap(),
 				},
 				Token {
 					symbol: "LP_RENBTC_AUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(RENBTC), DexShare::Token(AUSD))).unwrap(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(RENBTC), CurrencyId::Token(AUSD)).unwrap().dex_share_currency_id()).unwrap(),
 				},
 			];
 			acala_tokens.append(&mut acala_lp_tokens);
@@ -196,15 +196,15 @@ macro_rules! create_currency_id {
 			let mut karura_lp_tokens = vec![
 				Token {
 					symbol: "LP_KAR_KUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(KAR), DexShare::Token(KUSD))).unwrap(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KAR), CurrencyId::Token(KUSD)).unwrap().dex_share_currency_id()).unwrap(),
 				},
 				Token {
 					symbol: "LP_KSM_KUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(KSM), DexShare::Token(KUSD))).unwrap(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KSM), CurrencyId::Token(KUSD)).unwrap().dex_share_currency_id()).unwrap(),
 				},
 				Token {
 					symbol: "LP_LKSM_KUSD".to_string(),
-					address: EvmAddress::try_from(CurrencyId::DexShare(DexShare::Token(LKSM), DexShare::Token(KUSD))).unwrap(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(LKSM), CurrencyId::Token(KUSD)).unwrap().dex_share_currency_id()).unwrap(),
 				},
 			];
 			karura_tokens.append(&mut karura_lp_tokens);
