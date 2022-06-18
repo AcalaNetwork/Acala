@@ -1,6 +1,6 @@
 [package]
 name = "acala"
-version = "2.7.0"
+version = "2.8.0"
 authors = ["Acala Developers"]
 edition = "2021"
 default-run = "acala"
