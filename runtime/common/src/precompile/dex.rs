@@ -103,7 +103,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128_tuple(balance_a, balance_b),
+					output: Output::encode_uint_tuple(vec![balance_a, balance_b]),
 					logs: Default::default(),
 				})
 			}
@@ -123,7 +123,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_address(&address),
+					output: Output::encode_address(address),
 					logs: Default::default(),
 				})
 			}
@@ -149,7 +149,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(target),
+					output: Output::encode_uint(target),
 					logs: Default::default(),
 				})
 			}
@@ -175,7 +175,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(supply),
+					output: Output::encode_uint(supply),
 					logs: Default::default(),
 				})
 			}
@@ -207,7 +207,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(value),
+					output: Output::encode_uint(value),
 					logs: Default::default(),
 				})
 			}
@@ -239,7 +239,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(value),
+					output: Output::encode_uint(value),
 					logs: Default::default(),
 				})
 			}

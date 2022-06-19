@@ -848,7 +848,7 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	fn account_id() -> T::AccountId {
-		T::PalletId::get().into_account()
+		T::PalletId::get().into_account_truncating()
 	}
 
 	fn try_mutate_liquidity_pool<R, E>(

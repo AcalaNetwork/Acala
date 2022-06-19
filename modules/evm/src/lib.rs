@@ -1387,6 +1387,16 @@ impl<T: Config> Pallet<T> {
 		Self::codes(&Self::code_hash_at_address(address))
 	}
 
+	pub fn is_contract(address: &EvmAddress) -> bool {
+		matches!(
+			Self::accounts(address),
+			Some(AccountInfo {
+				contract_info: Some(_),
+				..
+			})
+		)
+	}
+
 	pub fn update_contract_storage_size(address: &EvmAddress, change: i32) {
 		if change == 0 {
 			return;

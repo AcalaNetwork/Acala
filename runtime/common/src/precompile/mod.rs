@@ -44,6 +44,7 @@ pub mod evm;
 pub mod evm_accounts;
 pub mod homa;
 pub mod honzon;
+pub mod incentives;
 pub mod input;
 pub mod multicurrency;
 pub mod nft;
@@ -57,6 +58,7 @@ pub use evm::EVMPrecompile;
 pub use evm_accounts::EVMAccountsPrecompile;
 pub use homa::HomaPrecompile;
 pub use honzon::HonzonPrecompile;
+pub use incentives::IncentivesPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
@@ -89,6 +91,7 @@ pub const STABLE_ASSET: H160 = H160(hex!("00000000000000000000000000000000000004
 pub const HOMA: H160 = H160(hex!("0000000000000000000000000000000000000407"));
 pub const EVM_ACCOUNTS: H160 = H160(hex!("0000000000000000000000000000000000000408"));
 pub const HONZON: H160 = H160(hex!("0000000000000000000000000000000000000409"));
+pub const INCENTIVES: H160 = H160(hex!("000000000000000000000000000000000000040a"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
 	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
@@ -129,7 +132,8 @@ where
 				// STABLE_ASSET,
 				// HOMA,
 				EVM_ACCOUNTS,
-				// HONZON
+				/* HONZON
+				 * INCENTIVES */
 			]),
 			_marker: Default::default(),
 		}
@@ -161,7 +165,8 @@ where
 				// STABLE_ASSET,
 				// HOMA,
 				EVM_ACCOUNTS,
-				// HONZON
+				/* HONZON
+				 * INCENTIVES */
 			]),
 			_marker: Default::default(),
 		}
@@ -194,6 +199,7 @@ where
 				HOMA,
 				EVM_ACCOUNTS,
 				HONZON,
+				INCENTIVES,
 			]),
 			_marker: Default::default(),
 		}
@@ -213,6 +219,7 @@ where
 	SchedulePrecompile<R>: Precompile,
 	HomaPrecompile<R>: Precompile,
 	HonzonPrecompile<R>: Precompile,
+	IncentivesPrecompile<R>: Precompile,
 {
 	fn execute(
 		&self,
@@ -280,6 +287,15 @@ where
 				}));
 			}
 
+			if !module_evm::Pallet::<R>::is_contract(&context.caller) {
+				log::debug!(target: "evm", "Caller is not a system contract: {:?}", context.caller);
+				return Some(Err(PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Caller is not a system contract".into(),
+					cost: target_gas.unwrap_or_default(),
+				}));
+			}
+
 			if address == MULTI_CURRENCY {
 				Some(MultiCurrencyPrecompile::<R>::execute(
 					input, target_gas, context, is_static,
@@ -306,6 +322,10 @@ where
 				))
 			} else if address == HONZON {
 				Some(HonzonPrecompile::<R>::execute(input, target_gas, context, is_static))
+			} else if address == INCENTIVES {
+				Some(IncentivesPrecompile::<R>::execute(
+					input, target_gas, context, is_static,
+				))
 			} else {
 				None
 			}

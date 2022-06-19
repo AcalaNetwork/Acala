@@ -25,7 +25,7 @@ pub use crate as transaction_payment;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
-	weights::WeightToFeeCoefficients,
+	weights::{WeightToFeeCoefficients, WeightToFeePolynomial},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -120,6 +120,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -241,7 +243,7 @@ parameter_types! {
 	pub const HigerSwapThreshold: Balance = 9500;
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
-	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 ord_parameter_types! {
 	pub const ListingOrigin: AccountId = ALICE;
@@ -257,11 +259,11 @@ impl Config for Runtime {
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
-	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = ConstU64<5>;
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type WeightToFee = WeightToFee;
+	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;

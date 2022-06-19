@@ -34,6 +34,7 @@ pub mod dex;
 pub mod evm;
 pub mod homa;
 pub mod honzon;
+pub mod incentives;
 pub mod mocks;
 pub mod stable_asset;
 
@@ -41,6 +42,7 @@ pub use crate::dex::*;
 pub use crate::evm::*;
 pub use crate::homa::*;
 pub use crate::honzon::*;
+pub use crate::incentives::*;
 pub use crate::stable_asset::*;
 
 pub type Price = FixedU128;
@@ -70,22 +72,6 @@ pub trait LockablePrice<CurrencyId> {
 
 pub trait ExchangeRateProvider {
 	fn get_exchange_rate() -> ExchangeRate;
-}
-
-pub trait DEXIncentives<AccountId, CurrencyId, Balance> {
-	fn do_deposit_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
-	fn do_withdraw_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
-}
-
-#[cfg(feature = "std")]
-impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balance> for () {
-	fn do_deposit_dex_share(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
-		Ok(())
-	}
-
-	fn do_withdraw_dex_share(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
-		Ok(())
-	}
 }
 
 pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
@@ -193,5 +179,5 @@ pub trait NomineesProvider<AccountId> {
 }
 
 pub trait BuyWeightRate {
-	fn calculate_rate(location: MultiLocation) -> Option<Rate>;
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio>;
 }

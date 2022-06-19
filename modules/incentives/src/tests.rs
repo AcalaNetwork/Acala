@@ -513,6 +513,75 @@ fn payout_works() {
 }
 
 #[test]
+fn transfer_failed_when_claim_rewards() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(TokensModule::deposit(AUSD, &VAULT::get(), 100));
+		RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(BTC), 100);
+		RewardsModule::add_share(&BOB::get(), &PoolId::Loans(BTC), 100);
+		assert_ok!(RewardsModule::accumulate_reward(&PoolId::Loans(BTC), AUSD, 18));
+
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 100);
+		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 0);
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Loans(BTC)),
+			PoolInfo {
+				total_shares: 200,
+				rewards: vec![(AUSD, (18, 0))].into_iter().collect(),
+			}
+		);
+		assert_eq!(
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(BTC), ALICE::get()),
+			(100, Default::default())
+		);
+
+		// Alice claim rewards, but the rewards are put back to pool because transfer rewards failed.
+		assert_ok!(IncentivesModule::claim_rewards(
+			Origin::signed(ALICE::get()),
+			PoolId::Loans(BTC)
+		));
+
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 100);
+		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 0);
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Loans(BTC)),
+			PoolInfo {
+				total_shares: 200,
+				rewards: vec![(AUSD, (27, 9))].into_iter().collect(),
+			}
+		);
+		assert_eq!(
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(BTC), ALICE::get()),
+			(100, vec![(AUSD, 9)].into_iter().collect())
+		);
+
+		assert_eq!(TokensModule::free_balance(AUSD, &BOB::get()), 0);
+		assert_eq!(
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(BTC), BOB::get()),
+			(100, Default::default())
+		);
+
+		// BOB claim reward and receive the reward.
+		assert_ok!(IncentivesModule::claim_rewards(
+			Origin::signed(BOB::get()),
+			PoolId::Loans(BTC)
+		));
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 87);
+		assert_eq!(TokensModule::free_balance(AUSD, &BOB::get()), 13);
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Loans(BTC)),
+			PoolInfo {
+				total_shares: 200,
+				rewards: vec![(AUSD, (27, 22))].into_iter().collect(),
+			}
+		);
+		assert_eq!(
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(BTC), BOB::get()),
+			(100, vec![(AUSD, 13)].into_iter().collect())
+		);
+	});
+}
+
+#[test]
 fn claim_rewards_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);

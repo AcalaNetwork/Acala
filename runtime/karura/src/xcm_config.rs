@@ -19,9 +19,8 @@
 use super::{
 	constants::{fee::*, parachains},
 	AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event, ExistentialDeposits,
-	FixedRateOfAssetRegistry, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin,
-	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, TransactionFeePoolTrader, UnknownTokens, XcmInterface,
-	XcmpQueue, KAR, KUSD, LKSM,
+	FixedRateOfAsset, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin, ParachainInfo,
+	ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -32,6 +31,7 @@ pub use frame_support::{
 };
 pub use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset};
 use module_support::HomaSubAccountXcm;
+use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
@@ -184,12 +184,11 @@ parameter_types! {
 		(ksm_per_second() * 4) / 3
 	);
 
-	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
-	pub KarPerSecondAsBased: u128 = kar_per_second();
+	pub BaseRate: u128 = kar_per_second();
 }
 
 pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
@@ -199,8 +198,8 @@ pub type Trader = (
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
 	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
 );
 
 pub struct XcmConfig;
@@ -301,11 +300,11 @@ parameter_types! {
 }
 
 parameter_type_with_key! {
-	pub ParachainMinFee: |location: MultiLocation| -> u128 {
+	pub ParachainMinFee: |location: MultiLocation| -> Option<u128> {
 		#[allow(clippy::match_ref_pats)] // false positive
 		match (location.parents, location.first_interior()) {
-			(1, Some(Parachain(parachains::statemine::ID))) => XcmInterface::get_parachain_fee(location.clone()),
-			_ => u128::MAX,
+			(1, Some(Parachain(parachains::statemine::ID))) => Some(XcmInterface::get_parachain_fee(location.clone())),
+			_ => None,
 		}
 	};
 }
