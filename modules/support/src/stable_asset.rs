@@ -195,8 +195,7 @@ where
 			.assets
 			.get(i as usize)
 			.ok_or_else(|| ErrorConvertor::convert(RebasedStableAssetError::InvalidTokenIndex))?;
-		let rebased_min_redeem_amount =
-			RebaseTokenAmountConvertor::convert_balance_back(min_redeem_amount, *currency_id);
+		let rebased_min_redeem_amount = RebaseTokenAmountConvertor::convert_balance(min_redeem_amount, *currency_id);
 
 		StableAsset::redeem_single(who, pool_id, amount, i, rebased_min_redeem_amount, asset_length)
 	}
@@ -321,7 +320,22 @@ where
 		>,
 		amount_bal: Self::Balance,
 	) -> Option<RedeemProportionResult<Self::Balance>> {
-		StableAsset::get_redeem_proportion_amount(pool_info, amount_bal)
+		StableAsset::get_redeem_proportion_amount(pool_info, amount_bal).map(|mut r| {
+			r.amounts = r
+				.amounts
+				.iter()
+				.enumerate()
+				.map(|(index, amount)| {
+					if let Some(currency_id) = pool_info.assets.get(index as usize) {
+						RebaseTokenAmountConvertor::convert_balance_back(*amount, *currency_id)
+					} else {
+						*amount
+					}
+				})
+				.collect();
+
+			r
+		})
 	}
 
 	fn get_best_route(
