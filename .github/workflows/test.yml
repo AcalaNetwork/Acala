@@ -42,8 +42,10 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
-      - name: Setup cmake # need cmake due to https://github.com/libp2p/rust-libp2p/issues/2645
-        uses: jwlawson/actions-setup-cmake@v1.12
+      - name: Install additional dependencies
+        run: |
+            sudo apt update -y &&
+            sudo apt install -y cmake protobuf-compiler
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build
@@ -76,8 +78,10 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
-      - name: Setup cmake # need cmake due to https://github.com/libp2p/rust-libp2p/issues/2645
-        uses: jwlawson/actions-setup-cmake@v1.12
+      - name: Install additional dependencies
+        run: |
+            sudo apt update -y &&
+            sudo apt install -y cmake protobuf-compiler
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
