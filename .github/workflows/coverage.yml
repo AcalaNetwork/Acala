@@ -45,6 +45,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Setup cmake # need cmake due to https://github.com/libp2p/rust-libp2p/issues/2645
+        uses: jwlawson/actions-setup-cmake@v1.12
       # - name: Install additional dependencies
       #   run: |
       #       sudo apt update -y &&
