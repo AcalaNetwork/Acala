@@ -42,10 +42,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
-      - name: Install additional dependencies
-        run: |
-            sudo apt update -y &&
-            sudo apt install -y cmake protobuf-compiler
+      - name: Setup cmake # need cmake due to https://github.com/libp2p/rust-libp2p/issues/2645
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build
@@ -78,10 +76,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
-      - name: Install additional dependencies
-        run: |
-            sudo apt update -y &&
-            sudo apt install -y cmake protobuf-compiler
+      - name: Setup cmake # need cmake due to https://github.com/libp2p/rust-libp2p/issues/2645
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
@@ -102,10 +98,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
-      - name: Install additional dependencies
-        run: |
-            sudo apt update -y &&
-            sudo apt install -y cmake protobuf-compiler
+      - name: Setup cmake # need cmake due to https://github.com/libp2p/rust-libp2p/issues/2645
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run runtime tests
         run: make test-runtimes
       - name: Run eth tests
@@ -132,10 +126,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
-      - name: Install additional dependencies
-        run: |
-            sudo apt update -y &&
-            sudo apt install -y cmake protobuf-compiler
+      - name: Setup cmake # need cmake due to https://github.com/libp2p/rust-libp2p/issues/2645
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run e2e tests
         run: make test-e2e
       - name: Use Node.js
