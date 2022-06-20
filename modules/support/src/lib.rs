@@ -19,6 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::from_over_into)]
+#![allow(clippy::type_complexity)]
 
 use codec::FullCodec;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
@@ -35,12 +36,14 @@ pub mod homa;
 pub mod honzon;
 pub mod incentives;
 pub mod mocks;
+pub mod stable_asset;
 
 pub use crate::dex::*;
 pub use crate::evm::*;
 pub use crate::homa::*;
 pub use crate::honzon::*;
 pub use crate::incentives::*;
+pub use crate::stable_asset::*;
 
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;

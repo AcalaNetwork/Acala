@@ -16,6 +16,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.24", default-features = false }
+orml-tokens = { path = "../../orml/tokens", default-features = false }
 
 [features]
 default = ["std"]
@@ -29,4 +30,5 @@ std = [
 	"frame-support/std",
 	"primitives/std",
 	"xcm/std",
+	"orml-tokens/std",
 ]

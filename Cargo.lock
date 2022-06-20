@@ -6302,6 +6302,7 @@ dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
  "nutsfinance-stable-asset",
+ "orml-tokens",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

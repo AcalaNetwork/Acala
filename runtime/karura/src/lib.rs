@@ -1117,13 +1117,18 @@ impl module_dex::Config for Runtime {
 
 impl module_aggregated_dex::Config for Runtime {
 	type DEX = Dex;
-	type StableAsset = StableAsset;
+	type StableAsset = RebasedStableAsset;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
-	type RebaseTokenAmountConvertor = ConvertBalanceHoma;
 	type WeightInfo = ();
 }
+
+pub type RebasedStableAsset = module_support::RebasedStableAsset<
+	StableAsset,
+	ConvertBalanceHoma,
+	module_aggregated_dex::RebasedStableAssetErrorConvertor<Runtime>,
+>;
 
 pub type AcalaSwap = module_aggregated_dex::AggregatedSwap<Runtime>;
 
@@ -1154,7 +1159,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
-	type StableAsset = StableAsset;
+	type StableAsset = RebasedStableAsset;
 }
 
 impl module_transaction_pause::Config for Runtime {
