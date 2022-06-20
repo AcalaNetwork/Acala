@@ -35,6 +35,7 @@
 
 use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
+use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
 use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
@@ -52,6 +53,7 @@ mod tests;
 pub mod weights;
 
 pub use module::*;
+use orml_utilities::OffchainErr;
 pub use weights::WeightInfo;
 
 /// Parameters of TradingPair in Provisioning status
@@ -90,10 +92,9 @@ impl<Balance, BlockNumber> Default for TradingPairStatus<Balance, BlockNumber> {
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
-	use sp_runtime::traits::UniqueSaturatedInto;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + SendTransactionTypes<Call<Self>> {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Currency for transfer currencies
@@ -366,17 +367,20 @@ pub mod module {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		// TODO: use Offchain worker
-		fn on_initialize(n: T::BlockNumber) -> Weight {
-			let keys: Vec<(CurrencyId, CurrencyId, CurrencyId)> = TriangleTradingPath::<T>::iter_keys().collect();
-			if keys.len() == 0 {
-				return 0;
+		fn offchain_worker(now: T::BlockNumber) {
+			if let Err(e) = Self::_offchain_worker() {
+				log::info!(
+					target: "dex-bot",
+					"offchain worker: cannot run offchain worker at {:?}: {:?}",
+					now, e,
+				);
+			} else {
+				log::debug!(
+					target: "dex-bot",
+					"offchain worker: offchain worker start at block: {:?} already done!",
+					now,
+				);
 			}
-			let block: u64 = n.unique_saturated_into();
-			let index: u64 = block % (keys.len() as u64);
-			let current: (CurrencyId, CurrencyId, CurrencyId) = keys[index as usize];
-			Self::triangle_swap(current);
-			0
 		}
 	}
 
@@ -872,6 +876,45 @@ pub mod module {
 
 			Ok(())
 		}
+
+		#[pallet::weight(1000)]
+		#[transactional]
+		pub fn triangle_swap(
+			origin: OriginFor<T>,
+			currency_1: CurrencyId,
+			currency_2: CurrencyId,
+			currency_3: CurrencyId,
+		) -> DispatchResult {
+			ensure_none(origin)?;
+			Self::_triangle_swap((currency_1, currency_2, currency_3))
+		}
+	}
+
+	#[pallet::validate_unsigned]
+	impl<T: Config> ValidateUnsigned for Pallet<T> {
+		type Call = Call<T>;
+		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+			if let Call::triangle_swap {
+				currency_1,
+				currency_2,
+				currency_3,
+			} = call
+			{
+				ValidTransaction::with_tag_prefix("DexBotOffchainWorker")
+					// .priority(T::UnsignedPriority::get())
+					.and_provides((
+						<frame_system::Pallet<T>>::block_number(),
+						currency_1,
+						currency_2,
+						currency_3,
+					))
+					.longevity(64_u64)
+					.propagate(true)
+					.build()
+			} else {
+				InvalidTransaction::Call.into()
+			}
+		}
 	}
 }
 
@@ -880,8 +923,29 @@ impl<T: Config> Pallet<T> {
 		T::PalletId::get().into_account_truncating()
 	}
 
+	fn _submit_triangle_swap_tx(currency_1: CurrencyId, currency_2: CurrencyId, currency_3: CurrencyId) {
+		let call = Call::<T>::triangle_swap {
+			currency_1,
+			currency_2,
+			currency_3,
+		};
+		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
+			log::info!(
+				target: "dex-bot",
+				"offchain worker: submit unsigned auction A={:?},B={:?},C={:?}, failed: {:?}",
+				currency_1, currency_2, currency_3, err,
+			);
+		}
+	}
+
+	fn _offchain_worker() -> Result<(), OffchainErr> {
+		// find triangle path
+		// Self::submit_triangle_swap_tx(...);
+		Ok(())
+	}
+
 	/// Triangle swap of `ABCA`, the final A should be large then original A.
-	fn triangle_swap(current: (CurrencyId, CurrencyId, CurrencyId)) {
+	fn _triangle_swap(current: (CurrencyId, CurrencyId, CurrencyId)) -> DispatchResult {
 		// TODO: use configuration
 		let supply_amount: Balance = 100_000_000_000_000;
 		let minimum_amount: Balance = 110_000_000_000_000;
@@ -915,6 +979,8 @@ impl<T: Config> Pallet<T> {
 				}
 			}
 		}
+
+		Ok(())
 	}
 
 	fn try_mutate_liquidity_pool<R, E>(
