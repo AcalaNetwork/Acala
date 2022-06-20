@@ -588,7 +588,7 @@ mod tests {
 				000000000000000000000000 0000000000000000000100000000000000000002
 			"};
 
-			// value for FixedU128 of (1/10), default value for exchange rate
+			// value for FixedU128 of 1, default value for exchange rate
 			let expected_output = hex! {"
 				00000000000000000000000000000000 00000000000000000de0b6b3a7640000
 			"};

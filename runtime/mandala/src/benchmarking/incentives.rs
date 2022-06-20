@@ -28,7 +28,7 @@ use super::{
 use frame_benchmarking::{account, whitelisted_caller, BenchmarkError};
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
-use module_incentives::PoolId;
+use module_support::PoolId;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use sp_std::prelude::*;
