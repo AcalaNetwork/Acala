@@ -90,6 +90,7 @@ impl<Balance, BlockNumber> Default for TradingPairStatus<Balance, BlockNumber> {
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
+	use sp_runtime::traits::UniqueSaturatedInto;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -247,6 +248,13 @@ pub mod module {
 			accumulated_provision_0: Balance,
 			accumulated_provision_1: Balance,
 		},
+		/// Triangle trading path and balance.
+		TriangleTrading {
+			currency_1: CurrencyId,
+			currency_2: CurrencyId,
+			currency_3: CurrencyId,
+			target_amount: Balance,
+		},
 	}
 
 	/// Liquidity pool for TradingPair.
@@ -280,6 +288,14 @@ pub mod module {
 	#[pallet::getter(fn initial_share_exchange_rates)]
 	pub type InitialShareExchangeRates<T: Config> =
 		StorageMap<_, Twox64Concat, TradingPair, (ExchangeRate, ExchangeRate), ValueQuery>;
+
+	/// Triangle path of `A-B-C-A`.
+	///
+	/// TriangleTradingPath: map CurrencyA => (CurrencyB, CurrencyC)
+	#[pallet::storage]
+	#[pallet::getter(fn triangle_trading_path)]
+	pub type TriangleTradingPath<T: Config> =
+		StorageMap<_, Twox64Concat, (CurrencyId, CurrencyId, CurrencyId), (), ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -349,7 +365,20 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		// TODO: use Offchain worker
+		fn on_initialize(n: T::BlockNumber) -> Weight {
+			let keys: Vec<(CurrencyId, CurrencyId, CurrencyId)> = TriangleTradingPath::<T>::iter_keys().collect();
+			if keys.len() == 0 {
+				return 0;
+			}
+			let block: u64 = n.unique_saturated_into();
+			let index: u64 = block % (keys.len() as u64);
+			let current: (CurrencyId, CurrencyId, CurrencyId) = keys[index as usize];
+			Self::triangle_swap(current);
+			0
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -849,6 +878,43 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	fn account_id() -> T::AccountId {
 		T::PalletId::get().into_account_truncating()
+	}
+
+	/// Triangle swap of `ABCA`, the final A should be large then original A.
+	fn triangle_swap(current: (CurrencyId, CurrencyId, CurrencyId)) {
+		// TODO: use configuration
+		let supply_amount: Balance = 100_000_000_000_000;
+		let minimum_amount: Balance = 110_000_000_000_000;
+
+		let first_path: Vec<CurrencyId> = vec![current.0, current.1, current.2];
+		if let Some((_, target)) = <Self as DEXManager<T::AccountId, Balance, CurrencyId>>::get_swap_amount(
+			&first_path,
+			SwapLimit::ExactSupply(supply_amount, 0),
+		) {
+			let second_path: Vec<CurrencyId> = vec![current.2, current.0];
+			if let Some((_, _)) = <Self as DEXManager<T::AccountId, Balance, CurrencyId>>::get_swap_amount(
+				&second_path,
+				SwapLimit::ExactSupply(target, minimum_amount),
+			) {
+				if let Ok(actual_target) =
+					Self::do_swap_with_exact_supply(&Self::account_id(), &first_path, supply_amount, 0)
+				{
+					if let Ok(target_amount) = Self::do_swap_with_exact_supply(
+						&Self::account_id(),
+						&second_path,
+						actual_target,
+						minimum_amount,
+					) {
+						Self::deposit_event(Event::TriangleTrading {
+							currency_1: current.0,
+							currency_2: current.1,
+							currency_3: current.2,
+							target_amount,
+						});
+					}
+				}
+			}
+		}
 	}
 
 	fn try_mutate_liquidity_pool<R, E>(
