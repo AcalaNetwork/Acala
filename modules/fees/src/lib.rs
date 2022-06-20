@@ -347,6 +347,7 @@ impl<T: Config> Pallet<T> {
 			}
 		});
 
+		// If treasury pool account has small native token, do not distribute to incentive pools.
 		if total_native < threshold {
 			return Ok(());
 		}
@@ -365,7 +366,8 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	// Use dex swap foreign token to native token, then treasury pool account only has native token.
+	/// Use dex swap foreign token to native token, then treasury pool account only has native
+	/// token.
 	fn get_native_account(treasury: &T::AccountId, native_token: CurrencyId, token: CurrencyId) -> Option<Balance> {
 		if native_token == token {
 			let amount = T::Currency::free_balance(treasury);

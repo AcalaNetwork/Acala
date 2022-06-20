@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::AccountId;
+use acala_primitives::{AccountId, IncomeSource};
 use sc_chain_spec::{ChainType, Properties};
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -26,13 +26,16 @@ use sp_runtime::traits::Zero;
 use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_from_seed, Extensions};
 
 use acala_runtime::{
-	dollar, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
-	DexConfig, EVMConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
+	dollar, AcalaTreasuryAccount, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig,
+	CollatorSelectionConfig, DexConfig, EVMConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
 	HomaCouncilMembershipConfig, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig,
 	SS58Prefix, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig,
-	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
+	TechnicalCommitteeMembershipConfig, TokensConfig, TreasuryPalletId, VestingConfig, ACA, AUSD, DOT, LDOT,
 };
-use runtime_common::TokenInfo;
+use runtime_common::{
+	CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonInsuranceRewardPool, HonzonLiquitationRewardPool,
+	HonzonTreasuryPool, NetworkTreasuryPool, StakingRewardPool, TokenInfo,
+};
 
 pub type ChainSpec = sc_service::GenericChainSpec<acala_runtime::GenesisConfig, Extensions>;
 
@@ -194,6 +197,51 @@ fn acala_dev_genesis(
 		polkadot_xcm: PolkadotXcmConfig {
 			safe_xcm_version: Some(2),
 		},
-		fees: Default::default(),
+		fees: fees_config(),
+	}
+}
+
+fn fees_config() -> FeesConfig {
+	FeesConfig {
+		incomes: vec![
+			(
+				IncomeSource::TxFee,
+				vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
+			),
+			(IncomeSource::XcmFee, vec![(NetworkTreasuryPool::get(), 100)]),
+			(IncomeSource::DexSwapFee, vec![(NetworkTreasuryPool::get(), 100)]),
+			(
+				IncomeSource::HonzonStabilityFee,
+				vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 30)],
+			),
+			(
+				IncomeSource::HonzonLiquidationFee,
+				vec![(NetworkTreasuryPool::get(), 30), (HonzonTreasuryPool::get(), 70)],
+			),
+			(
+				IncomeSource::HomaStakingRewardFee,
+				vec![(NetworkTreasuryPool::get(), 70), (HomaTreasuryPool::get(), 30)],
+			),
+		],
+		treasuries: vec![
+			(
+				NetworkTreasuryPool::get(),
+				1000 * dollar(ACA),
+				vec![
+					(StakingRewardPool::get(), 70),
+					(CollatorsRewardPool::get(), 10),
+					(EcosystemRewardPool::get(), 10),
+					(AcalaTreasuryAccount::get(), 10),
+				],
+			),
+			(
+				HonzonTreasuryPool::get(),
+				1000 * dollar(ACA),
+				vec![
+					(HonzonInsuranceRewardPool::get(), 30),
+					(HonzonLiquitationRewardPool::get(), 70),
+				],
+			),
+		],
 	}
 }

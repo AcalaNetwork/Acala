@@ -24,7 +24,7 @@ use k256::{
 	ecdsa::{SigningKey, VerifyingKey},
 	EncodedPoint as K256PublicKey,
 };
-use mandala_runtime::{FeesConfig, TreasuryPalletId};
+use mandala_runtime::{FeesConfig, TreasuryAccount, TreasuryPalletId, ACA};
 use runtime_common::{
 	dollar, evm_genesis, CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonInsuranceRewardPool,
 	HonzonLiquitationRewardPool, HonzonTreasuryPool, NetworkTreasuryPool, StakingRewardPool,
@@ -35,10 +35,7 @@ use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, sr25519, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
-use sp_runtime::{
-	traits::{AccountIdConversion, Zero},
-	FixedPointNumber, FixedU128,
-};
+use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 use tiny_keccak::{Hasher, Keccak};
 
@@ -693,8 +690,6 @@ fn mandala_genesis(
 }
 
 fn fees_config() -> FeesConfig {
-	use mandala_runtime::ACA;
-
 	FeesConfig {
 		incomes: vec![
 			(
@@ -724,7 +719,7 @@ fn fees_config() -> FeesConfig {
 					(StakingRewardPool::get(), 70),
 					(CollatorsRewardPool::get(), 10),
 					(EcosystemRewardPool::get(), 10),
-					(TreasuryPalletId::get().into_account_truncating(), 10),
+					(TreasuryAccount::get(), 10),
 				],
 			),
 			(

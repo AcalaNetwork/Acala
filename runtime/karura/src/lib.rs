@@ -1565,7 +1565,7 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 parameter_types! {
-	pub const AllocationPeriod: BlockNumber = 7 * DAYS;
+	pub const AllocationPeriod: BlockNumber = 3 * DAYS;
 }
 
 impl module_fees::Config for Runtime {

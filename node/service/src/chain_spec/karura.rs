@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::AccountId;
+use acala_primitives::{AccountId, IncomeSource};
 use sc_chain_spec::{ChainType, Properties};
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -26,13 +26,17 @@ use sp_runtime::traits::Zero;
 use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_from_seed, Extensions};
 
 use karura_runtime::{
-	dollar, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
-	DexConfig, EVMConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
-	HomaCouncilMembershipConfig, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig,
-	SS58Prefix, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig,
-	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, BNC, KAR, KSM, KUSD, LKSM, PHA, VSKSM,
+	dollar, Balance, BalancesConfig, BlockNumber, CDPTreasuryPalletId, CdpEngineConfig, CdpTreasuryConfig,
+	CollatorSelectionConfig, DexConfig, EVMConfig, FeesConfig, FinancialCouncilMembershipConfig,
+	GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, KaruraTreasuryAccount, OperatorMembershipAcalaConfig,
+	OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig, SessionDuration, SessionKeys,
+	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TreasuryPalletId,
+	VestingConfig, BNC, KAR, KSM, KUSD, LKSM, PHA, VSKSM,
 };
-use runtime_common::TokenInfo;
+use runtime_common::{
+	CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonInsuranceRewardPool, HonzonLiquitationRewardPool,
+	HonzonTreasuryPool, NetworkTreasuryPool, StakingRewardPool, TokenInfo,
+};
 
 pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
 
@@ -194,6 +198,45 @@ fn karura_dev_genesis(
 		polkadot_xcm: PolkadotXcmConfig {
 			safe_xcm_version: Some(2),
 		},
-		fees: Default::default(),
+		fees: fees_config(),
+	}
+}
+
+fn fees_config() -> FeesConfig {
+	FeesConfig {
+		incomes: vec![
+			(
+				IncomeSource::TxFee,
+				vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
+			),
+			(IncomeSource::XcmFee, vec![(NetworkTreasuryPool::get(), 100)]),
+			(IncomeSource::DexSwapFee, vec![(NetworkTreasuryPool::get(), 100)]),
+			(IncomeSource::HonzonStabilityFee, vec![(HonzonTreasuryPool::get(), 30)]),
+			(
+				IncomeSource::HonzonLiquidationFee,
+				vec![(NetworkTreasuryPool::get(), 30), (HonzonTreasuryPool::get(), 70)],
+			),
+			(
+				IncomeSource::HomaStakingRewardFee,
+				vec![(NetworkTreasuryPool::get(), 70), (HomaTreasuryPool::get(), 30)],
+			),
+		],
+		treasuries: vec![
+			(
+				NetworkTreasuryPool::get(),
+				1000 * dollar(KAR),
+				vec![
+					(StakingRewardPool::get(), 70),
+					(CollatorsRewardPool::get(), 10),
+					(EcosystemRewardPool::get(), 10),
+					(KaruraTreasuryAccount::get(), 10),
+				],
+			),
+			(
+				HonzonTreasuryPool::get(),
+				10 * dollar(KAR),
+				vec![(CDPTreasuryPalletId::get(), 100)],
+			),
+		],
 	}
 }
