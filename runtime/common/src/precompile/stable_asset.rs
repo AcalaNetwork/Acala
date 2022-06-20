@@ -406,7 +406,7 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			// getStableAssetPoolTokens(uint32) -> 0x7172c6aa
+			// getStableAssetPoolTokens(uint32) -> 0xfb0f0f34
 			// poolId: 0
 			let input = hex! {"
 				fb0f0f34
@@ -424,7 +424,7 @@ mod tests {
 
 			// empty output if pool doesn't exists
 
-			// getStableAssetPoolTokens(uint32) -> 0x7172c6aa
+			// getStableAssetPoolTokens(uint32) -> 0xfb0f0f34
 			// poolId: 1
 			let input = hex! {"
 				fb0f0f34
