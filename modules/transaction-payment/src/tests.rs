@@ -303,6 +303,15 @@ fn pre_post_dispatch_and_refund_native_is_enough() {
 		assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()), fee - refund);
 		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), 0);
 
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::TransactionFeePaid {
+				who: ALICE,
+				actual_fee,
+				actual_tip: 0,
+				actual_surplus: 0,
+			},
+		));
+
 		// reset and test refund with tip
 		FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() = 0);
 
@@ -323,6 +332,15 @@ fn pre_post_dispatch_and_refund_native_is_enough() {
 		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 100000 - fee - tip + refund);
 		assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()), fee - refund);
 		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), tip);
+
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::TransactionFeePaid {
+				who: CHARLIE,
+				actual_fee,
+				actual_tip: tip,
+				actual_surplus: 0,
+			},
+		));
 	});
 }
 
@@ -363,15 +381,25 @@ fn pre_post_dispatch_and_refund_with_fee_path_call() {
 
 		let refund = 200; // 1000 - 800
 		let refund_surplus = 100;
+		let actual_surplus = surplus - refund_surplus;
 		assert_eq!(
 			Currencies::free_balance(ACA, &ALICE),
 			aca_init + refund + refund_surplus
 		);
 		assert_eq!(
 			FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()),
-			fee - refund + surplus - refund_surplus
+			fee - refund + actual_surplus
 		);
 		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), 0);
+
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::TransactionFeePaid {
+				who: ALICE,
+				actual_fee,
+				actual_tip: 0,
+				actual_surplus,
+			},
+		));
 
 		// reset and test refund with tip
 		FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() = 0);
@@ -418,6 +446,15 @@ fn pre_post_dispatch_and_refund_with_fee_path_call() {
 			fee - refund + surplus - refund_surplus
 		);
 		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), tip);
+
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::TransactionFeePaid {
+				who: CHARLIE,
+				actual_fee,
+				actual_tip: tip,
+				actual_surplus: surplus - refund_surplus,
+			},
+		));
 	});
 }
 
@@ -444,6 +481,15 @@ fn refund_fee_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 		let refund = 200; // 1000 - 800
 		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(Some(pre), &INFO, &POST_INFO, 23, &Ok(())).is_ok());
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee + refund);
+
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::TransactionFeePaid {
+				who: ALICE,
+				actual_fee: fee - refund,
+				actual_tip: 0,
+				actual_surplus: 0,
+			},
+		));
 	});
 }
 
@@ -461,6 +507,15 @@ fn refund_tip_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(Some(pre), &INFO, &POST_INFO, 23, &Ok(())).is_ok());
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee + refund);
 
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::TransactionFeePaid {
+				who: ALICE,
+				actual_fee: fee - refund,
+				actual_tip: 0,
+				actual_surplus: 0,
+			},
+		));
+
 		// tip = 1000
 		let fee = 23 * 2 + 1000; // len * byte + weight
 		let tip = 1000;
@@ -476,6 +531,15 @@ fn refund_tip_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 			Currencies::free_balance(ACA, &CHARLIE),
 			100000 - fee - tip + refund_fee + refund_tip
 		);
+
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::TransactionFeePaid {
+				who: CHARLIE,
+				actual_fee: fee - refund_fee + tip,
+				actual_tip: tip - refund_tip,
+				actual_surplus: 0,
+			},
+		));
 	});
 }
 
@@ -497,6 +561,15 @@ fn refund_should_not_works() {
 
 		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(Some(pre), &INFO, &POST_INFO, 23, &Ok(())).is_ok());
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - tip);
+
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::TransactionFeePaid {
+				who: ALICE,
+				actual_fee: fee + tip,
+				actual_tip: tip,
+				actual_surplus: 0,
+			},
+		));
 	});
 }
 
