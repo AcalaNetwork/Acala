@@ -27,10 +27,11 @@ use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_f
 
 use acala_runtime::{
 	dollar, AcalaTreasuryAccount, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig,
-	CollatorSelectionConfig, DexConfig, EVMConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
-	HomaCouncilMembershipConfig, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig,
-	SS58Prefix, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig,
-	TechnicalCommitteeMembershipConfig, TokensConfig, TreasuryPalletId, VestingConfig, ACA, AUSD, DOT, LDOT,
+	CollatorSelectionConfig, DexConfig, EVMConfig, FeesConfig, FinancialCouncilMembershipConfig,
+	GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, OperatorMembershipAcalaConfig, OrmlNFTConfig,
+	ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig, SessionDuration, SessionKeys,
+	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TreasuryPalletId,
+	VestingConfig, ACA, AUSD, DOT, LDOT,
 };
 use runtime_common::{
 	CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonInsuranceRewardPool, HonzonLiquitationRewardPool,
