@@ -392,8 +392,9 @@ pub mod module {
 			foreign_amount: Balance,
 			native_amount: Balance,
 		},
-		/// A transaction fee `actual_fee`, of which `tip` was added to the minimum inclusion fee,
-		/// has been paid by `who`.
+		/// A transaction `actual_fee`, of which `actual_tip` was added to the minimum inclusion
+		/// fee, has been paid by `who`. `actual_surplus` indicate extra amount when paid by none
+		/// native token.
 		TransactionFeePaid {
 			who: T::AccountId,
 			actual_fee: PalletBalanceOf<T>,
