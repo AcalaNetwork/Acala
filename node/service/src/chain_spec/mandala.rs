@@ -24,7 +24,7 @@ use k256::{
 	ecdsa::{SigningKey, VerifyingKey},
 	EncodedPoint as K256PublicKey,
 };
-use mandala_runtime::{FeesConfig, TreasuryAccount, TreasuryPalletId, ACA};
+use mandala_runtime::{FeesConfig, TreasuryAccount, ACA};
 use runtime_common::{
 	dollar, evm_genesis, CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonInsuranceRewardPool,
 	HonzonLiquitationRewardPool, HonzonTreasuryPool, NetworkTreasuryPool, StakingRewardPool,
@@ -317,7 +317,7 @@ fn testnet_genesis(
 		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
 		PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
-		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA,
+		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
 		AUSD, DOT, LDOT, RENBTC,
 	};
 
@@ -518,7 +518,7 @@ fn mandala_genesis(
 		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
 		PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
-		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA,
+		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
 		AUSD, DOT, LDOT, RENBTC,
 	};
 

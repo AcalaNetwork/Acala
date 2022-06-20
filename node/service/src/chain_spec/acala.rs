@@ -30,8 +30,8 @@ use acala_runtime::{
 	CollatorSelectionConfig, DexConfig, EVMConfig, FeesConfig, FinancialCouncilMembershipConfig,
 	GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, OperatorMembershipAcalaConfig, OrmlNFTConfig,
 	ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig, SessionDuration, SessionKeys,
-	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TreasuryPalletId,
-	VestingConfig, ACA, AUSD, DOT, LDOT,
+	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
+	ACA, AUSD, DOT, LDOT,
 };
 use runtime_common::{
 	CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonInsuranceRewardPool, HonzonLiquitationRewardPool,

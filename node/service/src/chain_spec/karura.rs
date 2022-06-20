@@ -21,7 +21,7 @@ use sc_chain_spec::{ChainType, Properties};
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::sr25519;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{AccountIdConversion, Zero};
 
 use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_from_seed, Extensions};
 
@@ -30,12 +30,12 @@ use karura_runtime::{
 	CollatorSelectionConfig, DexConfig, EVMConfig, FeesConfig, FinancialCouncilMembershipConfig,
 	GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, KaruraTreasuryAccount, OperatorMembershipAcalaConfig,
 	OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig, SessionDuration, SessionKeys,
-	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TreasuryPalletId,
-	VestingConfig, BNC, KAR, KSM, KUSD, LKSM, PHA, VSKSM,
+	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
+	BNC, KAR, KSM, KUSD, LKSM, PHA, VSKSM,
 };
 use runtime_common::{
-	CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonInsuranceRewardPool, HonzonLiquitationRewardPool,
-	HonzonTreasuryPool, NetworkTreasuryPool, StakingRewardPool, TokenInfo,
+	CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonTreasuryPool, NetworkTreasuryPool,
+	StakingRewardPool, TokenInfo,
 };
 
 pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
@@ -235,7 +235,7 @@ fn fees_config() -> FeesConfig {
 			(
 				HonzonTreasuryPool::get(),
 				10 * dollar(KAR),
-				vec![(CDPTreasuryPalletId::get(), 100)],
+				vec![(CDPTreasuryPalletId::get().into_account_truncating(), 100)],
 			),
 		],
 	}
