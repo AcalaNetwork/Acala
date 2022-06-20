@@ -1765,8 +1765,97 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	FeesMigration,
+>;
+
+pub struct FeesMigration;
+
+impl OnRuntimeUpgrade for FeesMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		use primitives::IncomeSource;
+		let incomes = vec![
+			(
+				IncomeSource::TxFee,
+				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
+			),
+			(
+				IncomeSource::XcmFee,
+				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
+			),
+			(
+				IncomeSource::DexSwapFee,
+				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
+			),
+			(
+				IncomeSource::HonzonStabilityFee,
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 70),
+					(runtime_common::HonzonTreasuryPool::get(), 30),
+				],
+			),
+			(
+				IncomeSource::HonzonLiquidationFee,
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 30),
+					(runtime_common::HonzonTreasuryPool::get(), 70),
+				],
+			),
+			(
+				IncomeSource::HomaStakingRewardFee,
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 70),
+					(runtime_common::HomaTreasuryPool::get(), 30),
+				],
+			),
+		];
+		let treasuries = vec![
+			(
+				runtime_common::NetworkTreasuryPool::get(),
+				1000 * dollar(ACA),
+				vec![
+					(runtime_common::StakingRewardPool::get(), 70),
+					(runtime_common::CollatorsRewardPool::get(), 10),
+					(runtime_common::EcosystemRewardPool::get(), 10),
+					(AcalaTreasuryAccount::get(), 10),
+				],
+			),
+			(
+				runtime_common::HonzonTreasuryPool::get(),
+				1000 * dollar(ACA),
+				vec![
+					(runtime_common::HonzonInsuranceRewardPool::get(), 30),
+					(runtime_common::HonzonLiquitationRewardPool::get(), 70),
+				],
+			),
+		];
+		incomes.iter().for_each(|(income, pools)| {
+			let pool_rates = module_fees::build_pool_percents::<AccountId>(pools.clone());
+			let _ = <module_fees::Pallet<Runtime>>::do_set_treasury_rate(*income, pool_rates);
+		});
+		treasuries.iter().for_each(|(treasury, threshold, pools)| {
+			let pool_rates = module_fees::build_pool_percents::<AccountId>(pools.clone());
+			let _ = <module_fees::Pallet<Runtime>>::do_set_incentive_rate(treasury.clone(), *threshold, pool_rates);
+		});
+
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		Ok(())
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

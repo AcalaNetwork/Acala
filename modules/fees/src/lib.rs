@@ -55,7 +55,7 @@ pub type Treasuries<T> = Vec<(
 	Vec<(<T as frame_system::Config>::AccountId, u32)>,
 )>;
 
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct PoolPercent<AccountId> {
 	pub pool: AccountId,
@@ -163,7 +163,6 @@ pub mod module {
 		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<CurrencyId, MaxTokenSize>, ValueQuery>;
 
 	#[pallet::pallet]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::genesis_config]
@@ -249,7 +248,7 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	fn do_set_treasury_rate(
+	pub fn do_set_treasury_rate(
 		income: IncomeSource,
 		treasury_pool_rates: Vec<PoolPercent<T::AccountId>>,
 	) -> DispatchResult {
@@ -272,7 +271,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	fn do_set_incentive_rate(
+	pub fn do_set_incentive_rate(
 		treasury: T::AccountId,
 		threshold: Balance,
 		incentive_pool_rates: Vec<PoolPercent<T::AccountId>>,

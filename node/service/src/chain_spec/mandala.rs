@@ -25,10 +25,7 @@ use k256::{
 	EncodedPoint as K256PublicKey,
 };
 use mandala_runtime::{FeesConfig, TreasuryAccount, ACA};
-use runtime_common::{
-	dollar, evm_genesis, CollatorsRewardPool, EcosystemRewardPool, HomaTreasuryPool, HonzonInsuranceRewardPool,
-	HonzonLiquitationRewardPool, HonzonTreasuryPool, NetworkTreasuryPool, StakingRewardPool,
-};
+use runtime_common::{dollar, evm_genesis};
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
@@ -694,40 +691,58 @@ fn fees_config() -> FeesConfig {
 		incomes: vec![
 			(
 				IncomeSource::TxFee,
-				vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 80),
+					(runtime_common::CollatorsRewardPool::get(), 20),
+				],
 			),
-			(IncomeSource::XcmFee, vec![(NetworkTreasuryPool::get(), 100)]),
-			(IncomeSource::DexSwapFee, vec![(NetworkTreasuryPool::get(), 100)]),
+			(
+				IncomeSource::XcmFee,
+				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
+			),
+			(
+				IncomeSource::DexSwapFee,
+				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
+			),
 			(
 				IncomeSource::HonzonStabilityFee,
-				vec![(NetworkTreasuryPool::get(), 70), (HonzonTreasuryPool::get(), 30)],
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 70),
+					(runtime_common::HonzonTreasuryPool::get(), 30),
+				],
 			),
 			(
 				IncomeSource::HonzonLiquidationFee,
-				vec![(NetworkTreasuryPool::get(), 30), (HonzonTreasuryPool::get(), 70)],
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 30),
+					(runtime_common::HonzonTreasuryPool::get(), 70),
+				],
 			),
 			(
 				IncomeSource::HomaStakingRewardFee,
-				vec![(NetworkTreasuryPool::get(), 70), (HomaTreasuryPool::get(), 30)],
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 70),
+					(runtime_common::HomaTreasuryPool::get(), 30),
+				],
 			),
 		],
 		treasuries: vec![
 			(
-				NetworkTreasuryPool::get(),
+				runtime_common::NetworkTreasuryPool::get(),
 				1000 * dollar(ACA),
 				vec![
-					(StakingRewardPool::get(), 70),
-					(CollatorsRewardPool::get(), 10),
-					(EcosystemRewardPool::get(), 10),
+					(runtime_common::StakingRewardPool::get(), 70),
+					(runtime_common::CollatorsRewardPool::get(), 10),
+					(runtime_common::EcosystemRewardPool::get(), 10),
 					(TreasuryAccount::get(), 10),
 				],
 			),
 			(
-				HonzonTreasuryPool::get(),
+				runtime_common::HonzonTreasuryPool::get(),
 				1000 * dollar(ACA),
 				vec![
-					(HonzonInsuranceRewardPool::get(), 30),
-					(HonzonLiquitationRewardPool::get(), 70),
+					(runtime_common::HonzonInsuranceRewardPool::get(), 30),
+					(runtime_common::HonzonLiquitationRewardPool::get(), 70),
 				],
 			),
 		],
