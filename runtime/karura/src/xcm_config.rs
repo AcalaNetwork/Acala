@@ -171,7 +171,7 @@ parameter_types! {
 	pub BaseRate: u128 = kar_per_second();
 }
 
-pub type XcmToTreasury = XcmFeeToTreasury<CurrencyIdConvert, Fees>;
+type XcmToTreasury = XcmFeeToTreasury<CurrencyIdConvert, Fees>;
 
 pub type Trader = (
 	FixedRateOfAsset<BaseRate, XcmToTreasury, BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>,

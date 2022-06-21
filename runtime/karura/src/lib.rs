@@ -71,8 +71,7 @@ pub use frame_support::{
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency,
 		EnsureOrigin, EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType,
-		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
-		U128CurrencyToVote,
+		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, Randomness, SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
@@ -1181,27 +1180,13 @@ parameter_types! {
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
 
-type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
-pub struct DealWithFees;
-impl OnUnbalanced<NegativeImbalance> for DealWithFees {
-	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance>) {
-		if let Some(mut fees) = fees_then_tips.next() {
-			if let Some(tips) = fees_then_tips.next() {
-				tips.merge_into(&mut fees);
-			}
-			// for fees and tips, 100% to treasury
-			Treasury::on_unbalanced(fees);
-		}
-	}
-}
-
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
-	type OnTransactionPayment = DealWithFees;
+	type OnTransactionPayment = module_fees::DistributeTxFees<Runtime>;
 	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type TipPerWeightStep = TipPerWeightStep;

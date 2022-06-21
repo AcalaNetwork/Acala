@@ -38,8 +38,8 @@ pub use frame_support::{
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency,
 		EnsureOrigin, EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType,
-		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
-		U128CurrencyToVote, WithdrawReasons,
+		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, Randomness, SortedMembers, U128CurrencyToVote,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND},
