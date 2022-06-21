@@ -42,7 +42,7 @@ use primitives::{Balance, CurrencyId, TradingPair};
 use scale_info::TypeInfo;
 use sp_core::{H160, U256};
 use sp_runtime::{
-	traits::{AccountIdConversion, One, Saturating, Zero},
+	traits::{AccountIdConversion, One, Saturating, UniqueSaturatedInto, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
 use sp_std::{prelude::*, vec};
@@ -115,6 +115,10 @@ pub mod module {
 		/// The DEX's module id, keep all assets in DEX.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
+
+		/// Treasury account participate in triangle swap.
+		#[pallet::constant]
+		type TreasuryPallet: Get<PalletId>;
 
 		/// Mapping between CurrencyId and ERC20 address so user can use Erc20
 		/// address as LP token.
@@ -254,7 +258,16 @@ pub mod module {
 			currency_1: CurrencyId,
 			currency_2: CurrencyId,
 			currency_3: CurrencyId,
+			supply_amount: Balance,
 			target_amount: Balance,
+		},
+		/// Add Triangle info.
+		AddTriangleInfo {
+			currency_1: CurrencyId,
+			currency_2: CurrencyId,
+			currency_3: CurrencyId,
+			supply_amount: Balance,
+			threshold: Balance,
 		},
 	}
 
@@ -290,13 +303,18 @@ pub mod module {
 	pub type InitialShareExchangeRates<T: Config> =
 		StorageMap<_, Twox64Concat, TradingPair, (ExchangeRate, ExchangeRate), ValueQuery>;
 
-	/// Triangle path of `A-B-C-A`.
+	/// Triangle path used for offchain arbitrage.
 	///
-	/// TriangleTradingPath: map CurrencyA => (CurrencyB, CurrencyC)
+	/// TriangleTradingPath: map (CurrencyA, CurrencyB, CurrencyC) => ()
 	#[pallet::storage]
 	#[pallet::getter(fn triangle_trading_path)]
 	pub type TriangleTradingPath<T: Config> =
 		StorageMap<_, Twox64Concat, (CurrencyId, CurrencyId, CurrencyId), (), ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn triangle_supply_threshold)]
+	pub type TriangleSupplyThreshold<T: Config> =
+		StorageMap<_, Twox64Concat, CurrencyId, (Balance, Balance), OptionQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -368,16 +386,16 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn offchain_worker(now: T::BlockNumber) {
-			if let Err(e) = Self::_offchain_worker() {
+			if let Err(e) = Self::_offchain_worker(now) {
 				log::info!(
 					target: "dex-bot",
-					"offchain worker: cannot run offchain worker at {:?}: {:?}",
+					"offchain worker: cannot run at {:?}: {:?}",
 					now, e,
 				);
 			} else {
 				log::debug!(
 					target: "dex-bot",
-					"offchain worker: offchain worker start at block: {:?} already done!",
+					"offchain worker: start at block: {:?} already done!",
 					now,
 				);
 			}
@@ -886,7 +904,21 @@ pub mod module {
 			currency_3: CurrencyId,
 		) -> DispatchResult {
 			ensure_none(origin)?;
-			Self::_triangle_swap((currency_1, currency_2, currency_3))
+			Self::do_triangle_swap((currency_1, currency_2, currency_3))
+		}
+
+		#[pallet::weight(1000)]
+		#[transactional]
+		pub fn set_triangle_swap_info(
+			origin: OriginFor<T>,
+			currency_1: CurrencyId,
+			currency_2: CurrencyId,
+			currency_3: CurrencyId,
+			#[pallet::compact] supply_amount: Balance,
+			#[pallet::compact] threshold: Balance,
+		) -> DispatchResult {
+			T::ListingOrigin::ensure_origin(origin)?;
+			Self::do_set_triangle_swap_info(currency_1, currency_2, currency_3, supply_amount, threshold)
 		}
 	}
 
@@ -923,7 +955,11 @@ impl<T: Config> Pallet<T> {
 		T::PalletId::get().into_account_truncating()
 	}
 
-	fn _submit_triangle_swap_tx(currency_1: CurrencyId, currency_2: CurrencyId, currency_3: CurrencyId) {
+	fn treasury_account() -> T::AccountId {
+		T::TreasuryPallet::get().into_account_truncating()
+	}
+
+	fn submit_triangle_swap_tx(currency_1: CurrencyId, currency_2: CurrencyId, currency_3: CurrencyId) {
 		let call = Call::<T>::triangle_swap {
 			currency_1,
 			currency_2,
@@ -938,48 +974,81 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	fn _offchain_worker() -> Result<(), OffchainErr> {
-		// find triangle path
-		// Self::submit_triangle_swap_tx(...);
+	fn _offchain_worker(now: T::BlockNumber) -> Result<(), OffchainErr> {
+		let keys: Vec<(CurrencyId, CurrencyId, CurrencyId)> = TriangleTradingPath::<T>::iter_keys().collect();
+		if keys.len() == 0 {
+			// find and store triangle path, or we could manual add trading path by dispatch call.
+			return Ok(());
+		}
+
+		let block: u64 = now.unique_saturated_into();
+		let index: u64 = block % (keys.len() as u64);
+		let current: (CurrencyId, CurrencyId, CurrencyId) = keys[index as usize];
+		Self::submit_triangle_swap_tx(current.0, current.1, current.2);
 		Ok(())
 	}
 
-	/// Triangle swap of `ABCA`, the final A should be large then original A.
-	fn _triangle_swap(current: (CurrencyId, CurrencyId, CurrencyId)) -> DispatchResult {
-		// TODO: use configuration
-		let supply_amount: Balance = 100_000_000_000_000;
-		let minimum_amount: Balance = 110_000_000_000_000;
+	fn do_set_triangle_swap_info(
+		currency_1: CurrencyId,
+		currency_2: CurrencyId,
+		currency_3: CurrencyId,
+		supply_amount: Balance,
+		threshold: Balance,
+	) -> DispatchResult {
+		let currency_tuple = (currency_1, currency_2, currency_3);
+		TriangleTradingPath::<T>::insert(currency_tuple, ());
+		TriangleSupplyThreshold::<T>::try_mutate(currency_1, |maybe_supply_threshold| -> DispatchResult {
+			*maybe_supply_threshold = Some((supply_amount, threshold));
+			Ok(())
+		})?;
+		Self::deposit_event(Event::AddTriangleInfo {
+			currency_1,
+			currency_2,
+			currency_3,
+			supply_amount,
+			threshold,
+		});
+		Ok(())
+	}
 
-		let first_path: Vec<CurrencyId> = vec![current.0, current.1, current.2];
-		if let Some((_, target)) = <Self as DEXManager<T::AccountId, Balance, CurrencyId>>::get_swap_amount(
-			&first_path,
-			SwapLimit::ExactSupply(supply_amount, 0),
-		) {
+	/// Triangle swap of path: `A->B->C->A`, the final A should be large than original A.
+	fn do_triangle_swap(current: (CurrencyId, CurrencyId, CurrencyId)) -> DispatchResult {
+		if let Some((supply_amount, minimum_amount)) = TriangleSupplyThreshold::<T>::get(&current.0) {
+			let minimum_amount = supply_amount.saturating_add(minimum_amount);
+
+			// A-B-C-A has two kind of swap: A-B/B-C-A or A-B-C/C-A, either one is ok.
+			let first_path: Vec<CurrencyId> = vec![current.0, current.1, current.2];
 			let second_path: Vec<CurrencyId> = vec![current.2, current.0];
-			if let Some((_, _)) = <Self as DEXManager<T::AccountId, Balance, CurrencyId>>::get_swap_amount(
-				&second_path,
-				SwapLimit::ExactSupply(target, minimum_amount),
-			) {
-				if let Ok(actual_target) =
-					Self::do_swap_with_exact_supply(&Self::account_id(), &first_path, supply_amount, 0)
-				{
-					if let Ok(target_amount) = Self::do_swap_with_exact_supply(
-						&Self::account_id(),
-						&second_path,
-						actual_target,
-						minimum_amount,
-					) {
-						Self::deposit_event(Event::TriangleTrading {
-							currency_1: current.0,
-							currency_2: current.1,
-							currency_3: current.2,
-							target_amount,
-						});
+			let supply_1 = SwapLimit::ExactSupply(supply_amount, 0);
+
+			if let Some((_, target_3)) =
+				<Self as DEXManager<T::AccountId, Balance, CurrencyId>>::get_swap_amount(&first_path, supply_1)
+			{
+				if let Some((_, _)) = <Self as DEXManager<T::AccountId, Balance, CurrencyId>>::get_swap_amount(
+					&second_path,
+					SwapLimit::ExactSupply(target_3, minimum_amount),
+				) {
+					if let Ok(target_3) =
+						Self::do_swap_with_exact_supply(&Self::treasury_account(), &first_path, supply_amount, 0)
+					{
+						if let Ok(target_amount) = Self::do_swap_with_exact_supply(
+							&Self::treasury_account(),
+							&second_path,
+							target_3,
+							minimum_amount,
+						) {
+							Self::deposit_event(Event::TriangleTrading {
+								currency_1: current.0,
+								currency_2: current.1,
+								currency_3: current.2,
+								supply_amount,
+								target_amount,
+							});
+						}
 					}
 				}
 			}
 		}
-
 		Ok(())
 	}
 

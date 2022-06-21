@@ -139,6 +139,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(BTC, DOT).unwrap(),
 	];
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trea");
 }
 
 impl module_dex::Config for Runtime {
@@ -147,6 +148,7 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<4>;
 	type PalletId = DEXPalletId;
+	type TreasuryPallet = TreasuryPalletId;
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();

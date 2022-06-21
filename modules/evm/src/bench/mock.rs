@@ -277,6 +277,7 @@ impl DEXIncentives<AccountId32, CurrencyId, Balance> for MockDEXIncentives {
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trea");
 }
 
 impl module_dex::Config for Runtime {
@@ -285,6 +286,7 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
+	type TreasuryPallet = TreasuryPalletId;
 	type Erc20InfoMapping = MockErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
