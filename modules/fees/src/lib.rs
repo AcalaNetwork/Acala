@@ -202,7 +202,7 @@ pub mod module {
 				Self::distribute_incentives();
 				<T as Config>::WeightInfo::force_transfer_to_incentive()
 			} else {
-				<T as Config>::WeightInfo::on_initialize()
+				0
 			}
 		}
 	}

@@ -1576,7 +1576,7 @@ parameter_types! {
 
 impl module_fees::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_fees::WeightInfo<Runtime>;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type Currency = Balances;
 	type Currencies = Currencies;
