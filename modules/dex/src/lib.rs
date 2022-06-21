@@ -976,7 +976,7 @@ impl<T: Config> Pallet<T> {
 
 	fn _offchain_worker(now: T::BlockNumber) -> Result<(), OffchainErr> {
 		let keys: Vec<(CurrencyId, CurrencyId, CurrencyId)> = TriangleTradingPath::<T>::iter_keys().collect();
-		if keys.len() == 0 {
+		if keys.is_empty() {
 			// find and store triangle path, or we could manual add trading path by dispatch call.
 			return Ok(());
 		}

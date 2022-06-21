@@ -122,6 +122,7 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub const TreasuryPallet: PalletId = PalletId(*b"aca/trsy");
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
 		vec![DOT],
 	];
@@ -147,6 +148,7 @@ impl Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<3>;
 	type PalletId = DEXPalletId;
+	type TreasuryPallet = TreasuryPallet;
 	type Erc20InfoMapping = MockErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
@@ -177,6 +179,16 @@ construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 	}
 );
+
+pub type Extrinsic = sp_runtime::testing::TestXt<Call, ()>;
+
+impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = Extrinsic;
+}
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,

@@ -368,7 +368,6 @@ parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const TradingPathLimit: u32 = 4;
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
-	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trea");
 }
 
 impl module_dex::Config for Test {

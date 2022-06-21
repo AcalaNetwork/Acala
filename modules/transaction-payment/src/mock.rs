@@ -167,7 +167,6 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
-	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trea");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
@@ -315,6 +314,16 @@ construct_runtime!(
 		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
 	}
 );
+
+pub type Extrinsic = sp_runtime::testing::TestXt<Call, ()>;
+
+impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = Extrinsic;
+}
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
