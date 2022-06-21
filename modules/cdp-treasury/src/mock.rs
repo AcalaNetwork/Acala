@@ -147,6 +147,7 @@ impl module_dex::Config for Runtime {
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<4>;
+	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type PalletId = DEXPalletId;
 	type TreasuryPallet = TreasuryPalletId;
 	type Erc20InfoMapping = ();

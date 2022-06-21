@@ -1108,6 +1108,7 @@ impl module_dex::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
 	type TreasuryPallet = TreasuryPalletId;
+	type UnsignedPriority = runtime_common::DexTriangleSwapUnsignedPriority;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;

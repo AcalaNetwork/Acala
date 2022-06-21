@@ -120,6 +120,9 @@ pub mod module {
 		#[pallet::constant]
 		type TreasuryPallet: Get<PalletId>;
 
+		#[pallet::constant]
+		type UnsignedPriority: Get<TransactionPriority>;
+
 		/// Mapping between CurrencyId and ERC20 address so user can use Erc20
 		/// address as LP token.
 		type Erc20InfoMapping: Erc20InfoMapping;
@@ -933,7 +936,7 @@ pub mod module {
 			} = call
 			{
 				ValidTransaction::with_tag_prefix("DexBotOffchainWorker")
-					// .priority(T::UnsignedPriority::get())
+					.priority(T::UnsignedPriority::get())
 					.and_provides((
 						<frame_system::Pallet<T>>::block_number(),
 						currency_1,
