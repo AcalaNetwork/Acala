@@ -313,3 +313,13 @@ construct_runtime!(
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>},
 	}
 );
+
+pub type Extrinsic = sp_runtime::testing::TestXt<Call, ()>;
+
+impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = Extrinsic;
+}
