@@ -192,6 +192,13 @@ pub enum ReserveIdentifier {
 	Count,
 }
 
+pub type CashYieldIndex = u128;
+
+/// Convert any type that implements Into<U256> into byte representation ([u8, 32])
+pub fn to_bytes<T: Into<U256>>(value: T) -> [u8; 32] {
+	Into::<[u8; 32]>::into(value.into())
+}
+
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, MaxEncodedLen, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomeSource {
@@ -203,9 +210,9 @@ pub enum IncomeSource {
 	HomaStakingRewardFee,
 }
 
-pub type CashYieldIndex = u128;
-
-/// Convert any type that implements Into<U256> into byte representation ([u8, 32])
-pub fn to_bytes<T: Into<U256>>(value: T) -> [u8; 32] {
-	Into::<[u8; 32]>::into(value.into())
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct PoolPercent<AccountId> {
+	pub pool: AccountId,
+	pub rate: FixedU128,
 }

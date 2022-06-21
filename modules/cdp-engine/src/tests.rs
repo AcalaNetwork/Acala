@@ -23,8 +23,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Call as MockCall, Event, *};
-use module_fees::PoolPercent;
 use orml_traits::MultiCurrency;
+use primitives::PoolPercent;
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
 use sp_io::offchain;
 use sp_runtime::{
@@ -63,6 +63,14 @@ fn setup_fees_distribution() {
 	assert_ok!(Fees::set_income_fee(
 		Origin::root(),
 		IncomeSource::HonzonStabilityFee,
+		vec![PoolPercent {
+			pool: BOB,
+			rate: Rate::one(),
+		}],
+	));
+	assert_ok!(Fees::set_income_fee(
+		Origin::root(),
+		IncomeSource::HonzonLiquidationFee,
 		vec![PoolPercent {
 			pool: BOB,
 			rate: Rate::one(),
@@ -819,6 +827,7 @@ fn remain_debit_value_too_small_check() {
 #[test]
 fn liquidate_unsafe_cdp_by_collateral_auction() {
 	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -831,6 +840,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 		));
 		setup_default_collateral(AUSD);
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
+
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
@@ -848,8 +858,10 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 			Change::NoChange,
 			Change::NoChange,
 		));
-		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
 
+		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
 		System::assert_last_event(Event::CDPEngineModule(crate::Event::LiquidateUnsafeCDP {
 			collateral_type: BTC,
 			owner: ALICE,
@@ -857,7 +869,10 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 			bad_debt_value: 50,
 			target_amount: 60,
 		}));
-		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
+		// 50 debt + 10 penalty
+		assert_eq!(CDPTreasuryModule::debit_pool(), 60);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 10);
+
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
@@ -874,6 +889,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 #[test]
 fn liquidate_unsafe_cdp_by_collateral_auction_when_limited_by_slippage() {
 	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -932,7 +948,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction_when_limited_by_slippage() {
 		}));
 
 		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 121));
-		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 60);
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
@@ -943,6 +959,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction_when_limited_by_slippage() {
 #[test]
 fn liquidate_unsafe_cdp_by_swap() {
 	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -992,7 +1009,7 @@ fn liquidate_unsafe_cdp_by_swap() {
 		}));
 
 		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (199, 61));
-		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 60);
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 901);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
@@ -1003,6 +1020,7 @@ fn liquidate_unsafe_cdp_by_swap() {
 #[test]
 fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_swap_dot() {
 	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -1082,7 +1100,7 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_swap_dot() {
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).collateral, 0);
 		assert_eq!(Currencies::free_balance(LP_AUSD_DOT, &LoansModule::account_id()), 0);
-		assert_eq!(CDPTreasuryModule::debit_pool(), 500);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 600);
 		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 600);
 		assert_eq!(Currencies::free_balance(DOT, &CDPTreasuryModule::account_id()), 0);
 		assert_eq!(
@@ -1096,6 +1114,7 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_swap_dot() {
 #[test]
 fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_ausd_take_whole_target() {
 	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -1175,7 +1194,7 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_ausd_take_whole_target() {
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).collateral, 0);
 		assert_eq!(Currencies::free_balance(LP_AUSD_DOT, &LoansModule::account_id()), 0);
-		assert_eq!(CDPTreasuryModule::debit_pool(), 200);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 240);
 		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 240);
 		assert_eq!(Currencies::free_balance(DOT, &CDPTreasuryModule::account_id()), 0);
 		assert_eq!(
@@ -1189,6 +1208,7 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_ausd_take_whole_target() {
 #[test]
 fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_create_dot_auction() {
 	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -1268,7 +1288,7 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_create_dot_auction() {
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).collateral, 0);
 		assert_eq!(Currencies::free_balance(LP_AUSD_DOT, &LoansModule::account_id()), 0);
-		assert_eq!(CDPTreasuryModule::debit_pool(), 500);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 600);
 		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 500);
 		assert_eq!(Currencies::free_balance(DOT, &CDPTreasuryModule::account_id()), 25);
 		assert_eq!(
@@ -1644,6 +1664,7 @@ fn offchain_worker_works_cdp() {
 	ext.register_extension(OffchainDbExt::new(offchain));
 
 	ext.execute_with(|| {
+		setup_fees_distribution();
 		// number of currencies allowed as collateral (cycles through all of them)
 		setup_default_collateral(BTC);
 		setup_default_collateral(LP_AUSD_DOT);
@@ -1729,6 +1750,7 @@ fn offchain_worker_iteration_limit_works() {
 	ext.register_extension(OffchainDbExt::new(offchain.clone()));
 
 	ext.execute_with(|| {
+		setup_fees_distribution();
 		System::set_block_number(1);
 		// sets max iterations value to 1
 		offchain.local_storage_set(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS, &1u32.encode());
@@ -1948,5 +1970,56 @@ fn accumulated_interest_goes_to_on_fee_deposit() {
 			CDPEngineModule::get_debit_exchange_rate(DOT),
 			ExchangeRate::saturating_from_rational(4, 10)
 		);
+	});
+}
+
+#[test]
+fn liquidation_fee_goes_to_on_fee_deposit() {
+	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
+			Change::NewValue(Some(Rate::one())),
+			Change::NewValue(Some(Ratio::saturating_from_rational(2, 1))),
+			Change::NewValue(10000),
+		));
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
+
+		// Alice: -100 collateral. +50 from debit
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		// Bob's initial balance
+		assert_eq!(Currencies::free_balance(BTC, &BOB), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 0);
+		// Treasury had no debt from before
+		assert_eq!(CDPTreasuryModule::get_debit_pool(), 0);
+		assert_eq!(
+			LoansModule::positions(BTC, &ALICE),
+			Position {
+				collateral: 100,
+				debit: 500,
+			}
+		);
+		MockPriceSource::set_price(BTC, Some(Price::saturating_from_rational(1, 10)));
+		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
+
+		// Treasury Debit: 50 from confiscation and +50 from penalty
+		assert_eq!(CDPTreasuryModule::get_debit_pool(), 100);
+
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(
+			LoansModule::positions(BTC, &ALICE),
+			Position {
+				collateral: 0,
+				debit: 0,
+			}
+		);
+		assert_eq!(Currencies::free_balance(BTC, &BOB), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 50);
 	});
 }
