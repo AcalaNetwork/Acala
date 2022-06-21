@@ -1763,11 +1763,11 @@ pub type Executive = frame_executive::Executive<
 	FeesMigration,
 >;
 
+use primitives::IncomeSource;
 pub struct FeesMigration;
 
 impl OnRuntimeUpgrade for FeesMigration {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		use primitives::IncomeSource;
 		let incomes = vec![
 			(
 				IncomeSource::TxFee,
@@ -1842,6 +1842,24 @@ impl OnRuntimeUpgrade for FeesMigration {
 
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade() -> Result<(), &'static str> {
+		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
+			&IncomeSource::TxFee
+		));
+		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
+			&IncomeSource::XcmFee
+		));
+		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
+			&IncomeSource::HonzonStabilityFee
+		));
+		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
+			&IncomeSource::HomaStakingRewardFee
+		));
+		assert!(<module_fees::TreasuryToIncentives<Runtime>>::contains_key(
+			&runtime_common::NetworkTreasuryPool::get()
+		));
+		assert!(<module_fees::TreasuryToIncentives<Runtime>>::contains_key(
+			&runtime_common::HonzonTreasuryPool::get()
+		));
 		Ok(())
 	}
 }
