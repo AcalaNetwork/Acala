@@ -32,7 +32,7 @@ use module_support::HomaManager;
 use module_homa::WeightInfo;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::Balance;
-use sp_runtime::{traits::Convert, FixedPointNumber, RuntimeDebug};
+use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 /// The Homa precompile

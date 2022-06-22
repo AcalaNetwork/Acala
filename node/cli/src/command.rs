@@ -20,8 +20,6 @@
 #![allow(clippy::borrowed_box)]
 
 use crate::cli::{Cli, RelayChainCli, Subcommand};
-use codec::Encode;
-use cumulus_client_cli::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
@@ -31,9 +29,7 @@ use sc_cli::{
 };
 use sc_service::config::{BasePath, PrometheusConfig};
 use service::{chain_spec, new_partial, IdentifyVariant};
-use sp_core::hexdisplay::HexDisplay;
-use sp_runtime::traits::Block as BlockT;
-use std::{io::Write, net::SocketAddr};
+use std::net::SocketAddr;
 
 fn chain_name() -> String {
 	"Acala".into()
@@ -218,15 +214,6 @@ fn ensure_dev(spec: &Box<dyn service::ChainSpec>) -> std::result::Result<(), Str
 	} else {
 		Err(format!("{}{}", DEV_ONLY_ERROR_PATTERN, spec.id()))
 	}
-}
-
-fn extract_genesis_wasm(chain_spec: &Box<dyn service::ChainSpec>) -> Result<Vec<u8>> {
-	let mut storage = chain_spec.build_storage()?;
-
-	storage
-		.top
-		.remove(sp_core::storage::well_known_keys::CODE)
-		.ok_or_else(|| "Could not find wasm file in genesis state!".into())
 }
 
 macro_rules! with_runtime_or_err {
@@ -424,63 +411,14 @@ pub fn run() -> sc_cli::Result<()> {
 					cmd.run::<Block>(&*spec, state_version)
 				});
 			})
-
-			// let mut builder = sc_cli::LoggerBuilder::new("");
-			// builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
-			// let _ = builder.init();
-
-			// let chain_spec = cli.load_spec(&params.chain.clone().unwrap_or_default())?;
-			// let state_version = Cli::native_runtime_version(&chain_spec).state_version();
-			// let output_buf = with_runtime_or_err!(chain_spec, {
-			// 	{
-			// 		let block: Block =
-			// 			generate_genesis_block(&chain_spec, state_version).map_err(|e| format!("{:?}", e))?;
-			// 		let raw_header = block.header().encode();
-			// 		let buf = if params.raw {
-			// 			raw_header
-			// 		} else {
-			// 			format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
-			// 		};
-			// 		buf
-			// 	}
-			// });
-
-			// if let Some(output) = &params.output {
-			// 	std::fs::write(output, output_buf)?;
-			// } else {
-			// 	std::io::stdout().write_all(&output_buf)?;
-			// }
-			//
-			// Ok(())
 		}
 
 		Some(Subcommand::ExportGenesisWasm(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|_config| {
-				// let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
 				let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
 				cmd.run(&*spec)
 			})
-
-			// let mut builder = sc_cli::LoggerBuilder::new("");
-			// builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
-			// let _ = builder.init();
-
-			// let raw_wasm_blob =
-			// extract_genesis_wasm(&cli.load_spec(&params.chain.clone().unwrap_or_default())?)?;
-			// let output_buf = if params.raw {
-			// 	raw_wasm_blob
-			// } else {
-			// 	format!("0x{:?}", HexDisplay::from(&raw_wasm_blob)).into_bytes()
-			// };
-
-			// if let Some(output) = &params.output {
-			// 	std::fs::write(output, output_buf)?;
-			// } else {
-			// 	std::io::stdout().write_all(&output_buf)?;
-			// }
-
-			// Ok(())
 		}
 
 		#[cfg(feature = "try-runtime")]
