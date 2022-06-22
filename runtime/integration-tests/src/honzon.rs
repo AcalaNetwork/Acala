@@ -17,8 +17,15 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
-use primitives::{IncomeSource, PoolPercent};
+use frame_support::traits::fungible::Mutate;
+use module_evm_accounts::EvmAddressMapping;
+use module_support::{
+	evm::{AddressMapping, LiquidationEvmBridge},
+	InvokeContext,
+};
+use primitives::{evm::EvmAddress, IncomeSource, PoolPercent};
 use sp_runtime::traits::One;
+use std::str::FromStr;
 
 fn setup_default_collateral(currency_id: CurrencyId) {
 	assert_ok!(CdpEngine::set_collateral_params(
@@ -49,6 +56,92 @@ fn setup_fees_distribution() {
 			rate: Rate::one(),
 		}],
 	));
+}
+
+pub fn mock_liquidation_address_0() -> EvmAddress {
+	EvmAddress::from_str("0xda548f126ece4d35e8ea3fc01f56e6d99e7afb38").unwrap()
+}
+
+pub fn mock_liquidation_address_1() -> EvmAddress {
+	EvmAddress::from_str("0xa3716bf2d6a42cca05efe379fb7e9fec70739a1a").unwrap()
+}
+
+pub fn cdp_engine_pallet_account() -> AccountId {
+	CDPEnginePalletId::get().into_account_truncating()
+}
+
+pub fn cdp_treasury_pallet_account() -> AccountId {
+	CDPTreasuryPalletId::get().into_account_truncating()
+}
+
+pub fn account_id_to_address(who: &AccountId) -> EvmAddress {
+	EvmAddressMapping::<Runtime>::get_evm_address(who).unwrap()
+}
+
+pub fn address_to_account_id(address: &EvmAddress) -> AccountId {
+	EvmAddressMapping::<Runtime>::get_account_id(address)
+}
+
+pub fn repayment_evm_addr() -> EvmAddress {
+	// EVM address of the CdpEngine Pallet account.
+	account_id_to_address(&CDPEnginePalletId::get().into_account_truncating())
+}
+
+pub fn deploy_liquidation_contracts() {
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../ts-tests/build/MockLiquidationContract.json")).unwrap();
+	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
+
+	// Deposits some funds used to call the contracts.
+	assert_ok!(Balances::mint_into(
+		&cdp_engine_pallet_account(),
+		1_000 * dollar(NATIVE_CURRENCY)
+	));
+	assert_ok!(Balances::mint_into(
+		&address_to_account_id(&mock_liquidation_address_0()),
+		1_000 * dollar(NATIVE_CURRENCY)
+	));
+	assert_ok!(Balances::mint_into(
+		&address_to_account_id(&mock_liquidation_address_1()),
+		1_000 * dollar(NATIVE_CURRENCY)
+	));
+	assert_ok!(EVM::create(
+		Origin::signed(cdp_engine_pallet_account()),
+		code.clone(),
+		0,
+		500_000,
+		15_000,
+		vec![]
+	));
+
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: repayment_evm_addr(),
+		contract: mock_liquidation_address_0(),
+		logs: vec![],
+		used_gas: 473252,
+		used_storage: 11949,
+	}));
+
+	assert_ok!(EVM::publish_free(Origin::root(), mock_liquidation_address_0()));
+
+	assert_ok!(EVM::create(
+		Origin::signed(cdp_engine_pallet_account()),
+		code,
+		0,
+		500_000,
+		15_000,
+		vec![]
+	));
+
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: repayment_evm_addr(),
+		contract: mock_liquidation_address_1(),
+		logs: vec![],
+		used_gas: 473252,
+		used_storage: 11949,
+	}));
+
+	assert_ok!(EVM::publish_free(Origin::root(), mock_liquidation_address_1()));
 }
 
 #[test]
@@ -132,7 +225,7 @@ fn emergency_shutdown_and_cdp_treasury() {
 }
 
 #[test]
-fn liquidate_cdp() {
+fn can_liquidate_cdp_via_dex() {
 	ExtBuilder::default()
 		.balances(vec![
 			(
@@ -215,6 +308,7 @@ fn liquidate_cdp() {
 				Change::NoChange,
 			));
 
+			// If asset cannot be liquidated automatically with reasonable slippage, use Auction.
 			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
 				AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY
@@ -228,9 +322,7 @@ fn liquidate_cdp() {
 				target_amount: Rate::saturating_from_rational(20, 100)
 					.saturating_mul_acc_int(250_000 * dollar(USD_CURRENCY)),
 			});
-			assert!(System::events()
-				.iter()
-				.any(|record| record.event == liquidate_alice_xbtc_cdp_event));
+			System::assert_has_event(liquidate_alice_xbtc_cdp_event);
 			assert_eq!(Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit, 0);
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
@@ -240,6 +332,7 @@ fn liquidate_cdp() {
 			// 250_000 debit + (20%) 50_000 penalty
 			assert_eq!(CdpTreasury::debit_pool(), 300_000 * dollar(USD_CURRENCY));
 
+			// Prioritize liquidation by Dex
 			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
 				AccountId::from(BOB),
 				RELAY_CHAIN_CURRENCY
@@ -254,9 +347,7 @@ fn liquidate_cdp() {
 					.saturating_mul_acc_int(5_000 * dollar(USD_CURRENCY)),
 			});
 
-			assert!(System::events()
-				.iter()
-				.any(|record| record.event == liquidate_bob_xbtc_cdp_event));
+			System::assert_has_event(liquidate_bob_xbtc_cdp_event);
 
 			assert_eq!(Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(BOB)).debit, 0);
 			assert_eq!(
@@ -466,9 +557,7 @@ fn test_cdp_engine_module() {
 				collateral_type: RELAY_CHAIN_CURRENCY,
 				owner: AccountId::from(ALICE),
 			});
-			assert!(System::events()
-				.iter()
-				.any(|record| record.event == settle_cdp_in_debit_event));
+			System::assert_has_event(settle_cdp_in_debit_event);
 
 			assert_eq!(Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit, 0);
 			assert_eq!(CdpTreasury::debit_pool(), 50 * dollar(USD_CURRENCY));
@@ -721,5 +810,244 @@ fn cdp_engine_minimum_collateral_amount_works() {
 				1i128 - (relaychain_minimum_collateral_amount as i128),
 				-((MinimumDebitValue::get() * 10) as i128),
 			));
+		});
+}
+
+#[test]
+fn can_deploy_liquidation_contract() {
+	ExtBuilder::default().build().execute_with(|| {
+		deploy_liquidation_contracts();
+		assert_ok!(module_evm_bridge::LiquidationEvmBridge::<Runtime>::liquidate(
+			InvokeContext {
+				contract: mock_liquidation_address_0(),
+				sender: repayment_evm_addr(),
+				origin: repayment_evm_addr(),
+			},
+			RELAY_CHAIN_CURRENCY.erc20_address().unwrap(),
+			repayment_evm_addr(),
+			1,
+			0,
+		));
+	});
+}
+
+#[test]
+fn can_liquidate_cdp_via_intended_priority() {
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), NATIVE_CURRENCY, 1000 * dollar(NATIVE_CURRENCY)),
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				1_000_000 * dollar(RELAY_CHAIN_CURRENCY),
+			),
+			(
+				AccountId::from(BOB),
+				RELAY_CHAIN_CURRENCY,
+				1_000_000 * dollar(RELAY_CHAIN_CURRENCY),
+			),
+			(AccountId::from(BOB), USD_CURRENCY, 1_000_000 * dollar(USD_CURRENCY)),
+		])
+		.build()
+		.execute_with(|| {
+			deploy_liquidation_contracts();
+			setup_fees_distribution();
+			assert_ok!(CdpEngine::register_liquidation_contract(
+				Origin::root(),
+				mock_liquidation_address_0()
+			));
+			assert_ok!(CdpEngine::register_liquidation_contract(
+				Origin::root(),
+				mock_liquidation_address_1()
+			));
+			assert_eq!(
+				CdpEngine::liquidation_contracts(),
+				vec![mock_liquidation_address_0(), mock_liquidation_address_1()]
+			);
+
+			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(1, 1))]);
+
+			assert_ok!(Dex::add_liquidity(
+				Origin::signed(AccountId::from(BOB)),
+				RELAY_CHAIN_CURRENCY,
+				USD_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+				100 * dollar(USD_CURRENCY),
+				0,
+				false,
+			));
+
+			assert_ok!(CdpEngine::set_collateral_params(
+				Origin::root(),
+				RELAY_CHAIN_CURRENCY,
+				Change::NewValue(Some(Rate::zero())),
+				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))), // 2:1 collateral ratio
+				Change::NewValue(Some(Rate::zero())),
+				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
+				Change::NewValue(1_000_000 * dollar(USD_CURRENCY)),
+			));
+
+			assert_ok!(CdpEngine::adjust_position(
+				&AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				(2000 * dollar(RELAY_CHAIN_CURRENCY)) as i128,
+				(1000 * dollar(USD_CURRENCY)) as i128,
+			));
+
+			// Set the price so the position is unsafe.
+			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(1, 100))]);
+
+			System::reset_events();
+			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY
+			));
+
+			//
+			// If both dex and contract cannot liquidate, then go to auction.
+			//
+			System::assert_has_event(Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP {
+				collateral_type: RELAY_CHAIN_CURRENCY,
+				owner: AccountId::from(ALICE),
+				collateral_amount: 2000 * dollar(RELAY_CHAIN_CURRENCY),
+				bad_debt_value: 100 * dollar(USD_CURRENCY),
+				target_amount: 100 * dollar(USD_CURRENCY),
+			}));
+
+			System::assert_has_event(Event::AuctionManager(
+				module_auction_manager::Event::NewCollateralAuction {
+					auction_id: 0,
+					collateral_type: RELAY_CHAIN_CURRENCY,
+					collateral_amount: 2_000 * dollar(RELAY_CHAIN_CURRENCY),
+					target_bid_price: 100 * dollar(USD_CURRENCY),
+				},
+			));
+
+			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(1, 1))]);
+			assert_ok!(CdpEngine::adjust_position(
+				&AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				(2000 * dollar(RELAY_CHAIN_CURRENCY)) as i128,
+				(1000 * dollar(USD_CURRENCY)) as i128,
+			));
+
+			// Give contracts enough funds for liquidation
+			assert_ok!(Tokens::deposit(
+				USD_CURRENCY,
+				&address_to_account_id(&mock_liquidation_address_1()),
+				1000 * dollar(USD_CURRENCY)
+			));
+
+			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(1, 100))]);
+
+			//
+			// When dex cannot liquidate, try to liquidate using EVM Contracts instead.
+			//
+			assert_eq!(Tokens::free_balance(USD_CURRENCY, &cdp_engine_pallet_account()), 0);
+			System::reset_events();
+			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY
+			));
+
+			// Check liquidation happened successfully via contract
+			assert_eq!(
+				Tokens::free_balance(USD_CURRENCY, &cdp_engine_pallet_account()),
+				100 * dollar(USD_CURRENCY)
+			);
+			assert_eq!(Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit, 0);
+			assert_eq!(
+				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
+				0
+			);
+			System::assert_has_event(Event::Tokens(orml_tokens::Event::Transfer {
+				currency_id: USD_CURRENCY,
+				from: address_to_account_id(&mock_liquidation_address_1()),
+				to: cdp_engine_pallet_account(),
+				amount: 100 * dollar(USD_CURRENCY),
+			}));
+
+			System::assert_has_event(Event::Tokens(orml_tokens::Event::Transfer {
+				currency_id: RELAY_CHAIN_CURRENCY,
+				from: cdp_treasury_pallet_account(),
+				to: address_to_account_id(&mock_liquidation_address_1()),
+				amount: 2000 * dollar(RELAY_CHAIN_CURRENCY),
+			}));
+
+			System::assert_has_event(Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP {
+				collateral_type: RELAY_CHAIN_CURRENCY,
+				owner: AccountId::from(ALICE),
+				collateral_amount: 2000 * dollar(RELAY_CHAIN_CURRENCY),
+				bad_debt_value: 100 * dollar(USD_CURRENCY),
+				target_amount: 100 * dollar(USD_CURRENCY),
+			}));
+
+			//
+			// When dex has enough liquidity, Liquidate using DEX as first priority
+			//
+			assert_ok!(Dex::add_liquidity(
+				Origin::signed(AccountId::from(BOB)),
+				RELAY_CHAIN_CURRENCY,
+				USD_CURRENCY,
+				1000 * dollar(RELAY_CHAIN_CURRENCY),
+				1000 * dollar(USD_CURRENCY),
+				0,
+				false,
+			));
+			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(1, 1))]);
+			assert_ok!(CdpEngine::adjust_position(
+				&AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				(2000 * dollar(RELAY_CHAIN_CURRENCY)) as i128,
+				(1000 * dollar(USD_CURRENCY)) as i128,
+			));
+			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(1, 100))]);
+
+			System::reset_events();
+			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY
+			));
+
+			// Liquidation done by swapping using DEX
+			#[cfg(feature = "with-mandala-runtime")]
+			let liquidity_change = 1_101_101_101_102u128;
+			#[cfg(feature = "with-karura-runtime")]
+			let liquidity_change = 110_330_992_978_937u128;
+			#[cfg(feature = "with-acala-runtime")]
+			let liquidity_change = 1_103_309_929_790u128;
+			System::assert_has_event(Event::Dex(module_dex::Event::Swap {
+				trader: cdp_treasury_pallet_account(),
+				path: vec![RELAY_CHAIN_CURRENCY, USD_CURRENCY],
+				liquidity_changes: vec![liquidity_change, 100_000_000_000_000],
+			}));
+
+			// Remaining collaterals are returned to the user
+			#[cfg(feature = "with-mandala-runtime")]
+			let collateral_returned = 18_898_898_898_898u128;
+			#[cfg(feature = "with-karura-runtime")]
+			let collateral_returned = 1_889_669_007_021_063u128;
+			#[cfg(feature = "with-acala-runtime")]
+			let collateral_returned = 18_896_690_070_210u128;
+			System::assert_has_event(Event::Tokens(orml_tokens::Event::Transfer {
+				currency_id: RELAY_CHAIN_CURRENCY,
+				from: cdp_treasury_pallet_account(),
+				to: AccountId::from(ALICE),
+				amount: collateral_returned,
+			}));
+
+			System::assert_has_event(Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP {
+				collateral_type: RELAY_CHAIN_CURRENCY,
+				owner: AccountId::from(ALICE),
+				collateral_amount: 2000 * dollar(RELAY_CHAIN_CURRENCY),
+				bad_debt_value: 100 * dollar(USD_CURRENCY),
+				target_amount: 100 * dollar(USD_CURRENCY),
+			}));
+
+			assert_eq!(Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit, 0);
+			assert_eq!(
+				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
+				0
+			);
 		});
 }

@@ -418,6 +418,8 @@ parameter_types! {
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::one();
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
+	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);
+	pub CDPEnginePalletId: PalletId = PalletId(*b"aca/cdpe");
 }
 
 impl module_cdp_engine::Config for Test {
@@ -437,6 +439,11 @@ impl module_cdp_engine::Config for Test {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = DexModule;
+	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
+	type MaxLiquidationContracts = ConstU32<10>;
+	type LiquidationEvmBridge = module_evm_bridge::LiquidationEvmBridge<Test>;
+	type PalletId = CDPEnginePalletId;
+	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Test>;
 	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
 	type OnFeeDeposit = Fees;
 	type WeightInfo = ();

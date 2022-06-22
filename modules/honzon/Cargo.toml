@@ -27,6 +27,7 @@ orml-currencies = { path = "../../orml/currencies" }
 orml-traits = { path = "../../orml/traits" }
 orml-tokens = { path = "../../orml/tokens" }
 cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury" }
+evm-accounts = { package = "module-evm-accounts", path = "../evm-accounts" }
 
 [features]
 default = ["std"]
