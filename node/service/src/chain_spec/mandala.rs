@@ -360,9 +360,7 @@ fn testnet_genesis(
 		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
-		sudo: SudoConfig {
-			key: Some(root_key.clone()),
-		},
+		sudo: SudoConfig { key: Some(root_key) },
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
 			members: member.clone().try_into().expect("convert error!"),

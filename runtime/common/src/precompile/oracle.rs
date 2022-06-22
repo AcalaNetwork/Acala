@@ -30,7 +30,7 @@ use module_evm::{
 };
 use module_support::{Erc20InfoMapping as Erc20InfoMappingT, PriceProvider as PriceProviderT};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use sp_runtime::{traits::Convert, RuntimeDebug};
+use sp_runtime::{traits::Convert, FixedPointNumber, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 /// The `Oracle` impl precompile.
