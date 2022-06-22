@@ -89,6 +89,12 @@ impl<Balance, BlockNumber> Default for TradingPairStatus<Balance, BlockNumber> {
 	}
 }
 
+impl<Balance, BlockNumber> TradingPairStatus<Balance, BlockNumber> {
+	pub fn enabled(&self) -> bool {
+		matches!(self, TradingPairStatus::<_, _>::Enabled)
+	}
+}
+
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
@@ -265,7 +271,7 @@ pub mod module {
 			target_amount: Balance,
 		},
 		/// Add Triangle info.
-		AddTriangleInfo {
+		AddTriangleSwapInfo {
 			currency_1: CurrencyId,
 			currency_2: CurrencyId,
 			currency_3: CurrencyId,
@@ -794,10 +800,7 @@ pub mod module {
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
-				matches!(
-					Self::trading_pair_statuses(trading_pair),
-					TradingPairStatus::<_, _>::Enabled
-				),
+				Self::trading_pair_statuses(trading_pair).enabled(),
 				Error::<T>::MustBeEnabled
 			);
 
@@ -1004,7 +1007,7 @@ impl<T: Config> Pallet<T> {
 			*maybe_supply_threshold = Some((supply_amount, threshold));
 			Ok(())
 		})?;
-		Self::deposit_event(Event::AddTriangleInfo {
+		Self::deposit_event(Event::AddTriangleSwapInfo {
 			currency_1,
 			currency_2,
 			currency_3,
@@ -1053,6 +1056,36 @@ impl<T: Config> Pallet<T> {
 			}
 		}
 		Ok(())
+	}
+
+	fn _compute_triangle_trading_path() {
+		use sp_std::collections::btree_map::BTreeMap;
+		let enabled_trading_pair: Vec<TradingPair> = TradingPairStatuses::<T>::iter()
+			.filter(|(_, status)| status.enabled())
+			.map(|(pair, _)| pair)
+			.collect();
+		// let uniq_currencies = enabled_trading_pair.iter().cloned().map(|pair| pair.first())
+		// 	.collect::<sp_std::collections::btree_set::BTreeSet<CurrencyId>>();
+		let mut trading_pair_values_map: BTreeMap<CurrencyId, Vec<CurrencyId>> = BTreeMap::new();
+		for pair in enabled_trading_pair.clone() {
+			trading_pair_values_map
+				.entry(pair.first())
+				.or_insert_with(Vec::<CurrencyId>::new)
+				.push(pair.second());
+		}
+		let mut final_triangle_path = Vec::<(CurrencyId, CurrencyId, CurrencyId)>::new();
+		trading_pair_values_map.into_iter().for_each(|(start, v)| {
+			let len = v.len();
+			for i in 0..(len - 1) {
+				for j in (i + 1)..len {
+					if let Some(pair) = TradingPair::from_currency_ids(v[i], v[j]) {
+						if enabled_trading_pair.contains(&pair) {
+							final_triangle_path.push((start, pair.first(), pair.second()));
+						}
+					}
+				}
+			}
+		});
 	}
 
 	fn try_mutate_liquidity_pool<R, E>(
@@ -1205,10 +1238,7 @@ impl<T: Config> Pallet<T> {
 		let trading_pair =
 			TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 		ensure!(
-			matches!(
-				Self::trading_pair_statuses(trading_pair),
-				TradingPairStatus::<_, _>::Enabled
-			),
+			Self::trading_pair_statuses(trading_pair).enabled(),
 			Error::<T>::MustBeEnabled,
 		);
 
@@ -1449,10 +1479,7 @@ impl<T: Config> Pallet<T> {
 			let trading_pair =
 				TradingPair::from_currency_ids(path[i], path[i + 1]).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
-				matches!(
-					Self::trading_pair_statuses(trading_pair),
-					TradingPairStatus::<_, _>::Enabled
-				),
+				Self::trading_pair_statuses(trading_pair).enabled(),
 				Error::<T>::MustBeEnabled
 			);
 			let (supply_pool, target_pool) = Self::get_liquidity(path[i], path[i + 1]);
@@ -1485,10 +1512,7 @@ impl<T: Config> Pallet<T> {
 			let trading_pair =
 				TradingPair::from_currency_ids(path[i - 1], path[i]).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
-				matches!(
-					Self::trading_pair_statuses(trading_pair),
-					TradingPairStatus::<_, _>::Enabled
-				),
+				Self::trading_pair_statuses(trading_pair).enabled(),
 				Error::<T>::MustBeEnabled
 			);
 			let (supply_pool, target_pool) = Self::get_liquidity(path[i - 1], path[i]);
