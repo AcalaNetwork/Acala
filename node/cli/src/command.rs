@@ -21,7 +21,7 @@
 
 use crate::cli::{Cli, RelayChainCli, Subcommand};
 use codec::Encode;
-use cumulus_client_service::genesis::generate_genesis_block;
+use cumulus_client_cli::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
@@ -413,55 +413,74 @@ pub fn run() -> sc_cli::Result<()> {
 			})
 		}
 
-		Some(Subcommand::ExportGenesisState(params)) => {
-			let mut builder = sc_cli::LoggerBuilder::new("");
-			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
-			let _ = builder.init();
+		Some(Subcommand::ExportGenesisState(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
 
-			let chain_spec = cli.load_spec(&params.chain.clone().unwrap_or_default())?;
-			let state_version = Cli::native_runtime_version(&chain_spec).state_version();
-			let output_buf = with_runtime_or_err!(chain_spec, {
-				{
-					let block: Block =
-						generate_genesis_block(&chain_spec, state_version).map_err(|e| format!("{:?}", e))?;
-					let raw_header = block.header().encode();
-					let buf = if params.raw {
-						raw_header
-					} else {
-						format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
-					};
-					buf
-				}
-			});
+			with_runtime_or_err!(chain_spec, {
+				return runner.sync_run(|_config| {
+					let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
+					let state_version = Cli::native_runtime_version(&spec).state_version();
+					cmd.run::<Block>(&*spec, state_version)
+				});
+			})
 
-			if let Some(output) = &params.output {
-				std::fs::write(output, output_buf)?;
-			} else {
-				std::io::stdout().write_all(&output_buf)?;
-			}
+			// let mut builder = sc_cli::LoggerBuilder::new("");
+			// builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
+			// let _ = builder.init();
 
-			Ok(())
+			// let chain_spec = cli.load_spec(&params.chain.clone().unwrap_or_default())?;
+			// let state_version = Cli::native_runtime_version(&chain_spec).state_version();
+			// let output_buf = with_runtime_or_err!(chain_spec, {
+			// 	{
+			// 		let block: Block =
+			// 			generate_genesis_block(&chain_spec, state_version).map_err(|e| format!("{:?}", e))?;
+			// 		let raw_header = block.header().encode();
+			// 		let buf = if params.raw {
+			// 			raw_header
+			// 		} else {
+			// 			format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
+			// 		};
+			// 		buf
+			// 	}
+			// });
+
+			// if let Some(output) = &params.output {
+			// 	std::fs::write(output, output_buf)?;
+			// } else {
+			// 	std::io::stdout().write_all(&output_buf)?;
+			// }
+			//
+			// Ok(())
 		}
 
-		Some(Subcommand::ExportGenesisWasm(params)) => {
-			let mut builder = sc_cli::LoggerBuilder::new("");
-			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
-			let _ = builder.init();
+		Some(Subcommand::ExportGenesisWasm(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.sync_run(|_config| {
+				// let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
+				let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
+				cmd.run(&*spec)
+			})
 
-			let raw_wasm_blob = extract_genesis_wasm(&cli.load_spec(&params.chain.clone().unwrap_or_default())?)?;
-			let output_buf = if params.raw {
-				raw_wasm_blob
-			} else {
-				format!("0x{:?}", HexDisplay::from(&raw_wasm_blob)).into_bytes()
-			};
+			// let mut builder = sc_cli::LoggerBuilder::new("");
+			// builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
+			// let _ = builder.init();
 
-			if let Some(output) = &params.output {
-				std::fs::write(output, output_buf)?;
-			} else {
-				std::io::stdout().write_all(&output_buf)?;
-			}
+			// let raw_wasm_blob =
+			// extract_genesis_wasm(&cli.load_spec(&params.chain.clone().unwrap_or_default())?)?;
+			// let output_buf = if params.raw {
+			// 	raw_wasm_blob
+			// } else {
+			// 	format!("0x{:?}", HexDisplay::from(&raw_wasm_blob)).into_bytes()
+			// };
 
-			Ok(())
+			// if let Some(output) = &params.output {
+			// 	std::fs::write(output, output_buf)?;
+			// } else {
+			// 	std::io::stdout().write_all(&output_buf)?;
+			// }
+
+			// Ok(())
 		}
 
 		#[cfg(feature = "try-runtime")]

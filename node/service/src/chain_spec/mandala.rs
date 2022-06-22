@@ -348,6 +348,8 @@ fn testnet_genesis(
 		.into_iter()
 		.collect::<Vec<(AccountId, Balance)>>();
 
+	let member = vec![root_key.clone()];
+
 	mandala_runtime::GenesisConfig {
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
@@ -363,26 +365,26 @@ fn testnet_genesis(
 		},
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().expect("convert error!"),
 			phantom: Default::default(),
 		},
 		financial_council: Default::default(),
 		financial_council_membership: FinancialCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().expect("convert error!"),
 			phantom: Default::default(),
 		},
 		homa_council: Default::default(),
 		homa_council_membership: HomaCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().expect("convert error!"),
 			phantom: Default::default(),
 		},
 		technical_committee: Default::default(),
 		technical_committee_membership: TechnicalCommitteeMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().expect("convert error!"),
 			phantom: Default::default(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
-			members: vec![root_key],
+			members: member.try_into().expect("convert error!"),
 			phantom: Default::default(),
 		},
 		democracy: Default::default(),
@@ -548,6 +550,8 @@ fn mandala_genesis(
 		.into_iter()
 		.collect::<Vec<(AccountId, Balance)>>();
 
+	let member = vec![root_key.clone()];
+
 	mandala_runtime::GenesisConfig {
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
@@ -563,26 +567,26 @@ fn mandala_genesis(
 		},
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().expect("convert error!"),
 			phantom: Default::default(),
 		},
 		financial_council: Default::default(),
 		financial_council_membership: FinancialCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().expect("convert error!"),
 			phantom: Default::default(),
 		},
 		homa_council: Default::default(),
 		homa_council_membership: HomaCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().expect("convert error!"),
 			phantom: Default::default(),
 		},
 		technical_committee: Default::default(),
 		technical_committee_membership: TechnicalCommitteeMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().expect("convert error!"),
 			phantom: Default::default(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
-			members: endowed_accounts,
+			members: member.try_into().expect("convert error!"),
 			phantom: Default::default(),
 		},
 		democracy: Default::default(),
