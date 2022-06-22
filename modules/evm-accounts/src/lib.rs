@@ -25,6 +25,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
+#![allow(deprecated)] // TODO: clean transactional
 
 use codec::Encode;
 use frame_support::{

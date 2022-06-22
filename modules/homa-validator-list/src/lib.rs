@@ -27,6 +27,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
+#![allow(deprecated)] // TODO: clean transactional
 
 use codec::MaxEncodedLen;
 use frame_support::{pallet_prelude::*, traits::Contains, transactional};

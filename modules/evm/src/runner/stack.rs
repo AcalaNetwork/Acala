@@ -18,6 +18,7 @@
 
 //! EVM stack-based runner.
 // Synchronize with https://github.com/paritytech/frontier/blob/bcae569524/frame/evm/src/runner/stack.rs
+#![allow(deprecated)] // TODO: clean transactional
 
 use crate::{
 	runner::{

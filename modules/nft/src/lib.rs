@@ -20,6 +20,7 @@
 #![allow(clippy::unnecessary_cast)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(deprecated)] // TODO: clean transactional
 
 use frame_support::{
 	pallet_prelude::*,
