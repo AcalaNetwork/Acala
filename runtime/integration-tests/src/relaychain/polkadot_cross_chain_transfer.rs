@@ -45,7 +45,7 @@ fn transfer_from_relay_chain() {
 	});
 
 	Acala::execute_with(|| {
-		assert_eq!(9_998_135_200, Tokens::free_balance(DOT, &AccountId::from(BOB)));
+		assert_eq!(9_998_146_080, Tokens::free_balance(DOT, &AccountId::from(BOB)));
 	});
 }
 

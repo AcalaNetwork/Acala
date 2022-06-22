@@ -219,19 +219,19 @@ fn token_per_second_works() {
 	#[cfg(feature = "with-karura-runtime")]
 	{
 		let kar_per_second = karura_runtime::kar_per_second();
-		assert_eq!(11_655_000_000_000, kar_per_second);
+		assert_eq!(11_587_000_000_000, kar_per_second);
 
 		let ksm_per_second = karura_runtime::ksm_per_second();
-		assert_eq!(233_100_000_000, ksm_per_second);
+		assert_eq!(231_740_000_000, ksm_per_second);
 	}
 
 	#[cfg(feature = "with-acala-runtime")]
 	{
 		let aca_per_second = acala_runtime::aca_per_second();
-		assert_eq!(11_655_000_000_000, aca_per_second);
+		assert_eq!(11_587_000_000_000, aca_per_second);
 
 		let dot_per_second = acala_runtime::dot_per_second();
-		assert_eq!(2_331_000_000, dot_per_second);
+		assert_eq!(2317400000, dot_per_second);
 	}
 }
 
@@ -277,12 +277,13 @@ fn trader_works() {
 	//          fee=0.16*weight=0.16*800_000_000=128_000_000
 	// v0.9.23: kar_per_second=11.655KAR, ksm_per_second=0.2331KSM
 	//          fee=0.2331*weight=186_480_000
+	// v0.9.25: 0.23174*800000000=185392000
 	#[cfg(feature = "with-mandala-runtime")]
-	let expect_unspent: MultiAsset = (Parent, 999_533_800).into(); // 466200
+	let expect_unspent: MultiAsset = (Parent, 999536520).into(); // 466200
 	#[cfg(feature = "with-karura-runtime")]
-	let expect_unspent: MultiAsset = (Parent, 813_520_000).into(); // 186480000
+	let expect_unspent: MultiAsset = (Parent, 814_608_000).into(); // 186480000
 	#[cfg(feature = "with-acala-runtime")]
-	let expect_unspent: MultiAsset = (Parent, 998_135_200).into(); // 1864800
+	let expect_unspent: MultiAsset = (Parent, 998_146_080).into(); // 1864800
 
 	// when no runtime upgrade, the newly `TransactionFeePoolTrader` will failed.
 	ExtBuilder::default().build().execute_with(|| {

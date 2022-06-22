@@ -332,7 +332,9 @@ impl ExtBuilder {
 				AccountId::from(ORACLE3),
 				AccountId::from(ORACLE4),
 				AccountId::from(ORACLE5),
-			],
+			]
+			.try_into()
+			.expect("convert error!"),
 			phantom: Default::default(),
 		}
 		.assimilate_storage(&mut t)

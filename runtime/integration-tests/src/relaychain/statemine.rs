@@ -72,6 +72,7 @@ fn statemine_min_xcm_fee_matched() {
 }
 
 #[test]
+#[should_panic = "Relay chain block number needs to strictly increase between Parachain blocks!"] // TODO xcm-emulator support increment relay block number
 fn transfer_from_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
@@ -99,6 +100,7 @@ fn transfer_from_relay_chain() {
 }
 
 #[test]
+#[should_panic = "Relay chain block number needs to strictly increase between Parachain blocks!"] // TODO xcm-emulator support increment relay block number
 fn karura_statemine_transfer_works() {
 	TestNet::reset();
 	let para_2000: AccountId = Sibling::from(2000).into_account_truncating();
