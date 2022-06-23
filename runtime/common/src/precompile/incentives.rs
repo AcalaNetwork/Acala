@@ -31,7 +31,7 @@ use module_incentives::WeightInfo;
 use module_support::{IncentivesManager, PoolId};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
-use sp_runtime::{traits::Convert, FixedPointNumber, RuntimeDebug};
+use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 /// The Incentives precompile
@@ -380,7 +380,7 @@ mod tests {
 	use module_support::Rate;
 	use orml_rewards::PoolInfo;
 	use orml_traits::MultiCurrency;
-	use sp_runtime::FixedU128;
+	use sp_runtime::{FixedPointNumber, FixedU128};
 
 	type IncentivesPrecompile = super::IncentivesPrecompile<Test>;
 
