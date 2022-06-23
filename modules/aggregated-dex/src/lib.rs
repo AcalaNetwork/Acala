@@ -94,7 +94,6 @@ pub mod module {
 	/// The specific swap paths for  AggregatedSwap do aggreated_swap to swap TokenA to TokenB
 	///
 	/// AggregatedSwapPaths: Map: (token_a: CurrencyId, token_b: CurrencyId) => paths: Vec<SwapPath>
-
 	#[pallet::storage]
 	#[pallet::getter(fn aggregated_swap_paths)]
 	pub type AggregatedSwapPaths<T: Config> =

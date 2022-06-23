@@ -1677,6 +1677,7 @@ construct_runtime!(
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 90,
 		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 91,
 		DexOracle: module_dex_oracle::{Pallet, Storage, Call} = 92,
+		AggregatedDex: module_aggregated_dex::{Pallet, Storage, Call} = 93,
 
 		// Honzon
 		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 100,
