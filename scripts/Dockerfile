@@ -1,4 +1,4 @@
-FROM rust:buster as builder
+FROM rust-build as builder
 WORKDIR /app
 
 RUN rustup default nightly-2022-02-19 && \

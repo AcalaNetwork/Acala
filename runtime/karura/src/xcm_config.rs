@@ -98,6 +98,7 @@ pub type Barrier = (
 	AllowKnownQueryResponses<PolkadotXcm>,
 	// Subscriptions for version tracking are OK.
 	AllowSubscriptionsFrom<Everything>,
+	AllowUnpaidExecutionFrom<Everything>,
 );
 
 pub struct ToTreasury;
