@@ -1,6 +1,6 @@
 [package]
 name = "karura-runtime"
-version = "2.8.0"
+version = "2.8.1"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
