@@ -213,15 +213,6 @@ impl Contains<Call> for BaseCallFilter {
 			return false;
 		}
 
-		let is_honzon_bridge = matches!(
-			call,
-			Call::HonzonBridge(_) // HonzonBridge isn't enabled until wAUSD is created. Issue #1967
-		);
-		if is_honzon_bridge {
-			// no honzon_bridge
-			return false;
-		}
-
 		if let Call::PolkadotXcm(xcm_method) = call {
 			match xcm_method {
 				pallet_xcm::Call::send { .. }
@@ -1565,7 +1556,7 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 parameter_types! {
-	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["0000000000000000000100000000000000000001"]));
+	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["0xe20683ad1ed8bbeed7e1ae74be10f19d8045b530"]));
 	pub const StableCoinCurrencyId: CurrencyId = KUSD;
 }
 
