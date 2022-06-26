@@ -1556,7 +1556,7 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 parameter_types! {
-	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["0xe20683ad1ed8bbeed7e1ae74be10f19d8045b530"]));
+	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["e20683ad1ed8bbeed7e1ae74be10f19d8045b530"]));
 	pub const StableCoinCurrencyId: CurrencyId = KUSD;
 }
 
