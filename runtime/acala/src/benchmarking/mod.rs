@@ -59,6 +59,9 @@ pub mod evm {
 pub mod evm_accounts {
 	include!("../../../mandala/src/benchmarking/evm_accounts.rs");
 }
+pub mod fees {
+	include!("../../../mandala/src/benchmarking/fees.rs");
+}
 pub mod homa {
 	include!("../../../mandala/src/benchmarking/homa.rs");
 }

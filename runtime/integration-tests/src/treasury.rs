@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
+use runtime_common::NetworkTreasuryPool;
 
 #[test]
 fn treasury_should_take_xcm_execution_revenue() {
@@ -70,7 +71,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), actual_amount);
 		assert_eq!(
-			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
+			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &NetworkTreasuryPool::get()),
 			dot_amount - actual_amount
 		);
 	});
@@ -235,7 +236,9 @@ mod mandala_only_tests {
 	use super::*;
 	type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
 	use frame_support::{pallet_prelude::Decode, traits::OnUnbalanced};
+	use module_fees::DistributeTxFees;
 	use pallet_authorship::EventHandler;
+	use runtime_common::{CollatorsRewardPool, NetworkTreasuryPool};
 
 	#[test]
 	fn treasury_handles_collator_rewards_correctly() {
@@ -250,7 +253,8 @@ mod mandala_only_tests {
 					AccountId::from(ALICE)
 				)));
 
-				let pot_account_id = CollatorSelection::account_id();
+				let pot_account_id = CollatorsRewardPool::get();
+				let network_treasury = NetworkTreasuryPool::get();
 				// Currently pot has ExistentialDeposits
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
@@ -266,18 +270,26 @@ mod mandala_only_tests {
 				// Only 20% of the fee went into the pot
 				let tip = NegativeImbalance::new((min_reward - 1) * 10);
 				let fee = NegativeImbalance::new(0);
-				DealWithFees::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
+				DistributeTxFees::<Runtime>::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
 
 				// The amount above existential is below the `MinRewardDistributeAmount`.
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
 					299_999_999_998
 				);
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &network_treasury),
+					899_999_999_992
+				);
 
 				CollatorSelection::note_author(AccountId::from(BOB));
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
 					299_999_999_998
+				);
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &network_treasury),
+					899_999_999_992
 				);
 				assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)), 0);
 
@@ -285,20 +297,28 @@ mod mandala_only_tests {
 				let tip = NegativeImbalance::new(10);
 				let fee = NegativeImbalance::new(0);
 
-				DealWithFees::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
+				DistributeTxFees::<Runtime>::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
 
 				// Now the above existential is above the `MinRewardDistributeAmount`.
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
 					300_000_000_000
 				);
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &network_treasury),
+					900_000_000_000
+				);
 
-				// Splits half of 300_000_000_000 to BOB
+				// Splits half of available pot to BOB: (pot - ED) / 2 = (30c - 10c) / 2 = 10c
 				CollatorSelection::note_author(AccountId::from(BOB));
 
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
 					200_000_000_000
+				);
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &network_treasury),
+					900_000_000_000
 				);
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)),

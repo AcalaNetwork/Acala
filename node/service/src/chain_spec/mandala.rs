@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
+use acala_primitives::{orml_traits::GetByKey, AccountId, Balance, IncomeSource, TokenSymbol};
 use coins_bip39::{English, Mnemonic, Wordlist};
 use elliptic_curve::sec1::ToEncodedPoint;
 use hex_literal::hex;
@@ -24,7 +24,8 @@ use k256::{
 	ecdsa::{SigningKey, VerifyingKey},
 	EncodedPoint as K256PublicKey,
 };
-use runtime_common::evm_genesis;
+use mandala_runtime::{FeesConfig, TreasuryAccount, ACA};
+use runtime_common::{dollar, evm_genesis};
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
@@ -308,12 +309,12 @@ fn testnet_genesis(
 	evm_accounts: Vec<H160>,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		dollar, get_all_module_accounts, AssetRegistryConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
+		get_all_module_accounts, AssetRegistryConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, ExistentialDeposits,
 		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
 		PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
-		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA,
+		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
 		AUSD, DOT, LDOT, RENBTC,
 	};
 
@@ -498,6 +499,7 @@ fn testnet_genesis(
 			safe_xcm_version: Some(2),
 		},
 		phragmen_election: Default::default(),
+		fees: fees_config(),
 	}
 }
 
@@ -508,12 +510,12 @@ fn mandala_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		cent, dollar, get_all_module_accounts, AssetRegistryConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
+		cent, get_all_module_accounts, AssetRegistryConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, ExistentialDeposits,
 		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
 		PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
-		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA,
+		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
 		AUSD, DOT, LDOT, RENBTC,
 	};
 
@@ -680,5 +682,69 @@ fn mandala_genesis(
 			safe_xcm_version: Some(2),
 		},
 		phragmen_election: Default::default(),
+		fees: fees_config(),
+	}
+}
+
+fn fees_config() -> FeesConfig {
+	FeesConfig {
+		incomes: vec![
+			(
+				IncomeSource::TxFee,
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 80),
+					(runtime_common::CollatorsRewardPool::get(), 20),
+				],
+			),
+			(
+				IncomeSource::XcmFee,
+				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
+			),
+			(
+				IncomeSource::DexSwapFee,
+				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
+			),
+			(
+				IncomeSource::HonzonStabilityFee,
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 70),
+					(runtime_common::HonzonTreasuryPool::get(), 30),
+				],
+			),
+			(
+				IncomeSource::HonzonLiquidationFee,
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 30),
+					(runtime_common::HonzonTreasuryPool::get(), 70),
+				],
+			),
+			(
+				IncomeSource::HomaStakingRewardFee,
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 70),
+					(runtime_common::HomaTreasuryPool::get(), 30),
+				],
+			),
+		],
+		treasuries: vec![
+			(
+				runtime_common::NetworkTreasuryPool::get(),
+				1000 * dollar(ACA),
+				vec![
+					(runtime_common::StakingRewardPool::get(), 70),
+					(runtime_common::CollatorsRewardPool::get(), 10),
+					(runtime_common::EcosystemRewardPool::get(), 10),
+					(TreasuryAccount::get(), 10),
+				],
+			),
+			(
+				runtime_common::HonzonTreasuryPool::get(),
+				1000 * dollar(ACA),
+				vec![
+					(runtime_common::HonzonInsuranceRewardPool::get(), 30),
+					(runtime_common::HonzonLiquitationRewardPool::get(), 70),
+				],
+			),
+		],
 	}
 }

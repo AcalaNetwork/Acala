@@ -19,12 +19,23 @@
 //! Unit tests for the Homa Module
 
 #![cfg(test)]
-
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
 use orml_traits::MultiCurrency;
+use primitives::PoolPercent;
 use sp_runtime::{traits::BadOrigin, FixedPointNumber};
+
+fn setup_fees_distribution() {
+	assert_ok!(Fees::set_income_fee(
+		Origin::root(),
+		IncomeSource::HomaStakingRewardFee,
+		vec![PoolPercent {
+			pool: HOMA_TREASURY,
+			rate: Rate::one(),
+		}],
+	));
+}
 
 #[test]
 fn mint_works() {
@@ -675,6 +686,8 @@ fn process_staking_rewards_works() {
 		.balances(vec![(ALICE, LIQUID_CURRENCY_ID, 40_000_000)])
 		.build()
 		.execute_with(|| {
+			setup_fees_distribution();
+
 			assert_ok!(Homa::reset_ledgers(
 				Origin::signed(HomaAdmin::get()),
 				vec![(0, Some(3_000_000), None), (1, Some(1_000_000), None),]
@@ -702,7 +715,7 @@ fn process_staking_rewards_works() {
 			);
 			assert_eq!(Homa::get_total_bonded(), 4_000_000);
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 40_000_000);
-			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &HOMA_TREASURY), 0);
 
 			// accumulate staking rewards, no commission
 			assert_ok!(Homa::process_staking_rewards(1, 0));
@@ -722,7 +735,7 @@ fn process_staking_rewards_works() {
 			);
 			assert_eq!(Homa::get_total_bonded(), 4_800_000);
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 40_000_000);
-			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &HOMA_TREASURY), 0);
 
 			assert_ok!(Homa::update_homa_params(
 				Origin::signed(HomaAdmin::get()),
@@ -750,10 +763,7 @@ fn process_staking_rewards_works() {
 			);
 			assert_eq!(Homa::get_total_bonded(), 5_760_000);
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 40_677_966);
-			assert_eq!(
-				Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()),
-				677_966
-			);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &HOMA_TREASURY), 677_966);
 		});
 }
 
@@ -1166,6 +1176,8 @@ fn bump_current_era_works() {
 		.balances(vec![(ALICE, STAKING_CURRENCY_ID, 100_000_000)])
 		.build()
 		.execute_with(|| {
+			setup_fees_distribution();
+
 			assert_ok!(Homa::update_homa_params(
 				Origin::signed(HomaAdmin::get()),
 				Some(20_000_000),
@@ -1188,7 +1200,7 @@ fn bump_current_era_works() {
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 0);
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
-			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &HOMA_TREASURY), 0);
 
 			assert_ok!(Homa::mint(Origin::signed(ALICE), 30_000_000));
 			assert_eq!(Homa::to_bond_pool(), 30_000_000);
@@ -1229,7 +1241,7 @@ fn bump_current_era_works() {
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 297_029_702);
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
-			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &HOMA_TREASURY), 0);
 
 			// bump era to #2,
 			// accumulate staking reward and draw commission
@@ -1260,10 +1272,7 @@ fn bump_current_era_works() {
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 297_619_046);
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
-			assert_eq!(
-				Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()),
-				589_344
-			);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &HOMA_TREASURY), 589_344);
 
 			// assuming now staking has no rewards any more.
 			assert_ok!(Homa::update_homa_params(
@@ -1322,10 +1331,7 @@ fn bump_current_era_works() {
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 17_619_046);
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
-			assert_eq!(
-				Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()),
-				589_344
-			);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &HOMA_TREASURY), 589_344);
 
 			// bump era to #31,
 			// will process scheduled unbonded
@@ -1353,9 +1359,68 @@ fn bump_current_era_works() {
 				26_605_824
 			);
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
-			assert_eq!(
-				Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()),
-				589_344
-			);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &HOMA_TREASURY), 589_344);
 		});
+}
+
+#[test]
+fn staking_reward_fee_distribution_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
+		// 100% staking reward and 100% commission rate
+		assert_ok!(Homa::update_homa_params(
+			Origin::signed(HomaAdmin::get()),
+			Some(1_000_000_000),
+			Some(Rate::one()),
+			Some(Rate::one()),
+			Some(Rate::saturating_from_rational(1, 100)),
+		));
+
+		assert_ok!(Homa::reset_ledgers(
+			Origin::signed(HomaAdmin::get()),
+			vec![(0, Some(50_000), None), (1, Some(50_000), None),]
+		));
+		assert_ok!(Currencies::deposit(LIQUID_CURRENCY_ID, &ALICE, 100_000));
+
+		assert_eq!(Homa::get_total_bonded(), 100_000);
+
+		// Forward 1 era
+		assert_ok!(Homa::process_staking_rewards(1, 0));
+
+		// as per setup, 100% of staking reward goes to HOMA_TREASURY
+		assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &HOMA_TREASURY), 100_000);
+
+		assert_ok!(Fees::set_income_fee(
+			Origin::root(),
+			IncomeSource::HomaStakingRewardFee,
+			vec![
+				PoolPercent {
+					pool: BOB,
+					rate: Rate::saturating_from_rational(2, 10),
+				},
+				PoolPercent {
+					pool: CHARLIE,
+					rate: Rate::saturating_from_rational(3, 10),
+				},
+				PoolPercent {
+					pool: DAVE,
+					rate: Rate::saturating_from_rational(5, 10),
+				}
+			],
+		));
+		assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &BOB), 0);
+		assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &CHARLIE), 0);
+		assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &DAVE), 0);
+
+		assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 200_000);
+
+		// Forward 1 era
+		assert_ok!(Homa::process_staking_rewards(2, 1));
+		assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 400_000);
+
+		// Liquid reward is distributed into
+		assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &BOB), 40_000);
+		assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &CHARLIE), 60_000);
+		assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &DAVE), 100_000);
+	});
 }

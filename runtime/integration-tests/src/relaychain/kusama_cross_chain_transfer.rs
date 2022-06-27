@@ -22,15 +22,17 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 
 use frame_support::assert_ok;
-use sp_runtime::traits::AccountIdConversion;
-use xcm_builder::ParentIsPreset;
-
-use karura_runtime::parachains::bifrost::{BNC_KEY, ID as BIFROST_ID};
-use karura_runtime::{AssetRegistry, KaruraTreasuryAccount};
+use karura_runtime::{
+	parachains::bifrost::{BNC_KEY, ID as BIFROST_ID},
+	AssetRegistry,
+};
 use module_relaychain::RelayChainCallBuilder;
 use module_support::CallBuilder;
 use orml_traits::MultiCurrency;
 use primitives::currency::{AssetMetadata, BNC};
+use runtime_common::NetworkTreasuryPool;
+use sp_runtime::traits::AccountIdConversion;
+use xcm_builder::ParentIsPreset;
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert;
 
@@ -236,8 +238,8 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 	Karura::execute_with(|| {
 		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 0);
 		assert_eq!(
-			Tokens::free_balance(KSM, &karura_runtime::KaruraTreasuryAccount::get()),
-			1_000_186_480_111
+			Tokens::free_balance(KSM, &NetworkTreasuryPool::get()),
+			1_000_186_480_000
 		);
 	});
 }
@@ -689,7 +691,7 @@ fn trap_assets_larger_than_ed_works() {
 		assert_ok!(Tokens::deposit(KSM, &parent_account, 100 * dollar(KSM)));
 		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&parent_account, 100 * dollar(KAR));
 
-		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
+		kar_treasury_amount = Currencies::free_balance(KAR, &NetworkTreasuryPool::get());
 	});
 
 	let assets: MultiAsset = (Parent, ksm_asset_amount).into();
@@ -715,11 +717,11 @@ fn trap_assets_larger_than_ed_works() {
 
 		assert_eq!(
 			trader_weight_to_treasury + dollar(KSM),
-			Currencies::free_balance(KSM, &KaruraTreasuryAccount::get())
+			Currencies::free_balance(KSM, &NetworkTreasuryPool::get())
 		);
 		assert_eq!(
 			kar_treasury_amount,
-			Currencies::free_balance(KAR, &KaruraTreasuryAccount::get())
+			Currencies::free_balance(KAR, &NetworkTreasuryPool::get())
 		);
 	});
 }
@@ -740,7 +742,7 @@ fn trap_assets_lower_than_ed_works() {
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(KSM, &parent_account, dollar(KSM)));
 		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&parent_account, dollar(KAR));
-		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
+		kar_treasury_amount = Currencies::free_balance(KAR, &NetworkTreasuryPool::get());
 	});
 
 	let assets: MultiAsset = (Parent, ksm_asset_amount).into();
@@ -771,11 +773,11 @@ fn trap_assets_lower_than_ed_works() {
 
 		assert_eq!(
 			ksm_asset_amount + dollar(KSM),
-			Currencies::free_balance(KSM, &KaruraTreasuryAccount::get())
+			Currencies::free_balance(KSM, &NetworkTreasuryPool::get())
 		);
 		assert_eq!(
 			kar_asset_amount,
-			Currencies::free_balance(KAR, &KaruraTreasuryAccount::get()) - kar_treasury_amount
+			Currencies::free_balance(KAR, &NetworkTreasuryPool::get()) - kar_treasury_amount
 		);
 	});
 }
@@ -790,7 +792,7 @@ fn sibling_trap_assets_works() {
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(BNC, &sibling_reserve_account(), dollar(BNC)));
 		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&sibling_reserve_account(), dollar(KAR));
-		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
+		kar_treasury_amount = Currencies::free_balance(KAR, &NetworkTreasuryPool::get());
 	});
 
 	Sibling::execute_with(|| {
@@ -824,11 +826,11 @@ fn sibling_trap_assets_works() {
 			None
 		);
 		assert_eq!(
-			Currencies::free_balance(KAR, &KaruraTreasuryAccount::get()) - kar_treasury_amount,
+			Currencies::free_balance(KAR, &NetworkTreasuryPool::get()) - kar_treasury_amount,
 			kar_asset_amount
 		);
 		assert_eq!(
-			Currencies::free_balance(BNC, &KaruraTreasuryAccount::get()),
+			Currencies::free_balance(BNC, &NetworkTreasuryPool::get()),
 			bnc_asset_amount
 		);
 	});

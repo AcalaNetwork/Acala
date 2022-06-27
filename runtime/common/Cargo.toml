@@ -54,6 +54,7 @@ module-prices = { path = "../../modules/prices", default-features = false }
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
 module-nft = { path = "../../modules/nft", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
+module-fees = { path = "../../modules/fees",  default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
 module-homa = {path = "../../modules/homa", default-features = false }
 module-asset-registry = { path = "../../modules/asset-registry", default-features = false, optional = true }
@@ -123,6 +124,7 @@ std = [
 	"module-evm-accounts/std",
 	"module-asset-registry/std",
 	"module-evm-bridge/std",
+	"module-fees/std",
 	"module-loans/std",
 	"module-cdp-engine/std",
 	"module-honzon/std",

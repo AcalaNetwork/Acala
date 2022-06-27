@@ -17,6 +17,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
+module-fees =  { path = "../fees", default-features = false }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
@@ -40,6 +41,7 @@ std = [
 	"primitives/std",
 	"orml-traits/std",
 	"module-support/std",
+	"module-fees/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",

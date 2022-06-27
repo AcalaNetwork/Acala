@@ -21,7 +21,7 @@ use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::traits::{GenesisBuild, OnFinalize, OnIdle, OnInitialize};
 pub use frame_support::{assert_noop, assert_ok, traits::Currency};
 pub use frame_system::RawOrigin;
-use runtime_common::evm_genesis;
+use runtime_common::{evm_genesis, CollatorsRewardPool, NetworkTreasuryPool};
 
 pub use module_support::{
 	mocks::MockAddressMapping, AddressMapping, CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager,
@@ -50,14 +50,14 @@ mod mandala_imports {
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AssetRegistry,
 		AuctionManager, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber, Call, CdpEngine,
 		CdpTreasury, CollatorSelection, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
-		DataDepositPerByte, DealWithFees, DefaultExchangeRate, Dex, EmergencyShutdown, EnabledTradingPairs, Event,
-		EvmAccounts, ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa, Honzon, IdleScheduler,
-		Loans, MaxTipsOfPriority, MinRewardDistributeAmount, MinimumDebitValue, MultiLocation,
-		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, PalletCurrency,
-		ParachainInfo, ParachainSystem, Proxy, ProxyType, Ratio, Runtime, Scheduler, Session, SessionKeys,
-		SessionManager, SevenDays, StableAsset, StableAssetPalletId, System, Timestamp, TipPerWeightStep, TokenSymbol,
-		Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic,
-		Utility, Vesting, XcmInterface, EVM, NFT,
+		DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, EnabledTradingPairs, Event, EvmAccounts,
+		ExistentialDeposits, Fees, FinancialCouncil, Get, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans,
+		MaxTipsOfPriority, MinRewardDistributeAmount, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit,
+		NetworkId, NftPalletId, OneDay, Origin, OriginCaller, PalletCurrency, ParachainInfo, ParachainSystem, Proxy,
+		ProxyType, Ratio, Runtime, Scheduler, Session, SessionKeys, SessionManager, SevenDays, StableAsset,
+		StableAssetPalletId, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment,
+		TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic, Utility, Vesting,
+		XcmInterface, EVM, NFT,
 	};
 	use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 	pub use runtime_common::{cent, dollar, millicent, FixedRateOfAsset, ACA, AUSD, DOT, KSM, LDOT, LKSM};
@@ -86,19 +86,19 @@ pub use karura_imports::*;
 mod karura_imports {
 	pub use frame_support::parameter_types;
 	pub use karura_runtime::xcm_config::*;
-	use karura_runtime::AlternativeFeeSurplus;
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine,
 		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte,
-		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, FinancialCouncil, Get,
-		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, KaruraFoundationAccounts, Loans, MaxTipsOfPriority,
+		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Fees, FinancialCouncil,
+		Get, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, KaruraFoundationAccounts, Loans, MaxTipsOfPriority,
 		MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
 		OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio, Runtime,
 		Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens,
 		TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM,
 		NFT,
 	};
+	use karura_runtime::{AlternativeFeeSurplus, KaruraTreasuryAccount};
 	use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 	pub use primitives::TradingPair;
 	pub use runtime_common::{cent, dollar, millicent, FixedRateOfAsset, KAR, KSM, KUSD, LKSM};
@@ -113,7 +113,7 @@ mod karura_imports {
 			TradingPair::from_currency_ids(USD_CURRENCY, LIQUID_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY).unwrap(),
 		];
-		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
+		pub TreasuryAccount: AccountId = KaruraTreasuryAccount::get();
 	}
 
 	pub const NATIVE_CURRENCY: CurrencyId = KAR;
@@ -133,21 +133,24 @@ mod karura_imports {
 
 #[cfg(feature = "with-acala-runtime")]
 pub use acala_imports::*;
+use primitives::IncomeSource;
+
 #[cfg(feature = "with-acala-runtime")]
 mod acala_imports {
 	pub use acala_runtime::xcm_config::*;
-	use acala_runtime::AlternativeFeeSurplus;
 	pub use acala_runtime::{
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts, AcalaOracle, AccountId,
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine,
 		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte,
-		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, FinancialCouncil, Get,
-		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinimumDebitValue, MultiLocation,
-		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount,
-		ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio, Runtime, Scheduler, Session,
-		SessionManager, SevenDays, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment,
-		TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM, LCDOT, NFT,
+		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Fees, FinancialCouncil,
+		Get, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinimumDebitValue,
+		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
+		ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio, Runtime, Scheduler,
+		Session, SessionManager, SevenDays, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens,
+		TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM,
+		LCDOT, NFT,
 	};
+	use acala_runtime::{AcalaTreasuryAccount, AlternativeFeeSurplus};
 	pub use frame_support::parameter_types;
 	use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 	pub use primitives::TradingPair;
@@ -165,7 +168,7 @@ mod acala_imports {
 			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, LCDOT).unwrap(),
 		];
-		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
+		pub TreasuryAccount: AccountId = AcalaTreasuryAccount::get();
 	}
 
 	pub const NATIVE_CURRENCY: CurrencyId = ACA;
@@ -363,6 +366,20 @@ impl ExtBuilder {
 			},
 			&mut t,
 		)
+		.unwrap();
+
+		module_fees::GenesisConfig::<Runtime> {
+			incomes: vec![
+				(
+					IncomeSource::TxFee,
+					vec![(NetworkTreasuryPool::get(), 80), (CollatorsRewardPool::get(), 20)],
+				),
+				// xcm buy weight revenue deposit to NetworkTreasuryPool account
+				(IncomeSource::XcmFee, vec![(NetworkTreasuryPool::get(), 100)]),
+			],
+			treasuries: vec![],
+		}
+		.assimilate_storage(&mut t)
 		.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);

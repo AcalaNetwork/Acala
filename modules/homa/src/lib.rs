@@ -23,9 +23,9 @@
 
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{ExchangeRate, ExchangeRateProvider, HomaManager, HomaSubAccountXcm, Rate, Ratio};
+use module_support::{ExchangeRate, ExchangeRateProvider, HomaManager, HomaSubAccountXcm, OnFeeDeposit, Rate, Ratio};
 use orml_traits::MultiCurrency;
-use primitives::{Balance, CurrencyId, EraIndex};
+use primitives::{Balance, CurrencyId, EraIndex, IncomeSource};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
@@ -123,10 +123,6 @@ pub mod module {
 		#[pallet::constant]
 		type DefaultExchangeRate: Get<ExchangeRate>;
 
-		/// Vault reward of Homa protocol
-		#[pallet::constant]
-		type TreasuryAccount: Get<Self::AccountId>;
-
 		/// The index list of active Homa subaccounts.
 		/// `active` means these subaccounts can continue do bond/unbond operations by Homa.
 		#[pallet::constant]
@@ -152,6 +148,9 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		/// Where the staking reward fee go to.
+		type OnFeeDeposit: OnFeeDeposit<Self::AccountId, CurrencyId, Balance>;
 	}
 
 	#[pallet::error]
@@ -324,7 +323,7 @@ pub mod module {
 	pub type SoftBondedCapPerSubAccount<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The rate of Homa drawn from the staking reward as commission.
-	/// The draw will be transfer to TreasuryAccount of Homa in liquid currency.
+	/// The draw will be transfer to OnFeeDeposit in liquid currency.
 	///
 	/// CommissionRate: value: Rate
 	#[pallet::storage]
@@ -472,8 +471,7 @@ pub mod module {
 		///   on relaychain to obtain the best staking rewards.
 		/// - `estimated_reward_rate_per_era`: the estimated staking yield of each era on the
 		///   current relay chain.
-		/// - `commission_rate`: the rate to draw from estimated staking rewards as commission to
-		///   HomaTreasury
+		/// - `commission_rate`: the rate to draw from estimated staking rewards as commission
 		/// - `fast_match_fee_rate`: the fixed fee rate when redeem request is been fast matched.
 		#[pallet::weight(< T as Config >::WeightInfo::update_homa_params())]
 		#[transactional]
@@ -860,7 +858,7 @@ pub mod module {
 
 		/// Accumulate staking rewards according to EstimatedRewardRatePerEra and era internally.
 		/// And draw commission from estimated staking rewards by issuing liquid currency to
-		/// TreasuryAccount. Note: This will cause some losses to the minters in previous_era,
+		/// OnFeeDeposit. Note: This will cause some losses to the minters in previous_era,
 		/// because they have been already deducted some liquid currency amount when mint in
 		/// previous_era. Until there is a better way to calculate, this part of the loss can only
 		/// be regarded as an implicit mint fee!
@@ -901,7 +899,12 @@ pub mod module {
 						.unwrap_or_else(Ratio::max_value);
 					let inflate_liquid_amount = inflate_rate.saturating_mul_int(Self::get_total_liquid_currency());
 
-					T::Currency::deposit(liquid_currency_id, &T::TreasuryAccount::get(), inflate_liquid_amount)?;
+					// Staking rewards goes to T::OnFeeDeposit
+					T::OnFeeDeposit::on_fee_deposit(
+						IncomeSource::HomaStakingRewardFee,
+						liquid_currency_id,
+						inflate_liquid_amount,
+					)?;
 				}
 			}
 

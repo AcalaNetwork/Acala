@@ -1,32 +1,34 @@
 [package]
-name = "module-honzon"
-version = "2.8.1"
+name = "module-fees"
+version = "2.6.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-serde = { version = "1.0.136", optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
 scale-info = { version = "2.1", default-features = false, features = ["derive"] }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+serde = { version = "1.0.136", optional = true }
+
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-cdp-engine = { package = "module-cdp-engine", path = "../cdp-engine", default-features = false }
-loans = { package = "module-loans", path = "../loans", default-features = false }
+
+orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
+orml-tokens = { package = "orml-tokens", path = "../../orml/tokens", default-features = false }
+
 support = { package = "module-support", path = "../support", default-features = false }
-module-fees = {path = "../fees", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+
+paste = "1.0"
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
-orml-currencies = { path = "../../orml/currencies" }
-orml-traits = { path = "../../orml/traits" }
 orml-tokens = { path = "../../orml/tokens" }
-cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury" }
+module-currencies = { path = "../../modules/currencies" }
+module-dex = { path = "../../modules/dex" }
 
 [features]
 default = ["std"]
@@ -37,10 +39,10 @@ std = [
 	"sp-runtime/std",
 	"frame-support/std",
 	"frame-system/std",
+	"sp-core/std",
 	"sp-std/std",
-	"loans/std",
-	"cdp-engine/std",
-	"module-fees/std",
+	"orml-traits/std",
+	"orml-tokens/std",
 	"support/std",
 	"primitives/std",
 ]

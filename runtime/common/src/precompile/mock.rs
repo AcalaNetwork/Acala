@@ -438,6 +438,7 @@ impl module_cdp_engine::Config for Test {
 	type Currency = Currencies;
 	type DEX = DexModule;
 	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
+	type OnFeeDeposit = Fees;
 	type WeightInfo = ();
 }
 
@@ -678,6 +679,18 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 	}
 }
 
+impl module_fees::Config for Test {
+	type Event = Event;
+	type UpdateOrigin = EnsureRoot<AccountId>;
+	type Currency = Balances;
+	type Currencies = Currencies;
+	type DEX = ();
+	type WeightInfo = ();
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type AllocationPeriod = ConstU32<10>;
+	type DexSwapJointList = AlternativeSwapPathJointList;
+}
+
 ord_parameter_types! {
 	pub const HomaAdmin: AccountId = ALICE;
 }
@@ -701,7 +714,6 @@ impl module_homa::Config for Test {
 	type StakingCurrencyId = StakingCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;
 	type PalletId = HomaPalletId;
-	type TreasuryAccount = HomaTreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 	type BondingDuration = BondingDuration;
@@ -709,6 +721,7 @@ impl module_homa::Config for Test {
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type XcmInterface = MockHomaSubAccountXcm;
+	type OnFeeDeposit = Fees;
 	type WeightInfo = ();
 }
 
@@ -821,6 +834,7 @@ frame_support::construct_runtime!(
 		Incentives: module_incentives,
 		Rewards: orml_rewards,
 		StableAsset: nutsfinance_stable_asset,
+		Fees: module_fees,
 	}
 );
 

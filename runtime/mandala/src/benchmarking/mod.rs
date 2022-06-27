@@ -38,6 +38,7 @@ pub mod earning;
 pub mod emergency_shutdown;
 pub mod evm;
 pub mod evm_accounts;
+pub mod fees;
 pub mod homa;
 pub mod honzon;
 pub mod idle_scheduler;

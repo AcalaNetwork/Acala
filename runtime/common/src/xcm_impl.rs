@@ -23,9 +23,9 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::WEIGHT_PER_SECOND, Weight},
 };
-use module_support::BuyWeightRate;
+use module_support::{BuyWeightRate, OnFeeDeposit};
 use orml_traits::GetByKey;
-use primitives::{Balance, CurrencyId};
+use primitives::{AccountId, Balance, CurrencyId, IncomeSource};
 use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::latest::prelude::*;
@@ -103,6 +103,28 @@ where
 			X::drop_assets(origin, asset_traps.into());
 		}
 		0
+	}
+}
+
+pub struct XcmFeeToTreasury<C, F>(PhantomData<(C, F)>);
+impl<C, F> TakeRevenue for XcmFeeToTreasury<C, F>
+where
+	C: Convert<MultiLocation, Option<CurrencyId>>,
+	F: OnFeeDeposit<AccountId, CurrencyId, Balance>,
+{
+	fn take_revenue(revenue: MultiAsset) {
+		if let MultiAsset {
+			id: Concrete(location),
+			fun: Fungible(amount),
+		} = revenue
+		{
+			if let Some(currency_id) = C::convert(location) {
+				// Ensure given treasury account have ed requirement for native asset, but don't need
+				// ed requirement for cross-chain asset because it's one of whitelist accounts.
+				// Ignore the result.
+				let _ = F::on_fee_deposit(IncomeSource::XcmFee, currency_id, amount);
+			}
+		}
 	}
 }
 

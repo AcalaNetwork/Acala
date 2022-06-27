@@ -18,8 +18,8 @@
 
 use super::{
 	constants::fee::*, AcalaTreasuryAccount, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert,
-	Currencies, CurrencyId, Event, ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin,
-	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmpQueue, ACA, AUSD,
+	Currencies, CurrencyId, Event, ExistentialDeposits, Fees, GetNativeCurrencyId, NativeTokenExistentialDeposit,
+	Origin, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmpQueue, ACA, AUSD,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -30,19 +30,21 @@ pub use frame_support::{
 };
 use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset};
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use primitives::evm::is_system_contract;
-use runtime_common::{native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil, FixedRateOfAsset};
+use runtime_common::{
+	native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil, FixedRateOfAsset, XcmFeeToTreasury,
+};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
 	AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, LocationInverter,
 	NativeAsset, ParentAsSuperuser, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative,
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation,
-	TakeRevenue, TakeWeightCredit,
+	TakeWeightCredit,
 };
 use xcm_executor::XcmExecutor;
 
@@ -95,24 +97,6 @@ pub type Barrier = (
 	AllowSubscriptionsFrom<Everything>,
 );
 
-pub struct ToTreasury;
-impl TakeRevenue for ToTreasury {
-	fn take_revenue(revenue: MultiAsset) {
-		if let MultiAsset {
-			id: Concrete(location),
-			fun: Fungible(amount),
-		} = revenue
-		{
-			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
-				// Ensure AcalaTreasuryAccount have ed requirement for native asset, but don't need
-				// ed requirement for cross-chain asset because it's one of whitelist accounts.
-				// Ignore the result.
-				let _ = Currencies::deposit(currency_id, &AcalaTreasuryAccount::get(), amount);
-			}
-		}
-	}
-}
-
 parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: Weight = 200_000_000;
@@ -136,13 +120,15 @@ parameter_types! {
 	pub BaseRate: u128 = aca_per_second();
 }
 
+type XcmToTreasury = XcmFeeToTreasury<CurrencyIdConvert, Fees>;
+
 pub type Trader = (
-	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>,
-	FixedRateOfFungible<DotPerSecond, ToTreasury>,
-	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
-	FixedRateOfFungible<AcaPerSecond, ToTreasury>,
-	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
-	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
+	FixedRateOfAsset<BaseRate, XcmToTreasury, BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>,
+	FixedRateOfFungible<DotPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<AusdPerSecond, XcmToTreasury>,
+	FixedRateOfFungible<AcaPerSecond, XcmToTreasury>,
+	FixedRateOfAsset<BaseRate, XcmToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
+	FixedRateOfAsset<BaseRate, XcmToTreasury, BuyWeightRateOfErc20<Runtime>>,
 );
 
 pub struct XcmConfig;
@@ -162,7 +148,7 @@ impl xcm_executor::Config for XcmConfig {
 	type ResponseHandler = PolkadotXcm;
 	type AssetTrap = AcalaDropAssets<
 		PolkadotXcm,
-		ToTreasury,
+		XcmToTreasury,
 		CurrencyIdConvert,
 		GetNativeCurrencyId,
 		NativeTokenExistentialDeposit,

@@ -26,7 +26,7 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 	PalletId,
 };
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, Moment, TokenSymbol, TradingPair};
 use sp_core::H256;
@@ -122,6 +122,7 @@ pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, P
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const GetStakingCurrencyId: CurrencyId = DOT;
 }
 
 impl orml_currencies::Config for Runtime {
@@ -305,6 +306,18 @@ parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
 }
 
+impl module_fees::Config for Runtime {
+	type Event = Event;
+	type UpdateOrigin = EnsureRoot<AccountId>;
+	type Currency = PalletBalances;
+	type Currencies = Currencies;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type AllocationPeriod = ConstU64<10>;
+	type DEX = ();
+	type DexSwapJointList = AlternativeSwapPathJointList;
+	type WeightInfo = ();
+}
+
 impl Config for Runtime {
 	type Event = Event;
 	type PriceSource = MockPriceSource;
@@ -323,6 +336,7 @@ impl Config for Runtime {
 	type Currency = Currencies;
 	type DEX = DEXModule;
 	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
+	type OnFeeDeposit = Fees;
 	type WeightInfo = ();
 }
 
@@ -335,15 +349,16 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		CDPEngineModule: cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned},
-		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Config, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		LoansModule: loans::{Pallet, Storage, Call, Event<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		DEXModule: dex::{Pallet, Storage, Call, Event<T>, Config<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		System: frame_system,
+		CDPEngineModule: cdp_engine,
+		CDPTreasuryModule: cdp_treasury,
+		Currencies: orml_currencies,
+		Tokens: orml_tokens,
+		LoansModule: loans,
+		PalletBalances: pallet_balances,
+		DEXModule: dex,
+		Timestamp: pallet_timestamp,
+		Fees: module_fees,
 	}
 );
 

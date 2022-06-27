@@ -152,6 +152,7 @@ dependencies = [
  "module-evm-accounts",
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
+ "module-fees",
  "module-homa",
  "module-honzon",
  "module-idle-scheduler",
@@ -4335,6 +4336,7 @@ dependencies = [
  "module-evm-accounts",
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
+ "module-fees",
  "module-homa",
  "module-honzon",
  "module-honzon-bridge",
@@ -5380,6 +5382,7 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-evm-utility",
+ "module-fees",
  "module-homa",
  "module-honzon",
  "module-idle-scheduler",
@@ -5700,6 +5703,7 @@ dependencies = [
  "frame-system",
  "module-cdp-treasury",
  "module-dex",
+ "module-fees",
  "module-loans",
  "module-support",
  "nutsfinance-stable-asset",
@@ -6017,6 +6021,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-fees"
+version = "2.6.3"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-dex",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "paste",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-homa"
 version = "2.8.1"
 dependencies = [
@@ -6025,6 +6052,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-currencies",
+ "module-fees",
  "module-support",
  "orml-tokens",
  "orml-traits",
@@ -6097,6 +6125,7 @@ dependencies = [
  "frame-system",
  "module-cdp-engine",
  "module-cdp-treasury",
+ "module-fees",
  "module-loans",
  "module-support",
  "orml-currencies",
@@ -10632,6 +10661,7 @@ dependencies = [
  "module-evm-accounts",
  "module-evm-bridge",
  "module-evm-utility-macro",
+ "module-fees",
  "module-homa",
  "module-honzon",
  "module-idle-scheduler",
@@ -10716,6 +10746,7 @@ dependencies = [
  "module-evm-accounts",
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
+ "module-fees",
  "module-homa",
  "module-homa-lite",
  "module-honzon",

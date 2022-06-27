@@ -29,7 +29,7 @@ use frame_support::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 		DispatchClass, Weight,
 	},
-	RuntimeDebug,
+	PalletId, RuntimeDebug,
 };
 use frame_system::{limits, EnsureRoot};
 use module_evm::GenesisAccount;
@@ -37,7 +37,11 @@ use orml_traits::GetByKey;
 use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
-use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
+use sp_runtime::{
+	traits::{AccountIdConversion, Convert},
+	transaction_validity::TransactionPriority,
+	Perbill,
+};
 use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, prelude::*};
 use static_assertions::const_assert;
 
@@ -51,7 +55,7 @@ pub use primitives::{
 	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
 	AccountId,
 };
-pub use xcm_impl::{native_currency_location, AcalaDropAssets, FixedRateOfAsset};
+pub use xcm_impl::{native_currency_location, AcalaDropAssets, FixedRateOfAsset, XcmFeeToTreasury};
 
 #[cfg(feature = "std")]
 use sp_core::bytes::from_hex;
@@ -392,6 +396,21 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 	}
 
 	accounts
+}
+
+// Fee distribution related system account.
+parameter_types! {
+	// Treasury pools
+	pub NetworkTreasuryPool: AccountId = PalletId(*b"aca/nktp").into_account_truncating();
+	pub HonzonTreasuryPool: AccountId = PalletId(*b"aca/hztp").into_account_truncating();
+	pub HomaTreasuryPool: AccountId = PalletId(*b"aca/hmtr").into_account_truncating();
+	// Incentive reward Pools
+	pub HonzonInsuranceRewardPool: AccountId = PalletId(*b"aca/hirp").into_account_truncating();
+	pub HonzonLiquitationRewardPool: AccountId = PalletId(*b"aca/hlrp").into_account_truncating();
+	pub StakingRewardPool: AccountId = PalletId(*b"aca/strp").into_account_truncating();
+	pub CollatorsRewardPoolPalletId: PalletId = PalletId(*b"aca/clrp");
+	pub CollatorsRewardPool: AccountId = CollatorsRewardPoolPalletId::get().into_account_truncating();
+	pub EcosystemRewardPool: AccountId = PalletId(*b"aca/esrp").into_account_truncating();
 }
 
 #[cfg(test)]

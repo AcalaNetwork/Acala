@@ -36,7 +36,7 @@ use frame_system::{
 };
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_utilities::OffchainErr;
-use primitives::{Amount, Balance, CurrencyId, Position};
+use primitives::{Amount, Balance, CurrencyId, IncomeSource, Position};
 use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
 	ChaChaRng,
@@ -56,8 +56,8 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 use support::{
-	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
-	RiskManager, Swap, SwapLimit,
+	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, OnFeeDeposit, Price, PriceProvider,
+	Rate, Ratio, RiskManager, Swap, SwapLimit,
 };
 
 mod mock;
@@ -185,6 +185,9 @@ pub mod module {
 
 		/// Swap
 		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
+
+		/// Where the fees are go to.
+		type OnFeeDeposit: OnFeeDeposit<Self::AccountId, CurrencyId, Balance>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -553,8 +556,12 @@ impl<T: Config> Pallet<T> {
 						let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(rate_to_accumulate);
 						let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(total_debits);
 
-						// issue stablecoin to surplus pool
-						let res = <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance);
+						// Staking rewards goes to T::OnFeeDeposit
+						let res = T::OnFeeDeposit::on_fee_deposit(
+							IncomeSource::HonzonStabilityFee,
+							T::GetStableCurrencyId::get(),
+							issued_stable_coin_balance,
+						);
 						match res {
 							Ok(_) => {
 								// update exchange rate when issue success
@@ -1148,6 +1155,13 @@ impl<T: Config> Pallet<T> {
 		let liquidation_penalty = Self::get_liquidation_penalty(currency_id)?;
 		let target_stable_amount = liquidation_penalty.saturating_mul_acc_int(bad_debt_value);
 
+		let debt_penalty = liquidation_penalty.saturating_mul_int(bad_debt_value);
+		let stable_currency_id = T::GetStableCurrencyId::get();
+
+		// Deposit penalty to OnFeeDeposit and add the debt to the treasury.
+		T::OnFeeDeposit::on_fee_deposit(IncomeSource::HonzonLiquidationFee, stable_currency_id, debt_penalty)?;
+		<T as Config>::CDPTreasury::on_system_debit(debt_penalty)?;
+
 		match currency_id {
 			CurrencyId::DexShare(dex_share_0, dex_share_1) => {
 				let token_0: CurrencyId = dex_share_0.into();
@@ -1158,7 +1172,6 @@ impl<T: Config> Pallet<T> {
 					<T as Config>::CDPTreasury::remove_liquidity_for_lp_collateral(currency_id, collateral)?;
 
 				// if these's stable
-				let stable_currency_id = T::GetStableCurrencyId::get();
 				if token_0 == stable_currency_id || token_1 == stable_currency_id {
 					let (existing_stable, need_handle_currency, handle_amount) = if token_0 == stable_currency_id {
 						(amount_0, token_1, amount_1)

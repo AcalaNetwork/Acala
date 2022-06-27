@@ -71,8 +71,7 @@ pub use frame_support::{
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency,
 		EnsureOrigin, EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType,
-		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
-		U128CurrencyToVote,
+		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, Randomness, SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
@@ -102,12 +101,11 @@ pub use runtime_common::{
 	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
 	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, ExistentialDepositsTimesOneHundred,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, FixedRateOfAsset, GasToWeight,
-	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
-	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
-	RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
-	PHA, RENBTC, VSKSM,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
+	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
+	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength,
+	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
 };
 pub use xcm::latest::prelude::*;
 
@@ -158,7 +156,6 @@ parameter_types! {
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaPalletId: PalletId = PalletId(*b"aca/homa");
-	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
 	pub const HonzonBridgePalletId: PalletId = PalletId(*b"aca/hzbg");
@@ -181,7 +178,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		CollatorPotId::get().into_account_truncating(),
 		DEXPalletId::get().into_account_truncating(),
 		HomaPalletId::get().into_account_truncating(),
-		HomaTreasuryPalletId::get().into_account_truncating(),
 		HonzonTreasuryPalletId::get().into_account_truncating(),
 		IncentivesPalletId::get().into_account_truncating(),
 		TreasuryPalletId::get().into_account_truncating(),
@@ -189,6 +185,15 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account_truncating(),
 		HonzonBridgePalletId::get().into_account_truncating(),
+		// treasury pools and incentive pools
+		runtime_common::NetworkTreasuryPool::get(),
+		runtime_common::HonzonTreasuryPool::get(),
+		runtime_common::HomaTreasuryPool::get(),
+		runtime_common::HonzonInsuranceRewardPool::get(),
+		runtime_common::HonzonLiquitationRewardPool::get(),
+		runtime_common::StakingRewardPool::get(),
+		runtime_common::CollatorsRewardPool::get(),
+		runtime_common::EcosystemRewardPool::get(),
 	]
 }
 
@@ -1070,6 +1075,7 @@ impl module_cdp_engine::Config for Runtime {
 	type Currency = Currencies;
 	type DEX = Dex;
 	type Swap = AcalaSwap;
+	type OnFeeDeposit = Fees;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1174,27 +1180,13 @@ parameter_types! {
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
 
-type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
-pub struct DealWithFees;
-impl OnUnbalanced<NegativeImbalance> for DealWithFees {
-	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance>) {
-		if let Some(mut fees) = fees_then_tips.next() {
-			if let Some(tips) = fees_then_tips.next() {
-				tips.merge_into(&mut fees);
-			}
-			// for fees and tips, 100% to treasury
-			Treasury::on_unbalanced(fees);
-		}
-	}
-}
-
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
-	type OnTransactionPayment = DealWithFees;
+	type OnTransactionPayment = module_fees::DistributeTxFees<Runtime>;
 	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type TipPerWeightStep = TipPerWeightStep;
@@ -1472,7 +1464,6 @@ impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account_truncating();
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
 		0,  // HTAeD1dokCVs9MwnC1q9s2a7d2kQ52TAjrxE1y5mj5MFLLA
 		1,  // FDVu3RdH5WsE2yTdXN3QMq6v1XVDK8GKjhq5oFjXe8wZYpL
@@ -1489,7 +1480,6 @@ impl module_homa::Config for Runtime {
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type PalletId = HomaPalletId;
-	type TreasuryAccount = HomaTreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 	type BondingDuration = ConstU32<28>;
@@ -1497,6 +1487,7 @@ impl module_homa::Config for Runtime {
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type XcmInterface = XcmInterface;
+	type OnFeeDeposit = Fees;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
@@ -1562,6 +1553,22 @@ impl module_idle_scheduler::Config for Runtime {
 	// Number of relay chain blocks produced with no parachain blocks finalized,
 	// once this number is reached idle scheduler is disabled as block production is slow
 	type DisableBlockThreshold = ConstU32<6>;
+}
+
+parameter_types! {
+	pub const AllocationPeriod: BlockNumber = 3 * DAYS;
+}
+
+impl module_fees::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = weights::module_fees::WeightInfo<Runtime>;
+	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type Currency = Balances;
+	type Currencies = Currencies;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type AllocationPeriod = AllocationPeriod;
+	type DEX = Dex;
+	type DexSwapJointList = AlternativeSwapPathJointList;
 }
 
 parameter_types! {
@@ -1664,6 +1671,7 @@ construct_runtime!(
 		Currencies: module_currencies = 12,
 		Vesting: orml_vesting = 13,
 		TransactionPayment: module_transaction_payment = 14,
+		Fees: module_fees = 15,
 
 		// Treasury
 		Treasury: pallet_treasury = 20,
@@ -1787,8 +1795,109 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	FeesMigration,
+>;
+
+use primitives::IncomeSource;
+
+pub struct FeesMigration;
+
+impl OnRuntimeUpgrade for FeesMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let incomes = vec![
+			(
+				IncomeSource::TxFee,
+				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
+			),
+			(
+				IncomeSource::XcmFee,
+				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
+			),
+			(
+				IncomeSource::DexSwapFee,
+				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
+			),
+			(
+				IncomeSource::HonzonStabilityFee,
+				vec![(runtime_common::HonzonTreasuryPool::get(), 100)],
+			),
+			(
+				IncomeSource::HonzonLiquidationFee,
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 30),
+					(runtime_common::HonzonTreasuryPool::get(), 70),
+				],
+			),
+			(
+				IncomeSource::HomaStakingRewardFee,
+				vec![
+					(runtime_common::NetworkTreasuryPool::get(), 70),
+					(runtime_common::HomaTreasuryPool::get(), 30),
+				],
+			),
+		];
+		let treasuries = vec![
+			(
+				runtime_common::NetworkTreasuryPool::get(),
+				1000 * dollar(KAR),
+				vec![
+					(runtime_common::StakingRewardPool::get(), 70),
+					(runtime_common::CollatorsRewardPool::get(), 10),
+					(runtime_common::EcosystemRewardPool::get(), 10),
+					(KaruraTreasuryAccount::get(), 10),
+				],
+			),
+			(
+				runtime_common::HonzonTreasuryPool::get(),
+				10 * dollar(KAR),
+				vec![(CDPTreasuryPalletId::get().into_account_truncating(), 100)],
+			),
+		];
+		incomes.iter().for_each(|(income, pools)| {
+			let pool_rates = module_fees::build_pool_percents::<AccountId>(pools.clone());
+			let _ = <module_fees::Pallet<Runtime>>::do_set_treasury_rate(*income, pool_rates);
+		});
+		treasuries.iter().for_each(|(treasury, threshold, pools)| {
+			let pool_rates = module_fees::build_pool_percents::<AccountId>(pools.clone());
+			let _ = <module_fees::Pallet<Runtime>>::do_set_incentive_rate(treasury.clone(), *threshold, pool_rates);
+		});
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
+			&IncomeSource::TxFee
+		));
+		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
+			&IncomeSource::XcmFee
+		));
+		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
+			&IncomeSource::HonzonStabilityFee
+		));
+		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
+			&IncomeSource::HomaStakingRewardFee
+		));
+		assert!(<module_fees::TreasuryToIncentives<Runtime>>::contains_key(
+			&runtime_common::NetworkTreasuryPool::get()
+		));
+		assert!(<module_fees::TreasuryToIncentives<Runtime>>::contains_key(
+			&runtime_common::HonzonTreasuryPool::get()
+		));
+		Ok(())
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -1804,6 +1913,7 @@ mod benches {
 		[module_cdp_engine, benchmarking::cdp_engine]
 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
 		[module_evm, benchmarking::evm]
+		[module_fees, benchmarking::fees]
 		[module_homa, benchmarking::homa]
 		[module_honzon, benchmarking::honzon]
 		[module_cdp_treasury, benchmarking::cdp_treasury]

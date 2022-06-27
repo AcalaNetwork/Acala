@@ -22,8 +22,8 @@ use crate::{
 	AccountId, AccountIdConversion, AuthoritysOriginId, BadOrigin, BlockNumber, DispatchResult, EnsureRoot,
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
-	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryPalletId, HonzonTreasuryPalletId, OneDay, Origin,
-	OriginCaller, SevenDays, TreasuryPalletId, TreasuryReservePalletId, HOURS,
+	EnsureRootOrTwoThirdsTechnicalCommittee, HonzonTreasuryPalletId, OneDay, Origin, OriginCaller, SevenDays,
+	TreasuryPalletId, TreasuryReservePalletId, HOURS,
 };
 pub use frame_support::traits::{schedule::Priority, EnsureOrigin, OriginTrait};
 use frame_system::ensure_root;
@@ -87,9 +87,9 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 					.caller()
 					.clone()
 			}
-			AuthoritysOriginId::HomaTreasury => Origin::signed(HomaTreasuryPalletId::get().into_account_truncating())
-				.caller()
-				.clone(),
+			AuthoritysOriginId::HomaTreasury => {
+				Origin::signed(runtime_common::HomaTreasuryPool::get()).caller().clone()
+			}
 			AuthoritysOriginId::TreasuryReserve => {
 				Origin::signed(TreasuryReservePalletId::get().into_account_truncating())
 					.caller()
