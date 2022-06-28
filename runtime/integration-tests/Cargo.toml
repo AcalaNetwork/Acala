@@ -143,7 +143,7 @@ kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "rel
 kusama-runtime-constants = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.25" }
 polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.25" }
 
-xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "651af78d6d7521dc76e1f6bb257af485f8a454c7" }
+xcm-emulator = { git = "https://github.com/zqhxuyuan/xcm-simulator", rev = "fd0ad62c46c1458b4008a101d0cce4034d620c40" }
 
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 

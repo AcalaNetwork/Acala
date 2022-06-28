@@ -215,27 +215,6 @@ fn initial_charge_fee_pool_works() {
 }
 
 #[test]
-fn token_per_second_works() {
-	#[cfg(feature = "with-karura-runtime")]
-	{
-		let kar_per_second = karura_runtime::kar_per_second();
-		assert_eq!(11_587_000_000_000, kar_per_second);
-
-		let ksm_per_second = karura_runtime::ksm_per_second();
-		assert_eq!(231_740_000_000, ksm_per_second);
-	}
-
-	#[cfg(feature = "with-acala-runtime")]
-	{
-		let aca_per_second = acala_runtime::aca_per_second();
-		assert_eq!(11_587_000_000_000, aca_per_second);
-
-		let dot_per_second = acala_runtime::dot_per_second();
-		assert_eq!(2317400000, dot_per_second);
-	}
-}
-
-#[test]
 fn trader_works() {
 	// 4 instructions, each instruction cost 200_000_000
 	let mut message = Xcm(vec![
@@ -251,39 +230,13 @@ fn trader_works() {
 			beneficiary: Here.into(),
 		},
 	]);
-	#[cfg(feature = "with-mandala-runtime")]
-	let expect_weight: Weight = 4_000_000;
-	#[cfg(feature = "with-karura-runtime")]
-	let expect_weight: Weight = 800_000_000;
-	#[cfg(feature = "with-acala-runtime")]
-	let expect_weight: Weight = 800_000_000;
 
-	#[cfg(feature = "with-mandala-runtime")]
-	let base_per_second = mandala_runtime::aca_per_second();
-	#[cfg(feature = "with-karura-runtime")]
-	let base_per_second = karura_runtime::kar_per_second();
-	#[cfg(feature = "with-acala-runtime")]
-	let base_per_second = acala_runtime::aca_per_second();
-
-	let xcm_weight: Weight = <XcmConfig as Config>::Weigher::weight(&mut message).unwrap();
-	assert_eq!(xcm_weight, expect_weight);
-
-	let total_balance: Balance = 10_00_000_000;
+	let total_balance: Balance = 1_000_000_000;
 	let asset: MultiAsset = (Parent, total_balance).into();
 	let assets: Assets = asset.into();
 
-	// ksm_per_second/kar_per_second=1/50
-	// v0.9.22: kar_per_second=8KAR, ksm_per_second=0.16KSM,
-	//          fee=0.16*weight=0.16*800_000_000=128_000_000
-	// v0.9.23: kar_per_second=11.655KAR, ksm_per_second=0.2331KSM
-	//          fee=0.2331*weight=186_480_000
-	// v0.9.25: 0.23174*800000000=185392000
-	#[cfg(feature = "with-mandala-runtime")]
-	let expect_unspent: MultiAsset = (Parent, 999536520).into(); // 466200
-	#[cfg(feature = "with-karura-runtime")]
-	let expect_unspent: MultiAsset = (Parent, 814_608_000).into(); // 186480000
-	#[cfg(feature = "with-acala-runtime")]
-	let expect_unspent: MultiAsset = (Parent, 998_146_080).into(); // 1864800
+	let expect_unspent: MultiAsset = (Parent, total_balance - crate::relaychain::relay_per_second_as_fee(4)).into();
+	let xcm_weight: Weight = <XcmConfig as Config>::Weigher::weight(&mut message).unwrap();
 
 	// when no runtime upgrade, the newly `TransactionFeePoolTrader` will failed.
 	ExtBuilder::default().build().execute_with(|| {
@@ -363,12 +316,8 @@ fn trader_works() {
 
 			let relay_exchange_rate: Ratio =
 				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(RELAY_CHAIN_CURRENCY).unwrap();
-			let weight_ratio = Ratio::saturating_from_rational(
-				expect_weight as u128,
-				frame_support::weights::constants::WEIGHT_PER_SECOND as u128,
-			);
-			let asset_per_second = relay_exchange_rate.saturating_mul_int(base_per_second);
-			let spent = weight_ratio.saturating_mul_int(asset_per_second);
+
+			let spent = crate::relaychain::token_per_second_as_fee(4, relay_exchange_rate);
 			let expect_unspent: MultiAsset = (Parent, total_balance - spent as u128).into();
 
 			// the newly `TransactionFeePoolTrader` works fine as first priority

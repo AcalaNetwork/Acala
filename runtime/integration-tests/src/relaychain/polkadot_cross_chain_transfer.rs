@@ -26,6 +26,15 @@ use orml_traits::MultiCurrency;
 use xcm_emulator::TestExt;
 
 #[test]
+fn token_per_second_works() {
+	let aca_per_second = acala_runtime::aca_per_second();
+	assert_eq!(11_587_000_000_000, aca_per_second);
+
+	let dot_per_second = acala_runtime::dot_per_second();
+	assert_eq!(2_317_400_000, dot_per_second);
+}
+
+#[test]
 fn transfer_from_relay_chain() {
 	PolkadotNet::execute_with(|| {
 		assert_ok!(polkadot_runtime::XcmPallet::reserve_transfer_assets(
