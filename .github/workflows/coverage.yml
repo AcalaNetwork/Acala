@@ -30,7 +30,7 @@ jobs:
           access_token: ${{ github.token }}
   test:
     name: Coverage Report
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-Acala-AWS
     needs: clean-up-actions
     steps:
       - name: Checkout repository
@@ -45,10 +45,19 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+          
       # - name: Install additional dependencies
-      #   run: |
-      #       sudo apt update -y &&
-      #       sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
+      - name: Installing Prerequisites
+        run: sudo apt-get update
+      - name: Installing Prerequisites 1
+        run: curl https://sh.rustup.rs -sSf -y | sh 
+      - name: Installing Prerequisites 2
+        run: sudo apt-get install -y git clang curl libssl-dev llvm libudev-dev
+      - name: Installing Prerequisites 3
+        run: git config --global submodule.recurse true
+      - name: Installing Prerequisites 4
+        run: make init
+      
       - name: Run cargo-tarpaulin
         run: |
           wget https://github.com/xd009642/tarpaulin/releases/download/${{ env.TARPAULIN_VERSION }}/cargo-tarpaulin-${{ env.TARPAULIN_VERSION }}-travis.tar.gz
