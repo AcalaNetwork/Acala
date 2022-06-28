@@ -79,8 +79,8 @@ runtime_benchmarks! {
 
 	enable_charge_fee_pool {
 		let funder: AccountId = account("funder", 0, SEED);
-		let treasury_account: AccountId = TreasuryPalletId::get().into_account();
-		let sub_account: AccountId = <Runtime as module_transaction_payment::Config>::PalletId::get().into_sub_account(STABLECOIN);
+		let treasury_account: AccountId = TreasuryPalletId::get().into_account_truncating();
+		let sub_account: AccountId = <Runtime as module_transaction_payment::Config>::PalletId::get().into_sub_account_truncating(STABLECOIN);
 		let native_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(NATIVECOIN);
 		let stable_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(STABLECOIN);
 		let pool_size: Balance = native_ed * 50;
@@ -117,8 +117,8 @@ runtime_benchmarks! {
 	}
 
 	disable_charge_fee_pool {
-		let treasury_account: AccountId = TreasuryPalletId::get().into_account();
-		let sub_account: AccountId = <Runtime as module_transaction_payment::Config>::PalletId::get().into_sub_account(STABLECOIN);
+		let treasury_account: AccountId = TreasuryPalletId::get().into_account_truncating();
+		let sub_account: AccountId = <Runtime as module_transaction_payment::Config>::PalletId::get().into_sub_account_truncating(STABLECOIN);
 		let native_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(NATIVECOIN);
 		let stable_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(STABLECOIN);
 		let pool_size: Balance = native_ed * 50;

@@ -21,7 +21,8 @@ use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, TransactionPayment};
 use codec::Encode;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use nutsfinance_stable_asset::{
-	traits::StableAsset, PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo, SwapResult,
+	traits::StableAsset, PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo,
+	StableAssetXcmPoolId, SwapResult,
 };
 use primitives::{
 	currency::TokenInfo,
@@ -257,7 +258,7 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 		_pool_id: StableAssetPoolId,
 		_amounts: Vec<Self::Balance>,
 		_min_mint_amount: Self::Balance,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<Self::Balance, DispatchError> {
 		unimplemented!()
 	}
 
@@ -408,24 +409,12 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 		unimplemented!()
 	}
 
-	fn xcm_mint(
-		_who: &Self::AccountId,
-		_target_pool_id: StableAssetPoolId,
-		_amounts: Vec<Self::Balance>,
-		_min_mint_amount: Self::Balance,
-		_source_pool_id: StableAssetPoolId,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn xcm_redeem_single(
+	fn mint_xcm(
 		_who: &Self::AccountId,
 		_pool_id: StableAssetPoolId,
-		_amount: Self::Balance,
-		_i: PoolTokenIndex,
-		_min_redeem_amount: Self::Balance,
-		_asset_length: u32,
-		_source_pool_id: StableAssetPoolId,
+		_amounts: Vec<Self::Balance>,
+		_min_mint_amount: Self::Balance,
+		_remote_pool_id: StableAssetXcmPoolId,
 	) -> DispatchResult {
 		unimplemented!()
 	}

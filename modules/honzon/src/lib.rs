@@ -37,7 +37,7 @@ use sp_runtime::{
 	ArithmeticError, DispatchResult,
 };
 use sp_std::prelude::*;
-use support::{CDPTreasury, EmergencyShutdown, HonzonManager, PriceProvider, Ratio};
+use support::{CDPTreasury, EmergencyShutdown, ExchangeRate, HonzonManager, PriceProvider, Ratio};
 
 mod mock;
 mod tests;
@@ -68,7 +68,6 @@ pub mod module {
 		type DepositPerAuthorization: Get<Balance>;
 
 		/// The list of valid collateral currency types
-		#[pallet::constant]
 		type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
 
 		/// Weight information for the extrinsics in this module.
@@ -437,5 +436,9 @@ impl<T: Config> HonzonManager<T::AccountId, CurrencyId, Amount, Balance> for Pal
 
 		T::PriceSource::get_relative_price(currency_id, stable_currency_id)
 			.map(|price| <cdp_engine::Pallet<T>>::calculate_collateral_ratio(currency_id, collateral, debit, price))
+	}
+
+	fn get_debit_exchange_rate(currency_id: CurrencyId) -> ExchangeRate {
+		<cdp_engine::Pallet<T>>::get_debit_exchange_rate(currency_id)
 	}
 }

@@ -23,7 +23,7 @@ use orml_vesting::VestingSchedule;
 fn test_vesting_use_relaychain_block_number() {
 	ExtBuilder::default().build().execute_with(|| {
 		#[cfg(feature = "with-mandala-runtime")]
-		let signer: AccountId = TreasuryPalletId::get().into_account();
+		let signer: AccountId = TreasuryPalletId::get().into_account_truncating();
 		#[cfg(feature = "with-karura-runtime")]
 		let signer: AccountId = KaruraFoundationAccounts::get()[0].clone();
 		#[cfg(feature = "with-acala-runtime")]

@@ -145,7 +145,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(rate.into_inner()),
+					output: Output::encode_uint(rate.into_inner()),
 					logs: Default::default(),
 				})
 			}
@@ -154,7 +154,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(rate.into_inner()),
+					output: Output::encode_uint(rate.into_inner()),
 					logs: Default::default(),
 				})
 			}
@@ -164,7 +164,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(rate.into_inner()),
+					output: Output::encode_uint(rate.into_inner()),
 					logs: Default::default(),
 				})
 			}
@@ -174,7 +174,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(rate.into_inner()),
+					output: Output::encode_uint(rate.into_inner()),
 					logs: Default::default(),
 				})
 			}
@@ -212,7 +212,7 @@ where
 				// Homa::TotalVoidLiquid (r: 1)
 				// Homa::ToBondPool (r: 1)
 				// Tokens::TotalIssuance(r: 1)
-				// Homa::StakingLedgers(r: ?)
+				// Homa::TotalStakingBonded(r: 1)
 				WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(4))
 			}
 			Action::GetEstimatedRewardRate => {

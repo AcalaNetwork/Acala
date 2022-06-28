@@ -25,21 +25,32 @@ use frame_support::assert_ok;
 use sp_runtime::traits::AccountIdConversion;
 use xcm_builder::ParentIsPreset;
 
-use karura_runtime::parachains::bifrost::BNC_KEY;
+use karura_runtime::parachains::bifrost::{BNC_KEY, ID as BIFROST_ID};
 use karura_runtime::{AssetRegistry, KaruraTreasuryAccount};
 use module_relaychain::RelayChainCallBuilder;
 use module_support::CallBuilder;
 use orml_traits::MultiCurrency;
-use primitives::currency::AssetMetadata;
+use primitives::currency::{AssetMetadata, BNC};
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert;
+
+pub const KARURA_ID: u32 = 2000;
+pub const MOCK_BIFROST_ID: u32 = 2001;
+pub const SIBLING_ID: u32 = 2002;
+
+fn karura_reserve_account() -> AccountId {
+	polkadot_parachain::primitives::Sibling::from(KARURA_ID).into_account_truncating()
+}
+fn sibling_reserve_account() -> AccountId {
+	polkadot_parachain::primitives::Sibling::from(SIBLING_ID).into_account_truncating()
+}
 
 #[test]
 fn transfer_from_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(KARURA_ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
 					id: BOB,
@@ -54,7 +65,9 @@ fn transfer_from_relay_chain() {
 	});
 
 	Karura::execute_with(|| {
-		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 999_872_000_000);
+		// v0.9.22: 1_000_000_000_000-128_000_000=999_872_000_000
+		// v0.9.23: 1_000_000_000_000-186_480_000=999_813_520_000
+		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 999_813_520_000);
 	});
 }
 
@@ -94,16 +107,27 @@ fn transfer_to_relay_chain() {
 fn transfer_sibling_chain_asset() {
 	TestNet::reset();
 
-	fn karura_reserve_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2000).into_account()
-	}
-
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100_000_000_000_000));
 	});
 
-	Sibling::execute_with(|| {
-		assert_ok!(Tokens::deposit(BNC, &karura_reserve_account(), 100_000_000_000_000));
+	MockBifrost::execute_with(|| {
+		// Register native BNC's incoming address as a foreign asset so it can handle reserve transfers
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(AssetMetadata {
+				name: b"Native BNC".to_vec(),
+				symbol: b"BNC".to_vec(),
+				decimals: 12,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
+			})
+		));
+		assert_ok!(Tokens::deposit(
+			CurrencyId::ForeignAsset(0),
+			&karura_reserve_account(),
+			100_000_000_000_000
+		));
 	});
 
 	Karura::execute_with(|| {
@@ -115,7 +139,7 @@ fn transfer_sibling_chain_asset() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2001),
+						Parachain(SIBLING_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -130,9 +154,25 @@ fn transfer_sibling_chain_asset() {
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90_000_000_000_000);
 	});
 
+	MockBifrost::execute_with(|| {
+		// Due to reanchoring BNC is not treated as native BNC due to the change of Multilocation
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 0);
+		assert_eq!(Tokens::free_balance(BNC, &sibling_reserve_account()), 0);
+
+		// Registered Foreign asset 0 is used to handle reservation for BNC token.
+		// Karura -->(transfer 10_000_000_000_000)--> Sibling
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &karura_reserve_account()),
+			90_000_000_000_000
+		);
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &sibling_reserve_account()),
+			9_999_067_600_000
+		);
+	});
+
 	Sibling::execute_with(|| {
-		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 90_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 9_989_760_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 9_984_149_200_000);
 
 		assert_ok!(XTokens::transfer(
 			Origin::signed(BOB.into()),
@@ -142,7 +182,7 @@ fn transfer_sibling_chain_asset() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2000),
+						Parachain(KARURA_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: ALICE.into(),
@@ -154,12 +194,23 @@ fn transfer_sibling_chain_asset() {
 			1_000_000_000,
 		));
 
-		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 95_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 4_989_760_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 4_984_149_200_000);
+	});
+
+	MockBifrost::execute_with(|| {
+		// Sibling -->(transfer 5_000_000_000_000)--> Karura
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &karura_reserve_account()),
+			94_999_067_600_000
+		);
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &sibling_reserve_account()),
+			4_999_067_600_000
+		);
 	});
 
 	Karura::execute_with(|| {
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 94_989_760_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 94_984_149_200_000);
 	});
 }
 
@@ -168,7 +219,7 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(KARURA_ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
 					id: BOB,
@@ -177,7 +228,7 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 				.into()
 				.into()
 			),
-			Box::new((Here, 128_000_111).into()),
+			Box::new((Here, 186_480_111).into()),
 			0
 		));
 	});
@@ -186,7 +237,7 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 0);
 		assert_eq!(
 			Tokens::free_balance(KSM, &karura_runtime::KaruraTreasuryAccount::get()),
-			1_000_128_000_111
+			1_000_186_480_111
 		);
 	});
 }
@@ -216,17 +267,17 @@ fn xcm_transfer_execution_barrier_trader_works() {
 				network: NetworkId::Any,
 				id: ALICE.into(),
 			}),
-			Parachain(2000).into(),
+			Parachain(KARURA_ID).into(),
 			message
 		));
 	});
 	Karura::execute_with(|| {
 		assert!(System::events().iter().any(|r| matches!(
 			r.event,
-			Event::DmpQueue(cumulus_pallet_dmp_queue::Event::ExecutedDownward(
-				_,
-				Outcome::Error(XcmError::Barrier)
-			))
+			Event::DmpQueue(cumulus_pallet_dmp_queue::Event::ExecutedDownward {
+				outcome: Outcome::Error(XcmError::Barrier),
+				..
+			})
 		)));
 	});
 
@@ -252,11 +303,11 @@ fn xcm_transfer_execution_barrier_trader_works() {
 	});
 
 	// trader inside BuyExecution have TooExpensive error if payment less than calculated weight amount.
-	// the minimum of calculated weight amount(`FixedRateOfFungible<KsmPerSecond>`) is 96_000_000
+	// the minimum of calculated weight amount(`FixedRateOfFungible<KsmPerSecond>`) is 139_860_000
 	let message = Xcm::<karura_runtime::Call>(vec![
-		ReserveAssetDeposited((Parent, 95_999_999).into()),
+		ReserveAssetDeposited((Parent, 139_859_999).into()),
 		BuyExecution {
-			fees: (Parent, 95_999_999).into(),
+			fees: (Parent, 139_859_999).into(),
 			weight_limit: Limited(expect_weight_limit),
 		},
 		DepositAsset {
@@ -275,9 +326,9 @@ fn xcm_transfer_execution_barrier_trader_works() {
 
 	// all situation fulfilled, execute success
 	let message = Xcm::<karura_runtime::Call>(vec![
-		ReserveAssetDeposited((Parent, 96_000_000).into()),
+		ReserveAssetDeposited((Parent, 139_860_000).into()),
 		BuyExecution {
-			fees: (Parent, 96_000_000).into(),
+			fees: (Parent, 139_860_000).into(),
 			weight_limit: Limited(expect_weight_limit),
 		},
 		DepositAsset {
@@ -298,7 +349,7 @@ fn subscribe_version_notify_works() {
 	KusamaNet::execute_with(|| {
 		let r = pallet_xcm::Pallet::<kusama_runtime::Runtime>::force_subscribe_version_notify(
 			kusama_runtime::Origin::root(),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(KARURA_ID).into().into()),
 		);
 		assert_ok!(r);
 	});
@@ -307,7 +358,7 @@ fn subscribe_version_notify_works() {
 			pallet_xcm::Event::SupportedVersionChanged(
 				MultiLocation {
 					parents: 0,
-					interior: X1(Parachain(2000)),
+					interior: X1(Parachain(KARURA_ID)),
 				},
 				2,
 			),
@@ -338,7 +389,7 @@ fn subscribe_version_notify_works() {
 	Karura::execute_with(|| {
 		let r = pallet_xcm::Pallet::<karura_runtime::Runtime>::force_subscribe_version_notify(
 			Origin::root(),
-			Box::new((Parent, Parachain(2001)).into()),
+			Box::new((Parent, Parachain(SIBLING_ID)).into()),
 		);
 		assert_ok!(r);
 	});
@@ -361,78 +412,71 @@ fn subscribe_version_notify_works() {
 fn test_asset_registry_module() {
 	TestNet::reset();
 
-	fn karura_reserve_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2000).into_account()
-	}
-
 	Karura::execute_with(|| {
-		// register foreign asset
+		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100_000_000_000_000));
+	});
+
+	MockBifrost::execute_with(|| {
+		// Register native BNC's incoming address as a foreign asset so it can handle reserve transfers
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(1, X2(Parachain(2001), GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec()))).into()),
 			Box::new(AssetMetadata {
-				name: b"Sibling Token".to_vec(),
-				symbol: b"ST".to_vec(),
+				name: b"Native BNC".to_vec(),
+				symbol: b"BNC".to_vec(),
+				decimals: 12,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
+			})
+		));
+		assert_ok!(Tokens::deposit(
+			CurrencyId::ForeignAsset(0),
+			&karura_reserve_account(),
+			100_000_000_000_000
+		));
+	});
+
+	Sibling::execute_with(|| {
+		// Register BNC as foreign asset(0)
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(MultiLocation::new(1, X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(AssetMetadata {
+				name: b"Bifrost BNC".to_vec(),
+				symbol: b"BNC".to_vec(),
+				decimals: 12,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
+			})
+		));
+	});
+
+	Karura::execute_with(|| {
+		// Register BNC as foreign asset(0)
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(MultiLocation::new(1, X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(AssetMetadata {
+				name: b"Bifrost BNC".to_vec(),
+				symbol: b"BNC".to_vec(),
 				decimals: 12,
 				minimal_balance: Balances::minimum_balance() / 10, // 10%
 			})
 		));
 
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
-			0
-		);
-	});
-
-	Sibling::execute_with(|| {
-		let _ = Tokens::deposit(BNC, &AccountId::from(BOB), 100_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 0);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 100_000_000_000_000);
-
-		assert_ok!(XTokens::transfer(
-			Origin::signed(BOB.into()),
-			BNC,
-			5_000_000_000_000,
-			Box::new(
-				MultiLocation::new(
-					1,
-					X2(
-						Parachain(2000),
-						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: ALICE.into(),
-						}
-					)
-				)
-				.into()
-			),
-			1_000_000_000,
+		assert_ok!(Tokens::deposit(
+			CurrencyId::ForeignAsset(0),
+			&AccountId::from(ALICE),
+			100_000_000_000_000
 		));
-
-		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 5_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 95_000_000_000_000);
-	});
-
-	Karura::execute_with(|| {
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			4_989_760_000_000
-		);
-		// ToTreasury
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
-			10_240_000_000
-		);
 
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
 			CurrencyId::ForeignAsset(0),
-			1_000_000_000_000,
+			10_000_000_000_000,
 			Box::new(
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2001),
+						Parachain(SIBLING_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -446,44 +490,38 @@ fn test_asset_registry_module() {
 
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			3_989_760_000_000
+			90_000_000_000_000
+		);
+	});
+
+	MockBifrost::execute_with(|| {
+		// Registered Foreign asset 0 is used to handle reservation for BNC token.
+		// Karura -->(transfer 10_000_000_000_000)--> Sibling
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &karura_reserve_account()),
+			90_000_000_000_000
+		);
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &sibling_reserve_account()),
+			9_999_067_600_000
 		);
 	});
 
 	Sibling::execute_with(|| {
-		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 4_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 95_989_760_000_000);
-	});
-
-	// remove it
-	Karura::execute_with(|| {
-		// register foreign asset
-		assert_ok!(AssetRegistry::update_foreign_asset(
-			Origin::root(),
-			0,
-			Box::new(MultiLocation::new(1, X2(Parachain(2001), GeneralKey(BNC_KEY.to_vec()))).into()),
-			Box::new(AssetMetadata {
-				name: b"Sibling Token".to_vec(),
-				symbol: b"ST".to_vec(),
-				decimals: 12,
-				minimal_balance: 0, // buy_weight 0
-			})
-		));
-	});
-
-	Sibling::execute_with(|| {
-		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 4_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 95_989_760_000_000);
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB)),
+			9_984_149_200_000
+		);
 
 		assert_ok!(XTokens::transfer(
 			Origin::signed(BOB.into()),
-			BNC,
+			CurrencyId::ForeignAsset(0),
 			5_000_000_000_000,
 			Box::new(
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2000),
+						Parachain(KARURA_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: ALICE.into(),
@@ -495,20 +533,28 @@ fn test_asset_registry_module() {
 			1_000_000_000,
 		));
 
-		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 9_000_000_000_000);
-		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 90_989_760_000_000);
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB)),
+			4_984_149_200_000
+		);
+	});
+
+	MockBifrost::execute_with(|| {
+		// Sibling -->(transfer 5_000_000_000_000)--> Karura
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &karura_reserve_account()),
+			94_999_067_600_000
+		);
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &sibling_reserve_account()),
+			4_999_067_600_000
+		);
 	});
 
 	Karura::execute_with(|| {
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			8_979_520_000_000
-		);
-
-		// ToTreasury
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
-			20_480_000_000
+			94_984_149_200_000
 		);
 	});
 }
@@ -635,7 +681,7 @@ fn trap_assets_larger_than_ed_works() {
 
 	let mut kar_treasury_amount = 0;
 	let (ksm_asset_amount, kar_asset_amount) = (dollar(KSM), dollar(KAR));
-	let trader_weight_to_treasury: u128 = 96_000_000;
+	let trader_weight_to_treasury: u128 = 139_860_000;
 
 	let parent_account: AccountId = ParentIsPreset::<AccountId>::convert(Parent.into()).unwrap();
 
@@ -658,7 +704,7 @@ fn trap_assets_larger_than_ed_works() {
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
-			Parachain(2000).into(),
+			Parachain(KARURA_ID).into(),
 			Xcm(xcm),
 		));
 	});
@@ -682,8 +728,12 @@ fn trap_assets_larger_than_ed_works() {
 fn trap_assets_lower_than_ed_works() {
 	TestNet::reset();
 
+	// 233_100_000_000 * weight(600000000) / WEIGHT_PER_SECOND(10^12) = 0.2331 * 600000000 = 139_860_000
+	let ksm_per_second = karura_runtime::ksm_per_second();
+	assert_eq!(233_100_000_000, ksm_per_second);
+
 	let mut kar_treasury_amount = 0;
-	let (ksm_asset_amount, kar_asset_amount) = (cent(KSM) / 100, cent(KAR));
+	let (ksm_asset_amount, kar_asset_amount) = (150_000_000, cent(KAR));
 
 	let parent_account: AccountId = ParentIsPreset::<AccountId>::convert(Parent.into()).unwrap();
 
@@ -706,7 +756,7 @@ fn trap_assets_lower_than_ed_works() {
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
-			Parachain(2000).into(),
+			Parachain(KARURA_ID).into(),
 			Xcm(xcm),
 		));
 	});
@@ -737,13 +787,9 @@ fn sibling_trap_assets_works() {
 	let mut kar_treasury_amount = 0;
 	let (bnc_asset_amount, kar_asset_amount) = (cent(BNC) / 10, cent(KAR));
 
-	fn sibling_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2001).into_account()
-	}
-
 	Karura::execute_with(|| {
-		assert_ok!(Tokens::deposit(BNC, &sibling_account(), dollar(BNC)));
-		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&sibling_account(), dollar(KAR));
+		assert_ok!(Tokens::deposit(BNC, &sibling_reserve_account(), dollar(BNC)));
+		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&sibling_reserve_account(), dollar(KAR));
 		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
 	});
 
@@ -757,10 +803,7 @@ fn sibling_trap_assets_works() {
 			},
 			WithdrawAsset(
 				(
-					(
-						Parent,
-						X2(Parachain(2001), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
-					),
+					(Parent, X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec()))),
 					bnc_asset_amount,
 				)
 					.into(),
@@ -768,7 +811,7 @@ fn sibling_trap_assets_works() {
 		];
 		assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(
 			Here,
-			(Parent, Parachain(2000)),
+			(Parent, Parachain(KARURA_ID)),
 			Xcm(xcm),
 		));
 	});
@@ -788,5 +831,92 @@ fn sibling_trap_assets_works() {
 			Currencies::free_balance(BNC, &KaruraTreasuryAccount::get()),
 			bnc_asset_amount
 		);
+	});
+}
+
+#[test]
+fn transfer_native_chain_asset() {
+	TestNet::reset();
+
+	MockBifrost::execute_with(|| {
+		// Register native BNC's incoming address as a foreign asset so it can receive BNC
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(AssetMetadata {
+				name: b"Native BNC".to_vec(),
+				symbol: b"BNC".to_vec(),
+				decimals: 12,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
+			})
+		));
+		assert_ok!(Tokens::deposit(
+			CurrencyId::ForeignAsset(0),
+			&karura_reserve_account(),
+			100_000_000_000_000
+		));
+
+		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100_000_000_000_000));
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			BNC,
+			10_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(KARURA_ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			1_000_000_000,
+		));
+
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90_000_000_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 10_000_000_000_000);
+	});
+
+	Karura::execute_with(|| {
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 9_985_081_600_000);
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(BOB.into()),
+			BNC,
+			5_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(MOCK_BIFROST_ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: ALICE.into(),
+						}
+					)
+				)
+				.into()
+			),
+			1_000_000_000,
+		));
+
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 4_985_081_600_000);
+	});
+
+	MockBifrost::execute_with(|| {
+		// Due to the re-anchoring, BNC came back as registered ForeignAsset(0)
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90_000_000_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 10_000_000_000_000);
+
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
+			4_999_067_600_000
+		);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90_000_000_000_000);
 	});
 }

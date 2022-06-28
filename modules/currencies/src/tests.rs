@@ -21,6 +21,7 @@
 #![cfg(test)]
 
 use super::*;
+use crate::mock::Erc20HoldingAccount;
 use frame_support::{assert_noop, assert_ok, weights::GetDispatchInfo};
 use mock::{
 	alice, bob, deploy_contracts, erc20_address, eva, AccountId, AdaptedBasicCurrency, CouncilAccount, Currencies,
@@ -32,6 +33,7 @@ use sp_runtime::{
 	traits::{BadOrigin, Bounded},
 	ModuleError,
 };
+use support::mocks::MockAddressMapping;
 use support::EVM as EVMTrait;
 
 #[test]
@@ -434,9 +436,9 @@ fn erc20_ensure_withdraw_should_work() {
 				&alice(),
 				100
 			));
-			assert_eq!(
+			assert_noop!(
 				Currencies::ensure_can_withdraw(CurrencyId::Erc20(erc20_address()), &bob(), 100),
-				Err(Error::<Runtime>::BalanceTooLow.into()),
+				Error::<Runtime>::BalanceTooLow,
 			);
 			assert_ok!(Currencies::transfer(
 				Origin::signed(alice()),
@@ -449,9 +451,9 @@ fn erc20_ensure_withdraw_should_work() {
 				&bob(),
 				100
 			));
-			assert_eq!(
+			assert_noop!(
 				Currencies::ensure_can_withdraw(CurrencyId::Erc20(erc20_address()), &bob(), 101),
-				Err(Error::<Runtime>::BalanceTooLow.into()),
+				Error::<Runtime>::BalanceTooLow,
 			);
 		});
 }
@@ -462,12 +464,13 @@ fn erc20_transfer_should_work() {
 		.balances(vec![
 			(alice(), NATIVE_CURRENCY_ID, 100000),
 			(bob(), NATIVE_CURRENCY_ID, 100000),
+			(eva(), NATIVE_CURRENCY_ID, 100000),
 		])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			<EVM as EVMTrait<AccountId>>::set_origin(alice());
-			<EVM as EVMTrait<AccountId>>::set_origin(bob());
+			<EVM as EVMTrait<AccountId>>::set_origin(eva());
+
 			assert_ok!(Currencies::transfer(
 				Origin::signed(alice()),
 				bob(),
@@ -556,7 +559,7 @@ fn erc20_can_reserve_should_work() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert!(Currencies::can_reserve(CurrencyId::Erc20(erc20_address()), &alice(), 1),);
+			assert!(Currencies::can_reserve(CurrencyId::Erc20(erc20_address()), &alice(), 1));
 		});
 }
 
@@ -674,7 +677,7 @@ fn erc20_should_not_slash() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert!(!Currencies::can_slash(CurrencyId::Erc20(erc20_address()), &alice(), 1),);
+			assert!(!Currencies::can_slash(CurrencyId::Erc20(erc20_address()), &alice(), 1));
 			// calling slash will return 0
 			assert_eq!(Currencies::slash(CurrencyId::Erc20(erc20_address()), &alice(), 1), 0);
 		});
@@ -845,17 +848,73 @@ fn erc20_invalid_operation() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert_noop!(
-				Currencies::deposit(CurrencyId::Erc20(erc20_address()), &alice(), 1),
-				Error::<Runtime>::Erc20InvalidOperation
-			);
-			assert_noop!(
-				Currencies::withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 1),
-				Error::<Runtime>::Erc20InvalidOperation
-			);
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
+
 			assert_noop!(
 				Currencies::update_balance(Origin::root(), alice(), CurrencyId::Erc20(erc20_address()), 1),
 				Error::<Runtime>::Erc20InvalidOperation,
+			);
+		});
+}
+
+#[test]
+fn erc20_withdraw_deposit_works() {
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), NATIVE_CURRENCY_ID, 100000),
+			(bob(), NATIVE_CURRENCY_ID, 100000),
+		])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
+
+			let erc20_holding_account = MockAddressMapping::get_account_id(&Erc20HoldingAccount::get());
+
+			// transfer to all-zero account failed.
+			assert_noop!(
+				Currencies::transfer(
+					Origin::signed(alice()),
+					MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
+					CurrencyId::Erc20(erc20_address()),
+					100
+				),
+				module_evm_bridge::Error::<Runtime>::ExecutionRevert
+			);
+			// transfer to non-all-zero account ok.
+			assert_ok!(Currencies::transfer(
+				Origin::signed(alice()),
+				erc20_holding_account.clone(),
+				CurrencyId::Erc20(erc20_address()),
+				100
+			));
+			assert_eq!(
+				100,
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account)
+			);
+
+			// withdraw: sender to erc20 holding account
+			assert_ok!(Currencies::withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 100));
+			assert_eq!(
+				200,
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account)
+			);
+
+			// deposit: erc20 holding account to receiver
+			assert_ok!(Currencies::deposit(CurrencyId::Erc20(erc20_address()), &bob(), 100));
+			assert_eq!(
+				100,
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account)
+			);
+			assert_eq!(
+				100,
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &bob())
+			);
+
+			// deposit failed, because erc20 holding account balance not enough
+			assert_noop!(
+				Currencies::deposit(CurrencyId::Erc20(erc20_address()), &bob(), 101),
+				module_evm_bridge::Error::<Runtime>::ExecutionRevert
 			);
 		});
 }
@@ -1026,175 +1085,180 @@ fn fungible_inspect_trait_should_work() {
 			);
 
 			// Test for Inspect::can_deposit
-			assert!(
+			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::can_deposit(
 					NATIVE_CURRENCY_ID,
 					&alice(),
 					Bounded::max_value(),
 					false
-				) == DepositConsequence::Overflow
+				),
+				DepositConsequence::Overflow
 			);
-			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), Bounded::max_value(), false)
-					== DepositConsequence::Overflow
+			assert_eq!(
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), Bounded::max_value(), false),
+				DepositConsequence::Overflow
 			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &bob(), 1, false)
-					== DepositConsequence::BelowMinimum
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &bob(), 1, false),
+				DepositConsequence::BelowMinimum
 			);
-			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&bob(), 1, false)
-					== DepositConsequence::BelowMinimum
+			assert_eq!(
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&bob(), 1, false),
+				DepositConsequence::BelowMinimum
 			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &alice(), 100, false)
-					== DepositConsequence::Success
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &alice(), 100, false),
+				DepositConsequence::Success
 			);
-			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), 100, false)
-					== DepositConsequence::Success
+			assert_eq!(
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), 100, false),
+				DepositConsequence::Success
 			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &alice(), 0, false)
-					== DepositConsequence::Success
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_deposit(NATIVE_CURRENCY_ID, &alice(), 0, false),
+				DepositConsequence::Success
 			);
-			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), 0, false)
-					== DepositConsequence::Success
-			);
-
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), Bounded::max_value(), false)
-					== DepositConsequence::Overflow
-			);
-			assert!(
-				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), Bounded::max_value(), false)
-					== DepositConsequence::Overflow
-			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 100, false)
-					== DepositConsequence::Success
-			);
-			assert!(
-				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 100, false)
-					== DepositConsequence::Success
-			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 0, false)
-					== DepositConsequence::Success
-			);
-			assert!(
-				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 0, false)
-					== DepositConsequence::Success
+			assert_eq!(
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_deposit(&alice(), 0, false),
+				DepositConsequence::Success
 			);
 
-			assert!(
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), Bounded::max_value(), false),
+				DepositConsequence::Overflow
+			);
+			assert_eq!(
+				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), Bounded::max_value(), false),
+				DepositConsequence::Overflow
+			);
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 100, false),
+				DepositConsequence::Success
+			);
+			assert_eq!(
+				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 100, false),
+				DepositConsequence::Success
+			);
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 0, false),
+				DepositConsequence::Success
+			);
+			assert_eq!(
+				<Tokens as fungibles::Inspect<_>>::can_deposit(X_TOKEN_ID, &alice(), 0, false),
+				DepositConsequence::Success
+			);
+
+			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::can_deposit(
 					CurrencyId::Erc20(erc20_address()),
 					&alice(),
 					Bounded::max_value(),
 					false
-				) == DepositConsequence::Overflow
+				),
+				DepositConsequence::Overflow
 			);
-			assert!(
+			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::can_deposit(
 					CurrencyId::Erc20(erc20_address()),
 					&alice(),
 					100,
 					false
-				) == DepositConsequence::Success
+				),
+				DepositConsequence::Success
 			);
-			assert!(
+			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::can_deposit(
 					CurrencyId::Erc20(erc20_address()),
 					&alice(),
 					0,
 					false
-				) == DepositConsequence::Success
+				),
+				DepositConsequence::Success
 			);
 
 			// TODO: update test code to assert_eq! for this: https://github.com/AcalaNetwork/Acala/issues/2038
 			// Test Inspect::can_withdraw
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), Bounded::max_value())
-					== WithdrawConsequence::Underflow
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), Bounded::max_value()),
+				WithdrawConsequence::Underflow
 			);
-			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), Bounded::max_value())
-					== WithdrawConsequence::Underflow
-			);
-
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 44381)
-					== WithdrawConsequence::Frozen
-			);
-			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 44381)
-					== WithdrawConsequence::Frozen
-			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 100)
-					== WithdrawConsequence::Success
-			);
-			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 100)
-					== WithdrawConsequence::Success
-			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 0)
-					== WithdrawConsequence::Success
-			);
-			assert!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 0)
-					== WithdrawConsequence::Success
+			assert_eq!(
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), Bounded::max_value()),
+				WithdrawConsequence::Underflow
 			);
 
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), Bounded::max_value())
-					== WithdrawConsequence::Underflow
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 44381),
+				WithdrawConsequence::Frozen
 			);
-			assert!(
-				<Tokens as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), Bounded::max_value())
-					== WithdrawConsequence::Underflow
+			assert_eq!(
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 44381),
+				WithdrawConsequence::Frozen
 			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 200001)
-					== WithdrawConsequence::Underflow
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 100),
+				WithdrawConsequence::Success
 			);
-			assert!(
-				<Tokens as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 200001)
-					== WithdrawConsequence::Underflow
+			assert_eq!(
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 100),
+				WithdrawConsequence::Success
 			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 100)
-					== WithdrawConsequence::Success
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 0),
+				WithdrawConsequence::Success
 			);
-			assert!(
-				<Tokens as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 100)
-					== WithdrawConsequence::Success
+			assert_eq!(
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 0),
+				WithdrawConsequence::Success
 			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 0)
-					== WithdrawConsequence::Success
+
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), Bounded::max_value()),
+				WithdrawConsequence::Underflow
 			);
-			assert!(
-				<Tokens as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 0)
-					== WithdrawConsequence::Success
+			assert_eq!(
+				<Tokens as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), Bounded::max_value()),
+				WithdrawConsequence::Underflow
 			);
-			assert!(
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 200001),
+				WithdrawConsequence::Underflow
+			);
+			assert_eq!(
+				<Tokens as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 200001),
+				WithdrawConsequence::Underflow
+			);
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 100),
+				WithdrawConsequence::Success
+			);
+			assert_eq!(
+				<Tokens as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 100),
+				WithdrawConsequence::Success
+			);
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 0),
+				WithdrawConsequence::Success
+			);
+			assert_eq!(
+				<Tokens as fungibles::Inspect<_>>::can_withdraw(X_TOKEN_ID, &alice(), 0),
+				WithdrawConsequence::Success
+			);
+			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::can_withdraw(
 					CurrencyId::Erc20(erc20_address()),
 					&alice(),
 					Bounded::max_value()
-				) == WithdrawConsequence::NoFunds
+				),
+				WithdrawConsequence::NoFunds
 			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 100)
-					== WithdrawConsequence::Success
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 100),
+				WithdrawConsequence::Success
 			);
-			assert!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 0)
-					== WithdrawConsequence::Success
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 0),
+				WithdrawConsequence::Success
 			);
 		});
 }
@@ -1266,9 +1330,11 @@ fn fungible_mutate_trait_should_work() {
 				&alice(),
 				0
 			));
+			// mint_into will deposit erc20 holding account to recipient.
+			// but here erc20 holding account don't have enough balance.
 			assert_noop!(
 				<Currencies as fungibles::Mutate<_>>::mint_into(CurrencyId::Erc20(erc20_address()), &alice(), 1),
-				Error::<Runtime>::Erc20InvalidOperation
+				Error::<Runtime>::DepositFailed
 			);
 
 			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::total_issuance(), 101000);

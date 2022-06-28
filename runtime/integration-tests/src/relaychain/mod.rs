@@ -27,3 +27,6 @@ pub mod polkadot_test_net;
 mod relay_chain;
 #[cfg(feature = "with-karura-runtime")]
 mod statemine;
+
+#[cfg(feature = "with-karura-runtime")]
+mod erc20;

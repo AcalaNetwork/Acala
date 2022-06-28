@@ -254,11 +254,6 @@ impl<T: Config> Pallet<T> {
 
 		let eth_address = T::AddressMapping::get_or_create_evm_address(&who);
 
-		Self::deposit_event(Event::ClaimAccount {
-			account_id: who,
-			evm_address: eth_address,
-		});
-
 		Ok(eth_address)
 	}
 }
@@ -320,6 +315,11 @@ where
 			// create reverse mapping
 			Accounts::<T>::insert(&addr, &account_id);
 			EvmAddresses::<T>::insert(&account_id, &addr);
+
+			Pallet::<T>::deposit_event(Event::ClaimAccount {
+				account_id: account_id.clone(),
+				evm_address: addr,
+			});
 
 			addr
 		})

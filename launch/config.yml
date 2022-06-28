@@ -2,16 +2,6 @@ relaychain:
   image: parity/polkadot:v0.9.22
   chain: rococo-local
   runtimeGenesisConfig:
-    hrmp:
-      preopenHrmpChannels:
-        - sender: 2000
-          recipient: 3000
-          maxCapacity: 8
-          maxMessageSize: 512
-        - sender: 3000
-          recipient: 2000
-          maxCapacity: 8
-          maxMessageSize: 512
     configuration:
       config:
         validation_upgrade_cooldown: 10
@@ -26,56 +16,33 @@ relaychain:
     - name: alice
     - name: bob
     - name: charlie
+
 parachains:
-  - image: acala/karura-node:5ef8fb8e
-    chain:
-      base: karura-dev
-      collators:
-        - alice
-        - bob
-        - charlie
-      sudo: alice
-    id: 2000
-    parachain: true
-    flags:
-      - --rpc-methods=unsafe
-      - --force-authoring
-      - --wasm-execution=compiled
-      - --execution=wasm
-    relaychainFlags:
-      - --wasm-execution=compiled
-      - --execution=wasm
-    env:
-      RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
-    volumePath: /acala/data
-    nodes:
-      - flags:
-          - --alice
-      - flags:
-          - --bob
-      - flags:
-          - --charlie
-  - image: bifrost/node:stable-asset-xcm
-    chain:
-      base: bifrost-local
-      sudo: alice
-    id: 3000
-    parachain: true
-    flags:
-      - --rpc-methods=unsafe
-      - --force-authoring
-      - --wasm-execution=compiled
-      - --execution=wasm
-    relaychainFlags:
-      - --wasm-execution=compiled
-      - --execution=wasm
-    env:
-      RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
-    volumePath: /data
-    nodes:
-      - flags:
-          - --alice
-      - flags:
-          - --bob
-      - flags:
-          - --charlie
+- image: acala/karura-node:2.7.0
+  chain:
+    base: karura-dev
+    collators:
+      - alice
+      - bob
+      - charlie
+    sudo: alice
+  id: 2000
+  parachain: true
+  flags:
+    - --rpc-methods=unsafe
+    - --force-authoring
+    - --wasm-execution=compiled
+    - --execution=wasm
+  relaychainFlags:
+    - --wasm-execution=compiled
+    - --execution=wasm
+  env:
+    RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
+  volumePath: /acala/data
+  nodes:
+  - flags:
+    - --alice
+  - flags:
+    - --bob
+  - flags:
+    - --charlie

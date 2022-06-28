@@ -39,6 +39,7 @@ use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
 pub use module::*;
 pub use weights::WeightInfo;
 
+pub mod migrations;
 mod mock;
 mod tests;
 pub mod weights;
@@ -259,6 +260,13 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn staking_ledgers)]
 	pub type StakingLedgers<T: Config> = StorageMap<_, Twox64Concat, u16, StakingLedger, OptionQuery>;
+
+	/// The total amount of staking currency bonded in the homa protocol
+	///
+	/// TotalStakingBonded value: Balance
+	#[pallet::storage]
+	#[pallet::getter(fn get_total_bonded)]
+	pub type TotalStakingBonded<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The total staking currency to bond on relaychain when new era,
 	/// and that is available to be match fast redeem request.
@@ -618,7 +626,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		/// Module account id
 		pub fn account_id() -> T::AccountId {
-			T::PalletId::get().into_account()
+			T::PalletId::get().into_account_truncating()
 		}
 
 		pub fn do_update_ledger<R, E>(
@@ -627,10 +635,20 @@ pub mod module {
 		) -> sp_std::result::Result<R, E> {
 			StakingLedgers::<T>::try_mutate_exists(sub_account_index, |maybe_ledger| {
 				let mut ledger = maybe_ledger.take().unwrap_or_default();
+				let old_bonded_amount = ledger.bonded;
+
 				f(&mut ledger).map(move |result| {
 					*maybe_ledger = if ledger == Default::default() {
+						TotalStakingBonded::<T>::mutate(|staking_balance| {
+							*staking_balance = staking_balance.saturating_sub(old_bonded_amount)
+						});
 						None
 					} else {
+						TotalStakingBonded::<T>::mutate(|staking_balance| {
+							*staking_balance = staking_balance
+								.saturating_add(ledger.bonded)
+								.saturating_sub(old_bonded_amount)
+						});
 						Some(ledger)
 					};
 					result
@@ -732,16 +750,9 @@ pub mod module {
 				.saturating_mul(T::ActiveSubAccountsIndexList::get().len() as Balance)
 		}
 
-		/// Calculate the total amount of bonded staking currency.
-		pub fn get_total_bonded() -> Balance {
-			StakingLedgers::<T>::iter().fold(Zero::zero(), |total_bonded, (_, ledger)| {
-				total_bonded.saturating_add(ledger.bonded)
-			})
-		}
-
 		/// Calculate the total amount of staking currency belong to Homa.
 		pub fn get_total_staking_currency() -> Balance {
-			Self::get_total_bonded().saturating_add(Self::to_bond_pool())
+			TotalStakingBonded::<T>::get().saturating_add(Self::to_bond_pool())
 		}
 
 		/// Calculate the total amount of liquid currency.
@@ -883,7 +894,7 @@ pub mod module {
 					let liquid_currency_id = T::LiquidCurrencyId::get();
 					let commission_staking_amount = commission_rate.saturating_mul_int(total_reward_staking);
 					let commission_ratio =
-						Ratio::checked_from_rational(commission_staking_amount, Self::get_total_bonded())
+						Ratio::checked_from_rational(commission_staking_amount, TotalStakingBonded::<T>::get())
 							.unwrap_or_else(Ratio::min_value);
 					let inflate_rate = commission_ratio
 						.checked_div(&Ratio::one().saturating_sub(commission_ratio))
@@ -981,7 +992,7 @@ pub mod module {
 		#[transactional]
 		pub fn process_redeem_requests(new_era: EraIndex) -> DispatchResult {
 			let era_index_to_expire = new_era + T::BondingDuration::get();
-			let total_bonded = Self::get_total_bonded();
+			let total_bonded = TotalStakingBonded::<T>::get();
 			let mut total_redeem_amount: Balance = Zero::zero();
 			let mut remain_total_bonded = total_bonded;
 

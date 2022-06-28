@@ -128,7 +128,7 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(u as Weight)))
 	}
-	fn send_mint_to_xcm(u: u32) -> Weight {
+	fn mint_xcm(u: u32) -> Weight {
 		(85_694_000 as Weight) // Standard Error: 187_000
 			.saturating_add((46_172_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
@@ -136,43 +136,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(u as Weight)))
 	}
-	fn process_xcm_mint(u: u32) -> Weight {
-		(85_694_000 as Weight) // Standard Error: 187_000
-			.saturating_add((46_172_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(u as Weight)))
-	}
-	fn receive_mint_from_xcm() -> Weight {
-		(21_186_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn send_redeem_single_to_xcm(u: u32) -> Weight {
-		(85_694_000 as Weight) // Standard Error: 187_000
-			.saturating_add((46_172_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(u as Weight)))
-	}
-	fn process_xcm_redeem_single(u: u32) -> Weight {
-		(85_694_000 as Weight) // Standard Error: 187_000
-			.saturating_add((46_172_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(u as Weight)))
-	}
-	fn receive_redeem_single_from_xcm() -> Weight {
-		(21_186_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn update_xcm_asset() -> Weight {
-		(21_186_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	fn mint_xcm_fail() -> Weight {
+		(33_115_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(3 as Weight))
+			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 }

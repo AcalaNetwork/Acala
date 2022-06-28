@@ -65,6 +65,16 @@ pub enum StakingCall {
 	WithdrawUnbonded(u32),
 }
 
+#[derive(Encode, Decode, RuntimeDebug)]
+pub enum StableAssetCall<T: Config> {
+	#[codec(index = 8)]
+	MintXcmFail(u32, T::AccountId, Balance),
+	#[codec(index = 9)]
+	RedeemProportionXcm(T::AccountId, u32, Balance, Vec<Balance>),
+	#[codec(index = 10)]
+	RedeemSingleXcm(T::AccountId, u32, Balance, u32, Balance, u32),
+}
+
 #[cfg(feature = "kusama")]
 mod kusama {
 	use crate::*;
@@ -79,6 +89,8 @@ mod kusama {
 		Staking(StakingCall),
 		#[codec(index = 24)]
 		Utility(Box<UtilityCall<Self>>),
+		#[codec(index = 200)]
+		StableAsset(StableAssetCall<T>),
 	}
 }
 
@@ -96,6 +108,8 @@ mod polkadot {
 		Staking(StakingCall),
 		#[codec(index = 26)]
 		Utility(Box<UtilityCall<Self>>),
+		#[codec(index = 200)]
+		StableAsset(StableAssetCall<T>),
 	}
 }
 
@@ -138,6 +152,42 @@ where
 
 	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall {
 		RelayChainCall::Balances(BalancesCall::TransferKeepAlive(T::Lookup::unlookup(to), amount))
+	}
+
+	fn mint_xcm_fail(pool_id: u32, account_id: Self::AccountId, mint_amount: Self::Balance) -> Self::RelayChainCall {
+		RelayChainCall::StableAsset(StableAssetCall::MintXcmFail(pool_id, account_id, mint_amount))
+	}
+
+	fn redeem_proportion_xcm(
+		account_id: Self::AccountId,
+		pool_id: u32,
+		amount: Self::Balance,
+		min_redeem_amounts: Vec<Self::Balance>,
+	) -> Self::RelayChainCall {
+		RelayChainCall::StableAsset(StableAssetCall::RedeemProportionXcm(
+			account_id,
+			pool_id,
+			amount,
+			min_redeem_amounts,
+		))
+	}
+
+	fn redeem_single_xcm(
+		account_id: Self::AccountId,
+		pool_id: u32,
+		amount: Self::Balance,
+		i: u32,
+		min_redeem_amount: Self::Balance,
+		asset_length: u32,
+	) -> Self::RelayChainCall {
+		RelayChainCall::StableAsset(StableAssetCall::RedeemSingleXcm(
+			account_id,
+			pool_id,
+			amount,
+			i,
+			min_redeem_amount,
+			asset_length,
+		))
 	}
 
 	fn finalize_call_into_xcm_message(call: Self::RelayChainCall, extra_fee: Self::Balance, weight: Weight) -> Xcm<()> {

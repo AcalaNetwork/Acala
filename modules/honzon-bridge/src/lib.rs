@@ -131,6 +131,6 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	// Returns the current pallet's account ID.
 	pub fn account_id() -> T::AccountId {
-		T::PalletId::get().into_account()
+		T::PalletId::get().into_account_truncating()
 	}
 }

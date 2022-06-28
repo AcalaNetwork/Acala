@@ -90,6 +90,10 @@ pub mod module {
 		#[pallet::constant]
 		type GetNativeCurrencyId: Get<CurrencyId>;
 
+		/// Used as temporary account for ERC20 token `withdraw` and `deposit`.
+		#[pallet::constant]
+		type Erc20HoldingAccount: Get<EvmAddress>;
+
 		/// Weight information for extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
@@ -131,6 +135,18 @@ pub mod module {
 			currency_id: CurrencyId,
 			from: T::AccountId,
 			to: T::AccountId,
+			amount: BalanceOf<T>,
+		},
+		/// Withdrawn some balances from an account
+		Withdrawn {
+			currency_id: CurrencyId,
+			who: T::AccountId,
+			amount: BalanceOf<T>,
+		},
+		/// Deposited some balance into an account
+		Deposited {
+			currency_id: CurrencyId,
+			who: T::AccountId,
 			amount: BalanceOf<T>,
 		},
 		/// Dust swept.
@@ -360,7 +376,38 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			return Ok(());
 		}
 		match currency_id {
-			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
+			CurrencyId::Erc20(contract) => {
+				// deposit from erc20 holding account to receiver(who). in xcm case which receive erc20 from sibling
+				// parachain, we choose receiver to charge storage fee. we must make sure receiver has enough native
+				// token to charge storage fee.
+				let sender = T::Erc20HoldingAccount::get();
+				let from = T::AddressMapping::get_account_id(&sender);
+				ensure!(
+					!Self::free_balance(currency_id, &from).is_zero(),
+					Error::<T>::DepositFailed
+				);
+				let receiver = T::AddressMapping::get_or_create_evm_address(who);
+				T::EVMBridge::transfer(
+					InvokeContext {
+						contract,
+						sender,
+						origin: receiver,
+					},
+					receiver,
+					amount,
+				)?;
+				Self::deposit_event(Event::Withdrawn {
+					currency_id,
+					who: from,
+					amount,
+				});
+				Self::deposit_event(Event::Deposited {
+					currency_id,
+					who: who.clone(),
+					amount,
+				});
+				Ok(())
+			}
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::deposit(who, amount),
 			_ => T::MultiCurrency::deposit(currency_id, who, amount),
 		}
@@ -372,7 +419,34 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		}
 
 		match currency_id {
-			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
+			CurrencyId::Erc20(contract) => {
+				// withdraw from sender(who) to erc20 holding account. in xcm case which receive erc20 from sibling
+				// parachain, sender is sibling parachain sovereign account. As the origin here is used to charge
+				// storage fee, we must make sure sibling parachain sovereign account has enough native token to
+				// charge storage fee.
+				let receiver = T::Erc20HoldingAccount::get();
+				let sender = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
+				T::EVMBridge::transfer(
+					InvokeContext {
+						contract,
+						sender,
+						origin: sender,
+					},
+					receiver,
+					amount,
+				)?;
+				Self::deposit_event(Event::Withdrawn {
+					currency_id,
+					who: who.clone(),
+					amount,
+				});
+				Self::deposit_event(Event::Deposited {
+					currency_id,
+					who: T::AddressMapping::get_account_id(&receiver),
+					amount,
+				});
+				Ok(())
+			}
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::withdraw(who, amount),
 			_ => T::MultiCurrency::withdraw(currency_id, who, amount),
 		}

@@ -103,7 +103,8 @@ fn initial_charge_fee_pool_works() {
 		.build()
 		.execute_with(|| {
 			let treasury_account = TreasuryAccount::get();
-			let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(RELAY_CHAIN_CURRENCY);
+			let fee_account1: AccountId =
+				TransactionPaymentPalletId::get().into_sub_account_truncating(RELAY_CHAIN_CURRENCY);
 			// FeePoolSize set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
 			let ed = NativeTokenExistentialDeposit::get();
 			let pool_size = fee_pool_size();
@@ -184,14 +185,14 @@ fn initial_charge_fee_pool_works() {
 				assert_eq!(
 					Currencies::free_balance(
 						NATIVE_CURRENCY,
-						&TransactionPaymentPalletId::get().into_sub_account(token.clone())
+						&TransactionPaymentPalletId::get().into_sub_account_truncating(token.clone())
 					),
 					pool_size
 				);
 				assert_eq!(
 					Currencies::free_balance(
 						token.clone(),
-						&TransactionPaymentPalletId::get().into_sub_account(token.clone())
+						&TransactionPaymentPalletId::get().into_sub_account_truncating(token.clone())
 					),
 					ed
 				);
@@ -199,18 +200,39 @@ fn initial_charge_fee_pool_works() {
 			assert_eq!(
 				Currencies::free_balance(
 					NATIVE_CURRENCY,
-					&TransactionPaymentPalletId::get().into_sub_account(LIQUID_CURRENCY)
+					&TransactionPaymentPalletId::get().into_sub_account_truncating(LIQUID_CURRENCY)
 				),
 				0
 			);
 			assert_eq!(
 				Currencies::free_balance(
 					LIQUID_CURRENCY,
-					&TransactionPaymentPalletId::get().into_sub_account(LIQUID_CURRENCY)
+					&TransactionPaymentPalletId::get().into_sub_account_truncating(LIQUID_CURRENCY)
 				),
 				0
 			);
 		});
+}
+
+#[test]
+fn token_per_second_works() {
+	#[cfg(feature = "with-karura-runtime")]
+	{
+		let kar_per_second = karura_runtime::kar_per_second();
+		assert_eq!(11_655_000_000_000, kar_per_second);
+
+		let ksm_per_second = karura_runtime::ksm_per_second();
+		assert_eq!(233_100_000_000, ksm_per_second);
+	}
+
+	#[cfg(feature = "with-acala-runtime")]
+	{
+		let aca_per_second = acala_runtime::aca_per_second();
+		assert_eq!(11_655_000_000_000, aca_per_second);
+
+		let dot_per_second = acala_runtime::dot_per_second();
+		assert_eq!(2_331_000_000, dot_per_second);
+	}
 }
 
 #[test]
@@ -235,20 +257,32 @@ fn trader_works() {
 	let expect_weight: Weight = 800_000_000;
 	#[cfg(feature = "with-acala-runtime")]
 	let expect_weight: Weight = 800_000_000;
+
+	#[cfg(feature = "with-mandala-runtime")]
+	let base_per_second = mandala_runtime::aca_per_second();
+	#[cfg(feature = "with-karura-runtime")]
+	let base_per_second = karura_runtime::kar_per_second();
+	#[cfg(feature = "with-acala-runtime")]
+	let base_per_second = acala_runtime::aca_per_second();
+
 	let xcm_weight: Weight = <XcmConfig as Config>::Weigher::weight(&mut message).unwrap();
 	assert_eq!(xcm_weight, expect_weight);
 
-	// fixed rate, ksm_per_second/kar_per_second=1/50, kar_per_second = 8*dollar(KAR),
-	// ksm_per_second = 0.16 * dollar(KAR), fee = 0.16 * weight = 0.16 * 800_000_000 = 128_000_000
-	let total_balance: Balance = 130_000_000;
+	let total_balance: Balance = 10_00_000_000;
 	let asset: MultiAsset = (Parent, total_balance).into();
-	#[cfg(feature = "with-mandala-runtime")]
-	let expect_unspent: MultiAsset = (Parent, 129_680_000).into();
-	#[cfg(feature = "with-karura-runtime")]
-	let expect_unspent: MultiAsset = (Parent, 2_000_000).into();
-	#[cfg(feature = "with-acala-runtime")]
-	let expect_unspent: MultiAsset = (Parent, 128_720_000).into();
 	let assets: Assets = asset.into();
+
+	// ksm_per_second/kar_per_second=1/50
+	// v0.9.22: kar_per_second=8KAR, ksm_per_second=0.16KSM,
+	//          fee=0.16*weight=0.16*800_000_000=128_000_000
+	// v0.9.23: kar_per_second=11.655KAR, ksm_per_second=0.2331KSM
+	//          fee=0.2331*weight=186_480_000
+	#[cfg(feature = "with-mandala-runtime")]
+	let expect_unspent: MultiAsset = (Parent, 999_533_800).into(); // 466200
+	#[cfg(feature = "with-karura-runtime")]
+	let expect_unspent: MultiAsset = (Parent, 813_520_000).into(); // 186480000
+	#[cfg(feature = "with-acala-runtime")]
+	let expect_unspent: MultiAsset = (Parent, 998_135_200).into(); // 1864800
 
 	// when no runtime upgrade, the newly `TransactionFeePoolTrader` will failed.
 	ExtBuilder::default().build().execute_with(|| {
@@ -257,7 +291,7 @@ fn trader_works() {
 		let unspent: Vec<MultiAsset> = result_assets.into();
 		assert_eq!(vec![expect_unspent.clone()], unspent);
 
-		let mut period_trader = PeriodTrader::new();
+		let mut period_trader = TransactionFeePoolTrader::new();
 		let result_assets = period_trader.buy_weight(xcm_weight, assets.clone());
 		assert!(result_assets.is_err());
 	});
@@ -282,7 +316,8 @@ fn trader_works() {
 		.build()
 		.execute_with(|| {
 			let treasury_account = TreasuryAccount::get();
-			let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(RELAY_CHAIN_CURRENCY);
+			let fee_account1: AccountId =
+				TransactionPaymentPalletId::get().into_sub_account_truncating(RELAY_CHAIN_CURRENCY);
 			// FeePoolSize set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
 			let ed = NativeTokenExistentialDeposit::get();
 			let relay_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(RELAY_CHAIN_CURRENCY);
@@ -327,11 +362,16 @@ fn trader_works() {
 
 			let relay_exchange_rate: Ratio =
 				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(RELAY_CHAIN_CURRENCY).unwrap();
-			let spent = relay_exchange_rate.saturating_mul_int(8 * expect_weight);
+			let weight_ratio = Ratio::saturating_from_rational(
+				expect_weight as u128,
+				frame_support::weights::constants::WEIGHT_PER_SECOND as u128,
+			);
+			let asset_per_second = relay_exchange_rate.saturating_mul_int(base_per_second);
+			let spent = weight_ratio.saturating_mul_int(asset_per_second);
 			let expect_unspent: MultiAsset = (Parent, total_balance - spent as u128).into();
 
 			// the newly `TransactionFeePoolTrader` works fine as first priority
-			let mut period_trader = PeriodTrader::new();
+			let mut period_trader = TransactionFeePoolTrader::new();
 			let result_assets = period_trader.buy_weight(xcm_weight, assets);
 			let unspent: Vec<MultiAsset> = result_assets.unwrap().into();
 			assert_eq!(vec![expect_unspent.clone()], unspent);
@@ -345,7 +385,7 @@ fn charge_transaction_payment_and_threshold_works() {
 	let relay_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(RELAY_CHAIN_CURRENCY);
 
 	let treasury_account = TreasuryAccount::get();
-	let sub_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(RELAY_CHAIN_CURRENCY);
+	let sub_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account_truncating(RELAY_CHAIN_CURRENCY);
 	let bob_relay_balance = 100 * dollar(RELAY_CHAIN_CURRENCY);
 
 	ExtBuilder::default()

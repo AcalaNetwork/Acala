@@ -38,6 +38,7 @@ use sp_std::{convert::From, prelude::*, vec, vec::Vec};
 use xcm::latest::prelude::*;
 
 pub mod migrations;
+pub mod traits;
 pub use module::*;
 
 #[frame_support::pallet]
@@ -54,6 +55,7 @@ pub mod module {
 		HomaUnbond,
 		// Parachain fee with location info
 		ParachainFee(Box<MultiLocation>),
+		StableAssetMintFail,
 	}
 
 	#[pallet::config]
@@ -160,7 +162,114 @@ pub mod module {
 		}
 	}
 
+	#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+	pub struct ParentThen(Junctions);
+	impl From<ParentThen> for MultiLocation {
+		fn from(ParentThen(interior): ParentThen) -> Self {
+			MultiLocation { parents: 1, interior }
+		}
+	}
+
 	impl<T: Config> Pallet<T> {}
+
+	impl<T: Config> traits::XcmHelper<T::AccountId, Balance> for Pallet<T> {
+		fn mint_xcm_fail(
+			chain_id: u32,
+			account_id: T::AccountId,
+			pool_id: u32,
+			mint_amount: Balance,
+		) -> DispatchResult {
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::StableAssetMintFail);
+			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
+				T::RelayChainCallBuilder::mint_xcm_fail(pool_id, account_id.clone(), mint_amount),
+				xcm_fee,
+				xcm_dest_weight,
+			);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(
+				Here,
+				ParentThen(Junctions::X1(Junction::Parachain(chain_id))),
+				xcm_message,
+			);
+			log::debug!(
+				target: "xcm-interface",
+				"mint_xcm_fail at {:?}: {:?} {:?} {:?}",
+				chain_id, pool_id, account_id, mint_amount
+			);
+
+			ensure!(result.is_ok(), Error::<T>::XcmFailed);
+			Ok(())
+		}
+
+		fn redeem_proportion_xcm(
+			chain_id: u32,
+			account_id: T::AccountId,
+			pool_id: u32,
+			amount: Balance,
+			min_redeem_amounts: Vec<Balance>,
+		) -> DispatchResult {
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::StableAssetMintFail);
+			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
+				T::RelayChainCallBuilder::redeem_proportion_xcm(
+					account_id.clone(),
+					pool_id,
+					amount,
+					min_redeem_amounts.clone(),
+				),
+				xcm_fee,
+				xcm_dest_weight,
+			);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(
+				Here,
+				ParentThen(Junctions::X1(Junction::Parachain(chain_id))),
+				xcm_message,
+			);
+			log::debug!(
+				target: "xcm-interface",
+				"redeem_proportion_xcm at {:?}: {:?} {:?} {:?} {:?}",
+				chain_id, account_id, pool_id, amount, min_redeem_amounts
+			);
+
+			ensure!(result.is_ok(), Error::<T>::XcmFailed);
+			Ok(())
+		}
+
+		fn redeem_single_xcm(
+			chain_id: u32,
+			account_id: T::AccountId,
+			pool_id: u32,
+			amount: Balance,
+			i: u32,
+			min_redeem_amount: Balance,
+			asset_length: u32,
+		) -> DispatchResult {
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::StableAssetMintFail);
+			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
+				T::RelayChainCallBuilder::redeem_single_xcm(
+					account_id.clone(),
+					pool_id,
+					amount,
+					i,
+					min_redeem_amount,
+					asset_length,
+				),
+				xcm_fee,
+				xcm_dest_weight,
+			);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(
+				Here,
+				ParentThen(Junctions::X1(Junction::Parachain(chain_id))),
+				xcm_message,
+			);
+			log::debug!(
+				target: "xcm-interface",
+				"redeem_single_xcm at {:?}: {:?} {:?} {:?} {:?} {:?} {:?}",
+				chain_id, account_id, pool_id, amount, i, min_redeem_amount, asset_length
+			);
+
+			ensure!(result.is_ok(), Error::<T>::XcmFailed);
+			Ok(())
+		}
+	}
 
 	impl<T: Config> HomaSubAccountXcm<T::AccountId, Balance> for Pallet<T> {
 		/// Cross-chain transfer staking currency to sub account on relaychain.

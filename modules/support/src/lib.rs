@@ -19,6 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::from_over_into)]
+#![allow(clippy::type_complexity)]
 
 use codec::FullCodec;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
@@ -33,12 +34,16 @@ pub mod dex;
 pub mod evm;
 pub mod homa;
 pub mod honzon;
+pub mod incentives;
 pub mod mocks;
+pub mod stable_asset;
 
 pub use crate::dex::*;
 pub use crate::evm::*;
 pub use crate::homa::*;
 pub use crate::honzon::*;
+pub use crate::incentives::*;
+pub use crate::stable_asset::*;
 
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;
@@ -67,22 +72,6 @@ pub trait LockablePrice<CurrencyId> {
 
 pub trait ExchangeRateProvider {
 	fn get_exchange_rate() -> ExchangeRate;
-}
-
-pub trait DEXIncentives<AccountId, CurrencyId, Balance> {
-	fn do_deposit_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
-	fn do_withdraw_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
-}
-
-#[cfg(feature = "std")]
-impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balance> for () {
-	fn do_deposit_dex_share(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
-		Ok(())
-	}
-
-	fn do_withdraw_dex_share(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
-		Ok(())
-	}
 }
 
 pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
@@ -147,6 +136,24 @@ pub trait CallBuilder {
 	/// - amount: The amount of staking currency to be transferred.
 	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall;
 
+	fn mint_xcm_fail(pool_id: u32, account_id: Self::AccountId, mint_amount: Self::Balance) -> Self::RelayChainCall;
+
+	fn redeem_proportion_xcm(
+		account_id: Self::AccountId,
+		pool_id: u32,
+		amount: Self::Balance,
+		min_redeem_amounts: Vec<Self::Balance>,
+	) -> Self::RelayChainCall;
+
+	fn redeem_single_xcm(
+		account_id: Self::AccountId,
+		pool_id: u32,
+		amount: Self::Balance,
+		i: u32,
+		min_redeem_amount: Self::Balance,
+		asset_length: u32,
+	) -> Self::RelayChainCall;
+
 	/// Wrap the final calls into the Xcm format.
 	///  params:
 	/// - call: The call to be executed
@@ -187,4 +194,8 @@ pub trait OnNewEra<EraIndex> {
 
 pub trait NomineesProvider<AccountId> {
 	fn nominees() -> Vec<AccountId>;
+}
+
+pub trait BuyWeightRate {
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio>;
 }
