@@ -851,8 +851,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		let amount = convert_decimals_from_evm(
 			TryInto::<BalanceOf<T>>::try_into(transfer.value).map_err(|_| ExitError::OutOfFund)?,
 		)
-		.ok_or(ExitError::Other(Into::<&str>::into(Error::<T>::InvalidDecimals).into()))?
-		.unique_saturated_into();
+		.ok_or(ExitError::Other(Into::<&str>::into(Error::<T>::InvalidDecimals).into()))?;
 
 		log::debug!(
 			target: "evm",
