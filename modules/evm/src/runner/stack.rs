@@ -88,9 +88,10 @@ impl<T: Config> Runner<T> {
 		let mut executor = StackExecutor::new_with_precompiles(state, config, precompiles);
 
 		ensure!(
-			TryInto::<BalanceOf<T>>::try_into(value).is_ok()
-				&& convert_decimals_from_evm(UniqueSaturatedInto::<BalanceOf<T>>::unique_saturated_into(value))
-					.is_some(),
+			convert_decimals_from_evm(
+				TryInto::<BalanceOf<T>>::try_into(value).map_err(|_| Error::<T>::InvalidDecimals)?
+			)
+			.is_some(),
 			Error::<T>::InvalidDecimals
 		);
 

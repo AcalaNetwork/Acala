@@ -79,7 +79,7 @@ impl ModexpPricer {
 			let remaining_len = input_len - exp_start;
 			let mut reader = Vec::from(&input[exp_start..exp_start + remaining_len]);
 			let len = if exp_len < U256::from(32) {
-				UniqueSaturatedInto::<u64>::unique_saturated_into(exp_len) as usize
+				UniqueSaturatedInto::<usize>::unique_saturated_into(exp_len)
 			} else {
 				32
 			};
