@@ -88,7 +88,10 @@ impl<T: Config> Runner<T> {
 		let mut executor = StackExecutor::new_with_precompiles(state, config, precompiles);
 
 		ensure!(
-			convert_decimals_from_evm(value.low_u128()).is_some(),
+			convert_decimals_from_evm(
+				TryInto::<BalanceOf<T>>::try_into(value).map_err(|_| Error::<T>::InvalidDecimals)?
+			)
+			.is_some(),
 			Error::<T>::InvalidDecimals
 		);
 
@@ -846,9 +849,10 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		}
 		let source = T::AddressMapping::get_account_id(&transfer.source);
 		let target = T::AddressMapping::get_account_id(&transfer.target);
-		let amount = convert_decimals_from_evm(transfer.value.low_u128())
-			.ok_or(ExitError::Other(Into::<&str>::into(Error::<T>::InvalidDecimals).into()))?
-			.unique_saturated_into();
+		let amount = convert_decimals_from_evm(
+			TryInto::<BalanceOf<T>>::try_into(transfer.value).map_err(|_| ExitError::OutOfFund)?,
+		)
+		.ok_or(ExitError::Other(Into::<&str>::into(Error::<T>::InvalidDecimals).into()))?;
 
 		log::debug!(
 			target: "evm",
