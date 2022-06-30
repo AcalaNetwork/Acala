@@ -56,7 +56,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, MultiSignature, Percent, Perquintill,
 };
 use sp_std::prelude::*;
-use support::{BuyWeightRate, DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
+use support::{BuyWeightRate, DEXManager, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment};
 use xcm::opaque::latest::MultiLocation;
 
 mod mock;
@@ -305,6 +305,9 @@ pub mod module {
 
 		/// DEX to exchange currencies.
 		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
+
+		/// Swap
+		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
 
 		/// When swap with DEX, the acceptable max slippage for the price from oracle.
 		#[pallet::constant]

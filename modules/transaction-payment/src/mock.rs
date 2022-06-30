@@ -39,7 +39,10 @@ use sp_runtime::{
 	Perbill,
 };
 use sp_std::cell::RefCell;
-use support::{mocks::MockAddressMapping, Price};
+use support::{
+	mocks::{MockAddressMapping, MockSwap},
+	Price,
+};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -266,6 +269,7 @@ impl Config for Runtime {
 	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
+	type Swap = MockSwap<AccountId, Balance, CurrencyId>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;

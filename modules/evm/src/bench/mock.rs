@@ -27,7 +27,7 @@ use frame_support::{
 	ConsensusEngineId, PalletId,
 };
 use frame_system::EnsureSignedBy;
-use module_support::mocks::MockErc20InfoMapping;
+use module_support::mocks::{MockErc20InfoMapping, MockSwap};
 use module_support::{mocks::MockAddressMapping, DEXIncentives, Price, PriceProvider};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
@@ -250,6 +250,7 @@ impl module_transaction_payment::Config for Runtime {
 	type TransactionByteFee = ConstU128<10>;
 	type FeeMultiplierUpdate = ();
 	type DEX = Dex;
+	type Swap = MockSwap<AccountId32, Balance, CurrencyId>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;

@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::type_complexity)]
-use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, TransactionPayment};
+use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, Swap, SwapLimit, TransactionPayment};
 use codec::Encode;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use nutsfinance_stable_asset::{
@@ -209,6 +209,27 @@ impl<
 
 	fn apply_multiplier_to_fee(_fee: Balance, _multiplier: Option<Multiplier>) -> Balance {
 		Default::default()
+	}
+}
+
+pub struct MockSwap<AccountId, Balance, CurrencyId>(PhantomData<(AccountId, Balance, CurrencyId)>);
+
+impl<AccountId, Balance, CurrencyId> Swap<AccountId, Balance, CurrencyId> for MockSwap<AccountId, Balance, CurrencyId> {
+	fn get_swap_amount(
+		_supply_currency_id: CurrencyId,
+		_target_currency_id: CurrencyId,
+		_limit: SwapLimit<Balance>,
+	) -> Option<(Balance, Balance)> {
+		None
+	}
+
+	fn swap(
+		_who: &AccountId,
+		_supply_currency_id: CurrencyId,
+		_target_currency_id: CurrencyId,
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		unimplemented!()
 	}
 }
 

@@ -34,9 +34,9 @@ use module_cdp_engine::CollateralCurrencyIds;
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
-	mocks::MockStableAsset, AddressMapping as AddressMappingT, AuctionManager, DEXIncentives, DispatchableTask,
-	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, PoolId, PriceProvider, Rate,
-	SpecificJointsSwap,
+	mocks::{MockStableAsset, MockSwap},
+	AddressMapping as AddressMappingT, AuctionManager, DEXIncentives, DispatchableTask, EmergencyShutdown,
+	ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, PoolId, PriceProvider, Rate, SpecificJointsSwap,
 };
 use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 pub use primitives::{
@@ -272,6 +272,7 @@ impl module_transaction_payment::Config for Test {
 	type TransactionByteFee = ConstU128<10>;
 	type FeeMultiplierUpdate = ();
 	type DEX = DexModule;
+	type Swap = MockSwap<AccountId, Balance, CurrencyId>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Test>;
