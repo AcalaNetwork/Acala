@@ -53,7 +53,7 @@ runtime_benchmarks! {
 		feed_price(vec![(STAKING, Price::saturating_from_integer(120))])?;
 
 		// create collateral auction
-		AuctionManager::new_collateral_auction(&funder, STAKING, dollar(STAKING), 100 * dollar(STABLECOIN))?;
+		AuctionManager::new_collateral_auction(&funder, STAKING, dollar(STAKING), 100 * dollar(STABLECOIN), 0, 0)?;
 		let auction_id: AuctionId = Default::default();
 
 		// bid collateral auction

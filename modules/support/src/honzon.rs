@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::FullCodec;
-use primitives::Position;
+use primitives::{Balance, CurrencyId, Position};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -62,6 +62,32 @@ impl<AccountId, CurrencyId, Balance: Default, DebitBalance> RiskManager<AccountI
 	}
 }
 
+pub trait OnLiquidationSuccess<AccountId> {
+	fn on_liquidate_success(
+		who: &AccountId,
+		currency_id: CurrencyId,
+		collateral_amount: Balance,
+		actual_collateral_amount: Balance,
+		stable_base_amount: Balance,
+		stable_penalty_amount: Balance,
+		actual_stable_amount: Balance,
+	) -> DispatchResult;
+}
+
+impl<AccountId> OnLiquidationSuccess<AccountId> for () {
+	fn on_liquidate_success(
+		_who: &AccountId,
+		_currency_id: CurrencyId,
+		_collateral_amount: Balance,
+		_actual_collateral_amount: Balance,
+		_stable_base_amount: Balance,
+		_stable_penalty_amount: Balance,
+		_actual_stable_amount: Balance,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
 pub trait AuctionManager<AccountId> {
 	type CurrencyId;
 	type Balance;
@@ -71,7 +97,8 @@ pub trait AuctionManager<AccountId> {
 		refund_recipient: &AccountId,
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
-		target: Self::Balance,
+		base: Self::Balance,
+		penalty: Self::Balance,
 	) -> DispatchResult;
 	fn cancel_auction(id: Self::AuctionId) -> DispatchResult;
 	fn get_total_collateral_in_auction(id: Self::CurrencyId) -> Self::Balance;
@@ -132,7 +159,8 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 	fn create_collateral_auctions(
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
-		target: Self::Balance,
+		base: Self::Balance,
+		penalty: Self::Balance,
 		refund_receiver: AccountId,
 		splited: bool,
 	) -> sp_std::result::Result<u32, DispatchError>;

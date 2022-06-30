@@ -178,7 +178,7 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 thread_local! {
-	pub static AUCTION: RefCell<Option<(AccountId, CurrencyId, Balance, Balance)>> = RefCell::new(None);
+	pub static AUCTION: RefCell<Option<(AccountId, CurrencyId, Balance, Balance, Balance)>> = RefCell::new(None);
 }
 
 pub struct MockAuctionManager;
@@ -199,9 +199,10 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		refund_recipient: &AccountId,
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
-		target: Self::Balance,
+		base: Self::Balance,
+		penalty: Self::Balance,
 	) -> DispatchResult {
-		AUCTION.with(|v| *v.borrow_mut() = Some((refund_recipient.clone(), currency_id, amount, target)));
+		AUCTION.with(|v| *v.borrow_mut() = Some((refund_recipient.clone(), currency_id, amount, base, penalty)));
 		Ok(())
 	}
 
@@ -211,7 +212,9 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 
 	fn get_total_target_in_auction() -> Self::Balance {
-		Self::auction().map(|auction| auction.3).unwrap_or_default()
+		Self::auction()
+			.map(|auction| auction.3.saturating_add(action.4))
+			.unwrap_or_default()
 	}
 
 	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {

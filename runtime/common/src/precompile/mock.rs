@@ -446,6 +446,7 @@ impl module_cdp_engine::Config for Test {
 	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Test>;
 	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
 	type OnFeeDeposit = Fees;
+	type OnLiquidationSuccess = OnLiquidationSuccessHandler<Runtime>;
 	type WeightInfo = ();
 }
 
@@ -459,7 +460,8 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		_refund_recipient: &AccountId,
 		_currency_id: Self::CurrencyId,
 		_amount: Self::Balance,
-		_target: Self::Balance,
+		_base: Self::Balance,
+		_penalty: Self::Balance,
 	) -> DispatchResult {
 		Ok(())
 	}

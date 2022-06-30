@@ -208,14 +208,16 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			#[pallet::compact] amount: Balance,
-			#[pallet::compact] target: Balance,
+			#[pallet::compact] base: Balance,
+			#[pallet::compact] penalty: Balance,
 			splited: bool,
 		) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			let created_auctions = <Self as CDPTreasuryExtended<T::AccountId>>::create_collateral_auctions(
 				currency_id,
 				amount,
-				target,
+				base,
+				penalty,
 				Self::account_id(),
 				splited,
 			)?;
@@ -459,7 +461,8 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 	fn create_collateral_auctions(
 		currency_id: CurrencyId,
 		amount: Balance,
-		target: Balance,
+		base: Balance,
+		penalty: Balance,
 		refund_receiver: T::AccountId,
 		splited: bool,
 	) -> Result<u32, DispatchError> {
@@ -469,7 +472,8 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 		);
 
 		let mut unhandled_collateral_amount = amount;
-		let mut unhandled_target = target;
+		let mut unhandled_base = base;
+		let mut unhandled_penalty = penalty;
 		let expected_collateral_auction_size = Self::expected_collateral_auction_size(currency_id);
 		let max_auctions_count: Balance = T::MaxAuctionsCount::get().into();
 		let lots_count = if !splited
@@ -492,27 +496,30 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			sp_std::cmp::min(count, max_auctions_count)
 		};
 		let average_amount_per_lot = amount.checked_div(lots_count).expect("lots count is at least 1; qed");
-		let average_target_per_lot = target.checked_div(lots_count).expect("lots count is at least 1; qed");
+		let average_base_per_lot = base.checked_div(lots_count).expect("lots count is at least 1; qed");
+		let average_penalty_per_lot = penalty.checked_div(lots_count).expect("lots count is at least 1; qed");
 		let mut created_lots: Balance = Zero::zero();
 
 		while !unhandled_collateral_amount.is_zero() {
 			created_lots = created_lots.saturating_add(One::one());
-			let (lot_collateral_amount, lot_target) = if created_lots == lots_count {
+			let (lot_collateral_amount, lot_base, lot_penalty) = if created_lots == lots_count {
 				// the last lot may be have some remnant than average
-				(unhandled_collateral_amount, unhandled_target)
+				(unhandled_collateral_amount, unhandled_base, unhandled_penalty)
 			} else {
-				(average_amount_per_lot, average_target_per_lot)
+				(average_amount_per_lot, average_base_per_lot, average_penalty_per_lot)
 			};
 
 			T::AuctionManagerHandler::new_collateral_auction(
 				&refund_receiver,
 				currency_id,
 				lot_collateral_amount,
-				lot_target,
+				lot_base,
+				lot_penalty,
 			)?;
 
 			unhandled_collateral_amount = unhandled_collateral_amount.saturating_sub(lot_collateral_amount);
-			unhandled_target = unhandled_target.saturating_sub(lot_target);
+			unhandled_base = unhandled_base.saturating_sub(lot_base);
+			unhandled_penalty = unhandled_penalty.saturating_sub(lot_penalty);
 		}
 		let created_auctions: u32 = created_lots.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		Ok(created_auctions)

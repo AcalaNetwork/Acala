@@ -53,7 +53,10 @@ use sp_runtime::{
 	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, PriceProvider, Rate, SwapLimit};
+use support::{
+	AuctionManager, CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, OnLiquidationSuccess, PriceProvider, Rate,
+	SwapLimit,
+};
 
 mod mock;
 mod tests;
@@ -82,26 +85,33 @@ pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 	/// Current collateral amount for sale
 	#[codec(compact)]
 	amount: Balance,
-	/// Target sales amount of this auction
+	/// Base sales amount of this auction
 	/// if zero, collateral auction will never be reverse stage,
 	/// otherwise, target amount is the actual payment amount of active
 	/// bidder
 	#[codec(compact)]
-	target: Balance,
+	base: Balance,
+	/// Penalty amount as part of the auction.
+	#[codec(compact)]
+	penalty: Balance,
 	/// Auction start time
 	start_time: BlockNumber,
 }
 
 impl<AccountId, BlockNumber> CollateralAuctionItem<AccountId, BlockNumber> {
+	fn target(&self) -> Balance {
+		self.base.saturating_add(self.penalty)
+	}
+
 	/// Return the collateral auction will never be reverse stage
 	fn always_forward(&self) -> bool {
-		self.target.is_zero()
+		self.target().is_zero()
 	}
 
 	/// Return whether the collateral auction is in reverse stage at
 	/// specific bid price
 	fn in_reverse_stage(&self, bid_price: Balance) -> bool {
-		!self.always_forward() && bid_price >= self.target
+		!self.always_forward() && bid_price >= self.target()
 	}
 
 	/// Return the actual number of stablecoins to be paid
@@ -109,7 +119,7 @@ impl<AccountId, BlockNumber> CollateralAuctionItem<AccountId, BlockNumber> {
 		if self.always_forward() {
 			bid_price
 		} else {
-			sp_std::cmp::min(self.target, bid_price)
+			sp_std::cmp::min(self.target(), bid_price)
 		}
 	}
 
@@ -117,7 +127,7 @@ impl<AccountId, BlockNumber> CollateralAuctionItem<AccountId, BlockNumber> {
 	/// price
 	fn collateral_amount(&self, last_bid_price: Balance, new_bid_price: Balance) -> Balance {
 		if self.in_reverse_stage(new_bid_price) && new_bid_price > last_bid_price {
-			Rate::checked_from_rational(sp_std::cmp::max(last_bid_price, self.target), new_bid_price)
+			Rate::checked_from_rational(sp_std::cmp::max(last_bid_price, self.target()), new_bid_price)
 				.and_then(|n| n.checked_mul_int(self.amount))
 				.unwrap_or(self.amount)
 		} else {
@@ -159,6 +169,9 @@ pub mod module {
 
 		/// CDP treasury to escrow assets related to auction
 		type CDPTreasury: CDPTreasuryExtended<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
+
+		/// Callback when collateral auction was completed.
+		type OnLiquidationSuccess: OnLiquidationSuccess<Self::AccountId>;
 
 		/// The price source of currencies
 		type PriceSource: PriceProvider<CurrencyId>;
@@ -438,10 +451,9 @@ impl<T: Config> Pallet<T> {
 		let confiscate_collateral_amount = if collateral_auction.always_forward() {
 			collateral_auction.amount
 		} else {
-			sp_std::cmp::min(
-				settle_price.saturating_mul_int(collateral_auction.target),
-				collateral_auction.amount,
-			)
+			settle_price
+				.saturating_mul_int(collateral_auction.target())
+				.min(collateral_auction.amount)
 		};
 		let refund_collateral_amount = collateral_auction.amount.saturating_sub(confiscate_collateral_amount);
 
@@ -468,7 +480,7 @@ impl<T: Config> Pallet<T> {
 		TotalCollateralInAuction::<T>::mutate(collateral_auction.currency_id, |balance| {
 			*balance = balance.saturating_sub(collateral_auction.amount)
 		});
-		TotalTargetInAuction::<T>::mutate(|balance| *balance = balance.saturating_sub(collateral_auction.target));
+		TotalTargetInAuction::<T>::mutate(|balance| *balance = balance.saturating_sub(collateral_auction.target()));
 
 		Ok(())
 	}
@@ -539,7 +551,7 @@ impl<T: Config> Pallet<T> {
 					Self::check_minimum_increment(
 						new_bid_price,
 						last_bid_price,
-						collateral_auction.target,
+						collateral_auction.target(),
 						Self::get_minimum_increment_size(now, collateral_auction.start_time),
 					),
 					Error::<T>::InvalidBidPrice
@@ -603,26 +615,29 @@ impl<T: Config> Pallet<T> {
 			(None, Zero::zero())
 		};
 
+		// If a stable target is defined, then use that target. Otherwise use the last bid price as supply.
 		let swap_limit = if collateral_auction.always_forward() {
 			SwapLimit::ExactSupply(collateral_auction.amount, bid_price)
 		} else {
-			SwapLimit::ExactTarget(collateral_auction.amount, collateral_auction.target)
+			SwapLimit::ExactTarget(collateral_auction.amount, collateral_auction.target())
 		};
 
 		// if DEX give a price no less than the last_bidder for swap target
 		if let Ok((actual_supply_amount, actual_target_amount)) =
 			T::CDPTreasury::swap_collateral_to_stable(collateral_auction.currency_id, swap_limit, true)
 		{
-			Self::try_refund_collateral(
-				collateral_auction.currency_id,
-				&collateral_auction.refund_recipient,
-				collateral_auction.amount.saturating_sub(actual_supply_amount),
-			);
+			// Since liquidation is done through DEX, return the bid.
 			Self::try_refund_bid(&collateral_auction, last_bid);
 
-			// Note: for StableAsset, the swap of cdp treasury is always on `ExactSupply`
-			// regardless of this swap_limit params. There will be excess stablecoins that
-			// need to be returned to the refund_recipient from cdp treasury account.
+			Self::deposit_event(Event::DEXTakeCollateralAuction {
+				auction_id,
+				collateral_type: collateral_auction.currency_id,
+				collateral_amount: collateral_auction.amount,
+				supply_collateral_amount: actual_supply_amount,
+				target_stable_amount: actual_target_amount,
+			});
+
+			// Return excess stable currency.
 			if let SwapLimit::ExactTarget(_, target_limit) = swap_limit {
 				if actual_target_amount > target_limit {
 					let _ = T::CDPTreasury::withdraw_surplus(
@@ -632,18 +647,36 @@ impl<T: Config> Pallet<T> {
 				}
 			}
 
-			Self::deposit_event(Event::DEXTakeCollateralAuction {
-				auction_id,
-				collateral_type: collateral_auction.currency_id,
-				collateral_amount: collateral_auction.amount,
-				supply_collateral_amount: actual_supply_amount,
-				target_stable_amount: actual_target_amount,
-			});
-		} else if last_bidder.is_some() && bid_price >= collateral_auction.target {
+			// Since excess stable has already been returned to the user, `actual_stable_amount` should be
+			// capped at `collateral_auction.target()` to ensure stable currency is not returned again.
+			let actual_stable_amount = sp_std::cmp::min(actual_target_amount, collateral_auction.target());
+
+			let res = T::OnLiquidationSuccess::on_liquidate_success(
+				&collateral_auction.refund_recipient,
+				collateral_auction.currency_id,
+				collateral_auction.amount,
+				actual_supply_amount,
+				collateral_auction.base,
+				collateral_auction.penalty,
+				actual_stable_amount,
+			);
+			if res.is_err() {
+				log::warn!(
+					target: "auction-manager",
+					"collateral_auction_end_handler: failed to call on_liquidation_success. \
+					Auction ID: {}, Auction: {:?}",
+					auction_id, collateral_auction,
+				);
+				debug_assert!(false);
+			}
+		} else if last_bidder.is_some() && bid_price >= collateral_auction.target() {
 			// if these's bid which is gte target, auction should dealt by the last bidder.
 			let winner = last_bidder.expect("ensured last bidder not empty; qed");
 
+			// Award the collateral to the winner of the auction.
 			Self::try_refund_collateral(collateral_auction.currency_id, &winner, collateral_auction.amount);
+
+			// The actual stable currency obtained by this auction.
 			let payment_amount = collateral_auction.payment_amount(bid_price);
 
 			Self::deposit_event(Event::CollateralAuctionDealt {
@@ -653,15 +686,36 @@ impl<T: Config> Pallet<T> {
 				winner,
 				payment_amount,
 			});
+
+			// An successful auction result is "as is".
+			// Does not return any collateral nor stable currency to the bid winner.
+			let res = T::OnLiquidationSuccess::on_liquidate_success(
+				&collateral_auction.refund_recipient,
+				collateral_auction.currency_id,
+				collateral_auction.amount,
+				collateral_auction.amount,
+				collateral_auction.base,
+				collateral_auction.penalty,
+				collateral_auction.target(),
+			);
+			if res.is_err() {
+				log::warn!(
+					target: "auction-manager",
+					"collateral_auction_end_handler: failed to call on_liquidation_success. \
+					Auction ID: {}, Auction: {:?}",
+					auction_id, collateral_auction,
+				);
+				debug_assert!(false);
+			}
 		} else {
-			// abort this collateral auction, these collateral can be reprocessed by cdp treausry.
+			// abort this collateral auction, these collateral can be reprocessed by cdp treasury.
 			Self::try_refund_bid(&collateral_auction, last_bid);
 
 			Self::deposit_event(Event::CollateralAuctionAborted {
 				auction_id,
 				collateral_type: collateral_auction.currency_id,
 				collateral_amount: collateral_auction.amount,
-				target_stable_amount: collateral_auction.target,
+				target_stable_amount: collateral_auction.target(),
 				refund_recipient: collateral_auction.refund_recipient.clone(),
 			});
 		}
@@ -673,7 +727,7 @@ impl<T: Config> Pallet<T> {
 		TotalCollateralInAuction::<T>::mutate(collateral_auction.currency_id, |balance| {
 			*balance = balance.saturating_sub(collateral_auction.amount)
 		});
-		TotalTargetInAuction::<T>::mutate(|balance| *balance = balance.saturating_sub(collateral_auction.target));
+		TotalTargetInAuction::<T>::mutate(|balance| *balance = balance.saturating_sub(collateral_auction.target()));
 	}
 
 	// Refund stable to the last_bidder.
@@ -777,18 +831,19 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 		refund_recipient: &T::AccountId,
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
-		target: Self::Balance,
+		base: Self::Balance,
+		penalty: Self::Balance,
 	) -> DispatchResult {
 		ensure!(!amount.is_zero(), Error::<T>::InvalidAmount);
 		TotalCollateralInAuction::<T>::try_mutate(currency_id, |total| -> DispatchResult {
 			*total = total.checked_add(amount).ok_or(Error::<T>::InvalidAmount)?;
 			Ok(())
 		})?;
-
-		if !target.is_zero() {
+		let total_target = base.saturating_add(penalty);
+		if !total_target.is_zero() {
 			// no-op if target is zero
 			TotalTargetInAuction::<T>::try_mutate(|total| -> DispatchResult {
-				*total = total.checked_add(target).ok_or(Error::<T>::InvalidAmount)?;
+				*total = total.checked_add(total_target).ok_or(Error::<T>::InvalidAmount)?;
 				Ok(())
 			})?;
 		}
@@ -805,7 +860,8 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 				currency_id,
 				initial_amount: amount,
 				amount,
-				target,
+				base,
+				penalty,
 				start_time,
 			},
 		);
@@ -827,7 +883,7 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 			auction_id,
 			collateral_type: currency_id,
 			collateral_amount: amount,
-			target_bid_price: target,
+			target_bid_price: total_target,
 		});
 		Ok(())
 	}

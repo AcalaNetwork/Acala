@@ -212,6 +212,7 @@ impl Config for Runtime {
 	type AuctionDurationSoftCap = ConstU64<2000>;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
+	type OnLiquidationSuccess = ();
 	type PriceSource = MockPriceSource;
 	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type EmergencyShutdown = MockEmergencyShutdown;

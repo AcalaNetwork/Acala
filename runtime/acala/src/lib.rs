@@ -51,7 +51,7 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
-use module_cdp_engine::CollateralCurrencyIds;
+use module_cdp_engine::{CollateralCurrencyIds, OnLiquidationSuccessHandler};
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
@@ -962,6 +962,7 @@ impl module_auction_manager::Config for Runtime {
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
+	type OnLiquidationSuccess = OnLiquidationSuccessHandler<Runtime>;
 	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
@@ -1070,6 +1071,7 @@ impl module_cdp_engine::Config for Runtime {
 	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = AcalaSwap;
 	type OnFeeDeposit = Fees;
+	type OnLiquidationSuccess = OnLiquidationSuccessHandler<Runtime>;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 

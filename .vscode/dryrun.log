@@ -1,0 +1,5 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory `/Users/royyang/Desktop/Acala'
+cargo run --features with-mandala-runtime -- --dev -lruntime=debug --instant-sealing
+make: Leaving directory `/Users/royyang/Desktop/Acala'
+ 

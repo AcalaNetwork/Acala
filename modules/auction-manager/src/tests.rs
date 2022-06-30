@@ -48,7 +48,7 @@ fn get_auction_time_to_close_work() {
 #[test]
 fn collateral_auction_methods() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 0));
 		assert_eq!(
 			AuctionModule::auctions(0),
 			Some(orml_traits::AuctionInfo {
@@ -68,7 +68,7 @@ fn collateral_auction_methods() {
 		assert_eq!(collateral_auction_with_positive_target.collateral_amount(80, 100), 10);
 		assert_eq!(collateral_auction_with_positive_target.collateral_amount(100, 200), 5);
 
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 0));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 0, 0));
 		let collateral_auction_with_zero_target = AuctionManagerModule::collateral_auctions(1).unwrap();
 		assert!(collateral_auction_with_zero_target.always_forward());
 		assert!(!collateral_auction_with_zero_target.in_reverse_stage(0));
@@ -85,11 +85,11 @@ fn new_collateral_auction_work() {
 		System::set_block_number(1);
 		let ref_count_0 = System::consumers(&ALICE);
 		assert_noop!(
-			AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 0, 100),
+			AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 0, 100, 0),
 			Error::<Runtime>::InvalidAmount,
 		);
 
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 0, 0));
 		System::assert_last_event(Event::AuctionManagerModule(crate::Event::NewCollateralAuction {
 			auction_id: 0,
 			collateral_type: BTC,
@@ -103,7 +103,13 @@ fn new_collateral_auction_work() {
 		assert_eq!(System::consumers(&ALICE), ref_count_0 + 1);
 
 		assert_noop!(
-			AuctionManagerModule::new_collateral_auction(&ALICE, BTC, Balance::max_value(), Balance::max_value()),
+			AuctionManagerModule::new_collateral_auction(
+				&ALICE,
+				BTC,
+				Balance::max_value(),
+				Balance::max_value(),
+				Balance::max_value()
+			),
 			Error::<Runtime>::InvalidAmount,
 		);
 	});
@@ -118,7 +124,7 @@ fn collateral_auction_bid_handler_work() {
 		);
 
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&ALICE, BTC, 10));
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 0));
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
 
@@ -163,7 +169,7 @@ fn collateral_auction_bid_handler_work() {
 #[test]
 fn bid_when_soft_cap_for_collateral_auction_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 0));
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end_change,
 			Change::NewValue(Some(101))
@@ -195,6 +201,7 @@ fn always_forward_collateral_auction_without_bid_taked_by_dex() {
 			&CDPTreasuryModule::account_id(),
 			BTC,
 			100,
+			0,
 			0
 		));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
@@ -230,6 +237,7 @@ fn always_forward_collateral_auction_without_bid_aborted() {
 			&CDPTreasuryModule::account_id(),
 			BTC,
 			100,
+			0,
 			0
 		));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
@@ -263,6 +271,7 @@ fn always_forward_collateral_auction_dealt() {
 			&CDPTreasuryModule::account_id(),
 			BTC,
 			100,
+			0,
 			0
 		));
 		assert!(AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 200), None).is_ok());
@@ -311,7 +320,8 @@ fn always_forward_collateral_auction_with_bid_taked_by_dex() {
 			&CDPTreasuryModule::account_id(),
 			BTC,
 			100,
-			0
+			0,
+			0,
 		));
 		assert!(AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 500), None).is_ok());
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
@@ -360,7 +370,7 @@ fn reverse_collateral_auction_with_bid_taked_by_dex() {
 			false
 		));
 
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200, 0));
 		assert!(AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 200), None).is_ok());
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 100);
@@ -397,7 +407,7 @@ fn reverse_collateral_auction_with_bid_dealt() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 100));
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200, 0));
 		assert!(AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 250), None).is_ok());
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 80);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 80);
@@ -443,7 +453,7 @@ fn collateral_auction_with_bid_aborted() {
 			false
 		));
 
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200, 0));
 		assert!(AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 180), None).is_ok());
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 100);
@@ -506,7 +516,7 @@ fn swap_bidders_works() {
 fn cancel_collateral_auction_failed() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 10));
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 0));
 		MockPriceSource::set_relative_price(None);
 		assert_noop!(
 			AuctionManagerModule::cancel_collateral_auction(0, AuctionManagerModule::collateral_auctions(0).unwrap()),
@@ -532,7 +542,7 @@ fn cancel_collateral_auction_work() {
 		System::set_block_number(1);
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 10));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 10);
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 0));
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 10);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 100);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
@@ -580,7 +590,7 @@ fn offchain_worker_cancels_auction_in_shutdown() {
 
 	ext.execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 0));
 		assert!(AuctionManagerModule::collateral_auctions(0).is_some());
 		run_to_block_offchain(2);
 		// offchain worker does not have any tx because shutdown is false
@@ -616,8 +626,8 @@ fn offchain_worker_max_iterations_check() {
 		System::set_block_number(1);
 		// sets max iterations value to 1
 		offchain.local_storage_set(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS, &1u32.encode());
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&BOB, BTC, 10, 100));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 0));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&BOB, BTC, 10, 100, 0));
 		assert!(AuctionManagerModule::collateral_auctions(1).is_some());
 		assert!(AuctionManagerModule::collateral_auctions(0).is_some());
 		mock_shutdown();
@@ -668,7 +678,7 @@ fn offchain_default_max_iterator_works() {
 
 		for i in 0..1001 {
 			let account_id: AccountId = i;
-			assert_ok!(AuctionManagerModule::new_collateral_auction(&account_id, BTC, 1, 10));
+			assert_ok!(AuctionManagerModule::new_collateral_auction(&account_id, BTC, 1, 10, 0));
 		}
 
 		mock_shutdown();

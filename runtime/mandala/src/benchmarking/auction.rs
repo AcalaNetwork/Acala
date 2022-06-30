@@ -55,7 +55,7 @@ runtime_benchmarks! {
 		set_balance(STAKING, &funder, collateral_amount);
 		set_balance(STABLECOIN, &bidder, bid_price);
 		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, STAKING, collateral_amount)?;
-		AuctionManager::new_collateral_auction(&funder, STAKING, collateral_amount, target_amount)?;
+		AuctionManager::new_collateral_auction(&funder, STAKING, collateral_amount, target_amount, 0, 0)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
 	// `bid` a collateral auction, worst cases:
@@ -74,7 +74,7 @@ runtime_benchmarks! {
 		set_balance(STABLECOIN, &bidder, bid_price);
 		set_balance(STABLECOIN, &previous_bidder, previous_bid_price);
 		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, STAKING, collateral_amount)?;
-		AuctionManager::new_collateral_auction(&funder, STAKING, collateral_amount, target_amount)?;
+		AuctionManager::new_collateral_auction(&funder, STAKING, collateral_amount, target_amount, 0, 0)?;
 		Auction::bid(RawOrigin::Signed(previous_bidder).into(), auction_id, previous_bid_price)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
@@ -91,7 +91,7 @@ runtime_benchmarks! {
 		for auction_id in 0 .. c {
 			set_balance(STAKING, &funder, collateral_amount);
 			<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, STAKING, collateral_amount)?;
-			AuctionManager::new_collateral_auction(&funder, STAKING, collateral_amount, target_amount)?;
+			AuctionManager::new_collateral_auction(&funder, STAKING, collateral_amount, target_amount, 0, 0)?;
 			set_balance(STABLECOIN, &bidder, bid_price);
 			Auction::bid(RawOrigin::Signed(bidder.clone()).into(), auction_id, bid_price)?;
 		}

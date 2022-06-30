@@ -59,8 +59,8 @@ use sp_runtime::{
 use sp_std::{marker::PhantomData, prelude::*};
 use support::{
 	AddressMapping, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, InvokeContext,
-	LiquidateCollateral, LiquidationEvmBridge as LiquidationEvmBridgeT, OnFeeDeposit, Price, PriceProvider, Rate,
-	Ratio, RiskManager, Swap, SwapLimit,
+	LiquidateCollateral, LiquidationEvmBridge as LiquidationEvmBridgeT, OnFeeDeposit, OnLiquidationSuccess, Price,
+	PriceProvider, Rate, Ratio, RiskManager, Swap, SwapLimit,
 };
 
 mod mock;
@@ -208,6 +208,9 @@ pub mod module {
 
 		type EvmAddressMapping: AddressMapping<Self::AccountId>;
 
+		// Handler for post-processing after a successful liquidation.
+		type OnLiquidationSuccess: OnLiquidationSuccess<Self::AccountId>;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -307,6 +310,16 @@ pub mod module {
 		LiquidationContractRegistered { address: EvmAddress },
 		/// A new liquidation contract is deregistered.
 		LiquidationContractDeregistered { address: EvmAddress },
+		// Liquidation has completed and fees paid out to the appropriate targets.
+		LiquidationCompleted {
+			collateral_type: CurrencyId,
+			owner: T::AccountId,
+			target_collateral: Balance,
+			actual_collateral: Balance,
+			target_stable: Balance,
+			actual_stable_penalty: Balance,
+			actual_stable_returned: Balance,
+		},
 	}
 
 	/// Mapping from collateral type to its exchange rate of debit units and
@@ -1205,23 +1218,24 @@ impl<T: Config> Pallet<T> {
 		// confiscate all collateral and debit of unsafe cdp to cdp treasury
 		<LoansOf<T>>::confiscate_collateral_and_debit(&who, currency_id, collateral, debit)?;
 
-		let bad_debt_value = Self::get_debit_value(currency_id, debit);
+		// Base amount of bad debt in stable currency
+		let stable_base_amount = Self::get_debit_value(currency_id, debit);
+		// Liquidation's penalty rate
 		let liquidation_penalty = Self::get_liquidation_penalty(currency_id)?;
-		let target_stable_amount = liquidation_penalty.saturating_mul_acc_int(bad_debt_value);
-
-		let debt_penalty = liquidation_penalty.saturating_mul_int(bad_debt_value);
-		let stable_currency_id = T::GetStableCurrencyId::get();
-
-		// Deposit penalty to OnFeeDeposit and add the debt to the treasury.
-		T::OnFeeDeposit::on_fee_deposit(IncomeSource::HonzonLiquidationFee, stable_currency_id, debt_penalty)?;
-		<T as Config>::CDPTreasury::on_system_debit(debt_penalty)?;
+		// Amount of penalty in Stable Currency
+		let stable_penalty_amount = liquidation_penalty.saturating_mul_int(stable_base_amount);
+		// Total liquidation target = base + penalty
+		let total_liquidation_target = stable_base_amount.saturating_add(stable_penalty_amount);
 
 		match currency_id {
+			// If collateral is DexPool, withdraw the liquidities to liquidate.
 			CurrencyId::DexShare(dex_share_0, dex_share_1) => {
+				let stable_currency_id = T::GetStableCurrencyId::get();
+
 				let token_0: CurrencyId = dex_share_0.into();
 				let token_1: CurrencyId = dex_share_1.into();
 
-				// remove liquidity first
+				// Withdraw all collateral's liquidity
 				let (amount_0, amount_1) =
 					<T as Config>::CDPTreasury::remove_liquidity_for_lp_collateral(currency_id, collateral)?;
 
@@ -1233,29 +1247,52 @@ impl<T: Config> Pallet<T> {
 						(amount_1, token_0, amount_0)
 					};
 
-					// these's stable refund
-					if existing_stable > target_stable_amount {
-						<T as Config>::CDPTreasury::withdraw_collateral(
+					if existing_stable >= total_liquidation_target {
+						// Enough stable currencies are withdrawn from liquidity pool.
+						// Conclude the liquidation process and return any excess stable and all collaterals.
+						T::OnLiquidationSuccess::on_liquidate_success(
 							&who,
-							stable_currency_id,
-							existing_stable
-								.checked_sub(target_stable_amount)
-								.expect("ensured existing stable amount greater than target; qed"),
+							currency_id,
+							0,
+							handle_amount,
+							stable_base_amount,
+							stable_penalty_amount,
+							existing_stable,
 						)?;
+						return Ok(T::WeightInfo::liquidate_by_dex());
 					}
 
-					let remain_target = target_stable_amount.saturating_sub(existing_stable);
-					Self::handle_liquidated_collateral(&who, need_handle_currency, handle_amount, remain_target)?;
+					// Liquidate remaining debits via withdrawn collaterals.
+					let remain_target = total_liquidation_target.saturating_sub(existing_stable);
+					let penalty_remain = remain_target.saturating_sub(stable_penalty_amount);
+					let base_remain = remain_target.saturating_sub(penalty_remain);
+					Self::handle_liquidated_collateral(
+						&who,
+						need_handle_currency,
+						handle_amount,
+						base_remain,
+						penalty_remain,
+					)?;
 				} else {
-					// token_0 and token_1 each take half target_stable
-					let target_0 = target_stable_amount / 2;
-					let target_1 = target_stable_amount.saturating_sub(target_0);
-					Self::handle_liquidated_collateral(&who, token_0, amount_0, target_0)?;
-					Self::handle_liquidated_collateral(&who, token_1, amount_1, target_1)?;
+					// token_0 and token_1 each take half of the debt.
+					let target_0_base = stable_base_amount / 2;
+					let target_1_base = stable_base_amount.saturating_sub(target_0_base);
+					let target_0_penalty = stable_penalty_amount / 2;
+					let target_1_penalty = stable_base_amount - target_0_penalty;
+
+					Self::handle_liquidated_collateral(&who, token_0, amount_0, target_0_base, target_0_penalty)?;
+					Self::handle_liquidated_collateral(&who, token_1, amount_1, target_1_base, target_1_penalty)?;
 				}
 			}
+			// All other currencies, liquidate per usual.
 			_ => {
-				Self::handle_liquidated_collateral(&who, currency_id, collateral, target_stable_amount)?;
+				Self::handle_liquidated_collateral(
+					&who,
+					currency_id,
+					collateral,
+					stable_base_amount,
+					stable_penalty_amount,
+				)?;
 			}
 		}
 
@@ -1263,8 +1300,8 @@ impl<T: Config> Pallet<T> {
 			collateral_type: currency_id,
 			owner: who,
 			collateral_amount: collateral,
-			bad_debt_value,
-			target_amount: target_stable_amount,
+			bad_debt_value: stable_base_amount,
+			target_amount: total_liquidation_target,
 		});
 		Ok(T::WeightInfo::liquidate_by_dex())
 	}
@@ -1273,16 +1310,23 @@ impl<T: Config> Pallet<T> {
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		amount: Balance,
-		target_stable_amount: Balance,
+		stable_base_amount: Balance,
+		stable_penalty_amount: Balance,
 	) -> DispatchResult {
-		if target_stable_amount.is_zero() {
-			// refund collateral to CDP owner
-			if !amount.is_zero() {
-				<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, amount)?;
-			}
-			return Ok(());
+		// All debts are paid for. Return all remaining collateral back to the user.
+		if stable_base_amount.is_zero() && stable_penalty_amount.is_zero() {
+			T::OnLiquidationSuccess::on_liquidate_success(
+				who,
+				currency_id,
+				0,
+				amount,
+				stable_base_amount,
+				stable_penalty_amount,
+				0,
+			)
+		} else {
+			LiquidateByPriority::<T>::liquidate(who, currency_id, amount, stable_base_amount, stable_penalty_amount)
 		}
-		LiquidateByPriority::<T>::liquidate(who, currency_id, amount, target_stable_amount)
 	}
 
 	pub fn get_collateral_currency_ids() -> Vec<CurrencyId> {
@@ -1299,6 +1343,68 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
+pub struct OnLiquidationSuccessHandler<T>(PhantomData<T>);
+
+impl<T: Config> OnLiquidationSuccess<T::AccountId> for OnLiquidationSuccessHandler<T> {
+	/// IMPORTANT: This function should be called on successful liquidation. Assumes the following:
+	/// * The collaterals and debits are already confiscated into the treasury.
+	/// * Stable coin has also already been paid out to the treasury as the liquidation process.
+	///
+	/// The following will be done:
+	/// * Return any remaining collateral to the user, if the liquidation did not consume all
+	///   collaterals.
+	/// * If `actual_stable_amount` is > `stable_base_amount`, try to send up to
+	///   `stable_penalty_amount` to OnFeeDeposit
+	/// * If `actual_stable_amount` is > `stable_base_amount` + `stable_penalty_amount`, return the
+	///   remaining to the user.
+	fn on_liquidate_success(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		collateral_amount: Balance,
+		actual_collateral_amount: Balance,
+		stable_base_amount: Balance,
+		stable_penalty_amount: Balance,
+		actual_stable_amount: Balance,
+	) -> DispatchResult {
+		// refund remain collateral to the owner
+		let refund_collateral_amount = collateral_amount.saturating_sub(actual_collateral_amount);
+		if !refund_collateral_amount.is_zero() {
+			<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
+		}
+
+		let mut stable_remaining = actual_stable_amount.saturating_sub(stable_base_amount);
+		let actual_penalty_amount =
+			stable_remaining.saturating_sub(stable_remaining.saturating_sub(stable_penalty_amount));
+
+		// Withdraw the penalty amount as debit and Send them to OnFeeDeposit.
+		if !actual_penalty_amount.is_zero() {
+			<T as Config>::CDPTreasury::on_system_debit(actual_penalty_amount)?;
+			T::OnFeeDeposit::on_fee_deposit(
+				IncomeSource::HonzonLiquidationFee,
+				T::GetStableCurrencyId::get(),
+				actual_penalty_amount,
+			)?;
+			stable_remaining = stable_remaining.saturating_sub(actual_penalty_amount);
+		}
+
+		// If there are still any stable coin remain, return them to the user.
+		if !stable_remaining.is_zero() {
+			<T as Config>::CDPTreasury::withdraw_surplus(who, stable_remaining)?;
+		}
+		Pallet::<T>::deposit_event(Event::LiquidationCompleted {
+			collateral_type: currency_id,
+			owner: who.clone(),
+			target_collateral: collateral_amount,
+			actual_collateral: actual_collateral_amount,
+			target_stable: refund_collateral_amount,
+			actual_stable_penalty: actual_penalty_amount,
+			actual_stable_returned: stable_remaining,
+		});
+
+		Ok(())
+	}
+}
+
 type LiquidateByPriority<T> = (LiquidateViaDex<T>, LiquidateViaContracts<T>, LiquidateViaAuction<T>);
 
 pub struct LiquidateViaDex<T>(PhantomData<T>);
@@ -1307,8 +1413,10 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaDex<T> {
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		amount: Balance,
-		target_stable_amount: Balance,
+		target_base_amount: Balance,
+		target_penalty_amount: Balance,
 	) -> DispatchResult {
+		let target_total_amount = target_base_amount.saturating_add(target_penalty_amount);
 		// calculate the supply limit by slippage limit for the price of oracle,
 		let max_supply_limit = Ratio::one()
 			.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
@@ -1317,35 +1425,26 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaDex<T> {
 			.saturating_mul_int(
 				T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
 					.expect("the oracle price should be available because liquidation are triggered by it.")
-					.saturating_mul_int(target_stable_amount),
+					.saturating_mul_int(target_total_amount),
 			);
 		let collateral_supply = amount.min(max_supply_limit);
 
 		let (actual_supply_collateral, actual_target_amount) = <T as Config>::CDPTreasury::swap_collateral_to_stable(
 			currency_id,
-			SwapLimit::ExactTarget(collateral_supply, target_stable_amount),
+			SwapLimit::ExactTarget(collateral_supply, target_total_amount),
 			false,
 		)?;
 
-		let refund_collateral_amount = amount
-			.checked_sub(actual_supply_collateral)
-			.expect("swap success means collateral >= actual_supply_collateral; qed");
-		// refund remain collateral to CDP owner
-		if !refund_collateral_amount.is_zero() {
-			<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
-		}
-
-		// Note: for StableAsset, the swap of cdp treasury is always on `ExactSupply`
-		// regardless of this swap_limit params. There will be excess stablecoins that
-		// need to be returned to the `who` from cdp treasury account.
-		if actual_target_amount > target_stable_amount {
-			<T as Config>::CDPTreasury::withdraw_surplus(
-				who,
-				actual_target_amount.saturating_sub(target_stable_amount),
-			)?;
-		}
-
-		Ok(())
+		// Conclude the liquidation process and refund any excess collateral and stable.
+		T::OnLiquidationSuccess::on_liquidate_success(
+			who,
+			currency_id,
+			amount,
+			actual_supply_collateral,
+			target_base_amount,
+			target_penalty_amount,
+			actual_target_amount,
+		)
 	}
 }
 
@@ -1355,8 +1454,11 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		amount: Balance,
-		target_stable_amount: Balance,
+		target_base_amount: Balance,
+		target_penalty_amount: Balance,
 	) -> DispatchResult {
+		let target_total_amount = target_base_amount.saturating_add(target_penalty_amount);
+
 		let liquidation_contracts = Pallet::<T>::liquidation_contracts();
 		let liquidation_contracts_len = liquidation_contracts.len();
 		if liquidation_contracts_len.is_zero() {
@@ -1370,7 +1472,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 			.saturating_mul_int(
 				T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
 					.expect("the oracle price should be available because liquidation are triggered by it.")
-					.saturating_mul_int(target_stable_amount),
+					.saturating_mul_int(target_total_amount),
 			);
 		let collateral_supply = amount.min(max_supply_limit);
 
@@ -1406,14 +1508,14 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 				collateral,
 				repay_dest,
 				collateral_supply,
-				target_stable_amount,
+				target_total_amount,
 			)
 			.is_ok()
 			{
 				let repayment = CurrencyOf::<T>::free_balance(stable_coin, &repay_dest_account_id)
 					.saturating_sub(repay_dest_balance);
 				let contract_account_id = T::EvmAddressMapping::get_account_id(&contract);
-				if repayment >= target_stable_amount {
+				if repayment >= target_total_amount {
 					// sufficient repayment, transfer collateral to contract and notify
 					if let Err(e) = <T as Config>::CDPTreasury::withdraw_collateral(
 						&contract_account_id,
@@ -1436,18 +1538,21 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 							origin: contract,
 						},
 						collateral,
-						target_stable_amount,
+						target_total_amount,
 					);
-					// refund rest collateral to CDP owner
-					let refund_collateral_amount = amount
-						.checked_sub(collateral_supply)
-						.expect("Ensured collateral supply <= amount; qed");
-					if !refund_collateral_amount.is_zero() {
-						<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
-					}
-					return Ok(());
+
+					// Liquidation succeeded. Refund any excess collateral and return.
+					return T::OnLiquidationSuccess::on_liquidate_success(
+						who,
+						currency_id,
+						amount,
+						collateral_supply,
+						target_base_amount,
+						target_penalty_amount,
+						repayment,
+					);
 				} else if repayment > 0 {
-					// insufficient repayment, refund
+					// Insufficient repayment, disregard the attempt and refund the payment.
 					CurrencyOf::<T>::transfer(stable_coin, &repay_dest_account_id, &contract_account_id, repayment)?;
 					// notify liquidation failed
 					T::LiquidationEvmBridge::on_repayment_refund(
@@ -1473,12 +1578,14 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaAuction<T> {
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		amount: Balance,
-		target_stable_amount: Balance,
+		target_base_amount: Balance,
+		target_penalty_amount: Balance,
 	) -> DispatchResult {
 		<T as Config>::CDPTreasury::create_collateral_auctions(
 			currency_id,
 			amount,
-			target_stable_amount,
+			target_base_amount,
+			target_penalty_amount,
 			who.clone(),
 			true,
 		)

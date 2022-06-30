@@ -170,7 +170,8 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		_refund_recipient: &AccountId,
 		_currency_id: Self::CurrencyId,
 		amount: Self::Balance,
-		_target: Self::Balance,
+		_base: Self::Balance,
+		_penalty: Self::Balance,
 	) -> DispatchResult {
 		TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut() += 1);
 		TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut() += amount);

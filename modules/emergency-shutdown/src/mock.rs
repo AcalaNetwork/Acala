@@ -180,17 +180,18 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		_refund_recipient: &AccountId,
 		_currency_id: Self::CurrencyId,
 		_amount: Self::Balance,
-		_target: Self::Balance,
+		_base: Self::Balance,
+		_penalty: Self::Balance,
 	) -> DispatchResult {
-		unimplemented!()
+		Ok(())
 	}
 
 	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
-		unimplemented!()
+		Ok(())
 	}
 
 	fn get_total_target_in_auction() -> Self::Balance {
-		unimplemented!()
+		Default::default()
 	}
 
 	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
