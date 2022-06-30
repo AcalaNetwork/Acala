@@ -123,6 +123,7 @@ fn karura_statemine_transfer_works() {
 			TEN - (asset - FEE_WEIGHT),
 			kusama_runtime::Balances::free_balance(&child_2000)
 		);
+		assert_eq!(33_333_334, kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	Statemine::execute_with(|| {
@@ -136,7 +137,7 @@ fn karura_statemine_transfer_works() {
 			UNIT + FEE_WEIGHT - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(996_017_797_902, Balances::free_balance(&para_2000));
+		assert_eq!(996_017_792_418, Balances::free_balance(&para_2000));
 	});
 }
 
