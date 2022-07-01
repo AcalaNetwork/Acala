@@ -20,13 +20,20 @@ use sp_runtime::DispatchResult;
 use sp_std::vec::Vec;
 
 pub trait XcmHelper<AccountId, Balance> {
-	fn mint_xcm_fail(chain_id: u32, account_id: AccountId, pool_id: u32, mint_amount: Balance) -> DispatchResult;
+	fn mint_xcm_fail(
+		chain_id: u32,
+		account_id: AccountId,
+		pool_id: u32,
+		mint_amount: Balance,
+		asset_key: Vec<u8>,
+	) -> DispatchResult;
 	fn redeem_proportion_xcm(
 		chain_id: u32,
 		account_id: AccountId,
 		pool_id: u32,
 		amount: Balance,
 		min_redeem_amounts: Vec<Balance>,
+		asset_key: Vec<u8>,
 	) -> DispatchResult;
 	fn redeem_single_xcm(
 		chain_id: u32,
@@ -36,5 +43,6 @@ pub trait XcmHelper<AccountId, Balance> {
 		i: u32,
 		min_redeem_amount: Balance,
 		asset_length: u32,
+		asset_key: Vec<u8>,
 	) -> DispatchResult;
 }

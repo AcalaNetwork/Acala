@@ -89,7 +89,7 @@ pub use sp_runtime::BuildStorage;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 use module_support::ExchangeRateProvider;
-use nutsfinance_stable_asset::{ParachainId, StableAssetXcmPoolId};
+use nutsfinance_stable_asset::{ParachainId, StableAssetPoolId, StableAssetXcmPoolId};
 use primitives::currency::AssetIds;
 pub use primitives::{
 	define_combined_task,
@@ -1594,9 +1594,10 @@ impl nutsfinance_stable_asset::traits::XcmInterface for StableAssetXcmInterface 
 		_account_id: Self::AccountId,
 		_remote_pool_id: StableAssetXcmPoolId,
 		_chain_id: ParachainId,
+		_local_pool_id: StableAssetPoolId,
 		_mint_amount: Self::Balance,
 	) -> DispatchResult {
-		Ok(().into())
+		Ok(())
 	}
 }
 
@@ -1617,6 +1618,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 	type XcmInterface = StableAssetXcmInterface;
+	type XcmOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 construct_runtime!(

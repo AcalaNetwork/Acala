@@ -161,6 +161,20 @@ pub trait CallBuilder {
 	/// - weight: the weight limit used for XCM.
 	/// - debt: the weight limit used to process the `call`.
 	fn finalize_call_into_xcm_message(call: Self::RelayChainCall, extra_fee: Self::Balance, weight: Weight) -> Xcm<()>;
+
+	/// Wrap the final calls into the Xcm format.
+	///  params:
+	/// - call: The call to be executed
+	/// - extra_fee: Extra fee (in staking currency) used for buy the `weight` and `debt`.
+	/// - weight: the weight limit used for XCM.
+	/// - debt: the weight limit used to process the `call`.
+	fn finalize_call_into_xcmp_message(
+		call: Self::RelayChainCall,
+		extra_fee: Self::Balance,
+		weight: Weight,
+		chain_id: u32,
+		key: Vec<u8>,
+	) -> Xcm<()>;
 }
 
 /// Dispatchable tasks

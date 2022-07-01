@@ -56,6 +56,8 @@ pub mod module {
 		// Parachain fee with location info
 		ParachainFee(Box<MultiLocation>),
 		StableAssetMintFail,
+		StableAssetRedeemProportion,
+		StableAssetRedeemSingle,
 	}
 
 	#[pallet::config]
@@ -178,12 +180,15 @@ pub mod module {
 			account_id: T::AccountId,
 			pool_id: u32,
 			mint_amount: Balance,
+			asset_key: Vec<u8>,
 		) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::StableAssetMintFail);
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
+			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcmp_message(
 				T::RelayChainCallBuilder::mint_xcm_fail(pool_id, account_id.clone(), mint_amount),
 				xcm_fee,
 				xcm_dest_weight,
+				chain_id,
+				asset_key,
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(
 				Here,
@@ -206,9 +211,11 @@ pub mod module {
 			pool_id: u32,
 			amount: Balance,
 			min_redeem_amounts: Vec<Balance>,
+			asset_key: Vec<u8>,
 		) -> DispatchResult {
-			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::StableAssetMintFail);
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
+			let (xcm_dest_weight, xcm_fee) =
+				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::StableAssetRedeemProportion);
+			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcmp_message(
 				T::RelayChainCallBuilder::redeem_proportion_xcm(
 					account_id.clone(),
 					pool_id,
@@ -217,6 +224,8 @@ pub mod module {
 				),
 				xcm_fee,
 				xcm_dest_weight,
+				chain_id,
+				asset_key,
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(
 				Here,
@@ -241,9 +250,11 @@ pub mod module {
 			i: u32,
 			min_redeem_amount: Balance,
 			asset_length: u32,
+			asset_key: Vec<u8>,
 		) -> DispatchResult {
-			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::StableAssetMintFail);
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
+			let (xcm_dest_weight, xcm_fee) =
+				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::StableAssetRedeemSingle);
+			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcmp_message(
 				T::RelayChainCallBuilder::redeem_single_xcm(
 					account_id.clone(),
 					pool_id,
@@ -254,6 +265,8 @@ pub mod module {
 				),
 				xcm_fee,
 				xcm_dest_weight,
+				chain_id,
+				asset_key,
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(
 				Here,

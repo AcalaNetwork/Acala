@@ -27,6 +27,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
+use nutsfinance_stable_asset::{ParachainId, StableAssetXcmPoolId};
 use orml_tokens::ConvertBalance;
 pub use orml_traits::{parameter_type_with_key, MultiCurrency};
 use primitives::{Amount, TokenSymbol, TradingPair};
@@ -152,28 +153,6 @@ impl ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 			_ => balance,
 		}
 	}
-
-	fn xcm_mint(
-		_who: &Self::AccountId,
-		_target_pool_id: StableAssetPoolId,
-		_amounts: Vec<Self::Balance>,
-		_min_mint_amount: Self::Balance,
-		_source_pool_id: StableAssetPoolId,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn xcm_redeem_single(
-		_who: &Self::AccountId,
-		_pool_id: StableAssetPoolId,
-		_amount: Self::Balance,
-		_i: PoolTokenIndex,
-		_min_redeem_amount: Self::Balance,
-		_asset_length: u32,
-		_source_pool_id: StableAssetPoolId,
-	) -> DispatchResult {
-		unimplemented!()
-	}
 }
 
 match_types! {
@@ -193,6 +172,22 @@ parameter_types! {
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 }
 
+pub struct StableAssetMintXcmInterface;
+impl nutsfinance_stable_asset::traits::XcmInterface for StableAssetMintXcmInterface {
+	type Balance = Balance;
+	type AccountId = AccountId;
+
+	fn send_mint_call_to_xcm(
+		_account_id: Self::AccountId,
+		_remote_pool_id: StableAssetXcmPoolId,
+		_chain_id: ParachainId,
+		_local_pool_id: StableAssetPoolId,
+		_mint_amount: Self::Balance,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+}
+
 impl nutsfinance_stable_asset::Config for Runtime {
 	type Event = Event;
 	type AssetId = CurrencyId;
@@ -208,6 +203,9 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<Admin, AccountId>;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
+	type ChainId = ConstU32<100>;
+	type XcmInterface = StableAssetMintXcmInterface;
+	type XcmOrigin = EnsureSignedBy<Admin, AccountId>;
 }
 
 parameter_types! {

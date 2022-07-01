@@ -38,6 +38,7 @@ use module_support::{
 	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, PoolId, PriceProvider, Rate,
 	SpecificJointsSwap,
 };
+use nutsfinance_stable_asset::{ParachainId, StableAssetPoolId, StableAssetXcmPoolId};
 use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 pub use primitives::{
 	define_combined_task,
@@ -522,44 +523,15 @@ pub struct StableAssetXcmInterface;
 impl nutsfinance_stable_asset::traits::XcmInterface for StableAssetXcmInterface {
 	type Balance = Balance;
 	type AccountId = AccountId;
+
 	fn send_mint_call_to_xcm(
 		_account_id: Self::AccountId,
-		_pool_id: u32,
-		_amounts: Vec<Self::Balance>,
-		_min_mint_amount: Self::Balance,
-		_source_pool_id: u32,
+		_remote_pool_id: StableAssetXcmPoolId,
+		_chain_id: ParachainId,
+		_local_pool_id: StableAssetPoolId,
+		_mint_amount: Self::Balance,
 	) -> DispatchResult {
-		Ok(().into())
-	}
-
-	fn send_mint_result_to_xcm(
-		_account_id: Self::AccountId,
-		_source_pool_id: u32,
-		_mint_amount: Option<Self::Balance>,
-		_amounts: Vec<Self::Balance>,
-	) -> DispatchResult {
-		Ok(().into())
-	}
-
-	fn send_redeem_single_call_to_xcm(
-		_account_id: Self::AccountId,
-		_target_pool_id: u32,
-		_amount: Self::Balance,
-		_i: u32,
-		_min_redeem_amount: Self::Balance,
-		_asset_length: u32,
-		_source_pool_id: u32,
-	) -> DispatchResult {
-		Ok(().into())
-	}
-
-	fn send_redeem_single_result_to_xcm(
-		_account_id: Self::AccountId,
-		_source_pool_id: u32,
-		_redeem_amount: Option<Self::Balance>,
-		_burn_amount: Self::Balance,
-	) -> DispatchResult {
-		Ok(().into())
+		Ok(())
 	}
 }
 
@@ -579,6 +551,8 @@ impl nutsfinance_stable_asset::Config for Test {
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 	type XcmInterface = StableAssetXcmInterface;
+	type ChainId = ConstU32<500>;
+	type XcmOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 }
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;

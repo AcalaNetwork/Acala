@@ -1079,7 +1079,17 @@ where
 	C: Convert<MultiLocation, Option<CurrencyId>>,
 {
 	fn calculate_rate(multi_location: MultiLocation) -> Option<Ratio> {
-		C::convert(multi_location).and_then(TokenExchangeRate::<T>::get)
+		let token = C::convert(multi_location);
+		match token {
+			Some(x) => {
+				if x == T::NativeCurrencyId::get() {
+					Some(Ratio::one())
+				} else {
+					TokenExchangeRate::<T>::get(x)
+				}
+			}
+			None => None,
+		}
 	}
 }
 

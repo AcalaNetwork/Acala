@@ -217,4 +217,41 @@ where
 			},
 		])
 	}
+
+	fn finalize_call_into_xcmp_message(
+		call: Self::RelayChainCall,
+		extra_fee: Self::Balance,
+		weight: Weight,
+		chain_id: u32,
+		key: Vec<u8>,
+	) -> Xcm<()> {
+		let asset = MultiAsset {
+			id: Concrete(MultiLocation::new(
+				1,
+				Junctions::X2(Parachain(chain_id), GeneralKey(key)),
+			)),
+			fun: Fungibility::Fungible(extra_fee),
+		};
+		Xcm(vec![
+			WithdrawAsset(asset.clone().into()),
+			BuyExecution {
+				fees: asset,
+				weight_limit: Unlimited,
+			},
+			Transact {
+				origin_type: OriginKind::SovereignAccount,
+				require_weight_at_most: weight,
+				call: call.encode().into(),
+			},
+			RefundSurplus,
+			DepositAsset {
+				assets: All.into(),
+				max_assets: u32::max_value(),
+				beneficiary: MultiLocation {
+					parents: 0,
+					interior: X1(Parachain(ParachainId::get().into())),
+				},
+			},
+		])
+	}
 }

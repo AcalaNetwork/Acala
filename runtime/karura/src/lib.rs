@@ -50,7 +50,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_support::pallet_prelude::InvalidTransaction;
-use frame_system::{EnsureRoot, RawOrigin};
+use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::BasicCurrencyAdapter;
@@ -73,7 +73,7 @@ pub use frame_support::{
 	log, parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency,
-		EnsureOrigin, EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType,
+		EnsureOneOf, EnsureOrigin, EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType,
 		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
 		U128CurrencyToVote,
 	},
@@ -1629,18 +1629,20 @@ impl nutsfinance_stable_asset::traits::XcmInterface for StableAssetXcmInterface 
 		account_id: Self::AccountId,
 		remote_pool_id: StableAssetXcmPoolId,
 		chain_id: ParachainId,
+		local_pool_id: StableAssetPoolId,
 		mint_amount: Self::Balance,
 	) -> frame_support::dispatch::DispatchResult {
 		let raw_origin = RawOrigin::Root;
 		let origin: Origin = raw_origin.into();
 		let call = Call::StableAssetXcm(nutsfinance_stable_asset_xcm::Call::mint {
 			account_id,
-			pool_id: remote_pool_id,
+			local_pool_id: remote_pool_id,
 			chain_id,
+			remote_pool_id: local_pool_id,
 			amount: mint_amount,
 		});
-		call.dispatch(origin.clone()).map_err(|x| x.error)?;
-		Ok(().into())
+		call.dispatch(origin).map_err(|x| x.error)?;
+		Ok(())
 	}
 }
 
@@ -1664,11 +1666,24 @@ impl nutsfinance_stable_asset_xcm::traits::XcmInterface for StableAssetMintXcmIn
 				pool_id,
 				mint_amount,
 			});
-			call.dispatch(origin.clone()).map_err(|x| x.error)?;
+			call.dispatch(origin).map_err(|x| x.error)?;
 		} else {
-			module_xcm_interface::Pallet::<Runtime>::mint_xcm_fail(chain_id, account_id, pool_id, mint_amount)?;
+			let asset_key: Option<Vec<u8>> = match chain_id {
+				parachains::bifrost::ID => Some(parachains::bifrost::BNC_KEY.to_vec()),
+				_ => None,
+			};
+			match asset_key {
+				Some(key) => module_xcm_interface::Pallet::<Runtime>::mint_xcm_fail(
+					chain_id,
+					account_id,
+					pool_id,
+					mint_amount,
+					key,
+				)?,
+				_ => (),
+			};
 		}
-		Ok(().into())
+		Ok(())
 	}
 
 	fn send_redeem_proportion(
@@ -1688,17 +1703,25 @@ impl nutsfinance_stable_asset_xcm::traits::XcmInterface for StableAssetMintXcmIn
 				amount,
 				min_redeem_amounts,
 			});
-			call.dispatch(origin.clone()).map_err(|x| x.error)?;
+			call.dispatch(origin).map_err(|x| x.error)?;
 		} else {
-			module_xcm_interface::Pallet::<Runtime>::redeem_proportion_xcm(
-				chain_id,
-				account_id,
-				pool_id,
-				amount,
-				min_redeem_amounts,
-			)?;
+			let asset_key: Option<Vec<u8>> = match chain_id {
+				parachains::bifrost::ID => Some(parachains::bifrost::BNC_KEY.to_vec()),
+				_ => None,
+			};
+			match asset_key {
+				Some(key) => module_xcm_interface::Pallet::<Runtime>::redeem_proportion_xcm(
+					chain_id,
+					account_id,
+					pool_id,
+					amount,
+					min_redeem_amounts,
+					key,
+				)?,
+				_ => (),
+			};
 		}
-		Ok(().into())
+		Ok(())
 	}
 
 	fn send_redeem_single(
@@ -1722,19 +1745,27 @@ impl nutsfinance_stable_asset_xcm::traits::XcmInterface for StableAssetMintXcmIn
 				min_redeem_amount,
 				asset_length,
 			});
-			call.dispatch(origin.clone()).map_err(|x| x.error)?;
+			call.dispatch(origin).map_err(|x| x.error)?;
 		} else {
-			module_xcm_interface::Pallet::<Runtime>::redeem_single_xcm(
-				chain_id,
-				account_id,
-				pool_id,
-				amount,
-				i,
-				min_redeem_amount,
-				asset_length,
-			)?;
+			let asset_key: Option<Vec<u8>> = match chain_id {
+				parachains::bifrost::ID => Some(parachains::bifrost::BNC_KEY.to_vec()),
+				_ => None,
+			};
+			match asset_key {
+				Some(key) => module_xcm_interface::Pallet::<Runtime>::redeem_single_xcm(
+					chain_id,
+					account_id,
+					pool_id,
+					amount,
+					i,
+					min_redeem_amount,
+					asset_length,
+					key,
+				)?,
+				_ => (),
+			};
 		}
-		Ok(().into())
+		Ok(())
 	}
 }
 
@@ -1744,6 +1775,17 @@ impl nutsfinance_stable_asset_xcm::traits::ValidateAssetId<CurrencyId> for Ensur
 		matches!(currency_id, CurrencyId::StableAssetPoolToken(_))
 	}
 }
+
+pub struct XcmAccounts;
+impl SortedMembers<AccountId> for XcmAccounts {
+	fn sorted_members() -> Vec<AccountId> {
+		vec![AccountId::from([
+			115, 105, 98, 108, 209, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		])] //5Eg2fntJDju46yds4uKzu2zuQssqw7JZWohhLMj6mZZjg2pK
+	}
+}
+
+pub type EnsureRootOrXcm = EnsureOneOf<EnsureRoot<AccountId>, EnsureSignedBy<XcmAccounts, AccountId>>;
 
 impl nutsfinance_stable_asset_xcm::Config for Runtime {
 	type Event = Event;
@@ -1755,6 +1797,7 @@ impl nutsfinance_stable_asset_xcm::Config for Runtime {
 	type EnsurePoolAssetId = EnsureXcmPoolAssetId;
 	type XcmInterface = StableAssetMintXcmInterface;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type XcmOrigin = EnsureRootOrXcm;
 }
 
 impl nutsfinance_stable_asset::Config for Runtime {
@@ -1774,6 +1817,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 	type XcmInterface = StableAssetXcmInterface;
+	type XcmOrigin = EnsureRootOrXcm;
 }
 
 construct_runtime!(

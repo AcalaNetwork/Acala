@@ -57,11 +57,6 @@ impl<T: frame_system::Config> nutsfinance_stable_asset_xcm::WeightInfo for Weigh
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn update_remote_stable_asset() -> Weight {
-		(21_186_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
 	fn mint() -> Weight {
 		(21_186_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))

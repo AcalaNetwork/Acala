@@ -28,7 +28,7 @@ use frame_support::{
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use nutsfinance_stable_asset::traits::StableAsset;
 use nutsfinance_stable_asset::{
-	PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo, SwapResult,
+	PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo, StableAssetXcmPoolId, SwapResult,
 };
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol, TradingPair};
@@ -345,7 +345,7 @@ impl StableAsset for MockStableAsset {
 		_pool_id: StableAssetPoolId,
 		_amounts: Vec<Self::Balance>,
 		_min_mint_amount: Self::Balance,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<Self::Balance, DispatchError> {
 		unimplemented!()
 	}
 
@@ -542,24 +542,12 @@ impl StableAsset for MockStableAsset {
 		unimplemented!()
 	}
 
-	fn xcm_mint(
+	fn mint_xcm(
 		_who: &Self::AccountId,
-		_target_pool_id: StableAssetPoolId,
+		_local_pool_id: StableAssetPoolId,
 		_amounts: Vec<Self::Balance>,
 		_min_mint_amount: Self::Balance,
-		_source_pool_id: StableAssetPoolId,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn xcm_redeem_single(
-		_who: &Self::AccountId,
-		_pool_id: StableAssetPoolId,
-		_amount: Self::Balance,
-		_i: PoolTokenIndex,
-		_min_redeem_amount: Self::Balance,
-		_asset_length: u32,
-		_source_pool_id: StableAssetPoolId,
+		_remote_pool_id: StableAssetXcmPoolId,
 	) -> DispatchResult {
 		unimplemented!()
 	}
