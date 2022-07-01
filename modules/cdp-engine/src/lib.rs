@@ -1252,27 +1252,26 @@ impl<T: Config> Pallet<T> {
 						// Conclude the liquidation process and return any excess stable and all collaterals.
 						T::OnLiquidationSuccess::on_liquidate_success(
 							&who,
-							currency_id,
-							0,
+							need_handle_currency,
 							handle_amount,
+							0,
 							stable_base_amount,
 							stable_penalty_amount,
 							existing_stable,
 						)?;
-						return Ok(T::WeightInfo::liquidate_by_dex());
+					} else {
+						// Liquidate remaining debits via withdrawn collaterals.
+						let remain_target = total_liquidation_target.saturating_sub(existing_stable);
+						let penalty_remain = remain_target.saturating_sub(stable_penalty_amount);
+						let base_remain = remain_target.saturating_sub(penalty_remain);
+						Self::handle_liquidated_collateral(
+							&who,
+							need_handle_currency,
+							handle_amount,
+							base_remain,
+							penalty_remain,
+						)?;
 					}
-
-					// Liquidate remaining debits via withdrawn collaterals.
-					let remain_target = total_liquidation_target.saturating_sub(existing_stable);
-					let penalty_remain = remain_target.saturating_sub(stable_penalty_amount);
-					let base_remain = remain_target.saturating_sub(penalty_remain);
-					Self::handle_liquidated_collateral(
-						&who,
-						need_handle_currency,
-						handle_amount,
-						base_remain,
-						penalty_remain,
-					)?;
 				} else {
 					// token_0 and token_1 each take half of the debt.
 					let target_0_base = stable_base_amount / 2;
@@ -1361,13 +1360,13 @@ impl<T: Config> OnLiquidationSuccess<T::AccountId> for OnLiquidationSuccessHandl
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		collateral_amount: Balance,
-		actual_collateral_amount: Balance,
+		actual_collateral_consumed: Balance,
 		stable_base_amount: Balance,
 		stable_penalty_amount: Balance,
 		actual_stable_amount: Balance,
 	) -> DispatchResult {
 		// refund remain collateral to the owner
-		let refund_collateral_amount = collateral_amount.saturating_sub(actual_collateral_amount);
+		let refund_collateral_amount = collateral_amount.saturating_sub(actual_collateral_consumed);
 		if !refund_collateral_amount.is_zero() {
 			<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
 		}
@@ -1395,7 +1394,7 @@ impl<T: Config> OnLiquidationSuccess<T::AccountId> for OnLiquidationSuccessHandl
 			collateral_type: currency_id,
 			owner: who.clone(),
 			target_collateral: collateral_amount,
-			actual_collateral: actual_collateral_amount,
+			actual_collateral: actual_collateral_consumed,
 			target_stable: refund_collateral_amount,
 			actual_stable_penalty: actual_penalty_amount,
 			actual_stable_returned: stable_remaining,

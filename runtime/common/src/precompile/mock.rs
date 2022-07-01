@@ -30,7 +30,7 @@ use frame_support::{
 	PalletId, RuntimeDebug,
 };
 use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
-use module_cdp_engine::CollateralCurrencyIds;
+use module_cdp_engine::{CollateralCurrencyIds, OnLiquidationSuccessHandler};
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
@@ -446,7 +446,7 @@ impl module_cdp_engine::Config for Test {
 	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Test>;
 	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
 	type OnFeeDeposit = Fees;
-	type OnLiquidationSuccess = OnLiquidationSuccessHandler<Runtime>;
+	type OnLiquidationSuccess = OnLiquidationSuccessHandler<Test>;
 	type WeightInfo = ();
 }
 

@@ -384,13 +384,13 @@ fn create_collateral_auctions_work() {
 		assert_ok!(Currencies::deposit(BTC, &CDPTreasuryModule::account_id(), 10000));
 		assert_eq!(CDPTreasuryModule::expected_collateral_auction_size(BTC), 0);
 		assert_noop!(
-			CDPTreasuryModule::create_collateral_auctions(BTC, 10001, 1000, ALICE, true),
+			CDPTreasuryModule::create_collateral_auctions(BTC, 10001, 1000, 0, ALICE, true),
 			Error::<Runtime>::CollateralNotEnough,
 		);
 
 		// without collateral auction maximum size
 		assert_ok!(CDPTreasuryModule::create_collateral_auctions(
-			BTC, 1000, 1000, ALICE, true
+			BTC, 1000, 1000, 0, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 1);
 		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 1000);
@@ -405,7 +405,7 @@ fn create_collateral_auctions_work() {
 		// amount < collateral auction maximum size
 		// auction + 1
 		assert_ok!(CDPTreasuryModule::create_collateral_auctions(
-			BTC, 200, 1000, ALICE, true
+			BTC, 200, 1000, 0, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 2);
 		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 1200);
@@ -413,7 +413,7 @@ fn create_collateral_auctions_work() {
 		// not exceed lots count cap
 		// auction + 4
 		assert_ok!(CDPTreasuryModule::create_collateral_auctions(
-			BTC, 1000, 1000, ALICE, true
+			BTC, 1000, 1000, 0, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 6);
 		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 2200);
@@ -421,7 +421,7 @@ fn create_collateral_auctions_work() {
 		// exceed lots count cap
 		// auction + 5
 		assert_ok!(CDPTreasuryModule::create_collateral_auctions(
-			BTC, 2000, 1000, ALICE, true
+			BTC, 2000, 1000, 0, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 11);
 		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 4200);
@@ -520,11 +520,11 @@ fn auction_collateral_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 10000);
 		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 10000);
 		assert_noop!(
-			CDPTreasuryModule::auction_collateral(Origin::signed(5), BTC, 10000, 1000, false),
+			CDPTreasuryModule::auction_collateral(Origin::signed(5), BTC, 10000, 1000, 0, false),
 			BadOrigin,
 		);
 		assert_noop!(
-			CDPTreasuryModule::auction_collateral(Origin::signed(1), BTC, 10001, 1000, false),
+			CDPTreasuryModule::auction_collateral(Origin::signed(1), BTC, 10001, 1000, 0, false),
 			Error::<Runtime>::CollateralNotEnough,
 		);
 
@@ -533,6 +533,7 @@ fn auction_collateral_work() {
 			BTC,
 			1000,
 			1000,
+			0,
 			false
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 1);
@@ -541,7 +542,7 @@ fn auction_collateral_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 10000);
 		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 9000);
 		assert_noop!(
-			CDPTreasuryModule::auction_collateral(Origin::signed(1), BTC, 9001, 1000, false),
+			CDPTreasuryModule::auction_collateral(Origin::signed(1), BTC, 9001, 1000, 0, false),
 			Error::<Runtime>::CollateralNotEnough,
 		);
 	});
@@ -566,6 +567,7 @@ fn exchange_collateral_to_stable_work() {
 			BTC,
 			800,
 			1000,
+			0,
 			false
 		));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 1000);

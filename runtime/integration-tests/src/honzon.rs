@@ -329,8 +329,7 @@ fn can_liquidate_cdp_via_dex() {
 				0
 			);
 			assert!(AuctionManager::collateral_auctions(0).is_some());
-			// 250_000 debit + (20%) 50_000 penalty
-			assert_eq!(CdpTreasury::debit_pool(), 300_000 * dollar(USD_CURRENCY));
+			assert_eq!(CdpTreasury::debit_pool(), 250_000 * dollar(USD_CURRENCY));
 
 			// Prioritize liquidation by Dex
 			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
@@ -354,8 +353,7 @@ fn can_liquidate_cdp_via_dex() {
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(BOB)).collateral,
 				0
 			);
-			// 300_000 + 5000 debit + (20%) 1000 penalty
-			assert_eq!(CdpTreasury::debit_pool(), 306_000 * dollar(USD_CURRENCY));
+			assert_eq!(CdpTreasury::debit_pool(), 256_000 * dollar(USD_CURRENCY));
 			assert!(CdpTreasury::surplus_pool() >= 5_000 * dollar(USD_CURRENCY));
 		});
 }

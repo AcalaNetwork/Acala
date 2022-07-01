@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use cdp_engine::CollateralCurrencyIds;
+use cdp_engine::{CollateralCurrencyIds, OnLiquidationSuccessHandler};
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
@@ -280,6 +280,7 @@ impl cdp_engine::Config for Runtime {
 	type EvmAddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = SpecificJointsSwap<(), AlternativeSwapPathJointList>;
 	type OnFeeDeposit = Fees;
+	type OnLiquidationSuccess = OnLiquidationSuccessHandler<Runtime>;
 	type WeightInfo = ();
 }
 

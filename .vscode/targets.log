@@ -10,11 +10,12 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 make: *** No rule to make target `all'.  Stop.
 
 
-# Make data base, printed on Thu Jun 30 16:20:02 2022
+# Make data base, printed on Fri Jul  1 14:08:37 2022
 
 # Variables
 
 # automatic
+ 
 <D = $(patsubst %/,%,$(dir $<))
 # automatic
 ?F = $(notdir $?)
@@ -43,11 +44,13 @@ __CFBundleIdentifier = com.microsoft.VSCode
 # environment
 INFOPATH = /opt/homebrew/share/info:
 # environment
-VSCODE_IPC_HOOK_EXTHOST = /var/folders/y_/f8fphq615yx4g8m11yb7gngw0000gn/T/vscode-ipc-660d7b33-869c-4418-9a8c-ed857252727e.sock
+VSCODE_IPC_HOOK_EXTHOST = /var/folders/y_/f8fphq615yx4g8m11yb7gngw0000gn/T/vscode-ipc-5b5a82c7-fc06-4011-9811-8bb80bdf44d9.sock
 # environment
 VSCODE_CWD = /
 # environment
 PATH = /Users/royyang/.yarn/bin:/Users/royyang/.config/yarn/global/node_modules/.bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin:/Users/royyang/.cargo/bin
+# environment
+LaunchInstanceID = 2BE7526E-C740-4BDD-BC65-5FE8C8AF3AED
 # environment
 VSCODE_LOG_STACK = false
 # environment
@@ -55,7 +58,7 @@ ELECTRON_RUN_AS_NODE = 1
 # default
 .FEATURES := target-specific order-only second-expansion else-if archives jobserver check-symlink
 # environment
-SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.1jrzZSKrVv/Listeners
+SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.8y52PnGIeT/Listeners
 # automatic
 %F = $(notdir $%)
 # environment
@@ -138,6 +141,8 @@ MAKEFILES :=
 <F = $(notdir $<)
 # environment
 LC_ALL = C
+# environment
+SECURITYSESSIONID = 186b2
 # automatic
 ^F = $(notdir $^)
 # default
@@ -149,11 +154,12 @@ MAKELEVEL := 0
 # environment
 LANG = C
 # environment
-VSCODE_PID = 71792
+VSCODE_PID = 553
 # makefile (from `Makefile', line 169)
+ 
 GITHOOKS_SRC = $(wildcard githooks/*)
 # variable set hash-table stats:
-# Load=69/1024=7%, Rehash=0, Collisions=1/95=1%
+# Load=71/1024=7%, Rehash=0, Collisions=1/97=1%
 
 # Pattern-specific Variable Values
 
@@ -161,8 +167,8 @@ GITHOOKS_SRC = $(wildcard githooks/*)
 
 # Directories
 
-# . (device 16777234, inode 49584921): 38 files, no impossibilities.
-# githooks (device 16777234, inode 49585056): 3 files, no impossibilities.
+# . (device 16777229, inode 49584921): 38 files, no impossibilities.
+# githooks (device 16777229, inode 49585056): 3 files, no impossibilities.
 
 # 41 files, no impossibilities in 2 directories.
 
@@ -271,7 +277,6 @@ check-benchmarks:
 #  Implicit rule search has not been done.
 #  File does not exist.
 #  File has not been updated.
- 
 #  commands to execute (from `Makefile', line 91):
 	SKIP_WASM_BUILD= cargo check --features bench --package module-evm
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p mandala-runtime
@@ -358,6 +363,7 @@ build-karura-internal-release:
 	
 
 test-eth: githooks test-evm
+ 
 #  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
 #  File does not exist.
@@ -487,7 +493,6 @@ bench-evm:
 #  File does not exist.
 #  File has not been updated.
 #  commands to execute (from `Makefile', line 246):
- 
 	cargo bench -p runtime-common --features bench | cargo run --bin weight-gen -- --template ./templates/precompile-weight-template.hbs --output runtime/common/src/precompile/weights.rs
 	cargo bench -p module-evm --features bench | evm-bench/analyze_benches.js runtime/common/src/gas_to_weight_ratio.rs
 	
@@ -589,6 +594,7 @@ test-e2e:
 #  Implicit rule search has not been done.
 #  File does not exist.
 #  File has not been updated.
+ 
 #  commands to execute (from `Makefile', line 145):
 	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
 	
@@ -703,7 +709,6 @@ run-acala:
 #  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
 #  File does not exist.
- 
 #  File has not been updated.
 #  commands to execute (from `Makefile', line 15):
 	cargo run --features with-acala-runtime -- --chain=acala
@@ -757,6 +762,6 @@ check-all: check-runtimes check-benchmarks check-integration-tests
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Thu Jun 30 16:20:02 2022
+# Finished Make data base on Fri Jul  1 14:08:37 2022
 
  

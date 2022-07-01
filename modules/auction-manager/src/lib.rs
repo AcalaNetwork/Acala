@@ -626,6 +626,13 @@ impl<T: Config> Pallet<T> {
 		if let Ok((actual_supply_amount, actual_target_amount)) =
 			T::CDPTreasury::swap_collateral_to_stable(collateral_auction.currency_id, swap_limit, true)
 		{
+			// Refund excess collateral
+			Self::try_refund_collateral(
+				collateral_auction.currency_id,
+				&collateral_auction.refund_recipient,
+				collateral_auction.amount.saturating_sub(actual_supply_amount),
+			);
+
 			// Since liquidation is done through DEX, return the bid.
 			Self::try_refund_bid(&collateral_auction, last_bid);
 
@@ -647,15 +654,16 @@ impl<T: Config> Pallet<T> {
 				}
 			}
 
-			// Since excess stable has already been returned to the user, `actual_stable_amount` should be
-			// capped at `collateral_auction.target()` to ensure stable currency is not returned again.
+			// Since excess collateral and stable has already been returned to the user
+			// `actual_collateral_consumed` and `actual_stable_amount` are set appropriately to prevent double
+			// refunds.
 			let actual_stable_amount = sp_std::cmp::min(actual_target_amount, collateral_auction.target());
 
 			let res = T::OnLiquidationSuccess::on_liquidate_success(
 				&collateral_auction.refund_recipient,
 				collateral_auction.currency_id,
 				collateral_auction.amount,
-				actual_supply_amount,
+				collateral_auction.amount,
 				collateral_auction.base,
 				collateral_auction.penalty,
 				actual_stable_amount,

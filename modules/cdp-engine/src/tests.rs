@@ -869,9 +869,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 			bad_debt_value: 50,
 			target_amount: 60,
 		}));
-		// 50 debt + 10 penalty
-		assert_eq!(CDPTreasuryModule::debit_pool(), 60);
-		assert_eq!(Currencies::free_balance(AUSD, &BOB), 10);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
 
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
@@ -948,7 +946,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction_when_limited_by_slippage() {
 		}));
 
 		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 121));
-		assert_eq!(CDPTreasuryModule::debit_pool(), 60);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
@@ -1100,7 +1098,7 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_swap_dot() {
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).collateral, 0);
 		assert_eq!(Currencies::free_balance(LP_AUSD_DOT, &LoansModule::account_id()), 0);
-		assert_eq!(CDPTreasuryModule::debit_pool(), 600);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 500);
 		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 600);
 		assert_eq!(Currencies::free_balance(DOT, &CDPTreasuryModule::account_id()), 0);
 		assert_eq!(
@@ -1173,8 +1171,10 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_ausd_take_whole_target() {
 			Change::NoChange,
 		));
 
+		System::reset_events();
 		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, LP_AUSD_DOT));
-		System::assert_last_event(Event::CDPEngineModule(crate::Event::LiquidateUnsafeCDP {
+
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidateUnsafeCDP {
 			collateral_type: LP_AUSD_DOT,
 			owner: ALICE,
 			collateral_amount: 1000,
@@ -1288,14 +1288,14 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_create_dot_auction() {
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).collateral, 0);
 		assert_eq!(Currencies::free_balance(LP_AUSD_DOT, &LoansModule::account_id()), 0);
-		assert_eq!(CDPTreasuryModule::debit_pool(), 600);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 500);
 		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 500);
 		assert_eq!(Currencies::free_balance(DOT, &CDPTreasuryModule::account_id()), 25);
 		assert_eq!(
 			Currencies::free_balance(LP_AUSD_DOT, &CDPTreasuryModule::account_id()),
 			0
 		);
-		assert_eq!(MockAuctionManager::auction(), Some((ALICE, DOT, 25, 100)));
+		assert_eq!(MockAuctionManager::auction(), Some((ALICE, DOT, 25, 100, 0)));
 	});
 }
 
@@ -2007,8 +2007,7 @@ fn liquidation_fee_goes_to_on_fee_deposit() {
 		MockPriceSource::set_price(BTC, Some(Price::saturating_from_rational(1, 10)));
 		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
 
-		// Treasury Debit: 50 from confiscation and +50 from penalty
-		assert_eq!(CDPTreasuryModule::get_debit_pool(), 100);
+		assert_eq!(CDPTreasuryModule::get_debit_pool(), 50);
 
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
@@ -2020,7 +2019,6 @@ fn liquidation_fee_goes_to_on_fee_deposit() {
 			}
 		);
 		assert_eq!(Currencies::free_balance(BTC, &BOB), 1000);
-		assert_eq!(Currencies::free_balance(AUSD, &BOB), 50);
 	});
 }
 #[test]
@@ -2097,7 +2095,7 @@ fn liquidation_via_contracts_works() {
 		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
 		MockLiquidationEvmBridge::set_liquidation_result(Ok(()));
 
-		assert_ok!(LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000));
+		assert_ok!(LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000, 0));
 		let contract_account_id =
 			<evm_accounts::EvmAddressMapping<Runtime> as AddressMapping<AccountId>>::get_account_id(&address);
 		assert_eq!(Currencies::free_balance(DOT, &contract_account_id), 100);
@@ -2112,7 +2110,7 @@ fn liquidation_fails_if_no_liquidation_contracts() {
 		MockLiquidationEvmBridge::set_liquidation_result(Ok(()));
 
 		assert_noop!(
-			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000),
+			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000, 0),
 			Error::<Runtime>::LiquidationFailed
 		);
 	});
@@ -2128,7 +2126,7 @@ fn liquidation_fails_if_no_liquidation_contracts_can_liquidate() {
 		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
 
 		assert_err!(
-			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000),
+			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000, 0),
 			Error::<Runtime>::LiquidationFailed
 		);
 	});
@@ -2146,7 +2144,7 @@ fn liquidation_fails_if_insufficient_repayment() {
 		MockLiquidationEvmBridge::set_repayment(1);
 
 		assert_err!(
-			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000),
+			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000, 0),
 			Error::<Runtime>::LiquidationFailed
 		);
 	});

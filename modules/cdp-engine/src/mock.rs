@@ -183,7 +183,7 @@ thread_local! {
 
 pub struct MockAuctionManager;
 impl MockAuctionManager {
-	pub fn auction() -> Option<(AccountId, CurrencyId, Balance, Balance)> {
+	pub fn auction() -> Option<(AccountId, CurrencyId, Balance, Balance, Balance)> {
 		AUCTION.with(|v| {
 			let cloned = v.borrow().clone();
 			cloned
@@ -213,7 +213,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 
 	fn get_total_target_in_auction() -> Self::Balance {
 		Self::auction()
-			.map(|auction| auction.3.saturating_add(action.4))
+			.map(|auction| auction.3.saturating_add(auction.4))
 			.unwrap_or_default()
 	}
 
@@ -420,6 +420,7 @@ impl Config for Runtime {
 	type EvmAddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
 	type OnFeeDeposit = Fees;
+	type OnLiquidationSuccess = OnLiquidationSuccessHandler<Runtime>;
 	type WeightInfo = ();
 }
 

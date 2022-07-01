@@ -89,7 +89,7 @@ fn new_collateral_auction_work() {
 			Error::<Runtime>::InvalidAmount,
 		);
 
-		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 0, 0));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100, 0));
 		System::assert_last_event(Event::AuctionManagerModule(crate::Event::NewCollateralAuction {
 			auction_id: 0,
 			collateral_type: BTC,

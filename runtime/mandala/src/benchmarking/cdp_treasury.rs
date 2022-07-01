@@ -39,7 +39,7 @@ runtime_benchmarks! {
 		CdpTreasury::set_expected_collateral_auction_size(RawOrigin::Root.into(), STAKING, auction_size)?;
 
 		Currencies::deposit(STAKING, &CdpTreasury::account_id(), 10_000 * dollar(STAKING))?;
-	}: _(RawOrigin::Root, STAKING, 1_000 * dollar(STAKING), 1_000 * dollar(STABLECOIN), true)
+	}: _(RawOrigin::Root, STAKING, 1_000 * dollar(STAKING), 1_000 * dollar(STABLECOIN), 0, true)
 
 	exchange_collateral_to_stable {
 		let caller: AccountId = whitelisted_caller();
