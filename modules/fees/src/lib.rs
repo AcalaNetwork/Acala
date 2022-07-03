@@ -29,7 +29,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
-use primitives::{Balance, CurrencyId, IncomeSource, PoolPercent};
+use primitives::{Balance, CurrencyId, IncomeSource};
 use sp_runtime::{
 	traits::{One, Saturating, Zero},
 	FixedPointNumber, FixedU128,
@@ -40,8 +40,11 @@ use support::{DEXManager, OnFeeDeposit, SwapLimit};
 mod mock;
 mod tests;
 pub mod weights;
-use sp_runtime::traits::UniqueSaturatedInto;
 pub use weights::WeightInfo;
+
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+use sp_runtime::traits::UniqueSaturatedInto;
 
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
@@ -51,6 +54,13 @@ pub type Treasuries<T> = Vec<(
 	Balance,
 	Vec<(<T as frame_system::Config>::AccountId, u32)>,
 )>;
+
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct PoolPercent<AccountId> {
+	pub pool: AccountId,
+	pub rate: FixedU128,
+}
 
 /// helper method to create `PoolPercent` list by tuple.
 pub fn build_pool_percents<AccountId: Clone>(list: Vec<(AccountId, u32)>) -> Vec<PoolPercent<AccountId>> {

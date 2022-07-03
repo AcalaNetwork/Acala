@@ -18,9 +18,10 @@
 
 use crate::{Event, Fees, GetNativeCurrencyId, Origin, Runtime, System};
 use frame_system::RawOrigin;
+use module_fees::PoolPercent;
 use module_support::OnFeeDeposit;
 use orml_benchmarking::runtime_benchmarks;
-use primitives::{AccountId, Balance, CurrencyId, IncomeSource, PoolPercent};
+use primitives::{AccountId, Balance, CurrencyId, IncomeSource};
 use sp_runtime::{FixedPointNumber, FixedU128};
 use sp_std::prelude::*;
 

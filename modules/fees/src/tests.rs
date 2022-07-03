@@ -25,8 +25,7 @@ use crate::mock::*;
 use frame_support::traits::{ExistenceRequirement, WithdrawReasons};
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, ExtBuilder, Origin, Runtime, System};
-use primitives::{AccountId, PoolPercent};
-use support::Rate;
+use primitives::AccountId;
 
 #[test]
 fn set_income_fee_works() {
@@ -216,19 +215,6 @@ fn on_fee_deposit_works() {
 		.balances(vec![(ALICE, ACA, 10000), (ALICE, DOT, 10000)])
 		.build()
 		.execute_with(|| {
-			assert_ok!(Fees::do_set_treasury_rate(
-				IncomeSource::TxFee,
-				vec![
-					PoolPercent {
-						pool: NetworkTreasuryPool::get(),
-						rate: Rate::saturating_from_rational(8, 10)
-					},
-					PoolPercent {
-						pool: CollatorsRewardPool::get(),
-						rate: Rate::saturating_from_rational(2, 10)
-					},
-				]
-			));
 			// Native token tests
 			// FeeToTreasuryPool based on pre-configured treasury pool percentage.
 			assert_ok!(Pallet::<Runtime>::on_fee_deposit(IncomeSource::TxFee, ACA, 10000));
@@ -419,51 +405,4 @@ fn distribution_incentive_threshold_works() {
 				amount: 79 + 78,
 			}));
 		});
-}
-
-#[test]
-fn independent_pools_on_fee_deposit_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		// Register payout destination for multiple pools
-		assert_ok!(Fees::do_set_treasury_rate(
-			IncomeSource::TxFee,
-			vec![PoolPercent {
-				pool: ALICE,
-				rate: Rate::one()
-			},]
-		));
-		assert_ok!(Fees::do_set_treasury_rate(
-			IncomeSource::XcmFee,
-			vec![PoolPercent {
-				pool: BOB,
-				rate: Rate::one()
-			},]
-		));
-		assert_ok!(Fees::do_set_treasury_rate(
-			IncomeSource::HonzonStabilityFee,
-			vec![PoolPercent {
-				pool: CHARLIE,
-				rate: Rate::one()
-			},]
-		));
-
-		assert_ok!(Pallet::<Runtime>::on_fee_deposit(IncomeSource::TxFee, ACA, 1000));
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), 1000);
-		assert_eq!(Currencies::free_balance(ACA, &BOB), 0);
-		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 0);
-
-		assert_ok!(Pallet::<Runtime>::on_fee_deposit(IncomeSource::XcmFee, ACA, 1000));
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), 1000);
-		assert_eq!(Currencies::free_balance(ACA, &BOB), 1000);
-		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 0);
-
-		assert_ok!(Pallet::<Runtime>::on_fee_deposit(
-			IncomeSource::HonzonStabilityFee,
-			ACA,
-			1000
-		));
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), 1000);
-		assert_eq!(Currencies::free_balance(ACA, &BOB), 1000);
-		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 1000);
-	});
 }

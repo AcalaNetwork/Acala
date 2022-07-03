@@ -17,7 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
-use primitives::{IncomeSource, PoolPercent};
+use module_fees::PoolPercent;
+use primitives::IncomeSource;
 use sp_runtime::traits::One;
 
 fn setup_default_collateral(currency_id: CurrencyId) {
@@ -36,14 +37,6 @@ fn setup_fees_distribution() {
 	assert_ok!(Fees::set_income_fee(
 		Origin::root(),
 		IncomeSource::HonzonStabilityFee,
-		vec![PoolPercent {
-			pool: CdpTreasury::account_id(),
-			rate: Rate::one(),
-		}],
-	));
-	assert_ok!(Fees::set_income_fee(
-		Origin::root(),
-		IncomeSource::HonzonLiquidationFee,
 		vec![PoolPercent {
 			pool: CdpTreasury::account_id(),
 			rate: Rate::one(),
@@ -150,7 +143,6 @@ fn liquidate_cdp() {
 		.build()
 		.execute_with(|| {
 			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(10000, 1))]); // 10000 usd
-			setup_fees_distribution();
 
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(BOB)),
@@ -237,8 +229,7 @@ fn liquidate_cdp() {
 				0
 			);
 			assert!(AuctionManager::collateral_auctions(0).is_some());
-			// 250_000 debit + (20%) 50_000 penalty
-			assert_eq!(CdpTreasury::debit_pool(), 300_000 * dollar(USD_CURRENCY));
+			assert_eq!(CdpTreasury::debit_pool(), 250_000 * dollar(USD_CURRENCY));
 
 			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
 				AccountId::from(BOB),
@@ -263,8 +254,7 @@ fn liquidate_cdp() {
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(BOB)).collateral,
 				0
 			);
-			// 300_000 + 5000 debit + (20%) 1000 penalty
-			assert_eq!(CdpTreasury::debit_pool(), 306_000 * dollar(USD_CURRENCY));
+			assert_eq!(CdpTreasury::debit_pool(), 255_000 * dollar(USD_CURRENCY));
 			assert!(CdpTreasury::surplus_pool() >= 5_000 * dollar(USD_CURRENCY));
 		});
 }
@@ -280,7 +270,7 @@ fn test_honzon_module() {
 		.build()
 		.execute_with(|| {
 			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(1, 1))]);
-			setup_fees_distribution();
+
 			assert_ok!(CdpEngine::set_collateral_params(
 				Origin::root(),
 				RELAY_CHAIN_CURRENCY,

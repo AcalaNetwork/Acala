@@ -18,7 +18,7 @@
 
 use crate::{
 	AccountId, Address, Amount, Balance, CdpEngine, CdpTreasury, CurrencyId, DefaultDebitExchangeRate, Dex,
-	EmergencyShutdown, ExistentialDeposits, Fees, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
+	EmergencyShutdown, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
 	GetStakingCurrencyId, MinimumDebitValue, NativeTokenExistentialDeposit, Price, Rate, Ratio, Runtime, Timestamp,
 	MILLISECS_PER_BLOCK,
 };
@@ -33,7 +33,6 @@ use frame_system::RawOrigin;
 use module_support::DEXManager;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::{Change, GetByKey};
-use primitives::{IncomeSource, PoolPercent};
 use sp_runtime::{
 	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
@@ -157,15 +156,6 @@ runtime_benchmarks! {
 		let collateral_value = 2 * min_debit_value;
 		let collateral_amount = Price::saturating_from_rational(dollar(STAKING), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
-		let _ = Fees::set_income_fee(
-			RawOrigin::Root.into(),
-			IncomeSource::HonzonLiquidationFee,
-			vec![PoolPercent {
-				pool: owner.clone(),
-				rate: Rate::one(),
-			}],
-		);
-
 		// set balance
 		set_balance(STAKING, &owner, collateral_amount + ExistentialDeposits::get(&STAKING));
 
@@ -213,15 +203,6 @@ runtime_benchmarks! {
 		let collateral_value = 2 * debit_value;
 		let collateral_amount = Price::saturating_from_rational(dollar(LIQUID), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 		let collateral_price = Price::one();		// 1 USD
-
-		let _ = Fees::set_income_fee(
-			RawOrigin::Root.into(),
-			IncomeSource::HonzonLiquidationFee,
-			vec![PoolPercent {
-				pool: owner.clone(),
-				rate: Rate::one(),
-			}],
-		);
 
 		set_balance(LIQUID, &owner, (10 * collateral_amount) + ExistentialDeposits::get(&LIQUID));
 		inject_liquidity(funder.clone(), LIQUID, STAKING, 10_000 * dollar(LIQUID), 10_000 * dollar(STAKING))?;

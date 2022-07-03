@@ -1155,13 +1155,6 @@ impl<T: Config> Pallet<T> {
 		let liquidation_penalty = Self::get_liquidation_penalty(currency_id)?;
 		let target_stable_amount = liquidation_penalty.saturating_mul_acc_int(bad_debt_value);
 
-		let debt_penalty = liquidation_penalty.saturating_mul_int(bad_debt_value);
-		let stable_currency_id = T::GetStableCurrencyId::get();
-
-		// Deposit penalty to OnFeeDeposit and add the debt to the treasury.
-		T::OnFeeDeposit::on_fee_deposit(IncomeSource::HonzonLiquidationFee, stable_currency_id, debt_penalty)?;
-		<T as Config>::CDPTreasury::on_system_debit(debt_penalty)?;
-
 		match currency_id {
 			CurrencyId::DexShare(dex_share_0, dex_share_1) => {
 				let token_0: CurrencyId = dex_share_0.into();
@@ -1172,6 +1165,7 @@ impl<T: Config> Pallet<T> {
 					<T as Config>::CDPTreasury::remove_liquidity_for_lp_collateral(currency_id, collateral)?;
 
 				// if these's stable
+				let stable_currency_id = T::GetStableCurrencyId::get();
 				if token_0 == stable_currency_id || token_1 == stable_currency_id {
 					let (existing_stable, need_handle_currency, handle_amount) = if token_0 == stable_currency_id {
 						(amount_0, token_1, amount_1)

@@ -22,8 +22,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
+use module_fees::PoolPercent;
 use orml_traits::MultiCurrency;
-use primitives::PoolPercent;
 use sp_runtime::{traits::BadOrigin, FixedPointNumber};
 
 fn setup_fees_distribution() {
