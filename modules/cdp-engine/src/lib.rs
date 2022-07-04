@@ -315,8 +315,8 @@ pub mod module {
 			collateral_type: CurrencyId,
 			owner: T::AccountId,
 			target_collateral: Balance,
-			actual_collateral: Balance,
-			target_stable: Balance,
+			actual_collateral_consumed: Balance,
+			actual_stable_base: Balance,
 			actual_stable_penalty: Balance,
 			actual_stable_returned: Balance,
 		},
@@ -1371,9 +1371,12 @@ impl<T: Config> OnLiquidationSuccess<T::AccountId> for OnLiquidationSuccessHandl
 			<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
 		}
 
-		let mut stable_remaining = actual_stable_amount.saturating_sub(stable_base_amount);
+		// Prioritize calculating the Base amount.
+		let stable_minus_base = actual_stable_amount.saturating_sub(stable_base_amount);
+		let actual_base_amount = actual_stable_amount.saturating_sub(stable_minus_base);
 		let actual_penalty_amount =
-			stable_remaining.saturating_sub(stable_remaining.saturating_sub(stable_penalty_amount));
+			stable_minus_base.saturating_sub(stable_minus_base.saturating_sub(stable_penalty_amount));
+		let stable_refund_amount = stable_minus_base.saturating_sub(actual_penalty_amount);
 
 		// Withdraw the penalty amount as debit and Send them to OnFeeDeposit.
 		if !actual_penalty_amount.is_zero() {
@@ -1383,21 +1386,20 @@ impl<T: Config> OnLiquidationSuccess<T::AccountId> for OnLiquidationSuccessHandl
 				T::GetStableCurrencyId::get(),
 				actual_penalty_amount,
 			)?;
-			stable_remaining = stable_remaining.saturating_sub(actual_penalty_amount);
 		}
 
 		// If there are still any stable coin remain, return them to the user.
-		if !stable_remaining.is_zero() {
-			<T as Config>::CDPTreasury::withdraw_surplus(who, stable_remaining)?;
+		if !stable_refund_amount.is_zero() {
+			<T as Config>::CDPTreasury::withdraw_surplus(who, stable_refund_amount)?;
 		}
 		Pallet::<T>::deposit_event(Event::LiquidationCompleted {
 			collateral_type: currency_id,
 			owner: who.clone(),
 			target_collateral: collateral_amount,
-			actual_collateral: actual_collateral_consumed,
-			target_stable: refund_collateral_amount,
+			actual_collateral_consumed,
+			actual_stable_base: actual_base_amount,
 			actual_stable_penalty: actual_penalty_amount,
-			actual_stable_returned: stable_remaining,
+			actual_stable_returned: stable_refund_amount,
 		});
 
 		Ok(())

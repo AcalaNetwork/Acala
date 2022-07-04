@@ -36,6 +36,10 @@ use support::{DEXManager, SwapError};
 pub const INIT_TIMESTAMP: u64 = 30_000;
 pub const BLOCK_TIME: u64 = 1000;
 
+fn get_last_system_event() -> Event {
+	System::events()[System::event_count() as usize - 1].event.clone()
+}
+
 fn run_to_block_offchain(n: u64) {
 	while System::block_number() < n {
 		System::set_block_number(System::block_number() + 1);
@@ -2147,5 +2151,117 @@ fn liquidation_fails_if_insufficient_repayment() {
 			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000, 0),
 			Error::<Runtime>::LiquidationFailed
 		);
+	});
+}
+
+#[test]
+fn on_liquidate_success_handler_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		setup_fees_distribution();
+		assert_eq!(Currencies::free_balance(DOT, &ALICE), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
+		assert_ok!(Currencies::deposit(DOT, &CDPTreasuryModule::account_id(), 1000));
+		assert_ok!(Currencies::deposit(AUSD, &CDPTreasuryModule::account_id(), 1000));
+
+		// If no leftover collateral, return no collateral.
+		// If no excess stable, return no collateral.
+		assert_ok!(OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(
+			&ALICE, DOT, 100, 100, 50, 50, 50
+		));
+		assert_eq!(
+			get_last_system_event(),
+			Event::CDPEngineModule(crate::Event::LiquidationCompleted {
+				collateral_type: DOT,
+				owner: ALICE,
+				target_collateral: 100,
+				actual_collateral_consumed: 100,
+				actual_stable_base: 50,
+				actual_stable_penalty: 0,
+				actual_stable_returned: 0,
+			})
+		);
+		assert_ok!(OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(
+			&ALICE, DOT, 100, 120, 50, 50, 40
+		));
+		assert_ok!(OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(
+			&ALICE, DOT, 100, 200, 50, 50, 0
+		));
+		assert_eq!(
+			get_last_system_event(),
+			Event::CDPEngineModule(crate::Event::LiquidationCompleted {
+				collateral_type: DOT,
+				owner: ALICE,
+				target_collateral: 100,
+				actual_collateral_consumed: 200,
+				actual_stable_base: 0,
+				actual_stable_penalty: 0,
+				actual_stable_returned: 0,
+			})
+		);
+
+		// No balance changes
+		assert_eq!(Currencies::free_balance(DOT, &ALICE), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
+		assert_eq!(Currencies::free_balance(DOT, &CDPTreasuryModule::account_id()), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 1000);
+		assert_eq!(Currencies::free_balance(DOT, &BOB), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 0);
+		assert_eq!(CDPTreasuryModule::get_debit_pool(), 0);
+
+		// Left over collaterals are returned.
+		// Excess stable currencies are returned. Fees are paid out to OnFeeDeposit.
+		assert_ok!(OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(
+			&ALICE, DOT, 100, 50, 50, 50, 200
+		));
+		assert_eq!(
+			get_last_system_event(),
+			Event::CDPEngineModule(crate::Event::LiquidationCompleted {
+				collateral_type: DOT,
+				owner: ALICE,
+				target_collateral: 100,
+				actual_collateral_consumed: 50,
+				actual_stable_base: 50,
+				actual_stable_penalty: 50,
+				actual_stable_returned: 100,
+			})
+		);
+		// Balance changes for Treasury:
+		// Treasury -> (50 collateral + 100 stable) -> ALICE
+		// Treasury +50 Debit
+		// Treasury -> 50 stable to OnFeeDeposit -> BOB
+		assert_eq!(Currencies::free_balance(DOT, &ALICE), 1050);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 100);
+		assert_eq!(Currencies::free_balance(DOT, &CDPTreasuryModule::account_id()), 950);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 900);
+		assert_eq!(Currencies::free_balance(DOT, &BOB), 1000);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 50);
+		assert_eq!(CDPTreasuryModule::get_debit_pool(), 50);
+
+		// Prioritize stable base amount, send as much to penalty as possible.
+		assert_ok!(OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(
+			&ALICE, DOT, 100, 100, 50, 50, 80
+		));
+		assert_eq!(
+			get_last_system_event(),
+			Event::CDPEngineModule(crate::Event::LiquidationCompleted {
+				collateral_type: DOT,
+				owner: ALICE,
+				target_collateral: 100,
+				actual_collateral_consumed: 100,
+				actual_stable_base: 50,
+				actual_stable_penalty: 30,
+				actual_stable_returned: 0,
+			})
+		);
+		// Balance changes for Treasury:
+		// Treasury +30 Debit
+		// Treasury -> 30 stable to OnFeeDeposit -> BOB
+		assert_eq!(Currencies::free_balance(DOT, &ALICE), 1050);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 100);
+		assert_eq!(Currencies::free_balance(DOT, &CDPTreasuryModule::account_id()), 950);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 80);
+		assert_eq!(CDPTreasuryModule::get_debit_pool(), 80);
 	});
 }

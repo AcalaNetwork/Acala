@@ -36,7 +36,7 @@ use sp_runtime::{
 };
 use sp_std::cell::RefCell;
 pub use support::Price;
-use support::{mocks::MockStableAsset, SpecificJointsSwap};
+use support::{mocks::MockStableAsset, OnLiquidationSuccess, SpecificJointsSwap};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -212,11 +212,31 @@ impl Config for Runtime {
 	type AuctionDurationSoftCap = ConstU64<2000>;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
-	type OnLiquidationSuccess = ();
+	type OnLiquidationSuccess = MockOnLiquidationSuccessHandler;
 	type PriceSource = MockPriceSource;
 	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub static LiquidatedCount: u32 = 0;
+}
+pub struct MockOnLiquidationSuccessHandler;
+impl OnLiquidationSuccess<AccountId> for MockOnLiquidationSuccessHandler {
+	fn on_liquidate_success(
+		_who: &AccountId,
+		_currency_id: CurrencyId,
+		_collateral_amount: Balance,
+		_actual_collateral_consumed: Balance,
+		_stable_base_amount: Balance,
+		_stable_penalty_amount: Balance,
+		_actual_stable_amount: Balance,
+	) -> DispatchResult {
+		// Increment count by 1
+		LiquidatedCount::set(LiquidatedCount::get() + 1);
+		Ok(())
+	}
 }
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
@@ -228,12 +248,12 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		AuctionManagerModule: auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		AuctionModule: orml_auction::{Pallet, Storage, Call, Event<T>},
-		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
-		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+		System: frame_system,
+		AuctionManagerModule: auction_manager,
+		Tokens: orml_tokens,
+		AuctionModule: orml_auction,
+		CDPTreasuryModule: cdp_treasury,
+		DEXModule: module_dex,
 	}
 );
 

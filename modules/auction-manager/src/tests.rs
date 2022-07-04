@@ -690,3 +690,59 @@ fn offchain_default_max_iterator_works() {
 		assert_eq!(pool_state.write().transactions.len(), 1001);
 	});
 }
+
+#[test]
+fn auction_triggers_on_liquidation_success() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&ALICE, BTC, 100));
+
+		// Test ending auctions with successful bid
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 1, 1, 0));
+		assert_eq!(LiquidatedCount::get(), 0);
+		// Count incremented by 1
+		AuctionManagerModule::on_auction_ended(0, Some((BOB, 1)));
+		assert_eq!(LiquidatedCount::get(), 1);
+
+		// Test ending the auction with no bidder
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 1, 1, 0));
+		AuctionManagerModule::on_auction_ended(1, None);
+		// Count does not increment.
+		assert_eq!(LiquidatedCount::get(), 1);
+
+		// Test ending the auction with bid too low
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 2, 2, 0));
+		AuctionManagerModule::on_auction_ended(2, Some((BOB, 1)));
+		// Count does not increment.
+		assert_eq!(LiquidatedCount::get(), 1);
+
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(CAROL),
+			BTC,
+			AUSD,
+			100,
+			1000,
+			0,
+			false
+		));
+
+		// Test ending auctions with DEX and a valid bid
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 1, 1, 0));
+		// Count incremented by 1
+		AuctionManagerModule::on_auction_ended(3, Some((BOB, 1)));
+		assert_eq!(LiquidatedCount::get(), 2);
+
+		// Test ending auctions with DEX and a valid bid
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 10, 0));
+		// Count incremented by 1
+		AuctionManagerModule::on_auction_ended(4, None);
+		assert_eq!(LiquidatedCount::get(), 3);
+
+		// Cannot double-end auctions
+		AuctionManagerModule::on_auction_ended(0, Some((BOB, 1)));
+		AuctionManagerModule::on_auction_ended(0, Some((BOB, 2)));
+		AuctionManagerModule::on_auction_ended(0, Some((BOB, 3)));
+		AuctionManagerModule::on_auction_ended(0, Some((BOB, 4)));
+		assert_eq!(LiquidatedCount::get(), 3);
+	});
+}

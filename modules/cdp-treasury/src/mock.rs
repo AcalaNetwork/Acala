@@ -158,6 +158,10 @@ impl module_dex::Config for Runtime {
 thread_local! {
 	pub static TOTAL_COLLATERAL_AUCTION: RefCell<u32> = RefCell::new(0);
 	pub static TOTAL_COLLATERAL_IN_AUCTION: RefCell<Balance> = RefCell::new(0);
+	pub static TOTAL_TARGET_IN_AUCTION: RefCell<Balance> = RefCell::new(0);
+}
+parameter_types! {
+	pub static ActiveAuctions: Vec<(AccountId, CurrencyId, Balance, Balance, Balance)> = vec![];
 }
 
 pub struct MockAuctionManager;
@@ -167,14 +171,18 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	type AuctionId = AuctionId;
 
 	fn new_collateral_auction(
-		_refund_recipient: &AccountId,
-		_currency_id: Self::CurrencyId,
+		refund_recipient: &AccountId,
+		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
-		_base: Self::Balance,
-		_penalty: Self::Balance,
+		base: Self::Balance,
+		penalty: Self::Balance,
 	) -> DispatchResult {
 		TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut() += 1);
 		TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut() += amount);
+		TOTAL_TARGET_IN_AUCTION.with(|v| *v.borrow_mut() += base + penalty);
+		let mut auctions = ActiveAuctions::get();
+		auctions.push((refund_recipient.clone(), currency_id, amount, base, penalty));
+		ActiveAuctions::set(auctions);
 		Ok(())
 	}
 
@@ -187,7 +195,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 
 	fn get_total_target_in_auction() -> Self::Balance {
-		unimplemented!()
+		TOTAL_TARGET_IN_AUCTION.with(|v| *v.borrow_mut())
 	}
 }
 

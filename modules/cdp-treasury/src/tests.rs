@@ -390,11 +390,12 @@ fn create_collateral_auctions_work() {
 
 		// without collateral auction maximum size
 		assert_ok!(CDPTreasuryModule::create_collateral_auctions(
-			BTC, 1000, 1000, 0, ALICE, true
+			BTC, 1000, 1000, 500, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 1);
 		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 1000);
-
+		assert_eq!(MockAuctionManager::get_total_target_in_auction(), 1500);
+		assert_eq!(ActiveAuctions::get(), vec![(ALICE, BTC, 1000, 1000, 500)]);
 		// set collateral auction maximum size
 		assert_ok!(CDPTreasuryModule::set_expected_collateral_auction_size(
 			Origin::signed(1),
@@ -405,26 +406,62 @@ fn create_collateral_auctions_work() {
 		// amount < collateral auction maximum size
 		// auction + 1
 		assert_ok!(CDPTreasuryModule::create_collateral_auctions(
-			BTC, 200, 1000, 0, ALICE, true
+			BTC, 200, 1000, 500, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 2);
 		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 1200);
+		assert_eq!(MockAuctionManager::get_total_target_in_auction(), 3000);
+		assert_eq!(
+			ActiveAuctions::get(),
+			vec![(ALICE, BTC, 1000, 1000, 500), (ALICE, BTC, 200, 1000, 500),]
+		);
 
 		// not exceed lots count cap
 		// auction + 4
 		assert_ok!(CDPTreasuryModule::create_collateral_auctions(
-			BTC, 1000, 1000, 0, ALICE, true
+			BTC, 1003, 1000, 103, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 6);
-		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 2200);
+		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 2203);
+		assert_eq!(MockAuctionManager::get_total_target_in_auction(), 4103);
+		assert_eq!(
+			ActiveAuctions::get(),
+			vec![
+				(ALICE, BTC, 1000, 1000, 500),
+				(ALICE, BTC, 200, 1000, 500),
+				// New auction's collateral, base and penalties are split evenly into 4
+				(ALICE, BTC, 250, 250, 25),
+				(ALICE, BTC, 250, 250, 25),
+				(ALICE, BTC, 250, 250, 25),
+				(ALICE, BTC, 253, 250, 28),
+			]
+		);
 
 		// exceed lots count cap
 		// auction + 5
 		assert_ok!(CDPTreasuryModule::create_collateral_auctions(
-			BTC, 2000, 1000, 0, ALICE, true
+			BTC, 2004, 1000, 104, ALICE, true
 		));
 		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 11);
-		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 4200);
+		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 4207);
+		assert_eq!(MockAuctionManager::get_total_target_in_auction(), 5207);
+		assert_eq!(
+			ActiveAuctions::get(),
+			vec![
+				(ALICE, BTC, 1000, 1000, 500),
+				(ALICE, BTC, 200, 1000, 500),
+				(ALICE, BTC, 250, 250, 25),
+				(ALICE, BTC, 250, 250, 25),
+				(ALICE, BTC, 250, 250, 25),
+				(ALICE, BTC, 253, 250, 28),
+				// New auction's collateral, base and penalties are split evenly into the MAX of 5
+				(ALICE, BTC, 400, 200, 20),
+				(ALICE, BTC, 400, 200, 20),
+				(ALICE, BTC, 400, 200, 20),
+				(ALICE, BTC, 400, 200, 20),
+				(ALICE, BTC, 404, 200, 24),
+			]
+		);
 	});
 }
 
