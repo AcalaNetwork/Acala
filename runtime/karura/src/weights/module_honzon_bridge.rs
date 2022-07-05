@@ -47,6 +47,11 @@ use sp_std::marker::PhantomData;
 /// Weight functions for module_honzon_bridge.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_honzon_bridge::WeightInfo for WeightInfo<T> {
+	fn set_bridged_stable_coin_address() -> Weight {
+		(10_579_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	fn to_bridged() -> Weight {
 		(10_579_000 as Weight)

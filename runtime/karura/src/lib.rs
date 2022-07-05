@@ -1556,17 +1556,16 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 parameter_types! {
-	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["e20683ad1ed8bbeed7e1ae74be10f19d8045b530"]));
 	pub const StableCoinCurrencyId: CurrencyId = KUSD;
 }
 
 impl module_honzon_bridge::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
 	type Currency = Currencies;
-	type StablecoinCurrencyId = StableCoinCurrencyId;
-	type BridgedStableCoinCurrencyId = WormholeAUSDCurrencyId;
+	type StableCoinCurrencyId = StableCoinCurrencyId;
 	type PalletId = HonzonBridgePalletId;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
 }
 
 pub struct EnsurePoolAssetId;

@@ -47,6 +47,7 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for module_homa_lite.
 pub trait WeightInfo {
+	fn set_bridged_stable_coin_address() -> Weight;
 	fn to_bridged() -> Weight;
 	fn from_bridged() -> Weight;
 }
@@ -54,6 +55,9 @@ pub trait WeightInfo {
 /// Weights for module_homa_lite using the Acala node and recommended hardware.
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
+	fn set_bridged_stable_coin_address() -> Weight {
+		(8_000_000 as Weight)
+	}
 	fn to_bridged() -> Weight {
 		(8_000_000 as Weight)
 	}
@@ -64,6 +68,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
+	fn set_bridged_stable_coin_address() -> Weight {
+		(8_000_000 as Weight)
+	}
 	fn to_bridged() -> Weight {
 		(8_000_000 as Weight)
 	}

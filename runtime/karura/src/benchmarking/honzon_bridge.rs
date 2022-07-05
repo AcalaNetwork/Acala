@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, Runtime};
+use crate::{AccountId, EvmAddress, Runtime};
 
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
@@ -25,6 +25,10 @@ use sp_std::prelude::*;
 
 runtime_benchmarks! {
 	{ Runtime, module_honzon_bridge }
+	set_bridged_stable_coin_address {
+		let caller: AccountId = account("caller", 0, 0);
+	}: _(RawOrigin::Signed(caller), EvmAddress::default())
+
 	to_bridged {
 		let caller: AccountId = account("caller", 0, 0);
 	}: _(RawOrigin::Signed(caller), 0)
