@@ -26,8 +26,7 @@ use sp_std::prelude::*;
 runtime_benchmarks! {
 	{ Runtime, module_honzon_bridge }
 	set_bridged_stable_coin_address {
-		let caller: AccountId = account("caller", 0, 0);
-	}: _(RawOrigin::Signed(caller), EvmAddress::default())
+	}: _(RawOrigin::Root, EvmAddress::default())
 
 	to_bridged {
 		let caller: AccountId = account("caller", 0, 0);
