@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use crate::mock::*;
-use frame_support::assert_ok;
+use frame_support::{assert_noop, assert_ok};
 use module_support::EVMAccountsManager;
 use module_support::EVM as EVMTrait;
 
@@ -51,6 +51,12 @@ fn to_bridged_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Currencies::free_balance(ACA, &alice()), dollar(1_000_000));
 		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
+
+		assert_noop!(
+			HonzonBridge::from_bridged(Origin::signed(alice()), dollar(5_000)),
+			module_honzon_bridge::Error::<Runtime>::BridgedStableCoinCurrencyIdNotSet
+		);
+
 		deploy_contracts();
 		assert_ok!(HonzonBridge::set_bridged_stable_coin_address(
 			Origin::root(),
@@ -113,6 +119,12 @@ fn from_bridged_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Currencies::free_balance(ACA, &alice()), dollar(1_000_000));
 		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
+
+		assert_noop!(
+			HonzonBridge::from_bridged(Origin::signed(alice()), dollar(5_000)),
+			module_honzon_bridge::Error::<Runtime>::BridgedStableCoinCurrencyIdNotSet
+		);
+
 		deploy_contracts();
 		assert_ok!(HonzonBridge::set_bridged_stable_coin_address(
 			Origin::root(),

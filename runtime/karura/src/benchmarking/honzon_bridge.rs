@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, EvmAddress, Runtime};
+use crate::{AccountId, EvmAddress, HonzonBridge, Runtime};
 
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
@@ -29,10 +29,14 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, EvmAddress::default())
 
 	to_bridged {
+		HonzonBridge::set_bridged_stable_coin_address(RawOrigin::Root.into(), EvmAddress::default())?;
+
 		let caller: AccountId = account("caller", 0, 0);
 	}: _(RawOrigin::Signed(caller), 0)
 
 	from_bridged {
+		HonzonBridge::set_bridged_stable_coin_address(RawOrigin::Root.into(), EvmAddress::default())?;
+
 		let caller: AccountId = account("caller", 0, 0);
 	}: _(RawOrigin::Signed(caller), 0)
 }
