@@ -52,7 +52,7 @@ pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LP_AUSD_DOT: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
 pub const LP_DOT_BTC: CurrencyId =
-	CurrencyId::DexShare(DexShare::Token(TokenSymbol::RENBTC), DexShare::Token(TokenSymbol::DOT));
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::DOT), DexShare::Token(TokenSymbol::RENBTC));
 
 mod cdp_engine {
 	pub use super::super::*;
@@ -255,6 +255,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(ACA, BTC).unwrap(),
 		TradingPair::from_currency_ids(ACA, DOT).unwrap(),
 		TradingPair::from_currency_ids(ACA, AUSD).unwrap(),
+		TradingPair::from_currency_ids(DOT, BTC).unwrap(),
 	];
 }
 

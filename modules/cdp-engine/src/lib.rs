@@ -1262,8 +1262,25 @@ impl<T: Config> Pallet<T> {
 					} else {
 						// Liquidate remaining debits via withdrawn collaterals.
 						let remain_target = total_liquidation_target.saturating_sub(existing_stable);
-						let penalty_remain = remain_target.saturating_sub(stable_penalty_amount);
+						let penalty_remain =
+							remain_target.saturating_sub(remain_target.saturating_sub(stable_penalty_amount));
 						let base_remain = remain_target.saturating_sub(penalty_remain);
+
+						// Process partial penalty paid
+						let penalty_paid = stable_penalty_amount.saturating_sub(penalty_remain);
+						if !penalty_paid.is_zero() {
+							T::OnLiquidationSuccess::on_liquidate_success(
+								&who,
+								need_handle_currency,
+								0,
+								0,
+								0,
+								penalty_paid,
+								penalty_paid,
+							)?;
+						}
+
+						// Liquidate collateral to pay back remaining debt.
 						Self::handle_liquidated_collateral(
 							&who,
 							need_handle_currency,
@@ -1277,7 +1294,7 @@ impl<T: Config> Pallet<T> {
 					let target_0_base = stable_base_amount / 2;
 					let target_1_base = stable_base_amount.saturating_sub(target_0_base);
 					let target_0_penalty = stable_penalty_amount / 2;
-					let target_1_penalty = stable_base_amount - target_0_penalty;
+					let target_1_penalty = stable_base_amount.saturating_sub(target_0_penalty);
 
 					Self::handle_liquidated_collateral(&who, token_0, amount_0, target_0_base, target_0_penalty)?;
 					Self::handle_liquidated_collateral(&who, token_1, amount_1, target_1_base, target_1_penalty)?;

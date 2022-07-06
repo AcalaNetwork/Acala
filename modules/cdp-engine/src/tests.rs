@@ -1102,7 +1102,7 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_swap_dot() {
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(LP_AUSD_DOT, ALICE).collateral, 0);
 		assert_eq!(Currencies::free_balance(LP_AUSD_DOT, &LoansModule::account_id()), 0);
-		assert_eq!(CDPTreasuryModule::debit_pool(), 500);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 600);
 		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 600);
 		assert_eq!(Currencies::free_balance(DOT, &CDPTreasuryModule::account_id()), 0);
 		assert_eq!(
@@ -1299,7 +1299,7 @@ fn liquidate_unsafe_cdp_of_lp_ausd_dot_and_create_dot_auction() {
 			Currencies::free_balance(LP_AUSD_DOT, &CDPTreasuryModule::account_id()),
 			0
 		);
-		assert_eq!(MockAuctionManager::auction(), Some((ALICE, DOT, 25, 100, 0)));
+		assert_eq!(MockAuctionManager::auction(), Some((ALICE, DOT, 25, 0, 100)));
 	});
 }
 
@@ -2263,5 +2263,342 @@ fn on_liquidate_success_handler_works() {
 		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &BOB), 80);
 		assert_eq!(CDPTreasuryModule::get_debit_pool(), 80);
+	});
+}
+
+#[test]
+fn liquidate_by_swap_handles_fees() {
+	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
+		System::set_block_number(1);
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			BTC,
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::one())),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(10000),
+		));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(CAROL),
+			BTC,
+			AUSD,
+			1000,
+			5000,
+			0,
+			false
+		));
+
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
+
+		// Make the position unsafe
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::max_value())),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+
+		System::reset_events();
+		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidateUnsafeCDP {
+			collateral_type: BTC,
+			owner: ALICE,
+			collateral_amount: 100,
+			bad_debt_value: 50,
+			target_amount: 100,
+		}));
+
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidationCompleted {
+			collateral_type: BTC,
+			owner: ALICE,
+			target_collateral: 100,
+			actual_collateral_consumed: 21,
+			actual_stable_base: 50,
+			actual_stable_penalty: 50,
+			actual_stable_returned: 0,
+		}));
+
+		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 100);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 50);
+	});
+}
+
+#[test]
+fn liquidate_by_dex_lp_with_single_stable_currency_handles_fees() {
+	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
+		System::set_block_number(1);
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			DOT,
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(10000),
+		));
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			LP_AUSD_DOT,
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::one())),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(10000),
+		));
+
+		assert_ok!(Currencies::deposit(DOT, &ALICE, 2000));
+		assert_ok!(Currencies::deposit(AUSD, &ALICE, 10000));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			DOT,
+			AUSD,
+			1000,
+			5000,
+			0,
+			false
+		));
+		assert_eq!(Currencies::free_balance(LP_AUSD_DOT, &ALICE), 10000);
+
+		// Test the case where collateral has enough stable to pay the debt.
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, LP_AUSD_DOT, 500, 500));
+
+		// Make the position unsafe
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			LP_AUSD_DOT,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::max_value())),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+
+		System::reset_events();
+		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, LP_AUSD_DOT));
+
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidateUnsafeCDP {
+			collateral_type: LP_AUSD_DOT,
+			owner: ALICE,
+			collateral_amount: 500,
+			bad_debt_value: 50,
+			target_amount: 100,
+		}));
+
+		// There were sufficient stable currency withdrew from the LP.
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidationCompleted {
+			collateral_type: DOT,
+			owner: ALICE,
+			target_collateral: 50,
+			actual_collateral_consumed: 0,
+			actual_stable_base: 50,
+			actual_stable_penalty: 50,
+			actual_stable_returned: 150,
+		}));
+
+		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 100);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 50);
+
+		// Test the case where LP does not have enough stable, so DEX has to be used.
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			LP_AUSD_DOT,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::one())),
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::one())),
+			Change::NoChange,
+		));
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, LP_AUSD_DOT, 200, 500));
+
+		// Make the position unsafe
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			LP_AUSD_DOT,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::max_value())),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+
+		System::reset_events();
+		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, LP_AUSD_DOT));
+
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidateUnsafeCDP {
+			collateral_type: LP_AUSD_DOT,
+			owner: ALICE,
+			collateral_amount: 200,
+			bad_debt_value: 50,
+			target_amount: 100,
+		}));
+
+		// From the LP withdrawal, partial penalty is paid
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidationCompleted {
+			collateral_type: DOT,
+			owner: ALICE,
+			target_collateral: 0,
+			actual_collateral_consumed: 0,
+			actual_stable_base: 0,
+			actual_stable_penalty: 49,
+			actual_stable_returned: 0,
+		}));
+
+		// Collateral is used to exchange to pay for the remaining debt
+		System::assert_has_event(Event::DEXModule(dex::Event::Swap {
+			trader: CDPTreasuryModule::account_id(),
+			path: vec![DOT, AUSD],
+			liquidity_changes: vec![1, 1],
+		}));
+
+		// After the debit is liquidated, finalize the liquidation process.
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidationCompleted {
+			collateral_type: DOT,
+			owner: ALICE,
+			target_collateral: 19,
+			actual_collateral_consumed: 1,
+			actual_stable_base: 0,
+			actual_stable_penalty: 1,
+			actual_stable_returned: 0,
+		}));
+
+		assert_eq!(CDPTreasuryModule::debit_pool(), 200);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 200);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 100);
+	});
+}
+
+#[test]
+fn liquidate_by_dex_lp_with_no_stable_currency_handles_fees() {
+	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
+		System::set_block_number(1);
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			DOT,
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::one())),
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::one())),
+			Change::NewValue(10000),
+		));
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			BTC,
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::one())),
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::one())),
+			Change::NewValue(10000),
+		));
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			LP_DOT_BTC,
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::one())),
+			Change::NewValue(Some(Rate::one())), // Set penalty as 100%
+			Change::NewValue(Some(Ratio::one())),
+			Change::NewValue(10000),
+		));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(CAROL),
+			DOT,
+			AUSD,
+			5000,
+			5000,
+			0,
+			false
+		));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(CAROL),
+			BTC,
+			AUSD,
+			5000,
+			5000,
+			0,
+			false
+		));
+
+		assert_ok!(Currencies::deposit(DOT, &ALICE, 10000));
+		assert_ok!(Currencies::deposit(BTC, &ALICE, 10000));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			DOT,
+			BTC,
+			10000,
+			10000,
+			0,
+			false
+		));
+		assert_eq!(Currencies::free_balance(LP_DOT_BTC, &ALICE), 20000);
+
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, LP_DOT_BTC, 5000, 500));
+
+		// Make the position unsafe
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			LP_DOT_BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::max_value())),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+
+		System::reset_events();
+		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, LP_DOT_BTC));
+
+		// Swap event for token 0
+		System::assert_has_event(Event::DEXModule(dex::Event::Swap {
+			trader: CDPTreasuryModule::account_id(),
+			path: vec![DOT, AUSD],
+			liquidity_changes: vec![51, 50],
+		}));
+		// Liquidated token 0: Take on half of the debt and penalty
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidationCompleted {
+			collateral_type: DOT,
+			owner: ALICE,
+			target_collateral: 2500,
+			actual_collateral_consumed: 51,
+			actual_stable_base: 25,
+			actual_stable_penalty: 25,
+			actual_stable_returned: 0,
+		}));
+
+		// Swap event for token 1
+		System::assert_has_event(Event::DEXModule(dex::Event::Swap {
+			trader: CDPTreasuryModule::account_id(),
+			path: vec![BTC, AUSD],
+			liquidity_changes: vec![51, 50],
+		}));
+		// Liquidated token 1: Take on the rest of debt and penalty
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidationCompleted {
+			collateral_type: BTC,
+			owner: ALICE,
+			target_collateral: 2500,
+			actual_collateral_consumed: 51,
+			actual_stable_base: 25,
+			actual_stable_penalty: 25,
+			actual_stable_returned: 0,
+		}));
+
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidateUnsafeCDP {
+			collateral_type: LP_DOT_BTC,
+			owner: ALICE,
+			collateral_amount: 5000,
+			bad_debt_value: 50,
+			target_amount: 100,
+		}));
+
+		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 100);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 50);
 	});
 }
