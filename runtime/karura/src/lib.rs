@@ -127,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2080,
+	spec_version: 2082,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -210,15 +210,6 @@ impl Contains<Call> for BaseCallFilter {
 		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
 		if is_paused {
 			// no paused call
-			return false;
-		}
-
-		let is_honzon_bridge = matches!(
-			call,
-			Call::HonzonBridge(_) // HonzonBridge isn't enabled until wAUSD is created. Issue #1967
-		);
-		if is_honzon_bridge {
-			// no honzon_bridge
 			return false;
 		}
 
@@ -1567,17 +1558,16 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 parameter_types! {
-	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["0000000000000000000100000000000000000001"]));
 	pub const StableCoinCurrencyId: CurrencyId = KUSD;
 }
 
 impl module_honzon_bridge::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
 	type Currency = Currencies;
-	type StablecoinCurrencyId = StableCoinCurrencyId;
-	type BridgedStableCoinCurrencyId = WormholeAUSDCurrencyId;
+	type StableCoinCurrencyId = StableCoinCurrencyId;
 	type PalletId = HonzonBridgePalletId;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
 }
 
 pub struct EnsurePoolAssetId;
