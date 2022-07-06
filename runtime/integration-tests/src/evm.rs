@@ -1041,7 +1041,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			);
 			let erc20_fee = Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account);
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(erc20_fee, 12_013_104_258);
+			assert_eq!(erc20_fee, 12_413_541_091);
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(erc20_fee, 10_407_164_938);
 			#[cfg(feature = "with-acala-runtime")]
