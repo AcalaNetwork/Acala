@@ -85,7 +85,6 @@ runtime_benchmarks! {
 		let stable_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(STABLECOIN);
 		let pool_size: Balance = native_ed * 50;
 		let swap_threshold: Balance = native_ed * 2;
-		let fee_swap_path: Vec<CurrencyId> = vec![STABLECOIN, NATIVECOIN];
 
 		// set balance
 		set_balance(NATIVECOIN, &sub_account, NativeTokenExistentialDeposit::get());
@@ -99,7 +98,7 @@ runtime_benchmarks! {
 
 		set_balance(NATIVECOIN, &treasury_account, pool_size * 10);
 		set_balance(STABLECOIN, &treasury_account, stable_ed * 10);
-	}: _(RawOrigin::Root, STABLECOIN, fee_swap_path.clone(), pool_size, swap_threshold)
+	}: _(RawOrigin::Root, STABLECOIN, pool_size, swap_threshold)
 	verify {
 		let exchange_rate = TransactionPayment::token_exchange_rate(STABLECOIN).unwrap();
 		assert_eq!(TransactionPayment::pool_size(STABLECOIN), pool_size);
