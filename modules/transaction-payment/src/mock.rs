@@ -39,10 +39,7 @@ use sp_runtime::{
 	Perbill,
 };
 use sp_std::cell::RefCell;
-use support::{
-	mocks::{MockAddressMapping, MockSwap},
-	Price,
-};
+use support::{mocks::MockAddressMapping, Price, SpecificJointsSwap};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -247,6 +244,9 @@ parameter_types! {
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![DOT], vec![AUSD],
+	];
 }
 ord_parameter_types! {
 	pub const ListingOrigin: AccountId = ALICE;
@@ -269,7 +269,7 @@ impl Config for Runtime {
 	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
-	type Swap = MockSwap<AccountId, Balance, CurrencyId>;
+	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;

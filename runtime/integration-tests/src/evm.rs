@@ -921,7 +921,6 @@ fn transaction_payment_module_works_with_evm_contract() {
 			assert_ok!(TransactionPayment::enable_charge_fee_pool(
 				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
-				vec![CurrencyId::Erc20(erc20_address_0()), NATIVE_CURRENCY],
 				5 * dollar(NATIVE_CURRENCY),
 				Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
 			));
@@ -1023,7 +1022,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-acala-runtime")]
 			assert_eq!(fee, 2500001166);
 
-			let surplus_perc = Percent::from_percent(25);
+			let surplus_perc = Percent::from_percent(50);
 			let fee_surplus = surplus_perc.mul_ceil(fee);
 			let fee = fee + fee_surplus;
 
@@ -1044,9 +1043,9 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(erc20_fee, 12_013_104_258);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(erc20_fee, 10_344_471_145);
+			assert_eq!(erc20_fee, 10_407_164_938);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(erc20_fee, 10_344_471_145);
+			assert_eq!(erc20_fee, 10_407_164_938);
 
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
@@ -1133,14 +1132,9 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 			assert_ok!(TransactionPayment::enable_charge_fee_pool(
 				Origin::root(),
 				USD_CURRENCY,
-				vec![USD_CURRENCY, NATIVE_CURRENCY],
 				50 * dollar(NATIVE_CURRENCY),
 				Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
 			));
-			assert_eq!(
-				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::get(USD_CURRENCY).unwrap(),
-				vec![USD_CURRENCY, NATIVE_CURRENCY]
-			);
 
 			assert_ok!(deploy_contract(AccountId::from(BOB)));
 

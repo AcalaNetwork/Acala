@@ -28,11 +28,10 @@ fn fee_pool_size() -> Balance {
 	5 * dollar(NATIVE_CURRENCY)
 }
 
-fn init_charge_fee_pool(currency_id: CurrencyId, path: Vec<CurrencyId>) -> DispatchResult {
+fn init_charge_fee_pool(currency_id: CurrencyId, _path: Vec<CurrencyId>) -> DispatchResult {
 	TransactionPayment::enable_charge_fee_pool(
 		Origin::root(),
 		currency_id,
-		path,
 		fee_pool_size(),
 		Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
 	)
@@ -165,7 +164,6 @@ fn initial_charge_fee_pool_works() {
 				TransactionPayment::enable_charge_fee_pool(
 					Origin::root(),
 					LIQUID_CURRENCY,
-					vec![LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY],
 					NativeTokenExistentialDeposit::get() - 1,
 					Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY))
 				),

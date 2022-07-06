@@ -109,7 +109,6 @@ runtime_benchmarks! {
 		assert_last_event(module_transaction_payment::Event::ChargeFeePoolEnabled {
 			sub_account,
 			currency_id: STABLECOIN,
-			fee_swap_path,
 			exchange_rate,
 			pool_size,
 			swap_threshold

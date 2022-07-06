@@ -1135,6 +1135,7 @@ parameter_types! {
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
 		vec![KSM],
 		vec![LKSM],
+		vec![KUSD],
 	];
 }
 

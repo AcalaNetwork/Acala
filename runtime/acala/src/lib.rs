@@ -1130,6 +1130,7 @@ parameter_types! {
 		vec![LCDOT],
 		vec![DOT],
 		vec![LDOT],
+		vec![AUSD],
 	];
 }
 
