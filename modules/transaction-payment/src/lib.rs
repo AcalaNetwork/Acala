@@ -886,12 +886,14 @@ where
 
 			// alter native fee swap path, swap from dex: O(1)
 			if let Some(path) = AlternativeFeeSwapPath::<T>::get(who) {
-				if let Ok(_) = T::Swap::swap(
+				if T::Swap::swap(
 					who,
 					*path.get(0).expect("ensured path not empty; qed"),
 					T::NativeCurrencyId::get(),
 					SwapLimit::ExactTarget(Balance::MAX, fee_amount),
-				) {
+				)
+				.is_ok()
+				{
 					return Ok(fee_surplus);
 				}
 			}
