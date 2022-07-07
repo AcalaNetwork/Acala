@@ -23,6 +23,7 @@ use module_support::{
 	evm::{AddressMapping, LiquidationEvmBridge},
 	InvokeContext,
 };
+use orml_traits::AuctionHandler;
 use primitives::{evm::EvmAddress, IncomeSource, PoolPercent};
 use sp_runtime::traits::One;
 use std::str::FromStr;
@@ -1046,6 +1047,105 @@ fn can_liquidate_cdp_via_intended_priority() {
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
 				0
+			);
+		});
+}
+
+#[test]
+fn liquidate_via_auction_can_handle_fees() {
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), NATIVE_CURRENCY, 1000 * dollar(NATIVE_CURRENCY)),
+			(
+				AccountId::from(BOB),
+				NATIVE_CURRENCY,
+				1_000_000 * dollar(NATIVE_CURRENCY),
+			),
+			(AccountId::from(BOB), USD_CURRENCY, 1_000_000 * dollar(USD_CURRENCY)),
+		])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Fees::set_income_fee(
+				Origin::root(),
+				IncomeSource::HonzonLiquidationFee,
+				vec![PoolPercent {
+					pool: alice(),
+					rate: Rate::one(),
+				}],
+			));
+			assert_ok!(CdpEngine::set_collateral_params(
+				Origin::root(),
+				NATIVE_CURRENCY,
+				Change::NewValue(Some(Rate::zero())),
+				Change::NewValue(Some(Ratio::one())),
+				Change::NewValue(Some(Rate::one())), // Set 100% penalty
+				Change::NewValue(Some(Ratio::one())),
+				Change::NewValue(10000 * dollar(USD_CURRENCY)),
+			));
+			set_oracle_price(vec![(NATIVE_CURRENCY, Price::saturating_from_rational(10, 1))]); // 10000 usd
+			assert_ok!(CdpEngine::adjust_position(
+				&alice(),
+				NATIVE_CURRENCY,
+				100 * dollar(NATIVE_CURRENCY) as i128,
+				500 * dollar(USD_CURRENCY) as i128
+			));
+
+			// Make the loan position unsafe
+			assert_ok!(CdpEngine::set_collateral_params(
+				Origin::root(),
+				NATIVE_CURRENCY,
+				Change::NoChange,
+				Change::NewValue(Some(Ratio::saturating_from_rational(999999, 1))),
+				Change::NoChange,
+				Change::NewValue(Some(Ratio::saturating_from_rational(999999, 1))),
+				Change::NoChange,
+			));
+
+			// Check pre-liquidation balances
+			assert_eq!(CdpTreasury::debit_pool(), 0);
+			assert_eq!(
+				Currencies::free_balance(USD_CURRENCY, &alice()),
+				50 * dollar(USD_CURRENCY)
+			); // 500USD from the loan
+			System::reset_events();
+
+			// Liquidate and let bob() win the auction to complete the liquidation process.
+			assert_ok!(CdpEngine::liquidate_unsafe_cdp(alice(), NATIVE_CURRENCY));
+			AuctionManager::on_auction_ended(0, Some((bob(), 500 * dollar(USD_CURRENCY))));
+
+			System::assert_has_event(Event::CdpEngine(module_cdp_engine::Event::LiquidationCompleted {
+				collateral_type: NATIVE_CURRENCY,
+				owner: alice(),
+				target_collateral: 100 * dollar(NATIVE_CURRENCY),
+				actual_collateral_consumed: 100 * dollar(NATIVE_CURRENCY),
+				actual_stable_base: 50 * dollar(USD_CURRENCY),
+				actual_stable_penalty: 50 * dollar(USD_CURRENCY),
+				actual_stable_returned: 0,
+			}));
+
+			System::assert_has_event(Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP {
+				collateral_type: NATIVE_CURRENCY,
+				owner: alice(),
+				collateral_amount: 100 * dollar(NATIVE_CURRENCY),
+				bad_debt_value: 50 * dollar(USD_CURRENCY),
+				target_amount: 100 * dollar(USD_CURRENCY),
+			}));
+
+			System::assert_has_event(Event::AuctionManager(
+				module_auction_manager::Event::CollateralAuctionDealt {
+					auction_id: 0,
+					collateral_type: NATIVE_CURRENCY,
+					collateral_amount: 100 * dollar(NATIVE_CURRENCY),
+					winner: bob(),
+					payment_amount: 100 * dollar(USD_CURRENCY),
+				},
+			));
+
+			assert_eq!(CdpTreasury::debit_pool(), 100 * dollar(USD_CURRENCY));
+			// 50 USD from the loan + 50 USD from OnFeeDeposit(liquidation penalty)
+			assert_eq!(
+				Currencies::free_balance(USD_CURRENCY, &alice()),
+				100 * dollar(USD_CURRENCY)
 			);
 		});
 }
