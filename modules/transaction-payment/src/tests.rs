@@ -1994,7 +1994,7 @@ fn charge_fee_pool_operation_works() {
 }
 
 #[test]
-fn with_fee_path_currency_call_validation_works() {
+fn with_fee_currency_call_validation_works() {
 	ExtBuilder::default()
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()

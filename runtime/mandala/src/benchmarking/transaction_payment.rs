@@ -18,8 +18,8 @@
 
 use super::utils::{dollar, set_balance};
 use crate::{
-	AccountId, Balance, Currencies, CurrencyId, Dex, Event, GetNativeCurrencyId, GetStableCurrencyId,
-	NativeTokenExistentialDeposit, Origin, Runtime, System, TransactionPayment, TreasuryPalletId,
+	AccountId, Balance, Currencies, CurrencyId, Dex, Event, GetLiquidCurrencyId, GetNativeCurrencyId,
+	GetStableCurrencyId, NativeTokenExistentialDeposit, Origin, Runtime, System, TransactionPayment, TreasuryPalletId,
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
@@ -35,6 +35,7 @@ const SEED: u32 = 0;
 
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 const NATIVECOIN: CurrencyId = GetNativeCurrencyId::get();
+const LIQUIDCOIN: CurrencyId = GetLiquidCurrencyId::get();
 
 fn assert_last_event(generic_event: Event) {
 	System::assert_last_event(generic_event.into());
@@ -136,11 +137,15 @@ runtime_benchmarks! {
 		assert_eq!(module_transaction_payment::GlobalFeeSwapPath::<Runtime>::get(STABLECOIN), None);
 	}
 
-	with_fee_path {
+	with_fee_currency_use_swap {
+		let funder: AccountId = account("funder", 0, SEED);
 		let caller = whitelisted_caller();
 		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
-		let fee_swap_path: Vec<CurrencyId> = vec![STABLECOIN, NATIVECOIN];
-	}: _(RawOrigin::Signed(caller), fee_swap_path.clone(), call)
+
+		let path = vec![LIQUIDCOIN, NATIVECOIN];
+		inject_liquidity(funder.clone(), LIQUIDCOIN, NATIVECOIN, 1_000 * dollar(LIQUIDCOIN), 10_000 * dollar(NATIVECOIN))?;
+		assert!(Dex::get_swap_amount(&path, SwapLimit::ExactTarget(Balance::MAX, 1)).is_some());
+	}: with_fee_currency(RawOrigin::Signed(caller), LIQUIDCOIN, call)
 
 	with_fee_currency {
 		let caller: AccountId = whitelisted_caller();
