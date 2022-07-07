@@ -27,6 +27,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "p
 orml-tokens = { path = "../../orml/tokens" }
 module-currencies = { path = "../../modules/currencies" }
 module-dex = { path = "../dex" }
+module-aggregated-dex = { path = "../../modules/aggregated-dex" }
 smallvec = "1.4.1"
 
 [features]

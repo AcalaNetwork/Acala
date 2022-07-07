@@ -39,7 +39,10 @@ use sp_runtime::{
 	Perbill,
 };
 use sp_std::cell::RefCell;
-use support::{mocks::MockAddressMapping, Price, SpecificJointsSwap};
+use support::{
+	mocks::{MockAddressMapping, MockStableAsset},
+	Price, SpecificJointsSwap,
+};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -51,6 +54,7 @@ pub const DAVE: AccountId = AccountId::new([4u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 parameter_types! {
 	pub static ExtrinsicBaseWeight: u64 = 0;
@@ -102,7 +106,7 @@ parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match *currency_id {
 			AUSD => 100,
-			DOT => 1,
+			DOT | LDOT => 1,
 			_ => Default::default(),
 		}
 	};
@@ -171,6 +175,7 @@ parameter_types! {
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+		TradingPair::from_currency_ids(ACA, LDOT).unwrap(),
 	];
 	pub const TradingPathLimit: u32 = 4;
 }
@@ -184,9 +189,18 @@ impl module_dex::Config for Runtime {
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
-	type ListingOrigin = frame_system::EnsureSignedBy<Zero, AccountId>;
+	type ListingOrigin = EnsureSignedBy<Zero, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
 	type OnLiquidityPoolUpdated = ();
+}
+
+impl module_aggregated_dex::Config for Runtime {
+	type DEX = DEXModule;
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
+	type GovernanceOrigin = EnsureSignedBy<Zero, AccountId>;
+	type DexSwapJointList = AlternativeSwapPathJointList;
+	type SwapPathLimit = ConstU32<3>;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -245,7 +259,7 @@ parameter_types! {
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
-		vec![DOT], vec![AUSD],
+		vec![AUSD],
 	];
 }
 ord_parameter_types! {
@@ -330,7 +344,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			balances: vec![(ALICE, AUSD, 10000), (ALICE, DOT, 1000)],
+			balances: vec![(ALICE, AUSD, 10000), (ALICE, DOT, 1000), (ALICE, LDOT, 1000)],
 			base_weight: 0,
 			byte_fee: 2,
 			weight_to_fee: 1,

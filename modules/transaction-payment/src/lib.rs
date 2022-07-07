@@ -561,21 +561,6 @@ pub mod module {
 			Self::disable_pool(currency_id)
 		}
 
-		/// Dapp wrap call, and user pay tx fee as provided trading path. this dispatch call should
-		/// make sure the trading path is valid.
-		#[pallet::weight({
-			let dispatch_info = call.get_dispatch_info();
-			(T::WeightInfo::with_fee_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
-		})]
-		pub fn with_fee_path(
-			origin: OriginFor<T>,
-			_fee_swap_path: Vec<CurrencyId>,
-			call: Box<CallOf<T>>,
-		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin.clone())?;
-			call.dispatch(origin)
-		}
-
 		/// Dapp wrap call, and user pay tx fee as provided currency, this dispatch call should make
 		/// sure the currency is exist in tx fee pool.
 		#[pallet::weight({
@@ -788,8 +773,8 @@ where
 	}
 
 	/// Determine the fee and surplus that should be withdraw from user. There are three kind call:
-	/// - TransactionPayment::with_fee_path: swap with dex
-	/// - TransactionPayment::with_fee_currency: swap with tx fee pool
+	/// - TransactionPayment::with_fee_currency: swap with tx fee pool if token is enable charge fee
+	///   pool, else swap with dex.
 	/// - others call: first use native asset, if not enough use alternative, or else use default.
 	fn ensure_can_charge_fee_with_call(
 		who: &T::AccountId,
@@ -798,29 +783,6 @@ where
 		reason: WithdrawReasons,
 	) -> Result<(T::AccountId, Balance), DispatchError> {
 		match call.is_sub_type() {
-			// TODO: remove `with_fee_path` as it's now part of `with_fee_currency`.
-			Some(Call::with_fee_path { fee_swap_path, .. }) => {
-				// `supply_currency_id` not in charge fee pool, direct swap.
-				// `Swap::swap` only need `supply_currency_id` as parameter. So the real swap path
-				// may not equal to provide `fee_swap_path`, and even though provided
-				// `fee_swap_path` is invalid, once swap success, it's acceptable.
-				ensure!(
-					fee_swap_path.len() > 1
-						&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
-						&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
-					Error::<T>::InvalidSwapPath
-				);
-				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
-				let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
-				let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
-				T::Swap::swap(
-					who,
-					*fee_swap_path.get(0).expect("ensured path not empty; qed"),
-					T::NativeCurrencyId::get(),
-					SwapLimit::ExactTarget(Balance::MAX, custom_fee_amount),
-				)
-				.map(|_| (who.clone(), custom_fee_surplus))
-			}
 			Some(Call::with_fee_currency { currency_id, .. }) => {
 				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
 				let alternative_fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
