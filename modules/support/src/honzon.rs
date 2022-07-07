@@ -110,6 +110,9 @@ pub trait CDPTreasury<AccountId> {
 	type Balance;
 	type CurrencyId;
 
+	// get the treasury's account ID
+	fn get_account_id() -> AccountId;
+
 	/// get surplus amount of cdp treasury
 	fn get_surplus_pool() -> Self::Balance;
 

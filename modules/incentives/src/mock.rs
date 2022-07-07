@@ -119,6 +119,10 @@ impl CDPTreasury<AccountId> for MockCDPTreasury {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 
+	fn get_account_id() -> AccountId {
+		unimplemented!()
+	}
+
 	fn get_surplus_pool() -> Balance {
 		unimplemented!()
 	}

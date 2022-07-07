@@ -320,6 +320,10 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 
+	fn get_account_id() -> T::AccountId {
+		Self::account_id()
+	}
+
 	fn get_surplus_pool() -> Self::Balance {
 		Self::surplus_pool()
 	}

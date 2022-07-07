@@ -2602,3 +2602,62 @@ fn liquidate_by_dex_lp_with_no_stable_currency_handles_fees() {
 		assert_eq!(Currencies::free_balance(AUSD, &BOB), 50);
 	});
 }
+
+#[test]
+fn liquidate_by_contract_handles_fees() {
+	ExtBuilder::default().build().execute_with(|| {
+		setup_fees_distribution();
+		System::set_block_number(1);
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			BTC,
+			Change::NewValue(Some(Rate::zero())),
+			Change::NewValue(Some(Ratio::one())),
+			Change::NewValue(Some(Rate::one())),
+			Change::NewValue(Some(Ratio::one())),
+			Change::NewValue(10000),
+		));
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
+		assert_ok!(CDPEngineModule::register_liquidation_contract(
+			Origin::signed(ALICE),
+			Default::default()
+		));
+		MockLiquidationEvmBridge::set_liquidation_result(Ok(()));
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(ALICE),
+			BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::max_value())),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
+		System::reset_events();
+
+		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
+
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidationCompleted {
+			collateral_type: BTC,
+			owner: ALICE,
+			target_collateral: 100,
+			actual_collateral_consumed: 100,
+			actual_stable_base: 50,
+			actual_stable_penalty: 50,
+			actual_stable_returned: 0,
+		}));
+
+		System::assert_last_event(Event::CDPEngineModule(crate::Event::LiquidateUnsafeCDP {
+			collateral_type: BTC,
+			owner: ALICE,
+			collateral_amount: 100,
+			bad_debt_value: 50,
+			target_amount: 100,
+		}));
+
+		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 100);
+		assert_eq!(Currencies::free_balance(AUSD, &BOB), 50);
+	});
+}

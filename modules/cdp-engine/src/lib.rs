@@ -48,9 +48,7 @@ use sp_runtime::{
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{
-		AccountIdConversion, BlockNumberProvider, Bounded, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero,
-	},
+	traits::{BlockNumberProvider, Bounded, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
@@ -1348,15 +1346,6 @@ impl<T: Config> Pallet<T> {
 	pub fn get_collateral_currency_ids() -> Vec<CurrencyId> {
 		CollateralParams::<T>::iter_keys().collect()
 	}
-
-	fn account_id() -> T::AccountId {
-		<T as Config>::PalletId::get().into_account_truncating()
-	}
-
-	/// Pallet EVM address, derived from pallet id.
-	fn evm_address() -> EvmAddress {
-		T::EvmAddressMapping::get_or_create_evm_address(&Self::account_id())
-	}
 }
 
 pub struct OnLiquidationSuccessHandler<T>(PhantomData<T>);
@@ -1497,8 +1486,10 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 		let collateral = currency_id
 			.erc20_address()
 			.ok_or(Error::<T>::CollateralContractNotFound)?;
-		let repay_dest = Pallet::<T>::evm_address();
-		let repay_dest_account_id = Pallet::<T>::account_id();
+
+		// Treasury account holds the confiscated debts and receives the repayments.
+		let repay_dest_account_id = <T as Config>::CDPTreasury::get_account_id();
+		let repay_dest = T::EvmAddressMapping::get_or_create_evm_address(&repay_dest_account_id);
 
 		let stable_coin = T::GetStableCurrencyId::get();
 
@@ -1520,7 +1511,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 			if T::LiquidationEvmBridge::liquidate(
 				InvokeContext {
 					contract,
-					sender: Pallet::<T>::evm_address(),
+					sender: repay_dest,
 					origin: contract,
 				},
 				collateral,
@@ -1552,7 +1543,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 					T::LiquidationEvmBridge::on_collateral_transfer(
 						InvokeContext {
 							contract,
-							sender: Pallet::<T>::evm_address(),
+							sender: repay_dest,
 							origin: contract,
 						},
 						collateral,
@@ -1576,7 +1567,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 					T::LiquidationEvmBridge::on_repayment_refund(
 						InvokeContext {
 							contract,
-							sender: Pallet::<T>::evm_address(),
+							sender: repay_dest,
 							origin: contract,
 						},
 						collateral,

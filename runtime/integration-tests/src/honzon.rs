@@ -941,7 +941,7 @@ fn can_liquidate_cdp_via_intended_priority() {
 			//
 			// When dex cannot liquidate, try to liquidate using EVM Contracts instead.
 			//
-			assert_eq!(Tokens::free_balance(USD_CURRENCY, &cdp_engine_pallet_account()), 0);
+			assert_eq!(Tokens::free_balance(USD_CURRENCY, &cdp_treasury_pallet_account()), 0);
 			System::reset_events();
 			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
 				AccountId::from(ALICE),
@@ -950,7 +950,7 @@ fn can_liquidate_cdp_via_intended_priority() {
 
 			// Check liquidation happened successfully via contract
 			assert_eq!(
-				Tokens::free_balance(USD_CURRENCY, &cdp_engine_pallet_account()),
+				Tokens::free_balance(USD_CURRENCY, &cdp_treasury_pallet_account()),
 				100 * dollar(USD_CURRENCY)
 			);
 			assert_eq!(Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit, 0);
@@ -961,7 +961,7 @@ fn can_liquidate_cdp_via_intended_priority() {
 			System::assert_has_event(Event::Tokens(orml_tokens::Event::Transfer {
 				currency_id: USD_CURRENCY,
 				from: address_to_account_id(&mock_liquidation_address_1()),
-				to: cdp_engine_pallet_account(),
+				to: cdp_treasury_pallet_account(),
 				amount: 100 * dollar(USD_CURRENCY),
 			}));
 

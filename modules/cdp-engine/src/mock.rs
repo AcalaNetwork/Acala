@@ -353,7 +353,11 @@ impl LiquidationEvmBridgeT for MockLiquidationEvmBridge {
 			} else {
 				min_repayment
 			};
-			let _ = Currencies::deposit(GetStableCurrencyId::get(), &CDPEngineModule::account_id(), repayment);
+			let _ = Currencies::deposit(
+				GetStableCurrencyId::get(),
+				&evm_accounts::EvmAddressMapping::<Runtime>::get_account_id(&repay_dest),
+				repayment,
+			);
 		}
 		LIQUIDATED.with(|v| *v.borrow_mut() = (collateral, repay_dest, amount, min_repayment));
 		result
