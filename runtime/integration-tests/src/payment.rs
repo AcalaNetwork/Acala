@@ -584,3 +584,18 @@ fn charge_transaction_payment_and_threshold_works() {
 			assert_eq!(new_rate.saturating_mul_int(fee), relay2 - relay1);
 		});
 }
+
+#[test]
+fn with_fee_currency_not_fee_pool_token_use_swap_works() {
+	ExtBuilder::default()
+		.balances(vec![
+			// Alice for Dex, Bob for transaction payment
+			(
+				AccountId::from(ALICE),
+				NATIVE_CURRENCY,
+				100000 * dollar(NATIVE_CURRENCY),
+			),
+		])
+		.build()
+		.execute_with(|| {});
+}

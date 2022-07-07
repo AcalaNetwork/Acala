@@ -1289,8 +1289,8 @@ where
 				actual_tip = tip.saturating_sub(refund_tip);
 			}
 			// the refund surplus also need to return back to user
-			let percent = Percent::from_rational(surplus, fee.saturating_sub(surplus));
-			let actual_surplus = percent.mul_ceil(actual_fee);
+			let rate = Ratio::saturating_from_rational(surplus, fee.saturating_sub(surplus));
+			let actual_surplus = rate.saturating_mul_int(actual_fee);
 			refund = refund.saturating_sub(actual_surplus);
 
 			let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
