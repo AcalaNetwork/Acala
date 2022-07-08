@@ -27,7 +27,7 @@ use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use sp_runtime::traits::AccountIdConversion;
 
-use primitives::{Balance, CurrencyId};
+use primitives::{currency::KUSD, evm::EvmAddress, Balance, CurrencyId};
 
 use orml_traits::MultiCurrency;
 
@@ -46,28 +46,44 @@ pub mod module {
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// Weight information for the extrinsics in this module.
-		type WeightInfo: WeightInfo;
-
 		/// Multi-currency support for asset management
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Currency ID of current chain's stable currency
 		#[pallet::constant]
-		type StablecoinCurrencyId: Get<CurrencyId>;
-
-		/// Currency ID of the Bridge's Stable currency
-		#[pallet::constant]
-		type BridgedStableCoinCurrencyId: Get<CurrencyId>;
+		type StableCoinCurrencyId: Get<CurrencyId>;
 
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
+
+		/// The origin which set the Currency ID of the Bridge's Stable currency.
+		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
+	}
+
+	/// Currency ID of the Bridge's Stable currency
+	///
+	/// BridgedStableCoinCurrencyId: CurrencyId
+	#[pallet::storage]
+	#[pallet::getter(fn bridged_stable_coin_currency_id)]
+	pub type BridgedStableCoinCurrencyId<T: Config> = StorageValue<_, CurrencyId, OptionQuery>;
+
+	#[pallet::error]
+	pub enum Error<T> {
+		/// The Bridge's stable coin currency doesn't set.
+		BridgedStableCoinCurrencyIdNotSet,
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// User has exchanged Native stable coin to Bridge's stable coin
+		/// Set the Bridge's stable coin currency id.
+		BridgedStableCoinCurrencyIdSet {
+			bridged_stable_coin_currency_id: CurrencyId,
+		},
+		/// User has exchanged Native stable coin to Bridge's stable coin.
 		ToBridged { who: T::AccountId, amount: Balance },
 		/// User has exchanged Bridge's stable coin to Native's stable coin.
 		FromBridged { who: T::AccountId, amount: Balance },
@@ -79,12 +95,31 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn integrity_test() {
-			assert!(T::StablecoinCurrencyId::get() != T::BridgedStableCoinCurrencyId::get());
+			assert!(T::StableCoinCurrencyId::get() == KUSD);
 		}
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Set the Bridge's stable coin currency id.
+		///
+		/// Parameters:
+		/// - `address`: The address of the Bridge's stable coin currency id.
+		#[pallet::weight(< T as Config >::WeightInfo::set_bridged_stable_coin_address())]
+		#[transactional]
+		pub fn set_bridged_stable_coin_address(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+
+			let currency_id = CurrencyId::Erc20(address);
+
+			BridgedStableCoinCurrencyId::<T>::put(currency_id);
+
+			Self::deposit_event(Event::<T>::BridgedStableCoinCurrencyIdSet {
+				bridged_stable_coin_currency_id: currency_id,
+			});
+			Ok(())
+		}
+
 		/// Exchange some amount of Native stable coin into Bridge's stable coin
 		///
 		/// Parameters:
@@ -95,12 +130,14 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 
 			let pallet_account = Self::account_id();
+			let bridged_stable_coin_currency_id =
+				Self::bridged_stable_coin_currency_id().ok_or(Error::<T>::BridgedStableCoinCurrencyIdNotSet)?;
 
-			// transfer amount of StablecoinCurrencyId to PalletId account
-			T::Currency::transfer(T::StablecoinCurrencyId::get(), &who, &pallet_account, amount)?;
+			// transfer amount of StableCoinCurrencyId to PalletId account
+			T::Currency::transfer(T::StableCoinCurrencyId::get(), &who, &pallet_account, amount)?;
 
 			// transfer amount of BridgedStableCoinCurrencyId from PalletId account to origin
-			T::Currency::transfer(T::BridgedStableCoinCurrencyId::get(), &pallet_account, &who, amount)?;
+			T::Currency::transfer(bridged_stable_coin_currency_id, &pallet_account, &who, amount)?;
 
 			Self::deposit_event(Event::<T>::ToBridged { who, amount });
 			Ok(())
@@ -116,11 +153,14 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 
 			let pallet_account = Self::account_id();
-			// transfer amount of StablecoinCurrencyId to PalletId account
-			T::Currency::transfer(T::BridgedStableCoinCurrencyId::get(), &who, &pallet_account, amount)?;
+			let bridged_stable_coin_currency_id =
+				Self::bridged_stable_coin_currency_id().ok_or(Error::<T>::BridgedStableCoinCurrencyIdNotSet)?;
 
-			// transfer amount of BridgedStableCoinCurrencyId from PalletId account to origin
-			T::Currency::transfer(T::StablecoinCurrencyId::get(), &pallet_account, &who, amount)?;
+			// transfer amount of BridgedStableCoinCurrencyId to PalletId account
+			T::Currency::transfer(bridged_stable_coin_currency_id, &who, &pallet_account, amount)?;
+
+			// transfer amount of StableCoinCurrencyId from PalletId account to origin
+			T::Currency::transfer(T::StableCoinCurrencyId::get(), &pallet_account, &who, amount)?;
 
 			Self::deposit_event(Event::<T>::FromBridged { who, amount });
 			Ok(())
