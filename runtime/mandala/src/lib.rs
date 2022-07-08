@@ -2020,6 +2020,15 @@ impl OnRuntimeUpgrade for FeesMigration {
 	}
 }
 
+// Migration for AuctionManager from V0 to V1
+pub struct AuctionManagerMigrationV1;
+
+impl OnRuntimeUpgrade for AuctionManagerMigrationV1 {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		module_auction_manager::migrations::v1::migrate::<Runtime, AuctionManager>()
+	}
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,

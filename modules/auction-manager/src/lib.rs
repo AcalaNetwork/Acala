@@ -58,6 +58,7 @@ use support::{
 	SwapLimit,
 };
 
+pub mod migrations;
 mod mock;
 mod tests;
 pub mod weights;
