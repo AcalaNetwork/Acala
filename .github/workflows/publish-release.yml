@@ -54,7 +54,7 @@ jobs:
       # Build WASM with Substrate Runtime Tool
       - name: Srtool build
         id: srtool_build
-        uses: chevdor/srtool-actions@master
+        uses: chevdor/srtool-actions@v0.4.0
         env:
           BUILD_OPTS: "--features on-chain-release-build,no-metadata-docs"
         with:
