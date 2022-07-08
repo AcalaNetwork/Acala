@@ -30,7 +30,7 @@ jobs:
           access_token: ${{ github.token }}
   test:
     name: Coverage Report
-    runs-on: custom-runner-Acala-AWS
+    runs-on: custom-runner-AWS-Acala
     needs: clean-up-actions
     steps:
       - name: Checkout repository
