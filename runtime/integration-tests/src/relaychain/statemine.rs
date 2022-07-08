@@ -32,6 +32,7 @@ use xcm_emulator::TestExt;
 pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
+pub const FEE: Balance = 20_000_000;
 pub const FEE_STATEMINE: Balance = 15_540_916;
 
 fn init_statemine_xcm_interface() {
@@ -39,7 +40,7 @@ fn init_statemine_xcm_interface() {
 		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
 	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
 		Origin::root(),
-		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(4_000_000_000),)],
+		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(20_000_000),)],
 	));
 	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmDestWeightUpdated {
 		xcm_operation: xcm_operation.clone(),
@@ -47,7 +48,7 @@ fn init_statemine_xcm_interface() {
 	}));
 	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
 		xcm_operation,
-		new_xcm_dest_weight: 4_000_000_000,
+		new_xcm_dest_weight: 20_000_000,
 	}));
 }
 
@@ -64,7 +65,8 @@ fn statemine_min_xcm_fee_matched() {
 		let bifrost: MultiLocation = (1, Parachain(parachains::bifrost::ID)).into();
 
 		let statemine_fee: u128 = ParachainMinFee::get(&statemine).unwrap();
-		assert_eq!(fee, statemine_fee);
+		assert_eq!(statemine_fee, FEE);
+		assert_eq!(fee, FEE_WEIGHT);
 
 		let bifrost_fee: Option<u128> = ParachainMinFee::get(&bifrost);
 		assert_eq!(None, bifrost_fee);
@@ -119,10 +121,7 @@ fn karura_statemine_transfer_works() {
 	karura_side(asset);
 
 	KusamaNet::execute_with(|| {
-		assert_eq!(
-			TEN - (asset - FEE_WEIGHT),
-			kusama_runtime::Balances::free_balance(&child_2000)
-		);
+		assert_eq!(TEN - (asset - FEE), kusama_runtime::Balances::free_balance(&child_2000));
 	});
 
 	Statemine::execute_with(|| {
@@ -133,10 +132,10 @@ fn karura_statemine_transfer_works() {
 		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
 
 		assert_eq!(
-			UNIT + FEE_WEIGHT - FEE_STATEMINE,
+			UNIT + FEE - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(996_017_797_902, Balances::free_balance(&para_2000));
+		assert_eq!(1_003_977_797_902, Balances::free_balance(&para_2000));
 	});
 }
 

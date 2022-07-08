@@ -32,14 +32,14 @@ use xcm_emulator::TestExt;
 pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
-pub const FEE_STATEMINE: Balance = 15_540_916;
+pub const FEE: Balance = 50_000_000;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
 		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
 	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
 		Origin::root(),
-		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(4_000_000_000),)],
+		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(50_000_000),)],
 	));
 	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmDestWeightUpdated {
 		xcm_operation: xcm_operation.clone(),
@@ -47,12 +47,12 @@ fn init_statemine_xcm_interface() {
 	}));
 	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
 		xcm_operation,
-		new_xcm_dest_weight: 4_000_000_000,
+		new_xcm_dest_weight: 50_000_000,
 	}));
 }
 
 #[test]
-fn statemine_min_xcm_fee_matched() {
+fn statemint_min_xcm_fee_matched() {
 	Statemint::execute_with(|| {
 		use frame_support::weights::{IdentityFee, WeightToFee};
 
@@ -61,9 +61,10 @@ fn statemine_min_xcm_fee_matched() {
 
 		let fee: Balance = IdentityFee::weight_to_fee(&weight);
 		let statemine: MultiLocation = (1, Parachain(parachains::statemint::ID)).into();
+		assert_eq!(fee, 4_000_000_000);
 
 		let statemine_fee: u128 = ParachainMinFee::get(&statemine).unwrap();
-		assert_eq!(fee, statemine_fee);
+		assert_eq!(statemine_fee, 50_000_000);
 	});
 }
 
@@ -93,7 +94,7 @@ fn teleport_from_relay_chain() {
 }
 
 #[test]
-fn karura_statemine_transfer_works() {
+fn acala_statemint_transfer_works() {
 	TestNet::reset();
 	let para_2000: AccountId = Sibling::from(2000).into_account_truncating();
 	let child_2000: AccountId = ParaId::from(2000).into_account_truncating();
@@ -103,18 +104,18 @@ fn karura_statemine_transfer_works() {
 	// but due to current half fee, sender asset should at lease: FEE_WEIGHT + 2 * FEE_KUSAMA
 	let asset = FEE_WEIGHT + 2 * 31_488_122;
 
-	statemine_side(UNIT);
+	statemint_side(UNIT);
 
 	PolkadotNet::execute_with(|| {
 		let _ = polkadot_runtime::Balances::make_free_balance_be(&child_2000, TEN);
 		assert_eq!(0, polkadot_runtime::Balances::free_balance(&child_1000));
 	});
 
-	karura_side(asset);
+	acala_side(asset);
 
 	PolkadotNet::execute_with(|| {
 		assert_eq!(
-			TEN - (asset - FEE_WEIGHT),
+			TEN - (asset - FEE),
 			polkadot_runtime::Balances::free_balance(&child_2000)
 		);
 	});
@@ -126,13 +127,13 @@ fn karura_statemine_transfer_works() {
 		// and withdraw sibling parachain sovereign account
 		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
 
-		assert_eq!(1003953377240, Balances::free_balance(&AccountId::from(BOB)));
-		assert_eq!(996000000000, Balances::free_balance(&para_2000));
+		assert_eq!(1000003377240, Balances::free_balance(&AccountId::from(BOB)));
+		assert_eq!(1003446936032, Balances::free_balance(&para_2000));
 	});
 }
 
 // transfer custom asset from Karura to Statemint
-fn karura_side(fee_amount: u128) {
+fn acala_side(fee_amount: u128) {
 	Acala::execute_with(|| {
 		init_statemine_xcm_interface();
 
@@ -172,7 +173,7 @@ fn karura_side(fee_amount: u128) {
 }
 
 // transfer custom asset from Statemint to Karura
-fn statemine_side(para_2000_init_amount: u128) {
+fn statemint_side(para_2000_init_amount: u128) {
 	register_asset();
 
 	let para_acc: AccountId = Sibling::from(2000).into_account_truncating();
