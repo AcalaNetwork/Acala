@@ -6925,6 +6925,7 @@ dependencies = [
  "sp-std",
  "sp-storage",
  "tempfile",
+ "thiserror",
  "toml",
  "walkdir",
  "wasm-gc-api",
