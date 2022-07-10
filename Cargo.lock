@@ -9493,7 +9493,7 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-primitives",
  "polkadot-runtime-common",
- "polkadot-runtime-constants",
+ "polkadot-runtime-constants 0.9.23 (git+https://github.com/paritytech//polkadot?rev=a7e188cd9665c735f4b9d5a58cdbc4dd1850eae0)",
  "polkadot-runtime-parachains",
  "rustc-hex",
  "scale-info",
@@ -9573,7 +9573,31 @@ dependencies = [
 [[package]]
 name = "polkadot-runtime-constants"
 version = "0.9.23"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.23#a7e188cd9665c735f4b9d5a58cdbc4dd1850eae0"
+dependencies = [
+ "frame-support",
+ "polkadot-primitives",
+ "polkadot-runtime-common",
+ "smallvec",
+ "sp-runtime",
+]
+
+[[package]]
+name = "polkadot-runtime-constants"
+version = "0.9.23"
 source = "git+https://github.com/paritytech//polkadot?rev=a7e188cd9665c735f4b9d5a58cdbc4dd1850eae0#a7e188cd9665c735f4b9d5a58cdbc4dd1850eae0"
+dependencies = [
+ "frame-support",
+ "polkadot-primitives",
+ "polkadot-runtime-common",
+ "smallvec",
+ "sp-runtime",
+]
+
+[[package]]
+name = "polkadot-runtime-constants"
+version = "0.9.24"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.24#22836e55d41eef24ed5917fd654ee82a683a7cfe"
 dependencies = [
  "frame-support",
  "polkadot-primitives",
@@ -9689,7 +9713,7 @@ dependencies = [
  "polkadot-primitives",
  "polkadot-rpc",
  "polkadot-runtime",
- "polkadot-runtime-constants",
+ "polkadot-runtime-constants 0.9.23 (git+https://github.com/paritytech//polkadot?rev=a7e188cd9665c735f4b9d5a58cdbc4dd1850eae0)",
  "polkadot-runtime-parachains",
  "polkadot-statement-distribution",
  "rococo-runtime",
@@ -10777,6 +10801,7 @@ dependencies = [
  "polkadot-parachain",
  "polkadot-primitives",
  "polkadot-runtime",
+ "polkadot-runtime-constants 0.9.24",
  "polkadot-runtime-parachains",
  "runtime-common",
  "serde",
@@ -10799,6 +10824,7 @@ dependencies = [
  "sp-trie",
  "sp-version",
  "statemine-runtime",
+ "statemint-runtime",
  "xcm",
  "xcm-builder",
  "xcm-emulator",
@@ -13206,6 +13232,69 @@ dependencies = [
  "polkadot-core-primitives",
  "polkadot-parachain",
  "polkadot-runtime-common",
+ "scale-info",
+ "serde",
+ "smallvec",
+ "sp-api",
+ "sp-block-builder",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-inherents",
+ "sp-io",
+ "sp-offchain",
+ "sp-runtime",
+ "sp-session",
+ "sp-std",
+ "sp-transaction-pool",
+ "sp-version",
+ "substrate-wasm-builder",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
+]
+
+[[package]]
+name = "statemint-runtime"
+version = "1.0.0"
+source = "git+https://github.com/paritytech//cumulus?rev=e5889f1d71975a192c98fa43b1c18c94ffda3bbd#e5889f1d71975a192c98fa43b1c18c94ffda3bbd"
+dependencies = [
+ "cumulus-pallet-aura-ext",
+ "cumulus-pallet-dmp-queue",
+ "cumulus-pallet-parachain-system",
+ "cumulus-pallet-session-benchmarking",
+ "cumulus-pallet-xcm",
+ "cumulus-pallet-xcmp-queue",
+ "cumulus-ping",
+ "cumulus-primitives-core",
+ "cumulus-primitives-timestamp",
+ "cumulus-primitives-utility",
+ "frame-executive",
+ "frame-support",
+ "frame-system",
+ "frame-system-rpc-runtime-api",
+ "log",
+ "pallet-asset-tx-payment",
+ "pallet-assets",
+ "pallet-aura",
+ "pallet-authorship",
+ "pallet-balances",
+ "pallet-collator-selection",
+ "pallet-multisig",
+ "pallet-proxy",
+ "pallet-session",
+ "pallet-timestamp",
+ "pallet-transaction-payment",
+ "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-uniques",
+ "pallet-utility",
+ "pallet-xcm",
+ "parachain-info",
+ "parachains-common",
+ "parity-scale-codec",
+ "polkadot-core-primitives",
+ "polkadot-parachain",
+ "polkadot-runtime-common",
+ "polkadot-runtime-constants 0.9.23 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.23)",
  "scale-info",
  "serde",
  "smallvec",

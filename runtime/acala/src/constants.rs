@@ -92,6 +92,12 @@ pub mod fee {
 	}
 }
 
+pub mod parachains {
+	pub mod statemint {
+		pub const ID: u32 = 1000;
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use crate::{constants::fee::base_tx_in_aca, Balance};
