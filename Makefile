@@ -84,7 +84,6 @@ check-all: check-runtimes check-benchmarks check-integration-tests
 
 .PHONY: check-runtimes
 check-runtimes:
-	SKIP_WASM_BUILD= cargo check --features with-all-runtime --tests --all
 	SKIP_WASM_BUILD= cargo check -p mandala-runtime --features "runtime-benchmarks try-runtime with-ethereum-compatibility full-metadata-docs on-chain-release-build" --tests
 	SKIP_WASM_BUILD= cargo check -p mandala-runtime --features disable-runtime-api
 	SKIP_WASM_BUILD= cargo check -p karura-runtime --features "runtime-benchmarks try-runtime full-metadata-docs on-chain-release-build" --tests
