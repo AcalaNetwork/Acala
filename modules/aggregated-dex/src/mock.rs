@@ -27,6 +27,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
+use orml_tokens::ConvertBalance;
 pub use orml_traits::{parameter_type_with_key, MultiCurrency};
 use primitives::{Amount, TokenSymbol, TradingPair};
 use sp_runtime::{
@@ -34,7 +35,7 @@ use sp_runtime::{
 	traits::{Bounded, IdentityLookup},
 	AccountId32, FixedPointNumber,
 };
-pub use support::ExchangeRate;
+pub use support::{ExchangeRate, RebasedStableAsset};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -131,7 +132,7 @@ impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoo
 }
 
 pub struct ConvertBalanceHoma;
-impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
+impl ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 	type AssetId = CurrencyId;
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
@@ -194,13 +195,15 @@ parameter_types! {
 
 impl Config for Runtime {
 	type DEX = Dex;
-	type StableAsset = StableAsset;
+	type StableAsset = StableAssetWrapper;
 	type GovernanceOrigin = EnsureSignedBy<Admin, AccountId>;
 	type DexSwapJointList = DexSwapJointList;
 	type SwapPathLimit = ConstU32<3>;
-	type RebaseTokenAmountConvertor = ConvertBalanceHoma;
 	type WeightInfo = ();
 }
+
+pub type StableAssetWrapper =
+	RebasedStableAsset<StableAsset, ConvertBalanceHoma, RebasedStableAssetErrorConvertor<Runtime>>;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;

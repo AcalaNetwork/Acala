@@ -325,4 +325,5 @@ cumulus-relay-chain-rpc-interface = { git = "https://github.com/paritytech//cumu
 cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech//cumulus", rev = "e5889f1d71975a192c98fa43b1c18c94ffda3bbd" }
 cumulus-test-relay-validation-worker-provider = { git = "https://github.com/paritytech//cumulus", rev = "e5889f1d71975a192c98fa43b1c18c94ffda3bbd" }
 statemine-runtime  = { git = "https://github.com/paritytech//cumulus", rev = "e5889f1d71975a192c98fa43b1c18c94ffda3bbd" }
+statemint-runtime  = { git = "https://github.com/paritytech//cumulus", rev = "e5889f1d71975a192c98fa43b1c18c94ffda3bbd" }
 parachains-common  = { git = "https://github.com/paritytech//cumulus", rev = "e5889f1d71975a192c98fa43b1c18c94ffda3bbd" }

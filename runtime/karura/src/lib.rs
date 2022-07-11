@@ -127,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2070,
+	spec_version: 2083,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -210,15 +210,6 @@ impl Contains<Call> for BaseCallFilter {
 		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
 		if is_paused {
 			// no paused call
-			return false;
-		}
-
-		let is_honzon_bridge = matches!(
-			call,
-			Call::HonzonBridge(_) // HonzonBridge isn't enabled until wAUSD is created. Issue #1967
-		);
-		if is_honzon_bridge {
-			// no honzon_bridge
 			return false;
 		}
 
@@ -1117,13 +1108,18 @@ impl module_dex::Config for Runtime {
 
 impl module_aggregated_dex::Config for Runtime {
 	type DEX = Dex;
-	type StableAsset = StableAsset;
+	type StableAsset = RebasedStableAsset;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
-	type RebaseTokenAmountConvertor = ConvertBalanceHoma;
 	type WeightInfo = ();
 }
+
+pub type RebasedStableAsset = module_support::RebasedStableAsset<
+	StableAsset,
+	ConvertBalanceHoma,
+	module_aggregated_dex::RebasedStableAssetErrorConvertor<Runtime>,
+>;
 
 pub type AcalaSwap = module_aggregated_dex::AggregatedSwap<Runtime>;
 
@@ -1154,7 +1150,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
-	type StableAsset = StableAsset;
+	type StableAsset = RebasedStableAsset;
 }
 
 impl module_transaction_pause::Config for Runtime {
@@ -1385,8 +1381,8 @@ impl pallet_proxy::Config for Runtime {
 parameter_types! {
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub DeveloperDeposit: Balance = 100 * dollar(KAR);
-	pub PublicationFee: Balance = 500 * dollar(KAR);
+	pub DeveloperDeposit: Balance = 50 * dollar(KAR);
+	pub PublicationFee: Balance = 10 * dollar(KAR);
 	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::karura();
 }
 
@@ -1560,17 +1556,16 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 parameter_types! {
-	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["0000000000000000000100000000000000000001"]));
 	pub const StableCoinCurrencyId: CurrencyId = KUSD;
 }
 
 impl module_honzon_bridge::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
 	type Currency = Currencies;
-	type StablecoinCurrencyId = StableCoinCurrencyId;
-	type BridgedStableCoinCurrencyId = WormholeAUSDCurrencyId;
+	type StableCoinCurrencyId = StableCoinCurrencyId;
 	type PalletId = HonzonBridgePalletId;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
 }
 
 pub struct EnsurePoolAssetId;
@@ -1782,8 +1777,31 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	XcmInterfaceMigration,
+>;
+
+pub struct XcmInterfaceMigration;
+impl OnRuntimeUpgrade for XcmInterfaceMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let _ = <module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
+			Origin::root(),
+			vec![(
+				module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new(
+					(1, Parachain(parachains::statemine::ID)).into(),
+				)),
+				Some(4_000_000_000),
+				Some(20_000_000),
+			)],
+		);
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
