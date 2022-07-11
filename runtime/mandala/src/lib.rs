@@ -1143,7 +1143,10 @@ parameter_types! {
 	];
 	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
 	pub const TradingPathLimit: u32 = 4;
-	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![vec![GetStakingCurrencyId::get()]];
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![GetStakingCurrencyId::get()],
+		vec![GetStableCurrencyId::get()],
+	];
 }
 
 impl module_dex::Config for Runtime {

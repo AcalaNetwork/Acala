@@ -802,35 +802,30 @@ fn test_default_evm_address_in_evm_accounts_module() {
 
 #[test]
 fn transaction_payment_module_works_with_evm_contract() {
+	let erc20_token = CurrencyId::Erc20(erc20_address_0());
 	let dex_share = CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Token(NATIVE_TOKEN_SYMBOL));
-	let sub_account: AccountId =
-		TransactionPaymentPalletId::get().into_sub_account_truncating(CurrencyId::Erc20(erc20_address_0()));
+	let sub_account: AccountId = TransactionPaymentPalletId::get().into_sub_account_truncating(erc20_token);
+	let dollar = dollar(NATIVE_CURRENCY);
+	let alice_evm_account = MockAddressMapping::get_account_id(&alice_evm_addr());
+	let ed = NativeTokenExistentialDeposit::get();
+	// new account
+	let empty_account = AccountId::new([1u8; 32]);
+	let empty_address = H160::from_slice(&[1u8; 20]);
+	let empty_address_account = MockAddressMapping::get_account_id(&empty_address);
 
 	ExtBuilder::default()
 		.balances(vec![
-			(alice(), NATIVE_CURRENCY, 1_000_000_000 * dollar(NATIVE_CURRENCY)),
+			(alice(), NATIVE_CURRENCY, 1_000_000_000 * dollar),
 			(
 				// evm alice
-				MockAddressMapping::get_account_id(&alice_evm_addr()),
+				alice_evm_account.clone(),
 				NATIVE_CURRENCY,
-				1_000_000_000 * dollar(NATIVE_CURRENCY),
+				1_000_000_000 * dollar,
 			),
-			(
-				AccountId::from(ALICE),
-				USD_CURRENCY,
-				1_000_000_000 * dollar(NATIVE_CURRENCY),
-			),
-			(
-				AccountId::from(ALICE),
-				RELAY_CHAIN_CURRENCY,
-				1_000_000_000 * dollar(NATIVE_CURRENCY),
-			),
-			(AccountId::from(BOB), USD_CURRENCY, 1_000_000 * dollar(NATIVE_CURRENCY)),
-			(
-				AccountId::from(BOB),
-				RELAY_CHAIN_CURRENCY,
-				1_000_000_000 * dollar(NATIVE_CURRENCY),
-			),
+			(AccountId::from(ALICE), USD_CURRENCY, 1_000_000_000 * dollar),
+			(AccountId::from(ALICE), RELAY_CHAIN_CURRENCY, 1_000_000_000 * dollar),
+			(AccountId::from(BOB), USD_CURRENCY, 1_000_000 * dollar),
+			(AccountId::from(BOB), RELAY_CHAIN_CURRENCY, 1_000_000_000 * dollar),
 		])
 		.build()
 		.execute_with(|| {
@@ -844,51 +839,45 @@ fn transaction_payment_module_works_with_evm_contract() {
 			// CurrencyId::DexShare(Erc20, ACA)
 			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
-				CurrencyId::Erc20(erc20_address_0()),
+				erc20_token,
 				NATIVE_CURRENCY,
-				10 * dollar(NATIVE_CURRENCY),
-				100 * dollar(NATIVE_CURRENCY),
-				100 * dollar(NATIVE_CURRENCY),
-				1000 * dollar(NATIVE_CURRENCY),
+				10 * dollar,
+				100 * dollar,
+				100 * dollar,
+				1000 * dollar,
 				0,
 			));
 
-			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
+			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
 			assert_ok!(Dex::add_provision(
-				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
-				CurrencyId::Erc20(erc20_address_0()),
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
 				NATIVE_CURRENCY,
-				10 * dollar(NATIVE_CURRENCY),
-				100 * dollar(NATIVE_CURRENCY),
+				10 * dollar,
+				100 * dollar,
 			));
-			assert_eq!(
-				Dex::get_liquidity_pool(CurrencyId::Erc20(erc20_address_0()), NATIVE_CURRENCY,),
-				(0, 0)
-			);
+			assert_eq!(Dex::get_liquidity_pool(erc20_token, NATIVE_CURRENCY,), (0, 0));
 			assert_eq!(Currencies::total_issuance(dex_share), 0);
 			assert_eq!(Currencies::free_balance(dex_share, &AccountId::from(ALICE)), 0);
-			assert_eq!(
-				Currencies::free_balance(dex_share, &MockAddressMapping::get_account_id(&alice_evm_addr())),
-				0
-			);
+			assert_eq!(Currencies::free_balance(dex_share, &alice_evm_account), 0);
 
 			// CurrencyId::DexShare(Erc20, ACA)
-			<EVM as EVMTrait<AccountId>>::set_origin(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()));
+			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
 			assert_ok!(Dex::add_provision(
-				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
-				CurrencyId::Erc20(erc20_address_0()),
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
 				NATIVE_CURRENCY,
-				100 * dollar(NATIVE_CURRENCY),
-				1000 * dollar(NATIVE_CURRENCY),
+				100 * dollar,
+				1000 * dollar,
 			));
 			assert_ok!(Dex::end_provisioning(
 				Origin::signed(AccountId::from(BOB)),
-				CurrencyId::Erc20(erc20_address_0()),
+				erc20_token,
 				NATIVE_CURRENCY,
 			));
 			assert_eq!(
-				Dex::get_liquidity_pool(CurrencyId::Erc20(erc20_address_0()), NATIVE_CURRENCY,),
-				(110 * dollar(NATIVE_CURRENCY), 1100 * dollar(NATIVE_CURRENCY))
+				Dex::get_liquidity_pool(erc20_token, NATIVE_CURRENCY,),
+				(110 * dollar, 1100 * dollar)
 			);
 
 			// The order of dex share is related
@@ -898,115 +887,74 @@ fn transaction_payment_module_works_with_evm_contract() {
 					DexShare::Token(NATIVE_TOKEN_SYMBOL),
 					DexShare::Erc20(erc20_address_0()),
 				)),
-				2200 * dollar(NATIVE_CURRENCY)
+				2200 * dollar
 			);
-			assert_eq!(
-				Currencies::total_issuance(lp_erc20_aca()),
-				2200 * dollar(NATIVE_CURRENCY)
-			);
+			assert_eq!(Currencies::total_issuance(lp_erc20_aca()), 2200 * dollar);
 
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(TreasuryAccount::get()),
 				NATIVE_CURRENCY,
-				(100 * dollar(NATIVE_CURRENCY)).try_into().unwrap()
+				(100 * dollar).try_into().unwrap()
 			));
 
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &sub_account), 0);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account),
-				0
-			);
+			assert_eq!(Currencies::free_balance(erc20_token, &sub_account), 0);
 
+			// enable Erc20 token as fee pool token
 			assert_ok!(TransactionPayment::enable_charge_fee_pool(
 				Origin::root(),
-				CurrencyId::Erc20(erc20_address_0()),
-				5 * dollar(NATIVE_CURRENCY),
-				Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
+				erc20_token,
+				5 * dollar,
+				Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar),
 			));
 
-			assert_eq!(
-				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
-				5 * dollar(NATIVE_CURRENCY)
-			);
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &sub_account), 5 * dollar);
 			// erc20 minimum_balance is 0
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account),
-				0
-			);
+			assert_eq!(Currencies::free_balance(erc20_token, &sub_account), 0);
 
-			// new account
-			let empty_account = AccountId::new([1u8; 32]);
-			let empty_address = H160::from_slice(&[1u8; 20]);
 			assert_ok!(Currencies::transfer(
-				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
+				Origin::signed(alice_evm_account.clone()),
 				MultiAddress::Id(empty_account.clone()),
-				CurrencyId::Erc20(erc20_address_0()),
+				erc20_token,
 				1
 			));
 			assert_ok!(Currencies::transfer(
-				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
+				Origin::signed(alice_evm_account.clone()),
 				MultiAddress::Address20(empty_address.0),
-				CurrencyId::Erc20(erc20_address_0()),
+				erc20_token,
 				1
 			));
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &empty_account), 0);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &empty_account),
-				1
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					NATIVE_CURRENCY,
-					&EvmAddressMapping::<Runtime>::get_account_id(&empty_address)
-				),
-				0
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::Erc20(erc20_address_0()),
-					&EvmAddressMapping::<Runtime>::get_account_id(&empty_address)
-				),
-				1
-			);
+			assert_eq!(Currencies::free_balance(erc20_token, &empty_account), 1);
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &empty_address_account), 0);
+			assert_eq!(Currencies::free_balance(erc20_token, &empty_address_account), 1);
 
-			// charge erc20 as tx fee.
+			// transfer erc20 to user so that user can charge erc20 as tx fee.
 			assert_ok!(Currencies::transfer(
-				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
+				Origin::signed(alice_evm_account.clone()),
 				MultiAddress::Id(empty_account.clone()),
-				CurrencyId::Erc20(erc20_address_0()),
-				5 * dollar(NATIVE_CURRENCY)
+				erc20_token,
+				5 * dollar
 			));
 			assert_ok!(Currencies::transfer(
-				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
+				Origin::signed(alice_evm_account.clone()),
 				MultiAddress::Address20(empty_address.0),
-				CurrencyId::Erc20(erc20_address_0()),
-				5 * dollar(NATIVE_CURRENCY)
+				erc20_token,
+				5 * dollar
 			));
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &empty_account), 0);
+			assert_eq!(Currencies::free_balance(erc20_token, &empty_account), 5 * dollar + 1);
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &empty_address_account), 0);
 			assert_eq!(
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &empty_account),
-				5 * dollar(NATIVE_CURRENCY) + 1
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					NATIVE_CURRENCY,
-					&EvmAddressMapping::<Runtime>::get_account_id(&empty_address)
-				),
-				0
-			);
-			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::Erc20(erc20_address_0()),
-					&EvmAddressMapping::<Runtime>::get_account_id(&empty_address)
-				),
-				5 * dollar(NATIVE_CURRENCY) + 1
+				Currencies::free_balance(erc20_token, &empty_address_account),
+				5 * dollar + 1
 			);
 
 			let len = 150 as u32;
 			let call: &<Runtime as frame_system::Config>::Call = &Call::Currencies(module_currencies::Call::transfer {
 				dest: MultiAddress::Id(AccountId::from(BOB)),
-				currency_id: CurrencyId::Erc20(erc20_address_0()),
+				currency_id: erc20_token,
 				amount: 1,
 			});
 			let info: DispatchInfo = DispatchInfo {
@@ -1022,15 +970,12 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-acala-runtime")]
 			assert_eq!(fee, 2500001166);
 
-			let surplus_perc = Percent::from_percent(50);
+			let surplus_perc = Percent::from_percent(50); // CustomFeeSurplus
 			let fee_surplus = surplus_perc.mul_ceil(fee);
 			let fee = fee + fee_surplus;
 
-			// empty_account
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account),
-				0
-			);
+			// empty_account use payment non wrapped call to charge fee by erc20 fee pool.
+			assert_eq!(Currencies::free_balance(erc20_token, &sub_account), 0);
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
 					&empty_account,
@@ -1039,57 +984,88 @@ fn transaction_payment_module_works_with_evm_contract() {
 					len as usize,
 				)
 			);
-			let erc20_fee = Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account);
+			let erc20_fee = Currencies::free_balance(erc20_token, &sub_account);
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(erc20_fee, 12_413_541_091);
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(erc20_fee, 10_407_164_938);
 			#[cfg(feature = "with-acala-runtime")]
 			assert_eq!(erc20_fee, 10_407_164_938);
-
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
-				5 * dollar(NATIVE_CURRENCY) - (fee + NativeTokenExistentialDeposit::get())
+				5 * dollar - (fee + ed)
 			);
 			assert_eq!(
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &empty_account),
-				5 * dollar(NATIVE_CURRENCY) + 1 - erc20_fee
+				Currencies::free_balance(erc20_token, &empty_account),
+				5 * dollar + 1 - erc20_fee
 			);
-			assert_eq!(
-				Currencies::free_balance(NATIVE_CURRENCY, &empty_account),
-				NativeTokenExistentialDeposit::get()
-			);
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &empty_account), ed);
 
-			// empty_address
+			// empty_address use payment non wrapped call to charge fee by erc20 fee pool.
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&EvmAddressMapping::<Runtime>::get_account_id(&empty_address),
+					&empty_address_account,
 					call,
 					&info,
 					len as usize,
 				)
 			);
+			assert_eq!(Currencies::free_balance(erc20_token, &sub_account), erc20_fee * 2);
 			assert_eq!(
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account),
-				erc20_fee * 2
+				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
+				5 * dollar - (fee + ed) * 2
+			);
+			assert_eq!(
+				Currencies::free_balance(erc20_token, &empty_address_account),
+				5 * dollar + 1 - erc20_fee
+			);
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &empty_address_account), ed);
+
+			// empty_account use payment `with_fee_currency` call to charge fee by erc20 fee pool.
+			let with_fee_call: <Runtime as module_transaction_payment::Config>::Call =
+				Call::TransactionPayment(module_transaction_payment::Call::with_fee_currency {
+					currency_id: erc20_token,
+					call: Box::new(call.clone()),
+				});
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
+					&empty_account,
+					&with_fee_call,
+					&info,
+					len as usize,
+				)
+			);
+			#[cfg(feature = "with-karura-runtime")]
+			let (erc20_with_fee, native_with_fee) = (376162757, 3750001749);
+			#[cfg(feature = "with-acala-runtime")]
+			let (erc20_with_fee, native_with_fee) = (376162757, 3750001749);
+			#[cfg(feature = "with-mandala-runtime")]
+			let (erc20_with_fee, native_with_fee) = (2402620997, 24000001749);
+			assert_eq!(
+				Currencies::free_balance(erc20_token, &sub_account),
+				erc20_fee * 2 + erc20_with_fee
 			);
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
-				5 * dollar(NATIVE_CURRENCY) - (fee + NativeTokenExistentialDeposit::get()) * 2
+				5 * dollar - (fee + ed) * 2 - native_with_fee
+			);
+
+			// empty_address use payment `with_fee_currency` call to charge fee by erc20 fee pool.
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
+					&empty_address_account,
+					&with_fee_call,
+					&info,
+					len as usize,
+				)
 			);
 			assert_eq!(
-				Currencies::free_balance(
-					CurrencyId::Erc20(erc20_address_0()),
-					&EvmAddressMapping::<Runtime>::get_account_id(&empty_address)
-				),
-				5 * dollar(NATIVE_CURRENCY) + 1 - erc20_fee
+				Currencies::free_balance(erc20_token, &sub_account),
+				erc20_fee * 2 + erc20_with_fee * 2
 			);
 			assert_eq!(
-				Currencies::free_balance(
-					NATIVE_CURRENCY,
-					&EvmAddressMapping::<Runtime>::get_account_id(&empty_address)
-				),
-				NativeTokenExistentialDeposit::get()
+				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
+				5 * dollar - (fee + ed) * 2 - native_with_fee * 2
 			);
 		});
 }
