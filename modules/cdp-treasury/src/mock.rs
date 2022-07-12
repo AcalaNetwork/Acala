@@ -551,4 +551,13 @@ impl StableAsset for MockStableAsset {
 	) -> DispatchResult {
 		unimplemented!()
 	}
+
+	fn send_mint_xcm(
+		_who: &Self::AccountId,
+		_local_pool_id: StableAssetPoolId,
+		_mint_amount: Self::Balance,
+		_remote_pool_id: StableAssetXcmPoolId,
+	) -> DispatchResult {
+		unimplemented!()
+	}
 }

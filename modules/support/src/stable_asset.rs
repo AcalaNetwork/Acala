@@ -409,4 +409,13 @@ where
 	) -> DispatchResult {
 		StableAsset::mint_xcm(who, pool_id, amounts, min_mint_amount, remote_pool_id)
 	}
+
+	fn send_mint_xcm(
+		who: &Self::AccountId,
+		pool_id: StableAssetPoolId,
+		mint_amount: Self::Balance,
+		remote_pool_id: StableAssetXcmPoolId,
+	) -> DispatchResult {
+		StableAsset::send_mint_xcm(who, pool_id, mint_amount, remote_pool_id)
+	}
 }

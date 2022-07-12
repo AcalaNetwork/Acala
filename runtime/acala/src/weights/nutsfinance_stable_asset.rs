@@ -141,4 +141,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+	fn send_mint_xcm() -> Weight {
+		(33_115_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(3 as Weight))
+			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+	}
 }
