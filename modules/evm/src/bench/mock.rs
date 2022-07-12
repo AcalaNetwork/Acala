@@ -249,7 +249,6 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightToFee = IdentityFee<Balance>;
 	type TransactionByteFee = ConstU128<10>;
 	type FeeMultiplierUpdate = ();
-	type DEX = Dex;
 	type Swap = MockSwap<AccountId32, Balance, CurrencyId>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;

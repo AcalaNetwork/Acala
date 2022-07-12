@@ -271,7 +271,6 @@ impl module_transaction_payment::Config for Test {
 	type WeightToFee = IdentityFee<Balance>;
 	type TransactionByteFee = ConstU128<10>;
 	type FeeMultiplierUpdate = ();
-	type DEX = DexModule;
 	type Swap = MockSwap<AccountId, Balance, CurrencyId>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;

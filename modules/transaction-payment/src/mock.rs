@@ -282,7 +282,6 @@ impl Config for Runtime {
 	type WeightToFee = WeightToFee;
 	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = ();
-	type DEX = DEXModule;
 	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;

@@ -1193,7 +1193,6 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightToFee = WeightToFee;
 	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
-	type DEX = Dex;
 	type Swap = AcalaSwap;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;

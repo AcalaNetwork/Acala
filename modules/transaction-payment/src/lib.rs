@@ -56,7 +56,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, MultiSignature, Percent, Perquintill,
 };
 use sp_std::prelude::*;
-use support::{BuyWeightRate, DEXManager, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment};
+use support::{BuyWeightRate, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment};
 use xcm::opaque::latest::MultiLocation;
 
 mod mock;
@@ -302,9 +302,6 @@ pub mod module {
 		/// Update the multiplier of the next block, based on the previous
 		/// block's weight.
 		type FeeMultiplierUpdate: MultiplierUpdate;
-
-		/// DEX to exchange currencies.
-		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
 		/// Swap
 		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
