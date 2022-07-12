@@ -74,13 +74,13 @@ const CALL: <Runtime as frame_system::Config>::Call = Call::Currencies(module_cu
 	currency_id: USD_CURRENCY,
 	amount: 12,
 });
-const INFO: DispatchInfo = DispatchInfo {
+pub const INFO: DispatchInfo = DispatchInfo {
 	weight: 100,
 	class: DispatchClass::Normal,
 	pays_fee: Pays::Yes,
 };
 
-fn with_fee_currency_call(currency_id: CurrencyId) -> <Runtime as module_transaction_payment::Config>::Call {
+pub fn with_fee_currency_call(currency_id: CurrencyId) -> <Runtime as module_transaction_payment::Config>::Call {
 	let fee_call: <Runtime as module_transaction_payment::Config>::Call =
 		Call::TransactionPayment(module_transaction_payment::Call::with_fee_currency {
 			currency_id,
