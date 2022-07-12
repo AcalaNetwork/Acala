@@ -290,6 +290,7 @@ runtime-benchmarks = [
 
 	"module-nft/runtime-benchmarks",
 	"module-evm-accounts/runtime-benchmarks",
+	"acala-service/runtime-benchmarks",
 
 	"sp-api/disable-logging",
 ]
