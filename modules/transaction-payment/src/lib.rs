@@ -561,6 +561,21 @@ pub mod module {
 			Self::disable_pool(currency_id)
 		}
 
+		/// Dapp wrap call, and user pay tx fee as provided trading path. this dispatch call should
+		/// make sure the trading path is valid.
+		#[pallet::weight({
+		let dispatch_info = call.get_dispatch_info();
+		(T::WeightInfo::with_fee_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
+		})]
+		pub fn with_fee_path(
+			origin: OriginFor<T>,
+			_fee_swap_path: Vec<CurrencyId>,
+			call: Box<CallOf<T>>,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin.clone())?;
+			call.dispatch(origin)
+		}
+
 		/// Dapp wrap call, and user pay tx fee as provided currency, this dispatch call should make
 		/// sure the currency is exist in tx fee pool.
 		#[pallet::weight({
@@ -783,6 +798,24 @@ where
 		reason: WithdrawReasons,
 	) -> Result<(T::AccountId, Balance), DispatchError> {
 		match call.is_sub_type() {
+			Some(Call::with_fee_path { fee_swap_path, .. }) => {
+				ensure!(
+					fee_swap_path.len() > 1
+						&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
+						&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
+					Error::<T>::InvalidSwapPath
+				);
+				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
+				let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+				let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
+				T::Swap::swap(
+					who,
+					*fee_swap_path.get(0).expect("ensured path not empty; qed"),
+					T::NativeCurrencyId::get(),
+					SwapLimit::ExactTarget(Balance::MAX, custom_fee_amount),
+				)
+				.map(|_| (who.clone(), custom_fee_surplus))
+			}
 			Some(Call::with_fee_currency { currency_id, .. }) => {
 				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
 				let alternative_fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
@@ -829,12 +862,12 @@ where
 	/// - When swap failed or user not setting `AlternativeFeeSwapPath`, then trying iterating
 	///   `DefaultFeeTokens` token list to directly swap from charge fee pool. All token in
 	///   `DefaultFeeTokens` is using charge fee pool mechanism.
-	/// - If token is not in `DefaultFeeTokens`, but is enabled using charge fee pool. so still can
-	///   swap from charge fee pool. the different between this case and second case is that this
-	///   case exhaust more surplus.
+	/// - If token is not in `DefaultFeeTokens`, but is enabled using charge fee pool. so it still
+	///   can swap from charge fee pool. the different between this case and second case is that
+	///   this case exhaust more surplus.
 	/// - so invoker must make sure user `who` either has `AlternativeFeeSwapPath` or is enabled
-	///   using charge fee pool to pay for fee. if not, then should invoke
-	///   `with_fee_currency(currency_id, call)`.
+	///   using charge fee pool to pay for fee. if not, then invoker should use
+	///   `with_fee_currency(currency_id, call)` or else return DispatchError.
 	fn native_then_alternative_or_default(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,

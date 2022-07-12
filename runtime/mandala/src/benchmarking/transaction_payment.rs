@@ -137,16 +137,11 @@ runtime_benchmarks! {
 		assert_eq!(module_transaction_payment::GlobalFeeSwapPath::<Runtime>::get(STABLECOIN), None);
 	}
 
-	#[extra]
-	with_fee_currency_use_swap {
-		let funder: AccountId = account("funder", 0, SEED);
+	with_fee_path {
 		let caller = whitelisted_caller();
 		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
-
-		let path = vec![LIQUIDCOIN, NATIVECOIN];
-		inject_liquidity(funder.clone(), LIQUIDCOIN, NATIVECOIN, 1_000 * dollar(LIQUIDCOIN), 10_000 * dollar(NATIVECOIN))?;
-		assert!(Dex::get_swap_amount(&path, SwapLimit::ExactTarget(Balance::MAX, 1)).is_some());
-	}: with_fee_currency(RawOrigin::Signed(caller), LIQUIDCOIN, call)
+		let fee_swap_path: Vec<CurrencyId> = vec![STABLECOIN, NATIVECOIN];
+	}: _(RawOrigin::Signed(caller), fee_swap_path.clone(), call)
 
 	with_fee_currency {
 		let caller: AccountId = whitelisted_caller();
