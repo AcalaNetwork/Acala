@@ -1,6 +1,5 @@
 # generate by yq eval 'explode(.)' test.yml.src > test.yml
 # https://github.com/mikefarah/yq
-#test#2
 name: Test
 on:
   pull_request:
