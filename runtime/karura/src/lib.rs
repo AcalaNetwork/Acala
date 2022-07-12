@@ -127,9 +127,12 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2082,
+	spec_version: 2083,
 	impl_version: 0,
+	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
+	#[cfg(feature = "disable-runtime-api")]
+	apis: sp_version::create_apis_vec![[]],
 	transaction_version: 1,
 	state_version: 0,
 };
@@ -1777,8 +1780,31 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	XcmInterfaceMigration,
+>;
+
+pub struct XcmInterfaceMigration;
+impl OnRuntimeUpgrade for XcmInterfaceMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let _ = <module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
+			Origin::root(),
+			vec![(
+				module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new(
+					(1, Parachain(parachains::statemine::ID)).into(),
+				)),
+				Some(4_000_000_000),
+				Some(20_000_000),
+			)],
+		);
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

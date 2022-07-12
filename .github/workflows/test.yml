@@ -102,6 +102,8 @@ jobs:
         run: make check-benchmarks
       - name: Check try-runtime
         run: make check-try-runtime
+      - name: Check runtimes
+        run: make check-runtimes
   e2e-tests:
     runs-on: custom-runner-AWS-Acala
     env:
