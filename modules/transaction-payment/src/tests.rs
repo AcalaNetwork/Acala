@@ -39,7 +39,7 @@ use sp_runtime::{
 	testing::TestXt,
 	traits::{One, UniqueSaturatedInto},
 };
-use support::{BuyWeightRate, Price, TransactionPayment as TransactionPaymentT};
+use support::{BuyWeightRate, DEXManager, Price, TransactionPayment as TransactionPaymentT};
 use xcm::latest::prelude::*;
 use xcm::prelude::GeneralKey;
 
