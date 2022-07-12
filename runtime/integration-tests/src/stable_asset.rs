@@ -103,18 +103,14 @@ fn stable_asset_mint_works() {
 			let lksm_balance = Currencies::free_balance(LIQUID_CURRENCY, &account_id);
 			assert_eq!(ksm_target_amount, ksm_balance);
 
-			#[cfg(feature = "with-karura-runtime")]
-			let lksm_amount = 100_004_560u128;
-			#[cfg(feature = "with-acala-runtime")]
+			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			let lksm_amount = 100_004_560u128;
 			#[cfg(feature = "with-mandala-runtime")]
 			let lksm_amount = 10_000_456u128;
 			assert_eq!(lksm_amount, lksm_balance);
 
 			let converted_lksm_balance = exchange_rate.checked_mul_int(lksm_balance).unwrap_or_default();
-			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(converted_lksm_balance == lksm_target_amount, true);
-			#[cfg(feature = "with-acala-runtime")]
+			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			assert_eq!(converted_lksm_balance == lksm_target_amount, true);
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(converted_lksm_balance < lksm_target_amount, true);
@@ -300,9 +296,7 @@ fn three_usd_pool_works() {
 					])
 				),]
 			));
-			#[cfg(feature = "with-karura-runtime")]
-			let (amount1, amount2, amount3) = (9_940_060_348_765u128, 9_920_180_467_236u128, 9_920_507_587_087u128);
-			#[cfg(feature = "with-acala-runtime")]
+			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			let (amount1, amount2, amount3) = (9_940_060_348_765u128, 9_920_180_467_236u128, 9_920_507_587_087u128);
 			#[cfg(feature = "with-mandala-runtime")]
 			let (amount1, amount2, amount3) = (9_960_119_631_126u128, 9_940_288_675_825u128, 9_940_348_090_028u128);
@@ -337,7 +331,7 @@ fn three_usd_pool_works() {
 				Ok((1_000_000_000_000, amount3))
 			);
 
-			// USDC as fee token
+			// USDC: Erc20(contract) as fee token
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
@@ -346,17 +340,7 @@ fn three_usd_pool_works() {
 					50
 				)
 			);
-			#[cfg(feature = "with-karura-runtime")]
-			let (amount1, amount2, amount3, amount4, amount5, amount6, amount7) = (
-				227_492_054,
-				1_001_000_000_000_000u128,
-				1_001_000_227_492_054u128,
-				998_003_805_870_835u128,
-				3_000_004_000_455_001u128,
-				227_029_587u128,
-				2_250_002_711u128,
-			);
-			#[cfg(feature = "with-acala-runtime")]
+			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			let (amount1, amount2, amount3, amount4, amount5, amount6, amount7) = (
 				227_492_054,
 				1_001_000_000_000_000u128,
@@ -394,7 +378,7 @@ fn three_usd_pool_works() {
 				liquidity_changes: vec![amount6, amount7],
 			}));
 
-			// USDT as fee token
+			// USDT: ForeignAsset(0) as fee token
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
@@ -403,17 +387,7 @@ fn three_usd_pool_works() {
 					50
 				)
 			);
-			#[cfg(feature = "with-karura-runtime")]
-			let (amount1, amount2, amount3, amount4, amount5, amount6, amount7) = (
-				227492158u128,
-				1001000227492158u128,
-				1001000227492054u128,
-				998003578841144u128,
-				3000004000909980u128,
-				227029691u128,
-				2250002724u128,
-			);
-			#[cfg(feature = "with-acala-runtime")]
+			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			let (amount1, amount2, amount3, amount4, amount5, amount6, amount7) = (
 				227492158u128,
 				1001000227492158u128,
@@ -451,6 +425,7 @@ fn three_usd_pool_works() {
 				liquidity_changes: vec![amount6, amount7],
 			}));
 
+			// AUSD as fee token
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
@@ -459,9 +434,7 @@ fn three_usd_pool_works() {
 					50
 				)
 			);
-			#[cfg(feature = "with-karura-runtime")]
-			let (amount1, amount2) = (227029696u128, 2250001749u128);
-			#[cfg(feature = "with-acala-runtime")]
+			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			let (amount1, amount2) = (227029696u128, 2250001749u128);
 			#[cfg(feature = "with-mandala-runtime")]
 			let (amount1, amount2) = (906308755u128, 9000001749u128);

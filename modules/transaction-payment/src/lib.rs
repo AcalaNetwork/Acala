@@ -822,18 +822,19 @@ where
 
 	/// If native is enough, do nothing, return `Ok(0)` means there are none extra surplus fee.
 	/// If native is not enough, try swap from tx fee pool or dex:
-	/// 1. As user can set his own `AlternativeFeeSwapPath`, this will direct swap from dex. Notice:
-	/// we're using `Swap::swap`,    so the real swap path may not equal to
-	/// `AlternativeFeeSwapPath`, and even though `AlternativeFeeSwapPath` is invalid, once swap is
-	/// success, it's also acceptable. 2. When swap failed or user not setting
-	/// `AlternativeFeeSwapPath`, then trying iterating `DefaultFeeTokens` token list to directly
-	/// swap from charge fee pool.    All token in `DefaultFeeTokens` is using charge fee pool
-	/// mechanism. 3. If token is not in `DefaultFeeTokens`, but is enabled using charge fee pool.
-	/// so still can swap from charge fee pool.    the different between this case and second case
-	/// is that this case exhaust more surplus. 4.
-	/// so invoker must make sure user `who` either has `AlternativeFeeSwapPath` or is enabled using
-	/// charge fee pool to pay for fee. if not, then should invoke `with_fee_currency(currency_id,
-	/// call)`.
+	/// - As user can set his own `AlternativeFeeSwapPath`, this will direct swap from dex. Notice:
+	///   we're using `Swap::swap`, so the real swap path may not equal to `AlternativeFeeSwapPath`,
+	///   and even though `AlternativeFeeSwapPath` is invalid, once swap is success, it's also
+	///   acceptable.
+	/// - When swap failed or user not setting `AlternativeFeeSwapPath`, then trying iterating
+	///   `DefaultFeeTokens` token list to directly swap from charge fee pool. All token in
+	///   `DefaultFeeTokens` is using charge fee pool mechanism.
+	/// - If token is not in `DefaultFeeTokens`, but is enabled using charge fee pool. so still can
+	///   swap from charge fee pool. the different between this case and second case is that this
+	///   case exhaust more surplus.
+	/// - so invoker must make sure user `who` either has `AlternativeFeeSwapPath` or is enabled
+	///   using charge fee pool to pay for fee. if not, then should invoke
+	///   `with_fee_currency(currency_id, call)`.
 	fn native_then_alternative_or_default(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,

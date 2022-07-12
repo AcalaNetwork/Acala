@@ -137,6 +137,7 @@ runtime_benchmarks! {
 		assert_eq!(module_transaction_payment::GlobalFeeSwapPath::<Runtime>::get(STABLECOIN), None);
 	}
 
+	#[extra]
 	with_fee_currency_use_swap {
 		let funder: AccountId = account("funder", 0, SEED);
 		let caller = whitelisted_caller();
