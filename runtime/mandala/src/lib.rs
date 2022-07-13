@@ -1912,7 +1912,10 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	FeesMigration,
+	(
+		FeesMigration,
+		module_auction_manager::migrations::v1::MigrateToV1<Runtime>,
+	),
 >;
 
 use primitives::IncomeSource;
@@ -2017,15 +2020,6 @@ impl OnRuntimeUpgrade for FeesMigration {
 			&runtime_common::HonzonTreasuryPool::get()
 		));
 		Ok(())
-	}
-}
-
-// Migration for AuctionManager from V0 to V1
-pub struct AuctionManagerMigrationV1;
-
-impl OnRuntimeUpgrade for AuctionManagerMigrationV1 {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		module_auction_manager::migrations::v1::migrate::<Runtime, AuctionManager>()
 	}
 }
 

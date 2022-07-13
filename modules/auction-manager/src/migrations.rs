@@ -18,110 +18,82 @@
 
 // This file is used for initial migration from HomaXcm into XcmInterface, due to name change.
 
+use super::*;
 pub mod v1 {
-	// use super::*;
-	use crate::CollateralAuctionItem as V1CollateralAuctionItem;
-	use crate::*;
+	use super::*;
+	use frame_support::traits::OnRuntimeUpgrade;
 
 	use frame_support::{
-		traits::{Get, GetStorageVersion, PalletInfoAccess, StorageVersion},
+		traits::{GetStorageVersion, StorageVersion},
 		weights::Weight,
 	};
 	use primitives::{Balance, CurrencyId};
 
-	#[cfg_attr(feature = "std", derive(PartialEq, Eq))]
 	#[derive(Encode, Decode, Clone, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-	pub struct CollateralAuctionItem<AccountId, BlockNumber> {
+	pub struct V0CollateralAuctionItem<AccountId, BlockNumber> {
 		refund_recipient: AccountId,
 		currency_id: CurrencyId,
+		#[codec(compact)]
 		initial_amount: Balance,
+		#[codec(compact)]
 		amount: Balance,
+		#[codec(compact)]
 		target: Balance,
 		start_time: BlockNumber,
 	}
 
-	pub struct AuctionConverter<T>(PhantomData<T>);
-	impl<T: frame_system::Config> AuctionConverter<T> {
-		fn convert_collateral_auction_item_v0_to_v1(
-			auction: CollateralAuctionItem<T::AccountId, T::BlockNumber>,
-		) -> V1CollateralAuctionItem<T::AccountId, T::BlockNumber> {
-			let CollateralAuctionItem {
-				refund_recipient,
-				currency_id,
-				initial_amount,
-				amount,
-				target,
-				start_time,
-			} = auction;
-
-			V1CollateralAuctionItem {
-				refund_recipient,
-				currency_id,
-				initial_amount,
-				amount,
-				base: target,
+	impl<AccountId, BlockNumber> V0CollateralAuctionItem<AccountId, BlockNumber> {
+		fn migrate_to_v1(self) -> CollateralAuctionItem<AccountId, BlockNumber> {
+			CollateralAuctionItem {
+				refund_recipient: self.refund_recipient,
+				currency_id: self.currency_id,
+				initial_amount: self.initial_amount,
+				amount: self.amount,
+				base: self.target,
 				penalty: Default::default(),
-				start_time,
+				start_time: self.start_time,
 			}
 		}
 	}
 
-	/// Migrate the entire storage of previously named "module-homa-xcm" pallet to here.
-	pub fn migrate<T: frame_system::Config + crate::Config, P: GetStorageVersion + PalletInfoAccess>() -> Weight {
-		let on_chain_storage_version = <P as GetStorageVersion>::on_chain_storage_version();
+	pub struct MigrateToV1<T>(sp_std::marker::PhantomData<T>);
+	impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
+		fn on_runtime_upgrade() -> Weight {
+			let on_chain_storage_version = Pallet::<T>::on_chain_storage_version();
 
-		log::info!(
-			target: "runtime::auction-manager",
-			"Running storage migration for CollateralAuctionItem. \n
-			Current version: {:?}, New version: V1",
-			on_chain_storage_version,
-		);
-
-		if on_chain_storage_version < 1 {
-			//frame_support::storage::migration::move_pallet(old_prefix.as_bytes(), new_prefix.as_bytes());
-			// Take the previous version of CollateralAuction into the new version
-			let pallet_prefix: &[u8] = b"AuctionManager";
-			let storage_prefix: &[u8] = b"CollateralAuctions";
-
-			// Convert V0 auction items into V1 items.
-			let v1_auctions: Vec<_> = frame_support::storage::migration::storage_key_iter::<
-				AuctionId,
-				CollateralAuctionItem<T::AccountId, T::BlockNumber>,
-				Twox64Concat,
-			>(pallet_prefix, storage_prefix)
-			.into_iter()
-			.map(|(id, auction)| {
-				(
-					id,
-					AuctionConverter::<T>::convert_collateral_auction_item_v0_to_v1(auction),
-				)
-			})
-			.collect();
-			let num_items_migrated: u64 = v1_auctions.len() as u64;
-
-			// Remove the current storage
-			frame_support::storage::migration::remove_storage_prefix(pallet_prefix, storage_prefix, &[]);
-
-			// Write the newer version into storage
-			for (id, auction) in v1_auctions {
-				CollateralAuctions::<T>::insert(id, auction);
-			}
-
-			// Update storage version.
-			StorageVersion::new(1).put::<P>();
 			log::info!(
 				target: "runtime::auction-manager",
-				"Storage migrated completed.",
-			);
-
-			T::DbWeight::get().reads_writes(num_items_migrated, num_items_migrated)
-		} else {
-			log::warn!(
-				target: "runtime::auction-manager",
-				"Attempted to apply migration to v1 but failed because storage version is {:?}",
+				"Running storage migration for CollateralAuctionItem. \n
+				Current version: {:?}, New version: V1",
 				on_chain_storage_version,
 			);
-			0
+
+			if on_chain_storage_version < 1 {
+				let mut auctions_migrated = 0u64;
+				// Migrate CollateralAuctions storage from V0 to V1
+				CollateralAuctions::<T>::translate::<V0CollateralAuctionItem<T::AccountId, T::BlockNumber>, _>(
+					|_id, v0_auction| {
+						auctions_migrated.saturating_inc();
+						Some(v0_auction.migrate_to_v1())
+					},
+				);
+
+				// Update storage version.
+				StorageVersion::new(1).put::<Pallet<T>>();
+				log::info!(
+					target: "runtime::auction-manager",
+					"Storage migrated completed.",
+				);
+
+				T::DbWeight::get().reads_writes(auctions_migrated, auctions_migrated)
+			} else {
+				log::warn!(
+					target: "runtime::auction-manager",
+					"Attempted to apply migration to v1 but failed because storage version is {:?}",
+					on_chain_storage_version,
+				);
+				0
+			}
 		}
 	}
 }
