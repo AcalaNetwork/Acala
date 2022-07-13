@@ -1933,6 +1933,10 @@ impl OnRuntimeUpgrade for TransactionPaymentMigration {
 				module_transaction_payment::TokenExchangeRate::<Runtime>::contains_key(&token),
 				true
 			);
+			assert_eq!(
+				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::contains_key(&token),
+				true
+			);
 		}
 		Ok(())
 	}
@@ -1943,6 +1947,10 @@ impl OnRuntimeUpgrade for TransactionPaymentMigration {
 			assert_eq!(
 				module_transaction_payment::TokenExchangeRate::<Runtime>::contains_key(&token),
 				true
+			);
+			assert_eq!(
+				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::contains_key(&token),
+				false
 			);
 		}
 		Ok(())
