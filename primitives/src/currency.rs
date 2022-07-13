@@ -22,7 +22,7 @@ use crate::{evm::EvmAddress, *};
 use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-pub use nutsfinance_stable_asset::StableAssetPoolId;
+pub use nutsfinance_stable_asset::{StableAssetPoolId, StableAssetXcmPoolId};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -279,6 +279,7 @@ pub enum DexShare {
 	LiquidCrowdloan(Lease),
 	ForeignAsset(ForeignAssetId),
 	StableAssetPoolToken(StableAssetPoolId),
+	StableAssetXcmPoolToken(StableAssetXcmPoolId),
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
@@ -291,6 +292,7 @@ pub enum CurrencyId {
 	StableAssetPoolToken(StableAssetPoolId),
 	LiquidCrowdloan(Lease),
 	ForeignAsset(ForeignAssetId),
+	StableAssetXcmPoolToken(StableAssetXcmPoolId),
 }
 
 impl CurrencyId {
@@ -345,6 +347,9 @@ impl CurrencyId {
 			CurrencyId::StableAssetPoolToken(stable_asset_pool_id) => {
 				DexShare::StableAssetPoolToken(stable_asset_pool_id)
 			}
+			CurrencyId::StableAssetXcmPoolToken(stable_asset_pool_id) => {
+				DexShare::StableAssetXcmPoolToken(stable_asset_pool_id)
+			}
 			// Unsupported
 			CurrencyId::DexShare(..) => return None,
 		};
@@ -355,6 +360,9 @@ impl CurrencyId {
 			CurrencyId::ForeignAsset(foreign_asset_id) => DexShare::ForeignAsset(foreign_asset_id),
 			CurrencyId::StableAssetPoolToken(stable_asset_pool_id) => {
 				DexShare::StableAssetPoolToken(stable_asset_pool_id)
+			}
+			CurrencyId::StableAssetXcmPoolToken(stable_asset_pool_id) => {
+				DexShare::StableAssetXcmPoolToken(stable_asset_pool_id)
 			}
 			// Unsupported
 			CurrencyId::DexShare(..) => return None,
@@ -387,6 +395,9 @@ impl From<DexShare> for u32 {
 			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
 				bytes[..].copy_from_slice(&stable_asset_pool_id.to_be_bytes());
 			}
+			DexShare::StableAssetXcmPoolToken(stable_asset_pool_id) => {
+				bytes[..].copy_from_slice(&stable_asset_pool_id.to_be_bytes());
+			}
 		}
 		u32::from_be_bytes(bytes)
 	}
@@ -401,6 +412,9 @@ impl Into<CurrencyId> for DexShare {
 			DexShare::ForeignAsset(foreign_asset_id) => CurrencyId::ForeignAsset(foreign_asset_id),
 			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
 				CurrencyId::StableAssetPoolToken(stable_asset_pool_id)
+			}
+			DexShare::StableAssetXcmPoolToken(stable_asset_pool_id) => {
+				CurrencyId::StableAssetXcmPoolToken(stable_asset_pool_id)
 			}
 		}
 	}
@@ -417,6 +431,7 @@ pub enum CurrencyIdType {
 	StableAsset,
 	LiquidCrowdloan,
 	ForeignAsset,
+	StableAssetXcm,
 }
 
 #[derive(
@@ -429,6 +444,7 @@ pub enum DexShareType {
 	LiquidCrowdloan,
 	ForeignAsset,
 	StableAssetPoolToken,
+	StableAssetXcmPoolToken,
 }
 
 impl Into<DexShareType> for DexShare {
@@ -439,6 +455,7 @@ impl Into<DexShareType> for DexShare {
 			DexShare::LiquidCrowdloan(_) => DexShareType::LiquidCrowdloan,
 			DexShare::ForeignAsset(_) => DexShareType::ForeignAsset,
 			DexShare::StableAssetPoolToken(_) => DexShareType::StableAssetPoolToken,
+			DexShare::StableAssetXcmPoolToken(_) => DexShareType::StableAssetXcmPoolToken,
 		}
 	}
 }
@@ -452,6 +469,7 @@ pub enum AssetIds {
 	StableAssetId(StableAssetPoolId),
 	ForeignAssetId(ForeignAssetId),
 	NativeAssetId(CurrencyId),
+	StableAssetXcmId(StableAssetXcmPoolId),
 }
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]

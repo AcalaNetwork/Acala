@@ -197,6 +197,10 @@ impl TryFrom<CurrencyId> for EvmAddress {
 				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::StableAsset.into();
 				address[H160_POSITION_STABLE_ASSET].copy_from_slice(&stable_asset_id.to_be_bytes());
 			}
+			CurrencyId::StableAssetXcmPoolToken(stable_asset_id) => {
+				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::StableAssetXcm.into();
+				address[H160_POSITION_STABLE_ASSET].copy_from_slice(&stable_asset_id.to_be_bytes());
+			}
 			CurrencyId::LiquidCrowdloan(lease) => {
 				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::LiquidCrowdloan.into();
 				address[H160_POSITION_LIQUID_CROADLOAN].copy_from_slice(&lease.to_be_bytes());

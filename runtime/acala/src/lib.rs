@@ -760,6 +760,10 @@ parameter_type_with_key! {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetId(*stable_asset_id)).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 			},
+			CurrencyId::StableAssetXcmPoolToken(stable_asset_id) => {
+				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetXcmId(*stable_asset_id)).
+					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+			},
 			CurrencyId::LiquidCrowdloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::ForeignAssetId(*foreign_asset_id)).

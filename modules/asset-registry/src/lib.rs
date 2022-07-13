@@ -36,7 +36,7 @@ use module_support::{AssetIdMapping, BuyWeightRate, EVMBridge, Erc20InfoMapping,
 use primitives::{
 	currency::{
 		AssetIds, AssetMetadata, CurrencyIdType, DexShare, DexShareType, Erc20Id, ForeignAssetId, Lease,
-		StableAssetPoolId, TokenInfo,
+		StableAssetPoolId, StableAssetXcmPoolId, TokenInfo,
 	},
 	evm::{
 		is_system_contract, EvmAddress, H160_POSITION_CURRENCY_ID_TYPE, H160_POSITION_DEXSHARE_LEFT_FIELD,
@@ -143,6 +143,13 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn next_stable_asset_id)]
 	pub type NextStableAssetId<T: Config> = StorageValue<_, StableAssetPoolId, ValueQuery>;
+
+	/// Next available Stable Asset XCM ID.
+	///
+	/// NextStableAssetXcmId: StableAssetXcmPoolId
+	#[pallet::storage]
+	#[pallet::getter(fn next_stable_asset_xcm_id)]
+	pub type NextStableAssetXcmId<T: Config> = StorageValue<_, StableAssetXcmPoolId, ValueQuery>;
 
 	/// The storages for MultiLocations.
 	///
@@ -357,12 +364,55 @@ pub mod module {
 			});
 			Ok(())
 		}
+
+		#[pallet::weight(T::WeightInfo::register_stable_asset())]
+		#[transactional]
+		pub fn register_stable_asset_xcm(
+			origin: OriginFor<T>,
+			metadata: Box<AssetMetadata<BalanceOf<T>>>,
+		) -> DispatchResult {
+			T::RegisterOrigin::ensure_origin(origin)?;
+
+			let stable_asset_id = Self::do_register_stable_asset_xcm(&metadata)?;
+
+			Self::deposit_event(Event::<T>::AssetRegistered {
+				asset_id: AssetIds::StableAssetXcmId(stable_asset_id),
+				metadata: *metadata,
+			});
+			Ok(())
+		}
+
+		#[pallet::weight(T::WeightInfo::update_stable_asset())]
+		#[transactional]
+		pub fn update_stable_asset_xcm(
+			origin: OriginFor<T>,
+			stable_asset_id: StableAssetXcmPoolId,
+			metadata: Box<AssetMetadata<BalanceOf<T>>>,
+		) -> DispatchResult {
+			T::RegisterOrigin::ensure_origin(origin)?;
+
+			Self::do_update_stable_asset_xcm(&stable_asset_id, &metadata)?;
+
+			Self::deposit_event(Event::<T>::AssetUpdated {
+				asset_id: AssetIds::StableAssetXcmId(stable_asset_id),
+				metadata: *metadata,
+			});
+			Ok(())
+		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
 	fn get_next_stable_asset_id() -> Result<StableAssetPoolId, DispatchError> {
 		NextStableAssetId::<T>::try_mutate(|current| -> Result<StableAssetPoolId, DispatchError> {
+			let id = *current;
+			*current = current.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?;
+			Ok(id)
+		})
+	}
+
+	fn get_next_stable_asset_xcm_id() -> Result<StableAssetXcmPoolId, DispatchError> {
+		NextStableAssetXcmId::<T>::try_mutate(|current| -> Result<StableAssetXcmPoolId, DispatchError> {
 			let id = *current;
 			*current = current.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?;
 			Ok(id)
@@ -450,12 +500,44 @@ impl<T: Config> Pallet<T> {
 		Ok(stable_asset_id)
 	}
 
+	fn do_register_stable_asset_xcm(
+		metadata: &AssetMetadata<BalanceOf<T>>,
+	) -> Result<StableAssetXcmPoolId, DispatchError> {
+		let stable_asset_id = Self::get_next_stable_asset_xcm_id()?;
+		AssetMetadatas::<T>::try_mutate(
+			AssetIds::StableAssetXcmId(stable_asset_id),
+			|maybe_asset_metadatas| -> DispatchResult {
+				ensure!(maybe_asset_metadatas.is_none(), Error::<T>::AssetIdExisted);
+
+				*maybe_asset_metadatas = Some(metadata.clone());
+				Ok(())
+			},
+		)?;
+
+		Ok(stable_asset_id)
+	}
+
 	fn do_update_stable_asset(
 		stable_asset_id: &StableAssetPoolId,
 		metadata: &AssetMetadata<BalanceOf<T>>,
 	) -> DispatchResult {
 		AssetMetadatas::<T>::try_mutate(
 			AssetIds::StableAssetId(*stable_asset_id),
+			|maybe_asset_metadatas| -> DispatchResult {
+				ensure!(maybe_asset_metadatas.is_some(), Error::<T>::AssetIdNotExists);
+
+				*maybe_asset_metadatas = Some(metadata.clone());
+				Ok(())
+			},
+		)
+	}
+
+	fn do_update_stable_asset_xcm(
+		stable_asset_id: &StableAssetXcmPoolId,
+		metadata: &AssetMetadata<BalanceOf<T>>,
+	) -> DispatchResult {
+		AssetMetadatas::<T>::try_mutate(
+			AssetIds::StableAssetXcmId(*stable_asset_id),
 			|maybe_asset_metadatas| -> DispatchResult {
 				ensure!(maybe_asset_metadatas.is_some(), Error::<T>::AssetIdNotExists);
 
@@ -628,6 +710,9 @@ impl<T: Config> EvmErc20InfoMapping<T> {
 			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
 				AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_pool_id)).map(|v| v.name)
 			}
+			DexShare::StableAssetXcmPoolToken(stable_asset_pool_id) => {
+				AssetMetadatas::<T>::get(AssetIds::StableAssetXcmId(stable_asset_pool_id)).map(|v| v.name)
+			}
 		}
 	}
 
@@ -651,6 +736,9 @@ impl<T: Config> EvmErc20InfoMapping<T> {
 			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
 				AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_pool_id)).map(|v| v.symbol)
 			}
+			DexShare::StableAssetXcmPoolToken(stable_asset_pool_id) => {
+				AssetMetadatas::<T>::get(AssetIds::StableAssetXcmId(stable_asset_pool_id)).map(|v| v.symbol)
+			}
 		}
 	}
 
@@ -664,6 +752,9 @@ impl<T: Config> EvmErc20InfoMapping<T> {
 			}
 			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
 				AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_pool_id)).map(|v| v.decimals)
+			}
+			DexShare::StableAssetXcmPoolToken(stable_asset_pool_id) => {
+				AssetMetadatas::<T>::get(AssetIds::StableAssetXcmId(stable_asset_pool_id)).map(|v| v.decimals)
 			}
 		}
 	}
@@ -692,6 +783,10 @@ impl<T: Config> EvmErc20InfoMapping<T> {
 				let id = StableAssetPoolId::from_be_bytes(address[dex_share_field][..].try_into().ok()?);
 				Some(DexShare::StableAssetPoolToken(id))
 			}
+			DexShareType::StableAssetXcmPoolToken => {
+				let id = StableAssetXcmPoolId::from_be_bytes(address[dex_share_field][..].try_into().ok()?);
+				Some(DexShare::StableAssetXcmPoolToken(id))
+			}
 		}
 	}
 }
@@ -717,6 +812,9 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 			CurrencyId::Erc20(address) => AssetMetadatas::<T>::get(AssetIds::Erc20(address)).map(|v| v.name),
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_id)).map(|v| v.name)
+			}
+			CurrencyId::StableAssetXcmPoolToken(stable_asset_id) => {
+				AssetMetadatas::<T>::get(AssetIds::StableAssetXcmId(stable_asset_id)).map(|v| v.name)
 			}
 			CurrencyId::LiquidCrowdloan(lease) => Some(
 				format!(
@@ -760,6 +858,9 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_id)).map(|v| v.symbol)
 			}
+			CurrencyId::StableAssetXcmPoolToken(stable_asset_id) => {
+				AssetMetadatas::<T>::get(AssetIds::StableAssetXcmId(stable_asset_id)).map(|v| v.symbol)
+			}
 			CurrencyId::LiquidCrowdloan(lease) => Some(
 				format!(
 					"LC{}-{}",
@@ -798,6 +899,9 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_id)).map(|v| v.decimals)
 			}
+			CurrencyId::StableAssetXcmPoolToken(stable_asset_id) => {
+				AssetMetadatas::<T>::get(AssetIds::StableAssetXcmId(stable_asset_id)).map(|v| v.decimals)
+			}
 			CurrencyId::LiquidCrowdloan(_) => T::StakingCurrencyId::get().decimals(),
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				AssetMetadatas::<T>::get(AssetIds::ForeignAssetId(foreign_asset_id)).map(|v| v.decimals)
@@ -819,7 +923,8 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 					DexShare::Token(_)
 					| DexShare::LiquidCrowdloan(_)
 					| DexShare::ForeignAsset(_)
-					| DexShare::StableAssetPoolToken(_) => {}
+					| DexShare::StableAssetPoolToken(_)
+					| DexShare::StableAssetXcmPoolToken(_) => {}
 				};
 				match right {
 					DexShare::Erc20(address) => {
@@ -829,12 +934,14 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 					DexShare::Token(_)
 					| DexShare::LiquidCrowdloan(_)
 					| DexShare::ForeignAsset(_)
-					| DexShare::StableAssetPoolToken(_) => {}
+					| DexShare::StableAssetPoolToken(_)
+					| DexShare::StableAssetXcmPoolToken(_) => {}
 				};
 			}
 			CurrencyId::Token(_)
 			| CurrencyId::Erc20(_)
 			| CurrencyId::StableAssetPoolToken(_)
+			| CurrencyId::StableAssetXcmPoolToken(_)
 			| CurrencyId::LiquidCrowdloan(_)
 			| CurrencyId::ForeignAsset(_) => {}
 		};
@@ -861,6 +968,10 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 			CurrencyIdType::StableAsset => {
 				let id = StableAssetPoolId::from_be_bytes(address[H160_POSITION_STABLE_ASSET].try_into().ok()?);
 				Some(CurrencyId::StableAssetPoolToken(id))
+			}
+			CurrencyIdType::StableAssetXcm => {
+				let id = StableAssetXcmPoolId::from_be_bytes(address[H160_POSITION_STABLE_ASSET].try_into().ok()?);
+				Some(CurrencyId::StableAssetXcmPoolToken(id))
 			}
 			CurrencyIdType::LiquidCrowdloan => {
 				let id = Lease::from_be_bytes(address[H160_POSITION_LIQUID_CROADLOAN].try_into().ok()?);
