@@ -510,7 +510,7 @@ fn test_asset_registry_module() {
 	Sibling::execute_with(|| {
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB)),
-			9_984_149_200_000
+			9_998_135_200_000
 		);
 
 		assert_ok!(XTokens::transfer(
@@ -535,7 +535,7 @@ fn test_asset_registry_module() {
 
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB)),
-			4_984_149_200_000
+			4_998_135_200_000
 		);
 	});
 
@@ -554,7 +554,7 @@ fn test_asset_registry_module() {
 	Karura::execute_with(|| {
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			94_984_149_200_000
+			94_998_135_200_000
 		);
 	});
 }

@@ -572,6 +572,41 @@ where
 	}
 }
 
+pub struct BuyWeightRateOfStableAsset<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: Config> BuyWeightRate for BuyWeightRateOfStableAsset<T>
+where
+	BalanceOf<T>: Into<u128>,
+{
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio> {
+		match location {
+			MultiLocation {
+				parents: 0,
+				interior: X1(Junction::GeneralKey(key)),
+			} => {
+				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+				match currency_id {
+					CurrencyId::StableAssetPoolToken(pool_id) => {
+						if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::StableAssetId(pool_id)) {
+							let minimum_balance = asset_metadata.minimal_balance.into();
+							let rate = FixedU128::saturating_from_rational(
+								minimum_balance,
+								T::Currency::minimum_balance().into(),
+							);
+							log::debug!(target: "asset-registry::weight", "StableAsset: {}, MinimumBalance: {}, rate:{:?}", pool_id, minimum_balance, rate);
+							Some(rate)
+						} else {
+							None
+						}
+					}
+					_ => None,
+				}
+			}
+			_ => None,
+		}
+	}
+}
+
 pub struct BuyWeightRateOfErc20<T>(sp_std::marker::PhantomData<T>);
 
 impl<T: Config> BuyWeightRate for BuyWeightRateOfErc20<T>
