@@ -25,7 +25,7 @@ jobs:
         with:
           access_token: ${{ github.token }}
   build:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -57,7 +57,7 @@ jobs:
       - name: Run build benches
         run: make build-benches
   benchmarking:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -77,7 +77,7 @@ jobs:
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -105,7 +105,7 @@ jobs:
       - name: Check runtimes
         run: make check-runtimes
   e2e-tests:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
