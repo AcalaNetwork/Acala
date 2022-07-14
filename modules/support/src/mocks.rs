@@ -231,6 +231,14 @@ impl<AccountId, Balance, CurrencyId> Swap<AccountId, Balance, CurrencyId> for Mo
 	) -> Result<(Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
+
+	fn swap_by_path(
+		_who: &AccountId,
+		_swap_path: &[CurrencyId],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		unimplemented!()
+	}
 }
 
 pub struct MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber> {

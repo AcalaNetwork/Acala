@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::evm::alice_evm_addr;
-use crate::payment::{with_fee_currency_call, INFO};
+use crate::payment::{with_fee_currency_call, with_fee_path_call, INFO};
 use crate::setup::*;
 use module_aggregated_dex::SwapPath;
 use module_support::{ExchangeRate, Swap, SwapLimit, EVM as EVMTrait};
@@ -387,6 +387,14 @@ fn three_usd_pool_works() {
 					50
 				)
 			);
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
+					&AccountId::from(BOB),
+					&with_fee_path_call(vec![CurrencyId::ForeignAsset(0), USD_CURRENCY, NATIVE_CURRENCY]),
+					&INFO,
+					50
+				)
+			);
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			let (amount1, amount2, amount3, amount4, amount5, amount6, amount7) = (
 				227492158u128,
@@ -443,6 +451,15 @@ fn three_usd_pool_works() {
 				path: vec![USD_CURRENCY, NATIVE_CURRENCY],
 				liquidity_changes: vec![amount1, amount2],
 			}));
+
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
+					&AccountId::from(BOB),
+					&with_fee_path_call(vec![USD_CURRENCY, NATIVE_CURRENCY]),
+					&INFO,
+					50
+				)
+			);
 		});
 }
 

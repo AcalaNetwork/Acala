@@ -85,6 +85,12 @@ pub trait Swap<AccountId, Balance, CurrencyId> {
 		target_currency_id: CurrencyId,
 		limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError>;
+
+	fn swap_by_path(
+		who: &AccountId,
+		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError>;
 }
 
 #[derive(Eq, PartialEq, RuntimeDebug)]
@@ -137,6 +143,14 @@ where
 		.0;
 
 		<Dex as DEXManager<AccountId, Balance, CurrencyId>>::swap_with_specific_path(who, &path, limit)
+	}
+
+	fn swap_by_path(
+		who: &AccountId,
+		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		<Dex as DEXManager<AccountId, Balance, CurrencyId>>::swap_with_specific_path(who, swap_path, limit)
 	}
 }
 

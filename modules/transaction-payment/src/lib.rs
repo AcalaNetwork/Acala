@@ -561,8 +561,8 @@ pub mod module {
 		/// Dapp wrap call, and user pay tx fee as provided trading path. this dispatch call should
 		/// make sure the trading path is valid.
 		#[pallet::weight({
-		let dispatch_info = call.get_dispatch_info();
-		(T::WeightInfo::with_fee_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
+			let dispatch_info = call.get_dispatch_info();
+			(T::WeightInfo::with_fee_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
 		})]
 		pub fn with_fee_path(
 			origin: OriginFor<T>,
@@ -787,6 +787,7 @@ where
 	/// Determine the fee and surplus that should be withdraw from user. There are three kind call:
 	/// - TransactionPayment::with_fee_currency: swap with tx fee pool if token is enable charge fee
 	///   pool, else swap with dex.
+	/// - TransactionPayment::with_fee_path: swap with specific trading path.
 	/// - others call: first use native asset, if not enough use alternative, or else use default.
 	fn ensure_can_charge_fee_with_call(
 		who: &T::AccountId,
@@ -804,12 +805,10 @@ where
 				);
 				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
 				let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
-				let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
-				T::Swap::swap(
+				T::Swap::swap_by_path(
 					who,
-					*fee_swap_path.get(0).expect("ensured path not empty; qed"),
-					T::NativeCurrencyId::get(),
-					SwapLimit::ExactTarget(Balance::MAX, custom_fee_amount),
+					fee_swap_path,
+					SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
 				)
 				.map(|_| (who.clone(), custom_fee_surplus))
 			}
@@ -879,14 +878,7 @@ where
 
 			// alter native fee swap path, swap from dex: O(1)
 			if let Some(path) = AlternativeFeeSwapPath::<T>::get(who) {
-				if T::Swap::swap(
-					who,
-					*path.get(0).expect("ensured path not empty; qed"),
-					T::NativeCurrencyId::get(),
-					SwapLimit::ExactTarget(Balance::MAX, fee_amount),
-				)
-				.is_ok()
-				{
+				if T::Swap::swap_by_path(who, &path, SwapLimit::ExactTarget(Balance::MAX, fee_amount)).is_ok() {
 					return Ok(fee_surplus);
 				}
 			}

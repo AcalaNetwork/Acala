@@ -89,6 +89,15 @@ pub fn with_fee_currency_call(currency_id: CurrencyId) -> <Runtime as module_tra
 	fee_call
 }
 
+pub fn with_fee_path_call(fee_swap_path: Vec<CurrencyId>) -> <Runtime as module_transaction_payment::Config>::Call {
+	let fee_call: <Runtime as module_transaction_payment::Config>::Call =
+		Call::TransactionPayment(module_transaction_payment::Call::with_fee_path {
+			fee_swap_path,
+			call: Box::new(CALL),
+		});
+	fee_call
+}
+
 #[test]
 fn initial_charge_fee_pool_works() {
 	ExtBuilder::default()
@@ -585,6 +594,15 @@ fn charge_transaction_payment_and_threshold_works() {
 
 #[test]
 fn with_fee_currency_call_works() {
+	with_fee_call_works(with_fee_currency_call(LIQUID_CURRENCY));
+}
+
+#[test]
+fn with_fee_path_call_works() {
+	with_fee_call_works(with_fee_path_call(vec![LIQUID_CURRENCY, USD_CURRENCY, NATIVE_CURRENCY]));
+}
+
+fn with_fee_call_works(with_fee_call: <Runtime as module_transaction_payment::Config>::Call) {
 	let init_amount = 100 * dollar(LIQUID_CURRENCY);
 	let ausd_acc: AccountId = TransactionPaymentPalletId::get().into_sub_account_truncating(USD_CURRENCY);
 	ExtBuilder::default()
@@ -661,7 +679,7 @@ fn with_fee_currency_call_works() {
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
-					&with_fee_currency_call(LIQUID_CURRENCY),
+					&with_fee_call,
 					&INFO,
 					50
 				)

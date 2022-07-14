@@ -423,6 +423,14 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for DexSwap<T> {
 
 		T::DEX::swap_with_specific_path(who, &path, limit)
 	}
+
+	fn swap_by_path(
+		who: &T::AccountId,
+		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		T::DEX::swap_with_specific_path(who, swap_path, limit)
+	}
 }
 
 /// Swap by Taiga pool.
@@ -509,6 +517,14 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
 		ensure!(actual_target >= min_target_amount, Error::<T>::CannotSwap);
 		Ok((actual_supply, actual_target))
 	}
+
+	fn swap_by_path(
+		_who: &T::AccountId,
+		_swap_path: &[CurrencyId],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		return Err(DispatchError::Other("Cannot swap"));
+	}
 }
 
 /// Choose DEX or Taiga to fully execute the swap by which price is better.
@@ -588,6 +604,14 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for EitherDexOrTaigaSwap
 		}
 
 		Err(Error::<T>::CannotSwap.into())
+	}
+
+	fn swap_by_path(
+		who: &T::AccountId,
+		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		DexSwap::<T>::swap_by_path(who, swap_path, limit)
 	}
 }
 
@@ -683,6 +707,14 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for AggregatedSwap<T> {
 		}
 
 		Err(Error::<T>::CannotSwap.into())
+	}
+
+	fn swap_by_path(
+		who: &T::AccountId,
+		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		DexSwap::<T>::swap_by_path(who, swap_path, limit)
 	}
 }
 
