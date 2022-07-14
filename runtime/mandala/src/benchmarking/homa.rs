@@ -18,7 +18,7 @@
 
 use crate::{
 	AccountId, ActiveSubAccountsIndexList, Balance, Currencies, GetLiquidCurrencyId, GetStakingCurrencyId, Homa, Rate,
-	Runtime,
+	RelaychainBlockNumberProvider, Runtime,
 };
 
 use super::utils::set_balance;
@@ -28,7 +28,7 @@ use frame_system::RawOrigin;
 use module_homa::UnlockChunk;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
-use sp_runtime::FixedPointNumber;
+use sp_runtime::{traits::BlockNumberProvider, FixedPointNumber};
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
@@ -60,6 +60,7 @@ runtime_benchmarks! {
 			Some(Rate::saturating_from_rational(20, 100)),
 			None,
 		)?;
+		RelaychainBlockNumberProvider::<Runtime>::set_block_number(10);
 		Homa::update_bump_era_params(RawOrigin::Root.into(), None, Some(1))?;
 
 		Homa::mint(RawOrigin::Signed(minter).into(), 100_000_000_000_000)?;
