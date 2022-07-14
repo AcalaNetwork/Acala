@@ -2608,7 +2608,7 @@ mod tests {
 				value: 100,
 			});
 
-			let raw_payload = SignedPayload::new(hacker_call.clone(), extra.clone()).unwrap();
+			let raw_payload = SignedPayload::new(hacker_call, extra.clone()).unwrap();
 			let payer_signature = raw_payload.using_encoded(|payload| hacker.pair().sign(payload));
 
 			let fee_call = Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {

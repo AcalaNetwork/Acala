@@ -678,11 +678,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
-		if let Some(value) = self.substate.known_original_storage(address, index) {
-			Some(value)
-		} else {
-			Some(self.storage(address, index))
-		}
+		self.substate.known_original_storage(address, index)
 	}
 
 	fn block_base_fee_per_gas(&self) -> sp_core::U256 {
