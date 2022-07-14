@@ -288,7 +288,7 @@ fn three_usd_pool_works() {
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			let (amount1, amount2, amount3) = (9_940_060_348_765u128, 9_920_180_467_236u128, 9_920_507_587_087u128);
 			#[cfg(feature = "with-mandala-runtime")]
-			let (amount1, amount2, amount3) = (9_960_119_631_126u128, 9_940_288_675_825u128, 9_940_348_090_028u128);
+			let (amount1, amount2, amount3) = (9_959_980_429_142u128, 9_940_040_907_508u128, 9_940_348_860_887u128);
 			// USDC -> AUSD -> ACA
 			assert_eq!(
 				AcalaSwap::swap(
@@ -341,13 +341,13 @@ fn three_usd_pool_works() {
 			);
 			#[cfg(feature = "with-mandala-runtime")]
 			let (amount1, amount2, amount3, amount4, amount5, amount6, amount7) = (
-				908_121_832,
-				1_000_000_000_000_000u128,
-				1_000_000_908_121_832u128,
-				999_999_093_694_421u128,
-				3_000_000_001_816_243u128,
-				906_305_579u128,
-				9_000_002_724u128,
+				908_151_689,
+				1_001_000_000_000_000u128,
+				1_001_000_908_151_689u128,
+				998_003_126_594_913u128,
+				3_000_004_001_816_305u128,
+				906_305_509u128,
+				9_000_002_726u128,
 			);
 			System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped {
 				swapper: AccountId::from(BOB),
@@ -378,23 +378,23 @@ fn three_usd_pool_works() {
 			);
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			let (amount1, amount2, amount3, amount4, amount5, amount6, amount7) = (
-				227492158u128,
-				1001000227492158u128,
-				1001000227492054u128,
-				998003578841144u128,
-				3000004000909980u128,
-				227029691u128,
-				2250002724u128,
+				227_492_158u128,
+				1_001_000_227_492_158u128,
+				1_001_000_227_492_054u128,
+				998_003_578_841_144u128,
+				3_000_004_000_909_980u128,
+				227_029_691u128,
+				2_250_002_724u128,
 			);
 			#[cfg(feature = "with-mandala-runtime")]
 			let (amount1, amount2, amount3, amount4, amount5, amount6, amount7) = (
-				908123481u128,
-				1000000908123481u128,
-				1000000908121832u128,
-				999998187387205u128,
-				3000000003632490u128,
-				906307216u128,
-				9000002723u128,
+				908_153_340u128,
+				1_001_000_908_153_340u128,
+				1_001_000_908_151_689u128,
+				998_002_220_287_767u128,
+				3_000_004_003_632_592u128,
+				906_307_146u128,
+				9_000_002_726u128,
 			);
 			System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped {
 				swapper: AccountId::from(BOB),
@@ -426,7 +426,7 @@ fn three_usd_pool_works() {
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			let (amount1, amount2) = (227029696u128, 2250001749u128);
 			#[cfg(feature = "with-mandala-runtime")]
-			let (amount1, amount2) = (906308755u128, 9000001749u128);
+			let (amount1, amount2) = (906308685u128, 9000001749u128);
 			System::assert_has_event(Event::Dex(module_dex::Event::Swap {
 				trader: AccountId::from(BOB),
 				path: vec![USD_CURRENCY, NATIVE_CURRENCY],
