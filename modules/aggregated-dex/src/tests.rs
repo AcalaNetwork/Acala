@@ -222,6 +222,25 @@ fn dex_swap_swap_work() {
 		));
 		assert_eq!(Tokens::free_balance(DOT, &ALICE), 99_500_000_000u128);
 		assert_eq!(Tokens::free_balance(LDOT, &ALICE), 4_950_495_048u128);
+
+		assert_noop!(
+			DexSwap::<Runtime>::swap_by_path(
+				&ALICE,
+				&vec![DOT, LDOT],
+				SwapLimit::ExactSupply(1_000_000_000u128, 10_000_000_000u128)
+			),
+			module_dex::Error::<Runtime>::MustBeEnabled
+		);
+		assert_ok!(DexSwap::<Runtime>::swap_by_path(
+			&ALICE,
+			&vec![DOT, AUSD, LDOT],
+			SwapLimit::ExactSupply(1_000_000_000u128, 0)
+		));
+		assert_ok!(DexSwap::<Runtime>::swap_by_path(
+			&ALICE,
+			&vec![LDOT, AUSD, DOT],
+			SwapLimit::ExactSupply(1_000_000_000u128, 0)
+		));
 	});
 }
 
@@ -347,6 +366,12 @@ fn taiga_swap_swap_work() {
 				SwapLimit::ExactTarget(1_000_000_000u128, 10_000_000_000u128)
 			),
 			Error::<Runtime>::CannotSwap
+		);
+
+		assert_eq!(
+			TaigaSwap::<Runtime>::swap_by_path(&ALICE, &vec![DOT, LDOT], SwapLimit::ExactTarget(1_000_000_000u128, 0))
+				.is_ok(),
+			false
 		);
 	});
 }
@@ -581,6 +606,25 @@ fn either_dex_or_taiga_swap_swap_work() {
 		);
 		assert_eq!(Tokens::free_balance(DOT, &ALICE), 96_999_507_726u128);
 		assert_eq!(Tokens::free_balance(LDOT, &ALICE), 39_800_341_928u128);
+
+		assert_noop!(
+			DexSwap::<Runtime>::swap_by_path(
+				&ALICE,
+				&vec![DOT, AUSD],
+				SwapLimit::ExactSupply(1_000_000_000u128, 10_000_000_000u128)
+			),
+			module_dex::Error::<Runtime>::MustBeEnabled
+		);
+		assert_ok!(DexSwap::<Runtime>::swap_by_path(
+			&ALICE,
+			&vec![DOT, LDOT],
+			SwapLimit::ExactSupply(1_000_000_000u128, 0)
+		));
+		assert_ok!(DexSwap::<Runtime>::swap_by_path(
+			&ALICE,
+			&vec![LDOT, DOT],
+			SwapLimit::ExactSupply(1_000_000_000u128, 0)
+		));
 	});
 }
 
@@ -1189,5 +1233,24 @@ fn aggregated_swap_swap_work() {
 		assert_eq!(Tokens::free_balance(DOT, &ALICE), 91_997_633_586u128);
 		assert_eq!(Tokens::free_balance(LDOT, &ALICE), 24_998_360_750u128);
 		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 39_987_688_325u128);
+
+		assert_noop!(
+			DexSwap::<Runtime>::swap_by_path(
+				&ALICE,
+				&vec![DOT, AUSD],
+				SwapLimit::ExactSupply(1_000_000_000u128, 10_000_000_000u128)
+			),
+			module_dex::Error::<Runtime>::MustBeEnabled
+		);
+		assert_ok!(DexSwap::<Runtime>::swap_by_path(
+			&ALICE,
+			&vec![DOT, LDOT],
+			SwapLimit::ExactSupply(1_000_000_000u128, 0)
+		));
+		assert_ok!(DexSwap::<Runtime>::swap_by_path(
+			&ALICE,
+			&vec![LDOT, DOT],
+			SwapLimit::ExactSupply(1_000_000_000u128, 0)
+		));
 	});
 }
