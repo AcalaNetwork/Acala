@@ -523,7 +523,7 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
 		_swap_path: &[CurrencyId],
 		_limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError> {
-		return Err(DispatchError::Other("Cannot swap"));
+		Err(DispatchError::Other("Cannot swap"))
 	}
 }
 

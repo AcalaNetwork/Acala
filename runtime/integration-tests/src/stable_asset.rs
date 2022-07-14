@@ -22,7 +22,10 @@ use crate::setup::*;
 use module_aggregated_dex::SwapPath;
 use module_support::{ExchangeRate, Swap, SwapLimit, EVM as EVMTrait};
 use primitives::{currency::AssetMetadata, evm::EvmAddress};
-use sp_runtime::traits::SignedExtension;
+use sp_runtime::{
+	traits::SignedExtension,
+	transaction_validity::{InvalidTransaction, TransactionValidityError},
+};
 use std::str::FromStr;
 
 #[test]
@@ -248,28 +251,14 @@ fn three_usd_pool_works() {
 				output_amount: 2_997_000_000_000_000,
 			}));
 
-			// inject liquidity of USDC/USDT to AUSD, and also AUSD to native token.
-			assert_ok!(inject_liquidity(usdc, USD_CURRENCY, 1000 * dollar, 1000 * dollar));
-			assert_ok!(inject_liquidity(
-				CurrencyId::ForeignAsset(0),
-				USD_CURRENCY,
-				1000 * dollar,
-				1000 * dollar
-			));
+			// inject liquidity of AUSD to native token. Notice: USDC/USDT to AUSD liquidity is provided by
+			// stable-asset pool, not by dex.
 			assert_ok!(inject_liquidity(
 				USD_CURRENCY,
 				NATIVE_CURRENCY,
 				1000 * dollar,
 				10000 * dollar
 			));
-			assert_eq!(
-				Dex::get_liquidity_pool(usdc, USD_CURRENCY),
-				(1000 * dollar, 1000 * dollar)
-			);
-			assert_eq!(
-				Dex::get_liquidity_pool(CurrencyId::ForeignAsset(0), USD_CURRENCY),
-				(1000 * dollar, 1000 * dollar)
-			);
 			assert_eq!(
 				Dex::get_liquidity_pool(USD_CURRENCY, NATIVE_CURRENCY),
 				(1000 * dollar, 10000 * dollar)
@@ -387,14 +376,6 @@ fn three_usd_pool_works() {
 					50
 				)
 			);
-			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
-					&with_fee_path_call(vec![CurrencyId::ForeignAsset(0), USD_CURRENCY, NATIVE_CURRENCY]),
-					&INFO,
-					50
-				)
-			);
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			let (amount1, amount2, amount3, amount4, amount5, amount6, amount7) = (
 				227492158u128,
@@ -452,6 +433,26 @@ fn three_usd_pool_works() {
 				liquidity_changes: vec![amount1, amount2],
 			}));
 
+			// with_fee_path_call failed
+			let invalid_swap_path = vec![
+				vec![CurrencyId::ForeignAsset(0), USD_CURRENCY, NATIVE_CURRENCY],
+				vec![CurrencyId::ForeignAsset(0), USD_CURRENCY],
+				vec![CurrencyId::ForeignAsset(0), NATIVE_CURRENCY],
+				vec![usdc, USD_CURRENCY, NATIVE_CURRENCY],
+				vec![usdc, USD_CURRENCY],
+				vec![usdc, NATIVE_CURRENCY],
+			];
+			for path in invalid_swap_path {
+				assert_noop!(
+					<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
+						&AccountId::from(BOB),
+						&with_fee_path_call(path),
+						&INFO,
+						50
+					),
+					TransactionValidityError::Invalid(InvalidTransaction::Payment)
+				);
+			}
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
