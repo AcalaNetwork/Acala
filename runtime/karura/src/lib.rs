@@ -771,8 +771,8 @@ parameter_type_with_key! {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetId(*stable_asset_id)).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 			},
-			CurrencyId::StableAssetXcmPoolToken(stable_asset_id) => {
-				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetXcmId(*stable_asset_id)).
+			CurrencyId::StableAssetLocalPoolToken(stable_asset_id) => {
+				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetLocalId(*stable_asset_id)).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 			},
 			CurrencyId::LiquidCrowdloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::KSM)), // the same as KSM
@@ -1582,7 +1582,7 @@ impl module_honzon_bridge::Config for Runtime {
 pub struct EnsurePoolAssetId;
 impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoolAssetId {
 	fn validate(currency_id: CurrencyId) -> bool {
-		matches!(currency_id, CurrencyId::StableAssetPoolToken(_))
+		matches!(currency_id, CurrencyId::StableAssetLocalPoolToken(_))
 	}
 }
 
@@ -1776,7 +1776,7 @@ impl nutsfinance_stable_asset_xcm::traits::XcmInterface for StableAssetMintXcmIn
 pub struct EnsureXcmPoolAssetId;
 impl nutsfinance_stable_asset_xcm::traits::ValidateAssetId<CurrencyId> for EnsureXcmPoolAssetId {
 	fn validate(currency_id: CurrencyId) -> bool {
-		matches!(currency_id, CurrencyId::StableAssetXcmPoolToken(_))
+		matches!(currency_id, CurrencyId::StableAssetPoolToken(_))
 	}
 }
 

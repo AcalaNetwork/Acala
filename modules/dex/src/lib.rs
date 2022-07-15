@@ -542,7 +542,7 @@ pub mod module {
 				CurrencyId::Erc20(_)
 				| CurrencyId::ForeignAsset(_)
 				| CurrencyId::StableAssetPoolToken(_)
-				| CurrencyId::StableAssetXcmPoolToken(_) => T::Erc20InfoMapping::name(currency_id)
+				| CurrencyId::StableAssetLocalPoolToken(_) => T::Erc20InfoMapping::name(currency_id)
 					.map(|_| ())
 					.ok_or(Error::<T>::AssetUnregistered),
 				CurrencyId::Token(_) | CurrencyId::DexShare(_, _) | CurrencyId::LiquidCrowdloan(_) => Ok(()), /* No registration required */
