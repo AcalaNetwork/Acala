@@ -821,6 +821,46 @@ mod tests {
 			let redeem_resp = StableAssetPrecompile::execute(&redeem_input, None, &context, false).unwrap();
 			assert_eq!(redeem_resp.exit_status, ExitSucceed::Returned);
 			assert!(redeem_resp.output.is_empty());
+
+			// stableAssetRedeemSingle(address,uint32,uint256,uint32,uint256,uint32) -> 0x6ca16342
+			// who
+			// poolId
+			// amount
+			// i
+			// amount
+			// asset_length
+			let redeem_single_input = hex! {"
+				6ca16342
+				0000000000000000000000001000000000000000000000000000000000000001
+				0000000000000000000000000000000000000000000000000000000000000000
+				000000000000000000000000000000000000000000000000000000000007a120
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000002
+			"};
+			let redeem_single_resp =
+				StableAssetPrecompile::execute(&redeem_single_input, None, &context, false).unwrap();
+			assert_eq!(redeem_single_resp.exit_status, ExitSucceed::Returned);
+			assert!(redeem_single_resp.output.is_empty());
+
+			// stableAssetRedeemMulti(address,uint32,uint256[],uint256) -> 0x84a15943
+			// who
+			// poolId
+			// amount[]
+			// max_amount
+			let redeem_multi_input = hex! {"
+				84a15943
+				0000000000000000000000001000000000000000000000000000000000000001
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000080
+				000000000000000000000000000000001999999999999999999999999999999a
+				0000000000000000000000000000000000000000000000000000000000000002
+				000000000000000000000000000000000000000000000000000000000000c350
+				000000000000000000000000000000000000000000000000000000000000c350
+			"};
+			let redeem_multi_resp = StableAssetPrecompile::execute(&redeem_multi_input, None, &context, false).unwrap();
+			assert_eq!(redeem_multi_resp.exit_status, ExitSucceed::Returned);
+			assert!(redeem_multi_resp.output.is_empty());
 		});
 	}
 
