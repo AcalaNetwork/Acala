@@ -594,15 +594,18 @@ fn charge_transaction_payment_and_threshold_works() {
 
 #[test]
 fn with_fee_currency_call_works() {
-	with_fee_call_works(with_fee_currency_call(LIQUID_CURRENCY));
+	with_fee_call_works(with_fee_currency_call(LIQUID_CURRENCY), false);
 }
 
 #[test]
 fn with_fee_path_call_works() {
-	with_fee_call_works(with_fee_path_call(vec![LIQUID_CURRENCY, USD_CURRENCY, NATIVE_CURRENCY]));
+	with_fee_call_works(
+		with_fee_path_call(vec![LIQUID_CURRENCY, USD_CURRENCY, NATIVE_CURRENCY]),
+		true,
+	);
 }
 
-fn with_fee_call_works(with_fee_call: <Runtime as module_transaction_payment::Config>::Call) {
+fn with_fee_call_works(with_fee_call: <Runtime as module_transaction_payment::Config>::Call, is_path_call: bool) {
 	let init_amount = 100 * dollar(LIQUID_CURRENCY);
 	let ausd_acc: AccountId = TransactionPaymentPalletId::get().into_sub_account_truncating(USD_CURRENCY);
 	ExtBuilder::default()
@@ -685,11 +688,23 @@ fn with_fee_call_works(with_fee_call: <Runtime as module_transaction_payment::Co
 				)
 			);
 			#[cfg(feature = "with-karura-runtime")]
-			let liquidity_changes = vec![1531932921, 15273137949, 152250001749];
+			let liquidity_changes = if is_path_call {
+				vec![1531932921, 15273137950, 152250001768]
+			} else {
+				vec![1531932921, 15273137949, 152250001749]
+			};
 			#[cfg(feature = "with-acala-runtime")]
-			let liquidity_changes = vec![15319330, 15273137949, 152250001749];
+			let liquidity_changes = if is_path_call {
+				vec![15319330, 15273138737, 152250009612]
+			} else {
+				vec![15319330, 15273137949, 152250001749]
+			};
 			#[cfg(feature = "with-mandala-runtime")]
-			let liquidity_changes = vec![15934636, 15918447125, 159000001749];
+			let liquidity_changes = if is_path_call {
+				vec![15934636, 15918447962, 159000010116]
+			} else {
+				vec![15934636, 15918447125, 159000001749]
+			};
 			System::assert_has_event(Event::Dex(module_dex::Event::Swap {
 				trader: AccountId::from(BOB),
 				path: vec![LIQUID_CURRENCY, USD_CURRENCY, NATIVE_CURRENCY],

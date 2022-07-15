@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::type_complexity)]
-use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, Swap, SwapLimit, TransactionPayment};
+use crate::{AddressMapping, AggregatedSwapPath, CurrencyId, Erc20InfoMapping, Swap, SwapLimit, TransactionPayment};
 use codec::Encode;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use nutsfinance_stable_asset::{
@@ -214,7 +214,10 @@ impl<
 
 pub struct MockSwap<AccountId, Balance, CurrencyId>(PhantomData<(AccountId, Balance, CurrencyId)>);
 
-impl<AccountId, Balance, CurrencyId> Swap<AccountId, Balance, CurrencyId> for MockSwap<AccountId, Balance, CurrencyId> {
+impl<AccountId, Balance, CurrencyId> Swap<AccountId, Balance, CurrencyId> for MockSwap<AccountId, Balance, CurrencyId>
+where
+	CurrencyId: Clone,
+{
 	fn get_swap_amount(
 		_supply_currency_id: CurrencyId,
 		_target_currency_id: CurrencyId,
@@ -232,9 +235,9 @@ impl<AccountId, Balance, CurrencyId> Swap<AccountId, Balance, CurrencyId> for Mo
 		unimplemented!()
 	}
 
-	fn swap_by_path(
+	fn swap_by_aggregated_path(
 		_who: &AccountId,
-		_swap_path: &[CurrencyId],
+		_swap_path: &[AggregatedSwapPath<CurrencyId>],
 		_limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError> {
 		unimplemented!()

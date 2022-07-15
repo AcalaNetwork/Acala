@@ -24,13 +24,11 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use nutsfinance_stable_asset::{traits::StableAsset as StableAssetT, PoolTokenIndex, StableAssetPoolId};
+use nutsfinance_stable_asset::traits::StableAsset as StableAssetT;
 use primitives::{Balance, CurrencyId};
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{Convert, Zero};
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::{DEXManager, RebasedStableAssetError, Swap, SwapLimit};
+use support::{AggregatedSwapPath, DEXManager, RebasedStableAssetError, Swap, SwapLimit};
 
 mod mock;
 mod tests;
@@ -39,12 +37,7 @@ pub mod weights;
 pub use module::*;
 pub use weights::WeightInfo;
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum SwapPath {
-	Dex(Vec<CurrencyId>),
-	Taiga(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex),
-}
+pub type SwapPath = AggregatedSwapPath<CurrencyId>;
 
 #[frame_support::pallet]
 pub mod module {
@@ -431,6 +424,15 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for DexSwap<T> {
 	) -> Result<(Balance, Balance), DispatchError> {
 		T::DEX::swap_with_specific_path(who, swap_path, limit)
 	}
+
+	// DexSwap do not support swap by aggregated path.
+	fn swap_by_aggregated_path(
+		_who: &T::AccountId,
+		_swap_path: &[SwapPath],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Err(Error::<T>::CannotSwap.into())
+	}
 }
 
 /// Swap by Taiga pool.
@@ -518,12 +520,22 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
 		Ok((actual_supply, actual_target))
 	}
 
+	// TaigaSwap do not support direct dex swap.
 	fn swap_by_path(
 		_who: &T::AccountId,
 		_swap_path: &[CurrencyId],
 		_limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError> {
-		Err(DispatchError::Other("Cannot swap"))
+		Err(Error::<T>::CannotSwap.into())
+	}
+
+	// TaigaSwap do not support swap by aggregated path.
+	fn swap_by_aggregated_path(
+		_who: &T::AccountId,
+		_swap_path: &[SwapPath],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Err(Error::<T>::CannotSwap.into())
 	}
 }
 
@@ -612,6 +624,15 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for EitherDexOrTaigaSwap
 		limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError> {
 		DexSwap::<T>::swap_by_path(who, swap_path, limit)
+	}
+
+	// Both DexSwap and TaigaSwap do not support swap by aggregated path.
+	fn swap_by_aggregated_path(
+		_who: &T::AccountId,
+		_swap_path: &[SwapPath],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Err(Error::<T>::CannotSwap.into())
 	}
 }
 
@@ -709,12 +730,13 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for AggregatedSwap<T> {
 		Err(Error::<T>::CannotSwap.into())
 	}
 
-	fn swap_by_path(
+	// AggregatedSwap support swap by aggregated path.
+	fn swap_by_aggregated_path(
 		who: &T::AccountId,
-		swap_path: &[CurrencyId],
+		swap_path: &[SwapPath],
 		limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError> {
-		DexSwap::<T>::swap_by_path(who, swap_path, limit)
+		Pallet::<T>::do_aggregated_swap(who, swap_path, limit)
 	}
 }
 
