@@ -255,10 +255,10 @@ mod tests {
 			assert_noop!(buy_weight, XcmError::TooExpensive);
 
 			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockFixedBuyWeightRate<FixedRate>>>::new();
-			let buy_weight = trader.buy_weight(WEIGHT_PER_SECOND, assets);
+			let buy_weight = trader.buy_weight(WEIGHT_PER_SECOND, assets.clone());
 			let asset: MultiAsset = (Parent, 90).into();
 			let assets: Assets = asset.into();
-			assert_ok!(buy_weight, assets);
+			assert_ok!(buy_weight, assets.clone());
 		});
 	}
 }

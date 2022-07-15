@@ -107,11 +107,11 @@ fn enable_dex_and_tx_fee_pool() {
 		(init_balance * 100).unique_saturated_into(),
 	));
 	vec![AUSD, DOT].iter().for_each(|token| {
-		let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(*token)).unique_saturated_into();
+		let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			treasury_account.clone(),
-			*token,
+			token.clone(),
 			ed,
 		));
 	});
@@ -164,10 +164,10 @@ fn enable_dex_and_tx_fee_pool() {
 
 	// validate tx fee pool works
 	vec![AUSD, DOT].iter().for_each(|token| {
-		let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(*token)).unique_saturated_into();
-		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account_truncating(*token);
-		assert_eq!(Currencies::free_balance(*token, &treasury_account), 0);
-		assert_eq!(Currencies::free_balance(*token, &sub_account), ed);
+		let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
+		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account_truncating(token.clone());
+		assert_eq!(Currencies::free_balance(token.clone(), &treasury_account), 0);
+		assert_eq!(Currencies::free_balance(token.clone(), &sub_account), ed);
 		assert_eq!(Currencies::free_balance(ACA, &sub_account), init_balance);
 	});
 
@@ -888,22 +888,22 @@ fn charges_fee_failed_by_slippage_limit() {
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
 
 		assert_eq!(
-			DEXModule::get_swap_amount(&[AUSD, ACA], SwapLimit::ExactTarget(Balance::MAX, 2010)),
+			DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactTarget(Balance::MAX, 2010)),
 			Some((252, 2010))
 		);
 		assert_eq!(
-			DEXModule::get_swap_amount(&[AUSD, ACA], SwapLimit::ExactSupply(1000, 0)),
+			DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactSupply(1000, 0)),
 			Some((1000, 5000))
 		);
 
 		// pool is enough, but slippage limit the swap
 		MockPriceSource::set_relative_price(Some(Price::saturating_from_rational(252, 4020)));
 		assert_eq!(
-			DEXModule::get_swap_amount(&[AUSD, ACA], SwapLimit::ExactTarget(Balance::MAX, 2010)),
+			DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactTarget(Balance::MAX, 2010)),
 			Some((252, 2010))
 		);
 		assert_eq!(
-			DEXModule::get_swap_amount(&[AUSD, ACA], SwapLimit::ExactSupply(1000, 0)),
+			DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactSupply(1000, 0)),
 			Some((1000, 5000))
 		);
 		assert_noop!(
@@ -1487,7 +1487,7 @@ fn buy_weight_transaction_fee_pool_works() {
 #[test]
 fn swap_from_pool_not_enough_currency() {
 	builder_with_dex_and_fee_pool(true).execute_with(|| {
-		let balance = 100_u128;
+		let balance = 100 as u128;
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			BOB,
@@ -1522,7 +1522,7 @@ fn swap_from_pool_with_enough_balance() {
 		let usd_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(AUSD);
 
 		// 1 DOT = 10 ACA, swap 500 ACA with 50 DOT
-		let balance = 500_u128;
+		let balance = 500 as u128;
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			BOB,
@@ -1545,7 +1545,7 @@ fn swap_from_pool_with_enough_balance() {
 		assert_eq!(expect_treasury_aca, Currencies::free_balance(ACA, &dot_fee_account));
 
 		// 1 ACA = 10 AUSD, swap 500 ACA with 5000 AUSD
-		let balance = 500_u128;
+		let balance = 500 as u128;
 		let ausd_balance = (balance * 11) as u128; // 5500 AUSD
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
@@ -1579,8 +1579,8 @@ fn swap_from_pool_and_dex_with_higher_threshold() {
 		let dot_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(DOT);
 
 		// Bob has 800 DOT, the fee is 800 ACA, equal to 80 DOT
-		let balance = 800_u128;
-		let fee_dot = 80_u128;
+		let balance = 800 as u128;
+		let fee_dot = 80 as u128;
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			BOB,
@@ -1623,10 +1623,10 @@ fn swap_from_pool_and_dex_with_higher_threshold() {
 		// swap_rate=80/3074, threshold=9500, pool_size=10000, threshold_rate=0.95, old_rate=1/10
 		// new_rate = 1/10 * 0.95 + 80/3074 * 0.05 = 0.095 + 0.001301236174365 = 0.096301236174365
 		let new_exchange_rate_val =
-			Ratio::saturating_from_rational(96_301_236_174_365_647_u128, 1_000_000_000_000_000_000_u128);
+			Ratio::saturating_from_rational(9_630_123_6174_365_647 as u128, 1_000_000_000_000_000_000 as u128);
 
 		// the sub account has 9200 ACA, 80 DOT, use 80 DOT to swap out some ACA
-		let balance2 = 300_u128;
+		let balance2 = 300 as u128;
 		assert_ok!(Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, balance2, DOT));
 		System::assert_has_event(crate::mock::Event::TransactionPayment(
 			crate::Event::ChargeFeePoolSwapped {
@@ -1653,7 +1653,7 @@ fn swap_from_pool_and_dex_with_midd_threshold() {
 		let trading_path = vec![DOT, AUSD, ACA];
 
 		// the pool size has 10000 ACA, and set threshold to half of pool size: 5000 ACA
-		let balance = 3000_u128;
+		let balance = 3000 as u128;
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			BOB,
@@ -1701,7 +1701,7 @@ fn swap_from_pool_and_dex_with_midd_threshold() {
 		let swap_exchange_rate = Ratio::saturating_from_rational(supply_in_amount, swap_out_native);
 		// (0.1 + 0.130039011703511053)/2 = 0.230039011703511053/2 = 0.115019505851755526
 		let new_exchange_rate_val =
-			Ratio::saturating_from_rational(115_019_505_851_755_526_u128, 1_000_000_000_000_000_000_u128);
+			Ratio::saturating_from_rational(115_019_505_851_755_526 as u128, 1_000_000_000_000_000_000 as u128);
 
 		System::assert_has_event(crate::mock::Event::TransactionPayment(
 			crate::Event::ChargeFeePoolSwapped {
@@ -1797,12 +1797,12 @@ fn charge_fee_failed_when_disable_dex() {
 					supply_currency_id: AUSD,
 					old_exchange_rate: Ratio::saturating_from_rational(10, 1),
 					swap_exchange_rate: Ratio::saturating_from_rational(
-						407_013_149_655_604_257_u128,
-						1_000_000_000_000_000_000_u128,
+						407_013_149_655_604_257 as u128,
+						1_000_000_000_000_000_000 as u128,
 					),
 					new_exchange_rate: Ratio::saturating_from_rational(
-						9_808_140_262_993_112_085_u128,
-						1_000_000_000_000_000_000_u128,
+						9_808_140_262_993_112_085 as u128,
+						1_000_000_000_000_000_000 as u128,
 					),
 					new_pool_size: 16128,
 				},
@@ -1816,12 +1816,12 @@ fn charge_fee_failed_when_disable_dex() {
 					supply_currency_id: AUSD,
 					old_exchange_rate: Ratio::saturating_from_rational(10, 1),
 					swap_exchange_rate: Ratio::saturating_from_rational(
-						352053646269907795_u128,
-						1_000_000_000_000_000_000_u128,
+						352053646269907795 as u128,
+						1_000_000_000_000_000_000 as u128,
 					),
 					new_exchange_rate: Ratio::saturating_from_rational(
-						9807041072925398155_u128,
-						1_000_000_000_000_000_000_u128,
+						9807041072925398155 as u128,
+						1_000_000_000_000_000_000 as u128,
 					),
 					new_pool_size: 15755,
 				},
@@ -1921,7 +1921,7 @@ fn charge_fee_pool_operation_works() {
 		));
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
-			treasury_account,
+			treasury_account.clone(),
 			AUSD,
 			(usd_ed * 2).unique_saturated_into(),
 		));

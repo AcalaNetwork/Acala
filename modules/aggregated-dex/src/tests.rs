@@ -587,47 +587,50 @@ fn either_dex_or_taiga_swap_swap_work() {
 #[test]
 fn check_swap_paths_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(AggregatedDex::check_swap_paths(&[]), Error::<Runtime>::InvalidSwapPath);
 		assert_noop!(
-			AggregatedDex::check_swap_paths(&[SwapPath::Dex(vec![])]),
+			AggregatedDex::check_swap_paths(&vec![]),
 			Error::<Runtime>::InvalidSwapPath
 		);
 		assert_noop!(
-			AggregatedDex::check_swap_paths(&[SwapPath::Dex(vec![LDOT])]),
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Dex(vec![])]),
 			Error::<Runtime>::InvalidSwapPath
 		);
 		assert_noop!(
-			AggregatedDex::check_swap_paths(&[SwapPath::Dex(vec![LDOT, LDOT])]),
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Dex(vec![LDOT])]),
 			Error::<Runtime>::InvalidSwapPath
 		);
-		assert_ok!(AggregatedDex::check_swap_paths(&[SwapPath::Dex(vec![LDOT, AUSD])]));
+		assert_noop!(
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Dex(vec![LDOT, LDOT])]),
+			Error::<Runtime>::InvalidSwapPath
+		);
+		assert_ok!(AggregatedDex::check_swap_paths(&vec![SwapPath::Dex(vec![LDOT, AUSD])]));
 
 		assert_noop!(
-			AggregatedDex::check_swap_paths(&[SwapPath::Taiga(0, 0, 1)]),
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 0, 1)]),
 			Error::<Runtime>::InvalidPoolId
 		);
 		assert_noop!(
-			AggregatedDex::check_swap_paths(&[SwapPath::Taiga(0, 0, 0)]),
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 0, 0)]),
 			Error::<Runtime>::InvalidSwapPath
 		);
 
 		assert_ok!(inital_taiga_dot_ldot_pool());
-		assert_ok!(AggregatedDex::check_swap_paths(&[SwapPath::Taiga(0, 0, 1)]));
+		assert_ok!(AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 0, 1)]));
 		assert_noop!(
-			AggregatedDex::check_swap_paths(&[SwapPath::Taiga(0, 2, 0)]),
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 2, 0)]),
 			Error::<Runtime>::InvalidTokenIndex
 		);
 
-		assert_ok!(AggregatedDex::check_swap_paths(&[
+		assert_ok!(AggregatedDex::check_swap_paths(&vec![
 			SwapPath::Taiga(0, 0, 1),
 			SwapPath::Dex(vec![LDOT, AUSD])
 		]),);
 		assert_noop!(
-			AggregatedDex::check_swap_paths(&[SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![AUSD, LDOT])]),
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![AUSD, LDOT])]),
 			Error::<Runtime>::InvalidSwapPath
 		);
 
-		assert_ok!(AggregatedDex::check_swap_paths(&[
+		assert_ok!(AggregatedDex::check_swap_paths(&vec![
 			SwapPath::Dex(vec![AUSD, LDOT]),
 			SwapPath::Taiga(0, 1, 0)
 		]),);
@@ -639,21 +642,21 @@ fn get_aggregated_swap_amount_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Taiga(0, 0, 1)],
+				&vec![SwapPath::Taiga(0, 0, 1)],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			None
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Dex(vec![AUSD, LDOT])],
+				&vec![SwapPath::Dex(vec![AUSD, LDOT])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			None
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			None
@@ -667,35 +670,35 @@ fn get_aggregated_swap_amount_work() {
 		));
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Dex(vec![AUSD, LDOT])],
+				&vec![SwapPath::Dex(vec![AUSD, LDOT])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			Some((1_000_000_000u128, 4_999_750u128))
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Dex(vec![AUSD, LDOT])],
+				&vec![SwapPath::Dex(vec![AUSD, LDOT])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 4_999_751u128)
 			),
 			None
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Dex(vec![AUSD, LDOT])],
+				&vec![SwapPath::Dex(vec![AUSD, LDOT])],
 				SwapLimit::ExactTarget(1_000_000_000u128, 4_999_750u128)
 			),
 			Some((999_999_998u128, 4_999_750u128))
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Dex(vec![AUSD, LDOT])],
+				&vec![SwapPath::Dex(vec![AUSD, LDOT])],
 				SwapLimit::ExactTarget(999_999_997u128, 4_999_750u128)
 			),
 			None
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			None
@@ -704,28 +707,28 @@ fn get_aggregated_swap_amount_work() {
 		assert_ok!(inital_taiga_dot_ldot_pool());
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Taiga(0, 0, 1)],
+				&vec![SwapPath::Taiga(0, 0, 1)],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			Some((1_000_000_000u128, 9_998_360_750u128))
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Taiga(0, 0, 1)],
+				&vec![SwapPath::Taiga(0, 0, 1)],
 				SwapLimit::ExactSupply(1_000_000_000u128, 10_000_000_000u128)
 			),
 			None
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Taiga(0, 0, 1)],
+				&vec![SwapPath::Taiga(0, 0, 1)],
 				SwapLimit::ExactTarget(2_000_000_000u128, 10_000_000_000u128)
 			),
 			Some((1_000_164_076u128, 10_000_000_980u128))
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Taiga(0, 0, 1)],
+				&vec![SwapPath::Taiga(0, 0, 1)],
 				SwapLimit::ExactTarget(1_000_000_000u128, 10_000_000_000u128)
 			),
 			None
@@ -733,28 +736,28 @@ fn get_aggregated_swap_amount_work() {
 
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			Some((1_000_000_000u128, 1_817_910_863_730u128))
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 1_817_910_863_731u128)
 			),
 			None
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactTarget(2_000_000_000u128, 1_817_910_863_730u128)
 			),
 			Some((1_000_000_098u128, 1_817_911_025_719u128))
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactTarget(1_000_000_097u128, 1_817_910_863_730u128)
 			),
 			None
@@ -762,21 +765,21 @@ fn get_aggregated_swap_amount_work() {
 
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Dex(vec![AUSD, LDOT]), SwapPath::Taiga(0, 1, 0)],
+				&vec![SwapPath::Dex(vec![AUSD, LDOT]), SwapPath::Taiga(0, 1, 0)],
 				SwapLimit::ExactSupply(1_817_910_863_730u128, 0)
 			),
 			Some((1_817_910_863_730u128, 833_105_687u128))
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Dex(vec![AUSD, LDOT]), SwapPath::Taiga(0, 1, 0)],
+				&vec![SwapPath::Dex(vec![AUSD, LDOT]), SwapPath::Taiga(0, 1, 0)],
 				SwapLimit::ExactTarget(3_000_000_000_000u128, 1_000_000_000u128)
 			),
 			Some((2_222_627_355_534u128, 1_000_000_098u128))
 		);
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
-				&[SwapPath::Dex(vec![AUSD, LDOT]), SwapPath::Taiga(0, 1, 0)],
+				&vec![SwapPath::Dex(vec![AUSD, LDOT]), SwapPath::Taiga(0, 1, 0)],
 				SwapLimit::ExactTarget(2_222_627_355_533u128, 1_000_000_000u128)
 			),
 			None
@@ -790,7 +793,7 @@ fn do_aggregated_swap_work() {
 		assert_noop!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Taiga(0, 0, 1)],
+				&vec![SwapPath::Taiga(0, 0, 1)],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			Error::<Runtime>::InvalidPoolId
@@ -798,7 +801,7 @@ fn do_aggregated_swap_work() {
 		assert_noop!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			module_dex::Error::<Runtime>::MustBeEnabled
@@ -806,7 +809,7 @@ fn do_aggregated_swap_work() {
 		assert_noop!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			Error::<Runtime>::InvalidPoolId
@@ -816,7 +819,7 @@ fn do_aggregated_swap_work() {
 		assert_noop!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			module_dex::Error::<Runtime>::MustBeEnabled
@@ -824,7 +827,7 @@ fn do_aggregated_swap_work() {
 		assert_noop!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			module_dex::Error::<Runtime>::MustBeEnabled
@@ -835,7 +838,7 @@ fn do_aggregated_swap_work() {
 		assert_eq!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Taiga(0, 0, 1)],
+				&vec![SwapPath::Taiga(0, 0, 1)],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			Ok((1_000_000_000u128, 9_998_360_750u128))
@@ -847,7 +850,7 @@ fn do_aggregated_swap_work() {
 		assert_eq!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Taiga(0, 0, 1)],
+				&vec![SwapPath::Taiga(0, 0, 1)],
 				SwapLimit::ExactTarget(2_000_000_000u128, 10_000_000_000u128)
 			),
 			Ok((1_000_492_274u128, 10_000_000_980u128))
@@ -865,7 +868,7 @@ fn do_aggregated_swap_work() {
 		assert_noop!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 200_000_000_000u128)
 			),
 			Error::<Runtime>::CannotSwap
@@ -874,7 +877,7 @@ fn do_aggregated_swap_work() {
 		assert_eq!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			Ok((1_000_000_000u128, 198_019_801_980u128))
@@ -886,7 +889,7 @@ fn do_aggregated_swap_work() {
 		assert_eq!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactTarget(1_000_000_000u128, 10_000_000_000u128)
 			),
 			Ok((51_030_771u128, 10_000_000_090u128))
@@ -900,7 +903,7 @@ fn do_aggregated_swap_work() {
 		assert_eq!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactSupply(1_000_000_000u128, 0)
 			),
 			Ok((1_000_000_000u128, 1_780_911_406_971u128))
@@ -912,7 +915,7 @@ fn do_aggregated_swap_work() {
 		assert_eq!(
 			AggregatedDex::do_aggregated_swap(
 				&ALICE,
-				&[SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
 				SwapLimit::ExactTarget(1_000_000_000_000u128, 1_000_000_000_000u128)
 			),
 			Ok((653_482_016u128, 1_000_000_140_971u128))

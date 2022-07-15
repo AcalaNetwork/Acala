@@ -2246,7 +2246,7 @@ fn auto_publish_works() {
 
 		// call method `callContract()`
 		assert_ok!(EVM::call(
-			Origin::signed(alice_account_id),
+			Origin::signed(alice_account_id.clone()),
 			factory,
 			from_hex("0x0f24df3a").unwrap(),
 			0,

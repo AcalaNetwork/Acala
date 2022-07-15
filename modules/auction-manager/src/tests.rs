@@ -559,8 +559,8 @@ fn cancel_collateral_auction_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 10);
 		assert_eq!(CDPTreasuryModule::debit_pool(), 80);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 80);
-		assert!(AuctionManagerModule::collateral_auctions(0).is_none());
-		assert!(AuctionModule::auction_info(0).is_none());
+		assert!(!AuctionManagerModule::collateral_auctions(0).is_some());
+		assert!(!AuctionModule::auction_info(0).is_some());
 
 		let alice_ref_count_1 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 - 1);

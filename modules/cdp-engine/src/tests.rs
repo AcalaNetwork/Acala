@@ -370,7 +370,7 @@ fn adjust_position_work() {
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
-		assert!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, 200).is_err());
+		assert!(!CDPEngineModule::adjust_position(&ALICE, BTC, 0, 200).is_ok());
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, -200));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 30);

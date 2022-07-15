@@ -51,8 +51,6 @@ pub enum Action {
 	StableAssetSwap = "stableAssetSwap(address,uint32,uint32,uint32,uint256,uint256,uint32)",
 	StableAssetMint = "stableAssetMint(address,uint32,uint256[],uint256)",
 	StableAssetRedeem = "stableAssetRedeem(address,uint32,uint256,uint256[])",
-	StableAssetRedeemSingle = "stableAssetRedeemSingle(address,uint32,uint256,uint32,uint256,uint32)",
-	StableAssetRedeemMulti = "stableAssetRedeemMulti(address,uint32,uint256[],uint256)",
 }
 
 impl<Runtime> Precompile for StableAssetPrecompile<Runtime>
@@ -311,63 +309,6 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::StableAssetRedeemSingle => {
-				let who = input.account_id_at(1)?;
-				let pool_id = input.u32_at(2)?;
-				let redeem_amount = input.balance_at(3)?;
-				let i = input.u32_at(4)?;
-				let min_redeem_amount = input.balance_at(5)?;
-				let asset_length = input.u32_at(6)?;
-
-				<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::redeem_single(
-					&who,
-					pool_id,
-					redeem_amount,
-					i,
-					min_redeem_amount,
-					asset_length,
-				)
-				.map_err(|e| PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
-				})?;
-				Ok(PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
-					output: Default::default(),
-					logs: Default::default(),
-				})
-			}
-			Action::StableAssetRedeemMulti => {
-				let who = input.account_id_at(1)?;
-				let pool_id = input.u32_at(2)?;
-				// solidity abi encode array will add an offset at input[3]
-				let max_redeem_amount = input.balance_at(4)?;
-				let amount_len = input.u32_at(5)?;
-				let mut amounts = vec![];
-				for i in 0..amount_len {
-					amounts.push(input.balance_at((6 + i) as usize)?);
-				}
-
-				<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::redeem_multi(
-					&who,
-					pool_id,
-					amounts,
-					max_redeem_amount,
-				)
-				.map_err(|e| PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
-				})?;
-				Ok(PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
-					output: Default::default(),
-					logs: Default::default(),
-				})
-			}
 		}
 	}
 }
@@ -426,22 +367,6 @@ where
 				let account_read = InputPricer::<Runtime>::read_accounts(1);
 				let path_len = input.u32_at(5)?;
 				let weight = <Runtime as nutsfinance_stable_asset::Config>::WeightInfo::redeem_proportion(path_len);
-				Self::BASE_COST
-					.saturating_add(account_read)
-					.saturating_add(WeightToGas::convert(weight))
-			}
-			Action::StableAssetRedeemSingle => {
-				let account_read = InputPricer::<Runtime>::read_accounts(1);
-				let path_len = input.u32_at(6)?;
-				let weight = <Runtime as nutsfinance_stable_asset::Config>::WeightInfo::redeem_single(path_len);
-				Self::BASE_COST
-					.saturating_add(account_read)
-					.saturating_add(WeightToGas::convert(weight))
-			}
-			Action::StableAssetRedeemMulti => {
-				let account_read = InputPricer::<Runtime>::read_accounts(1);
-				let path_len = input.u32_at(5)?;
-				let weight = <Runtime as nutsfinance_stable_asset::Config>::WeightInfo::redeem_multi(path_len);
 				Self::BASE_COST
 					.saturating_add(account_read)
 					.saturating_add(WeightToGas::convert(weight))
