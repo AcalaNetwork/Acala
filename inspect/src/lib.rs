@@ -193,7 +193,7 @@ impl<TBlock: Block, TPrinter: PrettyPrinter<TBlock>> Inspector<TBlock, TPrinter>
 }
 
 /// A block to retrieve.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockAddress<Hash, Number> {
 	/// Get block by hash.
 	Hash(Hash),
@@ -228,7 +228,7 @@ impl<Hash: FromStr, Number: FromStr> FromStr for BlockAddress<Hash, Number> {
 }
 
 /// An extrinsic address to decode and print out.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExtrinsicAddress<Hash, Number> {
 	/// Extrinsic as part of existing block.
 	Block(BlockAddress<Hash, Number>, usize),
