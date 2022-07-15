@@ -25,10 +25,6 @@ use frame_support::{assert_noop, assert_ok};
 use module_support::EVMAccountsManager;
 use module_support::EVM as EVMTrait;
 
-fn module_account() -> AccountId {
-	HonzonBridge::account_id()
-}
-
 #[test]
 fn set_bridged_stable_coin_address_works() {
 	ExtBuilder::default().build().execute_with(|| {
@@ -66,13 +62,16 @@ fn to_bridged_works() {
 		<EVM as EVMTrait<AccountId>>::set_origin(EvmAccountsModule::get_account_id(&alice_evm_addr()));
 		assert_ok!(Currencies::transfer(
 			Origin::signed(alice()),
-			module_account(),
+			HonzonBridgeAccount::get(),
 			HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
 			dollar(1_000_000)
 		));
 
 		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
-		assert_eq!(Currencies::free_balance(KUSD, &module_account()), dollar(1_000_000));
+		assert_eq!(
+			Currencies::free_balance(KUSD, &HonzonBridgeAccount::get()),
+			dollar(1_000_000)
+		);
 		assert_eq!(
 			Currencies::free_balance(HonzonBridge::bridged_stable_coin_currency_id().unwrap(), &alice()),
 			ALICE_BALANCE - dollar(1_000_000)
@@ -80,7 +79,7 @@ fn to_bridged_works() {
 		assert_eq!(
 			Currencies::free_balance(
 				HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
-				&module_account()
+				&HonzonBridgeAccount::get()
 			),
 			dollar(1_000_000)
 		);
@@ -92,7 +91,7 @@ fn to_bridged_works() {
 			dollar(1_000_000) - dollar(5_000)
 		);
 		assert_eq!(
-			Currencies::free_balance(KUSD, &module_account()),
+			Currencies::free_balance(KUSD, &HonzonBridgeAccount::get()),
 			dollar(1_000_000) + dollar(5_000)
 		);
 		assert_eq!(
@@ -102,7 +101,7 @@ fn to_bridged_works() {
 		assert_eq!(
 			Currencies::free_balance(
 				HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
-				&module_account()
+				&HonzonBridgeAccount::get()
 			),
 			dollar(1_000_000) - dollar(5_000)
 		);
@@ -134,13 +133,16 @@ fn from_bridged_works() {
 		<EVM as EVMTrait<AccountId>>::set_origin(EvmAccountsModule::get_account_id(&alice_evm_addr()));
 		assert_ok!(Currencies::transfer(
 			Origin::signed(alice()),
-			module_account(),
+			HonzonBridgeAccount::get(),
 			HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
 			dollar(1_000_000)
 		));
 
 		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
-		assert_eq!(Currencies::free_balance(KUSD, &module_account()), dollar(1_000_000));
+		assert_eq!(
+			Currencies::free_balance(KUSD, &HonzonBridgeAccount::get()),
+			dollar(1_000_000)
+		);
 		assert_eq!(
 			Currencies::free_balance(HonzonBridge::bridged_stable_coin_currency_id().unwrap(), &alice()),
 			ALICE_BALANCE - dollar(1_000_000)
@@ -148,7 +150,7 @@ fn from_bridged_works() {
 		assert_eq!(
 			Currencies::free_balance(
 				HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
-				&module_account()
+				&HonzonBridgeAccount::get()
 			),
 			dollar(1_000_000)
 		);
@@ -160,7 +162,7 @@ fn from_bridged_works() {
 			dollar(1_000_000) + dollar(5_000)
 		);
 		assert_eq!(
-			Currencies::free_balance(KUSD, &module_account()),
+			Currencies::free_balance(KUSD, &HonzonBridgeAccount::get()),
 			dollar(1_000_000) - dollar(5_000)
 		);
 		assert_eq!(
@@ -170,7 +172,7 @@ fn from_bridged_works() {
 		assert_eq!(
 			Currencies::free_balance(
 				HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
-				&module_account()
+				&HonzonBridgeAccount::get()
 			),
 			dollar(1_000_000) + dollar(5_000)
 		);

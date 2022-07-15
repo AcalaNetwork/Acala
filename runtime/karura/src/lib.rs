@@ -1560,13 +1560,14 @@ impl module_idle_scheduler::Config for Runtime {
 
 parameter_types! {
 	pub const StableCoinCurrencyId: CurrencyId = KUSD;
+	pub HonzonBridgeAccount: AccountId = HonzonBridgePalletId::get().into_account_truncating();
 }
 
 impl module_honzon_bridge::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type StableCoinCurrencyId = StableCoinCurrencyId;
-	type PalletId = HonzonBridgePalletId;
+	type HonzonBridgeAccount = HonzonBridgeAccount;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
 }
