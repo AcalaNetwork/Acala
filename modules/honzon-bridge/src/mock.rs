@@ -34,6 +34,7 @@ pub use module_evm_accounts::EvmAddressMapping;
 pub use module_support::{mocks::MockAddressMapping, AddressMapping};
 pub use orml_traits::{parameter_type_with_key, MultiCurrency};
 use sp_core::{H160, H256, U256};
+use sp_runtime::traits::AccountIdConversion;
 use std::str::FromStr;
 
 pub use primitives::{
@@ -189,13 +190,14 @@ impl module_evm_accounts::Config for Runtime {
 parameter_types! {
 	pub const StableCoinCurrencyId: CurrencyId = KUSD;
 	pub const HonzonBridgePalletId: PalletId = PalletId(*b"aca/hzbg");
+	pub HonzonBridgeAccount: AccountId = HonzonBridgePalletId::get().into_account_truncating();
 }
 
 impl module_honzon_bridge::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type StableCoinCurrencyId = StableCoinCurrencyId;
-	type PalletId = HonzonBridgePalletId;
+	type HonzonBridgeAccount = HonzonBridgeAccount;
 	type UpdateOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
@@ -272,8 +274,8 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		let initial = dollar(INITIAL_BALANCE);
 		Self {
-			tokens_balances: vec![(alice(), KUSD, initial), (HonzonBridge::account_id(), KUSD, initial)],
-			native_balances: vec![(alice(), initial), (HonzonBridge::account_id(), initial)],
+			tokens_balances: vec![(alice(), KUSD, initial), (HonzonBridgeAccount::get(), KUSD, initial)],
+			native_balances: vec![(alice(), initial), (HonzonBridgeAccount::get(), initial)],
 		}
 	}
 }
