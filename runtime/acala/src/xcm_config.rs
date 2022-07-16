@@ -121,7 +121,7 @@ parameter_types! {
 	pub AusdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
-			X1(GeneralKey(AUSD.encode())),
+			X1(GeneralKey(AUSD.encode().try_into().expect("less than length limit; qed"))),
 		).into(),
 		// aUSD:DOT = 40:1
 		dot_per_second() * 40
@@ -129,7 +129,7 @@ parameter_types! {
 	pub AcaPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
-			X1(GeneralKey(ACA.encode())),
+			X1(GeneralKey(ACA.encode().try_into().expect("less than length limit; qed"))),
 		).into(),
 		aca_per_second()
 	);
@@ -267,7 +267,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} if parents == 1 => {
-				match (para_id, &key[..]) {
+				match (para_id, &key.into_inner()[..]) {
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Acala
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
@@ -290,7 +290,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 0,
 				interior: X1(GeneralKey(key)),
 			} => {
-				let key = &key[..];
+				let key = &key.into_inner()[..];
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
 					Token(ACA) | Token(AUSD) | Token(LDOT) => Some(currency_id),

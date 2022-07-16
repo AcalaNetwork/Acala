@@ -36,7 +36,13 @@ use xcm_executor::{
 };
 
 pub fn native_currency_location(para_id: u32, id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(para_id), GeneralKey(id.encode())))
+	MultiLocation::new(
+		1,
+		X2(
+			Parachain(para_id),
+			GeneralKey(id.encode().try_into().expect("less than length limit; qed")),
+		),
+	)
 }
 
 /// `ExistentialDeposit` for tokens, give priority to match native token, then handled by

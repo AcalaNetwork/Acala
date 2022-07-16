@@ -120,7 +120,7 @@ fn transfer_native_chain_asset() {
 		// Register native BNC's incoming address as a foreign asset so it can receive BNC
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec().try_into().unwrap()))).into()),
 			Box::new(AssetMetadata {
 				name: b"Native BNC".to_vec(),
 				symbol: b"BNC".to_vec(),
@@ -215,7 +215,7 @@ fn transfer_sibling_chain_asset() {
 		// Register native BNC's incoming address as a foreign asset so it can handle reserve transfers
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec().try_into().unwrap()))).into()),
 			Box::new(AssetMetadata {
 				name: b"Native BNC".to_vec(),
 				symbol: b"BNC".to_vec(),
@@ -339,7 +339,7 @@ fn asset_registry_module_works() {
 		// Register native BNC's incoming address as a foreign asset so it can handle reserve transfers
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec().try_into().unwrap()))).into()),
 			Box::new(AssetMetadata {
 				name: b"Native BNC".to_vec(),
 				symbol: b"BNC".to_vec(),
@@ -358,7 +358,13 @@ fn asset_registry_module_works() {
 		// Register BNC as foreign asset(0)
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(1, X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec().try_into().unwrap()))
+				)
+				.into()
+			),
 			Box::new(AssetMetadata {
 				name: b"Bifrost BNC".to_vec(),
 				symbol: b"BNC".to_vec(),
@@ -372,7 +378,13 @@ fn asset_registry_module_works() {
 		// Register BNC as foreign asset(0)
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(1, X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec()))).into()),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec().try_into().unwrap()))
+				)
+				.into()
+			),
 			Box::new(AssetMetadata {
 				name: b"Bifrost BNC".to_vec(),
 				symbol: b"BNC".to_vec(),
@@ -860,7 +872,7 @@ fn trap_assets_larger_than_ed_works() {
 				fees: assets,
 				weight_limit: Limited(dollar(KSM) as u64),
 			},
-			WithdrawAsset(((0, GeneralKey(KAR.encode())), kar_asset_amount).into()),
+			WithdrawAsset(((0, GeneralKey(KAR.encode().try_into().unwrap())), kar_asset_amount).into()),
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
@@ -908,7 +920,7 @@ fn trap_assets_lower_than_ed_works() {
 				fees: assets,
 				weight_limit: Limited(dollar(KSM) as u64),
 			},
-			WithdrawAsset(((0, X1(GeneralKey(KAR.encode()))), kar_asset_amount).into()),
+			WithdrawAsset(((0, X1(GeneralKey(KAR.encode().try_into().unwrap()))), kar_asset_amount).into()),
 			// two asset left in holding register, they both lower than ED, so goes to treasury.
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
@@ -951,7 +963,7 @@ fn sibling_trap_assets_works() {
 	});
 
 	Sibling::execute_with(|| {
-		let assets: MultiAsset = ((0, X1(GeneralKey(KAR.encode()))), kar_asset_amount).into();
+		let assets: MultiAsset = ((0, X1(GeneralKey(KAR.encode().try_into().unwrap()))), kar_asset_amount).into();
 		let xcm = vec![
 			WithdrawAsset(assets.clone().into()),
 			BuyExecution {
@@ -960,7 +972,10 @@ fn sibling_trap_assets_works() {
 			},
 			WithdrawAsset(
 				(
-					(Parent, X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec()))),
+					(
+						Parent,
+						X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec().try_into().unwrap())),
+					),
 					bnc_asset_amount,
 				)
 					.into(),

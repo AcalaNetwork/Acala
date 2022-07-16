@@ -93,7 +93,16 @@ fn erc20_transfer_between_sibling() {
 		// register Karura's erc20 as foreign asset
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(1, X2(Parachain(2000), GeneralKey(erc20_as_foreign_asset.encode()))).into()),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2000),
+						GeneralKey(erc20_as_foreign_asset.encode().try_into().unwrap())
+					)
+				)
+				.into()
+			),
 			Box::new(AssetMetadata {
 				name: b"Karura USDC".to_vec(),
 				symbol: b"kUSDC".to_vec(),
@@ -299,7 +308,16 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 		// register Karura's erc20 as foreign asset
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::root(),
-			Box::new(MultiLocation::new(1, X2(Parachain(2002), GeneralKey(erc20_as_foreign_asset.encode()))).into()),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2002),
+						GeneralKey(erc20_as_foreign_asset.encode().try_into().unwrap())
+					)
+				)
+				.into()
+			),
 			Box::new(AssetMetadata {
 				name: b"Sibling USDC".to_vec(),
 				symbol: b"sUSDC".to_vec(),

@@ -123,7 +123,7 @@ parameter_types! {
 	pub KusdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
-			X1(GeneralKey(KUSD.encode())),
+			X1(GeneralKey(KUSD.encode().try_into().expect("less than length limit; qed"))),
 		).into(),
 		// kUSD:KSM = 400:1
 		ksm_per_second() * 400
@@ -131,14 +131,14 @@ parameter_types! {
 	pub KarPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
-			X1(GeneralKey(KAR.encode())),
+			X1(GeneralKey(KAR.encode().try_into().expect("less than length limit; qed"))),
 		).into(),
 		kar_per_second()
 	);
 	pub LksmPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
-			X1(GeneralKey(LKSM.encode())),
+			X1(GeneralKey(LKSM.encode().try_into().expect("less than length limit; qed"))),
 		).into(),
 		// LKSM:KSM = 10:1
 		ksm_per_second() * 10
@@ -154,7 +154,7 @@ parameter_types! {
 	pub BncPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
+			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec().try_into().expect("less than length limit; qed"))),
 		).into(),
 		// BNC:KSM = 80:1
 		ksm_per_second() * 80
@@ -162,7 +162,7 @@ parameter_types! {
 	pub VsksmPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec())),
+			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec().try_into().expect("less than length limit; qed"))),
 		).into(),
 		// VSKSM:KSM = 1:1
 		ksm_per_second()
@@ -170,7 +170,7 @@ parameter_types! {
 	pub KbtcPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec())),
+			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec().try_into().expect("less than length limit; qed"))),
 		).into(),
 		// KBTC:KSM = 1:150 & Satoshi:Planck = 1:10_000
 		ksm_per_second() / 1_500_000
@@ -178,7 +178,7 @@ parameter_types! {
 	pub KintPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KINT_KEY.to_vec())),
+			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KINT_KEY.to_vec().try_into().expect("less than length limit; qed"))),
 		).into(),
 		// KINT:KSM = 4:3
 		(ksm_per_second() * 4) / 3
@@ -354,7 +354,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				1,
 				X2(
 					Parachain(parachains::bifrost::ID),
-					GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
+					GeneralKey(
+						parachains::bifrost::BNC_KEY
+							.to_vec()
+							.try_into()
+							.expect("less than length limit; qed"),
+					),
 				),
 			)),
 			// Bifrost Voucher Slot KSM
@@ -362,7 +367,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				1,
 				X2(
 					Parachain(parachains::bifrost::ID),
-					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
+					GeneralKey(
+						parachains::bifrost::VSKSM_KEY
+							.to_vec()
+							.try_into()
+							.expect("less than length limit; qed"),
+					),
 				),
 			)),
 			// Phala Native token
@@ -372,7 +382,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				1,
 				X2(
 					Parachain(parachains::kintsugi::ID),
-					GeneralKey(parachains::kintsugi::KINT_KEY.to_vec()),
+					GeneralKey(
+						parachains::kintsugi::KINT_KEY
+							.to_vec()
+							.try_into()
+							.expect("less than length limit; qed"),
+					),
 				),
 			)),
 			// Kintsugi wrapped BTC
@@ -380,7 +395,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				1,
 				X2(
 					Parachain(parachains::kintsugi::ID),
-					GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec()),
+					GeneralKey(
+						parachains::kintsugi::KBTC_KEY
+							.to_vec()
+							.try_into()
+							.expect("less than length limit; qed"),
+					),
 				),
 			)),
 			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
@@ -407,7 +427,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} => {
-				match (para_id, &key[..]) {
+				match (para_id, &key.into_inner()[..]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
 					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
 					(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY) => Some(Token(KINT)),
@@ -439,7 +459,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 0,
 				interior: X1(GeneralKey(key)),
 			} => {
-				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+				let currency_id = CurrencyId::decode(&mut &*key.into_inner()).ok()?;
 				match currency_id {
 					Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
 					Erc20(address) if !is_system_contract(address) => Some(currency_id),

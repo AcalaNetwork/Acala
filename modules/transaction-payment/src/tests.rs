@@ -1453,7 +1453,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				..
 			} => match &key[..] {
 				key => {
-					if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
+					if let Ok(currency_id) = CurrencyId::decode(&mut &*key.into_inner()) {
 						Some(currency_id)
 					} else {
 						None
@@ -1475,7 +1475,7 @@ fn buy_weight_transaction_fee_pool_works() {
 
 		// Token not in charge fee pool
 		let currency_id = CurrencyId::Token(TokenSymbol::LDOT);
-		let location = MultiLocation::new(1, X1(GeneralKey(currency_id.encode())));
+		let location = MultiLocation::new(1, X1(GeneralKey(currency_id.encode().try_into().unwrap())));
 		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
 		assert_eq!(rate, None);
 

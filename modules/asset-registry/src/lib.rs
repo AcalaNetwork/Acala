@@ -585,7 +585,7 @@ where
 				parents: 0,
 				interior: X1(Junction::GeneralKey(key)),
 			} => {
-				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+				let currency_id = CurrencyId::decode(&mut &*key.into_inner()).ok()?;
 				match currency_id {
 					CurrencyId::Erc20(address) if !is_system_contract(address) => {
 						if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::Erc20(address)) {
