@@ -1451,9 +1451,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			MultiLocation {
 				interior: X1(GeneralKey(key)),
 				..
-			} => match &key[..] {
+			} => match &key.into_inner()[..] {
 				key => {
-					if let Ok(currency_id) = CurrencyId::decode(&mut &*key.into_inner()) {
+					if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 						Some(currency_id)
 					} else {
 						None
