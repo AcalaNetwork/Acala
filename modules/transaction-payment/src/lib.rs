@@ -27,7 +27,6 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::boxed_local)]
 #![allow(clippy::type_complexity)]
-#![allow(deprecated)] // TODO: clean transactional
 
 use frame_support::{
 	dispatch::{DispatchResult, Dispatchable},

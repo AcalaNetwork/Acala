@@ -32,7 +32,6 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
-#![allow(deprecated)] // TODO: clean transactional
 
 use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};

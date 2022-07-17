@@ -28,7 +28,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
-#![allow(deprecated)] // TODO: clean transactional
 
 use frame_support::{pallet_prelude::*, traits::NamedReservableCurrency, transactional};
 use frame_system::pallet_prelude::*;

@@ -29,7 +29,6 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::unnecessary_unwrap)]
-#![allow(deprecated)] // TODO: clean transactional
 
 use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional};

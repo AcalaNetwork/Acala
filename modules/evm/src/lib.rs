@@ -21,7 +21,6 @@
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
-#![allow(deprecated)] // TODO: clean transactional
 
 pub use crate::runner::{
 	stack::SubstrateStackState,

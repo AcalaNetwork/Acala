@@ -21,7 +21,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
-#![allow(deprecated)] // TODO: clean transactional
 
 use codec::Codec;
 use frame_support::{
