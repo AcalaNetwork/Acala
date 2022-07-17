@@ -1,6 +1,6 @@
 [package]
 name = "mandala-runtime"
-version = "2.8.2"
+version = "2.8.3"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -290,6 +290,7 @@ runtime-benchmarks = [
 
 	"module-nft/runtime-benchmarks",
 	"module-evm-accounts/runtime-benchmarks",
+	"acala-service/runtime-benchmarks",
 
 	"sp-api/disable-logging",
 ]

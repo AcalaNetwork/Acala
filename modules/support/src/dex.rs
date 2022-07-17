@@ -23,7 +23,7 @@ use sp_core::H160;
 use sp_runtime::{DispatchError, RuntimeDebug};
 use sp_std::{cmp::PartialEq, prelude::*, result::Result};
 
-#[derive(RuntimeDebug, Encode, Decode, Clone, Copy, PartialEq, TypeInfo)]
+#[derive(RuntimeDebug, Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo)]
 pub enum SwapLimit<Balance> {
 	/// use exact amount supply amount to swap. (exact_supply_amount, minimum_target_amount)
 	ExactSupply(Balance, Balance),

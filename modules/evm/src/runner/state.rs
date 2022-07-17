@@ -769,7 +769,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 		fn check_first_byte(config: &Config, code: &[u8]) -> Result<(), ExitError> {
 			if config.disallow_executable_format {
-				if let Some(0xef) = code.get(0) {
+				if let Some(0xef) = code.first() {
 					return Err(ExitError::InvalidCode);
 				}
 			}

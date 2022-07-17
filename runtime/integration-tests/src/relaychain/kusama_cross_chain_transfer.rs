@@ -44,6 +44,9 @@ fn karura_reserve_account() -> AccountId {
 fn sibling_reserve_account() -> AccountId {
 	polkadot_parachain::primitives::Sibling::from(SIBLING_ID).into_account_truncating()
 }
+fn bifrost_reserve_account() -> AccountId {
+	polkadot_parachain::primitives::Sibling::from(MOCK_BIFROST_ID).into_account_truncating()
+}
 
 #[test]
 fn transfer_from_relay_chain() {
@@ -329,7 +332,7 @@ fn asset_registry_module_works() {
 	let dollar = dollar(BNC);
 	let minimal_balance = Balances::minimum_balance() / 10; // 10%
 	let foreign_fee = foreign_per_second_as_fee(4, minimal_balance);
-	let bnc_fee = bnc_per_second_as_fee(4);
+	let bnc_fee = foreign_fee; // BuyWeightRateOfForeignAsset in prior to BncPerSecond
 
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100 * dollar));
@@ -486,6 +489,115 @@ fn asset_registry_module_works() {
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
 			95 * dollar - foreign_fee - bnc_fee
+		);
+	});
+}
+
+#[test]
+fn stable_asset_xtokens_works() {
+	TestNet::reset();
+	let stable_asset = CurrencyId::StableAssetPoolToken(0);
+	let foreign_asset = CurrencyId::ForeignAsset(0);
+	let dollar = dollar(KAR);
+	let minimal_balance = Balances::minimum_balance() / 10; // 10%
+	let foreign_fee = foreign_per_second_as_fee(4, minimal_balance);
+
+	MockBifrost::execute_with(|| {
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(KARURA_ID),
+						GeneralKey(stable_asset.encode().try_into().unwrap())
+					)
+				)
+				.into()
+			),
+			Box::new(AssetMetadata {
+				name: b"Foreign Stable Asset".to_vec(),
+				symbol: b"SA".to_vec(),
+				decimals: 12,
+				minimal_balance
+			})
+		));
+	});
+
+	Karura::execute_with(|| {
+		assert_ok!(AssetRegistry::register_stable_asset(
+			Origin::root(),
+			Box::new(AssetMetadata {
+				name: b"Stable Asset".to_vec(),
+				symbol: b"SA".to_vec(),
+				decimals: 12,
+				minimal_balance
+			})
+		));
+		assert_ok!(Tokens::deposit(stable_asset, &AccountId::from(BOB), 10 * dollar));
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(BOB.into()),
+			stable_asset,
+			5 * dollar,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(MOCK_BIFROST_ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: ALICE.into(),
+						}
+					)
+				)
+				.into()
+			),
+			8_000_000_000,
+		));
+
+		assert_eq!(Tokens::free_balance(stable_asset, &AccountId::from(BOB)), 5 * dollar);
+		assert_eq!(
+			Tokens::free_balance(stable_asset, &bifrost_reserve_account()),
+			5 * dollar
+		);
+	});
+
+	MockBifrost::execute_with(|| {
+		assert_eq!(
+			Tokens::free_balance(foreign_asset, &AccountId::from(ALICE)),
+			5 * dollar - foreign_fee
+		);
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			foreign_asset,
+			dollar,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(KARURA_ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			8_000_000_000,
+		));
+	});
+
+	Karura::execute_with(|| {
+		assert_eq!(
+			Tokens::free_balance(stable_asset, &AccountId::from(BOB)),
+			6 * dollar - foreign_fee
+		);
+		assert_eq!(
+			Tokens::free_balance(stable_asset, &bifrost_reserve_account()),
+			4 * dollar
 		);
 	});
 }
