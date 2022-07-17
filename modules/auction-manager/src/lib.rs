@@ -672,7 +672,7 @@ impl<T: Config> Pallet<T> {
 			if res.is_err() {
 				log::warn!(
 					target: "auction-manager",
-					"collateral_auction_end_handler: failed to call on_liquidation_success. \
+					"collateral_auction_end_handler: liquidate using DEX. on_liquidation_success failed. \
 					Auction ID: {}, Auction: {:?}",
 					auction_id, collateral_auction,
 				);
@@ -710,7 +710,7 @@ impl<T: Config> Pallet<T> {
 			if res.is_err() {
 				log::warn!(
 					target: "auction-manager",
-					"collateral_auction_end_handler: failed to call on_liquidation_success. \
+					"collateral_auction_end_handler: liquidated using Winning Bid. on_liquidation_success failed. \
 					Auction ID: {}, Auction: {:?}",
 					auction_id, collateral_auction,
 				);
@@ -850,7 +850,7 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 		})?;
 		let total_target = base.saturating_add(penalty);
 		if !total_target.is_zero() {
-			// no-op if target is zero
+			// Update `TotalTargetInAuction` and ensure it doesn't overflow
 			TotalTargetInAuction::<T>::try_mutate(|total| -> DispatchResult {
 				*total = total.checked_add(total_target).ok_or(Error::<T>::InvalidAmount)?;
 				Ok(())

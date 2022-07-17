@@ -2154,6 +2154,7 @@ fn liquidation_fails_if_insufficient_repayment() {
 	});
 }
 
+// Test on_liquidate_success_handler can handle fees and refunds correctly.
 #[test]
 fn on_liquidate_success_handler_works() {
 	ExtBuilder::default().build().execute_with(|| {

@@ -1259,12 +1259,13 @@ impl<T: Config> Pallet<T> {
 						)?;
 					} else {
 						// Liquidate remaining debits via withdrawn collaterals.
+						// Base amount takes priority to be paid back.
 						let remain_target = total_liquidation_target.saturating_sub(existing_stable);
 						let penalty_remain =
 							remain_target.saturating_sub(remain_target.saturating_sub(stable_penalty_amount));
 						let base_remain = remain_target.saturating_sub(penalty_remain);
 
-						// Process partial penalty paid
+						// Process partial penalty paid with withdrawn liquidity.
 						let penalty_paid = stable_penalty_amount.saturating_sub(penalty_remain);
 						if !penalty_paid.is_zero() {
 							T::OnLiquidationSuccess::on_liquidate_success(

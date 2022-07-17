@@ -707,13 +707,13 @@ fn auction_triggers_on_liquidation_success() {
 		// Test ending the auction with no bidder
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 1, 1, 0));
 		AuctionManagerModule::on_auction_ended(1, None);
-		// Count does not increment.
+		// Auction is aborted: Count does not increment.
 		assert_eq!(LiquidatedCount::get(), 1);
 
 		// Test ending the auction with bid too low
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 2, 2, 0));
 		AuctionManagerModule::on_auction_ended(2, Some((BOB, 1)));
-		// Count does not increment.
+		// Auction is aborted: Count does not increment.
 		assert_eq!(LiquidatedCount::get(), 1);
 
 		assert_ok!(DEXModule::add_liquidity(
@@ -732,7 +732,7 @@ fn auction_triggers_on_liquidation_success() {
 		AuctionManagerModule::on_auction_ended(3, Some((BOB, 1)));
 		assert_eq!(LiquidatedCount::get(), 2);
 
-		// Test ending auctions with DEX and a valid bid
+		// Test ending auctions with DEX with no bid
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 10, 0));
 		// Count incremented by 1
 		AuctionManagerModule::on_auction_ended(4, None);
