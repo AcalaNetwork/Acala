@@ -76,6 +76,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
@@ -96,6 +98,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run runtime tests
         run: make test-runtimes
       - name: Run eth tests
@@ -124,6 +128,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run e2e tests
         run: make test-e2e
       - name: Use Node.js

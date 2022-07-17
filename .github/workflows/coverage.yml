@@ -45,6 +45,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       # - name: Install additional dependencies
       #   run: |
       #       sudo apt update -y &&
