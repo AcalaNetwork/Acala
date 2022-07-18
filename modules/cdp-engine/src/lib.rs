@@ -1277,7 +1277,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn account_id() -> T::AccountId {
-		<T as Config>::PalletId::get().into_account()
+		<T as Config>::PalletId::get().into_account_truncating()
 	}
 
 	/// Pallet EVM address, derived from pallet id.

@@ -89,8 +89,12 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Default::default()
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+
+		match currency_id {
+			CurrencyId::Token(TokenSymbol::AUSD) => 10,
+			_ => Default::default()
+		}
 	};
 }
 
@@ -106,6 +110,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 pub struct MockCDPTreasury;

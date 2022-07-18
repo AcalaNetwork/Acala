@@ -47,11 +47,11 @@ pub fn mock_liquidation_address_1() -> EvmAddress {
 }
 
 pub fn cdp_engine_pallet_account() -> AccountId {
-	CDPEnginePalletId::get().into_account()
+	CDPEnginePalletId::get().into_account_truncating()
 }
 
 pub fn cdp_treasury_pallet_account() -> AccountId {
-	CDPTreasuryPalletId::get().into_account()
+	CDPTreasuryPalletId::get().into_account_truncating()
 }
 
 pub fn account_id_to_address(who: &AccountId) -> EvmAddress {
@@ -64,7 +64,7 @@ pub fn address_to_account_id(address: &EvmAddress) -> AccountId {
 
 pub fn repayment_evm_addr() -> EvmAddress {
 	// EVM address of the CdpEngine Pallet account.
-	account_id_to_address(&CDPEnginePalletId::get().into_account())
+	account_id_to_address(&CDPEnginePalletId::get().into_account_truncating())
 }
 
 pub fn deploy_liquidation_contracts() {

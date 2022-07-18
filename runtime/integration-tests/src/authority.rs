@@ -115,7 +115,7 @@ fn test_authority_module() {
 			run_to_block(one_day_later);
 
 			assert_eq!(
-				Currencies::free_balance(USD_CURRENCY, &TreasuryPalletId::get().into_account()),
+				Currencies::free_balance(USD_CURRENCY, &TreasuryPalletId::get().into_account_truncating()),
 				500 * dollar(USD_CURRENCY)
 			);
 			assert_eq!(

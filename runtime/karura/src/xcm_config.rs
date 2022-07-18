@@ -19,9 +19,8 @@
 use super::{
 	constants::{fee::*, parachains},
 	AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event, ExistentialDeposits,
-	FixedRateOfAssetRegistry, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin,
-	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, TransactionFeePoolTrader, UnknownTokens, XcmInterface,
-	XcmpQueue, KAR, KUSD, LKSM,
+	FixedRateOfAsset, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin, ParachainInfo,
+	ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -30,8 +29,9 @@ pub use frame_support::{
 	traits::{Everything, Get, Nothing},
 	weights::Weight,
 };
-pub use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset};
+pub use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfStableAsset};
 use module_support::HomaSubAccountXcm;
+use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
@@ -184,23 +184,23 @@ parameter_types! {
 		(ksm_per_second() * 4) / 3
 	);
 
-	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
-	pub KarPerSecondAsBased: u128 = kar_per_second();
+	pub BaseRate: u128 = kar_per_second();
 }
 
 pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
-	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<BncPerSecond, ToTreasury>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfStableAsset<Runtime>>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
 	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
-	FixedRateOfAssetRegistry<ForeignAssetUnitsPerSecond, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
+	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
+	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
+	FixedRateOfFungible<BncPerSecond, ToTreasury>,
 );
 
 pub struct XcmConfig;
@@ -301,11 +301,11 @@ parameter_types! {
 }
 
 parameter_type_with_key! {
-	pub ParachainMinFee: |location: MultiLocation| -> u128 {
+	pub ParachainMinFee: |location: MultiLocation| -> Option<u128> {
 		#[allow(clippy::match_ref_pats)] // false positive
 		match (location.parents, location.first_interior()) {
-			(1, Some(Parachain(parachains::statemine::ID))) => XcmInterface::get_parachain_fee(location.clone()),
-			_ => u128::MAX,
+			(1, Some(Parachain(parachains::statemine::ID))) => Some(XcmInterface::get_parachain_fee(location.clone())),
+			_ => None,
 		}
 	};
 }
@@ -343,13 +343,14 @@ pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::{Erc20, ForeignAsset, Token};
+		use CurrencyId::{Erc20, ForeignAsset, StableAssetPoolToken, Token};
 		match id {
 			Token(KSM) => Some(MultiLocation::parent()),
 			Token(KAR) | Token(KUSD) | Token(LKSM) => Some(native_currency_location(ParachainInfo::get().into(), id)),
 			Erc20(address) if !is_system_contract(address) => {
 				Some(native_currency_location(ParachainInfo::get().into(), id))
 			}
+			StableAssetPoolToken(_pool_id) => Some(native_currency_location(ParachainInfo::get().into(), id)),
 			// Bifrost native token
 			Token(BNC) => Some(MultiLocation::new(
 				1,
@@ -393,7 +394,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::{Erc20, Token};
+		use CurrencyId::{Erc20, StableAssetPoolToken, Token};
 
 		if location == MultiLocation::parent() {
 			return Some(Token(KSM));
@@ -421,6 +422,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 							match currency_id {
 								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
 								Erc20(address) if !is_system_contract(address) => Some(currency_id),
+								StableAssetPoolToken(_pool_id) => Some(currency_id),
 								_ => None,
 							}
 						} else {
@@ -444,6 +446,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				match currency_id {
 					Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
 					Erc20(address) if !is_system_contract(address) => Some(currency_id),
+					StableAssetPoolToken(_pool_id) => Some(currency_id),
 					_ => None,
 				}
 			}

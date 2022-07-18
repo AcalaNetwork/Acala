@@ -218,7 +218,7 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let next_id = orml_nft::Pallet::<T>::next_class_id();
-			let owner: T::AccountId = T::PalletId::get().into_sub_account(next_id);
+			let owner: T::AccountId = T::PalletId::get().into_sub_account_truncating(next_id);
 			let class_deposit = T::CreateClassDeposit::get();
 
 			let data_deposit = Self::data_deposit(&metadata, &attributes)?;
@@ -514,24 +514,24 @@ impl<T: Config> InspectExtended<T::AccountId> for Pallet<T> {
 		orml_nft::TokensByOwner::<T>::iter_prefix((who,)).count() as u128
 	}
 
-	fn next_token_id(class: Self::ClassId) -> Self::InstanceId {
+	fn next_token_id(class: Self::CollectionId) -> Self::ItemId {
 		orml_nft::Pallet::<T>::next_token_id(class)
 	}
 }
 
 impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
-	type InstanceId = TokenIdOf<T>;
-	type ClassId = ClassIdOf<T>;
+	type ItemId = TokenIdOf<T>;
+	type CollectionId = ClassIdOf<T>;
 
-	fn owner(class: &Self::ClassId, instance: &Self::InstanceId) -> Option<T::AccountId> {
+	fn owner(class: &Self::CollectionId, instance: &Self::ItemId) -> Option<T::AccountId> {
 		orml_nft::Pallet::<T>::tokens(class, instance).map(|t| t.owner)
 	}
 
-	fn class_owner(class: &Self::ClassId) -> Option<T::AccountId> {
+	fn collection_owner(class: &Self::CollectionId) -> Option<T::AccountId> {
 		orml_nft::Pallet::<T>::classes(class).map(|c| c.owner)
 	}
 
-	fn can_transfer(class: &Self::ClassId, _: &Self::InstanceId) -> bool {
+	fn can_transfer(class: &Self::CollectionId, _: &Self::ItemId) -> bool {
 		orml_nft::Pallet::<T>::classes(class).map_or(false, |class_info| {
 			class_info.data.properties.0.contains(ClassProperty::Transferable)
 		})
@@ -540,22 +540,23 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 
 impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 	/// Mint some asset `instance` of `class` to be owned by `who`.
-	fn mint_into(class: &Self::ClassId, instance: &Self::InstanceId, who: &T::AccountId) -> DispatchResult {
+	fn mint_into(class: &Self::CollectionId, instance: &Self::ItemId, who: &T::AccountId) -> DispatchResult {
 		// Ensure the next token ID is correct
 		ensure!(
 			orml_nft::Pallet::<T>::next_token_id(class) == *instance,
 			Error::<T>::IncorrectTokenId
 		);
 
-		let class_owner = <Self as Inspect<T::AccountId>>::class_owner(class).ok_or(Error::<T>::ClassIdNotFound)?;
+		let class_owner =
+			<Self as Inspect<T::AccountId>>::collection_owner(class).ok_or(Error::<T>::ClassIdNotFound)?;
 		Self::do_mint(&class_owner, who, *class, Default::default(), Default::default(), 1u32)?;
 		Ok(())
 	}
 
 	/// Burn some asset `instance` of `class`.
 	fn burn(
-		class: &Self::ClassId,
-		instance: &Self::InstanceId,
+		class: &Self::CollectionId,
+		instance: &Self::ItemId,
 		_maybe_check_owner: Option<&T::AccountId>,
 	) -> DispatchResult {
 		let owner = <Self as Inspect<T::AccountId>>::owner(class, instance).ok_or(Error::<T>::TokenIdNotFound)?;
@@ -565,7 +566,7 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 
 impl<T: Config> Transfer<T::AccountId> for Pallet<T> {
 	/// Transfer asset `instance` of `class` into `destination` account.
-	fn transfer(class: &Self::ClassId, instance: &Self::InstanceId, destination: &T::AccountId) -> DispatchResult {
+	fn transfer(class: &Self::CollectionId, instance: &Self::ItemId, destination: &T::AccountId) -> DispatchResult {
 		let owner = <Self as Inspect<T::AccountId>>::owner(class, instance).ok_or(Error::<T>::TokenIdNotFound)?;
 		Self::do_transfer(&owner, destination, (*class, *instance))
 	}

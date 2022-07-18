@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! A set of constant values used in dev runtime.
+//! A set of constant values used in Karura runtime.
 
 /// Time and blocks.
 pub mod time {
@@ -124,7 +124,6 @@ mod tests {
 		let q = Balance::from(ExtrinsicBaseWeight::get());
 
 		assert_eq!(p, 1_000_000_000);
-		assert_eq!(q, 125_000_000);
-		assert_eq!(p / q, 8);
+		assert_eq!(q, 85_795_000);
 	}
 }

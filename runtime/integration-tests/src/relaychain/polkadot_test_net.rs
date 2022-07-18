@@ -66,10 +66,21 @@ decl_test_parachain! {
 	}
 }
 
+decl_test_parachain! {
+	pub struct Statemint {
+		Runtime = statemint_runtime::Runtime,
+		Origin = statemint_runtime::Origin,
+		XcmpMessageHandler = statemint_runtime::XcmpQueue,
+		DmpMessageHandler = statemint_runtime::DmpQueue,
+		new_ext = para_ext(1000),
+	}
+}
+
 decl_test_network! {
 	pub struct TestNet {
 		relay_chain = PolkadotNet,
 		parachains = vec![
+			(1000, Statemint),
 			(2000, Acala),
 			(2001, MockBifrost),
 			(2002, Sibling),
@@ -125,7 +136,7 @@ pub fn polkadot_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
 			(AccountId::from(ALICE), 2002 * dollar(DOT)),
-			(ParaId::from(2000).into_account(), 10 * dollar(DOT)),
+			(ParaId::from(2000).into_account_truncating(), 10 * dollar(DOT)),
 		],
 	}
 	.assimilate_storage(&mut t)

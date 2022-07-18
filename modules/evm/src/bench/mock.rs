@@ -112,6 +112,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -212,7 +214,7 @@ parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
-	pub KaruraTreasuryAccount: AccountId32 = TreasuryPalletId::get().into_account();
+	pub KaruraTreasuryAccount: AccountId32 = TreasuryPalletId::get().into_account_truncating();
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
@@ -240,12 +242,12 @@ impl module_transaction_payment::Config for Runtime {
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = ();
-	type TransactionByteFee = ConstU128<10>;
 	type OperationalFeeMultiplier = ConstU64<5>;
 	type TipPerWeightStep = ConstU128<1>;
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type AlternativeFeeSwapDeposit = ExistenceRequirement;
 	type WeightToFee = IdentityFee<Balance>;
+	type TransactionByteFee = ConstU128<10>;
 	type FeeMultiplierUpdate = ();
 	type DEX = Dex;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;

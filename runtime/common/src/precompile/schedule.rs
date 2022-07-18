@@ -49,7 +49,7 @@ parameter_types! {
 	pub storage EvmSchedulerNextID: u32 = 0u32;
 }
 
-#[derive(RuntimeDebug, PartialEq, Encode, Decode)]
+#[derive(RuntimeDebug, PartialEq, Eq, Encode, Decode)]
 pub struct TaskInfo {
 	pub prefix: Vec<u8>,
 	pub id: u32,
@@ -228,7 +228,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().encode_bytes(&task_id),
+					output: Output::encode_bytes(&task_id),
 					logs: Default::default(),
 				})
 			}
