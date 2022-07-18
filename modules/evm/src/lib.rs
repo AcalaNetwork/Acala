@@ -1970,6 +1970,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 					100,
 				) as u32;
 
+				#[allow(deprecated)]
 				match <AccountStorages<T>>::remove_prefix(contract, Some(limit)) {
 					AllRemoved(count) => {
 						let res = Pallet::<T>::refund_storage(&caller, &contract, &maintainer);

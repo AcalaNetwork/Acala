@@ -776,6 +776,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn reset_storage(&mut self, address: H160) {
+		#[allow(deprecated)]
 		<AccountStorages<T>>::remove_prefix(address, None);
 	}
 
