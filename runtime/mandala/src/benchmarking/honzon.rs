@@ -253,7 +253,8 @@ runtime_benchmarks! {
 
 		// set balance and inject liquidity
 		set_balance(currency_id, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&currency_id));
-		inject_liquidity(maker, currency_id, STABLECOIN, 10_000 * dollar(currency_id), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), LIQUID, STABLECOIN, 10_000 * dollar(LIQUID), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), currency_id, LIQUID, 10_000 * dollar(currency_id), 10_000 * dollar(LIQUID), false)?;
 
 		feed_price(vec![(currency_id, Price::one())])?;
 
@@ -289,7 +290,8 @@ runtime_benchmarks! {
 
 		// set balance and inject liquidity
 		set_balance(currency_id, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&currency_id));
-		inject_liquidity(maker, currency_id, STABLECOIN, 10_000 * dollar(currency_id), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), LIQUID, STABLECOIN, 10_000 * dollar(LIQUID), 10_000 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), currency_id, LIQUID, 10_000 * dollar(currency_id), 10_000 * dollar(LIQUID), false)?;
 
 		feed_price(vec![(currency_id, Price::one())])?;
 
