@@ -242,6 +242,10 @@ benchmark-karura:
 benchmark-acala:
 	 cargo run --profile production --features=runtime-benchmarks --features=with-acala-runtime -- benchmark --chain=acala-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
 
+.PHONY: benchmark-machine
+benchmark-machine:
+	 cargo run --profile production --features=with-mandala-runtime -- benchmark machine --chain=mandala-latest
+
 .PHONY: clippy-fix
 clippy-fix:
 	CARGO_INCREMENTAL=0 ./orml/scripts/run-clippy.sh --fix -Z unstable-options --broken-code --allow-dirty
