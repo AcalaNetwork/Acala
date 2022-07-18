@@ -58,7 +58,7 @@ pub mod module {
 	pub(crate) type AmountOf<T> =
 		<<T as Config>::Currency as MultiCurrencyExtended<<T as frame_system::Config>::AccountId>>::Amount;
 
-	#[derive(RuntimeDebug, Clone, Copy, PartialEq)]
+	#[derive(RuntimeDebug, Clone, Copy, PartialEq, Eq)]
 	pub enum RedeemType<AccountId> {
 		WithAvailableStakingBalance,
 		WithMint(AccountId, Balance),

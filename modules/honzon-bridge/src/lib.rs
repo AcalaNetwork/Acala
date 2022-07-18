@@ -23,9 +23,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use sp_runtime::traits::AccountIdConversion;
 
 use primitives::{currency::KUSD, evm::EvmAddress, Balance, CurrencyId};
 
@@ -54,7 +53,7 @@ pub mod module {
 		type StableCoinCurrencyId: Get<CurrencyId>;
 
 		#[pallet::constant]
-		type PalletId: Get<PalletId>;
+		type HonzonBridgeAccount: Get<Self::AccountId>;
 
 		/// The origin which set the Currency ID of the Bridge's Stable currency.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
@@ -129,7 +128,7 @@ pub mod module {
 		pub fn to_bridged(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let pallet_account = Self::account_id();
+			let pallet_account = T::HonzonBridgeAccount::get();
 			let bridged_stable_coin_currency_id =
 				Self::bridged_stable_coin_currency_id().ok_or(Error::<T>::BridgedStableCoinCurrencyIdNotSet)?;
 
@@ -152,7 +151,7 @@ pub mod module {
 		pub fn from_bridged(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let pallet_account = Self::account_id();
+			let pallet_account = T::HonzonBridgeAccount::get();
 			let bridged_stable_coin_currency_id =
 				Self::bridged_stable_coin_currency_id().ok_or(Error::<T>::BridgedStableCoinCurrencyIdNotSet)?;
 
@@ -165,12 +164,5 @@ pub mod module {
 			Self::deposit_event(Event::<T>::FromBridged { who, amount });
 			Ok(())
 		}
-	}
-}
-
-impl<T: Config> Pallet<T> {
-	// Returns the current pallet's account ID.
-	pub fn account_id() -> T::AccountId {
-		T::PalletId::get().into_account_truncating()
 	}
 }

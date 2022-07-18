@@ -86,7 +86,7 @@ impl WeightInfo for () {
 }
 
 /// Insurance for a validator from a single address
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, MaxEncodedLen, TypeInfo)]
+#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, Eq, MaxEncodedLen, TypeInfo)]
 pub struct Guarantee<BlockNumber> {
 	/// The total tokens the validator has in insurance
 	total: Balance,

@@ -30,7 +30,7 @@ jobs:
           access_token: ${{ github.token }}
   test:
     name: Coverage Report
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     needs: clean-up-actions
     steps:
       - name: Checkout repository
@@ -41,7 +41,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-02-19
+          toolchain: nightly-2022-05-15
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
