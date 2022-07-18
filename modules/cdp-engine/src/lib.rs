@@ -1370,11 +1370,11 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 		let stable_coin = T::GetStableCurrencyId::get();
 
 		let contracts_by_priority = {
-			let now: u32 = frame_system::Pallet::<T>::current_block_number()
+			let now: usize = frame_system::Pallet::<T>::current_block_number()
 				.try_into()
 				.map_err(|_| ArithmeticError::Overflow)?;
 			// can't fail as ensured `liquidation_contracts_len` non-zero
-			let start_at = (now as usize) % liquidation_contracts_len;
+			let start_at = now % liquidation_contracts_len;
 			let mut all: Vec<EvmAddress> = liquidation_contracts.into();
 			let mut right = all.split_off(start_at);
 			right.append(&mut all);
@@ -1387,7 +1387,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 			if T::LiquidationEvmBridge::liquidate(
 				InvokeContext {
 					contract,
-					sender: Pallet::<T>::evm_address(),
+					sender: repay_dest,
 					origin: contract,
 				},
 				collateral,
@@ -1414,23 +1414,34 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 							This is unexpected, need extra action.",
 							currency_id, collateral_supply, contract, e,
 						);
+					} else {
+						// notify liquidation success
+						T::LiquidationEvmBridge::on_collateral_transfer(
+							InvokeContext {
+								contract,
+								sender: Pallet::<T>::evm_address(),
+								origin: contract,
+							},
+							collateral,
+							target_stable_amount,
+						);
 					}
-					// notify liquidation success
-					T::LiquidationEvmBridge::on_collateral_transfer(
-						InvokeContext {
-							contract,
-							sender: Pallet::<T>::evm_address(),
-							origin: contract,
-						},
-						collateral,
-						target_stable_amount,
-					);
 					// refund rest collateral to CDP owner
 					let refund_collateral_amount = amount
 						.checked_sub(collateral_supply)
 						.expect("Ensured collateral supply <= amount; qed");
 					if !refund_collateral_amount.is_zero() {
-						<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
+						if let Err(e) =
+							<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)
+						{
+							log::error!(
+								target: "cdp-engine",
+								"LiquidateViaContracts: refund rest collateral to CDP owner failed. \
+								Collateral: {:?}, amount: {:?} error: {:?}. \
+								This is unexpected, need extra action.",
+								currency_id, refund_collateral_amount, e,
+							);
+						}
 					}
 					return Ok(());
 				} else if repayment > 0 {
