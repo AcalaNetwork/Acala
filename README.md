@@ -315,4 +315,4 @@ docker run -it --rm -p 9944:9944 -p 9933:9933 ghcr.io/acalanetwork/mandala-node:
 npx @acala-network/eth-rpc-adapter -l 1
 ```
 
-Note: If your usecase needs `eth_getLogs` rpc call, then you need to have a subquery instance to index the local chain. For this case, follow the tutorial found here: [Local Network Tutorial] (https://evmdocs.acala.network/network/network-setup/local-development-network)
+Note: If your usecase needs `eth_getLogs` rpc call, then you need to have a subquery instance to index the local chain. For this case, follow the tutorial found here: [Local Network Tutorial](https://evmdocs.acala.network/network/network-setup/local-development-network)
