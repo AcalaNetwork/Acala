@@ -244,7 +244,7 @@ benchmark-acala:
 
 .PHONY: benchmark-machine
 benchmark-machine:
-	 cargo run --profile production --features=with-mandala-runtime -- benchmark machine --chain=mandala-latest
+	 cargo run --profile production --features=with-acala-runtime -- benchmark machine --chain=acala-dev
 
 .PHONY: clippy-fix
 clippy-fix:
