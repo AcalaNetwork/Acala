@@ -28,11 +28,9 @@ use service::chain_spec;
 #[derive(Debug, Parser)]
 pub enum Subcommand {
 	/// Export the genesis state of the parachain.
-	#[clap(name = "export-genesis-state")]
 	ExportGenesisState(cumulus_client_cli::ExportGenesisStateCommand),
 
 	/// Export the genesis wasm of the parachain.
-	#[clap(name = "export-genesis-wasm")]
 	ExportGenesisWasm(cumulus_client_cli::ExportGenesisWasmCommand),
 
 	/// Key management cli utilities
