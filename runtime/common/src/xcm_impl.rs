@@ -252,6 +252,42 @@ mod tests {
 	}
 
 	#[test]
+	#[should_panic(expected = "less than length limit; qed")]
+	fn currency_id_as_general_key_works() {
+		use primitives::DexShare;
+		use primitives::TokenSymbol::ACA;
+		let evm_addr = sp_core::H160(hex_literal::hex!("0000000000000000000000000000000000000400"));
+
+		assert_eq!(native_currency_location(0, CurrencyId::Token(ACA)).parents, 1);
+		assert_eq!(native_currency_location(0, CurrencyId::Erc20(evm_addr)).parents, 1);
+		assert_eq!(
+			native_currency_location(0, CurrencyId::StableAssetPoolToken(0)).parents,
+			1
+		);
+		assert_eq!(native_currency_location(0, CurrencyId::ForeignAsset(0)).parents, 1);
+		assert_eq!(native_currency_location(0, CurrencyId::LiquidCrowdloan(0)).parents, 1);
+
+		assert_eq!(
+			native_currency_location(0, CurrencyId::DexShare(DexShare::Token(ACA), DexShare::ForeignAsset(0))).parents,
+			1
+		);
+		assert_eq!(
+			native_currency_location(0, CurrencyId::DexShare(DexShare::Token(ACA), DexShare::Erc20(evm_addr))).parents,
+			1
+		);
+
+		// DexShare of two Erc20 failed because encode length large than 32.
+		assert_eq!(
+			native_currency_location(
+				0,
+				CurrencyId::DexShare(DexShare::Erc20(evm_addr), DexShare::Erc20(evm_addr))
+			)
+			.parents,
+			1
+		);
+	}
+
+	#[test]
 	fn buy_weight_rate_mock_works() {
 		new_test_ext().execute_with(|| {
 			let asset: MultiAsset = (Parent, 100).into();
