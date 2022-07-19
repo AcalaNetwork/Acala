@@ -232,10 +232,9 @@ impl OnLiquidationSuccess<AccountId> for MockOnLiquidationSuccessHandler {
 		_stable_base_amount: Balance,
 		_stable_penalty_amount: Balance,
 		_actual_stable_amount: Balance,
-	) -> DispatchResult {
+	) {
 		// Increment count by 1
 		LiquidatedCount::set(LiquidatedCount::get() + 1);
-		Ok(())
 	}
 }
 

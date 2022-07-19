@@ -71,7 +71,7 @@ pub trait OnLiquidationSuccess<AccountId> {
 		stable_base_amount: Balance,
 		stable_penalty_amount: Balance,
 		actual_stable_amount: Balance,
-	) -> DispatchResult;
+	);
 }
 
 impl<AccountId> OnLiquidationSuccess<AccountId> for () {
@@ -83,8 +83,7 @@ impl<AccountId> OnLiquidationSuccess<AccountId> for () {
 		_stable_base_amount: Balance,
 		_stable_penalty_amount: Balance,
 		_actual_stable_amount: Balance,
-	) -> DispatchResult {
-		Ok(())
+	) {
 	}
 }
 

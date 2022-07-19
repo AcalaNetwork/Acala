@@ -81,19 +81,15 @@ pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 	/// Collateral type for sale
 	currency_id: CurrencyId,
 	/// Initial collateral amount for sale
-	#[codec(compact)]
 	initial_amount: Balance,
 	/// Current collateral amount for sale
-	#[codec(compact)]
 	amount: Balance,
 	/// Base sales amount of this auction
 	/// if zero, collateral auction will never be reverse stage,
 	/// otherwise, target amount is the actual payment amount of active
 	/// bidder
-	#[codec(compact)]
 	base: Balance,
 	/// Penalty amount as part of the auction.
-	#[codec(compact)]
 	penalty: Balance,
 	/// Auction start time
 	start_time: BlockNumber,
@@ -637,6 +633,9 @@ impl<T: Config> Pallet<T> {
 			// Since liquidation is done through DEX, return the bid.
 			Self::try_refund_bid(&collateral_auction, last_bid);
 
+			// Note: for StableAsset, the swap of cdp treasury is always on `ExactSupply`
+			// regardless of this swap_limit params. There will be excess stablecoins that
+			// need to be returned to the refund_recipient from cdp treasury account.
 			Self::deposit_event(Event::DEXTakeCollateralAuction {
 				auction_id,
 				collateral_type: collateral_auction.currency_id,
@@ -660,7 +659,7 @@ impl<T: Config> Pallet<T> {
 			// refunds.
 			let actual_stable_amount = sp_std::cmp::min(actual_target_amount, collateral_auction.target());
 
-			let res = T::OnLiquidationSuccess::on_liquidate_success(
+			T::OnLiquidationSuccess::on_liquidate_success(
 				&collateral_auction.refund_recipient,
 				collateral_auction.currency_id,
 				collateral_auction.amount,
@@ -669,15 +668,6 @@ impl<T: Config> Pallet<T> {
 				collateral_auction.penalty,
 				actual_stable_amount,
 			);
-			if res.is_err() {
-				log::warn!(
-					target: "auction-manager",
-					"collateral_auction_end_handler: liquidate using DEX. on_liquidation_success failed. \
-					Auction ID: {}, Auction: {:?}",
-					auction_id, collateral_auction,
-				);
-				debug_assert!(false);
-			}
 		} else if last_bidder.is_some() && bid_price >= collateral_auction.target() {
 			// if these's bid which is gte target, auction should dealt by the last bidder.
 			let winner = last_bidder.expect("ensured last bidder not empty; qed");
@@ -698,7 +688,7 @@ impl<T: Config> Pallet<T> {
 
 			// An successful auction result is "as is".
 			// Does not return any collateral nor stable currency to the bid winner.
-			let res = T::OnLiquidationSuccess::on_liquidate_success(
+			T::OnLiquidationSuccess::on_liquidate_success(
 				&collateral_auction.refund_recipient,
 				collateral_auction.currency_id,
 				collateral_auction.amount,
@@ -707,15 +697,6 @@ impl<T: Config> Pallet<T> {
 				collateral_auction.penalty,
 				collateral_auction.target(),
 			);
-			if res.is_err() {
-				log::warn!(
-					target: "auction-manager",
-					"collateral_auction_end_handler: liquidated using Winning Bid. on_liquidation_success failed. \
-					Auction ID: {}, Auction: {:?}",
-					auction_id, collateral_auction,
-				);
-				debug_assert!(false);
-			}
 		} else {
 			// abort this collateral auction, these collateral can be reprocessed by cdp treasury.
 			Self::try_refund_bid(&collateral_auction, last_bid);

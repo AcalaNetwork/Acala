@@ -2167,9 +2167,7 @@ fn on_liquidate_success_handler_works() {
 
 		// If no leftover collateral, return no collateral.
 		// If no excess stable, return no collateral.
-		assert_ok!(OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(
-			&ALICE, DOT, 100, 100, 50, 50, 50
-		));
+		OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(&ALICE, DOT, 100, 100, 50, 50, 50);
 		assert_eq!(
 			get_last_system_event(),
 			Event::CDPEngineModule(crate::Event::LiquidationCompleted {
@@ -2182,12 +2180,8 @@ fn on_liquidate_success_handler_works() {
 				actual_stable_returned: 0,
 			})
 		);
-		assert_ok!(OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(
-			&ALICE, DOT, 100, 120, 50, 50, 40
-		));
-		assert_ok!(OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(
-			&ALICE, DOT, 100, 200, 50, 50, 0
-		));
+		OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(&ALICE, DOT, 100, 120, 50, 50, 40);
+		OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(&ALICE, DOT, 100, 200, 50, 50, 0);
 		assert_eq!(
 			get_last_system_event(),
 			Event::CDPEngineModule(crate::Event::LiquidationCompleted {
@@ -2212,9 +2206,7 @@ fn on_liquidate_success_handler_works() {
 
 		// Left over collaterals are returned.
 		// Excess stable currencies are returned. Fees are paid out to OnFeeDeposit.
-		assert_ok!(OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(
-			&ALICE, DOT, 100, 50, 50, 50, 200
-		));
+		OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(&ALICE, DOT, 100, 50, 50, 50, 200);
 		assert_eq!(
 			get_last_system_event(),
 			Event::CDPEngineModule(crate::Event::LiquidationCompleted {
@@ -2240,9 +2232,7 @@ fn on_liquidate_success_handler_works() {
 		assert_eq!(CDPTreasuryModule::get_debit_pool(), 50);
 
 		// Prioritize stable base amount, send as much to penalty as possible.
-		assert_ok!(OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(
-			&ALICE, DOT, 100, 100, 50, 50, 80
-		));
+		OnLiquidationSuccessHandler::<Runtime>::on_liquidate_success(&ALICE, DOT, 100, 100, 50, 50, 80);
 		assert_eq!(
 			get_last_system_event(),
 			Event::CDPEngineModule(crate::Event::LiquidationCompleted {

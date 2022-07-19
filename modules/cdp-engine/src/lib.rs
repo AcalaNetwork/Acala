@@ -1256,7 +1256,7 @@ impl<T: Config> Pallet<T> {
 							stable_base_amount,
 							stable_penalty_amount,
 							existing_stable,
-						)?;
+						);
 					} else {
 						// Liquidate remaining debits via withdrawn collaterals.
 						// Base amount takes priority to be paid back.
@@ -1276,7 +1276,7 @@ impl<T: Config> Pallet<T> {
 								0,
 								penalty_paid,
 								penalty_paid,
-							)?;
+							);
 						}
 
 						// Liquidate collateral to pay back remaining debt.
@@ -1338,7 +1338,8 @@ impl<T: Config> Pallet<T> {
 				stable_base_amount,
 				stable_penalty_amount,
 				0,
-			)
+			);
+			Ok(())
 		} else {
 			LiquidateByPriority::<T>::liquidate(who, currency_id, amount, stable_base_amount, stable_penalty_amount)
 		}
@@ -1371,11 +1372,20 @@ impl<T: Config> OnLiquidationSuccess<T::AccountId> for OnLiquidationSuccessHandl
 		stable_base_amount: Balance,
 		stable_penalty_amount: Balance,
 		actual_stable_amount: Balance,
-	) -> DispatchResult {
+	) {
 		// refund remain collateral to the owner
 		let refund_collateral_amount = collateral_amount.saturating_sub(actual_collateral_consumed);
 		if !refund_collateral_amount.is_zero() {
-			<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
+			let res = <T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount);
+			if res.is_err() {
+				log::warn!(
+					target: "cdp-engine",
+					"on_liquidation_success: Failed to withdraw collateral to refund the user. \
+					currency: {:?}, amount: {} ",
+					currency_id, refund_collateral_amount,
+				);
+				debug_assert!(false);
+			}
 		}
 
 		// Prioritize calculating the Base amount.
@@ -1387,18 +1397,37 @@ impl<T: Config> OnLiquidationSuccess<T::AccountId> for OnLiquidationSuccessHandl
 
 		// Withdraw the penalty amount as debit and Send them to OnFeeDeposit.
 		if !actual_penalty_amount.is_zero() {
-			<T as Config>::CDPTreasury::on_system_debit(actual_penalty_amount)?;
-			T::OnFeeDeposit::on_fee_deposit(
+			let res = <T as Config>::CDPTreasury::on_system_debit(actual_penalty_amount);
+			if res.is_err() {
+				log::warn!(
+					target: "cdp-engine",
+					"on_liquidation_success: Failed to add debt for OnFeeDeposit payment. \
+					amount: {} ",
+					actual_penalty_amount,
+				);
+				debug_assert!(false);
+			}
+			let _ = T::OnFeeDeposit::on_fee_deposit(
 				IncomeSource::HonzonLiquidationFee,
 				T::GetStableCurrencyId::get(),
 				actual_penalty_amount,
-			)?;
+			);
 		}
 
 		// If there are still any stable coin remain, return them to the user.
 		if !stable_refund_amount.is_zero() {
-			<T as Config>::CDPTreasury::withdraw_surplus(who, stable_refund_amount)?;
+			let res = <T as Config>::CDPTreasury::withdraw_surplus(who, stable_refund_amount);
+			if res.is_err() {
+				log::warn!(
+					target: "cdp-engine",
+					"on_liquidation_success: Failed to withdraw stable currency to refund the user. \
+					user: {:?}, amount: {} ",
+					who, stable_refund_amount,
+				);
+				debug_assert!(false);
+			}
 		}
+
 		Pallet::<T>::deposit_event(Event::LiquidationCompleted {
 			collateral_type: currency_id,
 			owner: who.clone(),
@@ -1408,8 +1437,6 @@ impl<T: Config> OnLiquidationSuccess<T::AccountId> for OnLiquidationSuccessHandl
 			actual_stable_penalty: actual_penalty_amount,
 			actual_stable_returned: stable_refund_amount,
 		});
-
-		Ok(())
 	}
 }
 
@@ -1452,7 +1479,8 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaDex<T> {
 			target_base_amount,
 			target_penalty_amount,
 			actual_target_amount,
-		)
+		);
+		Ok(())
 	}
 }
 
@@ -1552,7 +1580,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 					);
 
 					// Liquidation succeeded. Refund any excess collateral and return.
-					return T::OnLiquidationSuccess::on_liquidate_success(
+					T::OnLiquidationSuccess::on_liquidate_success(
 						who,
 						currency_id,
 						amount,
@@ -1561,6 +1589,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 						target_penalty_amount,
 						repayment,
 					);
+					return Ok(());
 				} else if repayment > 0 {
 					// Insufficient repayment, disregard the attempt and refund the payment.
 					CurrencyOf::<T>::transfer(stable_coin, &repay_dest_account_id, &contract_account_id, repayment)?;
