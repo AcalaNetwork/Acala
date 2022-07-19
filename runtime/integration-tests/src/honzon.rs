@@ -959,18 +959,29 @@ fn can_liquidate_cdp_via_intended_priority() {
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
 				0
 			);
+
+			// Contract pays stable currency to the CdpEngine account
 			System::assert_has_event(Event::Tokens(orml_tokens::Event::Transfer {
 				currency_id: USD_CURRENCY,
 				from: address_to_account_id(&mock_liquidation_address_1()),
-				to: cdp_treasury_pallet_account(),
+				to: cdp_engine_pallet_account(),
 				amount: 100 * dollar(USD_CURRENCY),
 			}));
 
+			// Treasury pays the collateral to the contract address
 			System::assert_has_event(Event::Tokens(orml_tokens::Event::Transfer {
 				currency_id: RELAY_CHAIN_CURRENCY,
 				from: cdp_treasury_pallet_account(),
 				to: address_to_account_id(&mock_liquidation_address_1()),
 				amount: 2000 * dollar(RELAY_CHAIN_CURRENCY),
+			}));
+
+			// After liquidation is completed, the payment in stable currency is sent to Treasury to repay debt.
+			System::assert_has_event(Event::Tokens(orml_tokens::Event::Transfer {
+				currency_id: USD_CURRENCY,
+				from: cdp_engine_pallet_account(),
+				to: cdp_treasury_pallet_account(),
+				amount: 100 * dollar(USD_CURRENCY),
 			}));
 
 			System::assert_has_event(Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP {

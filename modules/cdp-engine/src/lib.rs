@@ -48,7 +48,9 @@ use sp_runtime::{
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{BlockNumberProvider, Bounded, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
+	traits::{
+		AccountIdConversion, BlockNumberProvider, Bounded, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero,
+	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
@@ -1348,6 +1350,15 @@ impl<T: Config> Pallet<T> {
 	pub fn get_collateral_currency_ids() -> Vec<CurrencyId> {
 		CollateralParams::<T>::iter_keys().collect()
 	}
+
+	fn account_id() -> T::AccountId {
+		<T as Config>::PalletId::get().into_account_truncating()
+	}
+
+	/// Pallet EVM address, derived from pallet id.
+	fn evm_address() -> EvmAddress {
+		T::EvmAddressMapping::get_or_create_evm_address(&Self::account_id())
+	}
 }
 
 pub struct OnLiquidationSuccessHandler<T>(PhantomData<T>);
@@ -1517,8 +1528,8 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 			.ok_or(Error::<T>::CollateralContractNotFound)?;
 
 		// Treasury account holds the confiscated debts and receives the repayments.
-		let repay_dest_account_id = <T as Config>::CDPTreasury::get_account_id();
-		let repay_dest = T::EvmAddressMapping::get_or_create_evm_address(&repay_dest_account_id);
+		let repay_dest = Pallet::<T>::evm_address();
+		let repay_dest_account_id = Pallet::<T>::account_id();
 
 		let stable_coin = T::GetStableCurrencyId::get();
 
@@ -1578,6 +1589,9 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 						collateral,
 						target_total_amount,
 					);
+
+					// Transfer payment to the Treasury to payback confiscated debts
+					<T as Config>::CDPTreasury::deposit_surplus(&repay_dest_account_id, target_total_amount)?;
 
 					// Liquidation succeeded. Refund any excess collateral and return.
 					T::OnLiquidationSuccess::on_liquidate_success(
