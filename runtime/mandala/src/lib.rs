@@ -1150,6 +1150,7 @@ parameter_types! {
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
 		vec![GetStakingCurrencyId::get()],
 		vec![GetStableCurrencyId::get()],
+		vec![GetLiquidCurrencyId::get()],
 	];
 }
 
