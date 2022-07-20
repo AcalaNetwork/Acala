@@ -31,6 +31,7 @@ use frame_system::RawOrigin;
 use module_support::HonzonManager;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::{Change, GetByKey, MultiCurrencyExtended};
+use runtime_common::LCDOT;
 use sp_runtime::{
 	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
@@ -251,10 +252,15 @@ runtime_benchmarks! {
 		let collateral_value = 10 * debit_value;
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
-		// set balance and inject liquidity
+		// set balance and inject liquidity for trading path
 		set_balance(currency_id, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&currency_id));
 		inject_liquidity(maker.clone(), LIQUID, STABLECOIN, 10_000 * dollar(LIQUID), 10_000 * dollar(STABLECOIN), false)?;
 		inject_liquidity(maker.clone(), currency_id, LIQUID, 10_000 * dollar(currency_id), 10_000 * dollar(LIQUID), false)?;
+
+		// purposly inject too little liquidity to have failed path, still reads dexs to check for viable swap paths
+		inject_liquidity(maker.clone(), STAKING, STABLECOIN, 10 * dollar(STAKING), 10 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), LCDOT, STABLECOIN, dollar(LCDOT), dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), LCDOT, STAKING, dollar(LCDOT), dollar(STAKING), false)?;
 
 		feed_price(vec![(currency_id, Price::one())])?;
 
@@ -288,10 +294,15 @@ runtime_benchmarks! {
 		let collateral_value = 10 * debit_value;
 		let collateral_amount = Price::saturating_from_rational(1000 * dollar(currency_id), 1000 * dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
-		// set balance and inject liquidity
+		// set balance and inject liquidity for trading path
 		set_balance(currency_id, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&currency_id));
 		inject_liquidity(maker.clone(), LIQUID, STABLECOIN, 10_000 * dollar(LIQUID), 10_000 * dollar(STABLECOIN), false)?;
 		inject_liquidity(maker.clone(), currency_id, LIQUID, 10_000 * dollar(currency_id), 10_000 * dollar(LIQUID), false)?;
+
+		// purposly inject too little liquidity to have failed path, still reads dexs to check for viable swap paths
+		inject_liquidity(maker.clone(), STAKING, STABLECOIN, 10 * dollar(STAKING), 10 * dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), LCDOT, STABLECOIN, dollar(LCDOT), dollar(STABLECOIN), false)?;
+		inject_liquidity(maker.clone(), LCDOT, STAKING, dollar(LCDOT), dollar(STAKING), false)?;
 
 		feed_price(vec![(currency_id, Price::one())])?;
 
