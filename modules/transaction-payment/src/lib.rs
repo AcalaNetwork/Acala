@@ -56,7 +56,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, MultiSignature, Percent, Perquintill,
 };
 use sp_std::prelude::*;
-use support::{BuyWeightRate, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment};
+use support::{AggregatedSwapPath, BuyWeightRate, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment};
 use xcm::opaque::latest::MultiLocation;
 
 mod mock;
@@ -558,7 +558,7 @@ pub mod module {
 			Self::disable_pool(currency_id)
 		}
 
-		/// Dapp wrap call, and user pay tx fee as provided trading path. this dispatch call should
+		/// Dapp wrap call, and user pay tx fee as provided dex swap path. this dispatch call should
 		/// make sure the trading path is valid.
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
@@ -588,7 +588,7 @@ pub mod module {
 			call.dispatch(origin)
 		}
 
-		/// Fee paid by other account
+		/// Wrap call with fee paid by other account
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
 			(T::WeightInfo::with_fee_paid_by().saturating_add(dispatch_info.weight), dispatch_info.class,)
@@ -598,6 +598,21 @@ pub mod module {
 			call: Box<CallOf<T>>,
 			_payer_addr: T::AccountId,
 			_payer_sig: MultiSignature,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin.clone())?;
+			call.dispatch(origin)
+		}
+
+		/// Dapp wrap call, and user pay tx fee as provided aggregated swap path. this dispatch call
+		/// should make sure the trading path is valid.
+		#[pallet::weight({
+			let dispatch_info = call.get_dispatch_info();
+			(T::WeightInfo::with_fee_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
+		})]
+		pub fn with_fee_aggregated_path(
+			origin: OriginFor<T>,
+			_fee_aggregated_path: Vec<AggregatedSwapPath<CurrencyId>>,
+			call: Box<CallOf<T>>,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin.clone())?;
 			call.dispatch(origin)
@@ -811,6 +826,31 @@ where
 					SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
 				)
 				.map(|_| (who.clone(), custom_fee_surplus))
+			}
+			Some(Call::with_fee_aggregated_path {
+				fee_aggregated_path, ..
+			}) => {
+				let last_should_be_dex = fee_aggregated_path.last();
+				match last_should_be_dex {
+					Some(AggregatedSwapPath::<CurrencyId>::Dex(fee_swap_path)) => {
+						ensure!(
+							fee_swap_path.len() > 1
+								&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
+								&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
+							Error::<T>::InvalidSwapPath
+						);
+						let fee =
+							Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
+						let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+						T::Swap::swap_by_aggregated_path(
+							who,
+							&fee_aggregated_path,
+							SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
+						)
+						.map(|_| (who.clone(), custom_fee_surplus))
+					}
+					_ => Err(Error::<T>::InvalidSwapPath.into()),
+				}
 			}
 			Some(Call::with_fee_currency { currency_id, .. }) => {
 				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);

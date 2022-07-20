@@ -102,6 +102,17 @@ fn with_fee_paid_by_call(payer_addr: AccountId, payer_sig: MultiSignature) -> <R
 	fee_call
 }
 
+fn with_fee_aggregated_path_by_call(
+	fee_aggregated_path: Vec<AggregatedSwapPath<CurrencyId>>,
+) -> <Runtime as Config>::Call {
+	let fee_call: <Runtime as Config>::Call =
+		Call::TransactionPayment(crate::mock::transaction_payment::Call::with_fee_aggregated_path {
+			fee_aggregated_path,
+			call: Box::new(CALL),
+		});
+	fee_call
+}
+
 fn enable_dex_and_tx_fee_pool() {
 	let treasury_account: AccountId = <Runtime as Config>::TreasuryAccount::get();
 	let init_balance = FeePoolSize::get();
@@ -2172,5 +2183,37 @@ fn with_fee_call_validation_works() {
 			));
 			assert_eq!(9800, Currencies::free_balance(AUSD, &ALICE));
 			assert_eq!(200, Currencies::free_balance(AUSD, &BOB));
+
+			// with_fee_aggregated_path
+			let aggregated_path = vec![AggregatedSwapPath::Dex(vec![DOT, AUSD])];
+			assert_noop!(
+				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
+					&ALICE,
+					&with_fee_aggregated_path_by_call(aggregated_path),
+					&INFO,
+					500
+				),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+			let aggregated_path = vec![AggregatedSwapPath::Dex(vec![DOT, ACA])];
+			assert_noop!(
+				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
+					&ALICE,
+					&with_fee_aggregated_path_by_call(aggregated_path),
+					&INFO,
+					500
+				),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+			let aggregated_path = vec![AggregatedSwapPath::Taiga(0, 0, 0)];
+			assert_noop!(
+				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
+					&ALICE,
+					&with_fee_aggregated_path_by_call(aggregated_path),
+					&INFO,
+					500
+				),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
 		});
 }

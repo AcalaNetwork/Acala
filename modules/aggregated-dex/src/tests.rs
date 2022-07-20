@@ -376,10 +376,9 @@ fn taiga_swap_swap_work() {
 			Error::<Runtime>::CannotSwap
 		);
 
-		assert_eq!(
-			TaigaSwap::<Runtime>::swap_by_path(&ALICE, &vec![DOT, LDOT], SwapLimit::ExactTarget(1_000_000_000u128, 0))
-				.is_ok(),
-			false
+		assert_noop!(
+			TaigaSwap::<Runtime>::swap_by_path(&ALICE, &vec![DOT, LDOT], SwapLimit::ExactTarget(1_000_000_000u128, 0)),
+			Error::<Runtime>::CannotSwap
 		);
 		assert_noop!(
 			TaigaSwap::<Runtime>::swap_by_aggregated_path(

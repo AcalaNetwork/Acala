@@ -105,7 +105,7 @@ where
 		limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError> {
 		let aggregated_swap_path = AggregatedSwapPath::Dex(swap_path.to_vec());
-		Self::swap_by_aggregated_path(who, &vec![aggregated_swap_path], limit)
+		Self::swap_by_aggregated_path(who, &[aggregated_swap_path], limit)
 	}
 
 	fn swap_by_aggregated_path(

@@ -18,6 +18,7 @@
 
 use crate::setup::*;
 use frame_support::weights::{DispatchClass, DispatchInfo, Pays, Weight};
+use module_support::AggregatedSwapPath;
 use sp_runtime::{
 	traits::{AccountIdConversion, SignedExtension, UniqueSaturatedInto},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
@@ -93,6 +94,17 @@ pub fn with_fee_path_call(fee_swap_path: Vec<CurrencyId>) -> <Runtime as module_
 	let fee_call: <Runtime as module_transaction_payment::Config>::Call =
 		Call::TransactionPayment(module_transaction_payment::Call::with_fee_path {
 			fee_swap_path,
+			call: Box::new(CALL),
+		});
+	fee_call
+}
+
+pub fn with_fee_aggregated_path_call(
+	fee_aggregated_path: Vec<AggregatedSwapPath<CurrencyId>>,
+) -> <Runtime as module_transaction_payment::Config>::Call {
+	let fee_call: <Runtime as module_transaction_payment::Config>::Call =
+		Call::TransactionPayment(module_transaction_payment::Call::with_fee_aggregated_path {
+			fee_aggregated_path,
 			call: Box::new(CALL),
 		});
 	fee_call
@@ -594,7 +606,7 @@ fn charge_transaction_payment_and_threshold_works() {
 
 #[test]
 fn with_fee_currency_call_works() {
-	with_fee_call_works(with_fee_currency_call(LIQUID_CURRENCY), false);
+	with_fee_call_works(with_fee_currency_call(LIQUID_CURRENCY), false, false);
 }
 
 #[test]
@@ -602,23 +614,76 @@ fn with_fee_path_call_works() {
 	with_fee_call_works(
 		with_fee_path_call(vec![LIQUID_CURRENCY, USD_CURRENCY, NATIVE_CURRENCY]),
 		true,
+		false,
 	);
 }
 
-fn with_fee_call_works(with_fee_call: <Runtime as module_transaction_payment::Config>::Call, is_path_call: bool) {
+#[test]
+fn with_fee_aggregated_path_call_works() {
+	let aggregated_path = vec![
+		AggregatedSwapPath::<CurrencyId>::Taiga(0, 0, 1),
+		AggregatedSwapPath::<CurrencyId>::Dex(vec![LIQUID_CURRENCY, USD_CURRENCY, NATIVE_CURRENCY]),
+	];
+	with_fee_call_works(with_fee_aggregated_path_call(aggregated_path), false, true);
+}
+
+fn with_fee_call_works(
+	with_fee_call: <Runtime as module_transaction_payment::Config>::Call,
+	is_path_call: bool,
+	is_aggregated_call: bool,
+) {
 	let init_amount = 100 * dollar(LIQUID_CURRENCY);
 	let ausd_acc: AccountId = TransactionPaymentPalletId::get().into_sub_account_truncating(USD_CURRENCY);
 	ExtBuilder::default()
 		.balances(vec![
-			// Alice for Dex, Bob for transaction payment
+			// ALICE for Dex, BOB and CHARLIE for transaction payment
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				2000 * dollar(NATIVE_CURRENCY),
+			),
 			(AccountId::from(ALICE), NATIVE_CURRENCY, 2000 * dollar(NATIVE_CURRENCY)),
 			(AccountId::from(ALICE), USD_CURRENCY, 2000 * dollar(USD_CURRENCY)),
-			(AccountId::from(ALICE), LIQUID_CURRENCY, 200 * dollar(LIQUID_CURRENCY)),
+			(AccountId::from(ALICE), LIQUID_CURRENCY, 2000 * dollar(LIQUID_CURRENCY)),
 			(AccountId::from(BOB), LIQUID_CURRENCY, init_amount),
+			(AccountId::from(BOB), RELAY_CHAIN_CURRENCY, init_amount),
 			(AccountId::from(CHARLIE), USD_CURRENCY, init_amount),
 		])
 		.build()
 		.execute_with(|| {
+			if is_aggregated_call {
+				let pool_asset = CurrencyId::StableAssetPoolToken(0);
+				assert_ok!(StableAsset::create_pool(
+					Origin::root(),
+					pool_asset,
+					vec![RELAY_CHAIN_CURRENCY, LIQUID_CURRENCY], // assets
+					vec![1u128, 1u128],                          // precisions
+					10_000_000u128,                              // mint fee
+					20_000_000u128,                              // swap fee
+					50_000_000u128,                              // redeem fee
+					1_000u128,                                   // initialA
+					AccountId::from(BOB),                        // fee recipient
+					AccountId::from(CHARLIE),                    // yield recipient
+					1_000_000_000_000u128,                       // precision
+				));
+				let asset_metadata = AssetMetadata {
+					name: b"Token Name".to_vec(),
+					symbol: b"TN".to_vec(),
+					decimals: 12,
+					minimal_balance: 1,
+				};
+				assert_ok!(AssetRegistry::register_stable_asset(
+					RawOrigin::Root.into(),
+					Box::new(asset_metadata.clone())
+				));
+				assert_ok!(StableAsset::mint(
+					Origin::signed(AccountId::from(ALICE)),
+					0,
+					vec![100 * dollar(RELAY_CHAIN_CURRENCY), 100 * dollar(LIQUID_CURRENCY)],
+					0u128
+				));
+			}
+
 			// USD - ACA
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(ALICE)),
@@ -678,7 +743,6 @@ fn with_fee_call_works(with_fee_call: <Runtime as module_transaction_payment::Co
 				),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
-
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
@@ -690,21 +754,50 @@ fn with_fee_call_works(with_fee_call: <Runtime as module_transaction_payment::Co
 			#[cfg(feature = "with-karura-runtime")]
 			let liquidity_changes = if is_path_call {
 				vec![1531932921, 15273137950, 152250001768]
+			} else if is_aggregated_call {
+				vec![1531933900, 15273147710, 152250099046]
 			} else {
 				vec![1531932921, 15273137949, 152250001749]
 			};
 			#[cfg(feature = "with-acala-runtime")]
 			let liquidity_changes = if is_path_call {
 				vec![15319330, 15273138737, 152250009612]
+			} else if is_aggregated_call {
+				vec![15320310, 15274115767, 152259747635]
 			} else {
 				vec![15319330, 15273137949, 152250001749]
 			};
 			#[cfg(feature = "with-mandala-runtime")]
 			let liquidity_changes = if is_path_call {
 				vec![15934636, 15918447962, 159000010116]
+			} else if is_aggregated_call {
+				vec![15934734, 15918545861, 159000987816]
 			} else {
 				vec![15934636, 15918447125, 159000001749]
 			};
+
+			if is_aggregated_call {
+				#[cfg(feature = "with-karura-runtime")]
+				let (amount1, amount2, amount3, amount4, amount5) =
+					(153500402, 100000153500402, 99999846806610, 200000000307000, 153193390);
+				#[cfg(feature = "with-acala-runtime")]
+				let (amount1, amount2, amount3, amount4, amount5) = (1535102, 1000001535102, 999998467969, 2000000003070, 1532031);
+				#[cfg(feature = "with-mandala-runtime")]
+				let (amount1, amount2, amount3, amount4, amount5) = (15966680, 1000015966680, 999984065266, 2000000031933, 15934734);
+				System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped {
+					swapper: AccountId::from(BOB),
+					pool_id: 0,
+					a: 1000,
+					input_asset: RELAY_CHAIN_CURRENCY,
+					output_asset: LIQUID_CURRENCY,
+					input_amount: amount1,
+					min_output_amount: 0,
+					balances: vec![amount2, amount3],
+					total_supply: amount4,
+					output_amount: amount5,
+				}));
+			}
+
 			System::assert_has_event(Event::Dex(module_dex::Event::Swap {
 				trader: AccountId::from(BOB),
 				path: vec![LIQUID_CURRENCY, USD_CURRENCY, NATIVE_CURRENCY],
