@@ -40,8 +40,11 @@ use support::{DEXManager, OnFeeDeposit, SwapLimit};
 mod mock;
 mod tests;
 pub mod weights;
-use sp_runtime::traits::UniqueSaturatedInto;
 pub use weights::WeightInfo;
+
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+use sp_runtime::traits::UniqueSaturatedInto;
 
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
