@@ -28,7 +28,7 @@ pub use frame_support::{
 	traits::{Everything, Get, Nothing},
 	weights::Weight,
 };
-use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset};
+use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfStableAsset};
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
@@ -120,6 +120,7 @@ pub type Trader = (
 	FixedRateOfFungible<AcaPerSecond, XcmToTreasury>,
 	FixedRateOfAsset<BaseRate, XcmToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
 	FixedRateOfAsset<BaseRate, XcmToTreasury, BuyWeightRateOfErc20<Runtime>>,
+	FixedRateOfAsset<BaseRate, XcmToTreasury, BuyWeightRateOfStableAsset<Runtime>>,
 );
 
 pub struct XcmConfig;
@@ -216,7 +217,7 @@ pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::{Erc20, ForeignAsset, Token};
+		use CurrencyId::{Erc20, ForeignAsset, StableAssetPoolToken, Token};
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) | Token(TAI) => {
@@ -225,6 +226,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			Erc20(address) if !is_system_contract(address) => {
 				Some(native_currency_location(ParachainInfo::get().into(), id))
 			}
+			StableAssetPoolToken(_pool_id) => Some(native_currency_location(ParachainInfo::get().into(), id)),
 			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
@@ -233,7 +235,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::{Erc20, Token};
+		use CurrencyId::{Erc20, StableAssetPoolToken, Token};
 
 		if location == MultiLocation::parent() {
 			return Some(Token(DOT));
@@ -254,6 +256,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 					match currency_id {
 						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) | Token(TAI) => Some(currency_id),
 						Erc20(address) if !is_system_contract(address) => Some(currency_id),
+						StableAssetPoolToken(_pool_id) => Some(currency_id),
 						_ => None,
 					}
 				} else {
@@ -270,6 +273,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 					match currency_id {
 						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) | Token(TAI) => Some(currency_id),
 						Erc20(address) if !is_system_contract(address) => Some(currency_id),
+						StableAssetPoolToken(_pool_id) => Some(currency_id),
 						_ => None,
 					}
 				} else {

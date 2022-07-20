@@ -1,6 +1,6 @@
 [package]
 name = "module-honzon-bridge"
-version = "2.8.0"
+version = "2.8.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -16,10 +16,17 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 orml-traits = { path = "../../orml/traits", default-features = false }
 
 [dev-dependencies]
+serde_json = "1.0.68"
+hex = "0.4"
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
+
 module-currencies = { path = "../../modules/currencies" }
+module-evm = { path = "../evm" }
+module-evm-accounts = { path = "../evm-accounts" }
+module-evm-bridge = { path = "../evm-bridge" }
 module-support = { path = "../../modules/support" }
 orml-tokens = { path = "../../orml/tokens" }
 

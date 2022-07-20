@@ -42,8 +42,6 @@ mod tests;
 pub mod weights;
 pub use weights::WeightInfo;
 
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 use sp_runtime::traits::UniqueSaturatedInto;
 
 pub type NegativeImbalanceOf<T> =

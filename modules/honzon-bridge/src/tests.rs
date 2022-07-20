@@ -21,29 +21,93 @@
 #![cfg(test)]
 
 use crate::mock::*;
-use frame_support::assert_ok;
+use frame_support::{assert_noop, assert_ok};
+use module_support::EVMAccountsManager;
+use module_support::EVM as EVMTrait;
 
-fn module_account() -> AccountId {
-	HonzonBridge::account_id()
+#[test]
+fn set_bridged_stable_coin_address_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Currencies::free_balance(ACA, &alice()), dollar(1_000_000));
+		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
+		deploy_contracts();
+		assert_ok!(HonzonBridge::set_bridged_stable_coin_address(
+			Origin::root(),
+			erc20_address()
+		));
+
+		System::assert_last_event(Event::HonzonBridge(crate::Event::BridgedStableCoinCurrencyIdSet {
+			bridged_stable_coin_currency_id: CurrencyId::Erc20(erc20_address()),
+		}));
+	});
 }
 
 #[test]
 fn to_bridged_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::free_balance(AUSD, &ALICE), dollar(1_000_000));
-		assert_eq!(Currencies::free_balance(KUSD, &ALICE), dollar(1_000_000));
-		assert_eq!(Currencies::free_balance(AUSD, &module_account()), dollar(1_000_000));
-		assert_eq!(Currencies::free_balance(KUSD, &module_account()), dollar(1_000_000));
+		assert_eq!(Currencies::free_balance(ACA, &alice()), dollar(1_000_000));
+		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
 
-		assert_ok!(HonzonBridge::to_bridged(Origin::signed(ALICE), dollar(5_000)));
+		assert_noop!(
+			HonzonBridge::from_bridged(Origin::signed(alice()), dollar(5_000)),
+			module_honzon_bridge::Error::<Runtime>::BridgedStableCoinCurrencyIdNotSet
+		);
 
-		assert_eq!(Currencies::free_balance(AUSD, &ALICE), dollar(995_000));
-		assert_eq!(Currencies::free_balance(KUSD, &ALICE), dollar(1_005_000));
-		assert_eq!(Currencies::free_balance(AUSD, &module_account()), dollar(1_005_000));
-		assert_eq!(Currencies::free_balance(KUSD, &module_account()), dollar(995_000));
+		deploy_contracts();
+		assert_ok!(HonzonBridge::set_bridged_stable_coin_address(
+			Origin::root(),
+			erc20_address()
+		));
+		// ensure the honzon-bridge pallet account bind the evmaddress
+		<EVM as EVMTrait<AccountId>>::set_origin(EvmAccountsModule::get_account_id(&alice_evm_addr()));
+		assert_ok!(Currencies::transfer(
+			Origin::signed(alice()),
+			HonzonBridgeAccount::get(),
+			HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
+			dollar(1_000_000)
+		));
+
+		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
+		assert_eq!(
+			Currencies::free_balance(KUSD, &HonzonBridgeAccount::get()),
+			dollar(1_000_000)
+		);
+		assert_eq!(
+			Currencies::free_balance(HonzonBridge::bridged_stable_coin_currency_id().unwrap(), &alice()),
+			ALICE_BALANCE - dollar(1_000_000)
+		);
+		assert_eq!(
+			Currencies::free_balance(
+				HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
+				&HonzonBridgeAccount::get()
+			),
+			dollar(1_000_000)
+		);
+
+		assert_ok!(HonzonBridge::to_bridged(Origin::signed(alice()), dollar(5_000)));
+
+		assert_eq!(
+			Currencies::free_balance(KUSD, &alice()),
+			dollar(1_000_000) - dollar(5_000)
+		);
+		assert_eq!(
+			Currencies::free_balance(KUSD, &HonzonBridgeAccount::get()),
+			dollar(1_000_000) + dollar(5_000)
+		);
+		assert_eq!(
+			Currencies::free_balance(HonzonBridge::bridged_stable_coin_currency_id().unwrap(), &alice()),
+			ALICE_BALANCE - dollar(1_000_000) + dollar(5_000)
+		);
+		assert_eq!(
+			Currencies::free_balance(
+				HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
+				&HonzonBridgeAccount::get()
+			),
+			dollar(1_000_000) - dollar(5_000)
+		);
 
 		System::assert_last_event(Event::HonzonBridge(crate::Event::ToBridged {
-			who: ALICE,
+			who: alice(),
 			amount: dollar(5000),
 		}));
 	});
@@ -52,20 +116,69 @@ fn to_bridged_works() {
 #[test]
 fn from_bridged_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::free_balance(AUSD, &ALICE), dollar(1_000_000));
-		assert_eq!(Currencies::free_balance(KUSD, &ALICE), dollar(1_000_000));
-		assert_eq!(Currencies::free_balance(AUSD, &module_account()), dollar(1_000_000));
-		assert_eq!(Currencies::free_balance(KUSD, &module_account()), dollar(1_000_000));
+		assert_eq!(Currencies::free_balance(ACA, &alice()), dollar(1_000_000));
+		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
 
-		assert_ok!(HonzonBridge::from_bridged(Origin::signed(ALICE), dollar(5_000)));
+		assert_noop!(
+			HonzonBridge::from_bridged(Origin::signed(alice()), dollar(5_000)),
+			module_honzon_bridge::Error::<Runtime>::BridgedStableCoinCurrencyIdNotSet
+		);
 
-		assert_eq!(Currencies::free_balance(AUSD, &ALICE), dollar(1_005_000));
-		assert_eq!(Currencies::free_balance(KUSD, &ALICE), dollar(995_000));
-		assert_eq!(Currencies::free_balance(AUSD, &module_account()), dollar(995_000));
-		assert_eq!(Currencies::free_balance(KUSD, &module_account()), dollar(1_005_000));
+		deploy_contracts();
+		assert_ok!(HonzonBridge::set_bridged_stable_coin_address(
+			Origin::root(),
+			erc20_address()
+		));
+		// ensure the honzon-bridge pallet account bind the evmaddress
+		<EVM as EVMTrait<AccountId>>::set_origin(EvmAccountsModule::get_account_id(&alice_evm_addr()));
+		assert_ok!(Currencies::transfer(
+			Origin::signed(alice()),
+			HonzonBridgeAccount::get(),
+			HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
+			dollar(1_000_000)
+		));
+
+		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
+		assert_eq!(
+			Currencies::free_balance(KUSD, &HonzonBridgeAccount::get()),
+			dollar(1_000_000)
+		);
+		assert_eq!(
+			Currencies::free_balance(HonzonBridge::bridged_stable_coin_currency_id().unwrap(), &alice()),
+			ALICE_BALANCE - dollar(1_000_000)
+		);
+		assert_eq!(
+			Currencies::free_balance(
+				HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
+				&HonzonBridgeAccount::get()
+			),
+			dollar(1_000_000)
+		);
+
+		assert_ok!(HonzonBridge::from_bridged(Origin::signed(alice()), dollar(5_000)));
+
+		assert_eq!(
+			Currencies::free_balance(KUSD, &alice()),
+			dollar(1_000_000) + dollar(5_000)
+		);
+		assert_eq!(
+			Currencies::free_balance(KUSD, &HonzonBridgeAccount::get()),
+			dollar(1_000_000) - dollar(5_000)
+		);
+		assert_eq!(
+			Currencies::free_balance(HonzonBridge::bridged_stable_coin_currency_id().unwrap(), &alice()),
+			ALICE_BALANCE - dollar(1_000_000) - dollar(5_000)
+		);
+		assert_eq!(
+			Currencies::free_balance(
+				HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
+				&HonzonBridgeAccount::get()
+			),
+			dollar(1_000_000) + dollar(5_000)
+		);
 
 		System::assert_last_event(Event::HonzonBridge(crate::Event::FromBridged {
-			who: ALICE,
+			who: alice(),
 			amount: dollar(5000),
 		}));
 	});

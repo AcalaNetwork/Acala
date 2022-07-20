@@ -23,27 +23,31 @@
 pub use crate as module_honzon_bridge;
 
 pub use frame_support::{
-	construct_runtime,
+	assert_ok, construct_runtime, ord_parameter_types,
 	pallet_prelude::GenesisBuild,
 	parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
+	PalletId,
 };
 pub use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
-pub use module_honzon_bridge::*;
-pub use module_support::mocks::MockAddressMapping;
-pub use orml_traits::parameter_type_with_key;
-use sp_core::H160;
+pub use module_evm_accounts::EvmAddressMapping;
+pub use module_support::{mocks::MockAddressMapping, AddressMapping};
+pub use orml_traits::{parameter_type_with_key, MultiCurrency};
+use sp_core::{H160, H256, U256};
+use sp_runtime::traits::AccountIdConversion;
+use std::str::FromStr;
 
-pub use primitives::{AccountId, Amount, BlockNumber, TokenSymbol};
+pub use primitives::{
+	convert_decimals_to_evm, evm::EvmAddress, AccountId, Amount, Balance, BlockNumber, CurrencyId, ReserveIdentifier,
+	TokenSymbol,
+};
 
 /// For testing only. Does not check for overflow.
 pub fn dollar(b: Balance) -> Balance {
 	b * 1_000_000_000_000
 }
-pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const INITIAL_BALANCE: Balance = 1_000_000;
-pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const KUSD: CurrencyId = CurrencyId::Token(TokenSymbol::KUSD);
 
 impl frame_system::Config for Runtime {
@@ -87,7 +91,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type MaxReserves = ();
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
 	type OnNewTokenAccount = ();
@@ -102,14 +106,21 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type WeightInfo = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
+	type MaxReserves = ConstU32<50>;
+	type ReserveIdentifier = ReserveIdentifier;
 }
 
-pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+impl pallet_timestamp::Config for Runtime {
+	type Moment = u64;
+	type OnTimestampSet = ();
+	type MinimumPeriod = ConstU64<1000>;
+	type WeightInfo = ();
+}
+
+pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = ACALA;
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
@@ -120,26 +131,75 @@ impl module_currencies::Config for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = ();
-	type AddressMapping = MockAddressMapping;
-	type EVMBridge = ();
+	type AddressMapping = EvmAddressMapping<Runtime>;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type GasToWeight = ();
 	type SweepOrigin = EnsureRoot<AccountId>;
 	type OnDust = ();
 }
 
 parameter_types! {
-	pub const StablecoinCurrencyId: CurrencyId = AUSD;
-	pub const BridgedStableCoinCurrencyId: CurrencyId = KUSD;
-	pub const HonzonBridgePalletId: PalletId = PalletId(*b"aca/hzbg");
+	pub NetworkContractSource: EvmAddress = EvmAddress::default();
 }
 
-impl Config for Runtime {
+ord_parameter_types! {
+	pub const TreasuryAccount: AccountId = AccountId::from([2u8; 32]);
+	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
+}
+
+impl module_evm::Config for Runtime {
+	type AddressMapping = EvmAddressMapping<Runtime>;
+	type Currency = Balances;
+	type TransferAll = ();
+	type NewContractExtraBytes = ConstU32<1>;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type TxFeePerGas = ConstU128<10>;
 	type Event = Event;
+	type PrecompilesType = ();
+	type PrecompilesValue = ();
+	type GasToWeight = ();
+	type ChargeTransactionPayment = module_support::mocks::MockReservedTransactionPayment<Balances>;
+	type NetworkContractOrigin = EnsureRoot<AccountId>;
+	type NetworkContractSource = NetworkContractSource;
+
+	type DeveloperDeposit = ConstU128<1000>;
+	type PublicationFee = ConstU128<200>;
+	type TreasuryAccount = TreasuryAccount;
+	type FreePublicationOrigin = EnsureRoot<AccountId>;
+
+	type Runner = module_evm::runner::stack::Runner<Self>;
+	type FindAuthor = ();
+	type Task = ();
+	type IdleScheduler = ();
 	type WeightInfo = ();
+}
+
+impl module_evm_bridge::Config for Runtime {
+	type EVM = EVM;
+}
+
+impl module_evm_accounts::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type ChainId = ();
+	type AddressMapping = EvmAddressMapping<Runtime>;
+	type TransferAll = Currencies;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const StableCoinCurrencyId: CurrencyId = KUSD;
+	pub const HonzonBridgePalletId: PalletId = PalletId(*b"aca/hzbg");
+	pub HonzonBridgeAccount: AccountId = HonzonBridgePalletId::get().into_account_truncating();
+}
+
+impl module_honzon_bridge::Config for Runtime {
+	type Event = Event;
 	type Currency = Currencies;
-	type StablecoinCurrencyId = StablecoinCurrencyId;
-	type BridgedStableCoinCurrencyId = BridgedStableCoinCurrencyId;
-	type PalletId = HonzonBridgePalletId;
+	type StableCoinCurrencyId = StableCoinCurrencyId;
+	type HonzonBridgeAccount = HonzonBridgeAccount;
+	type UpdateOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -151,41 +211,71 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Pallet, Call, Event<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Currencies: module_currencies::{Pallet, Call, Event<T>},
-		HonzonBridge: module_honzon_bridge::{Pallet, Call, Event<T>},
+		System: frame_system,
+		Balances: pallet_balances,
+		Tokens: orml_tokens,
+		Currencies: module_currencies,
+		EVM: module_evm,
+		EvmAccountsModule: module_evm_accounts,
+		EVMBridge: module_evm_bridge,
+		HonzonBridge: module_honzon_bridge,
 	}
 );
 
-#[allow(dead_code)]
+pub fn alice() -> AccountId {
+	MockAddressMapping::get_account_id(&alice_evm_addr())
+}
+
+pub fn alice_evm_addr() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
+}
+
+pub fn erc20_address() -> EvmAddress {
+	EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap()
+}
+
+pub const ALICE_BALANCE: u128 = 100_000_000_000_000_000_000_000u128;
+
+pub fn deploy_contracts() {
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
+	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000, vec![]));
+
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: alice_evm_addr(),
+		contract: erc20_address(),
+		logs: vec![module_evm::Log {
+			address: H160::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap(),
+			topics: vec![
+				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
+				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
+				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
+			],
+			data: {
+				let mut buf = [0u8; 32];
+				U256::from(ALICE_BALANCE).to_big_endian(&mut buf);
+				H256::from_slice(&buf).as_bytes().to_vec()
+			},
+		}],
+		used_gas: 1306611,
+		used_storage: 5462,
+	}));
+
+	assert_ok!(EVM::publish_free(Origin::root(), erc20_address()));
+}
+
 pub struct ExtBuilder {
 	tokens_balances: Vec<(AccountId, CurrencyId, Balance)>,
 	native_balances: Vec<(AccountId, Balance)>,
-}
-
-#[allow(dead_code)]
-impl ExtBuilder {
-	pub fn empty() -> Self {
-		Self {
-			tokens_balances: vec![],
-			native_balances: vec![],
-		}
-	}
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		let initial = dollar(INITIAL_BALANCE);
 		Self {
-			tokens_balances: vec![
-				(ALICE, KUSD, initial),
-				(ALICE, AUSD, initial),
-				(HonzonBridge::account_id(), AUSD, initial),
-				(HonzonBridge::account_id(), KUSD, initial),
-			],
-			native_balances: vec![(ALICE, initial), (HonzonBridge::account_id(), initial)],
+			tokens_balances: vec![(alice(), KUSD, initial), (HonzonBridgeAccount::get(), KUSD, initial)],
+			native_balances: vec![(alice(), initial), (HonzonBridgeAccount::get(), initial)],
 		}
 	}
 }

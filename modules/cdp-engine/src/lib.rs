@@ -1534,11 +1534,11 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 		let stable_coin = T::GetStableCurrencyId::get();
 
 		let contracts_by_priority = {
-			let now: u32 = frame_system::Pallet::<T>::current_block_number()
+			let now: usize = frame_system::Pallet::<T>::current_block_number()
 				.try_into()
 				.map_err(|_| ArithmeticError::Overflow)?;
 			// can't fail as ensured `liquidation_contracts_len` non-zero
-			let start_at = (now as usize) % liquidation_contracts_len;
+			let start_at = now % liquidation_contracts_len;
 			let mut all: Vec<EvmAddress> = liquidation_contracts.into();
 			let mut right = all.split_off(start_at);
 			right.append(&mut all);
@@ -1578,31 +1578,32 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 							This is unexpected, need extra action.",
 							currency_id, collateral_supply, contract, e,
 						);
+					} else {
+						// notify liquidation success
+						T::LiquidationEvmBridge::on_collateral_transfer(
+							InvokeContext {
+								contract,
+								sender: repay_dest,
+								origin: contract,
+							},
+							collateral,
+							target_total_amount,
+						);
+
+						// Transfer payment to the Treasury to payback confiscated debts
+						<T as Config>::CDPTreasury::deposit_surplus(&repay_dest_account_id, target_total_amount)?;
+
+						// Liquidation succeeded. Refund any excess collateral and return.
+						T::OnLiquidationSuccess::on_liquidate_success(
+							who,
+							currency_id,
+							amount,
+							collateral_supply,
+							target_base_amount,
+							target_penalty_amount,
+							repayment,
+						);
 					}
-					// notify liquidation success
-					T::LiquidationEvmBridge::on_collateral_transfer(
-						InvokeContext {
-							contract,
-							sender: repay_dest,
-							origin: contract,
-						},
-						collateral,
-						target_total_amount,
-					);
-
-					// Transfer payment to the Treasury to payback confiscated debts
-					<T as Config>::CDPTreasury::deposit_surplus(&repay_dest_account_id, target_total_amount)?;
-
-					// Liquidation succeeded. Refund any excess collateral and return.
-					T::OnLiquidationSuccess::on_liquidate_success(
-						who,
-						currency_id,
-						amount,
-						collateral_supply,
-						target_base_amount,
-						target_penalty_amount,
-						repayment,
-					);
 					return Ok(());
 				} else if repayment > 0 {
 					// Insufficient repayment, disregard the attempt and refund the payment.

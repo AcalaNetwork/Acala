@@ -49,7 +49,7 @@ parameter_types! {
 	pub storage EvmSchedulerNextID: u32 = 0u32;
 }
 
-#[derive(RuntimeDebug, PartialEq, Encode, Decode)]
+#[derive(RuntimeDebug, PartialEq, Eq, Encode, Decode)]
 pub struct TaskInfo {
 	pub prefix: Vec<u8>,
 	pub id: u32,

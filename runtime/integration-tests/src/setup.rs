@@ -139,16 +139,16 @@ use primitives::IncomeSource;
 mod acala_imports {
 	pub use acala_runtime::xcm_config::*;
 	pub use acala_runtime::{
-		create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts, AcalaOracle, AccountId,
-		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber,
-		CDPEnginePalletId, CDPTreasuryPalletId, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit,
-		Currencies, CurrencyId, DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts,
-		ExistentialDeposits, Fees, FinancialCouncil, Get, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans,
-		MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId,
-		OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
-		Ratio, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TipPerWeightStep,
-		TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting,
-		XTokens, XcmInterface, EVM, LCDOT, NFT,
+		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts,
+		AcalaOracle, AccountId, AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances,
+		BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
+		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown,
+		Event, EvmAccounts, ExistentialDeposits, Fees, FinancialCouncil, Get, GetNativeCurrencyId, Homa, Honzon,
+		IdleScheduler, Loans, MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit,
+		NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem,
+		PolkadotXcm, Proxy, ProxyType, Ratio, Runtime, Scheduler, Session, SessionManager, SevenDays, System,
+		Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId,
+		TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM, LCDOT, NFT,
 	};
 	use acala_runtime::{AcalaTreasuryAccount, AlternativeFeeSurplus};
 	pub use frame_support::parameter_types;

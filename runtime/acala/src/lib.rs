@@ -83,6 +83,7 @@ pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
+use crate::constants::parachains;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 use module_support::ExchangeRateProvider;
@@ -123,9 +124,12 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2080,
+	spec_version: 2083,
 	impl_version: 0,
+	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
+	#[cfg(feature = "disable-runtime-api")]
+	apis: sp_version::create_apis_vec![[]],
 	transaction_version: 1,
 	state_version: 0,
 };
@@ -1368,8 +1372,8 @@ impl pallet_proxy::Config for Runtime {
 parameter_types! {
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub DeveloperDeposit: Balance = 1_000 * dollar(ACA);
-	pub PublicationFee: Balance = 1_000_000 * dollar(ACA);
+	pub DeveloperDeposit: Balance = 50 * dollar(ACA);
+	pub PublicationFee: Balance = 10 * dollar(ACA);
 	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::acala();
 }
 
@@ -1773,6 +1777,7 @@ pub type Executive = frame_executive::Executive<
 	(
 		FeesMigration,
 		module_auction_manager::migrations::v1::MigrateToV1<Runtime>,
+		XcmInterfaceMigration,
 	),
 >;
 
@@ -1874,6 +1879,23 @@ impl OnRuntimeUpgrade for FeesMigration {
 			&runtime_common::HonzonTreasuryPool::get()
 		));
 		Ok(())
+	}
+}
+
+pub struct XcmInterfaceMigration;
+impl OnRuntimeUpgrade for XcmInterfaceMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let _ = <module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
+			Origin::root(),
+			vec![(
+				module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new(
+					(1, Parachain(parachains::statemint::ID)).into(),
+				)),
+				Some(4_000_000_000),
+				Some(50_000_000),
+			)],
+		);
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 }
 

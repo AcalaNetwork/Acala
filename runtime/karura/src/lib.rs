@@ -125,9 +125,12 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2080,
+	spec_version: 2083,
 	impl_version: 0,
+	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
+	#[cfg(feature = "disable-runtime-api")]
+	apis: sp_version::create_apis_vec![[]],
 	transaction_version: 1,
 	state_version: 0,
 };
@@ -217,15 +220,6 @@ impl Contains<Call> for BaseCallFilter {
 		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
 		if is_paused {
 			// no paused call
-			return false;
-		}
-
-		let is_honzon_bridge = matches!(
-			call,
-			Call::HonzonBridge(_) // HonzonBridge isn't enabled until wAUSD is created. Issue #1967
-		);
-		if is_honzon_bridge {
-			// no honzon_bridge
 			return false;
 		}
 
@@ -1392,8 +1386,8 @@ impl pallet_proxy::Config for Runtime {
 parameter_types! {
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub DeveloperDeposit: Balance = 100 * dollar(KAR);
-	pub PublicationFee: Balance = 500 * dollar(KAR);
+	pub DeveloperDeposit: Balance = 50 * dollar(KAR);
+	pub PublicationFee: Balance = 10 * dollar(KAR);
 	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::karura();
 }
 
@@ -1584,15 +1578,16 @@ impl module_fees::Config for Runtime {
 parameter_types! {
 	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["0000000000000000000100000000000000000001"]));
 	pub const StableCoinCurrencyId: CurrencyId = KUSD;
+	pub HonzonBridgeAccount: AccountId = HonzonBridgePalletId::get().into_account_truncating();
 }
 
 impl module_honzon_bridge::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
 	type Currency = Currencies;
-	type StablecoinCurrencyId = StableCoinCurrencyId;
-	type BridgedStableCoinCurrencyId = WormholeAUSDCurrencyId;
-	type PalletId = HonzonBridgePalletId;
+	type StableCoinCurrencyId = StableCoinCurrencyId;
+	type HonzonBridgeAccount = HonzonBridgeAccount;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
 }
 
 pub struct EnsurePoolAssetId;
@@ -1814,6 +1809,7 @@ pub type Executive = frame_executive::Executive<
 	(
 		FeesMigration,
 		module_auction_manager::migrations::v1::MigrateToV1<Runtime>,
+		XcmInterfaceMigration,
 	),
 >;
 
@@ -1909,6 +1905,23 @@ impl OnRuntimeUpgrade for FeesMigration {
 			&runtime_common::HonzonTreasuryPool::get()
 		));
 		Ok(())
+	}
+}
+
+pub struct XcmInterfaceMigration;
+impl OnRuntimeUpgrade for XcmInterfaceMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let _ = <module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
+			Origin::root(),
+			vec![(
+				module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new(
+					(1, Parachain(parachains::statemine::ID)).into(),
+				)),
+				Some(4_000_000_000),
+				Some(20_000_000),
+			)],
+		);
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 }
 

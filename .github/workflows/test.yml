@@ -25,7 +25,7 @@ jobs:
         with:
           access_token: ${{ github.token }}
   build:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -38,7 +38,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-02-19
+          toolchain: nightly-2022-05-15
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
@@ -57,7 +57,7 @@ jobs:
       - name: Run build benches
         run: make build-benches
   benchmarking:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -70,14 +70,14 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-02-19
+          toolchain: nightly-2022-05-15
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -90,7 +90,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-02-19
+          toolchain: nightly-2022-05-15
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
@@ -102,8 +102,10 @@ jobs:
         run: make check-benchmarks
       - name: Check try-runtime
         run: make check-try-runtime
+      - name: Check runtimes
+        run: make check-runtimes
   e2e-tests:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -116,7 +118,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-02-19
+          toolchain: nightly-2022-05-15
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
