@@ -51,7 +51,7 @@ pub use primitives::{
 	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
 	AccountId,
 };
-pub use xcm_impl::{native_currency_location, AcalaDropAssets, FixedRateOfAsset};
+pub use xcm_impl::{local_currency_location, native_currency_location, AcalaDropAssets, FixedRateOfAsset};
 
 #[cfg(feature = "std")]
 use sp_core::bytes::from_hex;

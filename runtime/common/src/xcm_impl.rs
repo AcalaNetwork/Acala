@@ -18,7 +18,6 @@
 
 //! Common xcm implementation
 
-use codec::Encode;
 use frame_support::{
 	traits::Get,
 	weights::{constants::WEIGHT_PER_SECOND, Weight},
@@ -26,7 +25,10 @@ use frame_support::{
 use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
 use primitives::{Balance, CurrencyId};
-use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
+use sp_runtime::{
+	traits::{ConstU32, Convert},
+	FixedPointNumber, FixedU128, WeakBoundedVec,
+};
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::latest::prelude::*;
 use xcm_builder::TakeRevenue;
@@ -35,12 +37,19 @@ use xcm_executor::{
 	Assets,
 };
 
-pub fn native_currency_location(para_id: u32, id: CurrencyId) -> MultiLocation {
+pub fn local_currency_location(key: Vec<u8>) -> MultiLocation {
+	MultiLocation::new(
+		0,
+		X1(GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(key, None))),
+	)
+}
+
+pub fn native_currency_location(para_id: u32, key: Vec<u8>) -> MultiLocation {
 	MultiLocation::new(
 		1,
 		X2(
 			Parachain(para_id),
-			GeneralKey(id.encode().try_into().expect("less than length limit; qed")),
+			GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(key, None)),
 		),
 	)
 }
@@ -228,6 +237,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateO
 mod tests {
 	use super::*;
 	use crate::mock::new_test_ext;
+	use codec::Encode;
 	use frame_support::{assert_noop, assert_ok, parameter_types};
 	use module_support::Ratio;
 	use sp_runtime::traits::One;
@@ -252,35 +262,51 @@ mod tests {
 	}
 
 	#[test]
-	#[should_panic(expected = "less than length limit; qed")]
-	fn currency_id_as_general_key_works() {
+	fn currency_id_encode_as_general_key_works() {
 		use primitives::DexShare;
 		use primitives::TokenSymbol::ACA;
 		let evm_addr = sp_core::H160(hex_literal::hex!("0000000000000000000000000000000000000400"));
 
-		assert_eq!(native_currency_location(0, CurrencyId::Token(ACA)).parents, 1);
-		assert_eq!(native_currency_location(0, CurrencyId::Erc20(evm_addr)).parents, 1);
+		assert_eq!(native_currency_location(0, CurrencyId::Token(ACA).encode()).parents, 1);
 		assert_eq!(
-			native_currency_location(0, CurrencyId::StableAssetPoolToken(0)).parents,
+			native_currency_location(0, CurrencyId::Erc20(evm_addr).encode()).parents,
 			1
 		);
-		assert_eq!(native_currency_location(0, CurrencyId::ForeignAsset(0)).parents, 1);
-		assert_eq!(native_currency_location(0, CurrencyId::LiquidCrowdloan(0)).parents, 1);
+		assert_eq!(
+			native_currency_location(0, CurrencyId::StableAssetPoolToken(0).encode()).parents,
+			1
+		);
+		assert_eq!(
+			native_currency_location(0, CurrencyId::ForeignAsset(0).encode()).parents,
+			1
+		);
+		assert_eq!(
+			native_currency_location(0, CurrencyId::LiquidCrowdloan(0).encode()).parents,
+			1
+		);
 
-		assert_eq!(
-			native_currency_location(0, CurrencyId::DexShare(DexShare::Token(ACA), DexShare::ForeignAsset(0))).parents,
-			1
-		);
-		assert_eq!(
-			native_currency_location(0, CurrencyId::DexShare(DexShare::Token(ACA), DexShare::Erc20(evm_addr))).parents,
-			1
-		);
-
-		// DexShare of two Erc20 failed because encode length large than 32.
 		assert_eq!(
 			native_currency_location(
 				0,
-				CurrencyId::DexShare(DexShare::Erc20(evm_addr), DexShare::Erc20(evm_addr))
+				CurrencyId::DexShare(DexShare::Token(ACA), DexShare::ForeignAsset(0)).encode()
+			)
+			.parents,
+			1
+		);
+		assert_eq!(
+			native_currency_location(
+				0,
+				CurrencyId::DexShare(DexShare::Token(ACA), DexShare::Erc20(evm_addr)).encode()
+			)
+			.parents,
+			1
+		);
+
+		// DexShare of two Erc20 limit to 32 length.
+		assert_eq!(
+			native_currency_location(
+				0,
+				CurrencyId::DexShare(DexShare::Erc20(evm_addr), DexShare::Erc20(evm_addr)).encode()
 			)
 			.parents,
 			1
