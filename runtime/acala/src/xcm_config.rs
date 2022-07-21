@@ -20,7 +20,7 @@ use super::{
 	constants::{fee::*, parachains},
 	AcalaTreasuryAccount, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId,
 	Event, ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin, ParachainInfo,
-	ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, ACA, AUSD,
+	ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, ACA, AUSD, TAP,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -135,6 +135,15 @@ parameter_types! {
 		).into(),
 		aca_per_second()
 	);
+	pub TapPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(TAP.encode())),
+		).into(),
+		// TODO: No price yet, assumed set at 4340
+		// TAP:tDOT = 4340:1
+		dot_per_second() * 4340
+	);
 	pub BaseRate: u128 = aca_per_second();
 }
 
@@ -146,6 +155,7 @@ pub type Trader = (
 	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfStableAsset<Runtime>>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
+	FixedRateOfFungible<TapPerSecond, ToTreasury>,
 );
 
 pub struct XcmConfig;
