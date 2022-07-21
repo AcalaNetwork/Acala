@@ -243,7 +243,9 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use CurrencyId::{Erc20, ForeignAsset, StableAssetPoolToken, Token};
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
-			Token(ACA) | Token(AUSD) | Token(LDOT) => Some(native_currency_location(ParachainInfo::get().into(), id)),
+			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => {
+				Some(native_currency_location(ParachainInfo::get().into(), id))
+			}
 			Erc20(address) if !is_system_contract(address) => {
 				Some(native_currency_location(ParachainInfo::get().into(), id))
 			}
@@ -277,7 +279,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
-								Token(ACA) | Token(AUSD) | Token(LDOT) => Some(currency_id),
+								Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => Some(currency_id),
 								Erc20(address) if !is_system_contract(address) => Some(currency_id),
 								StableAssetPoolToken(_pool_id) => Some(currency_id),
 								_ => None,
@@ -298,7 +300,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				let key = &key[..];
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
-					Token(ACA) | Token(AUSD) | Token(LDOT) => Some(currency_id),
+					Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => Some(currency_id),
 					Erc20(address) if !is_system_contract(address) => Some(currency_id),
 					StableAssetPoolToken(_pool_id) => Some(currency_id),
 					_ => None,
