@@ -28,8 +28,8 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use module_support::{
-	mocks::{MockAddressMapping, MockErc20InfoMapping, SpecificJointsSwap},
-	DEXIncentives, Price, PriceProvider,
+	mocks::{MockAddressMapping, MockErc20InfoMapping},
+	DEXIncentives, Price, PriceProvider, SpecificJointsSwap,
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{

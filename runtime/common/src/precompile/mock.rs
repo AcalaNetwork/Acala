@@ -34,9 +34,9 @@ use module_cdp_engine::CollateralCurrencyIds;
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
-	mocks::{MockStableAsset, SpecificJointsSwap},
-	AddressMapping as AddressMappingT, AuctionManager, DEXIncentives, DispatchableTask, EmergencyShutdown,
-	ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, PoolId, PriceProvider, Rate, SpecificJointsSwap,
+	mocks::MockStableAsset, AddressMapping as AddressMappingT, AuctionManager, DEXIncentives, DispatchableTask,
+	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, PoolId, PriceProvider, Rate,
+	SpecificJointsSwap,
 };
 use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 pub use primitives::{

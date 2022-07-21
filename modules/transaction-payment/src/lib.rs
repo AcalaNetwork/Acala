@@ -607,7 +607,7 @@ pub mod module {
 		/// should make sure the trading path is valid.
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
-			(T::WeightInfo::with_fee_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
+			(T::WeightInfo::with_fee_aggregated_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
 		})]
 		pub fn with_fee_aggregated_path(
 			origin: OriginFor<T>,
@@ -844,7 +844,7 @@ where
 						let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
 						T::Swap::swap_by_aggregated_path(
 							who,
-							&fee_aggregated_path,
+							fee_aggregated_path,
 							SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
 						)
 						.map(|_| (who.clone(), custom_fee_surplus))
