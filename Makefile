@@ -126,28 +126,28 @@ try-runtime-acala:
 
 .PHONY: test
 test: githooks
-	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --all
+	SKIP_WASM_BUILD= cargo nextest run --features with-mandala-runtime --all
 
 .PHONY: test-eth
 test-eth: githooks test-evm
-	SKIP_WASM_BUILD= cargo test -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
-	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
-	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_handle_invalid_input
+	SKIP_WASM_BUILD= cargo nextest run -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
+	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
+	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_handle_invalid_input
 
 .PHONY: test-evm
 test-evm: githooks
-	SKIP_WASM_BUILD= cargo test --manifest-path evm-tests/jsontests/Cargo.toml
+	SKIP_WASM_BUILD= cargo nextest run --manifest-path evm-tests/jsontests/Cargo.toml
 
 .PHONY: test-runtimes
 test-runtimes:
-	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime
-	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-mandala-runtime
-	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-karura-runtime
-	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-acala-runtime
+	SKIP_WASM_BUILD= cargo nextest run --all --features with-all-runtime
+	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-mandala-runtime
+	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-karura-runtime
+	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-acala-runtime
 
 .PHONY: test-e2e
 test-e2e:
-	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
+	cargo nextest run --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
 
 .PHONY: test-ts
 test-ts: build-mandala-internal-release
@@ -155,8 +155,8 @@ test-ts: build-mandala-internal-release
 
 .PHONY: test-benchmarking
 test-benchmarking:
-	cargo test --features bench --package module-evm --package runtime-common
-	cargo test --features runtime-benchmarks --features with-all-runtime --features --all benchmarking
+	cargo nextest run --features bench --package module-evm --package runtime-common
+	cargo nextest run --features runtime-benchmarks --features with-all-runtime --features --all benchmarking
 
 .PHONY: test-all
 test-all: test-runtimes test-eth test-benchmarking

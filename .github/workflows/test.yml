@@ -74,6 +74,11 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Install cargo-nextest
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-nextest
+          locked: true
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
@@ -94,6 +99,11 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Install cargo-nextest
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-nextest
+          locked: true
       - name: Run runtime tests
         run: make test-runtimes
       - name: Run eth tests
