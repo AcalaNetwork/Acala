@@ -18,6 +18,7 @@
 
 //! Common xcm implementation
 
+use codec::Encode;
 use frame_support::{
 	traits::Get,
 	weights::{constants::WEIGHT_PER_SECOND, Weight},
@@ -37,10 +38,13 @@ use xcm_executor::{
 	Assets,
 };
 
-pub fn local_currency_location(key: Vec<u8>) -> MultiLocation {
+pub fn local_currency_location(key: CurrencyId) -> MultiLocation {
 	MultiLocation::new(
 		0,
-		X1(GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(key, None))),
+		X1(GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(
+			key.encode(),
+			None,
+		))),
 	)
 }
 
@@ -237,7 +241,6 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateO
 mod tests {
 	use super::*;
 	use crate::mock::new_test_ext;
-	use codec::Encode;
 	use frame_support::{assert_noop, assert_ok, parameter_types};
 	use module_support::Ratio;
 	use sp_runtime::traits::One;

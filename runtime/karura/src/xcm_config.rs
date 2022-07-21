@@ -123,16 +123,16 @@ parameter_types! {
 	pub const MaxInstructions: u32 = 100;
 	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 	pub KusdPerSecond: (AssetId, u128) = (
-		local_currency_location(KUSD.encode()).into(),
+		local_currency_location(KUSD).into(),
 		// kUSD:KSM = 400:1
 		ksm_per_second() * 400
 	);
 	pub KarPerSecond: (AssetId, u128) = (
-		local_currency_location(KAR.encode()).into(),
+		local_currency_location(KAR).into(),
 		kar_per_second()
 	);
 	pub LksmPerSecond: (AssetId, u128) = (
-		local_currency_location(LKSM.encode()).into(),
+		local_currency_location(LKSM).into(),
 		// LKSM:KSM = 10:1
 		ksm_per_second() * 10
 	);

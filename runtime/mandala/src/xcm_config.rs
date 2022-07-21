@@ -122,7 +122,7 @@ parameter_types! {
 	pub const MaxInstructions: u32 = 100;
 	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
 	pub AcaPerSecond: (AssetId, u128) = (
-		local_currency_location(ACA.encode()).into(),
+		local_currency_location(ACA).into(),
 		aca_per_second()
 	);
 	pub BaseRate: u128 = aca_per_second();
