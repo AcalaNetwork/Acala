@@ -86,6 +86,7 @@ fn currency_id_convert() {
 			assert_eq!(CurrencyIdConvert::convert(KUSD), None);
 			assert_eq!(CurrencyIdConvert::convert(KSM), None);
 			assert_eq!(CurrencyIdConvert::convert(LKSM), None);
+			assert_eq!(CurrencyIdConvert::convert(TAP), None);
 
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
@@ -104,7 +105,11 @@ fn currency_id_convert() {
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KSM.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, LKSM.encode())),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, TAP.encode())),
 				None
 			);
 
@@ -127,6 +132,7 @@ fn currency_id_convert() {
 			assert_eq!(CurrencyIdConvert::convert(AUSD), None);
 			assert_eq!(CurrencyIdConvert::convert(DOT), None);
 			assert_eq!(CurrencyIdConvert::convert(LDOT), None);
+			assert_eq!(CurrencyIdConvert::convert(TAP), None);
 
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, ACA.encode())),
@@ -143,6 +149,14 @@ fn currency_id_convert() {
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, LDOT.encode())),
 				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, TAP.encode())),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, TAI.encode())),
+				Some(TAI)
 			);
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
@@ -188,6 +202,7 @@ fn currency_id_convert() {
 			assert_eq!(CurrencyIdConvert::convert(KUSD), None);
 			assert_eq!(CurrencyIdConvert::convert(KSM), None);
 			assert_eq!(CurrencyIdConvert::convert(LKSM), None);
+			assert_eq!(CurrencyIdConvert::convert(TAI), None);
 
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
@@ -208,6 +223,14 @@ fn currency_id_convert() {
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, LKSM.encode())),
 				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, TAI.encode())),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, TAP.encode())),
+				Some(TAP)
 			);
 
 			let native_currency: MultiAsset = (

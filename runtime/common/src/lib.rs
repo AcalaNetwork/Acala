@@ -48,7 +48,9 @@ pub use precompile::{
 	SchedulePrecompile, StableAssetPrecompile,
 };
 pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
+	currency::{
+		TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, TAI, TAP, VSKSM,
+	},
 	AccountId,
 };
 pub use xcm_impl::{native_currency_location, AcalaDropAssets, FixedRateOfAsset};

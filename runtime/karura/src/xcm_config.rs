@@ -20,7 +20,7 @@ use super::{
 	constants::{fee::*, parachains},
 	AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event, ExistentialDeposits,
 	FixedRateOfAsset, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin, ParachainInfo,
-	ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM,
+	ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM, TAI,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -143,6 +143,14 @@ parameter_types! {
 		// LKSM:KSM = 10:1
 		ksm_per_second() * 10
 	);
+	pub TaiPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(TAI.encode())),
+		).into(),
+		// TAI:taiKSM = 4340:1
+		ksm_per_second() * 4340
+	);
 	pub PHAPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
@@ -201,6 +209,7 @@ pub type Trader = (
 	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
+	FixedRateOfFungible<TaiPerSecond, ToTreasury>,
 );
 
 pub struct XcmConfig;
@@ -346,7 +355,9 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use CurrencyId::{Erc20, ForeignAsset, StableAssetPoolToken, Token};
 		match id {
 			Token(KSM) => Some(MultiLocation::parent()),
-			Token(KAR) | Token(KUSD) | Token(LKSM) => Some(native_currency_location(ParachainInfo::get().into(), id)),
+			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(TAI) => {
+				Some(native_currency_location(ParachainInfo::get().into(), id))
+			}
 			Erc20(address) if !is_system_contract(address) => {
 				Some(native_currency_location(ParachainInfo::get().into(), id))
 			}
@@ -420,7 +431,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
-								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+								Token(KAR) | Token(KUSD) | Token(LKSM) | Token(TAI) => Some(currency_id),
 								Erc20(address) if !is_system_contract(address) => Some(currency_id),
 								StableAssetPoolToken(_pool_id) => Some(currency_id),
 								_ => None,
@@ -444,7 +455,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			} => {
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
-					Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+					Token(KAR) | Token(KUSD) | Token(LKSM) | Token(TAI) => Some(currency_id),
 					Erc20(address) if !is_system_contract(address) => Some(currency_id),
 					StableAssetPoolToken(_pool_id) => Some(currency_id),
 					_ => None,
