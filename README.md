@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/github/license/AcalaNetwork/Acala?color=green)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
  <br />
 [![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2FAcalaNetwork)](https://twitter.com/AcalaNetwork)
-[![Discord](https://img.shields.io/badge/Discord-gray?logo=discord)](https://discord.gg/vdbFVCH)
+[![Discord](https://img.shields.io/badge/Discord-gray?logo=discord)](https://www.acala.gg/)
 [![Telegram](https://img.shields.io/badge/Telegram-gray?logo=telegram)](https://t.me/AcalaOfficial)
 [![Discourse](https://img.shields.io/badge/Forum-gray?logo=discourse)](https://acala.discourse.group/)
 [![Medium](https://img.shields.io/badge/Medium-gray?logo=medium)](https://medium.com/acalanetwork)
@@ -36,9 +36,9 @@ This project is initiated and facilitated by the Acala Foundation. Acala Foundat
 
 # 2. Overview
 The significance of cross-chain communication to the blockchain is like that of the internet to the intranet. Polkadot empowers a network of public, consortium and private blockchains, and enables true interoperability, economic and transactional scalability. A cross-chain stablecoin system will:
-1. create a sound, stable currency for low cost, borderless value transfer for all chains in the network
-2. enable commerical lending with predictable risk
-3. serve as a building block for more open finance services
+1. Create a sound, stable currency for low cost, borderless value transfer for all chains in the network
+2. Enable commerical lending with predictable risk
+3. Serve as a building block for more open finance services
 
 The Acala Dollar stablecoin (ticker: aUSD) is a multi-collateral-backed cryptocurrency, with value stable against US Dollar (aka. 1:1 aUSD to USD soft peg). It is completely decentralized, that it can be created using assets from blockchains connected to the Polkadot network including Ethereum and Bitcoin as collaterals, and can be used by any chains (or digital jurisdictions) within the Polkadot network and applications on those chains.
 
