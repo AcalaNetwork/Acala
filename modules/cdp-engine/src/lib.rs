@@ -59,8 +59,7 @@ use sp_runtime::{
 use sp_std::{marker::PhantomData, prelude::*};
 use support::{
 	AddressMapping, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, InvokeContext,
-	LiquidateCollateral, LiquidationEvmBridge as LiquidationEvmBridgeT, Price, PriceProvider, Rate, Ratio, RiskManager,
-	Swap, SwapLimit,
+	LiquidateCollateral, LiquidationEvmBridge, Price, PriceProvider, Rate, Ratio, RiskManager, Swap, SwapLimit,
 };
 
 mod mock;
@@ -190,7 +189,10 @@ pub mod module {
 		/// Swap
 		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
 
-		/// When settle collateral with smart contracts, he acceptable max slippage for the price
+		/// The origin for liquidation contracts registering and deregistering.
+		type LiquidationContractsUpdateOrigin: EnsureOrigin<Self::Origin>;
+
+		/// When settle collateral with smart contracts, the acceptable max slippage for the price
 		/// from oracle.
 		#[pallet::constant]
 		type MaxLiquidationContractSlippage: Get<Ratio>;
@@ -198,7 +200,7 @@ pub mod module {
 		#[pallet::constant]
 		type MaxLiquidationContracts: Get<u32>;
 
-		type LiquidationEvmBridge: LiquidationEvmBridgeT;
+		type LiquidationEvmBridge: LiquidationEvmBridge;
 
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -528,7 +530,7 @@ pub mod module {
 		#[pallet::weight(<T as Config>::WeightInfo::register_liquidation_contract())]
 		#[transactional]
 		pub fn register_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::LiquidationContractsUpdateOrigin::ensure_origin(origin)?;
 			LiquidationContracts::<T>::try_append(address).map_err(|()| Error::<T>::TooManyLiquidationContracts)?;
 			Self::deposit_event(Event::LiquidationContractRegistered { address });
 			Ok(())
@@ -537,7 +539,7 @@ pub mod module {
 		#[pallet::weight(<T as Config>::WeightInfo::deregister_liquidation_contract())]
 		#[transactional]
 		pub fn deregister_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::LiquidationContractsUpdateOrigin::ensure_origin(origin)?;
 			LiquidationContracts::<T>::mutate(|contracts| {
 				contracts.retain(|c| c != &address);
 			});
@@ -1419,7 +1421,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 						T::LiquidationEvmBridge::on_collateral_transfer(
 							InvokeContext {
 								contract,
-								sender: Pallet::<T>::evm_address(),
+								sender: repay_dest,
 								origin: contract,
 							},
 							collateral,

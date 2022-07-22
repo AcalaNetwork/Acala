@@ -333,7 +333,7 @@ impl MockLiquidationEvmBridge {
 		REPAYMENT.with(|v| *v.borrow_mut() = Some(repayment));
 	}
 }
-impl LiquidationEvmBridgeT for MockLiquidationEvmBridge {
+impl LiquidationEvmBridge for MockLiquidationEvmBridge {
 	fn liquidate(
 		_context: InvokeContext,
 		collateral: EvmAddress,
@@ -397,6 +397,7 @@ impl Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = DEXModule;
+	type LiquidationContractsUpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
 	type MaxLiquidationContracts = ConstU32<10>;
 	type LiquidationEvmBridge = MockLiquidationEvmBridge;

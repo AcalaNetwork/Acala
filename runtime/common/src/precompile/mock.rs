@@ -439,6 +439,7 @@ impl module_cdp_engine::Config for Test {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = DexModule;
+	type LiquidationContractsUpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
 	type MaxLiquidationContracts = ConstU32<10>;
 	type LiquidationEvmBridge = module_evm_bridge::LiquidationEvmBridge<Test>;

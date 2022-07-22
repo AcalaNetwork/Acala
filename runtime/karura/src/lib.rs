@@ -1066,6 +1066,7 @@ impl module_cdp_engine::Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = Dex;
+	type LiquidationContractsUpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
 	type MaxLiquidationContracts = ConstU32<10>;
 	type LiquidationEvmBridge = module_evm_bridge::LiquidationEvmBridge<Runtime>;

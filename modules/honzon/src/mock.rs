@@ -272,6 +272,7 @@ impl cdp_engine::Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = ();
+	type LiquidationContractsUpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
 	type MaxLiquidationContracts = ConstU32<10>;
 	type LiquidationEvmBridge = ();
