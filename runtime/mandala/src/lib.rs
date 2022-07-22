@@ -2592,7 +2592,7 @@ mod tests {
 				payer_addr: payer.to_account_id(),
 				payer_sig: sp_runtime::MultiSignature::Sr25519(payer_signature),
 			});
-			assert!(PayerSignatureVerification::convert((fee_call, extra.clone())).is_ok());
+			assert_ok!(PayerSignatureVerification::convert((fee_call, extra.clone())));
 		});
 
 		// wrong payer signature

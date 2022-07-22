@@ -70,7 +70,6 @@ fn statemint_min_xcm_fee_matched() {
 
 #[test]
 fn teleport_from_relay_chain() {
-	env_logger::init();
 	PolkadotNet::execute_with(|| {
 		assert_ok!(polkadot_runtime::XcmPallet::teleport_assets(
 			polkadot_runtime::Origin::signed(ALICE.into()),
