@@ -17,10 +17,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::evm::alice_evm_addr;
-use crate::payment::{with_fee_currency_call, with_fee_path_call, INFO};
+use crate::payment::{with_fee_aggregated_path_call, with_fee_currency_call, with_fee_path_call, INFO};
 use crate::setup::*;
 use module_aggregated_dex::SwapPath;
-use module_support::{ExchangeRate, Swap, SwapLimit, EVM as EVMTrait};
+use module_support::{AggregatedSwapPath, ExchangeRate, Swap, SwapLimit, EVM as EVMTrait};
 use primitives::{currency::AssetMetadata, evm::EvmAddress};
 use sp_runtime::{
 	traits::SignedExtension,
@@ -169,7 +169,7 @@ fn three_usd_pool_works() {
 				&alith,
 				1_000_000 * dollar
 			));
-			// deposit USDT to Bob, used for swap
+			// deposit USDT to BOB, used for swap
 			assert_ok!(Currencies::deposit(
 				CurrencyId::ForeignAsset(0),
 				&AccountId::from(BOB),
@@ -193,7 +193,7 @@ fn three_usd_pool_works() {
 				EvmAccounts::eth_address(&bob_key()),
 				EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB))
 			));
-			// transfer USDC erc20 to bob, used for swap
+			// transfer USDC erc20 from alith to ALICE/BOB, used for swap
 			<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
 			assert_ok!(Currencies::transfer(
 				Origin::signed(alith.clone()),
@@ -212,14 +212,15 @@ fn three_usd_pool_works() {
 			assert_eq!(Currencies::free_balance(usdc, &AccountId::from(ALICE)), 10 * dollar);
 			assert_eq!(Currencies::free_balance(usdc, &alice()), 10 * dollar);
 
+			// create three stable asset pool
 			let pool_asset = CurrencyId::StableAssetPoolToken(0);
 			assert_ok!(StableAsset::create_pool(
 				Origin::root(),
 				pool_asset,
 				vec![
-					CurrencyId::ForeignAsset(0), // PoolTokenIndex=0
-					usdc,                        // PoolTokenIndex=1
-					USD_CURRENCY                 // PoolTokenIndex=2
+					CurrencyId::ForeignAsset(0), // PoolTokenIndex=0: USDT
+					usdc,                        // PoolTokenIndex=1: USDC
+					USD_CURRENCY                 // PoolTokenIndex=2: AUSD
 				], // assets
 				vec![1u128, 1u128, 1u128], // precisions
 				10_000_000u128,            // mint fee
@@ -230,7 +231,6 @@ fn three_usd_pool_works() {
 				AccountId::from(CHARLIE),  // yield recipient
 				1_000_000_000_000u128,     // precision
 			));
-
 			let asset_metadata = AssetMetadata {
 				name: b"Three USD Pool".to_vec(),
 				symbol: b"3USD".to_vec(),
@@ -241,7 +241,6 @@ fn three_usd_pool_works() {
 				RawOrigin::Root.into(),
 				Box::new(asset_metadata.clone())
 			));
-
 			assert_ok!(StableAsset::mint(
 				Origin::signed(alith.clone()),
 				0,
@@ -257,7 +256,7 @@ fn three_usd_pool_works() {
 				balances: vec![1000 * dollar, 1000 * dollar, 1000 * dollar],
 				total_supply: 3000 * dollar,
 				fee_amount: 3 * dollar,
-				output_amount: 2_997_000_000_000_000,
+				output_amount: 2997 * dollar,
 			}));
 
 			// inject liquidity of AUSD to native token. Notice: USDC/USDT to AUSD liquidity is provided by
@@ -294,92 +293,29 @@ fn three_usd_pool_works() {
 					])
 				),]
 			));
+			// AggregatedDex::swap works: USDC->AUSD->ACA, USDT->AUSD->ACA, AUSD->ACA
+			let usd_tokens: Vec<CurrencyId> = vec![usdc, CurrencyId::ForeignAsset(0), USD_CURRENCY];
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
-			let (amount1, amount2, amount3) = (9_940_060_348_765u128, 9_920_180_467_236u128, 9_920_507_587_087u128);
+			let swap_amounts: Vec<u128> = vec![9_940_060_348_765u128, 9_920_180_467_236u128, 9_920_507_587_087u128];
 			#[cfg(feature = "with-mandala-runtime")]
-			let (amount1, amount2, amount3) = (9_959_980_429_142u128, 9_940_040_907_508u128, 9_940_348_860_887u128);
-			// USDC -> AUSD -> ACA
-			assert_eq!(
-				AcalaSwap::swap(
-					&AccountId::from(BOB),
-					usdc,
-					NATIVE_CURRENCY,
-					SwapLimit::ExactSupply(dollar, 0)
-				),
-				Ok((1_000_000_000_000, amount1))
-			);
-			// USDT -> AUSD -> ACA
-			assert_eq!(
-				AcalaSwap::swap(
-					&AccountId::from(BOB),
-					CurrencyId::ForeignAsset(0),
-					NATIVE_CURRENCY,
-					SwapLimit::ExactSupply(dollar, 0)
-				),
-				Ok((1_000_000_000_000, amount2))
-			);
-			// AUSD -> ACA
-			assert_eq!(
-				AcalaSwap::swap(
-					&AccountId::from(BOB),
-					USD_CURRENCY,
-					NATIVE_CURRENCY,
-					SwapLimit::ExactSupply(dollar, 0)
-				),
-				Ok((1_000_000_000_000, amount3))
-			);
+			let swap_amounts: Vec<u128> = vec![9_959_980_429_142u128, 9_940_040_907_508u128, 9_940_348_860_887u128];
+			for (token, swap_amount) in usd_tokens.iter().zip(swap_amounts.iter()) {
+				assert_eq!(
+					AcalaSwap::swap(
+						&AccountId::from(BOB),
+						*token,
+						NATIVE_CURRENCY,
+						SwapLimit::ExactSupply(dollar, 0)
+					),
+					Ok((dollar, *swap_amount))
+				);
+			}
 
-			// USDC: Erc20(contract) as fee token
-			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
-					&with_fee_currency_call(usdc),
-					&INFO,
-					50
-				)
-			);
-			assert!(System::events().iter().any(|r| matches!(
-				r.event,
-				Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped {
-					pool_id: 0,
-					a: 1000,
-					input_asset: _usdc,
-					output_asset: USD_CURRENCY,
-					..
-				})
-			)));
-			assert!(System::events().iter().any(|r| matches!(
-				r.event,
-				// USD_CURRENCY, NATIVE_CURRENCY
-				Event::Dex(module_dex::Event::Swap { .. })
-			)));
+			// USDC=Erc20(contract) or USDT=ForeignAsset(0) as fee token
+			assert_aggregated_dex_event(usdc);
+			assert_aggregated_dex_event(CurrencyId::ForeignAsset(0));
 
-			// USDT: ForeignAsset(0) as fee token
-			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
-					&with_fee_currency_call(CurrencyId::ForeignAsset(0)),
-					&INFO,
-					50
-				)
-			);
-			assert!(System::events().iter().any(|r| matches!(
-				r.event,
-				Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped {
-					pool_id: 0,
-					a: 1000,
-					input_asset: CurrencyId::ForeignAsset(0),
-					output_asset: USD_CURRENCY,
-					..
-				})
-			)));
-			assert!(System::events().iter().any(|r| matches!(
-				r.event,
-				// USD_CURRENCY, NATIVE_CURRENCY
-				Event::Dex(module_dex::Event::Swap { .. })
-			)));
-
-			// AUSD as fee token
+			// AUSD as fee token, only dex swap event produced.
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
@@ -418,6 +354,7 @@ fn three_usd_pool_works() {
 					TransactionValidityError::Invalid(InvalidTransaction::Payment)
 				);
 			}
+			// USD_CURRENCY to NATIVE_CURRENCY is valid, because it exist in dex swap.
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
@@ -426,7 +363,72 @@ fn three_usd_pool_works() {
 					50
 				)
 			);
+
+			// with_fee_aggregated_path_call works
+			let usdt_aggregated_path = vec![
+				AggregatedSwapPath::<CurrencyId>::Taiga(0, 0, 2), // USDT, AUSD
+				AggregatedSwapPath::<CurrencyId>::Dex(vec![USD_CURRENCY, NATIVE_CURRENCY]),
+			];
+			let usdc_aggregated_path = vec![
+				AggregatedSwapPath::<CurrencyId>::Taiga(0, 1, 2), // USDC, AUSD
+				AggregatedSwapPath::<CurrencyId>::Dex(vec![USD_CURRENCY, NATIVE_CURRENCY]),
+			];
+			let invalid_aggregated_path = vec![
+				AggregatedSwapPath::<CurrencyId>::Taiga(0, 0, 1), // USDT, USDC
+				AggregatedSwapPath::<CurrencyId>::Dex(vec![USD_CURRENCY, NATIVE_CURRENCY]),
+			];
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
+					&AccountId::from(BOB),
+					&with_fee_aggregated_path_call(usdt_aggregated_path),
+					&INFO,
+					50
+				)
+			);
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
+					&AccountId::from(BOB),
+					&with_fee_aggregated_path_call(usdc_aggregated_path),
+					&INFO,
+					50
+				)
+			);
+			assert_noop!(
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
+					&AccountId::from(BOB),
+					&with_fee_aggregated_path_call(invalid_aggregated_path),
+					&INFO,
+					50
+				),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+
+			// enable USDT/USDC as charge fee pool
 		});
+}
+
+fn assert_aggregated_dex_event(usd_token: CurrencyId) {
+	assert_ok!(
+		<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
+			&AccountId::from(BOB),
+			&with_fee_currency_call(usd_token),
+			&INFO,
+			50
+		)
+	);
+	assert!(System::events().iter().any(|r| matches!(
+		r.event,
+		Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped {
+			pool_id: 0,
+			a: 1000,
+			input_asset: _usd_token,
+			output_asset: USD_CURRENCY,
+			..
+		})
+	)));
+	assert!(System::events()
+		.iter()
+		.any(|r| matches!(r.event, Event::Dex(module_dex::Event::Swap { .. }))));
 }
 
 pub fn deploy_erc20_contracts() {
