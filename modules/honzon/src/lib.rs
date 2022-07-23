@@ -256,7 +256,7 @@ pub mod module {
 		#[transactional]
 		pub fn unauthorize_all(origin: OriginFor<T>) -> DispatchResult {
 			let from = ensure_signed(origin)?;
-			Authorization::<T>::remove_prefix(&from, None);
+			let _ = Authorization::<T>::clear_prefix(&from, u32::MAX, None);
 			<T as Config>::Currency::unreserve_all_named(&RESERVE_ID, &from);
 			Self::deposit_event(Event::UnAuthorizationAll { authorizer: from });
 			Ok(())
