@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 sha3 = { version = "0.9.1", default-features = false }
 
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", default-features = false }
 
 evm = { git = "https://github.com/rust-blockchain/evm", rev = "0b686f8c2c83a52638917caa649dc23302fda80d", default-features = false, features = ["with-codec"] }
 evm-gasometer = { git = "https://github.com/rust-blockchain/evm", rev = "0b686f8c2c83a52638917caa649dc23302fda80d", default-features = false }

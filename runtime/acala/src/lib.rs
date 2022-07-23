@@ -574,6 +574,7 @@ impl pallet_treasury::Config for Runtime {
 	type Currency = Balances;
 	type ApproveOrigin = EnsureRootOrHalfGeneralCouncil;
 	type RejectOrigin = EnsureRootOrHalfGeneralCouncil;
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type Event = Event;
 	type OnSlash = Treasury;
 	type ProposalBond = ProposalBond;
@@ -1443,6 +1444,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -1641,7 +1643,7 @@ construct_runtime!(
 		CollatorSelection: module_collator_selection = 41,
 		Session: pallet_session = 42,
 		Aura: pallet_aura = 43,
-		AuraExt: cumulus_pallet_aura_ext exclude_parts { Call } = 44,
+		AuraExt: cumulus_pallet_aura_ext = 44,
 		SessionManager: module_session_manager = 45,
 
 		// XCM

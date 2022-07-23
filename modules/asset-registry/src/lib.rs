@@ -558,7 +558,7 @@ fn key_to_currency(location: MultiLocation) -> Option<CurrencyId> {
 		MultiLocation {
 			parents: 0,
 			interior: X1(Junction::GeneralKey(key)),
-		} => CurrencyId::decode(&mut &*key).ok(),
+		} => CurrencyId::decode(&mut &*key.into_inner()).ok(),
 		_ => None,
 	}
 }
