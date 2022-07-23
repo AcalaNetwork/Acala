@@ -107,7 +107,7 @@ pub use runtime_common::{
 	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
 	RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
-	PHA, RENBTC, VSKSM,
+	PHA, RENBTC, TAI, VSKSM,
 };
 pub use xcm::latest::prelude::*;
 
@@ -580,6 +580,7 @@ impl pallet_treasury::Config for Runtime {
 	type Currency = Balances;
 	type ApproveOrigin = EnsureRootOrHalfGeneralCouncil;
 	type RejectOrigin = EnsureRootOrHalfGeneralCouncil;
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type Event = Event;
 	type OnSlash = Treasury;
 	type ProposalBond = ProposalBond;
@@ -1459,6 +1460,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -1561,13 +1563,14 @@ impl module_idle_scheduler::Config for Runtime {
 
 parameter_types! {
 	pub const StableCoinCurrencyId: CurrencyId = KUSD;
+	pub HonzonBridgeAccount: AccountId = HonzonBridgePalletId::get().into_account_truncating();
 }
 
 impl module_honzon_bridge::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type StableCoinCurrencyId = StableCoinCurrencyId;
-	type PalletId = HonzonBridgePalletId;
+	type HonzonBridgeAccount = HonzonBridgeAccount;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
 }
@@ -1672,7 +1675,7 @@ construct_runtime!(
 		CollatorSelection: module_collator_selection = 41,
 		Session: pallet_session = 42,
 		Aura: pallet_aura = 43,
-		AuraExt: cumulus_pallet_aura_ext exclude_parts { Call } = 44,
+		AuraExt: cumulus_pallet_aura_ext = 44,
 		SessionManager: module_session_manager = 45,
 
 		// XCM

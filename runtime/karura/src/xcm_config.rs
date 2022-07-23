@@ -20,7 +20,7 @@ use super::{
 	constants::{fee::*, parachains},
 	AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event, ExistentialDeposits,
 	FixedRateOfAsset, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin, ParachainInfo,
-	ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM,
+	ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM, TAI,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -29,7 +29,7 @@ pub use frame_support::{
 	traits::{Everything, Get, Nothing},
 	weights::Weight,
 };
-pub use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset};
+pub use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfStableAsset};
 use module_support::HomaSubAccountXcm;
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
@@ -37,7 +37,9 @@ use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdap
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use primitives::evm::is_system_contract;
-use runtime_common::{native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil};
+use runtime_common::{
+	local_currency_location, native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
+};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
@@ -121,27 +123,23 @@ parameter_types! {
 	pub const MaxInstructions: u32 = 100;
 	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 	pub KusdPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(KUSD.encode())),
-		).into(),
+		local_currency_location(KUSD).into(),
 		// kUSD:KSM = 400:1
 		ksm_per_second() * 400
 	);
 	pub KarPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(KAR.encode())),
-		).into(),
+		local_currency_location(KAR).into(),
 		kar_per_second()
 	);
 	pub LksmPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(LKSM.encode())),
-		).into(),
+		local_currency_location(LKSM).into(),
 		// LKSM:KSM = 10:1
 		ksm_per_second() * 10
+	);
+	pub TaiPerSecond: (AssetId, u128) = (
+		local_currency_location(TAI).into(),
+		// TAI:taiKSM = 4340:1
+		ksm_per_second() * 4340
 	);
 	pub PHAPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
@@ -152,34 +150,22 @@ parameter_types! {
 		ksm_per_second() * 400
 	);
 	pub BncPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
-		).into(),
+		native_currency_location(parachains::bifrost::ID, parachains::bifrost::BNC_KEY.to_vec()).into(),
 		// BNC:KSM = 80:1
 		ksm_per_second() * 80
 	);
 	pub VsksmPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec())),
-		).into(),
+		native_currency_location(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY.to_vec()).into(),
 		// VSKSM:KSM = 1:1
 		ksm_per_second()
 	);
 	pub KbtcPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec())),
-		).into(),
+		native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY.to_vec()).into(),
 		// KBTC:KSM = 1:150 & Satoshi:Planck = 1:10_000
 		ksm_per_second() / 1_500_000
 	);
 	pub KintPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KINT_KEY.to_vec())),
-		).into(),
+		native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY.to_vec()).into(),
 		// KINT:KSM = 4:3
 		(ksm_per_second() * 4) / 3
 	);
@@ -189,17 +175,19 @@ parameter_types! {
 
 pub type Trader = (
 	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>,
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
-	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<BncPerSecond, ToTreasury>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfStableAsset<Runtime>>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
 	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
-	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
+	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
+	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
+	FixedRateOfFungible<BncPerSecond, ToTreasury>,
+	FixedRateOfFungible<TaiPerSecond, ToTreasury>,
 );
 
 pub struct XcmConfig;
@@ -342,46 +330,37 @@ pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::{Erc20, ForeignAsset, Token};
+		use CurrencyId::{Erc20, ForeignAsset, StableAssetPoolToken, Token};
 		match id {
 			Token(KSM) => Some(MultiLocation::parent()),
-			Token(KAR) | Token(KUSD) | Token(LKSM) => Some(native_currency_location(ParachainInfo::get().into(), id)),
-			Erc20(address) if !is_system_contract(address) => {
-				Some(native_currency_location(ParachainInfo::get().into(), id))
+			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(TAI) => {
+				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
 			}
+			Erc20(address) if !is_system_contract(address) => {
+				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
+			}
+			StableAssetPoolToken(_pool_id) => Some(native_currency_location(ParachainInfo::get().into(), id.encode())),
 			// Bifrost native token
-			Token(BNC) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::bifrost::ID),
-					GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
-				),
+			Token(BNC) => Some(native_currency_location(
+				parachains::bifrost::ID,
+				parachains::bifrost::BNC_KEY.to_vec(),
 			)),
 			// Bifrost Voucher Slot KSM
-			Token(VSKSM) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::bifrost::ID),
-					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
-				),
+			Token(VSKSM) => Some(native_currency_location(
+				parachains::bifrost::ID,
+				parachains::bifrost::VSKSM_KEY.to_vec(),
 			)),
 			// Phala Native token
 			Token(PHA) => Some(MultiLocation::new(1, X1(Parachain(parachains::phala::ID)))),
 			// Kintsugi Native token
-			Token(KINT) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::kintsugi::ID),
-					GeneralKey(parachains::kintsugi::KINT_KEY.to_vec()),
-				),
+			Token(KINT) => Some(native_currency_location(
+				parachains::kintsugi::ID,
+				parachains::kintsugi::KINT_KEY.to_vec(),
 			)),
 			// Kintsugi wrapped BTC
-			Token(KBTC) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::kintsugi::ID),
-					GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec()),
-				),
+			Token(KBTC) => Some(native_currency_location(
+				parachains::kintsugi::ID,
+				parachains::kintsugi::KBTC_KEY.to_vec(),
 			)),
 			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
@@ -392,7 +371,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::{Erc20, Token};
+		use CurrencyId::{Erc20, StableAssetPoolToken, Token};
 
 		if location == MultiLocation::parent() {
 			return Some(Token(KSM));
@@ -407,7 +386,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} => {
-				match (para_id, &key[..]) {
+				match (para_id, &key.into_inner()[..]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
 					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
 					(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY) => Some(Token(KINT)),
@@ -418,8 +397,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
-								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+								Token(KAR) | Token(KUSD) | Token(LKSM) | Token(TAI) => Some(currency_id),
 								Erc20(address) if !is_system_contract(address) => Some(currency_id),
+								StableAssetPoolToken(_pool_id) => Some(currency_id),
 								_ => None,
 							}
 						} else {
@@ -439,10 +419,11 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 0,
 				interior: X1(GeneralKey(key)),
 			} => {
-				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+				let currency_id = CurrencyId::decode(&mut &*key.into_inner()).ok()?;
 				match currency_id {
-					Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+					Token(KAR) | Token(KUSD) | Token(LKSM) | Token(TAI) => Some(currency_id),
 					Erc20(address) if !is_system_contract(address) => Some(currency_id),
+					StableAssetPoolToken(_pool_id) => Some(currency_id),
 					_ => None,
 				}
 			}

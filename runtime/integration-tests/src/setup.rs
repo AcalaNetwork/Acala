@@ -35,7 +35,7 @@ pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Zero},
-	DispatchError, DispatchResult, FixedPointNumber, MultiAddress, Perbill, Permill,
+	DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress, Perbill, Permill,
 };
 
 pub use xcm::latest::prelude::*;
@@ -344,7 +344,9 @@ impl ExtBuilder {
 				AccountId::from(ORACLE3),
 				AccountId::from(ORACLE4),
 				AccountId::from(ORACLE5),
-			],
+			]
+			.try_into()
+			.expect("convert error!"),
 			phantom: Default::default(),
 		}
 		.assimilate_storage(&mut t)

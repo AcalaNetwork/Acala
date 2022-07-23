@@ -1112,7 +1112,8 @@ fn charge_fee_by_alternative_swap_first_priority() {
 		let init_balance = FeePoolSize::get();
 		let dot_ed = Currencies::minimum_balance(DOT);
 		let ed = Currencies::minimum_balance(ACA);
-		let alternative_fee_swap_deposit: u128 = <Runtime as Config>::AlternativeFeeSwapDeposit::get();
+		let alternative_fee_swap_deposit: u128 =
+			<<Runtime as Config>::AlternativeFeeSwapDeposit as frame_support::traits::Get<u128>>::get();
 
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100, 1000));
@@ -1177,7 +1178,8 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 		let init_balance = FeePoolSize::get();
 		let dot_ed = Currencies::minimum_balance(DOT);
 		let ed = Currencies::minimum_balance(ACA);
-		let alternative_fee_swap_deposit: u128 = <Runtime as Config>::AlternativeFeeSwapDeposit::get();
+		let alternative_fee_swap_deposit: u128 =
+			<<Runtime as Config>::AlternativeFeeSwapDeposit as frame_support::traits::Get<u128>>::get();
 
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
@@ -1603,7 +1605,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			MultiLocation {
 				interior: X1(GeneralKey(key)),
 				..
-			} => match &key[..] {
+			} => match &key.into_inner()[..] {
 				key => {
 					if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 						Some(currency_id)
@@ -1627,7 +1629,7 @@ fn buy_weight_transaction_fee_pool_works() {
 
 		// Token not in charge fee pool
 		let currency_id = CurrencyId::Token(TokenSymbol::LDOT);
-		let location = MultiLocation::new(1, X1(GeneralKey(currency_id.encode())));
+		let location = MultiLocation::new(1, X1(GeneralKey(currency_id.encode().try_into().unwrap())));
 		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
 		assert_eq!(rate, None);
 
@@ -2028,7 +2030,8 @@ fn charge_fee_failed_when_disable_dex() {
 #[test]
 fn charge_fee_pool_operation_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		let alternative_fee_swap_deposit: u128 = <Runtime as Config>::AlternativeFeeSwapDeposit::get();
+		let alternative_fee_swap_deposit: u128 =
+			<<Runtime as Config>::AlternativeFeeSwapDeposit as frame_support::traits::Get<u128>>::get();
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			ALICE,

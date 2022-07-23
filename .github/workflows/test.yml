@@ -25,7 +25,7 @@ jobs:
         with:
           access_token: ${{ github.token }}
   build:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -38,10 +38,12 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-02-19
+          toolchain: nightly-2022-05-15
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build
@@ -57,7 +59,7 @@ jobs:
       - name: Run build benches
         run: make build-benches
   benchmarking:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -70,14 +72,16 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-02-19
+          toolchain: nightly-2022-05-15
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -90,10 +94,12 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-02-19
+          toolchain: nightly-2022-05-15
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run runtime tests
         run: make test-runtimes
       - name: Run eth tests
@@ -105,7 +111,7 @@ jobs:
       - name: Check runtimes
         run: make check-runtimes
   e2e-tests:
-    runs-on: [self-hosted, linux]
+    runs-on: custom-runner-AWS-Acala
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -118,10 +124,12 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-02-19
+          toolchain: nightly-2022-05-15
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run e2e tests
         run: make test-e2e
       - name: Use Node.js
