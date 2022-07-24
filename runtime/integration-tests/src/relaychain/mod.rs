@@ -16,22 +16,23 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+mod relay_chain;
+
+#[cfg(feature = "with-karura-runtime")]
+mod erc20;
 #[cfg(feature = "with-karura-runtime")]
 mod kusama_cross_chain_transfer;
 #[cfg(feature = "with-karura-runtime")]
 pub mod kusama_test_net;
+#[cfg(feature = "with-karura-runtime")]
+mod statemine;
+
 #[cfg(feature = "with-acala-runtime")]
 mod polkadot_cross_chain_transfer;
 #[cfg(feature = "with-acala-runtime")]
 pub mod polkadot_test_net;
-mod relay_chain;
-#[cfg(feature = "with-karura-runtime")]
-mod statemine;
 #[cfg(feature = "with-acala-runtime")]
 mod statemint;
-
-#[cfg(feature = "with-karura-runtime")]
-mod erc20;
 
 pub use fee_test::{relay_per_second_as_fee, token_per_second_as_fee};
 use frame_support::weights::{constants::WEIGHT_PER_SECOND, Weight};
@@ -185,6 +186,7 @@ mod fee_test {
 
 #[test]
 fn weight_to_fee_works() {
+	#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 	use frame_support::weights::{Weight, WeightToFee as WeightToFeeT};
 
 	// Kusama

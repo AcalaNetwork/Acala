@@ -31,8 +31,7 @@ use primitives::{
 	TradingPair,
 };
 use sp_core::{H256, U256};
-use sp_runtime::traits::SignedExtension;
-use sp_runtime::Percent;
+use sp_runtime::{traits::SignedExtension, Percent};
 use std::str::FromStr;
 
 pub fn erc20_address_0() -> EvmAddress {

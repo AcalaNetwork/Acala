@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
+use crate::stable_asset::enable_stable_asset;
 use frame_support::weights::{DispatchClass, DispatchInfo, Pays, Weight};
 use module_support::AggregatedSwapPath;
 use sp_runtime::{
@@ -59,6 +60,7 @@ fn init_charge_fee_pool(currency_id: CurrencyId) -> DispatchResult {
 		fee_pool_size,
 		Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
 	));
+	assert!(module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(currency_id).is_some());
 	let native_amount1: u128 = Currencies::free_balance(NATIVE_CURRENCY, &treasury_account);
 	let token_amount1: u128 = Currencies::free_balance(currency_id.clone(), &treasury_account);
 	assert_eq!(native_amount - native_amount1, fee_pool_size);
@@ -459,37 +461,11 @@ fn with_fee_call_works(with_fee_call: <Runtime as module_transaction_payment::Co
 		.build()
 		.execute_with(|| {
 			if is_aggregated_call {
-				let pool_asset = CurrencyId::StableAssetPoolToken(0);
-				assert_ok!(StableAsset::create_pool(
-					Origin::root(),
-					pool_asset,
-					vec![RELAY_CHAIN_CURRENCY, LIQUID_CURRENCY], // assets
-					vec![1u128, 1u128],                          // precisions
-					10_000_000u128,                              // mint fee
-					20_000_000u128,                              // swap fee
-					50_000_000u128,                              // redeem fee
-					1_000u128,                                   // initialA
-					AccountId::from(BOB),                        // fee recipient
-					AccountId::from(CHARLIE),                    // yield recipient
-					1_000_000_000_000u128,                       // precision
-				));
-				let asset_metadata = AssetMetadata {
-					name: b"Token Name".to_vec(),
-					symbol: b"TN".to_vec(),
-					decimals: 12,
-					minimal_balance: 1,
-				};
-				assert_ok!(AssetRegistry::register_stable_asset(
-					RawOrigin::Root.into(),
-					Box::new(asset_metadata.clone())
-				));
-
-				assert_ok!(StableAsset::mint(
-					Origin::signed(AccountId::from(ALICE)),
-					0,
+				enable_stable_asset(
+					vec![RELAY_CHAIN_CURRENCY, LIQUID_CURRENCY],
 					vec![100 * dollar(RELAY_CHAIN_CURRENCY), 100 * dollar(LIQUID_CURRENCY)],
-					0u128
-				));
+					None,
+				);
 			}
 
 			// USD - ACA
