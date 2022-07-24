@@ -147,7 +147,7 @@ test-runtimes:
 
 .PHONY: test-e2e
 test-e2e:
-	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
+	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test --test-threads=1
 
 .PHONY: test-ts
 test-ts: build-mandala-internal-release
