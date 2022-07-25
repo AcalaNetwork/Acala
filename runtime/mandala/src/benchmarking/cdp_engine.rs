@@ -20,7 +20,7 @@ use crate::{
 	AccountId, Address, Amount, Balance, CdpEngine, CdpTreasury, CurrencyId, DefaultDebitExchangeRate, Dex,
 	EmergencyShutdown, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
 	GetStakingCurrencyId, MinimumDebitValue, NativeTokenExistentialDeposit, Price, Rate, Ratio, Runtime, Timestamp,
-	MILLISECS_PER_BLOCK,
+	H160, MILLISECS_PER_BLOCK,
 };
 
 use super::{
@@ -281,6 +281,13 @@ runtime_benchmarks! {
 		// shutdown
 		EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into())?;
 	}: _(RawOrigin::None, STAKING, owner_lookup)
+
+	register_liquidation_contract {
+	}: _(RawOrigin::Root, H160::default())
+
+	deregister_liquidation_contract {
+		CdpEngine::register_liquidation_contract(RawOrigin::Root.into(), H160::default())?;
+	}: _(RawOrigin::Root, H160::default())
 }
 
 #[cfg(test)]

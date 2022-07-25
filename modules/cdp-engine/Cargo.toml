@@ -29,6 +29,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "
 orml-currencies = { path = "../../orml/currencies" }
 dex = { package = "module-dex", path = "../dex"}
 cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury" }
+evm-accounts = { package = "module-evm-accounts", path = "../evm-accounts" }
 orml-tokens = { path = "../../orml/tokens" }
 
 [features]

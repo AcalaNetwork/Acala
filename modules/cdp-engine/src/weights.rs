@@ -52,6 +52,8 @@ pub trait WeightInfo {
 	fn liquidate_by_auction(b: u32) -> Weight;
 	fn liquidate_by_dex() -> Weight;
 	fn settle() -> Weight;
+	fn register_liquidation_contract() -> Weight;
+	fn deregister_liquidation_contract() -> Weight;
 }
 
 /// Weights for module_cdp_engine using the Acala node and recommended hardware.
@@ -83,6 +85,16 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
+	fn register_liquidation_contract() -> Weight {
+		(97_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(11 as Weight))
+			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+	}
+	fn deregister_liquidation_contract() -> Weight {
+		(97_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(11 as Weight))
+			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -109,6 +121,17 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(15 as Weight))
 	}
 	fn settle() -> Weight {
+		(97_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(8 as Weight))
+	}
+	fn register_liquidation_contract() -> Weight {
+		(97_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(8 as Weight))
+	}
+
+	fn deregister_liquidation_contract() -> Weight {
 		(97_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(8 as Weight))
