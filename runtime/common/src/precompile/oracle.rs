@@ -22,7 +22,7 @@ use super::{
 	weights::PrecompileWeights,
 };
 use crate::WeightToGas;
-use frame_support::{log, sp_runtime::FixedPointNumber};
+use frame_support::log;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},

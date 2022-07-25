@@ -27,13 +27,12 @@ mod service;
 use futures::channel::{mpsc, oneshot};
 use std::{future::Future, sync::Arc, time::Duration};
 
-use cumulus_client_cli::CollatorOptions;
+use cumulus_client_cli::{generate_genesis_block, CollatorOptions};
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::{ParachainCandidate, ParachainConsensus};
 use cumulus_client_network::BlockAnnounceValidator;
 use cumulus_client_service::{
-	genesis::generate_genesis_block, prepare_node_config, start_collator, start_full_node, StartCollatorParams,
-	StartFullNodeParams,
+	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_inprocess_interface::RelayChainInProcessInterface;
@@ -234,8 +233,8 @@ pub fn run_relay_chain_validator_node(
 
 /// Returns the initial head data for a parachain ID.
 pub fn initial_head_data() -> HeadData {
-	let spec = Box::new(dev_testnet_config(None).unwrap());
-	let block: Block = generate_genesis_block(&(spec as Box<_>), sp_runtime::StateVersion::V1).unwrap();
+	let spec = dev_testnet_config(None).unwrap();
+	let block: Block = generate_genesis_block(&spec, sp_runtime::StateVersion::V1).unwrap();
 	let genesis_state = block.header().encode();
 	genesis_state.into()
 }

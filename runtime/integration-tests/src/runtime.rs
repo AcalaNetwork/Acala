@@ -43,18 +43,21 @@ fn currency_id_convert() {
 			CurrencyIdConvert::convert(NATIVE_CURRENCY),
 			Some(MultiLocation::sibling_parachain_general_key(
 				id,
-				NATIVE_CURRENCY.encode()
+				NATIVE_CURRENCY.encode().try_into().unwrap()
 			))
 		);
 		assert_eq!(
 			CurrencyIdConvert::convert(USD_CURRENCY),
-			Some(MultiLocation::sibling_parachain_general_key(id, USD_CURRENCY.encode()))
+			Some(MultiLocation::sibling_parachain_general_key(
+				id,
+				USD_CURRENCY.encode().try_into().unwrap()
+			))
 		);
 		assert_eq!(
 			CurrencyIdConvert::convert(LIQUID_CURRENCY),
 			Some(MultiLocation::sibling_parachain_general_key(
 				id,
-				LIQUID_CURRENCY.encode()
+				LIQUID_CURRENCY.encode().try_into().unwrap()
 			))
 		);
 		assert_eq!(
@@ -64,18 +67,21 @@ fn currency_id_convert() {
 		assert_eq!(
 			CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
 				id,
-				NATIVE_CURRENCY.encode()
+				NATIVE_CURRENCY.encode().try_into().unwrap()
 			)),
 			Some(NATIVE_CURRENCY)
 		);
 		assert_eq!(
-			CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, USD_CURRENCY.encode())),
+			CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+				id,
+				USD_CURRENCY.encode().try_into().unwrap()
+			)),
 			Some(USD_CURRENCY)
 		);
 		assert_eq!(
 			CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
 				id,
-				LIQUID_CURRENCY.encode()
+				LIQUID_CURRENCY.encode().try_into().unwrap()
 			)),
 			Some(LIQUID_CURRENCY)
 		);
@@ -86,35 +92,61 @@ fn currency_id_convert() {
 			assert_eq!(CurrencyIdConvert::convert(KUSD), None);
 			assert_eq!(CurrencyIdConvert::convert(KSM), None);
 			assert_eq!(CurrencyIdConvert::convert(LKSM), None);
+			assert_eq!(CurrencyIdConvert::convert(TAP), None);
 
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					RENBTC.encode().try_into().unwrap()
+				)),
 				Some(RENBTC)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KAR.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					KAR.encode().try_into().unwrap()
+				)),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KUSD.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					KUSD.encode().try_into().unwrap()
+				)),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KSM.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					KSM.encode().try_into().unwrap()
+				)),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KSM.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					LKSM.encode().try_into().unwrap()
+				)),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					TAP.encode().try_into().unwrap()
+				)),
 				None
 			);
 
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id + 1, RENBTC.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id + 1,
+					RENBTC.encode().try_into().unwrap()
+				)),
 				None
 			);
 
 			let native_currency: MultiAsset = (
-				MultiLocation::sibling_parachain_general_key(id, NATIVE_CURRENCY.encode()),
+				MultiLocation::sibling_parachain_general_key(id, NATIVE_CURRENCY.encode().try_into().unwrap()),
 				1,
 			)
 				.into();
@@ -127,34 +159,61 @@ fn currency_id_convert() {
 			assert_eq!(CurrencyIdConvert::convert(AUSD), None);
 			assert_eq!(CurrencyIdConvert::convert(DOT), None);
 			assert_eq!(CurrencyIdConvert::convert(LDOT), None);
+			assert_eq!(CurrencyIdConvert::convert(TAP), None);
 
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, ACA.encode())),
-				None
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, AUSD.encode())),
-				None
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, DOT.encode())),
-				None
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, LDOT.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					ACA.encode().try_into().unwrap()
+				)),
 				None
 			);
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					AUSD.encode().try_into().unwrap()
+				)),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					DOT.encode().try_into().unwrap()
+				)),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					LDOT.encode().try_into().unwrap()
+				)),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					TAP.encode().try_into().unwrap()
+				)),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					TAI.encode().try_into().unwrap()
+				)),
+				Some(TAI)
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
 					parachains::bifrost::ID,
-					parachains::bifrost::BNC_KEY.to_vec()
+					parachains::bifrost::BNC_KEY.to_vec().try_into().unwrap()
 				)),
 				Some(BNC)
 			);
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
 					parachains::bifrost::ID,
-					parachains::bifrost::VSKSM_KEY.to_vec()
+					parachains::bifrost::VSKSM_KEY.to_vec().try_into().unwrap()
 				)),
 				Some(VSKSM)
 			);
@@ -163,19 +222,19 @@ fn currency_id_convert() {
 				CurrencyIdConvert::convert(BNC),
 				Some(MultiLocation::sibling_parachain_general_key(
 					parachains::bifrost::ID,
-					parachains::bifrost::BNC_KEY.to_vec()
+					parachains::bifrost::BNC_KEY.to_vec().try_into().unwrap()
 				))
 			);
 			assert_eq!(
 				CurrencyIdConvert::convert(VSKSM),
 				Some(MultiLocation::sibling_parachain_general_key(
 					parachains::bifrost::ID,
-					parachains::bifrost::VSKSM_KEY.to_vec()
+					parachains::bifrost::VSKSM_KEY.to_vec().try_into().unwrap()
 				))
 			);
 
 			let native_currency: MultiAsset = (
-				MultiLocation::sibling_parachain_general_key(id, NATIVE_CURRENCY.encode()),
+				MultiLocation::sibling_parachain_general_key(id, NATIVE_CURRENCY.encode().try_into().unwrap()),
 				1,
 			)
 				.into();
@@ -188,30 +247,60 @@ fn currency_id_convert() {
 			assert_eq!(CurrencyIdConvert::convert(KUSD), None);
 			assert_eq!(CurrencyIdConvert::convert(KSM), None);
 			assert_eq!(CurrencyIdConvert::convert(LKSM), None);
+			assert_eq!(CurrencyIdConvert::convert(TAI), None);
 
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					RENBTC.encode().try_into().unwrap()
+				)),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KAR.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					KAR.encode().try_into().unwrap()
+				)),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KUSD.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					KUSD.encode().try_into().unwrap()
+				)),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KSM.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					KSM.encode().try_into().unwrap()
+				)),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, LKSM.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					LKSM.encode().try_into().unwrap()
+				)),
 				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					TAI.encode().try_into().unwrap()
+				)),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					TAP.encode().try_into().unwrap()
+				)),
+				Some(TAP)
 			);
 
 			let native_currency: MultiAsset = (
-				MultiLocation::sibling_parachain_general_key(id, NATIVE_CURRENCY.encode()),
+				MultiLocation::sibling_parachain_general_key(id, NATIVE_CURRENCY.encode().try_into().unwrap()),
 				1,
 			)
 				.into();
@@ -284,10 +373,10 @@ mod mandala_only_tests {
 
 			assert_eq!(base_fee, 1_000_000_000);
 			assert_eq!(len_fee, 500_000_000);
-			assert_eq!(adjusted_weight_fee, 0);
+			assert_eq!(adjusted_weight_fee, 11587754);
 
 			let total_fee = base_fee.saturating_add(len_fee).saturating_add(adjusted_weight_fee);
-			assert_eq!(total_fee, 1_500_000_000);
+			assert_eq!(total_fee, 1511587754);
 		});
 	}
 
@@ -329,7 +418,7 @@ mod mandala_only_tests {
 					bytes.len()
 				),
 				Ok(ValidTransaction {
-					priority: 734_003,
+					priority: 500000,
 					requires: vec![],
 					provides: vec![],
 					longevity: 18_446_744_073_709_551_615,
@@ -346,7 +435,7 @@ mod mandala_only_tests {
 					bytes.len()
 				),
 				Ok(ValidTransaction {
-					priority: 734_003,
+					priority: 500000,
 					requires: vec![],
 					provides: vec![],
 					longevity: 18_446_744_073_709_551_615,
@@ -363,7 +452,7 @@ mod mandala_only_tests {
 					bytes.len()
 				),
 				Ok(ValidTransaction {
-					priority: 734_003_000_000,
+					priority: 500000000000,
 					requires: vec![],
 					provides: vec![],
 					longevity: 18_446_744_073_709_551_615,
@@ -409,7 +498,7 @@ mod mandala_only_tests {
 					bytes.len()
 				),
 				Ok(ValidTransaction {
-					priority: 81_156_562_730_100_000,
+					priority: 80816889610600000,
 					requires: vec![],
 					provides: vec![],
 					longevity: 18_446_744_073_709_551_615,

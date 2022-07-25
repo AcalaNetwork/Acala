@@ -147,7 +147,7 @@ test-runtimes:
 
 .PHONY: test-e2e
 test-e2e:
-	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
+	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test --test-threads=1
 
 .PHONY: test-ts
 test-ts: build-mandala-internal-release
@@ -241,6 +241,10 @@ benchmark-karura:
 .PHONY: benchmark-acala
 benchmark-acala:
 	 cargo run --profile production --features=runtime-benchmarks --features=with-acala-runtime -- benchmark --chain=acala-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
+
+.PHONY: benchmark-machine
+benchmark-machine:
+	 cargo run --profile production --features=with-acala-runtime -- benchmark machine --chain=acala-dev
 
 .PHONY: clippy-fix
 clippy-fix:

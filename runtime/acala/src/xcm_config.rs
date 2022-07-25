@@ -20,7 +20,7 @@ use super::{
 	constants::{fee::*, parachains},
 	AcalaTreasuryAccount, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId,
 	Event, ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin, ParachainInfo,
-	ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, ACA, AUSD,
+	ParachainSystem, PolkadotXcm, Runtime, UnknownTokens, XcmInterface, XcmpQueue, ACA, AUSD, TAP,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -37,7 +37,10 @@ use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdap
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use primitives::evm::is_system_contract;
-use runtime_common::{native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil, FixedRateOfAsset};
+use runtime_common::{
+	local_currency_location, native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
+	FixedRateOfAsset,
+};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
@@ -121,19 +124,19 @@ parameter_types! {
 	pub const MaxInstructions: u32 = 100;
 	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
 	pub AusdPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(AUSD.encode())),
-		).into(),
+		local_currency_location(AUSD).into(),
 		// aUSD:DOT = 40:1
 		dot_per_second() * 40
 	);
 	pub AcaPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(ACA.encode())),
-		).into(),
+		local_currency_location(ACA).into(),
 		aca_per_second()
+	);
+	pub TapPerSecond: (AssetId, u128) = (
+		local_currency_location(TAP).into(),
+		// TODO: No price yet, assumed set at 4340
+		// TAP:tDOT = 4340:1
+		dot_per_second() * 4340
 	);
 	pub BaseRate: u128 = aca_per_second();
 }
@@ -146,6 +149,7 @@ pub type Trader = (
 	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfStableAsset<Runtime>>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
+	FixedRateOfFungible<TapPerSecond, ToTreasury>,
 );
 
 pub struct XcmConfig;
@@ -243,11 +247,13 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use CurrencyId::{Erc20, ForeignAsset, StableAssetPoolToken, Token};
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
-			Token(ACA) | Token(AUSD) | Token(LDOT) => Some(native_currency_location(ParachainInfo::get().into(), id)),
-			Erc20(address) if !is_system_contract(address) => {
-				Some(native_currency_location(ParachainInfo::get().into(), id))
+			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => {
+				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
 			}
-			StableAssetPoolToken(_pool_id) => Some(native_currency_location(ParachainInfo::get().into(), id)),
+			Erc20(address) if !is_system_contract(address) => {
+				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
+			}
+			StableAssetPoolToken(_pool_id) => Some(native_currency_location(ParachainInfo::get().into(), id.encode())),
 			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
@@ -271,13 +277,13 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} if parents == 1 => {
-				match (para_id, &key[..]) {
+				match (para_id, &key.into_inner()[..]) {
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Acala
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
-								Token(ACA) | Token(AUSD) | Token(LDOT) => Some(currency_id),
+								Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => Some(currency_id),
 								Erc20(address) if !is_system_contract(address) => Some(currency_id),
 								StableAssetPoolToken(_pool_id) => Some(currency_id),
 								_ => None,
@@ -295,10 +301,10 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 0,
 				interior: X1(GeneralKey(key)),
 			} => {
-				let key = &key[..];
+				let key = &key.into_inner()[..];
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
-					Token(ACA) | Token(AUSD) | Token(LDOT) => Some(currency_id),
+					Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => Some(currency_id),
 					Erc20(address) if !is_system_contract(address) => Some(currency_id),
 					StableAssetPoolToken(_pool_id) => Some(currency_id),
 					_ => None,
