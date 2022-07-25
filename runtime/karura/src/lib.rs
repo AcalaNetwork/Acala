@@ -1139,6 +1139,7 @@ parameter_types! {
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
 		vec![KSM],
 		vec![LKSM],
+		vec![KUSD],
 	];
 }
 
@@ -1197,7 +1198,7 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightToFee = WeightToFee;
 	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
-	type DEX = Dex;
+	type Swap = AcalaSwap;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
@@ -1789,23 +1790,52 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	XcmInterfaceMigration,
+	TransactionPaymentMigration,
 >;
 
-pub struct XcmInterfaceMigration;
-impl OnRuntimeUpgrade for XcmInterfaceMigration {
+parameter_types! {
+	pub FeeTokens: Vec<CurrencyId> = vec![KUSD, KSM, LKSM, BNC, KBTC, CurrencyId::ForeignAsset(0)];
+}
+pub struct TransactionPaymentMigration;
+impl OnRuntimeUpgrade for TransactionPaymentMigration {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		let _ = <module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
-			Origin::root(),
-			vec![(
-				module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new(
-					(1, Parachain(parachains::statemine::ID)).into(),
-				)),
-				Some(4_000_000_000),
-				Some(20_000_000),
-			)],
-		);
+		let poo_size = 5 * dollar(KAR);
+		let threshold = Ratio::saturating_from_rational(1, 2).saturating_mul_int(dollar(KAR));
+		for token in FeeTokens::get() {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
+			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, poo_size, threshold);
+		}
 		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		for token in FeeTokens::get() {
+			assert_eq!(
+				module_transaction_payment::TokenExchangeRate::<Runtime>::contains_key(&token),
+				true
+			);
+			assert_eq!(
+				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::contains_key(&token),
+				true
+			);
+		}
+		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		for token in FeeTokens::get() {
+			assert_eq!(
+				module_transaction_payment::TokenExchangeRate::<Runtime>::contains_key(&token),
+				true
+			);
+			assert_eq!(
+				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::contains_key(&token),
+				false
+			);
+		}
+		Ok(())
 	}
 }
 

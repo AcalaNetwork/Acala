@@ -148,6 +148,8 @@ polkadot-runtime-constants = { git = "https://github.com/paritytech/polkadot", b
 xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "ab5cd6c5fabe6ddda52ed6803ee1bf54c258fefe" }
 
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
+module-aggregated-dex = { path = "../../modules/aggregated-dex" }
+nutsfinance-stable-asset = { version = "0.1.0", path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 
 [features]
 default = ["std"]
