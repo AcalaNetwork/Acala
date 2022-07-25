@@ -27,8 +27,10 @@ use frame_support::{
 	ConsensusEngineId, PalletId,
 };
 use frame_system::EnsureSignedBy;
-use module_support::mocks::MockErc20InfoMapping;
-use module_support::{mocks::MockAddressMapping, DEXIncentives, Price, PriceProvider};
+use module_support::{
+	mocks::{MockAddressMapping, MockErc20InfoMapping},
+	DEXIncentives, Price, PriceProvider, SpecificJointsSwap,
+};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
 	define_combined_task, Address, Amount, Block, BlockNumber, CurrencyId, Header, Multiplier, ReserveIdentifier,
@@ -220,6 +222,7 @@ parameter_types! {
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
 	pub const TradingPathLimit: u32 = 4;
 	pub const ExistenceRequirement: u128 = 1;
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![];
 }
 ord_parameter_types! {
 	pub const ListingOrigin: AccountId32 = AccountId32::new([1u8; 32]);
@@ -249,7 +252,7 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightToFee = IdentityFee<Balance>;
 	type TransactionByteFee = ConstU128<10>;
 	type FeeMultiplierUpdate = ();
-	type DEX = Dex;
+	type Swap = SpecificJointsSwap<Dex, AlternativeSwapPathJointList>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;

@@ -85,6 +85,9 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	fn with_fee_path() -> Weight {
 		(2_212_000 as Weight)
 	}
+	fn with_fee_aggregated_path() -> Weight {
+		(2_212_000 as Weight)
+	}
 	fn with_fee_currency() -> Weight {
 		(2_091_000 as Weight)
 	}

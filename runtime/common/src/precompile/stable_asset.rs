@@ -20,7 +20,7 @@ use super::{
 	input::{Input, InputT, Output},
 	target_gas_limit,
 };
-use crate::WeightToGas;
+use crate::{precompile::input::InputPricer, WeightToGas};
 use frame_support::traits::Get;
 use module_evm::{
 	precompiles::Precompile,
@@ -51,6 +51,8 @@ pub enum Action {
 	StableAssetSwap = "stableAssetSwap(address,uint32,uint32,uint32,uint256,uint256,uint32)",
 	StableAssetMint = "stableAssetMint(address,uint32,uint256[],uint256)",
 	StableAssetRedeem = "stableAssetRedeem(address,uint32,uint256,uint256[])",
+	StableAssetRedeemSingle = "stableAssetRedeemSingle(address,uint32,uint256,uint32,uint256,uint32)",
+	StableAssetRedeemMulti = "stableAssetRedeemMulti(address,uint32,uint256[],uint256)",
 }
 
 impl<Runtime> Precompile for StableAssetPrecompile<Runtime>
@@ -70,7 +72,7 @@ where
 			target_gas_limit(target_gas),
 		);
 
-		let gas_cost = Pricer::<Runtime>::cost(&input)?;
+		let mut gas_cost = Pricer::<Runtime>::cost(&input)?;
 
 		if let Some(gas_limit) = target_gas {
 			if gas_limit < gas_cost {
@@ -86,115 +88,140 @@ where
 			Action::GetStableAssetPoolTokens => {
 				let pool_id = input.u32_at(1)?;
 
-				let pool_info =
-					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
-						PrecompileFailure::Revert {
-							exit_status: ExitRevert::Reverted,
-							output: "Pool not found".into(),
-							cost: target_gas_limit(target_gas).unwrap_or_default(),
+				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
+					// dynamic gas cost calculation
+					// cost of reading asset currencies
+					gas_cost = gas_cost.saturating_add(
+						pool_info
+							.assets
+							.iter()
+							.map(|x| InputPricer::<Runtime>::read_currency(*x))
+							.sum::<u64>(),
+					);
+					// make sure there's enough gas
+					if let Some(gas_limit) = target_gas {
+						if gas_limit < gas_cost {
+							return Err(PrecompileFailure::Error {
+								exit_status: ExitError::OutOfGas,
+							});
 						}
-					})?;
-				let assets: Vec<H160> = pool_info
-					.assets
-					.iter()
-					.flat_map(|x| <Runtime as module_prices::Config>::Erc20InfoMapping::encode_evm_address(*x))
-					.collect();
-				Ok(PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
-					output: Output::encode_address_array(assets),
-					logs: Default::default(),
-				})
+					}
+
+					let assets: Vec<H160> = pool_info
+						.assets
+						.iter()
+						.flat_map(|x| <Runtime as module_prices::Config>::Erc20InfoMapping::encode_evm_address(*x))
+						.collect();
+
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Output::encode_address_array(assets),
+						logs: Default::default(),
+					})
+				} else {
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Default::default(),
+						logs: Default::default(),
+					})
+				}
 			}
 			Action::GetStableAssetPoolTotalSupply => {
 				let pool_id = input.u32_at(1)?;
 
-				let pool_info =
-					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
-						PrecompileFailure::Revert {
-							exit_status: ExitRevert::Reverted,
-							output: "Pool not found".into(),
-							cost: target_gas_limit(target_gas).unwrap_or_default(),
-						}
-					})?;
-				Ok(PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
-					output: Output::encode_uint(pool_info.total_supply),
-					logs: Default::default(),
-				})
+				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Output::encode_uint(pool_info.total_supply),
+						logs: Default::default(),
+					})
+				} else {
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Default::default(),
+						logs: Default::default(),
+					})
+				}
 			}
 			Action::GetStableAssetPoolPrecision => {
 				let pool_id = input.u32_at(1)?;
 
-				let pool_info =
-					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
-						PrecompileFailure::Revert {
-							exit_status: ExitRevert::Reverted,
-							output: "Pool not found".into(),
-							cost: target_gas_limit(target_gas).unwrap_or_default(),
-						}
-					})?;
-				Ok(PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
-					output: Output::encode_uint(pool_info.precision),
-					logs: Default::default(),
-				})
+				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Output::encode_uint(pool_info.precision),
+						logs: Default::default(),
+					})
+				} else {
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Default::default(),
+						logs: Default::default(),
+					})
+				}
 			}
 			Action::GetStableAssetPoolMintFee => {
 				let pool_id = input.u32_at(1)?;
 
-				let pool_info =
-					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
-						PrecompileFailure::Revert {
-							exit_status: ExitRevert::Reverted,
-							output: "Pool not found".into(),
-							cost: target_gas_limit(target_gas).unwrap_or_default(),
-						}
-					})?;
-				Ok(PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
-					output: Output::encode_uint(pool_info.mint_fee),
-					logs: Default::default(),
-				})
+				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Output::encode_uint(pool_info.mint_fee),
+						logs: Default::default(),
+					})
+				} else {
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Default::default(),
+						logs: Default::default(),
+					})
+				}
 			}
 			Action::GetStableAssetPoolSwapFee => {
 				let pool_id = input.u32_at(1)?;
 
-				let pool_info =
-					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
-						PrecompileFailure::Revert {
-							exit_status: ExitRevert::Reverted,
-							output: "Pool not found".into(),
-							cost: target_gas_limit(target_gas).unwrap_or_default(),
-						}
-					})?;
-				Ok(PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
-					output: Output::encode_uint(pool_info.swap_fee),
-					logs: Default::default(),
-				})
+				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Output::encode_uint(pool_info.swap_fee),
+						logs: Default::default(),
+					})
+				} else {
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Default::default(),
+						logs: Default::default(),
+					})
+				}
 			}
 			Action::GetStableAssetPoolRedeemFee => {
 				let pool_id = input.u32_at(1)?;
 
-				let pool_info =
-					<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id).ok_or_else(|| {
-						PrecompileFailure::Revert {
-							exit_status: ExitRevert::Reverted,
-							output: "Pool not found".into(),
-							cost: target_gas_limit(target_gas).unwrap_or_default(),
-						}
-					})?;
-				Ok(PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
-					output: Output::encode_uint(pool_info.redeem_fee),
-					logs: Default::default(),
-				})
+				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Output::encode_uint(pool_info.redeem_fee),
+						logs: Default::default(),
+					})
+				} else {
+					Ok(PrecompileOutput {
+						exit_status: ExitSucceed::Returned,
+						cost: gas_cost,
+						output: Default::default(),
+						logs: Default::default(),
+					})
+				}
 			}
 			Action::StableAssetSwap => {
 				let who = input.account_id_at(1)?;
@@ -251,7 +278,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::encode_uint(0u8),
+					output: Default::default(),
 					logs: Default::default(),
 				})
 			}
@@ -280,7 +307,64 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::encode_uint(0u8),
+					output: Default::default(),
+					logs: Default::default(),
+				})
+			}
+			Action::StableAssetRedeemSingle => {
+				let who = input.account_id_at(1)?;
+				let pool_id = input.u32_at(2)?;
+				let redeem_amount = input.balance_at(3)?;
+				let i = input.u32_at(4)?;
+				let min_redeem_amount = input.balance_at(5)?;
+				let asset_length = input.u32_at(6)?;
+
+				<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::redeem_single(
+					&who,
+					pool_id,
+					redeem_amount,
+					i,
+					min_redeem_amount,
+					asset_length,
+				)
+				.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: Default::default(),
+					logs: Default::default(),
+				})
+			}
+			Action::StableAssetRedeemMulti => {
+				let who = input.account_id_at(1)?;
+				let pool_id = input.u32_at(2)?;
+				// solidity abi encode array will add an offset at input[3]
+				let max_redeem_amount = input.balance_at(4)?;
+				let amount_len = input.u32_at(5)?;
+				let mut amounts = vec![];
+				for i in 0..amount_len {
+					amounts.push(input.balance_at((6 + i) as usize)?);
+				}
+
+				<nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::redeem_multi(
+					&who,
+					pool_id,
+					amounts,
+					max_redeem_amount,
+				)
+				.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: Default::default(),
 					logs: Default::default(),
 				})
 			}
@@ -308,43 +392,59 @@ where
 
 		let cost: u64 = match action {
 			Action::GetStableAssetPoolTokens => {
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+				// StableAsset::Pools (r: 1)
+				let cost = WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(1));
+				// read asset currencies is calculation dynamically after reading pool_info
+				Self::BASE_COST.saturating_add(cost)
 			}
-			Action::GetStableAssetPoolTotalSupply => {
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
-			}
-			Action::GetStableAssetPoolPrecision => {
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
-			}
-			Action::GetStableAssetPoolMintFee => {
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
-			}
-			Action::GetStableAssetPoolSwapFee => {
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
-			}
-			Action::GetStableAssetPoolRedeemFee => {
+			Action::GetStableAssetPoolTotalSupply
+			| Action::GetStableAssetPoolPrecision
+			| Action::GetStableAssetPoolMintFee
+			| Action::GetStableAssetPoolSwapFee
+			| Action::GetStableAssetPoolRedeemFee => {
+				// StableAsset::Pools (r: 1)
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
 				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::StableAssetSwap => {
+				let account_read = InputPricer::<Runtime>::read_accounts(1);
 				let path_len = input.u32_at(7)?;
 				let weight = <Runtime as nutsfinance_stable_asset::Config>::WeightInfo::swap(path_len);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+				Self::BASE_COST
+					.saturating_add(account_read)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::StableAssetMint => {
+				let account_read = InputPricer::<Runtime>::read_accounts(1);
 				let path_len = input.u32_at(5)?;
 				let weight = <Runtime as nutsfinance_stable_asset::Config>::WeightInfo::mint(path_len);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+				Self::BASE_COST
+					.saturating_add(account_read)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::StableAssetRedeem => {
+				let account_read = InputPricer::<Runtime>::read_accounts(1);
 				let path_len = input.u32_at(5)?;
 				let weight = <Runtime as nutsfinance_stable_asset::Config>::WeightInfo::redeem_proportion(path_len);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+				Self::BASE_COST
+					.saturating_add(account_read)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::StableAssetRedeemSingle => {
+				let account_read = InputPricer::<Runtime>::read_accounts(1);
+				let path_len = input.u32_at(6)?;
+				let weight = <Runtime as nutsfinance_stable_asset::Config>::WeightInfo::redeem_single(path_len);
+				Self::BASE_COST
+					.saturating_add(account_read)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::StableAssetRedeemMulti => {
+				let account_read = InputPricer::<Runtime>::read_accounts(1);
+				let path_len = input.u32_at(5)?;
+				let weight = <Runtime as nutsfinance_stable_asset::Config>::WeightInfo::redeem_multi(path_len);
+				Self::BASE_COST
+					.saturating_add(account_read)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 		};
 		Ok(cost)
@@ -381,9 +481,11 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
+			// getStableAssetPoolTokens(uint32) -> 0xfb0f0f34
+			// poolId: 0
 			let input = hex! {"
 				fb0f0f34
-				0000000000000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
 			let expected_output = hex! {"
@@ -394,6 +496,18 @@ mod tests {
 			"};
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
+
+			// empty output if pool doesn't exists
+
+			// getStableAssetPoolTokens(uint32) -> 0xfb0f0f34
+			// poolId: 1
+			let input = hex! {"
+				fb0f0f34
+				00000000000000000000000000000000000000000000000000000000 00000001
+			"};
+			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert!(resp.output.is_empty());
 		});
 	}
 
@@ -413,23 +527,41 @@ mod tests {
 				ALICE,
 				1u128
 			));
+			assert_ok!(StableAsset::mint(
+				Origin::signed(ALICE),
+				0,
+				vec![1_000_000u128, 1_000_000u128],
+				0u128
+			));
 			let context = Context {
 				address: Default::default(),
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
+			// getStableAssetPoolTotalSupply(uint32) -> 0x7172c6aa
+			// poolId: 0
 			let input = hex! {"
 				7172c6aa
-				0000000000000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
 			let expected_output = hex! {"
-				000000000000000000000000
-				000000000000000000000000
-				0000000000000000
+				00000000000000000000000000000000 000000000000000000000000001e8480
 			"};
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
+
+			// empty output if pool doesn't exists
+
+			// getStableAssetPoolTotalSupply(uint32) -> 0x7172c6aa
+			// poolId: 1
+			let input = hex! {"
+				7172c6aa
+				00000000000000000000000000000000000000000000000000000000 00000001
+			"};
+			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert!(resp.output.is_empty());
 		});
 	}
 
@@ -454,18 +586,30 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
+			// getStableAssetPoolPrecision(uint32) -> 0x9ccdcf91
+			// poolId: 0
 			let input = hex! {"
 				9ccdcf91
-				0000000000000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
 			let expected_output = hex! {"
-				000000000000000000000000
-				000000000000000000000000
-				0000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000001
 			"};
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
+
+			// empty output if pool doesn't exists
+
+			// getStableAssetPoolPrecision(uint32) -> 0x9ccdcf91
+			// poolId: 1
+			let input = hex! {"
+				9ccdcf91
+				00000000000000000000000000000000000000000000000000000000 00000001
+			"};
+			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert!(resp.output.is_empty());
 		});
 	}
 
@@ -490,18 +634,30 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
+			// getStableAssetPoolMintFee(uint32) -> 0x62ff9875
+			// poolId: 0
 			let input = hex! {"
 				62ff9875
-				0000000000000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
 			let expected_output = hex! {"
-				000000000000000000000000
-				000000000000000000000000
-				0000000000000002
+				00000000000000000000000000000000 00000000000000000000000000000002
 			"};
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
+
+			// empty output if pool doesn't exists
+
+			// getStableAssetPoolMintFee(uint32) -> 0x62ff9875
+			// poolId: 1
+			let input = hex! {"
+				62ff9875
+				00000000000000000000000000000000000000000000000000000000 00000001
+			"};
+			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert!(resp.output.is_empty());
 		});
 	}
 
@@ -526,18 +682,30 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
+			// getStableAssetPoolSwapFee(uint32) -> 0x68410f61
+			// poolId: 0
 			let input = hex! {"
 				68410f61
-				0000000000000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
 			let expected_output = hex! {"
-				000000000000000000000000
-				000000000000000000000000
-				0000000000000003
+				00000000000000000000000000000000 00000000000000000000000000000003
 			"};
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
+
+			// empty output if pool doesn't exists
+
+			// getStableAssetPoolSwapFee(uint32) -> 0x68410f61
+			// poolId: 1
+			let input = hex! {"
+				68410f61
+				00000000000000000000000000000000000000000000000000000000 00000001
+			"};
+			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert!(resp.output.is_empty());
 		});
 	}
 
@@ -562,18 +730,30 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
+			// getStableAssetPoolRedeemFee(uint32) -> 0x7f2f11ca
+			// poolId: 0
 			let input = hex! {"
 				7f2f11ca
-				0000000000000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
 			let expected_output = hex! {"
-				000000000000000000000000
-				000000000000000000000000
-				0000000000000004
+				00000000000000000000000000000000 00000000000000000000000000000004
 			"};
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
+
+			// empty output if pool doesn't exists
+
+			// getStableAssetPoolRedeemFee(uint32) -> 0x7f2f11ca
+			// poolId: 1
+			let input = hex! {"
+				7f2f11ca
+				00000000000000000000000000000000000000000000000000000000 00000001
+			"};
+			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert!(resp.output.is_empty());
 		});
 	}
 
@@ -598,31 +778,89 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
+			// stableAssetMint(address,uint32,uint256[],uint256) -> 0x2acdb2ec
+			// who
+			// poolId
+			// amounts_offset
+			// min_mint_amount
+			// amounts_len
+			// amount
+			// amount
 			let mint_input = hex! {"
 				2acdb2ec
-				0000000000000000000000001000000000000000000000000000000000000001
-				0000000000000000000000000000000000000000000000000000000000000000
-				0000000000000000000000000000000000000000000000000000000000000080
-				0000000000000000000000000000000000000000000000000000000000000000
-				0000000000000000000000000000000000000000000000000000000000000002
-				00000000000000000000000000000000000000000000000000000000000f4240
-				00000000000000000000000000000000000000000000000000000000000f4240
+				000000000000000000000000 1000000000000000000000000000000000000001
+				000000000000000000000000000000000000000000000000 0000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000080
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000002
+				00000000000000000000000000000000 000000000000000000000000000f4240
+				00000000000000000000000000000000 000000000000000000000000000f4240
 			"};
 			let mint_resp = StableAssetPrecompile::execute(&mint_input, None, &context, false).unwrap();
 			assert_eq!(mint_resp.exit_status, ExitSucceed::Returned);
+			assert!(mint_resp.output.is_empty());
 
+			// stableAssetRedeem(address,uint32,uint256,uint256[]) -> 0xaa538d34
+			// who
+			// poolId
+			// amount
+			// offset
+			// length
+			// amount
+			// amount
 			let redeem_input = hex! {"
 				aa538d34
-				0000000000000000000000001000000000000000000000000000000000000001
-				0000000000000000000000000000000000000000000000000000000000000000
-				000000000000000000000000000000000000000000000000000000000007a120
-				0000000000000000000000000000000000000000000000000000000000000080
-				0000000000000000000000000000000000000000000000000000000000000002
-				0000000000000000000000000000000000000000000000000000000000000001
-				0000000000000000000000000000000000000000000000000000000000000002
+				000000000000000000000000 1000000000000000000000000000000000000001
+				000000000000000000000000000000000000000000000000 0000000000000000
+				00000000000000000000000000000000 0000000000000000000000000007a120
+				00000000000000000000000000000000 00000000000000000000000000000080
+				00000000000000000000000000000000 00000000000000000000000000000002
+				00000000000000000000000000000000 00000000000000000000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000002
 			"};
 			let redeem_resp = StableAssetPrecompile::execute(&redeem_input, None, &context, false).unwrap();
 			assert_eq!(redeem_resp.exit_status, ExitSucceed::Returned);
+			assert!(redeem_resp.output.is_empty());
+
+			// stableAssetRedeemSingle(address,uint32,uint256,uint32,uint256,uint32) -> 0x6ca16342
+			// who
+			// poolId
+			// amount
+			// i
+			// amount
+			// asset_length
+			let redeem_single_input = hex! {"
+				6ca16342
+				0000000000000000000000001000000000000000000000000000000000000001
+				0000000000000000000000000000000000000000000000000000000000000000
+				000000000000000000000000000000000000000000000000000000000007a120
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000002
+			"};
+			let redeem_single_resp =
+				StableAssetPrecompile::execute(&redeem_single_input, None, &context, false).unwrap();
+			assert_eq!(redeem_single_resp.exit_status, ExitSucceed::Returned);
+			assert!(redeem_single_resp.output.is_empty());
+
+			// stableAssetRedeemMulti(address,uint32,uint256[],uint256) -> 0x84a15943
+			// who
+			// poolId
+			// amount[]
+			// max_amount
+			let redeem_multi_input = hex! {"
+				84a15943
+				0000000000000000000000001000000000000000000000000000000000000001
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000080
+				000000000000000000000000000000001999999999999999999999999999999a
+				0000000000000000000000000000000000000000000000000000000000000002
+				000000000000000000000000000000000000000000000000000000000000c350
+				000000000000000000000000000000000000000000000000000000000000c350
+			"};
+			let redeem_multi_resp = StableAssetPrecompile::execute(&redeem_multi_input, None, &context, false).unwrap();
+			assert_eq!(redeem_multi_resp.exit_status, ExitSucceed::Returned);
+			assert!(redeem_multi_resp.output.is_empty());
 		});
 	}
 
@@ -653,18 +891,66 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
+			// stableAssetSwap(address,uint32,uint32,uint32,uint256,uint256,uint32) -> 0xff9bc03c
+			// who
+			// poolId
+			// i
+			// j
+			// dx
+			// min_dy
+			// asset_len
 			let input = hex! {"
 				ff9bc03c
-				0000000000000000000000001000000000000000000000000000000000000001
-				0000000000000000000000000000000000000000000000000000000000000000
-				0000000000000000000000000000000000000000000000000000000000000000
-				0000000000000000000000000000000000000000000000000000000000000001
-				000000000000000000000000000000000000000000000000000000000007a120
-				0000000000000000000000000000000000000000000000000000000000000000
-				0000000000000000000000000000000000000000000000000000000000000002
+				000000000000000000000000 1000000000000000000000000000000000000001
+				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 00000001
+				00000000000000000000000000000000 0000000000000000000000000007a120
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000000000000000000000000000 00000002
+			"};
+
+			// 500000
+			// 498355
+			let expected_output = hex! {"
+				00000000000000000000000000000000 0000000000000000000000000007a120
+				00000000000000000000000000000000 00000000000000000000000000079ab3
 			"};
 			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output);
+
+			// revert if pool doesn't exists
+
+			// stableAssetSwap(address,uint32,uint32,uint32,uint256,uint256,uint32) -> 0xff9bc03c
+			// who
+			// poolId
+			// i
+			// j
+			// dx
+			// min_dy
+			// asset_len
+			let input = hex! {"
+				ff9bc03c
+				000000000000000000000000 1000000000000000000000000000000000000001
+				00000000000000000000000000000000000000000000000000000000 00000001
+				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 00000001
+				00000000000000000000000000000000 0000000000000000000000000007a120
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000000000000000000000000000 00000002
+			"};
+			let resp = StableAssetPrecompile::execute(&input, Some(200_000), &context, false)
+				.err()
+				.unwrap();
+			assert_eq!(
+				resp,
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: b"PoolNotFound".to_vec(),
+					cost: target_gas_limit(Some(200_000)).unwrap_or_default()
+				}
+			);
 		});
 	}
 }

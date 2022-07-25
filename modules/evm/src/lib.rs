@@ -37,7 +37,7 @@ use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
-		BalanceStatus, Currency, EnsureOneOf, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
+		BalanceStatus, Currency, EitherOfDiverse, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
 		NamedReservableCurrency, OnKilledAccount,
 	},
 	transactional,
@@ -69,7 +69,6 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
-use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::{
 	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto, Zero},
 	transaction_validity::TransactionValidityError,
@@ -1576,7 +1575,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn ensure_root_or_signed(o: T::Origin) -> Result<Either<(), T::AccountId>, BadOrigin> {
-		EnsureOneOf::<EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o).map_or(Err(BadOrigin), Ok)
+		EitherOfDiverse::<EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o)
+			.map_or(Err(BadOrigin), Ok)
 	}
 
 	fn can_call_contract(address: &H160, caller: &H160) -> bool {
@@ -1969,40 +1969,34 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 					100,
 				) as u32;
 
-				match <AccountStorages<T>>::remove_prefix(contract, Some(limit)) {
-					AllRemoved(count) => {
-						let res = Pallet::<T>::refund_storage(&caller, &contract, &maintainer);
-						log::debug!(
-							target: "evm",
-							"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}, result: {:?}]",
-							caller, contract, maintainer, count, res
-						);
+				let r = <AccountStorages<T>>::clear_prefix(contract, limit, None);
+				let count = r.unique;
+				let used_weight = <T as frame_system::Config>::DbWeight::get()
+					.write
+					.saturating_mul(count.into());
+				log::debug!(
+					target: "evm",
+					"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",
+					caller, contract, maintainer, count
+				);
+				if r.maybe_cursor.is_none() {
+					// AllRemoved
+					let result = Pallet::<T>::refund_storage(&caller, &contract, &maintainer);
 
-						// Remove account after all of the storages are cleared.
-						Pallet::<T>::remove_account_if_empty(&contract);
+					// Remove account after all of the storages are cleared.
+					Pallet::<T>::remove_account_if_empty(&contract);
 
-						TaskResult {
-							result: res,
-							used_weight: <T as frame_system::Config>::DbWeight::get()
-								.write
-								.saturating_mul(count.into()),
-							finished: true,
-						}
+					TaskResult {
+						result,
+						used_weight,
+						finished: true,
 					}
-					SomeRemaining(count) => {
-						log::debug!(
-							target: "evm",
-							"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",
-							caller, contract, maintainer, count
-						);
-
-						TaskResult {
-							result: Ok(()),
-							used_weight: <T as frame_system::Config>::DbWeight::get()
-								.write
-								.saturating_mul(count.into()),
-							finished: false,
-						}
+				} else {
+					// SomeRemaining
+					TaskResult {
+						result: Ok(()),
+						used_weight,
+						finished: false,
 					}
 				}
 			}

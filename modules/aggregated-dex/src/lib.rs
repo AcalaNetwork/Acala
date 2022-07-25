@@ -24,14 +24,11 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use nutsfinance_stable_asset::{traits::StableAsset as StableAssetT, PoolTokenIndex, StableAssetPoolId};
-use orml_tokens::ConvertBalance;
+use nutsfinance_stable_asset::traits::StableAsset as StableAssetT;
 use primitives::{Balance, CurrencyId};
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{Convert, Zero};
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::{DEXManager, Swap, SwapLimit};
+use support::{AggregatedSwapPath, DEXManager, RebasedStableAssetError, Swap, SwapLimit};
 
 mod mock;
 mod tests;
@@ -40,12 +37,7 @@ pub mod weights;
 pub use module::*;
 pub use weights::WeightInfo;
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum SwapPath {
-	Dex(Vec<CurrencyId>),
-	Taiga(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex),
-}
+pub type SwapPath = AggregatedSwapPath<CurrencyId>;
 
 #[frame_support::pallet]
 pub mod module {
@@ -76,8 +68,6 @@ pub mod module {
 		#[pallet::constant]
 		type SwapPathLimit: Get<u32>;
 
-		type RebaseTokenAmountConvertor: ConvertBalance<Balance, Balance, AssetId = CurrencyId>;
-
 		type WeightInfo: WeightInfo;
 	}
 
@@ -96,7 +86,6 @@ pub mod module {
 	/// The specific swap paths for  AggregatedSwap do aggreated_swap to swap TokenA to TokenB
 	///
 	/// AggregatedSwapPaths: Map: (token_a: CurrencyId, token_b: CurrencyId) => paths: Vec<SwapPath>
-
 	#[pallet::storage]
 	#[pallet::getter(fn aggregated_swap_paths)]
 	pub type AggregatedSwapPaths<T: Config> =
@@ -192,110 +181,6 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	fn taiga_get_best_route(
-		supply_currency_id: CurrencyId,
-		target_currency_id: CurrencyId,
-		supply_amount: Balance,
-	) -> Option<(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex, Balance)> {
-		T::StableAsset::get_best_route(
-			supply_currency_id,
-			target_currency_id,
-			T::RebaseTokenAmountConvertor::convert_balance(supply_amount, supply_currency_id),
-		)
-		.map(|(pool_id, input_index, output_index, output_amount)| {
-			(
-				pool_id,
-				input_index,
-				output_index,
-				T::RebaseTokenAmountConvertor::convert_balance_back(output_amount, target_currency_id),
-			)
-		})
-	}
-
-	fn taiga_get_swap_input_amount(
-		pool_id: StableAssetPoolId,
-		input_asset_index: PoolTokenIndex,
-		output_asset_index: PoolTokenIndex,
-		output_amount: Balance,
-	) -> Option<(Balance, Balance)> {
-		let pool_info = T::StableAsset::pool(pool_id)?;
-		let input_currency_id = pool_info.assets.get(input_asset_index as usize)?;
-		let output_currency_id = pool_info.assets.get(output_asset_index as usize)?;
-
-		T::StableAsset::get_swap_input_amount(
-			pool_id,
-			input_asset_index,
-			output_asset_index,
-			T::RebaseTokenAmountConvertor::convert_balance(output_amount, *output_currency_id),
-		)
-		.map(|swap_result| {
-			(
-				T::RebaseTokenAmountConvertor::convert_balance_back(swap_result.dx, *input_currency_id),
-				T::RebaseTokenAmountConvertor::convert_balance_back(swap_result.dy, *output_currency_id),
-			)
-		})
-	}
-
-	fn taiga_get_swap_output_amount(
-		pool_id: StableAssetPoolId,
-		input_asset_index: PoolTokenIndex,
-		output_asset_index: PoolTokenIndex,
-		input_amount: Balance,
-	) -> Option<(Balance, Balance)> {
-		let pool_info = T::StableAsset::pool(pool_id)?;
-		let input_currency_id = pool_info.assets.get(input_asset_index as usize)?;
-		let output_currency_id = pool_info.assets.get(output_asset_index as usize)?;
-
-		T::StableAsset::get_swap_output_amount(
-			pool_id,
-			input_asset_index,
-			output_asset_index,
-			T::RebaseTokenAmountConvertor::convert_balance(input_amount, *input_currency_id),
-		)
-		.map(|swap_result| {
-			(
-				T::RebaseTokenAmountConvertor::convert_balance_back(swap_result.dx, *input_currency_id),
-				T::RebaseTokenAmountConvertor::convert_balance_back(swap_result.dy, *output_currency_id),
-			)
-		})
-	}
-
-	fn taiga_swap(
-		who: &T::AccountId,
-		pool_id: StableAssetPoolId,
-		input_asset_index: PoolTokenIndex,
-		output_asset_index: PoolTokenIndex,
-		input_amount: Balance,
-		min_output_amount: Balance,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
-		let pool_info = T::StableAsset::pool(pool_id).ok_or(Error::<T>::InvalidPoolId)?;
-		let asset_length = pool_info.assets.len() as u32;
-		let input_currency_id = pool_info
-			.assets
-			.get(input_asset_index as usize)
-			.ok_or(Error::<T>::InvalidTokenIndex)?;
-		let output_currency_id = pool_info
-			.assets
-			.get(output_asset_index as usize)
-			.ok_or(Error::<T>::InvalidTokenIndex)?;
-
-		T::StableAsset::swap(
-			who,
-			pool_id,
-			input_asset_index,
-			output_asset_index,
-			T::RebaseTokenAmountConvertor::convert_balance(input_amount, *input_currency_id),
-			T::RebaseTokenAmountConvertor::convert_balance(min_output_amount, *output_currency_id),
-			asset_length,
-		)
-		.map(|(dx, dy)| {
-			(
-				T::RebaseTokenAmountConvertor::convert_balance_back(dx, *input_currency_id),
-				T::RebaseTokenAmountConvertor::convert_balance_back(dy, *output_currency_id),
-			)
-		})
-	}
-
 	fn check_swap_paths(paths: &[SwapPath]) -> sp_std::result::Result<(CurrencyId, CurrencyId), DispatchError> {
 		ensure!(!paths.is_empty(), Error::<T>::InvalidSwapPath);
 		let mut supply_currency_id: Option<CurrencyId> = None;
@@ -374,12 +259,13 @@ impl<T: Config> Pallet<T> {
 						}
 						SwapPath::Taiga(pool_id, supply_asset_index, target_asset_index) => {
 							// use the output of the previous swap as input.
-							let (_, actual_output_amount) = Self::taiga_get_swap_output_amount(
+							let (_, actual_output_amount) = T::StableAsset::get_swap_output_amount(
 								*pool_id,
 								*supply_asset_index,
 								*target_asset_index,
 								output_amount,
-							)?;
+							)
+							.map(|result| (result.dx, result.dy))?;
 
 							output_amount = actual_output_amount;
 						}
@@ -406,12 +292,13 @@ impl<T: Config> Pallet<T> {
 						}
 						SwapPath::Taiga(pool_id, supply_asset_index, target_asset_index) => {
 							// calculate the input amount
-							let (actual_input_amount, _) = Self::taiga_get_swap_input_amount(
+							let (actual_input_amount, _) = T::StableAsset::get_swap_input_amount(
 								*pool_id,
 								*supply_asset_index,
 								*target_asset_index,
 								input_amount,
-							)?;
+							)
+							.map(|result| (result.dx, result.dy))?;
 
 							input_amount = actual_input_amount;
 						}
@@ -458,14 +345,18 @@ impl<T: Config> Pallet<T> {
 							output_amount = actual_target;
 						}
 						SwapPath::Taiga(pool_id, supply_asset_index, target_asset_index) => {
+							let pool_info = T::StableAsset::pool(*pool_id).ok_or(Error::<T>::InvalidPoolId)?;
+							let asset_length = pool_info.assets.len() as u32;
+
 							// use the output of the previous swap as input.
-							let (_, actual_target) = Self::taiga_swap(
+							let (_, actual_target) = T::StableAsset::swap(
 								who,
 								*pool_id,
 								*supply_asset_index,
 								*target_asset_index,
 								output_amount,
 								Zero::zero(),
+								asset_length,
 							)?;
 
 							output_amount = actual_target;
@@ -524,6 +415,23 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for DexSwap<T> {
 
 		T::DEX::swap_with_specific_path(who, &path, limit)
 	}
+
+	fn swap_by_path(
+		who: &T::AccountId,
+		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		T::DEX::swap_with_specific_path(who, swap_path, limit)
+	}
+
+	// DexSwap do not support swap by aggregated path.
+	fn swap_by_aggregated_path(
+		_who: &T::AccountId,
+		_swap_path: &[SwapPath],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Err(Error::<T>::CannotSwap.into())
+	}
 }
 
 /// Swap by Taiga pool.
@@ -541,10 +449,11 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
 		match limit {
 			SwapLimit::ExactSupply(supply_amount, min_target_amount) => {
 				let (pool_id, input_index, output_index, _) =
-					Pallet::<T>::taiga_get_best_route(supply_currency_id, target_currency_id, supply_amount)?;
+					T::StableAsset::get_best_route(supply_currency_id, target_currency_id, supply_amount)?;
 
 				if let Some((input_amount, output_amount)) =
-					Pallet::<T>::taiga_get_swap_output_amount(pool_id, input_index, output_index, supply_amount)
+					T::StableAsset::get_swap_output_amount(pool_id, input_index, output_index, supply_amount)
+						.map(|result| (result.dx, result.dy))
 				{
 					if output_amount >= min_target_amount {
 						return Some((input_amount, output_amount));
@@ -553,10 +462,11 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
 			}
 			SwapLimit::ExactTarget(max_supply_amount, target_amount) => {
 				let (pool_id, input_index, output_index, _) =
-					Pallet::<T>::taiga_get_best_route(supply_currency_id, target_currency_id, max_supply_amount)?;
+					T::StableAsset::get_best_route(supply_currency_id, target_currency_id, max_supply_amount)?;
 
 				if let Some((input_amount, _)) =
-					Pallet::<T>::taiga_get_swap_input_amount(pool_id, input_index, output_index, target_amount)
+					T::StableAsset::get_swap_input_amount(pool_id, input_index, output_index, target_amount)
+						.map(|result| (result.dx, result.dy))
 				{
 					if !input_amount.is_zero() && input_amount <= max_supply_amount {
 						// actually swap by `ExactSupply` limit
@@ -590,19 +500,41 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
 		};
 
 		let (pool_id, input_index, output_index, _) =
-			Pallet::<T>::taiga_get_best_route(supply_currency_id, target_currency_id, supply_amount)
+			T::StableAsset::get_best_route(supply_currency_id, target_currency_id, supply_amount)
 				.ok_or(Error::<T>::CannotSwap)?;
-		let (actual_supply, actual_target) = Pallet::<T>::taiga_swap(
+		let pool_info = T::StableAsset::pool(pool_id).ok_or(Error::<T>::InvalidPoolId)?;
+		let asset_length = pool_info.assets.len() as u32;
+
+		let (actual_supply, actual_target) = T::StableAsset::swap(
 			who,
 			pool_id,
 			input_index,
 			output_index,
 			supply_amount,
 			min_target_amount,
+			asset_length,
 		)?;
 
 		ensure!(actual_target >= min_target_amount, Error::<T>::CannotSwap);
 		Ok((actual_supply, actual_target))
+	}
+
+	// TaigaSwap do not support direct dex swap.
+	fn swap_by_path(
+		_who: &T::AccountId,
+		_swap_path: &[CurrencyId],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Err(Error::<T>::CannotSwap.into())
+	}
+
+	// TaigaSwap do not support swap by aggregated path.
+	fn swap_by_aggregated_path(
+		_who: &T::AccountId,
+		_swap_path: &[SwapPath],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Err(Error::<T>::CannotSwap.into())
 	}
 }
 
@@ -682,6 +614,23 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for EitherDexOrTaigaSwap
 			}
 		}
 
+		Err(Error::<T>::CannotSwap.into())
+	}
+
+	fn swap_by_path(
+		who: &T::AccountId,
+		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		DexSwap::<T>::swap_by_path(who, swap_path, limit)
+	}
+
+	// Both DexSwap and TaigaSwap do not support swap by aggregated path.
+	fn swap_by_aggregated_path(
+		_who: &T::AccountId,
+		_swap_path: &[SwapPath],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
 		Err(Error::<T>::CannotSwap.into())
 	}
 }
@@ -778,5 +727,24 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for AggregatedSwap<T> {
 		}
 
 		Err(Error::<T>::CannotSwap.into())
+	}
+
+	// AggregatedSwap support swap by aggregated path.
+	fn swap_by_aggregated_path(
+		who: &T::AccountId,
+		swap_path: &[SwapPath],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Pallet::<T>::do_aggregated_swap(who, swap_path, limit)
+	}
+}
+
+pub struct RebasedStableAssetErrorConvertor<T>(PhantomData<T>);
+impl<T: Config> Convert<RebasedStableAssetError, DispatchError> for RebasedStableAssetErrorConvertor<T> {
+	fn convert(e: RebasedStableAssetError) -> DispatchError {
+		match e {
+			RebasedStableAssetError::InvalidPoolId => Error::<T>::InvalidPoolId.into(),
+			RebasedStableAssetError::InvalidTokenIndex => Error::<T>::InvalidTokenIndex.into(),
+		}
 	}
 }

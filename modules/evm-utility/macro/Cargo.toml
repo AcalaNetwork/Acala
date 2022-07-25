@@ -1,6 +1,6 @@
 [package]
 name = "module-evm-utility-macro"
-version = "2.8.0"
+version = "2.8.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -8,7 +8,7 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-quote = "1.0.10"
-syn = { version = "1.0.80", features = ["full", "fold", "extra-traits", "visit"] }
-proc-macro2 = "1.0.30"
+quote = "1.0.20"
+syn = { version = "1.0.98", features = ["full", "fold", "extra-traits", "visit"] }
+proc-macro2 = "1.0.40"
 module-evm-utility = { path = ".." }
