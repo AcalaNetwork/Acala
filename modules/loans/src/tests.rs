@@ -194,7 +194,10 @@ fn confiscate_collateral_and_debit_work() {
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
 
 		// have no sufficient balance
-		assert!(!LoansModule::confiscate_collateral_and_debit(&BOB, BTC, 5000, 1000).is_ok(),);
+		assert_noop!(
+			LoansModule::confiscate_collateral_and_debit(&BOB, BTC, 5000, 1000),
+			orml_tokens::Error::<Runtime>::BalanceTooLow
+		);
 
 		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 500, 300));
 		assert_eq!(CDPTreasuryModule::get_total_collaterals(BTC), 0);

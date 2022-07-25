@@ -23,7 +23,7 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 
 use frame_support::assert_ok;
-use sp_runtime::traits::AccountIdConversion;
+use sp_runtime::traits::{AccountIdConversion, BlakeTwo256};
 use xcm_builder::ParentIsPreset;
 
 use karura_runtime::parachains::bifrost::{BNC_KEY, ID as BIFROST_ID};
@@ -845,12 +845,9 @@ fn subscribe_version_notify_works() {
 
 #[test]
 fn unspent_xcm_fee_is_returned_correctly() {
-	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
+	let parachain_account: AccountId = polkadot_parachain::primitives::Id::from(2000).into_account_truncating();
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-	Karura::execute_with(|| {
-		parachain_account = ParachainAccount::get();
-	});
 	let dollar_r = dollar(RELAY_CHAIN_CURRENCY);
 	let dollar_n = dollar(NATIVE_CURRENCY);
 
@@ -906,8 +903,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 			},
 		]);
 
-		let res = PolkadotXcm::send_xcm(Here, Parent, xcm_msg);
-		assert!(res.is_ok());
+		assert_ok!(PolkadotXcm::send_xcm(Here, Parent, xcm_msg));
 	});
 
 	KusamaNet::execute_with(|| {
@@ -937,8 +933,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 			10_000_000_000,
 		);
 
-		let res = PolkadotXcm::send_xcm(Here, Parent, finalized_call);
-		assert!(res.is_ok());
+		assert_ok!(PolkadotXcm::send_xcm(Here, Parent, finalized_call));
 	});
 
 	KusamaNet::execute_with(|| {
@@ -955,6 +950,139 @@ fn unspent_xcm_fee_is_returned_correctly() {
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
 			1_000 * dollar_r + 999_601_783_448
+		);
+	});
+}
+
+fn trapped_asset() -> MultiAsset {
+	let asset = MultiAsset {
+		id: Concrete(MultiLocation::here()),
+		fun: Fungibility::Fungible(dollar(NATIVE_CURRENCY)),
+	};
+
+	Karura::execute_with(|| {
+		let transfer_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::balances_transfer_keep_alive(
+			AccountId::from(BOB),
+			dollar(NATIVE_CURRENCY),
+		);
+		let weight = 100;
+		let xcm_msg = Xcm(vec![
+			WithdrawAsset(asset.clone().into()),
+			BuyExecution {
+				fees: asset,
+				weight_limit: Unlimited,
+			},
+			Transact {
+				origin_type: OriginKind::SovereignAccount,
+				require_weight_at_most: weight,
+				call: transfer_call.encode().into(),
+			},
+		]);
+		// we can use PolkadotXcm::send_xcm() or OrmlXcm::send_as_sovereign()
+		// assert_ok!(PolkadotXcm::send_xcm(Here, Parent, xcm_msg));
+		assert_ok!(karura_runtime::OrmlXcm::send_as_sovereign(
+			Origin::root(),
+			Box::new(Parent.into()),
+			Box::new(xcm::prelude::VersionedXcm::from(xcm_msg))
+		));
+	});
+
+	let asset = MultiAsset {
+		id: Concrete(MultiLocation::here()),
+		fun: Fungibility::Fungible(999_993_786_199),
+	};
+
+	KusamaNet::execute_with(|| {
+		let location = MultiLocation::new(0, X1(Parachain(2000)));
+		let versioned = xcm::VersionedMultiAssets::from(MultiAssets::from(vec![asset.clone()]));
+		let hash = BlakeTwo256::hash_of(&(&location, &versioned));
+		kusama_runtime::System::assert_has_event(kusama_runtime::Event::XcmPallet(pallet_xcm::Event::AssetsTrapped(
+			hash, location, versioned,
+		)));
+
+		assert!(kusama_runtime::System::events().iter().any(|r| matches!(
+			r.event,
+			kusama_runtime::Event::Ump(polkadot_runtime_parachains::ump::Event::ExecutedUpward(
+				_,
+				xcm::latest::Outcome::Incomplete(160892100, _)
+			))
+		)));
+
+		kusama_runtime::System::reset_events();
+	});
+
+	asset
+}
+
+fn claim_asset(asset: MultiAsset, recipient: [u8; 32]) {
+	Karura::execute_with(|| {
+		let recipient = MultiLocation::new(
+			0,
+			X1(Junction::AccountId32 {
+				network: NetworkId::Any,
+				id: recipient,
+			}),
+		);
+		let xcm_msg = Xcm(vec![
+			ClaimAsset {
+				assets: vec![asset.clone()].into(),
+				ticket: Here.into(),
+			},
+			BuyExecution {
+				fees: asset,
+				weight_limit: Unlimited,
+			},
+			DepositAsset {
+				assets: All.into(),
+				max_assets: 1,
+				beneficiary: recipient,
+			},
+		]);
+		assert_ok!(karura_runtime::OrmlXcm::send_as_sovereign(
+			Origin::root(),
+			Box::new(Parent.into()),
+			Box::new(xcm::prelude::VersionedXcm::from(xcm_msg))
+		));
+	});
+}
+
+#[test]
+fn claim_trapped_asset_works() {
+	let claimed_amount = 999982894481u128;
+	let asset = trapped_asset();
+	claim_asset(asset, BOB.into());
+
+	KusamaNet::execute_with(|| {
+		assert_eq!(
+			claimed_amount,
+			kusama_runtime::Balances::free_balance(&AccountId::from(BOB))
+		);
+		assert!(kusama_runtime::System::events().iter().any(|r| matches!(
+			r.event,
+			kusama_runtime::Event::Ump(polkadot_runtime_parachains::ump::Event::ExecutedUpward(
+				_,
+				xcm::latest::Outcome::Complete(282016000)
+			))
+		)));
+	});
+
+	// multi trapped asset
+	TestNet::reset();
+	let asset1 = trapped_asset();
+	let asset2 = trapped_asset();
+	assert_eq!(asset1, asset2);
+	claim_asset(asset1, BOB.into());
+	KusamaNet::execute_with(|| {
+		assert_eq!(
+			claimed_amount,
+			kusama_runtime::Balances::free_balance(&AccountId::from(BOB))
+		);
+	});
+	claim_asset(asset2, BOB.into());
+	KusamaNet::execute_with(|| {
+		assert_eq!(
+			claimed_amount * 2,
+			kusama_runtime::Balances::free_balance(&AccountId::from(BOB))
 		);
 	});
 }
