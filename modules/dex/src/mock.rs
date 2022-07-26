@@ -149,6 +149,7 @@ impl Config for Runtime {
 	type TradingPathLimit = ConstU32<3>;
 	type PalletId = DEXPalletId;
 	type TreasuryPallet = TreasuryPallet;
+	type UnsignedPriority = ConstU64<1048576>;
 	type Erc20InfoMapping = MockErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;

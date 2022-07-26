@@ -198,6 +198,10 @@ pub mod module {
 		NotAllowedRefund,
 		/// Cannot swap
 		CannotSwap,
+		/// Triangle swap info exist.
+		TriangleSwapInfoExist,
+		/// Triangle swap info is invalid.
+		TriangleSwapInfoInvalid,
 	}
 
 	#[pallet::event]
@@ -1001,8 +1005,27 @@ impl<T: Config> Pallet<T> {
 		supply_amount: Balance,
 		threshold: Balance,
 	) -> DispatchResult {
-		let currency_tuple = (currency_1, currency_2, currency_3);
-		TriangleTradingPath::<T>::insert(currency_tuple, ());
+		ensure!(supply_amount > threshold, Error::<T>::TriangleSwapInfoInvalid);
+		let tuple = (currency_1, currency_2, currency_3);
+		ensure!(
+			!TriangleTradingPath::<T>::contains_key(tuple),
+			Error::<T>::TriangleSwapInfoExist
+		);
+		// A-B-C-A has other variant, should ignore it if we already have A-B-C-A
+		let duplicate_currencies = vec![
+			(currency_1, currency_3, currency_2),
+			(currency_2, currency_3, currency_1),
+			(currency_2, currency_1, currency_3),
+			(currency_3, currency_1, currency_2),
+			(currency_3, currency_2, currency_1),
+		];
+		// error if input is (A,B,C) variant. i.e. (A,C,B),(B,A,C) etc.
+		ensure!(
+			!duplicate_currencies.contains(&tuple),
+			Error::<T>::TriangleSwapInfoInvalid
+		);
+		TriangleTradingPath::<T>::insert(tuple, ());
+
 		TriangleSupplyThreshold::<T>::try_mutate(currency_1, |maybe_supply_threshold| -> DispatchResult {
 			*maybe_supply_threshold = Some((supply_amount, threshold));
 			Ok(())
@@ -1017,7 +1040,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Triangle swap of path: `A->B->C->A`, the final A should be large than original A.
+	/// Triangle swap of path: `A->B->C->A`, the final output should be large than input.
 	fn do_triangle_swap(current: (CurrencyId, CurrencyId, CurrencyId)) -> DispatchResult {
 		if let Some((supply_amount, minimum_amount)) = TriangleSupplyThreshold::<T>::get(&current.0) {
 			let minimum_amount = supply_amount.saturating_add(minimum_amount);
@@ -1027,6 +1050,7 @@ impl<T: Config> Pallet<T> {
 			let second_path: Vec<CurrencyId> = vec![current.2, current.0];
 			let supply_1 = SwapLimit::ExactSupply(supply_amount, 0);
 
+			let mut valid_swap = false;
 			if let Some((_, target_3)) =
 				<Self as DEXManager<T::AccountId, Balance, CurrencyId>>::get_swap_amount(&first_path, supply_1)
 			{
@@ -1034,24 +1058,28 @@ impl<T: Config> Pallet<T> {
 					&second_path,
 					SwapLimit::ExactSupply(target_3, minimum_amount),
 				) {
-					if let Ok(target_3) =
-						Self::do_swap_with_exact_supply(&Self::treasury_account(), &first_path, supply_amount, 0)
-					{
-						if let Ok(target_amount) = Self::do_swap_with_exact_supply(
-							&Self::treasury_account(),
-							&second_path,
-							target_3,
-							minimum_amount,
-						) {
-							Self::deposit_event(Event::TriangleTrading {
-								currency_1: current.0,
-								currency_2: current.1,
-								currency_3: current.2,
-								supply_amount,
-								target_amount,
-							});
-						}
-					}
+					valid_swap = true;
+				}
+			}
+			if !valid_swap {
+				return Ok(());
+			}
+
+			if let Ok((_, target_3)) = <Self as DEXManager<T::AccountId, Balance, CurrencyId>>::swap_with_specific_path(
+				&Self::treasury_account(),
+				&first_path,
+				supply_1,
+			) {
+				if let Ok(target_amount) =
+					Self::do_swap_with_exact_supply(&Self::treasury_account(), &second_path, target_3, minimum_amount)
+				{
+					Self::deposit_event(Event::TriangleTrading {
+						currency_1: current.0,
+						currency_2: current.1,
+						currency_3: current.2,
+						supply_amount,
+						target_amount,
+					});
 				}
 			}
 		}
@@ -1064,8 +1092,7 @@ impl<T: Config> Pallet<T> {
 			.filter(|(_, status)| status.enabled())
 			.map(|(pair, _)| pair)
 			.collect();
-		// let uniq_currencies = enabled_trading_pair.iter().cloned().map(|pair| pair.first())
-		// 	.collect::<sp_std::collections::btree_set::BTreeSet<CurrencyId>>();
+		// if (A,B),(A,C),(A,D) are trading pair, then (A, [B,C,D]) is put into map.
 		let mut trading_pair_values_map: BTreeMap<CurrencyId, Vec<CurrencyId>> = BTreeMap::new();
 		for pair in enabled_trading_pair.clone() {
 			trading_pair_values_map
@@ -1076,6 +1103,7 @@ impl<T: Config> Pallet<T> {
 		let mut final_triangle_path = Vec::<(CurrencyId, CurrencyId, CurrencyId)>::new();
 		trading_pair_values_map.into_iter().for_each(|(start, v)| {
 			let len = v.len();
+			// for each A, validate if two of [B,C,D] can be form triangle path.
 			for i in 0..(len - 1) {
 				for j in (i + 1)..len {
 					if let Some(pair) = TradingPair::from_currency_ids(v[i], v[j]) {
