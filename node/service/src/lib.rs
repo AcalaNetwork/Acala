@@ -158,7 +158,7 @@ pub trait IdentifyVariant {
 
 impl IdentifyVariant for Box<dyn ChainSpec> {
 	fn is_acala(&self) -> bool {
-		self.id().starts_with("acala")
+		self.id().starts_with("acala") || self.id().starts_with("wendala")
 	}
 
 	fn is_karura(&self) -> bool {
