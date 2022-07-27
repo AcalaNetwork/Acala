@@ -669,6 +669,7 @@ fn three_usd_pool_works() {
 
 #[test]
 fn usdc_works() {
+	// env_logger::init();
 	let dollar = dollar(NATIVE_CURRENCY);
 	let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
 	ExtBuilder::default()
@@ -692,6 +693,9 @@ fn usdc_works() {
 		])
 		.build()
 		.execute_with(|| {
+			// THIS IS USDC AMOUNT TRANSFERED TO BOB, and used to swap operation.
+			let transfer_usdc = 1_000_000_000_000_000_000; // USDC amount
+
 			let usdt: CurrencyId = CurrencyId::ForeignAsset(0);
 			// USDT is asset on Statemine
 			assert_ok!(AssetRegistry::register_foreign_asset(
@@ -733,7 +737,6 @@ fn usdc_works() {
 			));
 			// transfer USDC erc20 from alith to ALICE/BOB, used for swap
 			<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
-			let transfer_usdc = 1_000_000_000_000; // USDC amount
 			assert_ok!(Currencies::transfer(
 				Origin::signed(alith.clone()),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
@@ -788,6 +791,8 @@ fn usdc_works() {
 
 			// Ok((1000000, 415224))
 			// 1000000 USDC - 3730866 AUSD - 16151 KSM - 415_224 KAR
+			System::reset_events();
+			println!("###########################################################");
 			println!(
 				"{:?}",
 				AcalaSwap::swap(
@@ -798,17 +803,13 @@ fn usdc_works() {
 				)
 			);
 			for ev in System::events() {
-				if matches!(
-					ev.event,
-					Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
-						| Event::Dex(module_dex::Event::Swap { .. })
-				) {
-					println!("ExactSupply>>{:?}", ev);
-				}
+				println!("  ExactSupply>>{:?}", ev);
 			}
 			System::reset_events();
-
 			// Err(Module(ModuleError { index: 131, error: [1, 0, 0, 0], message: Some("ExecutionRevert") }))
+			println!("BOB(USDC)={:?}", Currencies::free_balance(usdc, &AccountId::from(BOB)));
+			println!("###########################################################");
+			// dx=4_816_460_554_547_088
 			println!(
 				"{:?}",
 				AcalaSwap::swap(
@@ -824,7 +825,7 @@ fn usdc_works() {
 					Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
 						| Event::Dex(module_dex::Event::Swap { .. })
 				) {
-					println!("ExactTarget>>{:?}", ev);
+					println!("  ExactTarget>>{:?}", ev);
 				}
 			}
 
