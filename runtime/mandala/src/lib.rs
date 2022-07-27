@@ -1490,6 +1490,8 @@ impl InstanceFilter<Call> for ProxyType {
 					c,
 					Call::Dex(module_dex::Call::swap_with_exact_supply { .. })
 						| Call::Dex(module_dex::Call::swap_with_exact_target { .. })
+						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_supply { .. })
+						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_target { .. })
 				)
 			}
 			ProxyType::Loan => {
