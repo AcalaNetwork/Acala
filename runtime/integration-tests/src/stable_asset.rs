@@ -77,10 +77,10 @@ pub fn enable_stable_asset2(
 		pool_asset,
 		currencies, // assets
 		precisions,
-		10_000_000u128,           // mint fee
+		0u128,                    // mint fee
 		25_000_000u128,           // swap fee
 		30_000_000u128,           // redeem fee
-		1_000u128,                // initialA
+		3_000u128,                // initialA
 		AccountId::from(BOB),     // fee recipient
 		AccountId::from(CHARLIE), // yield recipient
 		1_000_000_000_000u128,    // precision
