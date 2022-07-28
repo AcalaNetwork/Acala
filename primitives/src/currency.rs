@@ -160,7 +160,7 @@ macro_rules! create_currency_id {
 			});
 
 			acala_tokens.push(Token {
-				symbol: stringify!(LCDOT).to_string(),
+				symbol: "LCDOT_13".to_string(),
 				address: EvmAddress::try_from(LCDOT).unwrap(),
 			});
 
