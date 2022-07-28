@@ -24,7 +24,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
-	traits::{Contains, EnsureOneOf, Get},
+	traits::{Contains, EitherOfDiverse, Get},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 		DispatchClass, Weight,
@@ -52,10 +52,14 @@ pub use precompile::{
 	SchedulePrecompile, StableAssetPrecompile,
 };
 pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
+	currency::{
+		TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, TAI, TAP, VSKSM,
+	},
 	AccountId,
 };
-pub use xcm_impl::{native_currency_location, AcalaDropAssets, FixedRateOfAsset, XcmFeeToTreasury};
+pub use xcm_impl::{
+	local_currency_location, native_currency_location, AcalaDropAssets, FixedRateOfAsset, XcmFeeToTreasury,
+};
 
 #[cfg(feature = "std")]
 use sp_core::bytes::from_hex;
@@ -217,108 +221,108 @@ pub type TechnicalCommitteeMembershipInstance = pallet_membership::Instance4;
 pub type OperatorMembershipInstanceAcala = pallet_membership::Instance5;
 
 // General Council
-pub type EnsureRootOrAllGeneralCouncil = EnsureOneOf<
+pub type EnsureRootOrAllGeneralCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 1, 1>,
 >;
 
-pub type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
+pub type EnsureRootOrHalfGeneralCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 1, 2>,
 >;
 
-pub type EnsureRootOrOneThirdsGeneralCouncil = EnsureOneOf<
+pub type EnsureRootOrOneThirdsGeneralCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 1, 3>,
 >;
 
-pub type EnsureRootOrTwoThirdsGeneralCouncil = EnsureOneOf<
+pub type EnsureRootOrTwoThirdsGeneralCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 2, 3>,
 >;
 
-pub type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
+pub type EnsureRootOrThreeFourthsGeneralCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 3, 4>,
 >;
 
 pub type EnsureRootOrOneGeneralCouncil =
-	EnsureOneOf<EnsureRoot<AccountId>, pallet_collective::EnsureMember<AccountId, GeneralCouncilInstance>>;
+	EitherOfDiverse<EnsureRoot<AccountId>, pallet_collective::EnsureMember<AccountId, GeneralCouncilInstance>>;
 
 // Financial Council
-pub type EnsureRootOrAllFinancialCouncil = EnsureOneOf<
+pub type EnsureRootOrAllFinancialCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 1, 1>,
 >;
 
-pub type EnsureRootOrHalfFinancialCouncil = EnsureOneOf<
+pub type EnsureRootOrHalfFinancialCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 1, 2>,
 >;
 
-pub type EnsureRootOrOneThirdsFinancialCouncil = EnsureOneOf<
+pub type EnsureRootOrOneThirdsFinancialCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 1, 3>,
 >;
 
-pub type EnsureRootOrTwoThirdsFinancialCouncil = EnsureOneOf<
+pub type EnsureRootOrTwoThirdsFinancialCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 2, 3>,
 >;
 
-pub type EnsureRootOrThreeFourthsFinancialCouncil = EnsureOneOf<
+pub type EnsureRootOrThreeFourthsFinancialCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 3, 4>,
 >;
 
 // Homa Council
-pub type EnsureRootOrAllHomaCouncil = EnsureOneOf<
+pub type EnsureRootOrAllHomaCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 1, 1>,
 >;
 
-pub type EnsureRootOrHalfHomaCouncil = EnsureOneOf<
+pub type EnsureRootOrHalfHomaCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 1, 2>,
 >;
 
-pub type EnsureRootOrOneThirdsHomaCouncil = EnsureOneOf<
+pub type EnsureRootOrOneThirdsHomaCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 1, 3>,
 >;
 
-pub type EnsureRootOrTwoThirdsHomaCouncil = EnsureOneOf<
+pub type EnsureRootOrTwoThirdsHomaCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 2, 3>,
 >;
 
-pub type EnsureRootOrThreeFourthsHomaCouncil = EnsureOneOf<
+pub type EnsureRootOrThreeFourthsHomaCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 3, 4>,
 >;
 
 // Technical Committee Council
-pub type EnsureRootOrAllTechnicalCommittee = EnsureOneOf<
+pub type EnsureRootOrAllTechnicalCommittee = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 1, 1>,
 >;
 
-pub type EnsureRootOrHalfTechnicalCommittee = EnsureOneOf<
+pub type EnsureRootOrHalfTechnicalCommittee = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 1, 2>,
 >;
 
-pub type EnsureRootOrOneThirdsTechnicalCommittee = EnsureOneOf<
+pub type EnsureRootOrOneThirdsTechnicalCommittee = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 1, 3>,
 >;
 
-pub type EnsureRootOrTwoThirdsTechnicalCommittee = EnsureOneOf<
+pub type EnsureRootOrTwoThirdsTechnicalCommittee = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 2, 3>,
 >;
 
-pub type EnsureRootOrThreeFourthsTechnicalCommittee = EnsureOneOf<
+pub type EnsureRootOrThreeFourthsTechnicalCommittee = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 3, 4>,
 >;

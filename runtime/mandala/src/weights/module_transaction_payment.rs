@@ -87,6 +87,10 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 		(4_339_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 	}
+	fn with_fee_aggregated_path() -> Weight {
+		(4_339_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+	}
 	// Storage: TransactionPause PausedTransactions (r:1 w:0)
 	fn with_fee_currency() -> Weight {
 		(4_121_000 as Weight)

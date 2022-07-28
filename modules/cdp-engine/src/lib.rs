@@ -59,8 +59,8 @@ use sp_runtime::{
 use sp_std::{marker::PhantomData, prelude::*};
 use support::{
 	AddressMapping, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, InvokeContext,
-	LiquidateCollateral, LiquidationEvmBridge as LiquidationEvmBridgeT, OnFeeDeposit, OnLiquidationSuccess, Price,
-	PriceProvider, Rate, Ratio, RiskManager, Swap, SwapLimit,
+	LiquidateCollateral, LiquidationEvmBridge, OnFeeDeposit, OnLiquidationSuccess, Price, PriceProvider, Rate, Ratio,
+	RiskManager, Swap, SwapLimit,
 };
 
 mod mock;
@@ -194,6 +194,10 @@ pub mod module {
 		type OnFeeDeposit: OnFeeDeposit<Self::AccountId, CurrencyId, Balance>;
 
 		/// When settle collateral with smart contracts, he acceptable max slippage for the price
+		/// The origin for liquidation contracts registering and deregistering.
+		type LiquidationContractsUpdateOrigin: EnsureOrigin<Self::Origin>;
+
+		/// When settle collateral with smart contracts, the acceptable max slippage for the price
 		/// from oracle.
 		#[pallet::constant]
 		type MaxLiquidationContractSlippage: Get<Ratio>;
@@ -201,7 +205,7 @@ pub mod module {
 		#[pallet::constant]
 		type MaxLiquidationContracts: Get<u32>;
 
-		type LiquidationEvmBridge: LiquidationEvmBridgeT;
+		type LiquidationEvmBridge: LiquidationEvmBridge;
 
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -544,7 +548,7 @@ pub mod module {
 		#[pallet::weight(<T as Config>::WeightInfo::register_liquidation_contract())]
 		#[transactional]
 		pub fn register_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::LiquidationContractsUpdateOrigin::ensure_origin(origin)?;
 			LiquidationContracts::<T>::try_append(address).map_err(|()| Error::<T>::TooManyLiquidationContracts)?;
 			Self::deposit_event(Event::LiquidationContractRegistered { address });
 			Ok(())
@@ -553,7 +557,7 @@ pub mod module {
 		#[pallet::weight(<T as Config>::WeightInfo::deregister_liquidation_contract())]
 		#[transactional]
 		pub fn deregister_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::LiquidationContractsUpdateOrigin::ensure_origin(origin)?;
 			LiquidationContracts::<T>::mutate(|contracts| {
 				contracts.retain(|c| c != &address);
 			});
@@ -1589,21 +1593,20 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 							collateral,
 							target_total_amount,
 						);
-
-						// Transfer payment to the Treasury to payback confiscated debts
-						<T as Config>::CDPTreasury::deposit_surplus(&repay_dest_account_id, target_total_amount)?;
-
-						// Liquidation succeeded. Refund any excess collateral and return.
-						T::OnLiquidationSuccess::on_liquidate_success(
-							who,
-							currency_id,
-							amount,
-							collateral_supply,
-							target_base_amount,
-							target_penalty_amount,
-							repayment,
-						);
 					}
+					// Transfer payment to the Treasury to payback confiscated debts
+					<T as Config>::CDPTreasury::deposit_surplus(&repay_dest_account_id, target_total_amount)?;
+
+					// Liquidation succeeded. Refund any excess collateral and return.
+					T::OnLiquidationSuccess::on_liquidate_success(
+						who,
+						currency_id,
+						amount,
+						collateral_supply,
+						target_base_amount,
+						target_penalty_amount,
+						repayment,
+					);
 					return Ok(());
 				} else if repayment > 0 {
 					// Insufficient repayment, disregard the attempt and refund the payment.

@@ -33,6 +33,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE: Balance = 50_000_000;
+pub const FEE_STATEMINT: Balance = 46_351_012;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
@@ -70,7 +71,6 @@ fn statemint_min_xcm_fee_matched() {
 
 #[test]
 fn teleport_from_relay_chain() {
-	env_logger::init();
 	PolkadotNet::execute_with(|| {
 		assert_ok!(polkadot_runtime::XcmPallet::teleport_assets(
 			polkadot_runtime::Origin::signed(ALICE.into()),
@@ -89,7 +89,10 @@ fn teleport_from_relay_chain() {
 	});
 
 	Statemint::execute_with(|| {
-		assert_eq!(9_953_377_240, Balances::free_balance(&AccountId::from(BOB)));
+		assert_eq!(
+			dollar(DOT) - FEE_STATEMINT,
+			Balances::free_balance(&AccountId::from(BOB))
+		);
 	});
 }
 
@@ -127,8 +130,8 @@ fn acala_statemint_transfer_works() {
 		// and withdraw sibling parachain sovereign account
 		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
 
-		assert_eq!(1000003377240, Balances::free_balance(&AccountId::from(BOB)));
-		assert_eq!(1003446936032, Balances::free_balance(&para_2000));
+		assert_eq!(1000003648988, Balances::free_balance(&AccountId::from(BOB)));
+		assert_eq!(1003447207780, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -138,7 +141,7 @@ fn acala_side(fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			9_999_906_760_000,
+			TEN - 92696000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough DOT balance to be charged as fee
@@ -165,7 +168,7 @@ fn acala_side(fee_amount: u128) {
 		));
 
 		assert_eq!(
-			8_999_906_760_000,
+			TEN - UNIT - 92696000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - fee_amount, Tokens::free_balance(DOT, &AccountId::from(BOB)));
@@ -192,7 +195,7 @@ fn statemint_side(para_2000_init_amount: u128) {
 			MultiAddress::Id(ALICE.into()),
 			UNIT / 100
 		));
-		assert_eq!(9 * UNIT, Balances::free_balance(&AccountId::from(ALICE)));
+		assert_eq!(9_900_000_000_000, Balances::free_balance(&AccountId::from(ALICE)));
 
 		assert_ok!(Assets::mint(
 			origin.clone(),

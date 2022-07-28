@@ -31,7 +31,7 @@ use module_honzon::WeightInfo;
 use module_support::HonzonManager;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Amount, Balance, CurrencyId, Position};
-use sp_runtime::{traits::Convert, FixedPointNumber, RuntimeDebug};
+use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 /// The Honzon precomnpile

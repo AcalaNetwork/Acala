@@ -942,7 +942,7 @@ fn can_liquidate_cdp_via_intended_priority() {
 			//
 			// When dex cannot liquidate, try to liquidate using EVM Contracts instead.
 			//
-			assert_eq!(Tokens::free_balance(USD_CURRENCY, &cdp_treasury_pallet_account()), 0);
+			assert_eq!(Tokens::free_balance(USD_CURRENCY, &cdp_engine_pallet_account()), 0);
 			System::reset_events();
 			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
 				AccountId::from(ALICE),

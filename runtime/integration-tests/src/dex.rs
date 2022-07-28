@@ -219,7 +219,9 @@ fn test_trading_pair() {
 
 			assert_ok!(AssetRegistry::register_foreign_asset(
 				Origin::root(),
-				Box::new(MultiLocation::new(1, X2(Parachain(2002), GeneralKey(KAR.encode()))).into()),
+				Box::new(
+					MultiLocation::new(1, X2(Parachain(2002), GeneralKey(KAR.encode().try_into().unwrap()))).into()
+				),
 				Box::new(AssetMetadata {
 					name: b"Sibling Token".to_vec(),
 					symbol: b"ST".to_vec(),

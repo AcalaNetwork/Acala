@@ -273,6 +273,7 @@ impl cdp_engine::Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = ();
+	type LiquidationContractsUpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
 	type MaxLiquidationContracts = ConstU32<10>;
 	type LiquidationEvmBridge = ();
@@ -313,17 +314,17 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system,
-		HonzonModule: honzon,
-		Tokens: orml_tokens,
-		PalletBalances: pallet_balances,
-		Currencies: orml_currencies,
-		LoansModule: loans,
-		CDPTreasuryModule: cdp_treasury,
-		CDPEngineModule: cdp_engine,
-		Timestamp: pallet_timestamp,
-		Fees: module_fees,
-		EvmAccounts: evm_accounts,
+		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		HonzonModule: honzon::{Pallet, Storage, Call, Event<T>},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+		Currencies: orml_currencies::{Pallet, Call},
+		LoansModule: loans::{Pallet, Storage, Call, Event<T>},
+		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
+		CDPEngineModule: cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		EvmAccounts: evm_accounts::{Pallet, Call, Storage, Event<T>},
+		Fees: module_fees::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

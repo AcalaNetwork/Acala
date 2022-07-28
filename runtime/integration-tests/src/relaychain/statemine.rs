@@ -33,7 +33,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE: Balance = 20_000_000;
-pub const FEE_STATEMINE: Balance = 15_540_916;
+pub const FEE_STATEMINE: Balance = 15_450_332;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
@@ -74,7 +74,7 @@ fn statemine_min_xcm_fee_matched() {
 }
 
 #[test]
-fn transfer_from_relay_chain() {
+fn teleport_from_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::teleport_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
@@ -135,7 +135,7 @@ fn karura_statemine_transfer_works() {
 			UNIT + FEE - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(1_003_977_797_902, Balances::free_balance(&para_2000));
+		assert_eq!(1_003_977_888_486, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -145,7 +145,7 @@ fn karura_side(fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			9_999_906_760_000,
+			9_999_907_304_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough KSM balance to be charged as fee
@@ -172,7 +172,7 @@ fn karura_side(fee_amount: u128) {
 		));
 
 		assert_eq!(
-			8_999_906_760_000,
+			8_999_907_304_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - fee_amount, Tokens::free_balance(KSM, &AccountId::from(BOB)));
@@ -192,14 +192,14 @@ fn statemine_side(para_2000_init_amount: u128) {
 		Balances::make_free_balance_be(&ALICE.into(), TEN);
 		Balances::make_free_balance_be(&BOB.into(), UNIT);
 
-		// create custom asset cost 1 KSM
+		// create custom asset cost 0.1 KSM
 		assert_ok!(Assets::create(
 			origin.clone(),
 			0,
 			MultiAddress::Id(ALICE.into()),
 			UNIT / 100
 		));
-		assert_eq!(9 * UNIT, Balances::free_balance(&AccountId::from(ALICE)));
+		assert_eq!(9_900_000_000_000, Balances::free_balance(&AccountId::from(ALICE)));
 
 		assert_ok!(Assets::mint(
 			origin.clone(),

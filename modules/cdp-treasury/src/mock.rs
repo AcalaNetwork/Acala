@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, EnsureOneOf, Everything, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, EitherOfDiverse, Everything, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use nutsfinance_stable_asset::traits::StableAsset;
@@ -220,7 +220,7 @@ impl Config for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
-	type UpdateOrigin = EnsureOneOf<EnsureRoot<AccountId>, EnsureSignedBy<One, AccountId>>;
+	type UpdateOrigin = EitherOfDiverse<EnsureRoot<AccountId>, EnsureSignedBy<One, AccountId>>;
 	type DEX = DEXModule;
 	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
 	type MaxAuctionsCount = ConstU32<5>;

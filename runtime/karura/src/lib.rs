@@ -101,11 +101,12 @@ pub use runtime_common::{
 	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
 	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, ExistentialDepositsTimesOneHundred,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
-	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
-	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength,
-	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
-	TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, FixedRateOfAsset, GasToWeight,
+	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
+	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
+	RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
+	PHA, RENBTC, TAI, VSKSM,
 };
 pub use xcm::latest::prelude::*;
 
@@ -125,7 +126,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2083,
+	spec_version: 2090,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -587,6 +588,7 @@ impl pallet_treasury::Config for Runtime {
 	type Currency = Balances;
 	type ApproveOrigin = EnsureRootOrHalfGeneralCouncil;
 	type RejectOrigin = EnsureRootOrHalfGeneralCouncil;
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type Event = Event;
 	type OnSlash = Treasury;
 	type ProposalBond = ProposalBond;
@@ -1072,6 +1074,7 @@ impl module_cdp_engine::Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = Dex;
+	type LiquidationContractsUpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
 	type MaxLiquidationContracts = ConstU32<10>;
 	type LiquidationEvmBridge = module_evm_bridge::LiquidationEvmBridge<Runtime>;
@@ -1154,6 +1157,7 @@ parameter_types! {
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
 		vec![KSM],
 		vec![LKSM],
+		vec![KUSD],
 	];
 }
 
@@ -1198,7 +1202,7 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightToFee = WeightToFee;
 	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
-	type DEX = Dex;
+	type Swap = AcalaSwap;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
@@ -1311,6 +1315,8 @@ impl InstanceFilter<Call> for ProxyType {
 					c,
 					Call::Dex(module_dex::Call::swap_with_exact_supply { .. })
 						| Call::Dex(module_dex::Call::swap_with_exact_target { .. })
+						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_supply { .. })
+						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_target { .. })
 				)
 			}
 			ProxyType::Loan => {
@@ -1460,6 +1466,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -1691,7 +1698,7 @@ construct_runtime!(
 		CollatorSelection: module_collator_selection = 41,
 		Session: pallet_session = 42,
 		Aura: pallet_aura = 43,
-		AuraExt: cumulus_pallet_aura_ext exclude_parts { Call } = 44,
+		AuraExt: cumulus_pallet_aura_ext = 44,
 		SessionManager: module_session_manager = 45,
 
 		// XCM
@@ -1807,103 +1814,54 @@ pub type Executive = frame_executive::Executive<
 	Runtime,
 	AllPalletsWithSystem,
 	(
-		FeesMigration,
+		TransactionPaymentMigration,
 		module_auction_manager::migrations::v1::MigrateToV1<Runtime>,
 		XcmInterfaceMigration,
 	),
 >;
 
-use primitives::IncomeSource;
-
-pub struct FeesMigration;
-
-impl OnRuntimeUpgrade for FeesMigration {
+parameter_types! {
+	pub FeeTokens: Vec<CurrencyId> = vec![KUSD, KSM, LKSM, BNC, KBTC, CurrencyId::ForeignAsset(0)];
+}
+pub struct TransactionPaymentMigration;
+impl OnRuntimeUpgrade for TransactionPaymentMigration {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		let incomes = vec![
-			(
-				IncomeSource::TxFee,
-				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
-			),
-			(
-				IncomeSource::XcmFee,
-				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
-			),
-			(
-				IncomeSource::DexSwapFee,
-				vec![(runtime_common::NetworkTreasuryPool::get(), 100)],
-			),
-			(
-				IncomeSource::HonzonStabilityFee,
-				vec![(runtime_common::HonzonTreasuryPool::get(), 100)],
-			),
-			(
-				IncomeSource::HonzonLiquidationFee,
-				vec![
-					(runtime_common::NetworkTreasuryPool::get(), 30),
-					(runtime_common::HonzonTreasuryPool::get(), 70),
-				],
-			),
-			(
-				IncomeSource::HomaStakingRewardFee,
-				vec![
-					(runtime_common::NetworkTreasuryPool::get(), 70),
-					(runtime_common::HomaTreasuryPool::get(), 30),
-				],
-			),
-		];
-		let treasuries = vec![
-			(
-				runtime_common::NetworkTreasuryPool::get(),
-				1000 * dollar(KAR),
-				vec![
-					(runtime_common::StakingRewardPool::get(), 70),
-					(runtime_common::CollatorsRewardPool::get(), 10),
-					(runtime_common::EcosystemRewardPool::get(), 10),
-					(KaruraTreasuryAccount::get(), 10),
-				],
-			),
-			(
-				runtime_common::HonzonTreasuryPool::get(),
-				10 * dollar(KAR),
-				vec![(CDPTreasuryPalletId::get().into_account_truncating(), 100)],
-			),
-		];
-		incomes.iter().for_each(|(income, pools)| {
-			let pool_rates = module_fees::build_pool_percents::<AccountId>(pools.clone());
-			let _ = <module_fees::Pallet<Runtime>>::do_set_treasury_rate(*income, pool_rates);
-		});
-		treasuries.iter().for_each(|(treasury, threshold, pools)| {
-			let pool_rates = module_fees::build_pool_percents::<AccountId>(pools.clone());
-			let _ = <module_fees::Pallet<Runtime>>::do_set_incentive_rate(treasury.clone(), *threshold, pool_rates);
-		});
+		let poo_size = 5 * dollar(KAR);
+		let threshold = Ratio::saturating_from_rational(1, 2).saturating_mul_int(dollar(KAR));
+		for token in FeeTokens::get() {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
+			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, poo_size, threshold);
+		}
 		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<(), &'static str> {
+		for token in FeeTokens::get() {
+			assert_eq!(
+				module_transaction_payment::TokenExchangeRate::<Runtime>::contains_key(&token),
+				true
+			);
+			assert_eq!(
+				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::contains_key(&token),
+				true
+			);
+		}
 		Ok(())
 	}
 
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade() -> Result<(), &'static str> {
-		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
-			&IncomeSource::TxFee
-		));
-		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
-			&IncomeSource::XcmFee
-		));
-		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
-			&IncomeSource::HonzonStabilityFee
-		));
-		assert!(<module_fees::IncomeToTreasuries<Runtime>>::contains_key(
-			&IncomeSource::HomaStakingRewardFee
-		));
-		assert!(<module_fees::TreasuryToIncentives<Runtime>>::contains_key(
-			&runtime_common::NetworkTreasuryPool::get()
-		));
-		assert!(<module_fees::TreasuryToIncentives<Runtime>>::contains_key(
-			&runtime_common::HonzonTreasuryPool::get()
-		));
+		for token in FeeTokens::get() {
+			assert_eq!(
+				module_transaction_payment::TokenExchangeRate::<Runtime>::contains_key(&token),
+				true
+			);
+			assert_eq!(
+				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::contains_key(&token),
+				false
+			);
+		}
 		Ok(())
 	}
 }

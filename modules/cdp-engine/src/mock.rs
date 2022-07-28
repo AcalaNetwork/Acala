@@ -338,7 +338,7 @@ impl MockLiquidationEvmBridge {
 		REPAYMENT.with(|v| *v.borrow_mut() = Some(repayment));
 	}
 }
-impl LiquidationEvmBridgeT for MockLiquidationEvmBridge {
+impl LiquidationEvmBridge for MockLiquidationEvmBridge {
 	fn liquidate(
 		_context: InvokeContext,
 		collateral: EvmAddress,
@@ -353,11 +353,7 @@ impl LiquidationEvmBridgeT for MockLiquidationEvmBridge {
 			} else {
 				min_repayment
 			};
-			let _ = Currencies::deposit(
-				GetStableCurrencyId::get(),
-				&evm_accounts::EvmAddressMapping::<Runtime>::get_account_id(&repay_dest),
-				repayment,
-			);
+			let _ = Currencies::deposit(GetStableCurrencyId::get(), &CDPEngineModule::account_id(), repayment);
 		}
 		LIQUIDATED.with(|v| *v.borrow_mut() = (collateral, repay_dest, amount, min_repayment));
 		result
@@ -418,6 +414,7 @@ impl Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = DEXModule;
+	type LiquidationContractsUpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
 	type MaxLiquidationContracts = ConstU32<10>;
 	type LiquidationEvmBridge = MockLiquidationEvmBridge;
@@ -438,17 +435,17 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system,
-		CDPEngineModule: cdp_engine,
-		CDPTreasuryModule: cdp_treasury,
-		Currencies: orml_currencies,
-		Tokens: orml_tokens,
-		LoansModule: loans,
-		PalletBalances: pallet_balances,
-		DEXModule: dex,
-		Timestamp: pallet_timestamp,
-		Fees: module_fees,
-		EvmAccounts: evm_accounts,
+		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		CDPEngineModule: cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned},
+		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Config, Event<T>},
+		Currencies: orml_currencies::{Pallet, Call},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		LoansModule: loans::{Pallet, Storage, Call, Event<T>},
+		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+		DEXModule: dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		EvmAccounts: evm_accounts::{Pallet, Call, Storage, Event<T>},
+		Fees: module_fees::{Pallet, Call, Storage, Event<T>, Config<T>},
 	}
 );
 
