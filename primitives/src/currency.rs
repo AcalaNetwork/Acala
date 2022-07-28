@@ -129,6 +129,36 @@ macro_rules! create_currency_id {
 				}
 			)*
 
+			let mut acala_lp_tokens = vec![
+				Token {
+					symbol: "LP_ACA_AUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(AUSD), CurrencyId::Token(ACA)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_LDOT_AUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(AUSD), CurrencyId::Token(LDOT)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_LCDOT_AUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(AUSD), LCDOT).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_LCDOT_DOT".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(DOT), LCDOT).unwrap().dex_share_currency_id()).unwrap(),
+				},
+			];
+			acala_tokens.append(&mut acala_lp_tokens);
+
+			acala_tokens.push(Token {
+				symbol: "SA_DOT".to_string(),
+				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(0)).unwrap(),
+			});
+
+			acala_tokens.push(Token {
+				symbol: "SA_3USD".to_string(),
+				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(1)).unwrap(),
+			});
+
 			acala_tokens.push(Token {
 				symbol: stringify!(LCDOT).to_string(),
 				address: EvmAddress::try_from(LCDOT).unwrap(),
@@ -174,36 +204,6 @@ macro_rules! create_currency_id {
 			];
 			acala_tokens.append(&mut acala_fa_tokens);
 
-			acala_tokens.push(Token {
-				symbol: "SA_DOT".to_string(),
-				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(0)).unwrap(),
-			});
-
-			acala_tokens.push(Token {
-				symbol: "SA_3USD".to_string(),
-				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(1)).unwrap(),
-			});
-
-			let mut acala_lp_tokens = vec![
-				Token {
-					symbol: "LP_ACA_AUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(AUSD), CurrencyId::Token(ACA)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_LDOT_AUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(AUSD), CurrencyId::Token(LDOT)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_LCDOT_AUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(AUSD), LCDOT).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_LCDOT_DOT".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(DOT), LCDOT).unwrap().dex_share_currency_id()).unwrap(),
-				},
-			];
-			acala_tokens.append(&mut acala_lp_tokens);
-
 			frame_support::assert_ok!(std::fs::write("../predeploy-contracts/resources/acala_tokens.json", serde_json::to_string_pretty(&acala_tokens).unwrap()));
 
 			// Karura tokens
@@ -216,6 +216,92 @@ macro_rules! create_currency_id {
 					});
 				}
 			)*
+
+			let mut karura_lp_tokens = vec![
+				Token {
+					symbol: "LP_LKSM_KAR".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KAR), CurrencyId::Token(LKSM)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_QTZ_KAR".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KAR), CurrencyId::ForeignAsset(2)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_KAR_KSM".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KSM), CurrencyId::Token(KAR)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_LKSM_KSM".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KSM), CurrencyId::Token(LKSM)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_RMRK_KSM".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KSM), CurrencyId::ForeignAsset(0)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_ARIS_KSM".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KSM), CurrencyId::ForeignAsset(1)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_KAR_KUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KAR), CurrencyId::Token(KUSD)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_KSM_KUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KSM), CurrencyId::Token(KUSD)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_LKSM_KUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(LKSM), CurrencyId::Token(KUSD)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_BNC_KUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::Token(BNC)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_PHA_KUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::Token(PHA)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_KINT_KUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::Token(KINT)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_KBTC_KUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::Token(KBTC)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_RMRK_KUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::ForeignAsset(0)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_QTZ_KUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::ForeignAsset(2)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_CSM_KUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::ForeignAsset(5)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_AIR_KUSD".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::ForeignAsset(12)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+				Token {
+					symbol: "LP_RMRK_TAI".to_string(),
+					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(TAI), CurrencyId::ForeignAsset(0)).unwrap().dex_share_currency_id()).unwrap(),
+				},
+			];
+			karura_tokens.append(&mut karura_lp_tokens);
+
+			karura_tokens.push(Token {
+				symbol: "SA_KSM".to_string(),
+				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(0)).unwrap(),
+			});
+
+			karura_tokens.push(Token {
+				symbol: "SA_3USD".to_string(),
+				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(1)).unwrap(),
+			});
 
 			let mut karura_fa_tokens = vec![
 				Token {
@@ -300,92 +386,6 @@ macro_rules! create_currency_id {
 				},
 			];
 			karura_tokens.append(&mut karura_fa_tokens);
-
-			karura_tokens.push(Token {
-				symbol: "SA_KSM".to_string(),
-				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(0)).unwrap(),
-			});
-
-			karura_tokens.push(Token {
-				symbol: "SA_3USD".to_string(),
-				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(1)).unwrap(),
-			});
-
-			let mut karura_lp_tokens = vec![
-				Token {
-					symbol: "LP_LKSM_KAR".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KAR), CurrencyId::Token(LKSM)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_QTZ_KAR".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KAR), CurrencyId::ForeignAsset(2)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_KAR_KSM".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KSM), CurrencyId::Token(KAR)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_LKSM_KSM".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KSM), CurrencyId::Token(LKSM)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_RMRK_KSM".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KSM), CurrencyId::ForeignAsset(0)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_ARIS_KSM".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KSM), CurrencyId::ForeignAsset(1)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_KAR_KUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KAR), CurrencyId::Token(KUSD)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_KSM_KUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KSM), CurrencyId::Token(KUSD)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_LKSM_KUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(LKSM), CurrencyId::Token(KUSD)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_BNC_KUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::Token(BNC)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_PHA_KUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::Token(PHA)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_KINT_KUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::Token(KINT)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_KBTC_KUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::Token(KBTC)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_RMRK_KUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::ForeignAsset(0)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_QTZ_KUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::ForeignAsset(2)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_CSM_KUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::ForeignAsset(5)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_AIR_KUSD".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(KUSD), CurrencyId::ForeignAsset(12)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-				Token {
-					symbol: "LP_RMRK_TAI".to_string(),
-					address: EvmAddress::try_from(TradingPair::from_currency_ids(CurrencyId::Token(TAI), CurrencyId::ForeignAsset(0)).unwrap().dex_share_currency_id()).unwrap(),
-				},
-			];
-			karura_tokens.append(&mut karura_lp_tokens);
 
 			frame_support::assert_ok!(std::fs::write("../predeploy-contracts/resources/karura_tokens.json", serde_json::to_string_pretty(&karura_tokens).unwrap()));
 		}
