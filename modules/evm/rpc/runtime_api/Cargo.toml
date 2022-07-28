@@ -1,6 +1,6 @@
 [package]
 name = "module-evm-rpc-runtime-api"
-version = "2.9.0"
+version = "2.9.1"
 authors = ["Acala Developers"]
 edition = "2021"
 
