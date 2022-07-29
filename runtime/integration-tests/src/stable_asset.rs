@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::evm::alice_evm_addr;
-use crate::payment::{with_fee_aggregated_path_call, with_fee_currency_call, with_fee_path_call, INFO};
+use crate::payment::{with_fee_aggregated_path_call, with_fee_currency_call, with_fee_path_call, INFO, POST_INFO};
 use crate::setup::*;
 use module_aggregated_dex::SwapPath;
 use module_support::{AggregatedSwapPath, ExchangeRate, Swap, SwapLimit, EVM as EVMTrait};
@@ -71,6 +71,7 @@ pub fn enable_stable_asset2(
 	minter: Option<AccountId>,
 	precisions: Vec<u128>,
 ) {
+	System::reset_events();
 	let pool_asset = CurrencyId::StableAssetPoolToken(0);
 	assert_ok!(StableAsset::create_pool(
 		Origin::root(),
@@ -103,6 +104,10 @@ pub fn enable_stable_asset2(
 		amounts,
 		0u128
 	));
+
+	for ev in System::events() {
+		println!("{:?}", ev);
+	}
 }
 
 #[test]
@@ -694,7 +699,7 @@ fn usdc_works() {
 		.build()
 		.execute_with(|| {
 			// THIS IS USDC AMOUNT TRANSFERED TO BOB, and used to swap operation.
-			let transfer_usdc = 1_000_000_000_000_000_000; // USDC amount
+			let transfer_usdc = 100_000_000; // USDC amount
 
 			let usdt: CurrencyId = CurrencyId::ForeignAsset(0);
 			// USDT is asset on Statemine
@@ -729,6 +734,7 @@ fn usdc_works() {
 			let total_erc20 = 100_000_000_000_000_000_000_000u128;
 			// alith has USDC when create Erc20 token
 			assert_eq!(Currencies::free_balance(usdc, &alith), total_erc20);
+			assert_eq!(Currencies::free_balance(usdt, &alith), 1_000_000_000 * dollar);
 
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(BOB)),
@@ -756,8 +762,8 @@ fn usdc_works() {
 				],
 				vec![
 					105_135_943_457_866_107_649u128,
-					29_203_658_077_783_000_000u128,
-					781_072_047_861_505_000_000u128,
+					29_203_658_077_783u128,
+					781_072_047_861_505u128,
 				],
 				Some(alith.clone()),
 				vec![1u128, 1_000_000u128, 1_000_000u128],
@@ -792,7 +798,7 @@ fn usdc_works() {
 			// Ok((1000000, 415224))
 			// 1000000 USDC - 3730866 AUSD - 16151 KSM - 415_224 KAR
 			System::reset_events();
-			println!("###########################################################");
+			println!("###########################################################1");
 			println!(
 				"{:?}",
 				AcalaSwap::swap(
@@ -802,14 +808,20 @@ fn usdc_works() {
 					SwapLimit::ExactSupply(1_000_000, 0)
 				)
 			);
+			// Ok((1_000_000, 142_177_564_621)) ==> 1 USDC - 0.142 KAR
 			for ev in System::events() {
-				println!("  ExactSupply>>{:?}", ev);
+				if matches!(
+					ev.event,
+					Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
+						| Event::Dex(module_dex::Event::Swap { .. })
+				) {
+					println!("  🌛 ExactSupply>>{:?}", ev);
+				}
 			}
+
 			System::reset_events();
-			// Err(Module(ModuleError { index: 131, error: [1, 0, 0, 0], message: Some("ExecutionRevert") }))
-			println!("BOB(USDC)={:?}", Currencies::free_balance(usdc, &AccountId::from(BOB)));
-			println!("###########################################################");
-			// dx=4_816_460_554_547_088
+			println!("###########################################################2");
+			// Ok((14_167, 2_014_171_394))  ==> 0.014 USDC -> 0.002 KAR
 			println!(
 				"{:?}",
 				AcalaSwap::swap(
@@ -825,16 +837,45 @@ fn usdc_works() {
 					Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
 						| Event::Dex(module_dex::Event::Swap { .. })
 				) {
-					println!("  ExactTarget>>{:?}", ev);
+					println!("  🌏 ExactTarget>>{:?}", ev);
 				}
 			}
+			println!("###########################################################3");
 
-			// // 12_291_781_969 USDC - 20215797553 AUSD - 87518596 KSM --> 2_250_001_742 KAR
-			// assert_aggregated_dex_event(usdc, with_fee_currency_call(usdc), None);
-			//
-			// // 12_291_793_024 USDC - 20215815727 AUSD - 87518673 KSM --> 2_250_001_742 KAR
-			// assert_aggregated_dex_event(usdc, with_fee_aggregated_path_call(aggregated_path),
-			// None);
+			// 15925 USDC --> 2264110407 KAR
+			assert_aggregated_dex_event(usdc, with_fee_currency_call(usdc), None);
+			// 15925 USDC --> 2264108376 KAR
+			assert_aggregated_dex_event(usdc, with_fee_aggregated_path_call(aggregated_path), None);
+
+			println!("###########################################################4");
+			// pre post dispatch
+			System::reset_events();
+			// 15925 USDC --> 2264106320 KAR
+			let pre = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0)
+				.pre_dispatch(&AccountId::from(BOB), &with_fee_currency_call(usdc), &INFO, 50)
+				.unwrap();
+			// println!("fee:{:?}", pre.3); // 2250001739
+			// println!("sur:{:?}", pre.4); // 750000580
+			// let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(50, &INFO, 0);
+			// println!("FEE:{:?}", fee); // 1500001159, fee + pre.4 = pre.3
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::post_dispatch(
+					Some(pre),
+					&INFO,
+					&POST_INFO,
+					50,
+					&Ok(())
+				)
+			);
+			for ev in System::events() {
+				if matches!(
+					ev.event,
+					Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
+						| Event::Dex(module_dex::Event::Swap { .. })
+				) {
+					println!("  🚀 {:?}", ev);
+				}
+			}
 		});
 }
 
@@ -858,7 +899,7 @@ fn assert_aggregated_dex_event(
 			Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
 				| Event::Dex(module_dex::Event::Swap { .. })
 		) {
-			println!("{:?}", ev);
+			println!("  🔥 {:?}", ev);
 		}
 	}
 }
