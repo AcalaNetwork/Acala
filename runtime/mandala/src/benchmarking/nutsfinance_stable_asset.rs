@@ -96,6 +96,13 @@ runtime_benchmarks! {
 		let pool_id = StableAsset::pool_count() - 1;
 	}: _(RawOrigin::Root, pool_id, 1000u128, 2629112370)
 
+	modify_fees {
+		let assets = vec![LDOT, AUSD];
+		let precisions = vec![1u128, 1u128];
+		create_pools(assets, precisions)?;
+		let pool_id = StableAsset::pool_count() - 1;
+	}: _(RawOrigin::Root, pool_id, Some(100u128), Some(200u128), Some(300u128))
+
 	mint {
 		let tester: AccountId = whitelisted_caller();
 		let u in 2u32 .. <Runtime as nutsfinance_stable_asset::Config>::PoolAssetLimit::get();

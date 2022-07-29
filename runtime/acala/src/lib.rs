@@ -124,7 +124,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2090,
+	spec_version: 2091,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1315,6 +1315,8 @@ impl InstanceFilter<Call> for ProxyType {
 					c,
 					Call::Dex(module_dex::Call::swap_with_exact_supply { .. })
 						| Call::Dex(module_dex::Call::swap_with_exact_target { .. })
+						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_supply { .. })
+						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_target { .. })
 				)
 			}
 			ProxyType::Loan => {
@@ -1775,11 +1777,11 @@ parameter_types! {
 pub struct TransactionPaymentMigration;
 impl OnRuntimeUpgrade for TransactionPaymentMigration {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		let poo_size = 5 * dollar(ACA);
-		let threshold = Ratio::saturating_from_rational(1, 2).saturating_mul_int(dollar(ACA));
+		let pool_size = 5 * dollar(ACA);
+		let threshold = Ratio::saturating_from_rational(1, 2).saturating_mul_int(pool_size);
 		for token in FeeTokens::get() {
 			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
-			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, poo_size, threshold);
+			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, pool_size, threshold);
 		}
 		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
@@ -1789,10 +1791,6 @@ impl OnRuntimeUpgrade for TransactionPaymentMigration {
 		for token in FeeTokens::get() {
 			assert_eq!(
 				module_transaction_payment::TokenExchangeRate::<Runtime>::contains_key(&token),
-				true
-			);
-			assert_eq!(
-				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::contains_key(&token),
 				true
 			);
 		}
