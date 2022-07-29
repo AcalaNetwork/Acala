@@ -502,8 +502,8 @@ fn three_usd_pool_works() {
 
 			// USDC=Erc20(contract) or USDT=ForeignAsset(0) as fee token.
 			// before USDC/USDT enabled as fee pool, it works by direct swap.
-			assert_aggregated_dex_event(usdc, with_fee_currency_call(usdc), None);
-			assert_aggregated_dex_event(usdt, with_fee_currency_call(usdt), None);
+			payment_validate_with_fee_call_works(usdc, with_fee_currency_call(usdc), None);
+			payment_validate_with_fee_call_works(usdt, with_fee_currency_call(usdt), None);
 
 			// AUSD as fee token, only dex swap event produced.
 			assert_ok!(
@@ -576,8 +576,8 @@ fn three_usd_pool_works() {
 				),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
-			assert_aggregated_dex_event(usdc, with_fee_aggregated_path_call(usdc_aggregated_path), None);
-			assert_aggregated_dex_event(usdt, with_fee_aggregated_path_call(usdt_aggregated_path), None);
+			payment_validate_with_fee_call_works(usdc, with_fee_aggregated_path_call(usdc_aggregated_path), None);
+			payment_validate_with_fee_call_works(usdt, with_fee_aggregated_path_call(usdt_aggregated_path), None);
 
 			// enable USDT/USDC as charge fee pool
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
@@ -667,8 +667,8 @@ fn three_usd_pool_works() {
 			);
 
 			// when sub-account has not enough native token, trigger swap
-			assert_aggregated_dex_event(usdt, with_fee_currency_call(usdt), Some(len as usize));
-			assert_aggregated_dex_event(usdc, with_fee_currency_call(usdc), Some(len as usize));
+			payment_validate_with_fee_call_works(usdt, with_fee_currency_call(usdt), Some(len as usize));
+			payment_validate_with_fee_call_works(usdc, with_fee_currency_call(usdc), Some(len as usize));
 		});
 }
 
@@ -795,91 +795,66 @@ fn usdc_works() {
 				vec![((usdc, NATIVE_CURRENCY), Some(aggregated_path.clone()))]
 			));
 
-			// Ok((1000000, 415224))
-			// 1000000 USDC - 3730866 AUSD - 16151 KSM - 415_224 KAR
-			System::reset_events();
-			println!("###########################################################1");
-			println!(
-				"{:?}",
-				AcalaSwap::swap(
-					&AccountId::from(BOB),
-					usdc,
-					NATIVE_CURRENCY,
-					SwapLimit::ExactSupply(1_000_000, 0)
-				)
-			);
-			// Ok((1_000_000, 142_177_564_621)) ==> 1 USDC - 0.142 KAR
-			for ev in System::events() {
-				if matches!(
-					ev.event,
-					Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
-						| Event::Dex(module_dex::Event::Swap { .. })
-				) {
-					println!("  🌛 ExactSupply>>{:?}", ev);
-				}
-			}
+			// direct aggregated dex swap works
+			aggregate_swap_test(usdc);
 
-			System::reset_events();
-			println!("###########################################################2");
-			// Ok((14_167, 2_014_171_394))  ==> 0.014 USDC -> 0.002 KAR
-			println!(
-				"{:?}",
-				AcalaSwap::swap(
-					&AccountId::from(BOB),
-					usdc,
-					NATIVE_CURRENCY,
-					SwapLimit::ExactTarget(Balance::MAX, 2_000_000_000)
-				)
-			);
-			for ev in System::events() {
-				if matches!(
-					ev.event,
-					Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
-						| Event::Dex(module_dex::Event::Swap { .. })
-				) {
-					println!("  🌏 ExactTarget>>{:?}", ev);
-				}
-			}
-			println!("###########################################################3");
-
+			// charge transaction payment using USDC as fee token
 			// 15925 USDC --> 2264110407 KAR
-			assert_aggregated_dex_event(usdc, with_fee_currency_call(usdc), None);
+			payment_validate_with_fee_call_works(usdc, with_fee_currency_call(usdc), None);
 			// 15925 USDC --> 2264108376 KAR
-			assert_aggregated_dex_event(usdc, with_fee_aggregated_path_call(aggregated_path), None);
+			payment_validate_with_fee_call_works(usdc, with_fee_aggregated_path_call(aggregated_path), None);
 
-			println!("###########################################################4");
-			// pre post dispatch
-			System::reset_events();
-			// 15925 USDC --> 2264106320 KAR
-			let pre = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0)
-				.pre_dispatch(&AccountId::from(BOB), &with_fee_currency_call(usdc), &INFO, 50)
-				.unwrap();
-			// println!("fee:{:?}", pre.3); // 2250001739
-			// println!("sur:{:?}", pre.4); // 750000580
-			// let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(50, &INFO, 0);
-			// println!("FEE:{:?}", fee); // 1500001159, fee + pre.4 = pre.3
-			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::post_dispatch(
-					Some(pre),
-					&INFO,
-					&POST_INFO,
-					50,
-					&Ok(())
-				)
-			);
-			for ev in System::events() {
-				if matches!(
-					ev.event,
-					Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
-						| Event::Dex(module_dex::Event::Swap { .. })
-				) {
-					println!("  🚀 {:?}", ev);
-				}
-			}
+			pre_post_dispatch_with_fee_call_works(usdc);
 		});
 }
 
-fn assert_aggregated_dex_event(
+fn aggregate_swap_test(usdc: CurrencyId) {
+	System::reset_events();
+	println!("###########################################################1");
+	println!(
+		"{:?}",
+		AcalaSwap::swap(
+			&AccountId::from(BOB),
+			usdc,
+			NATIVE_CURRENCY,
+			SwapLimit::ExactSupply(1_000_000, 0)
+		)
+	);
+	// Ok((1_000_000, 142_177_564_621)) ==> 1 USDC - 0.142 KAR
+	for ev in System::events() {
+		if matches!(
+			ev.event,
+			Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
+				| Event::Dex(module_dex::Event::Swap { .. })
+		) {
+			println!("  🌛 ExactSupply>>{:?}", ev);
+		}
+	}
+
+	System::reset_events();
+	println!("###########################################################2");
+	println!(
+		"{:?}",
+		AcalaSwap::swap(
+			&AccountId::from(BOB),
+			usdc,
+			NATIVE_CURRENCY,
+			SwapLimit::ExactTarget(Balance::MAX, 2_000_000_000)
+		)
+	);
+	for ev in System::events() {
+		if matches!(
+			ev.event,
+			Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
+				| Event::Dex(module_dex::Event::Swap { .. })
+		) {
+			println!("  🌏 ExactTarget>>{:?}", ev);
+		}
+	}
+	println!("###########################################################3");
+}
+
+fn payment_validate_with_fee_call_works(
 	_usd_token: CurrencyId,
 	with_fee_call: <Runtime as module_transaction_payment::Config>::Call,
 	len: Option<usize>,
@@ -900,6 +875,38 @@ fn assert_aggregated_dex_event(
 				| Event::Dex(module_dex::Event::Swap { .. })
 		) {
 			println!("  🔥 {:?}", ev);
+		}
+	}
+}
+
+fn pre_post_dispatch_with_fee_call_works(usdc: CurrencyId) {
+	println!("###########################################################4");
+	// pre post dispatch
+	System::reset_events();
+	// 15925 USDC --> 2264106320 KAR
+	let pre = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0)
+		.pre_dispatch(&AccountId::from(BOB), &with_fee_currency_call(usdc), &INFO, 50)
+		.unwrap();
+	// println!("fee:{:?}", pre.3); // 2250001739
+	// println!("sur:{:?}", pre.4); // 750000580
+	// let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(50, &INFO, 0);
+	// println!("FEE:{:?}", fee); // 1500001159, fee + pre.4 = pre.3
+	assert_ok!(
+		<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::post_dispatch(
+			Some(pre),
+			&INFO,
+			&POST_INFO,
+			50,
+			&Ok(())
+		)
+	);
+	for ev in System::events() {
+		if matches!(
+			ev.event,
+			Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped { .. })
+				| Event::Dex(module_dex::Event::Swap { .. })
+		) {
+			println!("  🚀 {:?}", ev);
 		}
 	}
 }
