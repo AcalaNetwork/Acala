@@ -282,6 +282,7 @@ impl module_transaction_payment::Config for Test {
 	type CustomFeeSurplus = CustomFeeSurplus;
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
+	type EVMBridge = ();
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]

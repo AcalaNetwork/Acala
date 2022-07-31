@@ -18,7 +18,7 @@
 
 use crate::setup::*;
 use crate::stable_asset::enable_stable_asset;
-use frame_support::weights::{DispatchClass, DispatchInfo, Pays, Weight};
+use frame_support::weights::{DispatchClass, DispatchInfo, Pays, PostDispatchInfo, Weight};
 use module_support::AggregatedSwapPath;
 use sp_runtime::{
 	traits::{AccountIdConversion, SignedExtension, UniqueSaturatedInto},
@@ -102,6 +102,10 @@ const CALL: <Runtime as frame_system::Config>::Call = Call::Currencies(module_cu
 pub const INFO: DispatchInfo = DispatchInfo {
 	weight: 100,
 	class: DispatchClass::Normal,
+	pays_fee: Pays::Yes,
+};
+pub const POST_INFO: PostDispatchInfo = PostDispatchInfo {
+	actual_weight: Some(80),
 	pays_fee: Pays::Yes,
 };
 

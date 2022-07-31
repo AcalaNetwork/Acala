@@ -1213,6 +1213,7 @@ impl module_transaction_payment::Config for Runtime {
 	type CustomFeeSurplus = CustomFeeSurplus;
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 }
 
 impl module_evm_accounts::Config for Runtime {

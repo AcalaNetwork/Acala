@@ -293,6 +293,7 @@ impl Config for Runtime {
 	type CustomFeeSurplus = CustomFeeSurplus;
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
+	type EVMBridge = ();
 }
 
 thread_local! {
