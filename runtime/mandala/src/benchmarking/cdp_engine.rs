@@ -18,13 +18,13 @@
 
 use crate::{
 	AccountId, Address, Amount, CdpEngine, CdpTreasury, CurrencyId, DefaultDebitExchangeRate, Dex, EmergencyShutdown,
-	ExistentialDeposits, GetNativeCurrencyId, MinimumDebitValue, NativeTokenExistentialDeposit, Price, Rate, Ratio,
-	Runtime, Timestamp, H160, MILLISECS_PER_BLOCK,
+	ExistentialDeposits, MinimumDebitValue, NativeTokenExistentialDeposit, Price, Rate, Ratio, Runtime, Timestamp,
+	H160, MILLISECS_PER_BLOCK,
 };
 
 use super::{
 	get_benchmarking_collateral_currency_ids,
-	utils::{dollar, feed_price, inject_liquidity, set_balance, LIQUID, STABLECOIN, STAKING},
+	utils::{dollar, feed_price, inject_liquidity, set_balance, LIQUID, NATIVE, STABLECOIN, STAKING},
 };
 use frame_benchmarking::account;
 use frame_support::traits::{Get, OnInitialize};
@@ -70,7 +70,7 @@ runtime_benchmarks! {
 			}
 			let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
-			let ed = if currency_id == GetNativeCurrencyId::get() {
+			let ed = if currency_id == NATIVE {
 				NativeTokenExistentialDeposit::get()
 			} else {
 				ExistentialDeposits::get(&currency_id)
