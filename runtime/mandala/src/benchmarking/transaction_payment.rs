@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{dollar, set_balance};
+use super::utils::{dollar, inject_liquidity, set_balance};
 use crate::{
 	AccountId, AssetRegistry, Balance, Currencies, CurrencyId, Dex, Event, GetLiquidCurrencyId, GetNativeCurrencyId,
 	GetStableCurrencyId, GetStakingCurrencyId, NativeTokenExistentialDeposit, Origin, Runtime, StableAsset, System,
@@ -29,7 +29,7 @@ use module_support::{AggregatedSwapPath, DEXManager, Ratio, SwapLimit};
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use primitives::currency::AssetMetadata;
-use sp_runtime::traits::{AccountIdConversion, One, UniqueSaturatedInto};
+use sp_runtime::traits::{AccountIdConversion, One};
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
@@ -41,32 +41,6 @@ const LIQUIDCOIN: CurrencyId = GetLiquidCurrencyId::get();
 
 fn assert_has_event(generic_event: Event) {
 	System::assert_has_event(generic_event.into());
-}
-
-fn inject_liquidity(
-	maker: AccountId,
-	currency_id_a: CurrencyId,
-	currency_id_b: CurrencyId,
-	max_amount_a: Balance,
-	max_amount_b: Balance,
-) -> Result<(), &'static str> {
-	// set balance
-	set_balance(currency_id_a, &maker, max_amount_a.unique_saturated_into());
-	set_balance(currency_id_b, &maker, max_amount_b.unique_saturated_into());
-
-	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
-
-	Dex::add_liquidity(
-		RawOrigin::Signed(maker.clone()).into(),
-		currency_id_a,
-		currency_id_b,
-		max_amount_a,
-		max_amount_b,
-		Default::default(),
-		false,
-	)?;
-
-	Ok(())
 }
 
 fn enable_fee_pool() -> (AccountId, Balance, Balance, Balance) {
@@ -85,6 +59,7 @@ fn enable_fee_pool() -> (AccountId, Balance, Balance, Balance) {
 		NATIVECOIN,
 		1_000 * dollar(STABLECOIN),
 		10_000 * dollar(NATIVECOIN),
+		false,
 	)
 	.unwrap();
 	assert!(Dex::get_swap_amount(
@@ -146,6 +121,7 @@ fn enable_stable_asset() {
 		NATIVECOIN,
 		100 * dollar(LIQUIDCOIN),
 		100 * dollar(NATIVECOIN),
+		false,
 	)
 	.unwrap();
 }
@@ -205,7 +181,7 @@ runtime_benchmarks! {
 		System::set_block_number(1);
 
 		let funder: AccountId = account("funder", 0, SEED);
-		inject_liquidity(funder.clone(), STABLECOIN, NATIVECOIN, 100 * dollar(STABLECOIN), 100 * dollar(NATIVECOIN))?;
+		inject_liquidity(funder.clone(), STABLECOIN, NATIVECOIN, 100 * dollar(STABLECOIN), 100 * dollar(NATIVECOIN), false)?;
 
 		let caller: AccountId = whitelisted_caller();
 		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());

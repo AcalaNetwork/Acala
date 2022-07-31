@@ -17,20 +17,19 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, Amount, Balance, CdpEngine, Currencies, CurrencyId, DepositPerAuthorization, Dex, ExistentialDeposits,
-	GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Honzon, Price, Rate, Ratio,
-	Runtime,
+	AccountId, Amount, CdpEngine, CurrencyId, DepositPerAuthorization, ExistentialDeposits, GetLiquidCurrencyId,
+	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Honzon, Price, Rate, Ratio, Runtime,
 };
 
 use super::{
 	get_benchmarking_collateral_currency_ids,
-	utils::{dollar, feed_price, set_balance},
+	utils::{dollar, feed_price, inject_liquidity, set_balance},
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_support::HonzonManager;
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::{Change, GetByKey, MultiCurrencyExtended};
+use orml_traits::{Change, GetByKey};
 use runtime_common::LCDOT;
 use sp_runtime::{
 	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
@@ -44,41 +43,6 @@ const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 const STAKING: CurrencyId = GetStakingCurrencyId::get();
 const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
-
-fn inject_liquidity(
-	maker: AccountId,
-	currency_id_a: CurrencyId,
-	currency_id_b: CurrencyId,
-	max_amount_a: Balance,
-	max_amount_b: Balance,
-	deposit: bool,
-) -> Result<(), &'static str> {
-	// set balance
-	<Currencies as MultiCurrencyExtended<_>>::update_balance(
-		currency_id_a,
-		&maker,
-		max_amount_a.unique_saturated_into(),
-	)?;
-	<Currencies as MultiCurrencyExtended<_>>::update_balance(
-		currency_id_b,
-		&maker,
-		max_amount_b.unique_saturated_into(),
-	)?;
-
-	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
-
-	Dex::add_liquidity(
-		RawOrigin::Signed(maker.clone()).into(),
-		currency_id_a,
-		currency_id_b,
-		max_amount_a,
-		max_amount_b,
-		Default::default(),
-		deposit,
-	)?;
-
-	Ok(())
-}
 
 runtime_benchmarks! {
 	{ Runtime, module_honzon }

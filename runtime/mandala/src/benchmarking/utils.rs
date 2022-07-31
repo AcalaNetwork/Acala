@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AcalaOracle, AccountId, AssetRegistry, Balance, Currencies, CurrencyId, ExistentialDeposits, GetNativeCurrencyId,
-	MinimumCount, NativeTokenExistentialDeposit, OperatorMembershipAcala, Origin, Price, Runtime,
+	AcalaOracle, AccountId, AssetRegistry, Balance, Currencies, CurrencyId, Dex, ExistentialDeposits,
+	GetNativeCurrencyId, MinimumCount, NativeTokenExistentialDeposit, OperatorMembershipAcala, Origin, Price, Runtime,
 };
 
 use frame_benchmarking::account;
@@ -30,7 +30,7 @@ use orml_traits::{GetByKey, MultiCurrencyExtended};
 use primitives::currency::AssetMetadata;
 use runtime_common::TokenInfo;
 use sp_runtime::{
-	traits::{SaturatedConversion, StaticLookup},
+	traits::{SaturatedConversion, StaticLookup, UniqueSaturatedInto},
 	DispatchResult,
 };
 use sp_std::prelude::*;
@@ -96,6 +96,41 @@ pub fn dollar(currency_id: CurrencyId) -> Balance {
 	} else {
 		panic!("{:?} not support decimals", currency_id);
 	}
+}
+
+pub fn inject_liquidity(
+	maker: AccountId,
+	currency_id_a: CurrencyId,
+	currency_id_b: CurrencyId,
+	max_amount_a: Balance,
+	max_amount_b: Balance,
+	deposit: bool,
+) -> Result<(), &'static str> {
+	// set balance
+	<Currencies as MultiCurrencyExtended<_>>::update_balance(
+		currency_id_a,
+		&maker,
+		max_amount_a.unique_saturated_into(),
+	)?;
+	<Currencies as MultiCurrencyExtended<_>>::update_balance(
+		currency_id_b,
+		&maker,
+		max_amount_b.unique_saturated_into(),
+	)?;
+
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
+
+	Dex::add_liquidity(
+		RawOrigin::Signed(maker.clone()).into(),
+		currency_id_a,
+		currency_id_b,
+		max_amount_a,
+		max_amount_b,
+		Default::default(),
+		deposit,
+	)?;
+
+	Ok(())
 }
 
 #[cfg(test)]

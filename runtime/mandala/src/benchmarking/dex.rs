@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::dollar;
+use super::utils::{dollar, inject_liquidity};
 use crate::{
-	AccountId, Balance, Currencies, CurrencyId, Dex, Event, ExtendedProvisioningBlocks, GetLiquidCurrencyId,
+	AccountId, Currencies, CurrencyId, Dex, Event, ExtendedProvisioningBlocks, GetLiquidCurrencyId,
 	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Runtime, System,
 };
 use frame_benchmarking::{account, whitelisted_caller};
@@ -42,41 +42,6 @@ const CURRENCY_LIST: [CurrencyId; 7] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC
 
 fn assert_last_event(generic_event: Event) {
 	System::assert_last_event(generic_event.into());
-}
-
-fn inject_liquidity(
-	maker: AccountId,
-	currency_id_a: CurrencyId,
-	currency_id_b: CurrencyId,
-	max_amount_a: Balance,
-	max_amount_b: Balance,
-	deposit: bool,
-) -> Result<(), &'static str> {
-	// set balance
-	<Currencies as MultiCurrencyExtended<_>>::update_balance(
-		currency_id_a,
-		&maker,
-		max_amount_a.unique_saturated_into(),
-	)?;
-	<Currencies as MultiCurrencyExtended<_>>::update_balance(
-		currency_id_b,
-		&maker,
-		max_amount_b.unique_saturated_into(),
-	)?;
-
-	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
-
-	Dex::add_liquidity(
-		RawOrigin::Signed(maker.clone()).into(),
-		currency_id_a,
-		currency_id_b,
-		max_amount_a,
-		max_amount_b,
-		Default::default(),
-		deposit,
-	)?;
-
-	Ok(())
 }
 
 runtime_benchmarks! {
