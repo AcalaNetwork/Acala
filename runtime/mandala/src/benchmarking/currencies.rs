@@ -16,11 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{dollar, lookup_of_account, set_balance};
-use crate::{
-	AccountId, Amount, Balance, Currencies, CurrencyId, GetNativeCurrencyId, GetStakingCurrencyId,
-	NativeTokenExistentialDeposit, Runtime, Tokens, TreasuryPalletId,
-};
+use super::utils::{dollar, lookup_of_account, set_balance, NATIVE, STAKING};
+use crate::{AccountId, Amount, Balance, Currencies, NativeTokenExistentialDeposit, Runtime, Tokens, TreasuryPalletId};
 
 use sp_std::prelude::*;
 
@@ -32,9 +29,6 @@ use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 
 const SEED: u32 = 0;
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_currencies }

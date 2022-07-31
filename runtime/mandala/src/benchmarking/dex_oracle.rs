@@ -16,21 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{dollar, inject_liquidity};
-use crate::{
-	AccountId, CurrencyId, DexOracle, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Runtime,
-	Timestamp,
-};
+use super::utils::{dollar, inject_liquidity, NATIVE, STABLECOIN, STAKING};
+use crate::{AccountId, DexOracle, Runtime, Timestamp};
 use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use primitives::TradingPair;
 use sp_std::prelude::*;
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_dex_oracle }

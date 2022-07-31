@@ -16,18 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CdpTreasury, Currencies, CurrencyId, Dex, GetStableCurrencyId, GetStakingCurrencyId, Runtime};
+use crate::{AccountId, CdpTreasury, Currencies, Dex, Runtime};
 
-use super::utils::{dollar, set_balance};
+use super::utils::{dollar, set_balance, STABLECOIN, STAKING};
 use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use module_support::{CDPTreasury, SwapLimit};
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
-
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_cdp_treasury }

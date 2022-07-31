@@ -18,7 +18,8 @@
 
 use crate::{
 	AcalaOracle, AccountId, AssetRegistry, Balance, Currencies, CurrencyId, Dex, ExistentialDeposits,
-	GetNativeCurrencyId, MinimumCount, NativeTokenExistentialDeposit, OperatorMembershipAcala, Origin, Price, Runtime,
+	GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumCount,
+	NativeTokenExistentialDeposit, OperatorMembershipAcala, Origin, Price, Runtime,
 };
 
 use frame_benchmarking::account;
@@ -34,6 +35,11 @@ use sp_runtime::{
 	DispatchResult,
 };
 use sp_std::prelude::*;
+
+pub const NATIVE: CurrencyId = GetNativeCurrencyId::get();
+pub const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
+pub const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
+pub const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 pub fn lookup_of_account(who: AccountId) -> <<Runtime as frame_system::Config>::Lookup as StaticLookup>::Source {
 	<Runtime as frame_system::Config>::Lookup::unlookup(who)
@@ -129,7 +135,10 @@ pub fn inject_liquidity(
 		Default::default(),
 		deposit,
 	)?;
+	Ok(())
+}
 
+pub fn initialize_swap_pools(maker: AccountId) -> Result<(), &'static str> {
 	Ok(())
 }
 

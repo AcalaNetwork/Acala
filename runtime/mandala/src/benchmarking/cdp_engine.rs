@@ -18,14 +18,13 @@
 
 use crate::{
 	AccountId, Address, Amount, CdpEngine, CdpTreasury, CurrencyId, DefaultDebitExchangeRate, Dex, EmergencyShutdown,
-	ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId,
-	MinimumDebitValue, NativeTokenExistentialDeposit, Price, Rate, Ratio, Runtime, Timestamp, H160,
-	MILLISECS_PER_BLOCK,
+	ExistentialDeposits, GetNativeCurrencyId, MinimumDebitValue, NativeTokenExistentialDeposit, Price, Rate, Ratio,
+	Runtime, Timestamp, H160, MILLISECS_PER_BLOCK,
 };
 
 use super::{
 	get_benchmarking_collateral_currency_ids,
-	utils::{dollar, feed_price, inject_liquidity, set_balance},
+	utils::{dollar, feed_price, inject_liquidity, set_balance, LIQUID, STABLECOIN, STAKING},
 };
 use frame_benchmarking::account;
 use frame_support::traits::{Get, OnInitialize};
@@ -40,10 +39,6 @@ use sp_runtime::{
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
-const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_cdp_engine }

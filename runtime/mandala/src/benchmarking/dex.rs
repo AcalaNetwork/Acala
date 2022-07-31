@@ -16,11 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{dollar, inject_liquidity};
-use crate::{
-	AccountId, Currencies, CurrencyId, Dex, Event, ExtendedProvisioningBlocks, GetLiquidCurrencyId,
-	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Runtime, System,
-};
+use super::utils::{dollar, inject_liquidity, LIQUID, NATIVE, STABLECOIN, STAKING};
+use crate::{AccountId, Currencies, CurrencyId, Dex, Event, ExtendedProvisioningBlocks, Runtime, System};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_dex::TradingPairStatus;
@@ -32,11 +29,6 @@ use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 const CURRENCY_LIST: [CurrencyId; 7] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC, VSKSM, RENBTC];
 

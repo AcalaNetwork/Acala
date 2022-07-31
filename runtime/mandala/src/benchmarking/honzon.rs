@@ -17,13 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, Amount, CdpEngine, CurrencyId, DepositPerAuthorization, ExistentialDeposits, GetLiquidCurrencyId,
-	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Honzon, Price, Rate, Ratio, Runtime,
+	AccountId, Amount, CdpEngine, CurrencyId, DepositPerAuthorization, ExistentialDeposits, Honzon, Price, Rate, Ratio,
+	Runtime,
 };
 
 use super::{
 	get_benchmarking_collateral_currency_ids,
-	utils::{dollar, feed_price, inject_liquidity, set_balance},
+	utils::{dollar, feed_price, inject_liquidity, set_balance, LIQUID, NATIVE, STABLECOIN, STAKING},
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
@@ -38,11 +38,6 @@ use sp_runtime::{
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
-const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_honzon }
