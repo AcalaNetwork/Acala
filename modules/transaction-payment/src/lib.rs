@@ -56,9 +56,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, MultiSignature, Percent, Perquintill,
 };
 use sp_std::prelude::*;
-use support::{
-	AggregatedSwapPath, BuyWeightRate, EVMBridge, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment,
-};
+use support::{AggregatedSwapPath, BuyWeightRate, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment};
 use xcm::opaque::latest::MultiLocation;
 
 mod mock;
@@ -344,9 +342,6 @@ pub mod module {
 
 		/// The origin which change swap balance threshold or enable charge fee pool.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
-
-		/// Evm Bridge for set evm origin when transfer erc20 token.
-		type EVMBridge: EVMBridge<Self::AccountId, PalletBalanceOf<Self>>;
 	}
 
 	#[pallet::type_value]
@@ -847,11 +842,6 @@ where
 						let fee =
 							Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
 						let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
-						if let Some(&currency) = fee_swap_path.first() {
-							if currency.is_erc20_currency_id() {
-								T::EVMBridge::set_origin(who.clone());
-							}
-						}
 						T::Swap::swap_by_aggregated_path(
 							who,
 							fee_aggregated_path,
@@ -871,9 +861,6 @@ where
 				} else {
 					(fee.saturating_add(custom_fee_surplus), custom_fee_surplus)
 				};
-				if currency_id.is_erc20_currency_id() {
-					T::EVMBridge::set_origin(who.clone());
-				}
 				if TokenExchangeRate::<T>::contains_key(currency_id) {
 					// token in charge fee pool should have `TokenExchangeRate` info.
 					Self::swap_from_pool_or_dex(who, fee_amount, *currency_id).map(|_| (who.clone(), fee_surplus))

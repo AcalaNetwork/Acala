@@ -1903,6 +1903,17 @@ impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 		Ok(())
 	}
 
+	fn validate(
+		&self,
+		who: &Self::AccountId,
+		_call: &Self::Call,
+		_info: &DispatchInfoOf<Self::Call>,
+		_len: usize,
+	) -> TransactionValidity {
+		ExtrinsicOrigin::<T>::set(Some(who.clone()));
+		Ok(ValidTransaction::default())
+	}
+
 	fn pre_dispatch(
 		self,
 		who: &Self::AccountId,

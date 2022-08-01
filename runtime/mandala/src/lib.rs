@@ -1058,8 +1058,8 @@ where
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			runtime_common::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
-			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			module_evm::SetEvmOrigin::<Runtime>::new(),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -1278,7 +1278,6 @@ impl module_transaction_payment::Config for Runtime {
 	type CustomFeeSurplus = CustomFeeSurplus;
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
-	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 }
 
 parameter_types! {
@@ -1823,7 +1822,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 					return Err(InvalidTransaction::Stale);
 				}
 
-				let (_, _, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
+				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
 
 				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
 					// require immortal
@@ -1900,8 +1899,8 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	runtime_common::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 	module_evm::SetEvmOrigin<Runtime>,
+	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<
@@ -2549,8 +2548,8 @@ mod tests {
 				frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
 				runtime_common::CheckNonce::<Runtime>::from(3),
 				frame_system::CheckWeight::<Runtime>::new(),
-				module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
 				module_evm::SetEvmOrigin::<Runtime>::new(),
+				module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
 			);
 
 			let mut expected_extra = extra.clone();
@@ -2637,8 +2636,8 @@ mod tests {
 			frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
 			runtime_common::CheckNonce::<Runtime>::from(0),
 			frame_system::CheckWeight::<Runtime>::new(),
-			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
 			module_evm::SetEvmOrigin::<Runtime>::new(),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
 		);
 
 		// correct payer signature
