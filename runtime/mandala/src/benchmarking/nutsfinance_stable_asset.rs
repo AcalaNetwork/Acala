@@ -79,10 +79,10 @@ runtime_benchmarks! {
 			let multiple: u128 = (i + 1).into();
 			assets.push(CURRENCY_LIST[i_idx]);
 			precisions.push(1u128);
-			mint_args.push(10000000000u128 * multiple);
+			mint_args.push(10000000000000u128 * multiple);
 		}
 		for asset in &CURRENCY_LIST {
-			set_balance_fungibles(*asset, &tester, 200000000000u128);
+			set_balance_fungibles(*asset, &tester, 200000000000000u128);
 		}
 		create_stable_pools(assets, precisions)?;
 		let pool_id = StableAsset::pool_count() - 1;
@@ -99,10 +99,10 @@ runtime_benchmarks! {
 			let multiple: u128 = (i + 1).into();
 			assets.push(CURRENCY_LIST[i_idx]);
 			precisions.push(1u128);
-			mint_args.push(10000000000u128 * multiple);
+			mint_args.push(10000000000000u128 * multiple);
 		}
 		for asset in &CURRENCY_LIST {
-			set_balance_fungibles(*asset, &tester, 200000000000u128);
+			set_balance_fungibles(*asset, &tester, 200000000000000u128);
 		}
 		create_stable_pools(assets, precisions)?;
 		let pool_id = StableAsset::pool_count() - 1;
@@ -121,11 +121,11 @@ runtime_benchmarks! {
 			let multiple: u128 = (i + 1).into();
 			assets.push(CURRENCY_LIST[i_idx]);
 			precisions.push(1u128);
-			mint_args.push(10000000000u128 * multiple);
+			mint_args.push(10000000000000u128 * multiple);
 			redeem_args.push(0u128);
 		}
 		for asset in &CURRENCY_LIST {
-			set_balance_fungibles(*asset, &tester, 200000000000u128);
+			set_balance_fungibles(*asset, &tester, 200000000000000u128);
 		}
 		create_stable_pools(assets, precisions)?;
 		let pool_id = StableAsset::pool_count() - 1;
@@ -144,10 +144,10 @@ runtime_benchmarks! {
 			let multiple: u128 = (i + 1).into();
 			assets.push(CURRENCY_LIST[i_idx]);
 			precisions.push(1u128);
-			mint_args.push(10000000000u128 * multiple);
+			mint_args.push(10000000000000u128 * multiple);
 		}
 		for asset in &CURRENCY_LIST {
-			set_balance_fungibles(*asset, &tester, 200000000000u128);
+			set_balance_fungibles(*asset, &tester, 200000000000000u128);
 		}
 		create_stable_pools(assets, precisions)?;
 		let pool_id = StableAsset::pool_count() - 1;
@@ -166,11 +166,11 @@ runtime_benchmarks! {
 			let multiple: u128 = (i + 1).into();
 			assets.push(CURRENCY_LIST[i_idx]);
 			precisions.push(1u128);
-			mint_args.push(10000000000u128 * multiple);
+			mint_args.push(10000000000000u128 * multiple);
 			redeem_args.push(500000u128);
 		}
 		for asset in &CURRENCY_LIST {
-			set_balance_fungibles(*asset, &tester, 200000000000u128);
+			set_balance_fungibles(*asset, &tester, 200000000000000u128);
 		}
 		create_stable_pools(assets, precisions)?;
 		let pool_id = StableAsset::pool_count() - 1;
