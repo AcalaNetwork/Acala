@@ -1778,6 +1778,9 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	runtime_common::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
+	// `SetEvmOrigin` needs ahead of `ChargeTransactionPayment`, we set origin in `SetEvmOrigin::validate()`, then
+	// `ChargeTransactionPayment::validate()` can process erc20 token transfer successfully in the case of using erc20
+	// as fee token.
 	module_evm::SetEvmOrigin<Runtime>,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
