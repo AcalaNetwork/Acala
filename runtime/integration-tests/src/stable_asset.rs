@@ -320,6 +320,7 @@ fn three_usd_pool_works() {
 
 			let set_evm_origin = module_evm::SetEvmOrigin::<Runtime>::new();
 			let pre = set_evm_origin
+				.clone()
 				.pre_dispatch(&AccountId::from(BOB), &with_fee_currency_call(usdc), &INFO, 50)
 				.unwrap();
 
@@ -341,6 +342,25 @@ fn three_usd_pool_works() {
 				Balance,
 			>>::get_origin();
 			assert_eq!(origin, None);
+
+			// Origin is None, transfer erc20 failed.
+			assert_noop!(
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
+					&AccountId::from(BOB),
+					&with_fee_currency_call(usdc),
+					&INFO,
+					50
+				),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+
+			// set origin in SetEvmOrigin::validate() then transfer erc20 will success.
+			assert_ok!(set_evm_origin.validate(&AccountId::from(BOB), &with_fee_currency_call(usdc), &INFO, 50));
+			let origin = <module_evm_bridge::EVMBridge<Runtime> as module_support::evm::EVMBridge<
+				AccountId,
+				Balance,
+			>>::get_origin();
+			assert_eq!(origin, Some(AccountId::from(BOB)));
 
 			// USDC=Erc20(contract) or USDT=ForeignAsset(0) as fee token.
 			// before USDC/USDT enabled as fee pool, it works by direct swap.
