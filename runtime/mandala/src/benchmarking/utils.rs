@@ -146,7 +146,7 @@ pub fn register_stable_asset() -> DispatchResult {
 		name: b"Token Name".to_vec(),
 		symbol: b"TN".to_vec(),
 		decimals: 12,
-		minimal_balance: 1,
+		minimal_balance: 1_000_000_000,
 	};
 	AssetRegistry::register_stable_asset(RawOrigin::Root.into(), Box::new(asset_metadata.clone()))
 }
