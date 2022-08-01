@@ -2088,11 +2088,15 @@ fn offchain_worker_trigger_unsigned_triangle_swap() {
 		assert_ok!(DexModule::set_triangle_swap_info(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
-			DOT,
-			BTC,
 			1000,
 			1900,
 		));
+		System::assert_last_event(Event::DexModule(crate::Event::SetupTriangleSwapInfo {
+			currency_id: AUSD,
+			supply_amount: 1000,
+			threshold: 1900,
+		}));
+
 		let supply_threshold = TriangleSupplyThreshold::<Runtime>::get(AUSD).unwrap();
 		assert_eq!(supply_threshold, (1000, 1900));
 		assert_ok!(Tokens::update_balance(

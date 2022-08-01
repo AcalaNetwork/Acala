@@ -219,8 +219,6 @@ pub mod module {
 		NotAllowedRefund,
 		/// Cannot swap
 		CannotSwap,
-		/// Triangle swap info exist.
-		TriangleSwapInfoExist,
 		/// Triangle swap info is invalid.
 		TriangleSwapInfoInvalid,
 	}
@@ -296,10 +294,8 @@ pub mod module {
 			target_amount: Balance,
 		},
 		/// Add Triangle info.
-		AddTriangleSwapInfo {
-			currency_1: CurrencyId,
-			currency_2: CurrencyId,
-			currency_3: CurrencyId,
+		SetupTriangleSwapInfo {
+			currency_id: CurrencyId,
 			supply_amount: Balance,
 			threshold: Balance,
 		},
@@ -344,14 +340,6 @@ pub mod module {
 	#[pallet::getter(fn trading_pair_nodes)]
 	pub type TradingPairNodes<T: Config> =
 		StorageMap<_, Twox64Concat, CurrencyId, BoundedVec<CurrencyId, T::SingleTokenTradingLimit>, ValueQuery>;
-
-	/// Triangle path used for offchain arbitrage.
-	///
-	/// TriangleTradingPath: map (CurrencyA, CurrencyB, CurrencyC) => ()
-	#[pallet::storage]
-	#[pallet::getter(fn triangle_trading_path)]
-	pub type TriangleTradingPath<T: Config> =
-		StorageMap<_, Twox64Concat, (CurrencyId, CurrencyId, CurrencyId), (), ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn triangle_supply_threshold)]
@@ -950,14 +938,12 @@ pub mod module {
 		#[transactional]
 		pub fn set_triangle_swap_info(
 			origin: OriginFor<T>,
-			currency_1: CurrencyId,
-			currency_2: CurrencyId,
-			currency_3: CurrencyId,
+			currency_id: CurrencyId,
 			#[pallet::compact] supply_amount: Balance,
 			#[pallet::compact] threshold: Balance,
 		) -> DispatchResult {
 			T::ListingOrigin::ensure_origin(origin)?;
-			Self::do_set_triangle_swap_info(currency_1, currency_2, currency_3, supply_amount, threshold)
+			Self::do_set_triangle_swap_info(currency_id, supply_amount, threshold)
 		}
 	}
 
@@ -998,10 +984,6 @@ impl<T: Config> Pallet<T> {
 		T::TreasuryPallet::get().into_account_truncating()
 	}
 
-	pub fn get_trading_pair_keys() -> Vec<CurrencyId> {
-		TradingPairNodes::<T>::iter_keys().collect()
-	}
-
 	fn submit_triangle_swap_tx(currency_1: CurrencyId, currency_2: CurrencyId, currency_3: CurrencyId) {
 		let call = Call::<T>::triangle_swap {
 			currency_1,
@@ -1018,11 +1000,6 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn _offchain_worker(now: T::BlockNumber) -> Result<(), OffchainErr> {
-		// let trading_currency_ids = Self::get_trading_pair_keys();
-		// if trading_currency_ids.len().is_zero() {
-		// 	return Ok(());
-		// }
-
 		// acquire offchain worker lock
 		let lock_expiration = Duration::from_millis(LOCK_DURATION);
 		let mut lock = StorageLock::<'_, Time>::with_deadline(OFFCHAIN_WORKER_LOCK, lock_expiration);
@@ -1054,7 +1031,7 @@ impl<T: Config> Pallet<T> {
 							*maybe_trading_tokens = trading_tokens;
 						}
 						_ => {
-							log::debug!("Too many trading pair for token:{:?}.", currency_id);
+							log::debug!(target: "dex-bot", "Too many trading pair for token:{:?}.", currency_id);
 						}
 					}
 					Ok(())
@@ -1109,10 +1086,9 @@ impl<T: Config> Pallet<T> {
 
 		let iteration_end_time = sp_io::offchain::timestamp();
 		log::debug!(
-			target: "dex offchain worker",
-			"iteration info:\n max iterations is {:?}\n start key: {:?}, iterate count: {:?}\n iteration start at: {:?}, end at: {:?}, execution time: {:?}\n",
+			target: "dex-bot",
+			"max iterations: {:?} start key: {:?}, count: {:?} start: {:?}, end: {:?}, cost: {:?}",
 			max_iterations,
-			// currency_id,
 			start_key,
 			iteration_count,
 			iteration_start_time,
@@ -1135,41 +1111,17 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn do_set_triangle_swap_info(
-		currency_1: CurrencyId,
-		currency_2: CurrencyId,
-		currency_3: CurrencyId,
+		currency_id: CurrencyId,
 		supply_amount: Balance,
 		threshold: Balance,
 	) -> DispatchResult {
 		ensure!(threshold > supply_amount, Error::<T>::TriangleSwapInfoInvalid);
-		let tuple = (currency_1, currency_2, currency_3);
-		ensure!(
-			!TriangleTradingPath::<T>::contains_key(tuple),
-			Error::<T>::TriangleSwapInfoExist
-		);
-		// A-B-C-A has other variant, should ignore it if we already have A-B-C-A
-		let duplicate_currencies = vec![
-			(currency_1, currency_3, currency_2),
-			(currency_2, currency_3, currency_1),
-			(currency_2, currency_1, currency_3),
-			(currency_3, currency_1, currency_2),
-			(currency_3, currency_2, currency_1),
-		];
-		// error if input is (A,B,C) variant. i.e. (A,C,B),(B,A,C) etc.
-		ensure!(
-			!duplicate_currencies.contains(&tuple),
-			Error::<T>::TriangleSwapInfoInvalid
-		);
-		TriangleTradingPath::<T>::insert(tuple, ());
-
-		TriangleSupplyThreshold::<T>::try_mutate(currency_1, |maybe_supply_threshold| -> DispatchResult {
+		TriangleSupplyThreshold::<T>::try_mutate(currency_id, |maybe_supply_threshold| -> DispatchResult {
 			*maybe_supply_threshold = Some((supply_amount, threshold));
 			Ok(())
 		})?;
-		Self::deposit_event(Event::AddTriangleSwapInfo {
-			currency_1,
-			currency_2,
-			currency_3,
+		Self::deposit_event(Event::SetupTriangleSwapInfo {
+			currency_id,
 			supply_amount,
 			threshold,
 		});
@@ -1179,8 +1131,6 @@ impl<T: Config> Pallet<T> {
 	/// Triangle swap of path: `A->B->C->A`, the final output should be large than input.
 	fn do_triangle_swap(current: (CurrencyId, CurrencyId, CurrencyId)) -> DispatchResult {
 		if let Some((supply_amount, minimum_amount)) = TriangleSupplyThreshold::<T>::get(&current.0) {
-			// let minimum_amount = supply_amount.saturating_add(minimum_amount);
-
 			// A-B-C-A has two kind of swap: A-B/B-C-A or A-B-C/C-A, either one is ok.
 			let first_path: Vec<CurrencyId> = vec![current.0, current.1, current.2];
 			let second_path: Vec<CurrencyId> = vec![current.2, current.0];
