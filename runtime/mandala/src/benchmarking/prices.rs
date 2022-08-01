@@ -18,7 +18,7 @@
 
 use crate::{Origin, Prices, Runtime};
 
-use super::utils::{dollar, feed_price, STABLECOIN};
+use super::utils::{dollar, feed_price, STAKING};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_std::vec;
@@ -28,14 +28,14 @@ runtime_benchmarks! {
 
 	lock_price {
 		// feed price
-		feed_price(vec![(STABLECOIN, dollar(STABLECOIN).into())])?;
-	}: _(RawOrigin::Root, STABLECOIN)
+		feed_price(vec![(STAKING, dollar(STAKING).into())])?;
+	}: _(RawOrigin::Root, STAKING)
 
 	unlock_price {
 		// feed price
-		feed_price(vec![(STABLECOIN, dollar(STABLECOIN).into())])?;
-		Prices::lock_price(Origin::root(), STABLECOIN)?;
-	}: _(RawOrigin::Root, STABLECOIN)
+		feed_price(vec![(STAKING, dollar(STAKING).into())])?;
+		Prices::lock_price(Origin::root(), STAKING)?;
+	}: _(RawOrigin::Root, STAKING)
 }
 
 #[cfg(test)]
