@@ -17,29 +17,32 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AcalaOracle, AccountId, AssetRegistry, Balance, Currencies, CurrencyId, Dex, ExistentialDeposits,
+	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Balance, Currencies, CurrencyId, Dex, ExistentialDeposits,
 	GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumCount,
-	NativeTokenExistentialDeposit, OperatorMembershipAcala, Origin, Price, Runtime,
+	NativeTokenExistentialDeposit, OperatorMembershipAcala, Origin, Price, Runtime, StableAsset,
 };
 
 use frame_benchmarking::account;
 use frame_support::traits::tokens::fungibles;
 use frame_support::{assert_ok, traits::Contains};
 use frame_system::RawOrigin;
-use module_support::Erc20InfoMapping;
+use module_support::{AggregatedSwapPath, Erc20InfoMapping};
 use orml_traits::{GetByKey, MultiCurrencyExtended};
 use primitives::currency::AssetMetadata;
-use runtime_common::TokenInfo;
+use runtime_common::{TokenInfo, LCDOT};
 use sp_runtime::{
 	traits::{SaturatedConversion, StaticLookup, UniqueSaturatedInto},
 	DispatchResult,
 };
 use sp_std::prelude::*;
 
+pub type SwapPath = AggregatedSwapPath<CurrencyId>;
+
 pub const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 pub const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 pub const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
 pub const STAKING: CurrencyId = GetStakingCurrencyId::get();
+const SEED: u32 = 0;
 
 pub fn lookup_of_account(who: AccountId) -> <<Runtime as frame_system::Config>::Lookup as StaticLookup>::Source {
 	<Runtime as frame_system::Config>::Lookup::unlookup(who)
@@ -138,7 +141,111 @@ pub fn inject_liquidity(
 	Ok(())
 }
 
+pub fn register_stable_asset() -> DispatchResult {
+	let asset_metadata = AssetMetadata {
+		name: b"Token Name".to_vec(),
+		symbol: b"TN".to_vec(),
+		decimals: 12,
+		minimal_balance: 1,
+	};
+	AssetRegistry::register_stable_asset(RawOrigin::Root.into(), Box::new(asset_metadata.clone()))
+}
+
+pub fn create_stable_pools(assets: Vec<CurrencyId>, precisions: Vec<u128>) -> DispatchResult {
+	let pool_asset = CurrencyId::StableAssetPoolToken(0);
+	let mint_fee = 10000000u128;
+	let swap_fee = 20000000u128;
+	let redeem_fee = 50000000u128;
+	let intial_a = 10000u128;
+	let fee_recipient: AccountId = account("fee", 0, SEED);
+	let yield_recipient: AccountId = account("yield", 1, SEED);
+
+	register_stable_asset()?;
+	StableAsset::create_pool(
+		RawOrigin::Root.into(),
+		pool_asset,
+		assets,
+		precisions,
+		mint_fee,
+		swap_fee,
+		redeem_fee,
+		intial_a,
+		fee_recipient,
+		yield_recipient,
+		1000000000000000000u128,
+	)?;
+
+	Ok(())
+}
+
+/// Initializes all pools used in AggregatedDex `Swap` for trading to stablecoin
 pub fn initialize_swap_pools(maker: AccountId) -> Result<(), &'static str> {
+	// Inject liquidity into all possible `AlternativeSwapPathJointList`
+	inject_liquidity(
+		maker.clone(),
+		LIQUID,
+		STABLECOIN,
+		10_000 * dollar(LIQUID),
+		10_000 * dollar(STABLECOIN),
+		false,
+	)?;
+	inject_liquidity(
+		maker.clone(),
+		STAKING,
+		LIQUID,
+		10_000 * dollar(STAKING),
+		10_000 * dollar(LIQUID),
+		false,
+	)?;
+
+	// purposly inject too little liquidity to have failed path, still reads dexs to check for viable
+	// swap paths
+	inject_liquidity(
+		maker.clone(),
+		STAKING,
+		STABLECOIN,
+		10 * dollar(STAKING),
+		10 * dollar(STABLECOIN),
+		false,
+	)?;
+	inject_liquidity(
+		maker.clone(),
+		LCDOT,
+		STABLECOIN,
+		dollar(LCDOT),
+		dollar(STABLECOIN),
+		false,
+	)?;
+	inject_liquidity(maker.clone(), LCDOT, STAKING, dollar(LCDOT), dollar(STAKING), false)?;
+
+	// Add and initialize stable pools, is manually added with changes to runtime
+	let assets_1 = vec![STAKING, LIQUID];
+	create_stable_pools(assets_1.clone(), vec![1, 1])?;
+	for asset in assets_1 {
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(asset, &maker, 1_000_000_000_000_000)?;
+	}
+	StableAsset::mint(
+		RawOrigin::Signed(maker.clone()).into(),
+		0,
+		vec![1_000_000_000_000, 1_000_000_000_000],
+		0,
+	)?;
+
+	// Adds `AggregatedSwapPaths`, also mirrors runtimes state
+	AggregatedDex::update_aggregated_swap_paths(
+		RawOrigin::Root.into(),
+		vec![
+			(
+				(STAKING, STABLECOIN),
+				Some(vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LIQUID, STABLECOIN])]),
+			),
+			(
+				(LIQUID, STABLECOIN),
+				Some(vec![SwapPath::Taiga(0, 1, 0), SwapPath::Dex(vec![STAKING, STABLECOIN])]),
+			),
+		],
+	)?;
+
 	Ok(())
 }
 
