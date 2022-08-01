@@ -8,8 +8,8 @@ x = re.search(regex, os.getenv("GITHUB_REF"))
 chain = x.group(1)
 version = x.group(2)
 
-branches = os.popen("git branch -a | grep release-{}-".format(chain)).read().split("\n")
-branches = list(map(lambda x: x.strip(), branches))
+branches = os.popen("git branch -a | grep remotes/origin/release-{}-".format(chain)).read().split("\n")
+branches = map(lambda x: x.strip(), branches)
 branches = list(filter(None, branches))
 # select previous branch
 previous_branches = branches[-2]
