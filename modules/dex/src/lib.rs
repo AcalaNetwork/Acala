@@ -35,17 +35,24 @@
 
 use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
-use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
-use frame_system::pallet_prelude::*;
+use frame_system::{
+	offchain::{SendTransactionTypes, SubmitTransaction},
+	pallet_prelude::*,
+};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
 use scale_info::TypeInfo;
 use sp_core::{H160, U256};
 use sp_runtime::{
-	traits::{AccountIdConversion, One, Saturating, UniqueSaturatedInto, Zero},
+	offchain::{
+		storage::StorageValueRef,
+		storage_lock::{StorageLock, Time},
+		Duration,
+	},
+	traits::{AccountIdConversion, One, Saturating, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
-use sp_std::{prelude::*, vec};
+use sp_std::{collections::btree_map::BTreeMap, prelude::*, vec};
 use support::{DEXIncentives, DEXManager, Erc20InfoMapping, ExchangeRate, Ratio, SwapLimit};
 
 mod mock;
@@ -55,6 +62,12 @@ pub mod weights;
 pub use module::*;
 use orml_utilities::OffchainErr;
 pub use weights::WeightInfo;
+
+pub const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/dex-bot/data/";
+pub const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/dex-bot/lock/";
+pub const OFFCHAIN_WORKER_MAX_ITERATIONS: &[u8] = b"acala/dex-bot/max-iterations/";
+pub const LOCK_DURATION: u64 = 100;
+pub const DEFAULT_MAX_ITERATIONS: u32 = 100;
 
 /// Parameters of TradingPair in Provisioning status
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, PartialEq, Eq, MaxEncodedLen, TypeInfo)]
@@ -117,6 +130,14 @@ pub mod module {
 		/// The limit for length of trading path
 		#[pallet::constant]
 		type TradingPathLimit: Get<u32>;
+
+		/// The limit of one Currency to all other direct trading token.
+		#[pallet::constant]
+		type SingleTokenTradingLimit: Get<u32>;
+
+		/// The frequency block number to update `TradingPairNodes`.
+		#[pallet::constant]
+		type TradingKeysUpdateFrequency: Get<Self::BlockNumber>;
 
 		/// The DEX's module id, keep all assets in DEX.
 		#[pallet::constant]
@@ -315,6 +336,14 @@ pub mod module {
 	#[pallet::getter(fn initial_share_exchange_rates)]
 	pub type InitialShareExchangeRates<T: Config> =
 		StorageMap<_, Twox64Concat, TradingPair, (ExchangeRate, ExchangeRate), ValueQuery>;
+
+	/// Direct trading pair token list of specify CurrencyId.
+	///
+	/// TradingPairNodes: map CurrencyId => vec![CurrencyId]
+	#[pallet::storage]
+	#[pallet::getter(fn trading_pair_nodes)]
+	pub type TradingPairNodes<T: Config> =
+		StorageMap<_, Twox64Concat, CurrencyId, BoundedVec<CurrencyId, T::SingleTokenTradingLimit>, ValueQuery>;
 
 	/// Triangle path used for offchain arbitrage.
 	///
@@ -969,6 +998,10 @@ impl<T: Config> Pallet<T> {
 		T::TreasuryPallet::get().into_account_truncating()
 	}
 
+	pub fn get_trading_pair_keys() -> Vec<CurrencyId> {
+		TradingPairNodes::<T>::iter_keys().collect()
+	}
+
 	fn submit_triangle_swap_tx(currency_1: CurrencyId, currency_2: CurrencyId, currency_3: CurrencyId) {
 		let call = Call::<T>::triangle_swap {
 			currency_1,
@@ -978,23 +1011,126 @@ impl<T: Config> Pallet<T> {
 		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
 			log::info!(
 				target: "dex-bot",
-				"offchain worker: submit unsigned auction A={:?},B={:?},C={:?}, failed: {:?}",
+				"offchain worker: submit unsigned swap A={:?},B={:?},C={:?}, failed: {:?}",
 				currency_1, currency_2, currency_3, err,
 			);
 		}
 	}
 
 	fn _offchain_worker(now: T::BlockNumber) -> Result<(), OffchainErr> {
-		let keys: Vec<(CurrencyId, CurrencyId, CurrencyId)> = TriangleTradingPath::<T>::iter_keys().collect();
-		if keys.is_empty() {
-			// find and store triangle path, or we could manual add trading path by dispatch call.
-			return Ok(());
+		// let trading_currency_ids = Self::get_trading_pair_keys();
+		// if trading_currency_ids.len().is_zero() {
+		// 	return Ok(());
+		// }
+
+		// acquire offchain worker lock
+		let lock_expiration = Duration::from_millis(LOCK_DURATION);
+		let mut lock = StorageLock::<'_, Time>::with_deadline(OFFCHAIN_WORKER_LOCK, lock_expiration);
+		let mut guard = lock.try_lock().map_err(|_| OffchainErr::OffchainLock)?;
+		// get the max iterations config
+		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
+			.get::<u32>()
+			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
+			.unwrap_or(DEFAULT_MAX_ITERATIONS);
+		let mut to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
+
+		// update `TradingPairNodes` every `TradingKeysUpdateFrequency` interval.
+		if now % T::TradingKeysUpdateFrequency::get() == Zero::zero() {
+			let mut trading_pair_values_map: BTreeMap<CurrencyId, Vec<CurrencyId>> = BTreeMap::new();
+			TradingPairStatuses::<T>::iter()
+				.filter(|(_, status)| status.enabled())
+				.for_each(|(pair, _)| {
+					trading_pair_values_map
+						.entry(pair.first())
+						.or_insert_with(Vec::<CurrencyId>::new)
+						.push(pair.second());
+				});
+			for (currency_id, trading_tokens) in trading_pair_values_map {
+				let _ = TradingPairNodes::<T>::try_mutate(currency_id, |maybe_trading_tokens| -> DispatchResult {
+					let trading_tokens: Result<BoundedVec<CurrencyId, T::SingleTokenTradingLimit>, _> =
+						trading_tokens.try_into();
+					match trading_tokens {
+						Ok(trading_tokens) => {
+							*maybe_trading_tokens = trading_tokens;
+						}
+						_ => {
+							log::debug!("Too many trading pair for token:{:?}.", currency_id);
+						}
+					}
+					Ok(())
+				});
+			}
 		}
 
-		let block: u64 = now.unique_saturated_into();
-		let index: u64 = block % (keys.len() as u64);
-		let current: (CurrencyId, CurrencyId, CurrencyId) = keys[index as usize];
-		Self::submit_triangle_swap_tx(current.0, current.1, current.2);
+		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
+		let mut iterator = match start_key.clone() {
+			Some(key) => TradingPairNodes::<T>::iter_from(key),
+			None => TradingPairNodes::<T>::iter(),
+		};
+
+		let mut finished = true;
+		let mut iteration_count = 0;
+		let iteration_start_time = sp_io::offchain::timestamp();
+
+		let enabled_trading_pair: Vec<TradingPair> = TradingPairStatuses::<T>::iter()
+			.filter(|(_, status)| status.enabled())
+			.map(|(pair, _)| pair)
+			.collect();
+
+		#[allow(clippy::while_let_on_iterator)]
+		'outer: while let Some((currency_id, trading_tokens)) = iterator.next() {
+			let len = trading_tokens.len();
+			if len < 2 {
+				continue;
+			}
+			for i in 0..(len - 1) {
+				for j in (i + 1)..len {
+					iteration_count += 1;
+
+					if let Some(pair) = TradingPair::from_currency_ids(trading_tokens[i], trading_tokens[j]) {
+						if !enabled_trading_pair.contains(&pair) {
+							continue;
+						}
+
+						Self::submit_triangle_swap_tx(currency_id, pair.first(), pair.second());
+					}
+
+					// inner iterator consider as iterations too.
+					if iteration_count == max_iterations {
+						finished = false;
+						break 'outer;
+					}
+
+					// extend offchain worker lock
+					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
+				}
+			}
+		}
+
+		let iteration_end_time = sp_io::offchain::timestamp();
+		log::debug!(
+			target: "dex offchain worker",
+			"iteration info:\n max iterations is {:?}\n start key: {:?}, iterate count: {:?}\n iteration start at: {:?}, end at: {:?}, execution time: {:?}\n",
+			max_iterations,
+			// currency_id,
+			start_key,
+			iteration_count,
+			iteration_start_time,
+			iteration_end_time,
+			iteration_end_time.diff(&iteration_start_time)
+		);
+
+		// if iteration for map storage finished, clear to be continue record
+		// otherwise, update to be continue record
+		if finished {
+			to_be_continue.clear();
+		} else {
+			to_be_continue.set(&iterator.last_raw_key());
+		}
+
+		// Consume the guard but **do not** unlock the underlying lock.
+		guard.forget();
+
 		Ok(())
 	}
 
@@ -1005,7 +1141,7 @@ impl<T: Config> Pallet<T> {
 		supply_amount: Balance,
 		threshold: Balance,
 	) -> DispatchResult {
-		ensure!(supply_amount > threshold, Error::<T>::TriangleSwapInfoInvalid);
+		ensure!(threshold > supply_amount, Error::<T>::TriangleSwapInfoInvalid);
 		let tuple = (currency_1, currency_2, currency_3);
 		ensure!(
 			!TriangleTradingPath::<T>::contains_key(tuple),
@@ -1043,7 +1179,7 @@ impl<T: Config> Pallet<T> {
 	/// Triangle swap of path: `A->B->C->A`, the final output should be large than input.
 	fn do_triangle_swap(current: (CurrencyId, CurrencyId, CurrencyId)) -> DispatchResult {
 		if let Some((supply_amount, minimum_amount)) = TriangleSupplyThreshold::<T>::get(&current.0) {
-			let minimum_amount = supply_amount.saturating_add(minimum_amount);
+			// let minimum_amount = supply_amount.saturating_add(minimum_amount);
 
 			// A-B-C-A has two kind of swap: A-B/B-C-A or A-B-C/C-A, either one is ok.
 			let first_path: Vec<CurrencyId> = vec![current.0, current.1, current.2];
@@ -1084,36 +1220,6 @@ impl<T: Config> Pallet<T> {
 			}
 		}
 		Ok(())
-	}
-
-	fn _compute_triangle_trading_path() {
-		use sp_std::collections::btree_map::BTreeMap;
-		let enabled_trading_pair: Vec<TradingPair> = TradingPairStatuses::<T>::iter()
-			.filter(|(_, status)| status.enabled())
-			.map(|(pair, _)| pair)
-			.collect();
-		// if (A,B),(A,C),(A,D) are trading pair, then (A, [B,C,D]) is put into map.
-		let mut trading_pair_values_map: BTreeMap<CurrencyId, Vec<CurrencyId>> = BTreeMap::new();
-		for pair in enabled_trading_pair.clone() {
-			trading_pair_values_map
-				.entry(pair.first())
-				.or_insert_with(Vec::<CurrencyId>::new)
-				.push(pair.second());
-		}
-		let mut final_triangle_path = Vec::<(CurrencyId, CurrencyId, CurrencyId)>::new();
-		trading_pair_values_map.into_iter().for_each(|(start, v)| {
-			let len = v.len();
-			// for each A, validate if two of [B,C,D] can be form triangle path.
-			for i in 0..(len - 1) {
-				for j in (i + 1)..len {
-					if let Some(pair) = TradingPair::from_currency_ids(v[i], v[j]) {
-						if enabled_trading_pair.contains(&pair) {
-							final_triangle_path.push((start, pair.first(), pair.second()));
-						}
-					}
-				}
-			}
-		});
 	}
 
 	fn try_mutate_liquidity_pool<R, E>(

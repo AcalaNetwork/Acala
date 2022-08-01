@@ -23,14 +23,31 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	ACAJointSwap, AUSDBTCPair, AUSDDOTPair, AUSDJointSwap, DOTBTCPair, DexModule, Event, ExtBuilder, ListingOrigin,
-	Origin, Runtime, System, Tokens, ACA, ALICE, AUSD, AUSD_DOT_POOL_RECORD, BOB, BTC, CAROL, DOT,
+	ACAJointSwap, AUSDBTCPair, AUSDDOTPair, AUSDJointSwap, Call as MockCall, DOTBTCPair, DexModule, Event, ExtBuilder,
+	ListingOrigin, Origin, Runtime, System, Tokens, ACA, ALICE, AUSD, AUSD_DOT_POOL_RECORD, BOB, BTC, CAROL, DOT, *,
 };
 use orml_traits::MultiReservableCurrency;
-use sp_core::H160;
+use parking_lot::RwLock;
+use sp_core::{
+	offchain::{
+		testing, testing::PoolState, DbExternalities, OffchainDbExt, OffchainWorkerExt, StorageKind, TransactionPoolExt,
+	},
+	H160,
+};
+use sp_io::offchain;
 use sp_runtime::traits::BadOrigin;
 use std::str::FromStr;
+use std::sync::Arc;
 use support::{Swap, SwapError};
+
+fn run_to_block_offchain(n: u64) {
+	while System::block_number() < n {
+		System::set_block_number(System::block_number() + 1);
+		DexModule::offchain_worker(System::block_number());
+		// this unlocks the concurrency storage lock so offchain_worker will fire next block
+		offchain::sleep_until(offchain::timestamp().add(Duration::from_millis(LOCK_DURATION + 200)));
+	}
+}
 
 #[test]
 fn list_provisioning_work() {
@@ -1969,4 +1986,160 @@ fn specific_joint_swap_work() {
 				Ok((10204, 10000)),
 			);
 		});
+}
+
+#[test]
+fn offchain_worker_max_iteration_works() {
+	let (mut offchain, _offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.initialize_added_liquidity_pools(ALICE)
+		.build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+
+	ext.execute_with(|| {
+		System::set_block_number(1);
+		let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
+		assert_eq!(keys, vec![]);
+
+		run_to_block_offchain(2);
+		// initialize `TradingPairNodes`
+		let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
+		assert_eq!(keys, vec![DOT, AUSD]);
+
+		// trigger unsigned tx
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::DexModule(crate::Call::triangle_swap {
+			currency_1,
+			currency_2,
+			currency_3,
+		}) = tx.call
+		{
+			assert_eq!((AUSD, DOT, BTC), (currency_1, currency_2, currency_3));
+			assert_ok!(DexModule::triangle_swap(
+				Origin::none(),
+				currency_1,
+				currency_2,
+				currency_3
+			));
+		}
+		assert!(pool_state.write().transactions.pop().is_none());
+
+		let to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
+		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
+		assert_eq!(start_key, None);
+
+		// sets max iterations value to 1
+		offchain.local_storage_set(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS, &1u32.encode());
+		run_to_block_offchain(3);
+		let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
+		assert_eq!(keys, vec![DOT, AUSD]);
+
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::DexModule(crate::Call::triangle_swap {
+			currency_1,
+			currency_2,
+			currency_3,
+		}) = tx.call
+		{
+			assert_eq!((AUSD, DOT, BTC), (currency_1, currency_2, currency_3));
+			assert_ok!(DexModule::triangle_swap(
+				Origin::none(),
+				currency_1,
+				currency_2,
+				currency_3
+			));
+		}
+		assert!(pool_state.write().transactions.pop().is_none());
+
+		// iterator last_saw_key
+		let mut iter = TradingPairNodes::<Runtime>::iter();
+		let _ = iter.next(); // first currency is DOT
+		let _ = iter.next(); // second one is AUSD
+		let last_saw_key = iter.last_raw_key();
+
+		let to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
+		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
+		assert_eq!(start_key, Some(last_saw_key.to_vec()));
+	});
+}
+
+#[test]
+fn offchain_worker_trigger_unsigned_triangle_swap() {
+	let (offchain, _offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.initialize_added_liquidity_pools(ALICE)
+		.build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+
+	ext.execute_with(|| {
+		System::set_block_number(1);
+
+		// set swap supply and threshold
+		assert_ok!(DexModule::set_triangle_swap_info(
+			Origin::signed(ListingOrigin::get()),
+			AUSD,
+			DOT,
+			BTC,
+			1000,
+			1900,
+		));
+		let supply_threshold = TriangleSupplyThreshold::<Runtime>::get(AUSD).unwrap();
+		assert_eq!(supply_threshold, (1000, 1900));
+		assert_ok!(Tokens::update_balance(
+			AUSD,
+			&Pallet::<Runtime>::treasury_account(),
+			1_000_000_000_000_000i128
+		));
+
+		trigger_unsigned_triangle_swap(2, pool_state.clone(), Some(1930));
+		trigger_unsigned_triangle_swap(3, pool_state.clone(), Some(1911));
+		trigger_unsigned_triangle_swap(4, pool_state.clone(), None);
+	});
+
+	fn trigger_unsigned_triangle_swap(n: u64, pool_state: Arc<RwLock<PoolState>>, actual_target_amount: Option<u128>) {
+		System::reset_events();
+		run_to_block_offchain(n);
+		let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
+		assert_eq!(keys, vec![DOT, AUSD]);
+
+		// trigger unsigned tx
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::DexModule(crate::Call::triangle_swap {
+			currency_1,
+			currency_2,
+			currency_3,
+		}) = tx.call
+		{
+			assert_eq!((AUSD, DOT, BTC), (currency_1, currency_2, currency_3));
+			assert_ok!(DexModule::triangle_swap(
+				Origin::none(),
+				currency_1,
+				currency_2,
+				currency_3
+			));
+		}
+		assert!(pool_state.write().transactions.pop().is_none());
+
+		// if target amount is less than threshold, then triangle swap not triggered.
+		if let Some(target_amount) = actual_target_amount {
+			System::assert_last_event(Event::DexModule(crate::Event::TriangleTrading {
+				currency_1: AUSD,
+				currency_2: DOT,
+				currency_3: BTC,
+				supply_amount: 1000,
+				target_amount,
+			}));
+		}
+	}
 }

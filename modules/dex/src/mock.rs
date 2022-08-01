@@ -147,6 +147,8 @@ impl Config for Runtime {
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<3>;
+	type SingleTokenTradingLimit = ConstU32<10>;
+	type TradingKeysUpdateFrequency = ConstU64<1>;
 	type PalletId = DEXPalletId;
 	type TreasuryPallet = TreasuryPallet;
 	type UnsignedPriority = ConstU64<1048576>;

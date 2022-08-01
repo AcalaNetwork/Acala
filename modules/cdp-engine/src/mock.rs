@@ -258,6 +258,8 @@ impl dex::Config for Runtime {
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<4>;
+	type SingleTokenTradingLimit = ConstU32<10>;
+	type TradingKeysUpdateFrequency = ConstU64<1>;
 	type PalletId = DEXPalletId;
 	type TreasuryPallet = TreasuryPalletId;
 	type Erc20InfoMapping = ();

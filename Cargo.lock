@@ -5679,6 +5679,7 @@ dependencies = [
  "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
+ "parking_lot 0.12.1",
  "scale-info",
  "serde",
  "sp-core",
