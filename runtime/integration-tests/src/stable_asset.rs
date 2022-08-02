@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::evm::alice_evm_addr;
-use crate::payment::{with_fee_aggregated_path_call, with_fee_currency_call, with_fee_path_call, INFO};
+use crate::payment::{with_fee_aggregated_path_call, with_fee_currency_call, with_fee_path_call, INFO, POST_INFO};
 use crate::setup::*;
 use module_aggregated_dex::SwapPath;
 use module_support::{AggregatedSwapPath, ExchangeRate, Swap, SwapLimit, EVM as EVMTrait};
@@ -318,6 +318,50 @@ fn three_usd_pool_works() {
 				);
 			}
 
+			let set_evm_origin = module_evm::SetEvmOrigin::<Runtime>::new();
+			let pre = set_evm_origin
+				.clone()
+				.pre_dispatch(&AccountId::from(BOB), &with_fee_currency_call(usdc), &INFO, 50)
+				.unwrap();
+
+			let origin = <module_evm_bridge::EVMBridge<Runtime> as module_support::evm::EVMBridge<
+				AccountId,
+				Balance,
+			>>::get_origin();
+			assert_eq!(origin, Some(AccountId::from(BOB)));
+
+			assert_ok!(module_evm::SetEvmOrigin::<Runtime>::post_dispatch(
+				Some(pre),
+				&INFO,
+				&POST_INFO,
+				50,
+				&Ok(())
+			));
+			let origin = <module_evm_bridge::EVMBridge<Runtime> as module_support::evm::EVMBridge<
+				AccountId,
+				Balance,
+			>>::get_origin();
+			assert_eq!(origin, None);
+
+			// Origin is None, transfer erc20 failed.
+			assert_noop!(
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
+					&AccountId::from(BOB),
+					&with_fee_currency_call(usdc),
+					&INFO,
+					50
+				),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+
+			// set origin in SetEvmOrigin::validate() then transfer erc20 will success.
+			assert_ok!(set_evm_origin.validate(&AccountId::from(BOB), &with_fee_currency_call(usdc), &INFO, 50));
+			let origin = <module_evm_bridge::EVMBridge<Runtime> as module_support::evm::EVMBridge<
+				AccountId,
+				Balance,
+			>>::get_origin();
+			assert_eq!(origin, Some(AccountId::from(BOB)));
+
 			// USDC=Erc20(contract) or USDT=ForeignAsset(0) as fee token.
 			// before USDC/USDT enabled as fee pool, it works by direct swap.
 			assert_aggregated_dex_event(usdc, with_fee_currency_call(usdc), None);
@@ -495,6 +539,7 @@ fn assert_aggregated_dex_event(
 	with_fee_call: <Runtime as module_transaction_payment::Config>::Call,
 	len: Option<usize>,
 ) {
+	System::reset_events();
 	assert_ok!(
 		<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 			&AccountId::from(BOB),
