@@ -1322,38 +1322,6 @@ fn aggregated_swap_swap_work() {
 	});
 }
 
-// fn inject_liquidity(
-// 	account: AccountId,
-// 	currency_id_a: CurrencyId,
-// 	currency_id_b: CurrencyId,
-// 	max_amount_a: Balance,
-// 	max_amount_b: Balance,
-// ) -> Result<(), &'static str> {
-// 	let _ = Dex::enable_trading_pair(Origin::root(), currency_id_a, currency_id_b);
-// 	assert_ok!(Currencies::update_balance(
-// 		Origin::root(),
-// 		MultiAddress::Id(account.clone()),
-// 		currency_id_a.clone(),
-// 		max_amount_a,
-// 	));
-// 	assert_ok!(Currencies::update_balance(
-// 		Origin::root(),
-// 		MultiAddress::Id(account.clone()),
-// 		currency_id_b.clone(),
-// 		max_amount_b,
-// 	));
-// 	Dex::add_liquidity(
-// 		Origin::signed(account),
-// 		currency_id_a,
-// 		currency_id_b,
-// 		max_amount_a,
-// 		max_amount_b,
-// 		Default::default(),
-// 		false,
-// 	)?;
-// 	Ok(())
-// }
-
 fn inject_liquidity_default_pairs() {
 	assert_ok!(inject_liquidity(AUSD, DOT, 1_000_000u128, 2_000_000u128));
 	assert_ok!(inject_liquidity(AUSD, BTC, 1_000_000u128, 2_000_000u128));
