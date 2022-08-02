@@ -22,9 +22,24 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::*;
+use mock::{Call as MockCall, Event, Origin, System, *};
 use nutsfinance_stable_asset::traits::StableAsset as StableAssetT;
+use parking_lot::RwLock;
+use sp_core::offchain::{
+	testing, testing::PoolState, DbExternalities, OffchainDbExt, OffchainWorkerExt, StorageKind, TransactionPoolExt,
+};
+use sp_io::offchain;
 use sp_runtime::traits::BadOrigin;
+use std::sync::Arc;
+
+fn run_to_block_offchain(n: u64) {
+	while System::block_number() < n {
+		System::set_block_number(System::block_number() + 1);
+		AggregatedDex::offchain_worker(System::block_number());
+		// this unlocks the concurrency storage lock so offchain_worker will fire next block
+		offchain::sleep_until(offchain::timestamp().add(Duration::from_millis(LOCK_DURATION + 200)));
+	}
+}
 
 fn set_dex_swap_joint_list(joints: Vec<Vec<CurrencyId>>) {
 	DexSwapJointList::set(joints);
@@ -1300,4 +1315,199 @@ fn aggregated_swap_swap_work() {
 			Ok((1000000000, 1997865702))
 		);
 	});
+}
+
+// fn inject_liquidity(
+// 	account: AccountId,
+// 	currency_id_a: CurrencyId,
+// 	currency_id_b: CurrencyId,
+// 	max_amount_a: Balance,
+// 	max_amount_b: Balance,
+// ) -> Result<(), &'static str> {
+// 	let _ = Dex::enable_trading_pair(Origin::root(), currency_id_a, currency_id_b);
+// 	assert_ok!(Currencies::update_balance(
+// 		Origin::root(),
+// 		MultiAddress::Id(account.clone()),
+// 		currency_id_a.clone(),
+// 		max_amount_a,
+// 	));
+// 	assert_ok!(Currencies::update_balance(
+// 		Origin::root(),
+// 		MultiAddress::Id(account.clone()),
+// 		currency_id_b.clone(),
+// 		max_amount_b,
+// 	));
+// 	Dex::add_liquidity(
+// 		Origin::signed(account),
+// 		currency_id_a,
+// 		currency_id_b,
+// 		max_amount_a,
+// 		max_amount_b,
+// 		Default::default(),
+// 		false,
+// 	)?;
+// 	Ok(())
+// }
+
+fn inject_liquidity_default_pairs() {
+	assert_ok!(inject_liquidity(AUSD, DOT, 1_000_000u128, 2_000_000u128));
+	assert_ok!(inject_liquidity(AUSD, BTC, 1_000_000u128, 2_000_000u128));
+	assert_ok!(inject_liquidity(DOT, BTC, 1_000_000u128, 2_000_000u128));
+}
+
+#[test]
+fn offchain_worker_max_iteration_works() {
+	let (mut offchain, _offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::default().build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+
+	ext.execute_with(|| {
+		System::set_block_number(1);
+		inject_liquidity_default_pairs();
+
+		let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
+		assert_eq!(keys, vec![]);
+
+		run_to_block_offchain(2);
+		// initialize `TradingPairNodes`
+		let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
+		assert_eq!(keys, vec![DOT, AUSD]);
+
+		// trigger unsigned tx
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::AggregatedDex(crate::Call::rebalance_swap {
+			currency_1,
+			currency_2,
+			currency_3,
+		}) = tx.call
+		{
+			assert_eq!((AUSD, DOT, BTC), (currency_1, currency_2, currency_3));
+			assert_ok!(AggregatedDex::rebalance_swap(
+				Origin::none(),
+				currency_1,
+				currency_2,
+				currency_3
+			));
+		}
+		assert!(pool_state.write().transactions.pop().is_none());
+
+		let to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
+		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
+		assert_eq!(start_key, None);
+
+		// sets max iterations value to 1
+		offchain.local_storage_set(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS, &1u32.encode());
+		run_to_block_offchain(3);
+		let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
+		assert_eq!(keys, vec![DOT, AUSD]);
+
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::AggregatedDex(crate::Call::rebalance_swap {
+			currency_1,
+			currency_2,
+			currency_3,
+		}) = tx.call
+		{
+			assert_eq!((AUSD, DOT, BTC), (currency_1, currency_2, currency_3));
+			assert_ok!(AggregatedDex::rebalance_swap(
+				Origin::none(),
+				currency_1,
+				currency_2,
+				currency_3
+			));
+		}
+		assert!(pool_state.write().transactions.pop().is_none());
+
+		// iterator last_saw_key
+		let mut iter = TradingPairNodes::<Runtime>::iter();
+		let _ = iter.next(); // first currency is DOT
+		let _ = iter.next(); // second one is AUSD
+		let last_saw_key = iter.last_raw_key();
+
+		let to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
+		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
+		assert_eq!(start_key, Some(last_saw_key.to_vec()));
+	});
+}
+
+#[test]
+fn offchain_worker_trigger_unsigned_rebalance_swap() {
+	let (offchain, _offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::default().build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+
+	ext.execute_with(|| {
+		System::set_block_number(1);
+		inject_liquidity_default_pairs();
+
+		// set swap supply and threshold
+		assert_ok!(AggregatedDex::set_rebalance_swap_info(
+			Origin::signed(BOB),
+			AUSD,
+			1000,
+			1960,
+		));
+		System::assert_last_event(Event::AggregatedDex(crate::Event::SetupRebalanceSwapInfo {
+			currency_id: AUSD,
+			supply_amount: 1000,
+			threshold: 1960,
+		}));
+
+		let supply_threshold = RebalanceSupplyThreshold::<Runtime>::get(AUSD).unwrap();
+		assert_eq!(supply_threshold, (1000, 1960));
+		assert_ok!(Tokens::deposit(
+			AUSD,
+			&Pallet::<Runtime>::treasury_account(),
+			1_000_000_000_000_000u128
+		));
+
+		trigger_unsigned_rebalance_swap(2, pool_state.clone(), Some(1990));
+		trigger_unsigned_rebalance_swap(3, pool_state.clone(), Some(1970));
+		trigger_unsigned_rebalance_swap(4, pool_state.clone(), None);
+	});
+
+	fn trigger_unsigned_rebalance_swap(n: u64, pool_state: Arc<RwLock<PoolState>>, actual_target_amount: Option<u128>) {
+		System::reset_events();
+		run_to_block_offchain(n);
+		let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
+		assert_eq!(keys, vec![DOT, AUSD]);
+
+		// trigger unsigned tx
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::AggregatedDex(crate::Call::rebalance_swap {
+			currency_1,
+			currency_2,
+			currency_3,
+		}) = tx.call
+		{
+			assert_eq!((AUSD, DOT, BTC), (currency_1, currency_2, currency_3));
+			assert_ok!(AggregatedDex::rebalance_swap(
+				Origin::none(),
+				currency_1,
+				currency_2,
+				currency_3
+			));
+		}
+		assert!(pool_state.write().transactions.pop().is_none());
+
+		// if target amount is less than threshold, then rebalance swap not triggered.
+		if let Some(target_amount) = actual_target_amount {
+			System::assert_last_event(Event::AggregatedDex(crate::Event::RebalanceTrading {
+				currency_1: AUSD,
+				currency_2: DOT,
+				currency_3: BTC,
+				supply_amount: 1000,
+				target_amount,
+			}));
+		}
+	}
 }

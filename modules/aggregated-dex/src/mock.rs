@@ -49,7 +49,14 @@ pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const STABLE_ASSET: CurrencyId = CurrencyId::StableAssetPoolToken(0);
+
+parameter_types! {
+	pub static AUSDBTCPair: TradingPair = TradingPair::from_currency_ids(AUSD, BTC).unwrap();
+	pub static AUSDDOTPair: TradingPair = TradingPair::from_currency_ids(AUSD, DOT).unwrap();
+	pub static DOTBTCPair: TradingPair = TradingPair::from_currency_ids(DOT, BTC).unwrap();
+}
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
@@ -106,7 +113,6 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
-	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trea");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![];
 }
@@ -116,11 +122,7 @@ impl module_dex::Config for Runtime {
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<4>;
-	type SingleTokenTradingLimit = ConstU32<10>;
-	type TradingKeysUpdateFrequency = ConstU64<1>;
-	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type PalletId = DEXPalletId;
-	type TreasuryPallet = TreasuryPalletId;
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
@@ -196,14 +198,20 @@ impl nutsfinance_stable_asset::Config for Runtime {
 parameter_types! {
 	pub static DexSwapJointList: Vec<Vec<CurrencyId>> = vec![];
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
+	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trea");
 }
 
 impl Config for Runtime {
+	type Event = Event;
 	type DEX = Dex;
 	type StableAsset = StableAssetWrapper;
 	type GovernanceOrigin = EnsureSignedBy<Admin, AccountId>;
 	type DexSwapJointList = DexSwapJointList;
 	type SwapPathLimit = ConstU32<3>;
+	type TreasuryPallet = TreasuryPalletId;
+	type SingleTokenTradingLimit = ConstU32<10>;
+	type TradingKeysUpdateFrequency = ConstU64<1>;
+	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type WeightInfo = ();
 }
 
@@ -220,7 +228,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		AggregatedDex: aggregated_dex::{Pallet, Call, Storage},
+		AggregatedDex: aggregated_dex::{Pallet, Call, Storage, Event<T>},
 		Dex: module_dex::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>},

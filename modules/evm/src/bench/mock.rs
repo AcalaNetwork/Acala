@@ -287,11 +287,7 @@ impl module_dex::Config for Runtime {
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
-	type SingleTokenTradingLimit = ConstU32<10>;
-	type TradingKeysUpdateFrequency = ConstU32<1>;
-	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type PalletId = DEXPalletId;
-	type TreasuryPallet = TreasuryPalletId;
 	type Erc20InfoMapping = MockErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
@@ -319,13 +315,3 @@ construct_runtime!(
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>},
 	}
 );
-
-pub type Extrinsic = sp_runtime::testing::TestXt<Call, ()>;
-
-impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
-where
-	Call: From<LocalCall>,
-{
-	type OverarchingCall = Call;
-	type Extrinsic = Extrinsic;
-}

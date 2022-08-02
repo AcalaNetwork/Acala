@@ -139,7 +139,6 @@ parameter_types! {
 		TradingPair::from_currency_ids(BTC, DOT).unwrap(),
 	];
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
-	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trea");
 }
 
 impl module_dex::Config for Runtime {
@@ -147,11 +146,7 @@ impl module_dex::Config for Runtime {
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<4>;
-	type SingleTokenTradingLimit = ConstU32<10>;
-	type TradingKeysUpdateFrequency = ConstU64<1>;
-	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type PalletId = DEXPalletId;
-	type TreasuryPallet = TreasuryPalletId;
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
@@ -243,16 +238,6 @@ construct_runtime!(
 		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
 	}
 );
-
-pub type Extrinsic = sp_runtime::testing::TestXt<Call, ()>;
-
-impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
-where
-	Call: From<LocalCall>,
-{
-	type OverarchingCall = Call;
-	type Extrinsic = Extrinsic;
-}
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,

@@ -1160,11 +1160,7 @@ impl module_dex::Config for Runtime {
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
-	type SingleTokenTradingLimit = ConstU32<10>;
-	type TradingKeysUpdateFrequency = TradingKeysUpdateFrequency;
-	type UnsignedPriority = runtime_common::DexTriangleSwapUnsignedPriority;
 	type PalletId = DEXPalletId;
-	type TreasuryPallet = TreasuryPalletId;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
@@ -1174,11 +1170,16 @@ impl module_dex::Config for Runtime {
 }
 
 impl module_aggregated_dex::Config for Runtime {
+	type Event = Event;
 	type DEX = Dex;
 	type StableAsset = RebasedStableAsset;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
+	type SingleTokenTradingLimit = ConstU32<10>;
+	type TradingKeysUpdateFrequency = TradingKeysUpdateFrequency;
+	type TreasuryPallet = TreasuryPalletId;
+	type UnsignedPriority = runtime_common::DexTriangleSwapUnsignedPriority;
 	type WeightInfo = ();
 }
 

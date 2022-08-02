@@ -35,24 +35,16 @@
 
 use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
-use frame_system::{
-	offchain::{SendTransactionTypes, SubmitTransaction},
-	pallet_prelude::*,
-};
+use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
 use scale_info::TypeInfo;
 use sp_core::{H160, U256};
 use sp_runtime::{
-	offchain::{
-		storage::StorageValueRef,
-		storage_lock::{StorageLock, Time},
-		Duration,
-	},
 	traits::{AccountIdConversion, One, Saturating, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
-use sp_std::{collections::btree_map::BTreeMap, prelude::*, vec};
+use sp_std::{prelude::*, vec};
 use support::{DEXIncentives, DEXManager, Erc20InfoMapping, ExchangeRate, Ratio, SwapLimit};
 
 mod mock;
@@ -60,14 +52,7 @@ mod tests;
 pub mod weights;
 
 pub use module::*;
-use orml_utilities::OffchainErr;
 pub use weights::WeightInfo;
-
-pub const OFFCHAIN_WORKER_DATA: &[u8] = b"acala/dex-bot/data/";
-pub const OFFCHAIN_WORKER_LOCK: &[u8] = b"acala/dex-bot/lock/";
-pub const OFFCHAIN_WORKER_MAX_ITERATIONS: &[u8] = b"acala/dex-bot/max-iterations/";
-pub const LOCK_DURATION: u64 = 100;
-pub const DEFAULT_MAX_ITERATIONS: u32 = 100;
 
 /// Parameters of TradingPair in Provisioning status
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, PartialEq, Eq, MaxEncodedLen, TypeInfo)]
@@ -113,7 +98,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + SendTransactionTypes<Call<Self>> {
+	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Currency for transfer currencies
@@ -131,24 +116,9 @@ pub mod module {
 		#[pallet::constant]
 		type TradingPathLimit: Get<u32>;
 
-		/// The limit of one Currency to all other direct trading token.
-		#[pallet::constant]
-		type SingleTokenTradingLimit: Get<u32>;
-
-		/// The frequency block number to update `TradingPairNodes`.
-		#[pallet::constant]
-		type TradingKeysUpdateFrequency: Get<Self::BlockNumber>;
-
 		/// The DEX's module id, keep all assets in DEX.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-
-		/// Treasury account participate in triangle swap.
-		#[pallet::constant]
-		type TreasuryPallet: Get<PalletId>;
-
-		#[pallet::constant]
-		type UnsignedPriority: Get<TransactionPriority>;
 
 		/// Mapping between CurrencyId and ERC20 address so user can use Erc20
 		/// address as LP token.
@@ -219,8 +189,6 @@ pub mod module {
 		NotAllowedRefund,
 		/// Cannot swap
 		CannotSwap,
-		/// Triangle swap info is invalid.
-		TriangleSwapInfoInvalid,
 	}
 
 	#[pallet::event]
@@ -285,20 +253,6 @@ pub mod module {
 			accumulated_provision_0: Balance,
 			accumulated_provision_1: Balance,
 		},
-		/// Triangle trading path and balance.
-		TriangleTrading {
-			currency_1: CurrencyId,
-			currency_2: CurrencyId,
-			currency_3: CurrencyId,
-			supply_amount: Balance,
-			target_amount: Balance,
-		},
-		/// Add Triangle info.
-		SetupTriangleSwapInfo {
-			currency_id: CurrencyId,
-			supply_amount: Balance,
-			threshold: Balance,
-		},
 	}
 
 	/// Liquidity pool for TradingPair.
@@ -332,19 +286,6 @@ pub mod module {
 	#[pallet::getter(fn initial_share_exchange_rates)]
 	pub type InitialShareExchangeRates<T: Config> =
 		StorageMap<_, Twox64Concat, TradingPair, (ExchangeRate, ExchangeRate), ValueQuery>;
-
-	/// Direct trading pair token list of specify CurrencyId.
-	///
-	/// TradingPairNodes: map CurrencyId => vec![CurrencyId]
-	#[pallet::storage]
-	#[pallet::getter(fn trading_pair_nodes)]
-	pub type TradingPairNodes<T: Config> =
-		StorageMap<_, Twox64Concat, CurrencyId, BoundedVec<CurrencyId, T::SingleTokenTradingLimit>, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn triangle_supply_threshold)]
-	pub type TriangleSupplyThreshold<T: Config> =
-		StorageMap<_, Twox64Concat, CurrencyId, (Balance, Balance), OptionQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -414,23 +355,7 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn offchain_worker(now: T::BlockNumber) {
-			if let Err(e) = Self::_offchain_worker(now) {
-				log::info!(
-					target: "dex-bot",
-					"offchain worker: cannot run at {:?}: {:?}",
-					now, e,
-				);
-			} else {
-				log::debug!(
-					target: "dex-bot",
-					"offchain worker: start at block: {:?} already done!",
-					now,
-				);
-			}
-		}
-	}
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -921,255 +846,12 @@ pub mod module {
 
 			Ok(())
 		}
-
-		#[pallet::weight(1000)]
-		#[transactional]
-		pub fn triangle_swap(
-			origin: OriginFor<T>,
-			currency_1: CurrencyId,
-			currency_2: CurrencyId,
-			currency_3: CurrencyId,
-		) -> DispatchResult {
-			ensure_none(origin)?;
-			Self::do_triangle_swap((currency_1, currency_2, currency_3))
-		}
-
-		#[pallet::weight(1000)]
-		#[transactional]
-		pub fn set_triangle_swap_info(
-			origin: OriginFor<T>,
-			currency_id: CurrencyId,
-			#[pallet::compact] supply_amount: Balance,
-			#[pallet::compact] threshold: Balance,
-		) -> DispatchResult {
-			T::ListingOrigin::ensure_origin(origin)?;
-			Self::do_set_triangle_swap_info(currency_id, supply_amount, threshold)
-		}
-	}
-
-	#[pallet::validate_unsigned]
-	impl<T: Config> ValidateUnsigned for Pallet<T> {
-		type Call = Call<T>;
-		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			if let Call::triangle_swap {
-				currency_1,
-				currency_2,
-				currency_3,
-			} = call
-			{
-				ValidTransaction::with_tag_prefix("DexBotOffchainWorker")
-					.priority(T::UnsignedPriority::get())
-					.and_provides((
-						<frame_system::Pallet<T>>::block_number(),
-						currency_1,
-						currency_2,
-						currency_3,
-					))
-					.longevity(64_u64)
-					.propagate(true)
-					.build()
-			} else {
-				InvalidTransaction::Call.into()
-			}
-		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
 	fn account_id() -> T::AccountId {
 		T::PalletId::get().into_account_truncating()
-	}
-
-	fn treasury_account() -> T::AccountId {
-		T::TreasuryPallet::get().into_account_truncating()
-	}
-
-	fn submit_triangle_swap_tx(currency_1: CurrencyId, currency_2: CurrencyId, currency_3: CurrencyId) {
-		let call = Call::<T>::triangle_swap {
-			currency_1,
-			currency_2,
-			currency_3,
-		};
-		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
-			log::info!(
-				target: "dex-bot",
-				"offchain worker: submit unsigned swap A={:?},B={:?},C={:?}, failed: {:?}",
-				currency_1, currency_2, currency_3, err,
-			);
-		}
-	}
-
-	fn _offchain_worker(now: T::BlockNumber) -> Result<(), OffchainErr> {
-		// acquire offchain worker lock
-		let lock_expiration = Duration::from_millis(LOCK_DURATION);
-		let mut lock = StorageLock::<'_, Time>::with_deadline(OFFCHAIN_WORKER_LOCK, lock_expiration);
-		let mut guard = lock.try_lock().map_err(|_| OffchainErr::OffchainLock)?;
-		// get the max iterations config
-		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
-			.get::<u32>()
-			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
-			.unwrap_or(DEFAULT_MAX_ITERATIONS);
-		let mut to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
-
-		// update `TradingPairNodes` every `TradingKeysUpdateFrequency` interval.
-		if now % T::TradingKeysUpdateFrequency::get() == Zero::zero() {
-			let mut trading_pair_values_map: BTreeMap<CurrencyId, Vec<CurrencyId>> = BTreeMap::new();
-			TradingPairStatuses::<T>::iter()
-				.filter(|(_, status)| status.enabled())
-				.for_each(|(pair, _)| {
-					trading_pair_values_map
-						.entry(pair.first())
-						.or_insert_with(Vec::<CurrencyId>::new)
-						.push(pair.second());
-				});
-			for (currency_id, trading_tokens) in trading_pair_values_map {
-				let _ = TradingPairNodes::<T>::try_mutate(currency_id, |maybe_trading_tokens| -> DispatchResult {
-					let trading_tokens: Result<BoundedVec<CurrencyId, T::SingleTokenTradingLimit>, _> =
-						trading_tokens.try_into();
-					match trading_tokens {
-						Ok(trading_tokens) => {
-							*maybe_trading_tokens = trading_tokens;
-						}
-						_ => {
-							log::debug!(target: "dex-bot", "Too many trading pair for token:{:?}.", currency_id);
-						}
-					}
-					Ok(())
-				});
-			}
-		}
-
-		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
-		let mut iterator = match start_key.clone() {
-			Some(key) => TradingPairNodes::<T>::iter_from(key),
-			None => TradingPairNodes::<T>::iter(),
-		};
-
-		let mut finished = true;
-		let mut iteration_count = 0;
-		let iteration_start_time = sp_io::offchain::timestamp();
-
-		let enabled_trading_pair: Vec<TradingPair> = TradingPairStatuses::<T>::iter()
-			.filter(|(_, status)| status.enabled())
-			.map(|(pair, _)| pair)
-			.collect();
-
-		#[allow(clippy::while_let_on_iterator)]
-		'outer: while let Some((currency_id, trading_tokens)) = iterator.next() {
-			let len = trading_tokens.len();
-			if len < 2 {
-				continue;
-			}
-			for i in 0..(len - 1) {
-				for j in (i + 1)..len {
-					iteration_count += 1;
-
-					if let Some(pair) = TradingPair::from_currency_ids(trading_tokens[i], trading_tokens[j]) {
-						if !enabled_trading_pair.contains(&pair) {
-							continue;
-						}
-
-						Self::submit_triangle_swap_tx(currency_id, pair.first(), pair.second());
-					}
-
-					// inner iterator consider as iterations too.
-					if iteration_count == max_iterations {
-						finished = false;
-						break 'outer;
-					}
-
-					// extend offchain worker lock
-					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
-				}
-			}
-		}
-
-		let iteration_end_time = sp_io::offchain::timestamp();
-		log::debug!(
-			target: "dex-bot",
-			"max iterations: {:?} start key: {:?}, count: {:?} start: {:?}, end: {:?}, cost: {:?}",
-			max_iterations,
-			start_key,
-			iteration_count,
-			iteration_start_time,
-			iteration_end_time,
-			iteration_end_time.diff(&iteration_start_time)
-		);
-
-		// if iteration for map storage finished, clear to be continue record
-		// otherwise, update to be continue record
-		if finished {
-			to_be_continue.clear();
-		} else {
-			to_be_continue.set(&iterator.last_raw_key());
-		}
-
-		// Consume the guard but **do not** unlock the underlying lock.
-		guard.forget();
-
-		Ok(())
-	}
-
-	fn do_set_triangle_swap_info(
-		currency_id: CurrencyId,
-		supply_amount: Balance,
-		threshold: Balance,
-	) -> DispatchResult {
-		ensure!(threshold > supply_amount, Error::<T>::TriangleSwapInfoInvalid);
-		TriangleSupplyThreshold::<T>::try_mutate(currency_id, |maybe_supply_threshold| -> DispatchResult {
-			*maybe_supply_threshold = Some((supply_amount, threshold));
-			Ok(())
-		})?;
-		Self::deposit_event(Event::SetupTriangleSwapInfo {
-			currency_id,
-			supply_amount,
-			threshold,
-		});
-		Ok(())
-	}
-
-	/// Triangle swap of path: `A->B->C->A`, the final output should be large than input.
-	fn do_triangle_swap(current: (CurrencyId, CurrencyId, CurrencyId)) -> DispatchResult {
-		if let Some((supply_amount, minimum_amount)) = TriangleSupplyThreshold::<T>::get(&current.0) {
-			// A-B-C-A has two kind of swap: A-B/B-C-A or A-B-C/C-A, either one is ok.
-			let first_path: Vec<CurrencyId> = vec![current.0, current.1, current.2];
-			let second_path: Vec<CurrencyId> = vec![current.2, current.0];
-			let supply_1 = SwapLimit::ExactSupply(supply_amount, 0);
-
-			let mut valid_swap = false;
-			if let Some((_, target_3)) =
-				<Self as DEXManager<T::AccountId, Balance, CurrencyId>>::get_swap_amount(&first_path, supply_1)
-			{
-				if let Some((_, _)) = <Self as DEXManager<T::AccountId, Balance, CurrencyId>>::get_swap_amount(
-					&second_path,
-					SwapLimit::ExactSupply(target_3, minimum_amount),
-				) {
-					valid_swap = true;
-				}
-			}
-			if !valid_swap {
-				return Ok(());
-			}
-
-			if let Ok((_, target_3)) = <Self as DEXManager<T::AccountId, Balance, CurrencyId>>::swap_with_specific_path(
-				&Self::treasury_account(),
-				&first_path,
-				supply_1,
-			) {
-				if let Ok(target_amount) =
-					Self::do_swap_with_exact_supply(&Self::treasury_account(), &second_path, target_3, minimum_amount)
-				{
-					Self::deposit_event(Event::TriangleTrading {
-						currency_1: current.0,
-						currency_2: current.1,
-						currency_3: current.2,
-						supply_amount,
-						target_amount,
-					});
-				}
-			}
-		}
-		Ok(())
 	}
 
 	fn try_mutate_liquidity_pool<R, E>(

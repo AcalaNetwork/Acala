@@ -9,7 +9,6 @@ serde = { version = "1.0.136", optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
 scale-info = { version = "2.1", default-features = false, features = ["derive"] }
 
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", default-features = false }
@@ -23,9 +22,9 @@ support = { package = "module-support", path = "../support", default-features = 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 orml-tokens = { path = "../../orml/tokens" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
-parking_lot = { version = "0.12.0" }
 
 [features]
 default = ["std"]
@@ -33,7 +32,6 @@ std = [
 	"serde",
 	"codec/std",
 	"scale-info/std",
-	"sp-io/std",
 	"sp-core/std",
 	"sp-runtime/std",
 	"sp-std/std",
