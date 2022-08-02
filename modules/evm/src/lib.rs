@@ -1598,7 +1598,7 @@ impl<T: Config> Pallet<T> {
 
 	fn is_developer_or_contract(caller: &H160) -> bool {
 		let account_id = T::AddressMapping::get_account_id(caller);
-		Self::query_developer_status(account_id) || Self::is_contract(&caller)
+		Self::query_developer_status(account_id) || Self::is_contract(caller)
 	}
 
 	fn reserve_storage(caller: &H160, limit: u32) -> DispatchResult {
