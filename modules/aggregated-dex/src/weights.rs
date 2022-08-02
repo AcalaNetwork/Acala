@@ -48,6 +48,9 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn swap_with_exact_supply(u: u32, ) -> Weight;
 	fn update_aggregated_swap_paths(u: u32, ) -> Weight;
+	fn rebalance_swap() -> Weight;
+	fn set_rebalance_swap_info() -> Weight;
+	fn set_trading_pair_nodes() -> Weight;
 }
 
 /// Weights for module_aggregated_dex using the Acala node and recommended hardware.
@@ -69,6 +72,18 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(u as Weight)))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
 	}
+
+	fn rebalance_swap() -> Weight {
+		2_268_000
+	}
+
+	fn set_rebalance_swap_info() -> Weight {
+		2_268_000
+	}
+
+	fn set_trading_pair_nodes() -> Weight {
+		2_268_000
+	}
 }
 
 // For backwards compatibility and tests
@@ -88,5 +103,17 @@ impl WeightInfo for () {
 			.saturating_add((19_990_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(u as Weight)))
 			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
+	}
+
+	fn rebalance_swap() -> Weight {
+		2_268_000
+	}
+
+	fn set_rebalance_swap_info() -> Weight {
+		2_268_000
+	}
+
+	fn set_trading_pair_nodes() -> Weight {
+		2_268_000
 	}
 }

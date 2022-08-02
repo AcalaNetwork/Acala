@@ -24,7 +24,7 @@ use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
 	ACAJointSwap, AUSDBTCPair, AUSDDOTPair, AUSDJointSwap, DOTBTCPair, DexModule, Event, ExtBuilder, ListingOrigin,
-	Origin, Runtime, System, Tokens, ACA, ALICE, AUSD, AUSD_DOT_POOL_RECORD, BOB, BTC, CAROL, DOT, *,
+	Origin, Runtime, System, Tokens, ACA, ALICE, AUSD, AUSD_DOT_POOL_RECORD, BOB, BTC, CAROL, DOT,
 };
 use orml_traits::MultiReservableCurrency;
 use sp_core::H160;

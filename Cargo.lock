@@ -5679,7 +5679,6 @@ dependencies = [
  "module-support",
  "orml-tokens",
  "orml-traits",
- "orml-utilities",
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",

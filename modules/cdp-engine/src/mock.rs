@@ -256,6 +256,7 @@ impl dex::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
+	type TradingPathLimit = ConstU32<4>;
 	type PalletId = DEXPalletId;
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
