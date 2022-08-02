@@ -2282,3 +2282,27 @@ fn auto_publish_works() {
 		);
 	});
 }
+
+#[test]
+fn reserve_deposit_makes_user_developer() {
+	new_test_ext().execute_with(|| {
+		let addr = H160(hex!("1100000000000000000000000000000000000011"));
+		let who = <Runtime as Config>::AddressMapping::get_account_id(&addr);
+
+		assert_eq!(Pallet::<Runtime>::is_developer_or_contract(&addr), false);
+
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			GetNativeCurrencyId::get(),
+			&<Runtime as Config>::AddressMapping::get_account_id(&alice()),
+			&who,
+			DEVELOPER_DEPOSIT,
+		));
+
+		assert_ok!(<Runtime as Config>::Currency::ensure_reserved_named(
+			&RESERVE_ID_DEVELOPER_DEPOSIT,
+			&who,
+			DEVELOPER_DEPOSIT,
+		));
+		assert_eq!(Pallet::<Runtime>::is_developer_or_contract(&addr), true);
+	})
+}

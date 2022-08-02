@@ -1589,7 +1589,7 @@ impl<T: Config> Pallet<T> {
 		{
 			// https://github.com/AcalaNetwork/Acala/blob/af1c277/modules/evm/rpc/src/lib.rs#L176
 			// when rpc is called, from is empty, allowing the call
-			published || maintainer == *caller || Self::is_developer_or_contract(caller) || *caller == H160::default()
+			published || maintainer == *caller || *caller == H160::default() || Self::is_developer_or_contract(caller)
 		} else {
 			// contract non exist, we don't override default evm behaviour
 			true
@@ -1597,13 +1597,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn is_developer_or_contract(caller: &H160) -> bool {
-		if let Some(AccountInfo { contract_info, .. }) = Accounts::<T>::get(caller) {
-			let account_id = T::AddressMapping::get_account_id(caller);
-			contract_info.is_some()
-				|| !T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &account_id).is_zero()
-		} else {
-			false
-		}
+		let account_id = T::AddressMapping::get_account_id(caller);
+		Self::query_developer_status(account_id) || Self::is_contract(&caller)
 	}
 
 	fn reserve_storage(caller: &H160, limit: u32) -> DispatchResult {
