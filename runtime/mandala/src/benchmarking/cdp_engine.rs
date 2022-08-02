@@ -17,15 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, Address, Amount, Balance, CdpEngine, CdpTreasury, CurrencyId, DefaultDebitExchangeRate, Dex,
-	EmergencyShutdown, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
-	GetStakingCurrencyId, MinimumDebitValue, NativeTokenExistentialDeposit, Price, Rate, Ratio, Runtime, Timestamp,
+	AccountId, Address, Amount, CdpEngine, CdpTreasury, CurrencyId, DefaultDebitExchangeRate, Dex, EmergencyShutdown,
+	ExistentialDeposits, MinimumDebitValue, NativeTokenExistentialDeposit, Price, Rate, Ratio, Runtime, Timestamp,
 	H160, MILLISECS_PER_BLOCK,
 };
 
 use super::{
 	get_benchmarking_collateral_currency_ids,
-	utils::{dollar, feed_price, set_balance},
+	utils::{dollar, feed_price, inject_liquidity, set_balance, LIQUID, NATIVE, STABLECOIN, STAKING},
 };
 use frame_benchmarking::account;
 use frame_support::traits::{Get, OnInitialize};
@@ -40,36 +39,6 @@ use sp_runtime::{
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
-const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
-
-fn inject_liquidity(
-	maker: AccountId,
-	currency_id_a: CurrencyId,
-	currency_id_b: CurrencyId,
-	amount_a: Balance,
-	amount_b: Balance,
-) -> Result<(), &'static str> {
-	// set balance
-	set_balance(currency_id_a, &maker, amount_a.unique_saturated_into());
-	set_balance(currency_id_b, &maker, amount_b.unique_saturated_into());
-
-	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
-
-	Dex::add_liquidity(
-		RawOrigin::Signed(maker.clone()).into(),
-		currency_id_a,
-		currency_id_b,
-		amount_a,
-		amount_b,
-		Default::default(),
-		false,
-	)?;
-
-	Ok(())
-}
 
 runtime_benchmarks! {
 	{ Runtime, module_cdp_engine }
@@ -101,7 +70,7 @@ runtime_benchmarks! {
 			}
 			let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
-			let ed = if currency_id == GetNativeCurrencyId::get() {
+			let ed = if currency_id == NATIVE {
 				NativeTokenExistentialDeposit::get()
 			} else {
 				ExistentialDeposits::get(&currency_id)
@@ -205,8 +174,8 @@ runtime_benchmarks! {
 		let collateral_price = Price::one();		// 1 USD
 
 		set_balance(LIQUID, &owner, (10 * collateral_amount) + ExistentialDeposits::get(&LIQUID));
-		inject_liquidity(funder.clone(), LIQUID, STAKING, 10_000 * dollar(LIQUID), 10_000 * dollar(STAKING))?;
-		inject_liquidity(funder, STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN))?;
+		inject_liquidity(funder.clone(), LIQUID, STAKING, 10_000 * dollar(LIQUID), 10_000 * dollar(STAKING), false)?;
+		inject_liquidity(funder, STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN), false)?;
 
 		// feed price
 		feed_price(vec![(STAKING, collateral_price)])?;

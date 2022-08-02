@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CurrencyId, GetLiquidCurrencyId, MinCouncilBondThreshold, NomineesElection, Runtime};
+use crate::{AccountId, MinCouncilBondThreshold, NomineesElection, Runtime};
 
-use super::utils::set_balance;
+use super::utils::{set_balance, LIQUID};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
@@ -27,8 +27,6 @@ use orml_benchmarking::runtime_benchmarks;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-
-const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_nominees_election }

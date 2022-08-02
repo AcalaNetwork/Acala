@@ -16,16 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{dollar, set_balance};
-use crate::{
-	AccountId, CurrencyId, DispatchResult, Earning, Get, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin,
-	Runtime, System,
-};
+use super::utils::{dollar, set_balance, NATIVE};
+use crate::{AccountId, DispatchResult, Earning, Get, NativeTokenExistentialDeposit, Origin, Runtime, System};
 use frame_benchmarking::whitelisted_caller;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 
 fn make_max_unbonding_chunk(who: AccountId) -> DispatchResult {
 	System::set_block_number(0);
