@@ -67,6 +67,13 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
+	// Storage: StableAsset Pools (r:1 w:1)
+	fn modify_recipients() -> Weight {
+		(24_780_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+	}
 	// Storage: StableAsset Pools (r:1 w:1)
 	// Storage: Tokens Accounts (r:6 w:6)
 	// Storage: System Account (r:2 w:2)
