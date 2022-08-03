@@ -6,6 +6,14 @@ run:
 run-eth:
 	cargo run --features with-mandala-runtime --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
 
+.PHONY: run-karura-dev
+run-karura-dev:
+	cargo run --features with-karura-runtime -- --chain=karura-dev --alice --instant-sealing --tmp -lruntime=debug
+
+.PHONY: run-acala-dev
+run-acala-dev:
+	cargo run --features with-acala-runtime -- --chain=acala-dev --alice --instant-sealing --tmp -lruntime=debug
+
 .PHONY: run-karura
 run-karura:
 	cargo run --features with-karura-runtime -- --chain=karura
