@@ -73,6 +73,7 @@ fn enable_fee_pool() -> (AccountId, Balance, Balance, Balance) {
 
 fn enable_stable_asset() {
 	let funder: AccountId = account("funder", 0, SEED);
+
 	set_balance(STAKING, &funder, 1000 * dollar(STAKING));
 	set_balance(LIQUID, &funder, 1000 * dollar(LIQUID));
 	set_balance(NATIVE, &funder, 1000 * dollar(NATIVE));
