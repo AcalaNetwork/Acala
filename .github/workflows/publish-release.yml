@@ -47,7 +47,7 @@ env:
 
 jobs:
   build-release:
-    name: Build and publish ${{ github.event.inputs.chain }}
+    name: Build and publish ${{ env.CHAIN }}
     runs-on: ubuntu-latest
     steps:
       # Checkout the Acala codebase
@@ -63,7 +63,7 @@ jobs:
 
       - name: Setup ENV
         if: ${{ env.CHAIN == '' || env.SCOPE == '' }}
-        run: python .github/scripts/setup-env.py
+        run: python .github/scripts/publish_release_setup_env.py
 
       # Build WASM with Substrate Runtime Tool
       - name: Srtool build
