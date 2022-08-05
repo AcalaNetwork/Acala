@@ -442,24 +442,26 @@ pub fn run() -> sc_cli::Result<()> {
 		None => {
 			let runner = cli.create_runner(&cli.run.normalize())?;
 			let chain_spec = &runner.config().chain_spec;
-			let is_mandala_dev = chain_spec.is_mandala_dev();
+			let is_dev = chain_spec.is_dev();
 			let collator_options = cli.run.collator_options();
 
 			set_default_ss58_version(chain_spec);
 
 			runner.run_node_until_exit(|config| async move {
+				if is_dev {
+					with_runtime_or_err!(config.chain_spec, {
+						{
+							return service::start_dev_node::<RuntimeApi>(config, cli.instant_sealing)
+								.map_err(Into::into);
+						}
+					})
+				} else if cli.instant_sealing {
+					return Err("Instant sealing can be turned on only in `dev` mode".into());
+				}
+
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
 					.map(|e| e.para_id)
 					.ok_or("Could not find parachain extension for chain-spec.")?;
-
-				if is_mandala_dev {
-					#[cfg(feature = "with-mandala-runtime")]
-					return service::mandala_dev(config, cli.instant_sealing).map_err(Into::into);
-					#[cfg(not(feature = "with-mandala-runtime"))]
-					return Err(service::MANDALA_RUNTIME_NOT_AVAILABLE.into());
-				} else if cli.instant_sealing {
-					return Err("Instant sealing can be turned on only in `--dev` mode".into());
-				}
 
 				let polkadot_cli = RelayChainCli::new(
 					&config,
