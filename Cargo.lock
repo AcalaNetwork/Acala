@@ -6012,6 +6012,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-honzon-distribution"
+version = "2.9.1"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "log",
+ "module-currencies",
+ "module-dex",
+ "module-support",
+ "nutsfinance-stable-asset",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-idle-scheduler"
 version = "2.9.1"
 dependencies = [

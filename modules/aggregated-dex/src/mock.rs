@@ -177,7 +177,6 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type Balance = Balance;
 	type Assets = RebaseTokens;
 	type PalletId = StableAssetPalletId;
-
 	type AtLeast64BitUnsigned = u128;
 	type FeePrecision = ConstU128<10_000_000_000>; // 10 decimals
 	type APrecision = ConstU128<100>; // 2 decimals
