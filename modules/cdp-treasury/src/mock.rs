@@ -377,7 +377,7 @@ impl StableAsset for MockStableAsset {
 		_i: PoolTokenIndex,
 		_min_redeem_amount: Self::Balance,
 		_asset_length: u32,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Self::Balance, Self::Balance), DispatchError> {
 		unimplemented!()
 	}
 
