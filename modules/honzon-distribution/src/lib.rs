@@ -29,7 +29,7 @@ use scale_info::TypeInfo;
 use sp_runtime::traits::Convert;
 use sp_runtime::{
 	traits::{One, Saturating, Zero},
-	ArithmeticError, DispatchResult, FixedPointNumber, RuntimeDebug,
+	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
 
@@ -118,6 +118,8 @@ pub mod module {
 		InvalidDestination,
 		/// The DistributionParams is invalid
 		InvalidDistributionParams,
+		/// The balance is invalid
+		InvalidUpdateBalance,
 	}
 
 	#[pallet::event]
@@ -136,11 +138,16 @@ pub mod module {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(now: T::BlockNumber) -> Weight {
 			if now % T::AdjustPeriod::get() == Zero::zero() {
+				let mut total_weight: Weight = 0;
 				DistributionDestinationParams::<T>::iter_keys().for_each(|destination| {
+					let weight = T::WeightInfo::force_adjust();
 					let _ = Self::do_adjust_to_destination(destination);
+					total_weight += weight;
 				});
+				total_weight
+			} else {
+				0
 			}
-			0
 		}
 	}
 
@@ -207,11 +214,13 @@ impl<T: Config> Pallet<T> {
 				DistributedBalance::<T>::try_mutate(destination, |maybe_balance| -> DispatchResult {
 					let old_val = maybe_balance.take().unwrap_or_default();
 					let new_val = if balance.is_positive() {
-						old_val.checked_add(balance as Balance).ok_or(ArithmeticError::Overflow)
+						old_val
+							.checked_add(balance as Balance)
+							.ok_or(Error::<T>::InvalidUpdateBalance)
 					} else {
 						old_val
 							.checked_sub(balance.unsigned_abs() as Balance)
-							.ok_or(ArithmeticError::Underflow)
+							.ok_or(Error::<T>::InvalidUpdateBalance)
 					}?;
 					*maybe_balance = Some(new_val);
 
@@ -254,18 +263,21 @@ impl<T: Config> Pallet<T> {
 		if current_rate < params.target_min {
 			let numerator = target_rate.saturating_mul_int(total_supply).saturating_sub(ausd_supply);
 			let mint_amount = remain_reci.saturating_mul_int(numerator).min(params.max_step);
+
+			// should failed if after this mint, the balance of distributed exceed the capacity.
 			if let Some(exist_minted) = DistributedBalance::<T>::get(&destination) {
 				let newly_amount = mint_amount.saturating_add(exist_minted);
 				ensure!(newly_amount < params.capacity, Error::<T>::ExceedCapacity);
 			} else {
 				ensure!(mint_amount < params.capacity, Error::<T>::ExceedCapacity);
 			}
+
 			log::info!(target: "honzon-dist", "current:{:?}, target:{:?}, mint:{:?}", current_rate, target_rate, mint_amount);
 			let mut assets = vec![0; asset_length];
 			assets[stable_asset.stable_token_index as usize] = mint_amount;
-			// deposit stable asset
+			// deposit stable asset to treasury account.
 			T::Currency::deposit(stable_asset.stable_currency_id, &account_id, mint_amount)?;
-			// mint to stable asset pool
+			// use this treasury amount and mint to stable asset pool
 			T::StableAsset::mint(&account_id, stable_asset.pool_id, assets, 0)?;
 			return Ok(mint_amount as Amount);
 		} else if current_rate > params.target_max {

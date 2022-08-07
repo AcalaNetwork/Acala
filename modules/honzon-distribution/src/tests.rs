@@ -22,7 +22,7 @@
 
 use super::*;
 use crate::mock::{Event, *};
-use frame_support::assert_ok;
+use frame_support::{assert_noop, assert_ok};
 use nutsfinance_stable_asset::traits::StableAsset as StableAssetT;
 
 fn inject_liquidity(
@@ -110,7 +110,6 @@ fn update_params_works() {
 
 #[test]
 fn stable_asset_mint_works() {
-	env_logger::init();
 	ExtBuilder::default().build().execute_with(|| {
 		let _ = inject_liquidity(ACA, AUSD, 100_000_000_000_000, 200_000_000_000_000);
 		let _ = inject_liquidity(AUSD, DOT, 100_000_000_000_000, 200_000_000_000_000);
@@ -129,6 +128,22 @@ fn stable_asset_mint_works() {
 			account_id: CHARLIE,
 		};
 		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
+
+		// Without `DistributedBalance`, current mint amount exceed capacity
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(1_000_000),
+			Some(1_000_000_000_000_000),
+			Some(Ratio::saturating_from_rational(70, 100)),
+			Some(Ratio::saturating_from_rational(80, 100)),
+		));
+		assert_noop!(
+			HonzonDistribution::force_adjust(Origin::root(), destination.clone()),
+			Error::<Runtime>::ExceedCapacity
+		);
+
+		// normal capacity
 		assert_ok!(HonzonDistribution::update_params(
 			Origin::root(),
 			destination.clone(),
@@ -142,20 +157,121 @@ fn stable_asset_mint_works() {
 		let _ = Tokens::deposit(LDOT, &CHARLIE, 100_000_000_000_000);
 		StableAssetWrapper::mint(&CHARLIE, 0, vec![100_000_000_000_000, 100_000_000_000_000], 0).unwrap();
 
-		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone(),));
-		System::assert_last_event(Event::StableAsset(nutsfinance_stable_asset::Event::Minted {
+		// less than target, mint aUSD
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		let ausd_mint = 171_425_714_285_865u128;
+		let stable_mint = 370_963_593_384_271u128;
+		System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::Minted {
 			minter: CHARLIE,
 			pool_id: 0,
 			a: 3000,
-			input_amounts: vec![171425714285865, 0],
+			input_amounts: vec![ausd_mint, 0],
 			min_output_amount: 0,
-			balances: vec![371426714285865, 199999000000165],
-			total_supply: 570963593384272,
+			balances: vec![371_426_714_285_865, 199_999_000_000_165],
+			total_supply: 570_963_593_384_272,
 			fee_amount: 0,
-			output_amount: 170963593384189,
+			output_amount: 170_963_593_384_189,
 		}));
+		// minted aUSD is add to `DistributedBalance`, and lp go to minter.
+		assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), ausd_mint);
+		assert_eq!(Tokens::free_balance(STABLE_ASSET, &CHARLIE), stable_mint);
+		// latest target = 0.6505
 
-		let distributed = DistributedBalance::<Runtime>::get(&destination).unwrap();
-		assert_eq!(distributed, 171425714285865);
+		// larger than target, burn aUSD
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(1_000_000_000_000_000),
+			Some(1_000_000_000_000_000),
+			Some(Ratio::saturating_from_rational(60, 100)),
+			Some(Ratio::saturating_from_rational(65, 100)),
+		));
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		let stable_redeem = 38_865_249_121_853u128;
+		let ausd_burn = 39_040_204_684_665u128;
+		System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::RedeemedSingle {
+			redeemer: CHARLIE,
+			pool_id: 0,
+			a: 3000,
+			input_amount: stable_redeem,
+			output_asset: DOT,
+			min_output_amount: 0,
+			balances: vec![332_386_509_601_200, 199_999_000_000_165],
+			total_supply: 532_098_344_262_419,
+			fee_amount: 0,
+			output_amount: ausd_burn,
+		}));
+		// redeemed aUSD is reduce from `DistributedBalance`, and lp also reduce from minter.
+		assert_eq!(
+			DistributedBalance::<Runtime>::get(&destination).unwrap(),
+			ausd_mint - ausd_burn
+		);
+		assert_eq!(
+			Tokens::free_balance(STABLE_ASSET, &CHARLIE),
+			stable_mint - stable_redeem
+		);
+		// latest target = 0.6246
+
+		// existing `DistributedBalance` add mint amount exceed capacity
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(1_000_000),
+			Some(1_000_000_000_000_000),
+			Some(Ratio::saturating_from_rational(70, 100)),
+			Some(Ratio::saturating_from_rational(80, 100)),
+		));
+		assert_noop!(
+			HonzonDistribution::force_adjust(Origin::root(), destination.clone()),
+			Error::<Runtime>::ExceedCapacity
+		);
+
+		// burned amount is large than `DistributedBalance`, failed.
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(1_000_000_000_000_000),
+			Some(1_000_000_000_000_000),
+			Some(Ratio::saturating_from_rational(48, 100)),
+			Some(Ratio::saturating_from_rational(52, 100)),
+		));
+		System::reset_events();
+		assert_noop!(
+			HonzonDistribution::force_adjust(Origin::root(), destination.clone()),
+			Error::<Runtime>::InvalidUpdateBalance
+		);
+		assert_eq!(
+			System::events().iter().find(|r| matches!(
+				r.event,
+				Event::StableAsset(nutsfinance_stable_asset::Event::RedeemedSingle { .. })
+			)),
+			None
+		);
+
+		assert_eq!(
+			DistributedBalance::<Runtime>::get(&destination).unwrap(),
+			ausd_mint - ausd_burn
+		);
+		assert_eq!(
+			Tokens::free_balance(STABLE_ASSET, &CHARLIE),
+			stable_mint - stable_redeem
+		);
+
+		// burned amount is less than `DistributedBalance`, success.
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(1_000_000_000_000_000),
+			Some(1_000_000_000_000_000),
+			Some(Ratio::saturating_from_rational(49, 100)),
+			Some(Ratio::saturating_from_rational(52, 100)),
+		));
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		assert!(System::events().iter().any(|r| {
+			matches!(
+				r.event,
+				Event::StableAsset(nutsfinance_stable_asset::Event::RedeemedSingle { .. })
+			)
+		}));
 	});
 }
