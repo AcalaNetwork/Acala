@@ -1715,7 +1715,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => {
+			CurrencyId::Token(TokenSymbol::LDOT) => {
 				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
 			}
 			_ => balance,
@@ -1729,10 +1729,9 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 		 * transactions have a possibility to fail, and this is undesirable.
 		 */
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate()
+			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate()
 				.reciprocal()
 				.and_then(|x| x.checked_mul_int(balance))
-				.and_then(|x| x.checked_add(1))
 				.unwrap_or_default(),
 			_ => balance,
 		}
@@ -1742,7 +1741,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 pub struct IsLiquidToken;
 impl Contains<CurrencyId> for IsLiquidToken {
 	fn contains(currency_id: &CurrencyId) -> bool {
-		matches!(currency_id, CurrencyId::Token(TokenSymbol::LKSM))
+		matches!(currency_id, CurrencyId::Token(TokenSymbol::LDOT))
 	}
 }
 
@@ -1754,7 +1753,7 @@ type RebaseTokens = orml_tokens::Combiner<
 >;
 
 parameter_types! {
-	pub const GetStableAssetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+	pub const GetStableAssetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 }
 
 impl nutsfinance_stable_asset::Config for Runtime {

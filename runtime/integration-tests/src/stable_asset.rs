@@ -115,17 +115,11 @@ fn stable_asset_mint_works() {
 			let lksm_balance = Currencies::free_balance(LIQUID_CURRENCY, &account_id);
 			assert_eq!(ksm_target_amount, ksm_balance);
 
-			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			let lksm_amount = 100_004_560u128;
-			#[cfg(feature = "with-mandala-runtime")]
-			let lksm_amount = 10_000_456u128;
 			assert_eq!(lksm_amount, lksm_balance);
 
 			let converted_lksm_balance = exchange_rate.checked_mul_int(lksm_balance).unwrap_or_default();
-			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			assert_eq!(converted_lksm_balance == lksm_target_amount, true);
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(converted_lksm_balance < lksm_target_amount, true);
 		});
 }
 
