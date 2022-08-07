@@ -362,11 +362,11 @@ pub mod module {
 			let bump_era_number = Self::era_amount_should_to_bump(T::RelayChainBlockNumber::current_block_number());
 			if !bump_era_number.is_zero() {
 				let _ = Self::bump_current_era(bump_era_number);
-				debug_assert!(
-					TotalStakingBonded::<T>::get()
-						== StakingLedgers::<T>::iter().fold(Zero::zero(), |total_bonded, (_, ledger)| {
-							total_bonded.saturating_add(ledger.bonded)
-						})
+				debug_assert_eq!(
+					TotalStakingBonded::<T>::get(),
+					StakingLedgers::<T>::iter().fold(Zero::zero(), |total_bonded: Balance, (_, ledger)| {
+						total_bonded.saturating_add(ledger.bonded)
+					})
 				);
 				<T as Config>::WeightInfo::on_initialize_with_bump_era()
 			} else {
