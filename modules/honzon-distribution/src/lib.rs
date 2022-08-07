@@ -123,11 +123,16 @@ pub mod module {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(fn deposit_event)]
+	#[pallet::generate_deposit(pub fn deposit_event)]
 	pub enum Event<T: Config> {
 		UpdateDistributionParams {
 			destination: DistributionDestination<T::AccountId>,
 			params: DistributionParams,
+		},
+		AdjustDestination {
+			destination: DistributionDestination<T::AccountId>,
+			stable_currency: CurrencyId,
+			amount: Amount,
 		},
 	}
 
@@ -279,6 +284,12 @@ impl<T: Config> Pallet<T> {
 			T::Currency::deposit(stable_asset.stable_currency_id, &account_id, mint_amount)?;
 			// use this treasury amount and mint to stable asset pool
 			T::StableAsset::mint(&account_id, stable_asset.pool_id, assets, 0)?;
+
+			Pallet::<T>::deposit_event(Event::<T>::AdjustDestination {
+				destination,
+				stable_currency: stable_asset.stable_currency_id,
+				amount: mint_amount as Amount,
+			});
 			return Ok(mint_amount as Amount);
 		} else if current_rate > params.target_max {
 			let numerator = ausd_supply.saturating_sub(target_rate.saturating_mul_int(total_supply));
@@ -293,7 +304,14 @@ impl<T: Config> Pallet<T> {
 				asset_length as u32,
 			)?;
 			T::Currency::withdraw(stable_asset.stable_currency_id, &account_id, stable_amount)?;
-			return Ok((0 as Amount).saturating_sub(stable_amount as Amount));
+			let burn_amount = (0 as Amount).saturating_sub(stable_amount as Amount);
+
+			Pallet::<T>::deposit_event(Event::<T>::AdjustDestination {
+				destination,
+				stable_currency: stable_asset.stable_currency_id,
+				amount: burn_amount,
+			});
+			return Ok(burn_amount);
 		}
 
 		Ok(0 as Amount)

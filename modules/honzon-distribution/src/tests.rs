@@ -172,6 +172,13 @@ fn stable_asset_mint_works() {
 			fee_amount: 0,
 			output_amount: 170_963_593_384_189,
 		}));
+		System::assert_has_event(crate::mock::Event::HonzonDistribution(
+			crate::Event::AdjustDestination {
+				destination: destination.clone(),
+				stable_currency: DOT,
+				amount: ausd_mint as i128,
+			},
+		));
 		// minted aUSD is add to `DistributedBalance`, and lp go to minter.
 		assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), ausd_mint);
 		assert_eq!(Tokens::free_balance(STABLE_ASSET, &CHARLIE), stable_mint);
@@ -201,6 +208,13 @@ fn stable_asset_mint_works() {
 			fee_amount: 0,
 			output_amount: ausd_burn,
 		}));
+		System::assert_has_event(crate::mock::Event::HonzonDistribution(
+			crate::Event::AdjustDestination {
+				destination: destination.clone(),
+				stable_currency: DOT,
+				amount: 0 as i128 - ausd_burn as i128,
+			},
+		));
 		// redeemed aUSD is reduce from `DistributedBalance`, and lp also reduce from minter.
 		assert_eq!(
 			DistributedBalance::<Runtime>::get(&destination).unwrap(),
@@ -271,6 +285,7 @@ fn stable_asset_mint_works() {
 			matches!(
 				r.event,
 				Event::StableAsset(nutsfinance_stable_asset::Event::RedeemedSingle { .. })
+					| crate::mock::Event::HonzonDistribution(crate::Event::AdjustDestination { .. })
 			)
 		}));
 	});
