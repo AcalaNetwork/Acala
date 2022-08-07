@@ -228,6 +228,8 @@ impl<T: Config> Pallet<T> {
 	/// if current value large than target_max, burn aUSD:
 	///     (balances+x)/(total_supply+x)=target,
 	///     x=(balances-target*total_supply)/(1-target)
+	///
+	/// return `Amount` type which will be update `DistributedBalance`.
 	fn adjust_for_stable_asset(
 		destination: DistributionDestination<T::AccountId>,
 		stable_asset: DistributionToStableAsset<T::AccountId>,
@@ -270,7 +272,7 @@ impl<T: Config> Pallet<T> {
 			let numerator = ausd_supply.saturating_sub(target_rate.saturating_mul_int(total_supply));
 			let burn_amount = remain_reci.saturating_mul_int(numerator).min(params.max_step);
 			log::info!(target: "honzon-dist", "current:{:?}, target:{:?}, burn:{:?}", current_rate, target_rate, burn_amount);
-			let Ok((_, stable_amount)) = T::StableAsset::redeem_single(
+			let (_, stable_amount) = T::StableAsset::redeem_single(
 				&account_id,
 				stable_asset.pool_id,
 				burn_amount,
@@ -279,7 +281,7 @@ impl<T: Config> Pallet<T> {
 				asset_length as u32,
 			)?;
 			T::Currency::withdraw(stable_asset.stable_currency_id, &account_id, stable_amount)?;
-			return Ok(0 - stable_amount as Amount);
+			return Ok((0 as Amount).saturating_sub(stable_amount as Amount));
 		}
 
 		Ok(0 as Amount)
