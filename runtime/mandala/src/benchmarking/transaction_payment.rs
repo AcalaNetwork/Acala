@@ -18,16 +18,15 @@
 
 use super::utils::{dollar, initialize_swap_pools, inject_liquidity, set_balance, LIQUID, NATIVE, STABLECOIN, STAKING};
 use crate::{
-	AccountId, AssetRegistry, Balance, Currencies, CurrencyId, Dex, Event, NativeTokenExistentialDeposit, Origin,
-	Runtime, StableAsset, System, TransactionPayment, TreasuryPalletId,
+	AccountId, Balance, Currencies, CurrencyId, Dex, Event, NativeTokenExistentialDeposit, Runtime, System,
+	TransactionPayment, TreasuryPalletId,
 };
 use frame_benchmarking::{account, whitelisted_caller};
-use frame_support::{assert_ok, traits::OnFinalize};
+use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
 use module_support::{AggregatedSwapPath, DEXManager, Ratio, SwapLimit};
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
-use primitives::currency::AssetMetadata;
 use sp_runtime::traits::{AccountIdConversion, One};
 use sp_std::prelude::*;
 
@@ -178,7 +177,7 @@ runtime_benchmarks! {
 			false,
 		)
 		.unwrap();
-		initialize_swap_pools(funder);
+		initialize_swap_pools(funder)?;
 
 		// Taiga(STAKING, LIQUID), Dex(LIQUID, NATIVE)
 		let fee_aggregated_path = vec![

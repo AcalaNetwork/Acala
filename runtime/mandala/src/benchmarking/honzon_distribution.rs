@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{dollar, initialize_swap_pools, inject_liquidity, NATIVE, SEED, STABLECOIN, STAKING};
+use super::utils::{initialize_swap_pools, SEED, STABLECOIN, STAKING};
 use crate::{AccountId, HonzonDistribution, Runtime};
 use frame_benchmarking::account;
 use frame_support::assert_ok;
@@ -25,8 +25,6 @@ use module_honzon_distribution::{DistributedBalance, DistributionDestination, Di
 use module_support::Ratio;
 use orml_benchmarking::runtime_benchmarks;
 use sp_runtime::FixedPointNumber;
-
-// const SEED: u32 = 0;
 
 runtime_benchmarks! {
 	{ Runtime, module_honzon_distribution }
@@ -49,7 +47,7 @@ runtime_benchmarks! {
 		let funder: AccountId = account("funder", 0, SEED);
 
 		// STAKING -> LIQUID -> STABLECOIN
-		initialize_swap_pools(funder);
+		initialize_swap_pools(funder)?;
 
 		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
 			pool_id: 0,
@@ -71,7 +69,6 @@ runtime_benchmarks! {
 	verify {
 		assert!(DistributedBalance::<Runtime>::get(&destination).is_some());
 	}
-
 }
 
 #[cfg(test)]

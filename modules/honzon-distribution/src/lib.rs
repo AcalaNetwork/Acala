@@ -79,7 +79,7 @@ pub mod module {
 		/// Adjust time period.
 		type AdjustPeriod: Get<Self::BlockNumber>;
 
-		/// Taiga
+		/// Taiga stable asset protocol.
 		type StableAsset: StableAssetT<
 			AssetId = CurrencyId,
 			AtLeast64BitUnsigned = Balance,
@@ -88,10 +88,10 @@ pub mod module {
 			BlockNumber = Self::BlockNumber,
 		>;
 
-		/// Currency for transfer assets
+		/// Currency for deposit/withdraw assets.
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		/// The origin.
+		/// The origin updating params and force adjust.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
 		/// Weight information for the extrinsics in this module.
@@ -238,7 +238,7 @@ impl<T: Config> Pallet<T> {
 	///     (balances+x)/(total_supply+x)=target,
 	///     x=(balances-target*total_supply)/(1-target)
 	///
-	/// return `Amount` type which will be update `DistributedBalance`.
+	/// return `Amount` that will be add to or subtract from `DistributedBalance`.
 	fn adjust_for_stable_asset(
 		destination: DistributionDestination<T::AccountId>,
 		stable_asset: DistributionToStableAsset<T::AccountId>,
