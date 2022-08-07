@@ -65,6 +65,9 @@ pub mod homa {
 pub mod honzon {
 	include!("../../../mandala/src/benchmarking/honzon.rs");
 }
+pub mod honzon_distribution {
+	include!("../../../mandala/src/benchmarking/honzon_distribution.rs");
+}
 pub mod idle_scheduler {
 	include!("../../../mandala/src/benchmarking/idle_scheduler.rs");
 }

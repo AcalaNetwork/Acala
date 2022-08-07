@@ -108,6 +108,7 @@ module-evm-accounts = { path = "../../modules/evm-accounts", default-features = 
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false }
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
 module-honzon = { path = "../../modules/honzon", default-features = false }
+module-honzon-distribution = { path = "../../modules/honzon-distribution", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
 module-nft = { path = "../../modules/nft", default-features = false }
 module-prices = { path = "../../modules/prices", default-features = false }
@@ -234,6 +235,7 @@ std = [
 	"module-evm-accounts/std",
 	"module-evm-bridge/std",
 	"module-honzon/std",
+	"module-honzon-distribution/std",
 	"module-loans/std",
 	"module-nft/std",
 	"module-prices/std",

@@ -1616,6 +1616,19 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
+parameter_types! {
+	pub const AdjustPeriod: BlockNumber = DAYS;
+}
+
+impl module_honzon_distribution::Config for Runtime {
+	type Event = Event;
+	type StableAsset = RebasedStableAsset;
+	type Currency = Currencies;
+	type AdjustPeriod = AdjustPeriod;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = ();
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1702,6 +1715,7 @@ construct_runtime!(
 		CdpTreasury: module_cdp_treasury = 103,
 		CdpEngine: module_cdp_engine = 104,
 		EmergencyShutdown: module_emergency_shutdown = 105,
+		HonzonDistribution: module_honzon_distribution = 106,
 
 		// Homa
 		Homa: module_homa = 116,
@@ -1832,6 +1846,7 @@ mod benches {
 		[module_evm, benchmarking::evm]
 		[module_homa, benchmarking::homa]
 		[module_honzon, benchmarking::honzon]
+		[module_honzon_distribution, benchmarking::honzon_distribution]
 		[module_cdp_treasury, benchmarking::cdp_treasury]
 		[module_collator_selection, benchmarking::collator_selection]
 		[module_transaction_pause, benchmarking::transaction_pause]

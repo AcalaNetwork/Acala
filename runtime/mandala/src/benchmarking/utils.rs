@@ -42,7 +42,7 @@ pub const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 pub const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 pub const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
 pub const STAKING: CurrencyId = GetStakingCurrencyId::get();
-const SEED: u32 = 0;
+pub const SEED: u32 = 0;
 
 pub fn lookup_of_account(who: AccountId) -> <<Runtime as frame_system::Config>::Lookup as StaticLookup>::Source {
 	<Runtime as frame_system::Config>::Lookup::unlookup(who)
@@ -153,10 +153,10 @@ pub fn register_stable_asset() -> DispatchResult {
 
 pub fn create_stable_pools(assets: Vec<CurrencyId>, precisions: Vec<u128>) -> DispatchResult {
 	let pool_asset = CurrencyId::StableAssetPoolToken(0);
-	let mint_fee = 10000000u128;
-	let swap_fee = 20000000u128;
-	let redeem_fee = 50000000u128;
-	let intial_a = 10000u128;
+	let mint_fee = 10_000_000u128;
+	let swap_fee = 20_000_000u128;
+	let redeem_fee = 50_000_000u128;
+	let initial_a = 10000u128;
 	let fee_recipient: AccountId = account("fee", 0, SEED);
 	let yield_recipient: AccountId = account("yield", 1, SEED);
 
@@ -169,10 +169,10 @@ pub fn create_stable_pools(assets: Vec<CurrencyId>, precisions: Vec<u128>) -> Di
 		mint_fee,
 		swap_fee,
 		redeem_fee,
-		intial_a,
+		initial_a,
 		fee_recipient,
 		yield_recipient,
-		1000000000000000000u128,
+		1_000_000_000_000u128,
 	)?;
 
 	Ok(())

@@ -154,6 +154,7 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
+ "module-honzon-distribution",
  "module-idle-scheduler",
  "module-incentives",
  "module-loans",
@@ -4221,6 +4222,7 @@ dependencies = [
  "module-homa",
  "module-honzon",
  "module-honzon-bridge",
+ "module-honzon-distribution",
  "module-idle-scheduler",
  "module-incentives",
  "module-loans",
@@ -5251,6 +5253,7 @@ dependencies = [
  "module-evm-utility",
  "module-homa",
  "module-honzon",
+ "module-honzon-distribution",
  "module-idle-scheduler",
  "module-incentives",
  "module-loans",
@@ -6016,6 +6019,7 @@ name = "module-honzon-distribution"
 version = "2.9.1"
 dependencies = [
  "acala-primitives",
+ "env_logger",
  "frame-support",
  "frame-system",
  "hex",

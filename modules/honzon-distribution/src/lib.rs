@@ -36,7 +36,7 @@ use sp_std::prelude::*;
 use module_support::{Ratio, RebasedStableAssetError};
 use nutsfinance_stable_asset::{traits::StableAsset as StableAssetT, StableAssetPoolId};
 use orml_traits::MultiCurrency;
-use primitives::{AccountId, Amount, Balance, CurrencyId};
+use primitives::{Amount, Balance, CurrencyId};
 
 mod mock;
 mod tests;
@@ -53,10 +53,10 @@ pub enum DistributionDestination<AccountId> {
 /// Information needed when distribution to StableAsset.
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct DistributionToStableAsset<AccountId> {
-	pool_id: StableAssetPoolId,
-	stable_token_index: u32,
-	stable_currency_id: CurrencyId,
-	account_id: AccountId,
+	pub pool_id: StableAssetPoolId,
+	pub stable_token_index: u32,
+	pub stable_currency_id: CurrencyId,
+	pub account_id: AccountId,
 }
 
 /// Distribution params
@@ -146,7 +146,7 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(1000)]
+		#[pallet::weight(T::WeightInfo::update_params())]
 		#[transactional]
 		pub fn update_params(
 			origin: OriginFor<T>,
@@ -175,13 +175,13 @@ pub mod module {
 
 			Self::deposit_event(Event::<T>::UpdateDistributionParams {
 				destination: destination.clone(),
-				params: params.clone(),
+				params,
 			});
 
 			Ok(())
 		}
 
-		#[pallet::weight(1000)]
+		#[pallet::weight(T::WeightInfo::force_adjust())]
 		#[transactional]
 		pub fn force_adjust(
 			origin: OriginFor<T>,
@@ -210,7 +210,7 @@ impl<T: Config> Pallet<T> {
 						old_val.checked_add(balance as Balance).ok_or(ArithmeticError::Overflow)
 					} else {
 						old_val
-							.checked_sub(balance.abs() as Balance)
+							.checked_sub(balance.unsigned_abs() as Balance)
 							.ok_or(ArithmeticError::Underflow)
 					}?;
 					*maybe_balance = Some(new_val);
@@ -258,7 +258,7 @@ impl<T: Config> Pallet<T> {
 			} else {
 				ensure!(mint_amount < params.capacity, Error::<T>::ExceedCapacity);
 			}
-			log::info!(target: "honzon-dist", "current:{}, target:{}, mint:{}", current_rate, target_rate, mint_amount);
+			log::info!(target: "honzon-dist", "current:{:?}, target:{:?}, mint:{:?}", current_rate, target_rate, mint_amount);
 			let mut assets = vec![0; asset_length];
 			assets[stable_asset.stable_token_index as usize] = mint_amount;
 			// deposit stable asset
@@ -269,9 +269,8 @@ impl<T: Config> Pallet<T> {
 		} else if current_rate > params.target_max {
 			let numerator = ausd_supply.saturating_sub(target_rate.saturating_mul_int(total_supply));
 			let burn_amount = remain_reci.saturating_mul_int(numerator).min(params.max_step);
-			log::info!(target: "honzon-dist", "current:{}, target:{}, burn:{}", current_rate, target_rate, burn_amount);
-			let stable_asset_amount_1 = T::Currency::free_balance(stable_asset.stable_currency_id, &account_id);
-			T::StableAsset::redeem_single(
+			log::info!(target: "honzon-dist", "current:{:?}, target:{:?}, burn:{:?}", current_rate, target_rate, burn_amount);
+			let Ok((_, stable_amount)) = T::StableAsset::redeem_single(
 				&account_id,
 				stable_asset.pool_id,
 				burn_amount,
@@ -279,11 +278,6 @@ impl<T: Config> Pallet<T> {
 				0,
 				asset_length as u32,
 			)?;
-			let stable_asset_amount_2 = T::Currency::free_balance(stable_asset.stable_currency_id, &account_id);
-			let stable_ed = T::Currency::minimum_balance(stable_asset.stable_currency_id);
-			let stable_amount = stable_asset_amount_2
-				.saturating_sub(stable_asset_amount_1)
-				.saturating_sub(stable_ed);
 			T::Currency::withdraw(stable_asset.stable_currency_id, &account_id, stable_amount)?;
 			return Ok(0 - stable_amount as Amount);
 		}

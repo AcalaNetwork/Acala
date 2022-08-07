@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{dollar, inject_liquidity, set_balance, LIQUID, NATIVE, STABLECOIN, STAKING};
+use super::utils::{dollar, initialize_swap_pools, inject_liquidity, set_balance, LIQUID, NATIVE, STABLECOIN, STAKING};
 use crate::{
 	AccountId, AssetRegistry, Balance, Currencies, CurrencyId, Dex, Event, NativeTokenExistentialDeposit, Origin,
 	Runtime, StableAsset, System, TransactionPayment, TreasuryPalletId,
@@ -37,7 +37,7 @@ fn assert_has_event(generic_event: Event) {
 	System::assert_has_event(generic_event.into());
 }
 
-fn enable_fee_pool() -> (AccountId, Balance, Balance, Balance) {
+fn prepare_enable_fee_pool() -> (AccountId, Balance, Balance, Balance) {
 	let funder: AccountId = account("funder", 0, SEED);
 	let treasury_account: AccountId = TreasuryPalletId::get().into_account_truncating();
 	let sub_account: AccountId =
@@ -71,55 +71,6 @@ fn enable_fee_pool() -> (AccountId, Balance, Balance, Balance) {
 	(sub_account, stable_ed, pool_size, swap_threshold)
 }
 
-fn enable_stable_asset() {
-	let funder: AccountId = account("funder", 0, SEED);
-	set_balance(STAKING, &funder, 1000 * dollar(STAKING));
-	set_balance(LIQUID, &funder, 1000 * dollar(LIQUID));
-	set_balance(NATIVE, &funder, 1000 * dollar(NATIVE));
-
-	// create stable asset pool
-	let pool_asset = CurrencyId::StableAssetPoolToken(0);
-	assert_ok!(StableAsset::create_pool(
-		Origin::root(),
-		pool_asset,
-		vec![STAKING, LIQUID],
-		vec![1u128, 1u128],
-		10_000_000u128,
-		20_000_000u128,
-		50_000_000u128,
-		1_000u128,
-		funder.clone(),
-		funder.clone(),
-		1_000_000_000_000u128,
-	));
-	let asset_metadata = AssetMetadata {
-		name: b"Token Name".to_vec(),
-		symbol: b"TN".to_vec(),
-		decimals: 12,
-		minimal_balance: 1,
-	};
-	assert_ok!(AssetRegistry::register_stable_asset(
-		RawOrigin::Root.into(),
-		Box::new(asset_metadata.clone())
-	));
-	assert_ok!(StableAsset::mint(
-		Origin::signed(funder.clone()),
-		0,
-		vec![100 * dollar(STAKING), 100 * dollar(LIQUID)],
-		0u128
-	));
-
-	inject_liquidity(
-		funder.clone(),
-		LIQUID,
-		NATIVE,
-		100 * dollar(LIQUID),
-		100 * dollar(NATIVE),
-		false,
-	)
-	.unwrap();
-}
-
 runtime_benchmarks! {
 	{ Runtime, module_transaction_payment }
 
@@ -132,7 +83,7 @@ runtime_benchmarks! {
 	}
 
 	enable_charge_fee_pool {
-		let (sub_account, stable_ed, pool_size, swap_threshold) = enable_fee_pool();
+		let (sub_account, stable_ed, pool_size, swap_threshold) = prepare_enable_fee_pool();
 	}: _(RawOrigin::Root, STABLECOIN, pool_size, swap_threshold)
 	verify {
 		let exchange_rate = TransactionPayment::token_exchange_rate(STABLECOIN).unwrap();
@@ -193,7 +144,7 @@ runtime_benchmarks! {
 		set_balance(STABLECOIN, &caller, 100 * dollar(STABLECOIN));
 		set_balance(NATIVE, &caller, 100 * dollar(NATIVE));
 
-		let (sub_account, stable_ed, pool_size, swap_threshold) = enable_fee_pool();
+		let (sub_account, stable_ed, pool_size, swap_threshold) = prepare_enable_fee_pool();
 		TransactionPayment::enable_charge_fee_pool(RawOrigin::Root.into(), STABLECOIN, pool_size, swap_threshold).unwrap();
 
 		let exchange_rate = TransactionPayment::token_exchange_rate(STABLECOIN).unwrap();
@@ -214,7 +165,20 @@ runtime_benchmarks! {
 		set_balance(STAKING, &caller, 100 * dollar(STAKING));
 		set_balance(NATIVE, &caller, 100 * dollar(NATIVE));
 
-		enable_stable_asset();
+		let funder: AccountId = account("funder", 0, SEED);
+		set_balance(STAKING, &funder, 1000 * dollar(STAKING));
+		set_balance(LIQUID, &funder, 1000 * dollar(LIQUID));
+		set_balance(NATIVE, &funder, 1000 * dollar(NATIVE));
+		inject_liquidity(
+			funder.clone(),
+			LIQUID,
+			NATIVE,
+			100 * dollar(LIQUID),
+			100 * dollar(NATIVE),
+			false,
+		)
+		.unwrap();
+		initialize_swap_pools(funder);
 
 		// Taiga(STAKING, LIQUID), Dex(LIQUID, NATIVE)
 		let fee_aggregated_path = vec![

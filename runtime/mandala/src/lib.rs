@@ -1774,6 +1774,19 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
+parameter_types! {
+	pub const AdjustPeriod: BlockNumber = DAYS;
+}
+
+impl module_honzon_distribution::Config for Runtime {
+	type Event = Event;
+	type StableAsset = RebasedStableAsset;
+	type Currency = Currencies;
+	type AdjustPeriod = AdjustPeriod;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = ();
+}
+
 define_combined_task! {
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	pub enum ScheduledTasks {
@@ -2043,6 +2056,7 @@ construct_runtime!(
 		CdpTreasury: module_cdp_treasury = 123,
 		CdpEngine: module_cdp_engine = 124,
 		EmergencyShutdown: module_emergency_shutdown = 125,
+		HonzonDistribution: module_honzon_distribution = 126,
 
 		// Homa
 		NomineesElection: module_nominees_election = 131,
@@ -2116,6 +2130,7 @@ mod benches {
 		[module_evm, benchmarking::evm]
 		[module_homa, benchmarking::homa]
 		[module_honzon, benchmarking::honzon]
+		[module_honzon_distribution, benchmarking::honzon_distribution]
 		[module_cdp_treasury, benchmarking::cdp_treasury]
 		[module_collator_selection, benchmarking::collator_selection]
 		[module_nominees_election, benchmarking::nominees_election]

@@ -110,6 +110,7 @@ fn update_params_works() {
 
 #[test]
 fn stable_asset_mint_works() {
+	env_logger::init();
 	ExtBuilder::default().build().execute_with(|| {
 		let _ = inject_liquidity(ACA, AUSD, 100_000_000_000_000, 200_000_000_000_000);
 		let _ = inject_liquidity(AUSD, DOT, 100_000_000_000_000, 200_000_000_000_000);
