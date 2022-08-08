@@ -260,9 +260,9 @@ pub mod module {
 			Self::do_set_rebalance_swap_info(currency_id, supply_amount, threshold)
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::rebalance_swap())]
+		#[pallet::weight(<T as Config>::WeightInfo::force_rebalance_swap())]
 		#[transactional]
-		pub fn rebalance_swap(
+		pub fn force_rebalance_swap(
 			origin: OriginFor<T>,
 			currency_1: CurrencyId,
 			currency_2: CurrencyId,
@@ -277,7 +277,7 @@ pub mod module {
 	impl<T: Config> ValidateUnsigned for Pallet<T> {
 		type Call = Call<T>;
 		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			if let Call::rebalance_swap {
+			if let Call::force_rebalance_swap {
 				currency_1,
 				currency_2,
 				currency_3,
@@ -506,7 +506,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn submit_rebalance_swap_tx(currency_1: CurrencyId, currency_2: CurrencyId, currency_3: CurrencyId) {
-		let call = Call::<T>::rebalance_swap {
+		let call = Call::<T>::force_rebalance_swap {
 			currency_1,
 			currency_2,
 			currency_3,

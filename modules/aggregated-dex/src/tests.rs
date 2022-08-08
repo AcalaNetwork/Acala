@@ -1400,14 +1400,14 @@ fn trigger_unsigned_rebalance_swap(n: u64, pool_state: Arc<RwLock<PoolState>>, a
 	// trigger unsigned tx
 	let tx = pool_state.write().transactions.pop().unwrap();
 	let tx = Extrinsic::decode(&mut &*tx).unwrap();
-	if let MockCall::AggregatedDex(crate::Call::rebalance_swap {
+	if let MockCall::AggregatedDex(crate::Call::force_rebalance_swap {
 		currency_1,
 		currency_2,
 		currency_3,
 	}) = tx.call
 	{
 		assert_eq!((AUSD, DOT, BTC), (currency_1, currency_2, currency_3));
-		assert_ok!(AggregatedDex::rebalance_swap(
+		assert_ok!(AggregatedDex::force_rebalance_swap(
 			Origin::none(),
 			currency_1,
 			currency_2,

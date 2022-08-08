@@ -23,7 +23,6 @@ use crate::{
 };
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
-use primitives::TokenSymbol;
 use sp_runtime::traits::UniqueSaturatedInto;
 
 const SEED: u32 = 0;
@@ -68,21 +67,12 @@ runtime_benchmarks! {
 
 	}: _(RawOrigin::Root, STABLECOIN, supply, threshold)
 
-	rebalance_swap {
+	force_rebalance_swap {
 		let funder: AccountId = account("funder", 0, SEED);
 
 		let _ = inject_liquidity(funder.clone(), STABLECOIN, STAKINGCOIN, 100 * dollar(STABLECOIN), 200 * dollar(STAKINGCOIN));
 		let _ = inject_liquidity(funder.clone(), STAKINGCOIN, NATIVECOIN, 100 * dollar(STAKINGCOIN), 200 * dollar(NATIVECOIN));
 	}: _(RawOrigin::None, STABLECOIN, STAKINGCOIN, STAKINGCOIN)
-
-	set_trading_pair_nodes {
-		let funder: AccountId = account("funder", 0, SEED);
-
-		let _ = inject_liquidity(funder.clone(), STABLECOIN, STAKINGCOIN, 100 * dollar(STABLECOIN), 200 * dollar(STAKINGCOIN));
-		let _ = inject_liquidity(funder.clone(), STAKINGCOIN, NATIVECOIN, 100 * dollar(STAKINGCOIN), 200 * dollar(NATIVECOIN));
-		let _ = inject_liquidity(funder.clone(), STABLECOIN, NATIVECOIN, 100 * dollar(STABLECOIN), 200 * dollar(NATIVECOIN));
-		let _ = inject_liquidity(funder.clone(), STABLECOIN, LIQUIDCOIN, 100 * dollar(STABLECOIN), 200 * dollar(LIQUIDCOIN));
-	}: _(RawOrigin::Root)
 }
 
 #[cfg(test)]
