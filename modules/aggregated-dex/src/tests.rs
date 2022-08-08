@@ -32,13 +32,8 @@ use sp_io::offchain;
 use sp_runtime::traits::BadOrigin;
 use std::sync::Arc;
 
-fn run_to_block_offchain(n: u64, execute_on_idle: bool) {
-	let weight: Weight = 1000;
+fn run_to_block_offchain(n: u64) {
 	while System::block_number() < n {
-		if execute_on_idle {
-			AggregatedDex::on_idle(n, weight);
-		}
-
 		System::set_block_number(System::block_number() + 1);
 		AggregatedDex::offchain_worker(System::block_number());
 		// this unlocks the concurrency storage lock so offchain_worker will fire next block
@@ -1341,33 +1336,7 @@ fn offchain_worker_max_iteration_works() {
 		System::set_block_number(1);
 		inject_liquidity_default_pairs();
 
-		let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
-		assert_eq!(keys, vec![]);
-
 		trigger_unsigned_rebalance_swap(2, pool_state.clone(), None);
-		// run_to_block_offchain(2);
-		// // initialize `TradingPairNodes`
-		// let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
-		// assert_eq!(keys, vec![DOT, AUSD]);
-		//
-		// // trigger unsigned tx
-		// let tx = pool_state.write().transactions.pop().unwrap();
-		// let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		// if let MockCall::AggregatedDex(crate::Call::rebalance_swap {
-		// 	currency_1,
-		// 	currency_2,
-		// 	currency_3,
-		// }) = tx.call
-		// {
-		// 	assert_eq!((AUSD, DOT, BTC), (currency_1, currency_2, currency_3));
-		// 	assert_ok!(AggregatedDex::rebalance_swap(
-		// 		Origin::none(),
-		// 		currency_1,
-		// 		currency_2,
-		// 		currency_3
-		// 	));
-		// }
-		// assert!(pool_state.write().transactions.pop().is_none());
 
 		let to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
 		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
@@ -1377,37 +1346,10 @@ fn offchain_worker_max_iteration_works() {
 		offchain.local_storage_set(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS, &1u32.encode());
 		trigger_unsigned_rebalance_swap(3, pool_state.clone(), None);
 
-		// run_to_block_offchain(3);
-		// let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
-		// assert_eq!(keys, vec![DOT, AUSD]);
-		//
-		// let tx = pool_state.write().transactions.pop().unwrap();
-		// let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		// if let MockCall::AggregatedDex(crate::Call::rebalance_swap {
-		// 	currency_1,
-		// 	currency_2,
-		// 	currency_3,
-		// }) = tx.call
-		// {
-		// 	assert_eq!((AUSD, DOT, BTC), (currency_1, currency_2, currency_3));
-		// 	assert_ok!(AggregatedDex::rebalance_swap(
-		// 		Origin::none(),
-		// 		currency_1,
-		// 		currency_2,
-		// 		currency_3
-		// 	));
-		// }
-		// assert!(pool_state.write().transactions.pop().is_none());
-
-		// iterator last_saw_key
-		let mut iter = TradingPairNodes::<Runtime>::iter();
-		let _ = iter.next(); // first currency is DOT
-		let _ = iter.next(); // second one is AUSD
-		let last_saw_key = iter.last_raw_key();
-
 		let to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
-		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
-		assert_eq!(start_key, Some(last_saw_key.to_vec()));
+		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default().unwrap();
+		let to_be_continue_currency = CurrencyId::decode(&mut &*start_key).unwrap();
+		assert_eq!(to_be_continue_currency, AUSD);
 	});
 }
 
@@ -1453,9 +1395,7 @@ fn offchain_worker_trigger_unsigned_rebalance_swap() {
 
 fn trigger_unsigned_rebalance_swap(n: u64, pool_state: Arc<RwLock<PoolState>>, actual_target_amount: Option<u128>) {
 	System::reset_events();
-	run_to_block_offchain(n, true);
-	let keys: Vec<CurrencyId> = TradingPairNodes::<Runtime>::iter_keys().collect();
-	assert_eq!(keys, vec![DOT, AUSD]);
+	run_to_block_offchain(n);
 
 	// trigger unsigned tx
 	let tx = pool_state.write().transactions.pop().unwrap();

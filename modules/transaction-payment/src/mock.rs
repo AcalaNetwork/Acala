@@ -39,10 +39,7 @@ use sp_runtime::{
 	Perbill,
 };
 use sp_std::cell::RefCell;
-use support::{
-	mocks::{MockAddressMapping, MockStableAsset},
-	Price, SpecificJointsSwap,
-};
+use support::{mocks::MockAddressMapping, Price, SpecificJointsSwap};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -192,16 +189,6 @@ impl module_dex::Config for Runtime {
 	type ListingOrigin = EnsureSignedBy<Zero, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
 	type OnLiquidityPoolUpdated = ();
-}
-
-impl module_aggregated_dex::Config for Runtime {
-	type Event = Event;
-	type DEX = DEXModule;
-	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
-	type GovernanceOrigin = EnsureSignedBy<Zero, AccountId>;
-	type DexSwapJointList = AlternativeSwapPathJointList;
-	type SwapPathLimit = ConstU32<3>;
-	type WeightInfo = ();
 }
 
 parameter_types! {

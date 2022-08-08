@@ -209,8 +209,6 @@ impl Config for Runtime {
 	type DexSwapJointList = DexSwapJointList;
 	type SwapPathLimit = ConstU32<3>;
 	type TreasuryPallet = TreasuryPalletId;
-	type SingleTokenTradingLimit = ConstU32<10>;
-	type TradingKeysUpdateFrequency = ConstU64<1>;
 	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type WeightInfo = ();
 }

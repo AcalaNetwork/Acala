@@ -22,6 +22,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::type_complexity)]
 
+use codec::Decode;
 use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
@@ -88,14 +89,6 @@ pub mod module {
 		#[pallet::constant]
 		type SwapPathLimit: Get<u32>;
 
-		/// The limit of one Currency to all other direct trading token.
-		#[pallet::constant]
-		type SingleTokenTradingLimit: Get<u32>;
-
-		/// The frequency block number to update `TradingPairNodes`.
-		#[pallet::constant]
-		type TradingKeysUpdateFrequency: Get<Self::BlockNumber>;
-
 		/// Treasury account participate in Rebalance swap.
 		#[pallet::constant]
 		type TreasuryPallet: Get<PalletId>;
@@ -147,14 +140,6 @@ pub mod module {
 	pub type AggregatedSwapPaths<T: Config> =
 		StorageMap<_, Twox64Concat, (CurrencyId, CurrencyId), BoundedVec<SwapPath, T::SwapPathLimit>, OptionQuery>;
 
-	/// Direct trading pair token list of specify CurrencyId.
-	///
-	/// TradingPairNodes: map CurrencyId => vec![CurrencyId]
-	#[pallet::storage]
-	#[pallet::getter(fn trading_pair_nodes)]
-	pub type TradingPairNodes<T: Config> =
-		StorageMap<_, Twox64Concat, CurrencyId, BoundedVec<CurrencyId, T::SingleTokenTradingLimit>, ValueQuery>;
-
 	#[pallet::storage]
 	#[pallet::getter(fn rebalance_supply_threshold)]
 	pub type RebalanceSupplyThreshold<T: Config> =
@@ -181,16 +166,6 @@ pub mod module {
 					now,
 				);
 			}
-		}
-
-		fn on_idle(now: T::BlockNumber, mut remaining_weight: Weight) -> Weight {
-			// update `TradingPairNodes` every `TradingKeysUpdateFrequency` interval.
-			if now % T::TradingKeysUpdateFrequency::get() == Zero::zero() {
-				let _ = Self::do_set_trading_pair_nodes();
-				let used = <T as Config>::WeightInfo::set_trading_pair_nodes();
-				remaining_weight = remaining_weight.saturating_sub(used);
-			}
-			remaining_weight
 		}
 	}
 
@@ -296,13 +271,6 @@ pub mod module {
 			ensure_none(origin)?;
 			Self::do_rebalance_swap((currency_1, currency_2, currency_3))
 		}
-
-		#[pallet::weight(<T as Config>::WeightInfo::set_trading_pair_nodes())]
-		#[transactional]
-		pub fn set_trading_pair_nodes(origin: OriginFor<T>) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
-			Self::do_set_trading_pair_nodes()
-		}
 	}
 
 	#[pallet::validate_unsigned]
@@ -336,10 +304,6 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	fn treasury_account() -> T::AccountId {
 		T::TreasuryPallet::get().into_account_truncating()
-	}
-
-	pub fn get_trading_pair_keys() -> Vec<CurrencyId> {
-		TradingPairNodes::<T>::iter_keys().collect()
 	}
 
 	fn check_swap_paths(paths: &[SwapPath]) -> sp_std::result::Result<(CurrencyId, CurrencyId), DispatchError> {
@@ -557,10 +521,6 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn _offchain_worker(_now: T::BlockNumber) -> Result<(), OffchainErr> {
-		if Self::get_trading_pair_keys().len().is_zero() {
-			return Ok(());
-		}
-
 		// acquire offchain worker lock
 		let lock_expiration = Duration::from_millis(LOCK_DURATION);
 		let mut lock = StorageLock::<'_, Time>::with_deadline(OFFCHAIN_WORKER_LOCK, lock_expiration);
@@ -571,23 +531,47 @@ impl<T: Config> Pallet<T> {
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
 			.unwrap_or(DEFAULT_MAX_ITERATIONS);
 		let mut to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
-
 		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
-		let mut iterator = match start_key.clone() {
-			Some(key) => TradingPairNodes::<T>::iter_from(key),
-			None => TradingPairNodes::<T>::iter(),
-		};
+
+		let mut trading_pair_values_map: BTreeMap<CurrencyId, Vec<CurrencyId>> = BTreeMap::new();
+		let mut first_currency: Option<CurrencyId> = None;
+		TradingPairStatuses::<T>::iter()
+			.filter(|(_, status)| status.enabled())
+			.for_each(|(pair, _)| {
+				trading_pair_values_map
+					.entry(pair.first())
+					.or_insert_with(Vec::<CurrencyId>::new)
+					.push(pair.second());
+				if first_currency.is_none() {
+					first_currency = Some(pair.first());
+				}
+			});
+		let mut iterator = trading_pair_values_map.iter();
 
 		let mut finished = true;
 		let mut iteration_count = 0;
+		let mut last_currency_id: Option<CurrencyId> = None;
 		let iteration_start_time = sp_io::offchain::timestamp();
 
 		#[allow(clippy::while_let_on_iterator)]
 		'outer: while let Some((currency_id, trading_tokens)) = iterator.next() {
+			// BTreeMap don't have `iter_from(key)`, use compare here to ignore previous processed token.
+			match start_key.clone() {
+				Some(key) => {
+					let starter_key = CurrencyId::decode(&mut &*key).map_err(|_| OffchainErr::OffchainLock)?;
+					if *currency_id < starter_key {
+						continue;
+					}
+				}
+				None => {}
+			};
+
 			let len = trading_tokens.len();
 			if len < 2 {
 				continue;
 			}
+			// update last processing CurrencyId
+			last_currency_id = Some(*currency_id);
 			for i in 0..(len - 1) {
 				for j in (i + 1)..len {
 					iteration_count += 1;
@@ -596,7 +580,7 @@ impl<T: Config> Pallet<T> {
 						if TradingPairStatuses::<T>::contains_key(&pair) {
 							let pair_status = TradingPairStatuses::<T>::get(&pair);
 							if pair_status.enabled() {
-								Self::submit_rebalance_swap_tx(currency_id, pair.first(), pair.second());
+								Self::submit_rebalance_swap_tx(*currency_id, pair.first(), pair.second());
 							}
 						}
 					}
@@ -630,7 +614,10 @@ impl<T: Config> Pallet<T> {
 		if finished {
 			to_be_continue.clear();
 		} else {
-			to_be_continue.set(&iterator.last_raw_key());
+			match last_currency_id {
+				Some(last_currency_id) => to_be_continue.set(&last_currency_id.encode()),
+				None => to_be_continue.clear(),
+			}
 		}
 
 		// Consume the guard but **do not** unlock the underlying lock.
@@ -693,34 +680,6 @@ impl<T: Config> Pallet<T> {
 					});
 				}
 			}
-		}
-		Ok(())
-	}
-
-	fn do_set_trading_pair_nodes() -> DispatchResult {
-		let mut trading_pair_values_map: BTreeMap<CurrencyId, Vec<CurrencyId>> = BTreeMap::new();
-		TradingPairStatuses::<T>::iter()
-			.filter(|(_, status)| status.enabled())
-			.for_each(|(pair, _)| {
-				trading_pair_values_map
-					.entry(pair.first())
-					.or_insert_with(Vec::<CurrencyId>::new)
-					.push(pair.second());
-			});
-		for (currency_id, trading_tokens) in trading_pair_values_map {
-			let _ = TradingPairNodes::<T>::try_mutate(currency_id, |maybe_trading_tokens| -> DispatchResult {
-				let trading_tokens: Result<BoundedVec<CurrencyId, T::SingleTokenTradingLimit>, _> =
-					trading_tokens.try_into();
-				match trading_tokens {
-					Ok(trading_tokens) => {
-						*maybe_trading_tokens = trading_tokens;
-					}
-					_ => {
-						log::debug!(target: "dex-bot", "Too many trading pair for token:{:?}.", currency_id);
-					}
-				}
-				Ok(())
-			});
 		}
 		Ok(())
 	}

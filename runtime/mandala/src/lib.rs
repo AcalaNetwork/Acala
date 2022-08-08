@@ -1146,7 +1146,6 @@ parameter_types! {
 		TradingPair::from_currency_ids(DOT, ACA).unwrap(),
 	];
 	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
-	pub const TradingKeysUpdateFrequency: BlockNumber = 2 * DAYS;
 	pub const TradingPathLimit: u32 = 4;
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
 		vec![GetStakingCurrencyId::get()],
@@ -1176,8 +1175,6 @@ impl module_aggregated_dex::Config for Runtime {
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
-	type SingleTokenTradingLimit = ConstU32<10>;
-	type TradingKeysUpdateFrequency = TradingKeysUpdateFrequency;
 	type TreasuryPallet = TreasuryPalletId;
 	type UnsignedPriority = runtime_common::DexTriangleSwapUnsignedPriority;
 	type WeightInfo = ();

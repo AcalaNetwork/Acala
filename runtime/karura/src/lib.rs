@@ -1093,7 +1093,6 @@ impl module_emergency_shutdown::Config for Runtime {
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (3, 1000);	// 0.3%
 	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
-	pub const TradingKeysUpdateFrequency: BlockNumber = 2 * DAYS;
 	pub const TradingPathLimit: u32 = 4;
 }
 
@@ -1118,8 +1117,6 @@ impl module_aggregated_dex::Config for Runtime {
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
-	type SingleTokenTradingLimit = ConstU32<10>;
-	type TradingKeysUpdateFrequency = TradingKeysUpdateFrequency;
 	type TreasuryPallet = TreasuryPalletId;
 	type UnsignedPriority = runtime_common::DexTriangleSwapUnsignedPriority;
 	type WeightInfo = ();
