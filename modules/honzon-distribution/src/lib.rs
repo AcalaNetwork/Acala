@@ -27,7 +27,7 @@ use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{One, Saturating, Zero},
+	traits::{One, Saturating},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
@@ -78,6 +78,9 @@ pub mod module {
 		/// Adjust time period.
 		type AdjustPeriod: Get<Self::BlockNumber>;
 
+		/// Adjust time offset.
+		type AdjustOffset: Get<Self::BlockNumber>;
+
 		/// Taiga stable asset protocol.
 		type StableAsset: StableAssetT<
 			AssetId = CurrencyId,
@@ -111,12 +114,8 @@ pub mod module {
 	pub enum Error<T> {
 		/// The DistributionParams is not exist.
 		DistributionParamsNotExist,
-		/// Exceed capacity
-		ExceedCapacity,
 		/// The Destination is invalid.
 		InvalidDestination,
-		/// The DistributionParams is invalid
-		InvalidDistributionParams,
 		/// The balance is invalid
 		InvalidUpdateBalance,
 	}
@@ -141,7 +140,7 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(now: T::BlockNumber) -> Weight {
-			if now % T::AdjustPeriod::get() == Zero::zero() {
+			if now % T::AdjustPeriod::get() == T::AdjustOffset::get() {
 				let mut total_weight: Weight = 0;
 				DistributionDestinationParams::<T>::iter_keys().for_each(|destination| {
 					let weight = T::WeightInfo::force_adjust();
@@ -248,13 +247,14 @@ impl<T: Config> Pallet<T> {
 		let pool_id = stable_asset.pool_id;
 		let pool_info = T::StableAsset::pool(pool_id).ok_or(Error::<T>::InvalidDestination)?;
 		let account_id = stable_asset.account_id;
-
+		let asset_length = pool_info.assets.len();
+		let asset_index = stable_asset.stable_token_index as usize;
 		let total_supply = pool_info.total_supply;
 		let ausd_supply = pool_info
 			.balances
-			.get(stable_asset.stable_token_index as usize)
+			.get(asset_index)
 			.ok_or(Error::<T>::InvalidDestination)?;
-		let asset_length = pool_info.assets.len();
+		ensure!(asset_index < asset_length, Error::<T>::InvalidDestination);
 
 		let current_rate = Ratio::saturating_from_rational(*ausd_supply, total_supply);
 		let target_rate = params
@@ -270,17 +270,16 @@ impl<T: Config> Pallet<T> {
 				.saturating_sub(*ausd_supply);
 			let mint_amount = remain_reci.saturating_mul_int(numerator).min(params.max_step);
 
-			// should failed if after this mint, the balance of distributed exceed the capacity.
-			if let Some(exist_minted) = DistributedBalance::<T>::get(destination) {
-				let newly_amount = mint_amount.saturating_add(exist_minted);
-				ensure!(newly_amount < params.capacity, Error::<T>::ExceedCapacity);
+			let distributed = DistributedBalance::<T>::get(destination).unwrap_or_default();
+			let mint_amount = if mint_amount.saturating_add(distributed) <= params.capacity {
+				mint_amount
 			} else {
-				ensure!(mint_amount < params.capacity, Error::<T>::ExceedCapacity);
-			}
+				params.capacity.saturating_sub(distributed)
+			};
 
 			log::info!(target: "honzon-dist", "current:{:?}, target:{:?}, mint:{:?}", current_rate, target_rate, mint_amount);
 			let mut assets = vec![0; asset_length];
-			assets[stable_asset.stable_token_index as usize] = mint_amount;
+			assets[asset_index] = mint_amount;
 			// deposit stable asset to treasury account.
 			T::Currency::deposit(stable_asset.stable_currency_id, &account_id, mint_amount)?;
 			// use this treasury amount and mint to stable asset pool
@@ -300,7 +299,7 @@ impl<T: Config> Pallet<T> {
 				&account_id,
 				stable_asset.pool_id,
 				burn_amount,
-				stable_asset.stable_token_index,
+				asset_index as u32,
 				0,
 				asset_length as u32,
 			)?;

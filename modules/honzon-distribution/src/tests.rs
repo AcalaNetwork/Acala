@@ -85,7 +85,7 @@ fn update_params_works() {
 }
 
 #[test]
-fn stable_asset_mint_works() {
+fn stable_asset_mint_burn_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		let _ = initial_stable_asset(DOT, LDOT);
 		let _ = Tokens::deposit(DOT, &ALICE, 100_000_000_000u128);
@@ -101,20 +101,6 @@ fn stable_asset_mint_works() {
 			account_id: CHARLIE,
 		};
 		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
-
-		// Without `DistributedBalance`, current mint amount exceed capacity
-		assert_ok!(HonzonDistribution::update_params(
-			Origin::root(),
-			destination.clone(),
-			Some(1_000_000),
-			Some(1_000_000_000_000_000),
-			Some(Ratio::saturating_from_rational(70, 100)),
-			Some(Ratio::saturating_from_rational(80, 100)),
-		));
-		assert_noop!(
-			HonzonDistribution::force_adjust(Origin::root(), destination.clone()),
-			Error::<Runtime>::ExceedCapacity
-		);
 
 		// normal capacity
 		assert_ok!(HonzonDistribution::update_params(
@@ -198,20 +184,6 @@ fn stable_asset_mint_works() {
 			stable_mint - stable_redeem
 		);
 		// latest target = 0.6246
-
-		// existing `DistributedBalance` add mint amount exceed capacity
-		assert_ok!(HonzonDistribution::update_params(
-			Origin::root(),
-			destination.clone(),
-			Some(1_000_000),
-			Some(1_000_000_000_000_000),
-			Some(Ratio::saturating_from_rational(70, 100)),
-			Some(Ratio::saturating_from_rational(80, 100)),
-		));
-		assert_noop!(
-			HonzonDistribution::force_adjust(Origin::root(), destination.clone()),
-			Error::<Runtime>::ExceedCapacity
-		);
 
 		// burned amount is large than `DistributedBalance`, failed.
 		assert_ok!(HonzonDistribution::update_params(

@@ -177,6 +177,7 @@ impl module_honzon_distribution::Config for Runtime {
 	type StableAsset = StableAsset;
 	type Currency = Currencies;
 	type AdjustPeriod = ConstU64<1>;
+	type AdjustOffset = ConstU64<1>;
 	type UpdateOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
