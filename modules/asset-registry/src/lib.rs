@@ -582,6 +582,27 @@ where
 	}
 }
 
+pub struct BuyWeightRateOfLiquidCrowdloan<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: Config> BuyWeightRate for BuyWeightRateOfLiquidCrowdloan<T>
+where
+	BalanceOf<T>: Into<u128>,
+{
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio> {
+		let currency = key_to_currency(location);
+		match currency {
+			Some(CurrencyId::LiquidCrowdloan(lease)) => {
+				// The default rate for all leases is the same.
+				// LCDOT:DOT = 1.3:1
+				let rate = FixedU128::saturating_from_rational(13, 10);
+				log::debug!(target: "asset-registry::weight", "LiquidCrowdloan: {}, rate:{:?}", lease, rate);
+				Some(rate)
+			}
+			_ => None,
+		}
+	}
+}
+
 pub struct BuyWeightRateOfStableAsset<T>(sp_std::marker::PhantomData<T>);
 
 impl<T: Config> BuyWeightRate for BuyWeightRateOfStableAsset<T>
