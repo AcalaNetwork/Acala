@@ -30,7 +30,7 @@ use frame_support::{
 use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use primitives::{Balance, Moment, ReserveIdentifier, TokenSymbol};
-use sp_core::H256;
+use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
@@ -44,13 +44,13 @@ mod honzon {
 	pub use super::super::*;
 }
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type AuctionId = u32;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const CAROL: AccountId = 3;
+pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId = AccountId32::new([2u8; 32]);
+pub const CAROL: AccountId = AccountId32::new([3u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
@@ -197,7 +197,7 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 }
 
 ord_parameter_types! {
-	pub const One: AccountId = 1;
+	pub const One: AccountId = AccountId32::new([1u8; 32]);
 }
 
 parameter_types! {
@@ -231,6 +231,15 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl evm_accounts::Config for Runtime {
+	type Event = Event;
+	type Currency = PalletBalances;
+	type ChainId = ();
+	type AddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
+	type TransferAll = Currencies;
+	type WeightInfo = ();
+}
+
 parameter_type_with_key! {
 	pub MinimumCollateralAmount: |_currency_id: CurrencyId| -> Balance {
 		10
@@ -242,6 +251,8 @@ parameter_types! {
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
+	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(80, 100);
+	pub const CDPEnginePalletId: PalletId = PalletId(*b"aca/cdpe");
 }
 
 impl cdp_engine::Config for Runtime {
@@ -261,6 +272,12 @@ impl cdp_engine::Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = ();
+	type LiquidationContractsUpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
+	type MaxLiquidationContracts = ConstU32<10>;
+	type LiquidationEvmBridge = ();
+	type PalletId = CDPEnginePalletId;
+	type EvmAddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = SpecificJointsSwap<(), AlternativeSwapPathJointList>;
 	type WeightInfo = ();
 }
@@ -291,6 +308,7 @@ construct_runtime!(
 		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
 		CDPEngineModule: cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		EvmAccounts: evm_accounts::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

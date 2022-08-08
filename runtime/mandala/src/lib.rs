@@ -132,7 +132,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2083,
+	spec_version: 2091,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -164,6 +164,7 @@ parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
+	pub const CDPEnginePalletId: PalletId = PalletId(*b"aca/cdpe");
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaPalletId: PalletId = PalletId(*b"aca/homa");
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
@@ -187,6 +188,7 @@ parameter_types! {
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
 	vec![
+		CDPEnginePalletId::get().into_account_truncating(),
 		TreasuryPalletId::get().into_account_truncating(),
 		LoansPalletId::get().into_account_truncating(),
 		DEXPalletId::get().into_account_truncating(),
@@ -1056,8 +1058,8 @@ where
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			runtime_common::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
-			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			module_evm::SetEvmOrigin::<Runtime>::new(),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -1089,7 +1091,8 @@ parameter_types! {
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
 	pub MinimumDebitValue: Balance = dollar(AUSD);
-	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(15, 100);
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(10, 100);
+	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);
 }
 
 impl module_cdp_engine::Config for Runtime {
@@ -1110,6 +1113,12 @@ impl module_cdp_engine::Config for Runtime {
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = Dex;
+	type LiquidationContractsUpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
+	type MaxLiquidationContracts = ConstU32<10>;
+	type LiquidationEvmBridge = module_evm_bridge::LiquidationEvmBridge<Runtime>;
+	type PalletId = CDPEnginePalletId;
+	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = AcalaSwap;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
@@ -1484,6 +1493,8 @@ impl InstanceFilter<Call> for ProxyType {
 					c,
 					Call::Dex(module_dex::Call::swap_with_exact_supply { .. })
 						| Call::Dex(module_dex::Call::swap_with_exact_target { .. })
+						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_supply { .. })
+						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_target { .. })
 				)
 			}
 			ProxyType::Loan => {
@@ -1707,7 +1718,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => {
+			CurrencyId::Token(TokenSymbol::LDOT) => {
 				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
 			}
 			_ => balance,
@@ -1721,10 +1732,9 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 		 * transactions have a possibility to fail, and this is undesirable.
 		 */
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate()
+			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate()
 				.reciprocal()
 				.and_then(|x| x.checked_mul_int(balance))
-				.and_then(|x| x.checked_add(1))
 				.unwrap_or_default(),
 			_ => balance,
 		}
@@ -1734,7 +1744,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 pub struct IsLiquidToken;
 impl Contains<CurrencyId> for IsLiquidToken {
 	fn contains(currency_id: &CurrencyId) -> bool {
-		matches!(currency_id, CurrencyId::Token(TokenSymbol::LKSM))
+		matches!(currency_id, CurrencyId::Token(TokenSymbol::LDOT))
 	}
 }
 
@@ -1746,7 +1756,7 @@ type RebaseTokens = orml_tokens::Combiner<
 >;
 
 parameter_types! {
-	pub const GetStableAssetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+	pub const GetStableAssetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 }
 
 impl nutsfinance_stable_asset::Config for Runtime {
@@ -1814,7 +1824,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 					return Err(InvalidTransaction::Stale);
 				}
 
-				let (_, _, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
+				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
 
 				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
 					// require immortal
@@ -1891,8 +1901,11 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	runtime_common::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	module_transaction_payment::ChargeTransactionPayment<Runtime>,
+	// `SetEvmOrigin` needs ahead of `ChargeTransactionPayment`, we set origin in `SetEvmOrigin::validate()`, then
+	// `ChargeTransactionPayment::validate()` can process erc20 token transfer successfully in the case of using erc20
+	// as fee token.
 	module_evm::SetEvmOrigin<Runtime>,
+	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<
@@ -1908,60 +1921,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	TransactionPaymentMigration,
->;
-
-parameter_types! {
-	pub FeeTokens: Vec<CurrencyId> = vec![RENBTC, AUSD, DOT, LDOT];
-}
-pub struct TransactionPaymentMigration;
-impl OnRuntimeUpgrade for TransactionPaymentMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		let poo_size = 5 * dollar(ACA);
-		let threshold = Ratio::saturating_from_rational(1, 2).saturating_mul_int(dollar(ACA));
-		for token in FeeTokens::get() {
-			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
-			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, poo_size, threshold);
-		}
-		<Runtime as frame_system::Config>::BlockWeights::get().max_block
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		for token in FeeTokens::get() {
-			assert_eq!(
-				module_transaction_payment::TokenExchangeRate::<Runtime>::contains_key(&token),
-				true
-			);
-			assert_eq!(
-				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::contains_key(&token),
-				true
-			);
-		}
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		for token in FeeTokens::get() {
-			assert_eq!(
-				module_transaction_payment::TokenExchangeRate::<Runtime>::contains_key(&token),
-				true
-			);
-			assert_eq!(
-				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::contains_key(&token),
-				false
-			);
-		}
-		Ok(())
-	}
-}
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 construct_runtime!(
 	pub enum Runtime where
@@ -2545,8 +2506,8 @@ mod tests {
 				frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
 				runtime_common::CheckNonce::<Runtime>::from(3),
 				frame_system::CheckWeight::<Runtime>::new(),
-				module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
 				module_evm::SetEvmOrigin::<Runtime>::new(),
+				module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
 			);
 
 			let mut expected_extra = extra.clone();
@@ -2633,8 +2594,8 @@ mod tests {
 			frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
 			runtime_common::CheckNonce::<Runtime>::from(0),
 			frame_system::CheckWeight::<Runtime>::new(),
-			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
 			module_evm::SetEvmOrigin::<Runtime>::new(),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
 		);
 
 		// correct payer signature

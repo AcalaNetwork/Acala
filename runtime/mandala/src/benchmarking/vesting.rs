@@ -18,11 +18,9 @@
 
 use super::{
 	get_vesting_account,
-	utils::{lookup_of_account, set_balance},
+	utils::{lookup_of_account, set_balance, NATIVE},
 };
-use crate::{
-	dollar, AccountId, Balance, BlockNumber, Currencies, CurrencyId, GetNativeCurrencyId, Runtime, System, Vesting,
-};
+use crate::{dollar, AccountId, Balance, BlockNumber, Currencies, Runtime, System, Vesting};
 
 use sp_std::prelude::*;
 
@@ -37,8 +35,6 @@ use orml_vesting::VestingSchedule;
 pub type Schedule = VestingSchedule<BlockNumber, Balance>;
 
 const SEED: u32 = 0;
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, orml_vesting }

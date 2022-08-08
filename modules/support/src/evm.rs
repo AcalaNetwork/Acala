@@ -20,7 +20,7 @@ use codec::{Decode, Encode};
 use primitives::currency::AssetIds;
 use primitives::{
 	evm::{CallInfo, EvmAddress},
-	CurrencyId,
+	Balance, CurrencyId,
 };
 use sp_core::H160;
 use sp_runtime::{
@@ -119,6 +119,36 @@ impl<AccountId, Balance: Default> EVMBridge<AccountId, Balance> for () {
 		None
 	}
 	fn set_origin(_origin: AccountId) {}
+}
+
+/// EVM bridge for collateral liquidation.
+pub trait LiquidationEvmBridge {
+	/// Execute liquidation. Sufficient repayment is expected to be transferred to `repay_dest`,
+	/// if not received or below `min_repayment`, the liquidation would be seen as failed.
+	fn liquidate(
+		context: InvokeContext,
+		collateral: EvmAddress,
+		repay_dest: EvmAddress,
+		amount: Balance,
+		min_repayment: Balance,
+	) -> DispatchResult;
+	/// Called on sufficient repayment received and collateral transferred to liquidation contract.
+	fn on_collateral_transfer(context: InvokeContext, collateral: EvmAddress, amount: Balance);
+	/// Called on insufficient repayment received and repayment refunded to liquidation contract.
+	fn on_repayment_refund(context: InvokeContext, collateral: EvmAddress, repayment: Balance);
+}
+impl LiquidationEvmBridge for () {
+	fn liquidate(
+		_context: InvokeContext,
+		_collateral: EvmAddress,
+		_repay_dest: EvmAddress,
+		_amount: Balance,
+		_min_repayment: Balance,
+	) -> DispatchResult {
+		Err(DispatchError::Other("unimplemented evm bridge"))
+	}
+	fn on_collateral_transfer(_context: InvokeContext, _collateral: EvmAddress, _amount: Balance) {}
+	fn on_repayment_refund(_context: InvokeContext, _collateral: EvmAddress, _repayment: Balance) {}
 }
 
 /// An abstraction of EVMManager
@@ -255,5 +285,13 @@ pub mod limits {
 		pub const TOTAL_SUPPLY: Limit = Limit::new(100_000, 0);
 		pub const BALANCE_OF: Limit = Limit::new(100_000, 0);
 		pub const TRANSFER: Limit = Limit::new(200_000, 960);
+	}
+
+	pub mod liquidation {
+		use super::*;
+
+		pub const LIQUIDATE: Limit = Limit::new(200_000, 1_000);
+		pub const ON_COLLATERAL_TRANSFER: Limit = Limit::new(200_000, 1_000);
+		pub const ON_REPAYMENT_REFUND: Limit = Limit::new(200_000, 1_000);
 	}
 }
