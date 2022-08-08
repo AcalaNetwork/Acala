@@ -26,14 +26,13 @@ use codec::MaxEncodedLen;
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
-use sp_runtime::traits::Convert;
 use sp_runtime::{
 	traits::{One, Saturating, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
 
-use module_support::{Ratio, RebasedStableAssetError};
+use module_support::Ratio;
 use nutsfinance_stable_asset::{traits::StableAsset as StableAssetT, StableAssetPoolId};
 use orml_traits::MultiCurrency;
 use primitives::{Amount, Balance, CurrencyId};
@@ -183,12 +182,9 @@ pub mod module {
 			if let Some(target_max) = target_max {
 				params.target_max = target_max;
 			}
-			DistributionDestinationParams::<T>::insert(destination.clone(), params.clone());
+			DistributionDestinationParams::<T>::insert(&destination, &params);
 
-			Self::deposit_event(Event::<T>::UpdateDistributionParams {
-				destination: destination.clone(),
-				params,
-			});
+			Self::deposit_event(Event::<T>::UpdateDistributionParams { destination, params });
 
 			Ok(())
 		}
@@ -209,11 +205,11 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	pub fn do_adjust_to_destination(destination: DistributionDestination<T::AccountId>) -> DispatchResult {
-		let params = DistributionDestinationParams::<T>::get(destination.clone())
-			.ok_or(Error::<T>::DistributionParamsNotExist)?;
+		let params =
+			DistributionDestinationParams::<T>::get(&destination).ok_or(Error::<T>::DistributionParamsNotExist)?;
 		match destination.clone() {
 			DistributionDestination::StableAsset(stable_asset) => {
-				let balance = Self::adjust_for_stable_asset(destination.clone(), stable_asset, params)?;
+				let balance = Self::adjust_for_stable_asset(&destination, stable_asset, params)?;
 
 				// update `DistributedBalance` of destination
 				DistributedBalance::<T>::try_mutate(destination, |maybe_balance| -> DispatchResult {
@@ -245,7 +241,7 @@ impl<T: Config> Pallet<T> {
 	///
 	/// return `Amount` that will be add to or subtract from `DistributedBalance`.
 	fn adjust_for_stable_asset(
-		destination: DistributionDestination<T::AccountId>,
+		destination: &DistributionDestination<T::AccountId>,
 		stable_asset: DistributionToStableAsset<T::AccountId>,
 		params: DistributionParams,
 	) -> Result<Amount, DispatchError> {
@@ -254,10 +250,13 @@ impl<T: Config> Pallet<T> {
 		let account_id = stable_asset.account_id;
 
 		let total_supply = pool_info.total_supply;
-		let ausd_supply = pool_info.balances[stable_asset.stable_token_index as usize];
+		let ausd_supply = pool_info
+			.balances
+			.get(stable_asset.stable_token_index as usize)
+			.ok_or(Error::<T>::InvalidDestination)?;
 		let asset_length = pool_info.assets.len();
 
-		let current_rate = Ratio::saturating_from_rational(ausd_supply, total_supply);
+		let current_rate = Ratio::saturating_from_rational(*ausd_supply, total_supply);
 		let target_rate = params
 			.target_min
 			.saturating_add(params.target_max)
@@ -266,11 +265,13 @@ impl<T: Config> Pallet<T> {
 		let remain_rate = one.saturating_sub(target_rate);
 		let remain_reci = one.div(remain_rate);
 		if current_rate < params.target_min {
-			let numerator = target_rate.saturating_mul_int(total_supply).saturating_sub(ausd_supply);
+			let numerator = target_rate
+				.saturating_mul_int(total_supply)
+				.saturating_sub(*ausd_supply);
 			let mint_amount = remain_reci.saturating_mul_int(numerator).min(params.max_step);
 
 			// should failed if after this mint, the balance of distributed exceed the capacity.
-			if let Some(exist_minted) = DistributedBalance::<T>::get(&destination) {
+			if let Some(exist_minted) = DistributedBalance::<T>::get(destination) {
 				let newly_amount = mint_amount.saturating_add(exist_minted);
 				ensure!(newly_amount < params.capacity, Error::<T>::ExceedCapacity);
 			} else {
@@ -286,7 +287,7 @@ impl<T: Config> Pallet<T> {
 			T::StableAsset::mint(&account_id, stable_asset.pool_id, assets, 0)?;
 
 			Pallet::<T>::deposit_event(Event::<T>::AdjustDestination {
-				destination,
+				destination: destination.clone(),
 				stable_currency: stable_asset.stable_currency_id,
 				amount: mint_amount as Amount,
 			});
@@ -307,7 +308,7 @@ impl<T: Config> Pallet<T> {
 			let burn_amount = (0 as Amount).saturating_sub(stable_amount as Amount);
 
 			Pallet::<T>::deposit_event(Event::<T>::AdjustDestination {
-				destination,
+				destination: destination.clone(),
 				stable_currency: stable_asset.stable_currency_id,
 				amount: burn_amount,
 			});
@@ -315,15 +316,5 @@ impl<T: Config> Pallet<T> {
 		}
 
 		Ok(0 as Amount)
-	}
-}
-
-pub struct RebasedStableAssetErrorConvertor<T>(PhantomData<T>);
-impl<T: Config> Convert<RebasedStableAssetError, DispatchError> for RebasedStableAssetErrorConvertor<T> {
-	fn convert(e: RebasedStableAssetError) -> DispatchError {
-		match e {
-			RebasedStableAssetError::InvalidPoolId => Error::<T>::InvalidDestination.into(),
-			RebasedStableAssetError::InvalidTokenIndex => Error::<T>::InvalidDestination.into(),
-		}
 	}
 }

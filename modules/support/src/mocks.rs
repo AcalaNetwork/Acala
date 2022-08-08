@@ -17,12 +17,15 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::type_complexity)]
-use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, TransactionPayment};
+use crate::{
+	AddressMapping, CurrencyId, Erc20InfoMapping, RebasedStableAsset, RebasedStableAssetError, TransactionPayment,
+};
 use codec::Encode;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use nutsfinance_stable_asset::{
 	traits::StableAsset, PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo, SwapResult,
 };
+use orml_tokens::ConvertBalance;
 use primitives::{
 	currency::TokenInfo,
 	evm::{EvmAddress, H160_POSITION_TOKEN},
@@ -30,7 +33,7 @@ use primitives::{
 };
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
-use sp_runtime::{transaction_validity::TransactionValidityError, DispatchError, DispatchResult};
+use sp_runtime::{traits::Convert, transaction_validity::TransactionValidityError, DispatchError, DispatchResult};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 #[cfg(feature = "std")]
@@ -408,3 +411,29 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 		unimplemented!()
 	}
 }
+
+pub struct IdentityRebaseTokenAmountConvertor<Balance, CurrencyId>(PhantomData<(Balance, CurrencyId)>);
+impl<Balance, CurrencyId> ConvertBalance<Balance, Balance> for IdentityRebaseTokenAmountConvertor<Balance, CurrencyId> {
+	type AssetId = CurrencyId;
+
+	fn convert_balance(balance: Balance, _asset_id: CurrencyId) -> Balance {
+		balance
+	}
+
+	fn convert_balance_back(balance: Balance, _asset_id: CurrencyId) -> Balance {
+		balance
+	}
+}
+
+pub struct MockErrorConvertor;
+impl Convert<RebasedStableAssetError, DispatchError> for MockErrorConvertor {
+	fn convert(e: RebasedStableAssetError) -> DispatchError {
+		match e {
+			RebasedStableAssetError::InvalidPoolId => DispatchError::Other("InvalidPoolId"),
+			RebasedStableAssetError::InvalidTokenIndex => DispatchError::Other("InvalidPoolId"),
+		}
+	}
+}
+
+pub type MockRebasedStableAsset<StableAsset, Balance, CurrencyId> =
+	RebasedStableAsset<StableAsset, IdentityRebaseTokenAmountConvertor<Balance, CurrencyId>, MockErrorConvertor>;

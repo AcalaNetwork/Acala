@@ -26,10 +26,8 @@ hex = "0.4"
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 
 module-currencies = { path = "../../modules/currencies" }
-module-dex = { path = "../../modules/dex" }
 orml-tokens = { path = "../../orml/tokens" }
 
 [features]

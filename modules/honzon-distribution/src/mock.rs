@@ -30,16 +30,16 @@ pub use frame_support::{
 	PalletId,
 };
 pub use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
-use module_support::RebasedStableAsset;
-pub use module_support::{mocks::MockAddressMapping, AddressMapping};
-use orml_tokens::ConvertBalance;
+pub use module_support::{
+	mocks::{MockAddressMapping, MockRebasedStableAsset},
+	AddressMapping,
+};
 pub use orml_traits::{parameter_type_with_key, MultiCurrency};
-use sp_core::H160;
-
 pub use primitives::{
 	convert_decimals_to_evm, evm::EvmAddress, AccountId, Amount, Balance, BlockNumber, CurrencyId, ReserveIdentifier,
 	TokenSymbol, TradingPair,
 };
+use sp_core::H160;
 
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
@@ -117,13 +117,6 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = ReserveIdentifier;
 }
 
-impl pallet_timestamp::Config for Runtime {
-	type Moment = u64;
-	type OnTimestampSet = ();
-	type MinimumPeriod = ConstU64<1000>;
-	type WeightInfo = ();
-}
-
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 parameter_types! {
@@ -156,21 +149,7 @@ impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoo
 	}
 }
 
-pub struct ConvertBalanceHoma;
-impl ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
-	type AssetId = CurrencyId;
-
-	fn convert_balance(balance: Balance, _asset_id: CurrencyId) -> Balance {
-		balance
-	}
-
-	fn convert_balance_back(balance: Balance, _asset_id: CurrencyId) -> Balance {
-		balance
-	}
-}
-
-pub type StableAssetWrapper =
-	RebasedStableAsset<StableAsset, ConvertBalanceHoma, RebasedStableAssetErrorConvertor<Runtime>>;
+pub type StableAssetWrapper = MockRebasedStableAsset<StableAsset, Balance, CurrencyId>;
 
 impl nutsfinance_stable_asset::Config for Runtime {
 	type Event = Event;
@@ -191,20 +170,6 @@ impl nutsfinance_stable_asset::Config for Runtime {
 parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
-}
-
-impl module_dex::Config for Runtime {
-	type Event = Event;
-	type Currency = Tokens;
-	type GetExchangeFee = GetExchangeFee;
-	type TradingPathLimit = ConstU32<4>;
-	type PalletId = DEXPalletId;
-	type Erc20InfoMapping = ();
-	type DEXIncentives = ();
-	type WeightInfo = ();
-	type ListingOrigin = EnsureRoot<AccountId>;
-	type ExtendedProvisioningBlocks = ConstU64<0>;
-	type OnLiquidityPoolUpdated = ();
 }
 
 impl module_honzon_distribution::Config for Runtime {
@@ -229,7 +194,6 @@ construct_runtime!(
 		Balances: pallet_balances,
 		Tokens: orml_tokens,
 		Currencies: module_currencies,
-		Dex: module_dex,
 		StableAsset: nutsfinance_stable_asset,
 		HonzonDistribution: module_honzon_distribution,
 	}

@@ -25,30 +25,6 @@ use crate::mock::{Event, *};
 use frame_support::{assert_noop, assert_ok};
 use nutsfinance_stable_asset::traits::StableAsset as StableAssetT;
 
-fn inject_liquidity(
-	currency_id_a: CurrencyId,
-	currency_id_b: CurrencyId,
-	max_amount_a: Balance,
-	max_amount_b: Balance,
-) -> DispatchResult {
-	// set balance
-	Tokens::deposit(currency_id_a, &ALICE, max_amount_a)?;
-	Tokens::deposit(currency_id_b, &ALICE, max_amount_b)?;
-
-	let _ = Dex::enable_trading_pair(Origin::root(), currency_id_a, currency_id_b);
-	Dex::add_liquidity(
-		Origin::signed(ALICE),
-		currency_id_a,
-		currency_id_b,
-		max_amount_a,
-		max_amount_b,
-		Default::default(),
-		false,
-	)?;
-
-	Ok(())
-}
-
 fn initial_stable_asset(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> DispatchResult {
 	let amount = 100_000_000_000_000u128;
 	StableAssetWrapper::create_pool(
@@ -111,9 +87,6 @@ fn update_params_works() {
 #[test]
 fn stable_asset_mint_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		let _ = inject_liquidity(ACA, AUSD, 100_000_000_000_000, 200_000_000_000_000);
-		let _ = inject_liquidity(AUSD, DOT, 100_000_000_000_000, 200_000_000_000_000);
-
 		let _ = initial_stable_asset(DOT, LDOT);
 		let _ = Tokens::deposit(DOT, &ALICE, 100_000_000_000u128);
 		let swap_output = StableAssetWrapper::get_swap_output_amount(0, 0, 1, 1_000_000_000u128).unwrap();

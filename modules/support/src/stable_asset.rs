@@ -22,7 +22,7 @@ use nutsfinance_stable_asset::{
 };
 use orml_tokens::ConvertBalance;
 use sp_runtime::{traits::Convert, DispatchError, DispatchResult};
-use sp_std::vec::Vec;
+use sp_std::{marker::PhantomData, vec::Vec};
 
 pub enum RebasedStableAssetError {
 	InvalidPoolId,
@@ -30,7 +30,7 @@ pub enum RebasedStableAssetError {
 }
 
 pub struct RebasedStableAsset<StableAsset, RebaseTokenAmountConvertor, ErrorConvertor>(
-	sp_std::marker::PhantomData<(StableAsset, RebaseTokenAmountConvertor, ErrorConvertor)>,
+	PhantomData<(StableAsset, RebaseTokenAmountConvertor, ErrorConvertor)>,
 );
 
 impl<AccountId, Balance, BlockNumber, CurrencyId, StableAsset, RebaseTokenAmountConvertor, ErrorConvertor> StableAssetT
