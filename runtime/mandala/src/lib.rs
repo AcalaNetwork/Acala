@@ -1775,7 +1775,6 @@ impl nutsfinance_stable_asset::Config for Runtime {
 
 parameter_types! {
 	pub const AdjustPeriod: BlockNumber = DAYS;
-	pub const AdjustOffset: BlockNumber = MINUTES;
 }
 
 impl module_honzon_distribution::Config for Runtime {
@@ -1783,7 +1782,7 @@ impl module_honzon_distribution::Config for Runtime {
 	type StableAsset = RebasedStableAsset;
 	type Currency = Currencies;
 	type AdjustPeriod = AdjustPeriod;
-	type AdjustOffset = AdjustOffset;
+	type AdjustOffset = ConstU32<1>;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = ();
 }

@@ -430,7 +430,7 @@ impl Convert<RebasedStableAssetError, DispatchError> for MockErrorConvertor {
 	fn convert(e: RebasedStableAssetError) -> DispatchError {
 		match e {
 			RebasedStableAssetError::InvalidPoolId => DispatchError::Other("InvalidPoolId"),
-			RebasedStableAssetError::InvalidTokenIndex => DispatchError::Other("InvalidPoolId"),
+			RebasedStableAssetError::InvalidTokenIndex => DispatchError::Other("InvalidTokenIndex"),
 		}
 	}
 }
