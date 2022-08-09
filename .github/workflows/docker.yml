@@ -88,3 +88,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  trigger:
+    needs: build-image
+    if: ${{ contains(github.ref, 'release') }}
+    uses: ./.github/workflows/extrinsic-ordering-check-on-release.yml
+    secrets: inherit
+    with:
+      chain: ${{ matrix.network }}

@@ -2,11 +2,12 @@
 
 name: Extrinsic Ordering Check On Release
 on:
-  workflow_run:
-    workflows: ["Docker Image"]
-    types: [completed]
-    branches:
-      - "release-(karura|acala)-**"
+  workflow_call:
+    inputs:
+      chain:
+        description: Chain Runtime
+        required: true
+        type: string
 
   workflow_dispatch:
     inputs:
@@ -32,11 +33,12 @@ env:
   PREVIOUS_VERSION: ${{ github.event.inputs.previous_version }}
 
 jobs:
-  check-extrinsic-ordering:
+  check-extrinsic-ordering-on-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
+          fetch-depth: 0
           submodules: recursive
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -55,7 +57,7 @@ jobs:
 
       - name: Prepare output
         run: |
-          echo "Metadata comparison:" >> output.txt
+          echo "METADATA COMPARISON" >> output.txt
           echo "Date: $(date)" >> output.txt
           echo "Reference: ${{ env.PREVIOUS_VERSION }}" >> output.txt
           echo "Target version: ${{ env.VERSION }}" >> output.txt
