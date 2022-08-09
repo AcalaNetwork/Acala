@@ -250,8 +250,8 @@ parameter_types! {
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
-	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
-	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(80, 100);
+	pub ImmediateLiquidationPriceRatio: Ratio = Ratio::saturating_from_rational(90, 100);
+	pub MinLiquidationPriceRatio: Ratio = Ratio::saturating_from_rational(80, 100);
 	pub const CDPEnginePalletId: PalletId = PalletId(*b"aca/cdpe");
 }
 
@@ -264,16 +264,16 @@ impl cdp_engine::Config for Runtime {
 	type MinimumDebitValue = ConstU128<2>;
 	type MinimumCollateralAmount = MinimumCollateralAmount;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type ImmediateLiquidationPriceRatio = ImmediateLiquidationPriceRatio;
+	type MinLiquidationPriceRatio = MinLiquidationPriceRatio;
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = ();
 	type LiquidationContractsUpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
 	type MaxLiquidationContracts = ConstU32<10>;
 	type LiquidationEvmBridge = ();
 	type PalletId = CDPEnginePalletId;

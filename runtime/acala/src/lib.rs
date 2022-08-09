@@ -1040,7 +1040,8 @@ parameter_types! {
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
 	pub MinimumDebitValue: Balance = 50 * dollar(AUSD);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(10, 100);
-	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);
+	pub ImmediateLiquidationPriceRatio: Ratio = Ratio::saturating_from_rational(90, 100);
+	pub MinLiquidationPriceRatio: Ratio = Ratio::saturating_from_rational(85, 100);
 }
 
 impl module_cdp_engine::Config for Runtime {
@@ -1053,16 +1054,16 @@ impl module_cdp_engine::Config for Runtime {
 	type MinimumCollateralAmount =
 		ExistentialDepositsTimesOneHundred<GetNativeCurrencyId, NativeTokenExistentialDeposit, ExistentialDeposits>;
 	type GetStableCurrencyId = GetStableCurrencyId;
+	type ImmediateLiquidationPriceRatio = ImmediateLiquidationPriceRatio;
+	type MinLiquidationPriceRatio = MinLiquidationPriceRatio;
 	type CDPTreasury = CdpTreasury;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;
-	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
 	type DEX = Dex;
 	type LiquidationContractsUpdateOrigin = EnsureRootOrHalfGeneralCouncil;
-	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
 	type MaxLiquidationContracts = ConstU32<10>;
 	type LiquidationEvmBridge = module_evm_bridge::LiquidationEvmBridge<Runtime>;
 	type PalletId = CDPEnginePalletId;
