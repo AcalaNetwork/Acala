@@ -947,12 +947,12 @@ fn liquidate_unsafe_cdp_by_swap() {
 			Origin::signed(CAROL),
 			BTC,
 			AUSD,
-			100,
-			121,
+			200,
+			242,
 			0,
 			false
 		));
-		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 121));
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (200, 242));
 
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
@@ -979,9 +979,9 @@ fn liquidate_unsafe_cdp_by_swap() {
 			target_amount: 60,
 		}));
 
-		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (199, 61));
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (266, 182));
 		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
-		assert_eq!(Currencies::free_balance(BTC, &ALICE), 901);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 934);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
@@ -1937,7 +1937,7 @@ fn liquidation_via_contracts_works() {
 		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
 		MockLiquidationEvmBridge::set_liquidation_result(Ok(()));
 
-		assert_ok!(LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000));
+		assert_ok!(ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000));
 		let contract_account_id =
 			<evm_accounts::EvmAddressMapping<Runtime> as AddressMapping<AccountId>>::get_account_id(&address);
 		assert_eq!(Currencies::free_balance(DOT, &contract_account_id), 100);
@@ -1952,8 +1952,8 @@ fn liquidation_fails_if_no_liquidation_contracts() {
 		MockLiquidationEvmBridge::set_liquidation_result(Ok(()));
 
 		assert_noop!(
-			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000),
-			Error::<Runtime>::LiquidationFailed
+			ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000),
+			(Default::default(), Default::default())
 		);
 	});
 }
@@ -1968,8 +1968,8 @@ fn liquidation_fails_if_no_liquidation_contracts_can_liquidate() {
 		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
 
 		assert_err!(
-			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000),
-			Error::<Runtime>::LiquidationFailed
+			ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000),
+			(Default::default(), Default::default())
 		);
 	});
 }
@@ -1986,8 +1986,8 @@ fn liquidation_fails_if_insufficient_repayment() {
 		MockLiquidationEvmBridge::set_repayment(1);
 
 		assert_err!(
-			LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000),
-			Error::<Runtime>::LiquidationFailed
+			ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000),
+			(Default::default(), Default::default())
 		);
 	});
 }

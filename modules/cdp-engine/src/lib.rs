@@ -1424,6 +1424,48 @@ impl<T: Config> ImmediateLiquidation<T> {
 			Err(ratio)
 		}
 	}
+
+	// try immediate liquidation with each contract. If all failed, find the best price.
+	fn try_immediate_liquidation_via_contracts(
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+	) -> Result<(), (EvmAddress, Ratio)> {
+		let liquidation_contracts = Pallet::<T>::liquidation_contracts();
+		let liquidation_contracts_len = liquidation_contracts.len();
+		if liquidation_contracts_len.is_zero() {
+			return Err((EvmAddress::zero(), Ratio::zero()));
+		}
+
+		let contracts_by_priority = {
+			let now: usize = frame_system::Pallet::<T>::current_block_number()
+				.try_into()
+				.map_err(|_| (EvmAddress::zero(), Ratio::zero()))?;
+			// can't fail as ensured `liquidation_contracts_len` non-zero
+			let start_at = now % liquidation_contracts_len;
+			let mut all: Vec<EvmAddress> = liquidation_contracts.into();
+			let mut right = all.split_off(start_at);
+			right.append(&mut all);
+			right
+		};
+
+		let mut contract_max_price_ratio = Ratio::zero();
+		let mut best_offer_contract = EvmAddress::zero();
+		for contract in contracts_by_priority.into_iter() {
+			if let Err(r) = Self::try_immediate_liquidation(|| {
+				Pallet::<T>::liquidate_via_contract(contract, currency_id, amount, target_stable_amount)
+			}) {
+				if r > contract_max_price_ratio {
+					contract_max_price_ratio = r;
+					best_offer_contract = contract;
+				}
+			} else {
+				return Ok(());
+			}
+		}
+
+		Err((best_offer_contract, contract_max_price_ratio))
+	}
 }
 
 impl<T: Config> LiquidateCollateral<T::AccountId> for ImmediateLiquidation<T> {
@@ -1444,34 +1486,14 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for ImmediateLiquidation<T> {
 			return Ok(());
 		}
 
-		let liquidation_contracts = Pallet::<T>::liquidation_contracts();
-		let liquidation_contracts_len = liquidation_contracts.len();
-		let contracts_by_priority = {
-			let now: usize = frame_system::Pallet::<T>::current_block_number()
-				.try_into()
-				.map_err(|_| ArithmeticError::Overflow)?;
-			// can't fail as ensured `liquidation_contracts_len` non-zero
-			let start_at = now % liquidation_contracts_len;
-			let mut all: Vec<EvmAddress> = liquidation_contracts.into();
-			let mut right = all.split_off(start_at);
-			right.append(&mut all);
-			right
-		};
-
-		// try immediate liquidation with each contract. If all failed, find the best price
+		// try immediate liquidation with contracts
 		let mut contract_max_price_ratio = Ratio::zero();
 		let mut best_offer_contract = EvmAddress::zero();
-		for contract in contracts_by_priority.into_iter() {
-			if let Err(r) = Self::try_immediate_liquidation(|| {
-				Pallet::<T>::liquidate_via_contract(contract, currency_id, amount, target_stable_amount)
-			}) {
-				if r > contract_max_price_ratio {
-					contract_max_price_ratio = r;
-					best_offer_contract = contract;
-				}
-			} else {
-				return Ok(());
-			}
+		if let Err((c, r)) = Self::try_immediate_liquidation_via_contracts(currency_id, amount, target_stable_amount) {
+			contract_max_price_ratio = r;
+			best_offer_contract = c;
+		} else {
+			return Ok(());
 		}
 
 		if dex_price_ratio >= contract_max_price_ratio {
