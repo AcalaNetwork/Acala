@@ -107,8 +107,6 @@ fn liquid_crowdloan_xtokens_works() {
 	let foreign_asset = CurrencyId::ForeignAsset(0);
 	let dollar = dollar(KAR);
 	let minimal_balance = Balances::minimum_balance() / 10; // 10%
-	let rate = FixedU128::saturating_from_rational(13, 10); // LCDOT:DOT = 1.3:1
-	let lcdot_fee = rate.saturating_mul_int(native_per_second_as_fee(4));
 	let foreign_fee = foreign_per_second_as_fee(4, minimal_balance);
 
 	MockBifrost::execute_with(|| {
@@ -131,6 +129,16 @@ fn liquid_crowdloan_xtokens_works() {
 	});
 
 	Acala::execute_with(|| {
+		assert_ok!(AssetRegistry::register_native_asset(
+			Origin::root(),
+			LCDOT,
+			Box::new(AssetMetadata {
+				name: b"Liquid Crowdloan Token".to_vec(),
+				symbol: b"LCDOT".to_vec(),
+				decimals: 12,
+				minimal_balance
+			})
+		));
 		assert_ok!(Tokens::deposit(LCDOT, &AccountId::from(BOB), 10 * dollar));
 
 		assert_ok!(XTokens::transfer(
@@ -187,7 +195,7 @@ fn liquid_crowdloan_xtokens_works() {
 	Acala::execute_with(|| {
 		assert_eq!(
 			Tokens::free_balance(LCDOT, &AccountId::from(BOB)),
-			6 * dollar - lcdot_fee
+			6 * dollar - foreign_fee
 		);
 		assert_eq!(Tokens::free_balance(LCDOT, &bifrost_reserve_account()), 4 * dollar);
 	});

@@ -592,11 +592,17 @@ where
 		let currency = key_to_currency(location);
 		match currency {
 			Some(CurrencyId::LiquidCrowdloan(lease)) => {
-				// The default rate for all leases is the same.
-				// LCDOT:DOT = 1.3:1
-				let rate = FixedU128::saturating_from_rational(13, 10);
-				log::debug!(target: "asset-registry::weight", "LiquidCrowdloan: {}, rate:{:?}", lease, rate);
-				Some(rate)
+				if let Some(asset_metadata) =
+					Pallet::<T>::asset_metadatas(AssetIds::NativeAssetId(CurrencyId::LiquidCrowdloan(lease)))
+				{
+					let minimum_balance = asset_metadata.minimal_balance.into();
+					let rate =
+						FixedU128::saturating_from_rational(minimum_balance, T::Currency::minimum_balance().into());
+					log::debug!(target: "asset-registry::weight", "LiquidCrowdloan: {}, MinimumBalance: {}, rate:{:?}", lease, minimum_balance, rate);
+					Some(rate)
+				} else {
+					None
+				}
 			}
 			_ => None,
 		}
