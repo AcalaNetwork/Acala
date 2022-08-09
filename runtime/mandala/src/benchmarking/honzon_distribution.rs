@@ -35,7 +35,6 @@ runtime_benchmarks! {
 		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
 			pool_id: 0,
 			stable_token_index: 0,
-			stable_currency_id: STABLECOIN,
 			account_id: treasury,
 		};
 		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
@@ -52,7 +51,6 @@ runtime_benchmarks! {
 		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
 			pool_id: 0,
 			stable_token_index: 0,
-			stable_currency_id: STAKING,
 			account_id: treasury,
 		};
 		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
