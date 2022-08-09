@@ -47,7 +47,6 @@ pub const CHARLIE: AccountId = AccountId::new([3u8; 32]);
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 pub const STABLE_ASSET: CurrencyId = CurrencyId::StableAssetPoolToken(0);
 
@@ -170,14 +169,18 @@ impl nutsfinance_stable_asset::Config for Runtime {
 parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub MinimumAdjustAmount: Balance = dollar(10);
 }
 
 impl module_honzon_distribution::Config for Runtime {
 	type Event = Event;
 	type StableAsset = StableAsset;
 	type Currency = Currencies;
+	type GetStableCurrencyId = GetStableCurrencyId;
 	type AdjustPeriod = ConstU64<1>;
 	type AdjustOffset = ConstU64<1>;
+	type MinimumAdjustAmount = MinimumAdjustAmount;
 	type UpdateOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }

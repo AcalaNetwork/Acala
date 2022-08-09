@@ -1650,14 +1650,17 @@ impl nutsfinance_stable_asset::Config for Runtime {
 
 parameter_types! {
 	pub const AdjustPeriod: BlockNumber = DAYS;
+	pub MinimumAdjustAmount: Balance = 100 * dollar(KUSD);
 }
 
 impl module_honzon_distribution::Config for Runtime {
 	type Event = Event;
 	type StableAsset = RebasedStableAsset;
 	type Currency = Currencies;
+	type GetStableCurrencyId = GetStableCurrencyId;
 	type AdjustPeriod = AdjustPeriod;
 	type AdjustOffset = ConstU32<1>;
+	type MinimumAdjustAmount = MinimumAdjustAmount;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = ();
 }

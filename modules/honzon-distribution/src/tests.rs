@@ -58,11 +58,9 @@ fn update_params_works() {
 		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
 			pool_id: 0,
 			stable_token_index: 0,
-			stable_currency_id: AUSD,
 			account_id: CHARLIE,
 		};
 		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
-
 		assert_ok!(HonzonDistribution::update_params(
 			Origin::root(),
 			destination.clone(),
@@ -71,7 +69,6 @@ fn update_params_works() {
 			None,
 			None
 		));
-
 		System::assert_last_event(Event::HonzonDistribution(crate::Event::UpdateDistributionParams {
 			destination,
 			params: DistributionParams {
@@ -81,14 +78,36 @@ fn update_params_works() {
 				target_max: Default::default(),
 			},
 		}));
+
+		// stable asset params is not correct when doing real adjust.
+		let _ = initial_stable_asset(AUSD, LDOT);
+		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
+			pool_id: 0,
+			stable_token_index: 2,
+			account_id: CHARLIE,
+		};
+		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(1000),
+			None,
+			None,
+			None
+		));
+		assert_noop!(
+			HonzonDistribution::force_adjust(Origin::root(), destination.clone()),
+			Error::<Runtime>::InvalidDestination
+		);
 	});
 }
 
 #[test]
-fn stable_asset_mint_burn_works() {
+fn adjust_stable_asset_basic_works() {
+	env_logger::init();
 	ExtBuilder::default().build().execute_with(|| {
-		let _ = initial_stable_asset(DOT, LDOT);
-		let _ = Tokens::deposit(DOT, &ALICE, 100_000_000_000u128);
+		let _ = initial_stable_asset(AUSD, LDOT);
+		let _ = Tokens::deposit(AUSD, &ALICE, 100_000_000_000u128);
 		let swap_output = StableAssetWrapper::get_swap_output_amount(0, 0, 1, 1_000_000_000u128).unwrap();
 		let (input, output) = StableAssetWrapper::swap(&ALICE, 0, 0, 1, 1_000_000_000u128, 0, 2).unwrap();
 		assert_eq!(swap_output.dx, input);
@@ -97,26 +116,25 @@ fn stable_asset_mint_burn_works() {
 		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
 			pool_id: 0,
 			stable_token_index: 0,
-			stable_currency_id: DOT,
 			account_id: CHARLIE,
 		};
 		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
 
-		// normal capacity
+		// CASE#1. current rate=50%, less than target_min=65%, mint aUSD.
+		// latest target=371_426_714_285_865/570_963_593_384_272=0.6505 ~= target_min=65%
 		assert_ok!(HonzonDistribution::update_params(
 			Origin::root(),
 			destination.clone(),
 			Some(1_000_000_000_000_000),
 			Some(1_000_000_000_000_000),
-			Some(Ratio::saturating_from_rational(6, 10)),
-			Some(Ratio::saturating_from_rational(7, 10)),
+			Some(Ratio::saturating_from_rational(65, 100)),
+			Some(Ratio::saturating_from_rational(70, 100)),
 		));
 
-		let _ = Tokens::deposit(DOT, &CHARLIE, 100_000_000_000_000);
+		let _ = Tokens::deposit(AUSD, &CHARLIE, 100_000_000_000_000);
 		let _ = Tokens::deposit(LDOT, &CHARLIE, 100_000_000_000_000);
 		StableAssetWrapper::mint(&CHARLIE, 0, vec![100_000_000_000_000, 100_000_000_000_000], 0).unwrap();
 
-		// less than target, mint aUSD
 		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
 		let ausd_mint = 171_425_714_285_865u128;
 		let stable_mint = 370_963_593_384_271u128;
@@ -134,23 +152,22 @@ fn stable_asset_mint_burn_works() {
 		System::assert_has_event(crate::mock::Event::HonzonDistribution(
 			crate::Event::AdjustDestination {
 				destination: destination.clone(),
-				stable_currency: DOT,
 				amount: ausd_mint as i128,
 			},
 		));
 		// minted aUSD is add to `DistributedBalance`, and lp go to minter.
 		assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), ausd_mint);
 		assert_eq!(Tokens::free_balance(STABLE_ASSET, &CHARLIE), stable_mint);
-		// latest target = 0.6505
 
-		// larger than target, burn aUSD
+		// CASE#2. previous rate=0.6505 > target_max=62.5%, burn aUSD.
+		// latest target=332_386_509_601_200/532_098_344_262_419=0.6246 ~= target_max=62.5%
 		assert_ok!(HonzonDistribution::update_params(
 			Origin::root(),
 			destination.clone(),
 			Some(1_000_000_000_000_000),
 			Some(1_000_000_000_000_000),
 			Some(Ratio::saturating_from_rational(60, 100)),
-			Some(Ratio::saturating_from_rational(65, 100)),
+			Some(Ratio::saturating_from_rational(625, 1000)),
 		));
 		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
 		let stable_redeem = 38_865_249_121_853u128;
@@ -160,7 +177,7 @@ fn stable_asset_mint_burn_works() {
 			pool_id: 0,
 			a: 3000,
 			input_amount: stable_redeem,
-			output_asset: DOT,
+			output_asset: AUSD,
 			min_output_amount: 0,
 			balances: vec![332_386_509_601_200, 199_999_000_000_165],
 			total_supply: 532_098_344_262_419,
@@ -170,7 +187,6 @@ fn stable_asset_mint_burn_works() {
 		System::assert_has_event(crate::mock::Event::HonzonDistribution(
 			crate::Event::AdjustDestination {
 				destination: destination.clone(),
-				stable_currency: DOT,
 				amount: 0 as i128 - ausd_burn as i128,
 			},
 		));
@@ -183,8 +199,8 @@ fn stable_asset_mint_burn_works() {
 			Tokens::free_balance(STABLE_ASSET, &CHARLIE),
 			stable_mint - stable_redeem
 		);
-		// latest target = 0.6246
 
+		// CASE#3. previous rate=0.6246 > target_max=50%, burn aUSD.
 		// burned amount is large than `DistributedBalance`, failed.
 		assert_ok!(HonzonDistribution::update_params(
 			Origin::root(),
@@ -192,13 +208,10 @@ fn stable_asset_mint_burn_works() {
 			Some(1_000_000_000_000_000),
 			Some(1_000_000_000_000_000),
 			Some(Ratio::saturating_from_rational(48, 100)),
-			Some(Ratio::saturating_from_rational(52, 100)),
+			Some(Ratio::saturating_from_rational(50, 100)),
 		));
 		System::reset_events();
-		assert_noop!(
-			HonzonDistribution::force_adjust(Origin::root(), destination.clone()),
-			Error::<Runtime>::InvalidUpdateBalance
-		);
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
 		assert_eq!(
 			System::events().iter().find(|r| matches!(
 				r.event,
@@ -206,7 +219,7 @@ fn stable_asset_mint_burn_works() {
 			)),
 			None
 		);
-
+		// storage and latest target both not changed
 		assert_eq!(
 			DistributedBalance::<Runtime>::get(&destination).unwrap(),
 			ausd_mint - ausd_burn
@@ -216,14 +229,16 @@ fn stable_asset_mint_burn_works() {
 			stable_mint - stable_redeem
 		);
 
+		// CASE#4. previous rate=0.6246 > target_max=50.5%, burn aUSD.
 		// burned amount is less than `DistributedBalance`, success.
+		// latest target=203459495144523/403458251840847=0.5042 ~= target_max=50.5%
 		assert_ok!(HonzonDistribution::update_params(
 			Origin::root(),
 			destination.clone(),
 			Some(1_000_000_000_000_000),
 			Some(1_000_000_000_000_000),
-			Some(Ratio::saturating_from_rational(49, 100)),
-			Some(Ratio::saturating_from_rational(52, 100)),
+			Some(Ratio::saturating_from_rational(50, 100)),
+			Some(Ratio::saturating_from_rational(505, 1000)),
 		));
 		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
 		assert!(System::events().iter().any(|r| {
@@ -233,5 +248,93 @@ fn stable_asset_mint_burn_works() {
 					| crate::mock::Event::HonzonDistribution(crate::Event::AdjustDestination { .. })
 			)
 		}));
+
+		// CASE#5. previous rate=0.5042 < target_min=62.5%, mint aUSD.
+		// mint amount add distributed exceed capacity.
+		// latest target=320_001_000_000_000/519_760_565_793_580=0.6156 ~= target_min=62.5%
+		let distributed = DistributedBalance::<Runtime>::get(&destination).unwrap();
+		assert_eq!(distributed, 3_458_495_144_523);
+		let capacity = 120_000_000_000_000u128;
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(capacity),
+			Some(1_000_000_000_000_000),
+			Some(Ratio::saturating_from_rational(625, 1000)),
+			Some(Ratio::saturating_from_rational(65, 100)),
+		));
+		System::reset_events();
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::Minted {
+			minter: CHARLIE,
+			pool_id: 0,
+			a: 3000,
+			input_amounts: vec![capacity - distributed, 0],
+			min_output_amount: 0,
+			balances: vec![320_001_000_000_000, 199_999_000_000_165],
+			total_supply: 519_760_565_793_580,
+			fee_amount: 0,
+			output_amount: 116_302_313_952_733,
+		}));
+		assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), capacity);
+
+		// CASE#6. previous rate=0.6156 < target_min=90%, mint aUSD.
+		// the target_min is too large than current rate, so the mint aUSD is abundant.
+		// due to config, each time mint amount should not large than max_step.
+		// latest target=1320001000000000/1505613028578396=0.8767 not reach target_min=90%.
+		let max_step = 1_000_000_000_000_000u128;
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(1_000_000_000_000_000_000),
+			Some(max_step),
+			Some(Ratio::saturating_from_rational(90, 100)),
+			Some(Ratio::saturating_from_rational(95, 100)),
+		));
+		System::reset_events();
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		System::assert_has_event(crate::mock::Event::HonzonDistribution(
+			crate::Event::AdjustDestination {
+				destination: destination.clone(),
+				amount: max_step as i128,
+			},
+		));
+		// current DistributedBalance = last value(equal to capacity) + max_step.
+		assert_eq!(
+			DistributedBalance::<Runtime>::get(&destination).unwrap(),
+			capacity + max_step
+		);
+
+		// CASE#7. previous rate=0.8767 > target_max=87.6%, burn aUSD.
+		// but the burn amount(8aUSD) < MinimumAdjustAmount(10aUSD), so nothing happened.
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(1_000_000_000_000_000),
+			Some(1_000_000_000_000_000),
+			Some(Ratio::saturating_from_rational(87, 100)),
+			Some(Ratio::saturating_from_rational(876, 1000)),
+		));
+		System::reset_events();
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		// DistributedBalance not changed, because there are none burn operation.
+		assert_eq!(
+			DistributedBalance::<Runtime>::get(&destination).unwrap(),
+			capacity + max_step
+		);
+
+		// CASE#8. remove DistributedBalance, set cap to lower value, and first time mint > cap.
+		// mint amount(3.4aUSD) < MinimumAdjustAmount(10aUSD). nothing happened.
+		DistributedBalance::<Runtime>::remove(&destination);
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(5_000_000_000_000),
+			Some(1_000_000_000_000_000),
+			Some(Ratio::saturating_from_rational(877, 1000)),
+			Some(Ratio::saturating_from_rational(95, 100)),
+		));
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), 0);
 	});
 }

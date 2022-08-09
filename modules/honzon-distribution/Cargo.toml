@@ -30,6 +30,8 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "p
 module-currencies = { path = "../../modules/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
 
+env_logger = "0.9.0"
+
 [features]
 default = ["std"]
 std = [
