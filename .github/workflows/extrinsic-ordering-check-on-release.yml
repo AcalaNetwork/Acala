@@ -42,6 +42,8 @@ jobs:
           submodules: recursive
       - name: Setup Python
         uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
       - name: Setup ENV
         if: ${{ env.CHAIN == '' || env.VERSION == '' || env.PREVIOUS_VERSION == '' }}
@@ -93,3 +95,6 @@ jobs:
         run: |
           docker stop extrinsic-ordering-check-${{ env.PREVIOUS_VERSION }}
           docker stop extrinsic-ordering-check-${{ env.VERSION }}
+
+      - name: Analyze output
+        run: python .github/scripts/extrinsic_check_analyze.py
