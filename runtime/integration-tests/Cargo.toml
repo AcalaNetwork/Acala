@@ -105,6 +105,7 @@ module-evm-accounts = { path = "../../modules/evm-accounts" }
 module-evm-bridge = { path = "../../modules/evm-bridge" }
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
 module-honzon = { path = "../../modules/honzon" }
+module-honzon-distribution = { path = "../../modules/honzon-distribution" }
 module-loans = { path = "../../modules/loans" }
 module-nft = { path = "../../modules/nft" }
 module-prices = { path = "../../modules/prices" }

@@ -58,6 +58,13 @@ mod honzon;
 	feature = "with-karura-runtime",
 	feature = "with-acala-runtime"
 ))]
+mod honzon_distribution;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod nft;
 
 #[cfg(any(

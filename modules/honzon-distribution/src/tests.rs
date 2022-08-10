@@ -80,7 +80,7 @@ fn update_params_works() {
 		}));
 
 		// stable asset params is not correct when doing real adjust.
-		let _ = initial_stable_asset(AUSD, LDOT);
+		assert_ok!(initial_stable_asset(AUSD, LDOT));
 		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
 			pool_id: 0,
 			stable_token_index: 2,
@@ -108,7 +108,7 @@ fn update_params(destination: DistributionDestination<AccountId>, lower: u32, up
 	assert_ok!(HonzonDistribution::update_params(
 		Origin::root(),
 		destination.clone(),
-		Some(1_000_000_000_000_000),
+		Some(10_000_000_000_000_000),
 		Some(1_000_000_000_000_000),
 		Some(Ratio::saturating_from_rational(lower, lower_base)),
 		Some(Ratio::saturating_from_rational(upper, upper_base)),
@@ -118,7 +118,7 @@ fn update_params(destination: DistributionDestination<AccountId>, lower: u32, up
 #[test]
 fn adjust_stable_asset_basic_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		let _ = initial_stable_asset(AUSD, LDOT);
+		assert_ok!(initial_stable_asset(AUSD, LDOT));
 		let _ = Tokens::deposit(AUSD, &ALICE, 100_000_000_000u128);
 		let swap_output = StableAssetWrapper::get_swap_output_amount(0, 0, 1, 1_000_000_000u128).unwrap();
 		let (input, output) = StableAssetWrapper::swap(&ALICE, 0, 0, 1, 1_000_000_000u128, 0, 2).unwrap();
@@ -324,9 +324,9 @@ fn adjust_stable_asset_basic_works() {
 }
 
 #[test]
-fn close_protocol_works() {
+fn redeem_stable_asset_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		let _ = initial_stable_asset(AUSD, LDOT);
+		assert_ok!(initial_stable_asset(AUSD, LDOT));
 		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
 			pool_id: 0,
 			stable_token_index: 0,
@@ -334,12 +334,10 @@ fn close_protocol_works() {
 		};
 		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
 
-		// current rate=50%, less than target_min=65%, mint aUSD.
-		// latest target=150000000000000/249_914_704_134_299=0.6 ~= target_min=60%
-		update_params(destination.clone(), 60, 70);
-
-		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		// current rate=50%, less than target_min=65%, mint 50 aUSD.
 		let ausd_mint = 50_000_000_000_000u128;
+		update_params(destination.clone(), 60, 70);
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
 		System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::Minted {
 			minter: BOB,
 			pool_id: 0,
@@ -357,36 +355,107 @@ fn close_protocol_works() {
 				amount: ausd_mint as i128,
 			},
 		));
-		// minted aUSD is add to `DistributedBalance`, and lp go to minter.
 		assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), ausd_mint);
 		assert_eq!(Tokens::free_balance(STABLE_ASSET, &BOB), 249_914_704_134_299);
 
+		// update capacity lower than `DistributedBalance`, burn 10 aUSD
+		let capacity = 40_000_000_000_000;
+		let redeem_amount = 10_029_205_971_501;
 		assert_ok!(HonzonDistribution::update_params(
 			Origin::root(),
 			destination.clone(),
-			Some(1_000_000_000_000_000),
+			Some(40_000_000_000_000),
 			Some(1_000_000_000_000_000),
 			Some(Ratio::saturating_from_rational(60, 100)),
-			Some(Ratio::saturating_from_rational(0, 1)),
+			Some(Ratio::saturating_from_rational(70, 100)),
 		));
 		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
 		System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::RedeemedSingle {
 			redeemer: BOB,
 			pool_id: 0,
 			a: 3000,
-			input_amount: ausd_mint,
+			input_amount: ausd_mint - capacity,
 			output_asset: AUSD,
 			min_output_amount: 0,
-			balances: vec![99_914_704_432_597, 100_000_000_000_000],
-			total_supply: 199_914_704_134_300,
+			balances: vec![139_970_794_028_499, 100_000_000_000_000],
+			total_supply: 239_914_704_134_299,
 			fee_amount: 0,
-			output_amount: 50_085_295_567_403,
+			output_amount: redeem_amount,
 		}));
-		System::assert_has_event(crate::mock::Event::HonzonDistribution(
-			crate::Event::CloseDistribution {
-				destination: destination.clone(),
-				amount: -50_085_295_567_403,
-			},
+		assert_eq!(
+			DistributedBalance::<Runtime>::get(&destination).unwrap(),
+			ausd_mint - redeem_amount
+		);
+
+		// capacity(25)<distributed(39.97), and burn amount(39.97-25=14.97)>MinimumAdjustAmount(10)
+		let redeem_amount2 = 15_003_895_936_052;
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(25_000_000_000_000),
+			Some(1_000_000_000_000_000),
+			Some(Ratio::saturating_from_rational(60, 100)),
+			Some(Ratio::saturating_from_rational(70, 100)),
 		));
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::RedeemedSingle {
+			redeemer: BOB,
+			pool_id: 0,
+			a: 3000,
+			input_amount: 14_970_794_028_499,
+			output_asset: AUSD,
+			min_output_amount: 0,
+			balances: vec![124_966_898_092_447, 100_000_000_000_000],
+			total_supply: 224_943_910_105_800,
+			fee_amount: 0,
+			output_amount: redeem_amount2,
+		}));
+		assert_eq!(
+			DistributedBalance::<Runtime>::get(&destination).unwrap(),
+			ausd_mint - redeem_amount - redeem_amount2
+		);
+
+		// cap=0, distributed=25, burn=min(25-0, 125)~=25
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(0),
+			Some(1_000_000_000_000_000),
+			Some(Ratio::saturating_from_rational(60, 100)),
+			Some(Ratio::saturating_from_rational(70, 100)),
+		));
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::RedeemedSingle {
+			redeemer: BOB,
+			pool_id: 0,
+			a: 3000,
+			input_amount: 24_966_898_092_447,
+			output_asset: AUSD,
+			min_output_amount: 0,
+			balances: vec![99_977_012_035_014, 100_000_000_000_000],
+			total_supply: 199_977_012_013_353,
+			fee_amount: 0,
+			output_amount: 24_989_886_057_433,
+		}));
+		assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), 0);
+
+		// cap > distributed(0), current(49.9%)>target_max(49%), burn amount=0
+		assert_ok!(HonzonDistribution::update_params(
+			Origin::root(),
+			destination.clone(),
+			Some(1_000_000_000_000_000),
+			Some(1_000_000_000_000_000),
+			Some(Ratio::saturating_from_rational(40, 100)),
+			Some(Ratio::saturating_from_rational(49, 100)),
+		));
+		System::reset_events();
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		assert!(System::events().iter().all(|r| {
+			!matches!(
+				r.event,
+				Event::StableAsset(nutsfinance_stable_asset::Event::RedeemedSingle { .. })
+					| crate::mock::Event::HonzonDistribution(crate::Event::AdjustDestination { .. })
+			)
+		}));
 	});
 }

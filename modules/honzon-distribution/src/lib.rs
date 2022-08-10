@@ -28,7 +28,7 @@ use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::traits::CheckedDiv;
 use sp_runtime::{
-	traits::{One, Saturating, Zero},
+	traits::{One, Saturating},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
@@ -43,6 +43,7 @@ mod tests;
 pub mod weights;
 
 pub use module::*;
+use primitives::CurrencyId::StableAssetPoolToken;
 pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
@@ -61,10 +62,13 @@ pub struct DistributionToStableAsset<AccountId> {
 /// Distribution params
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo, MaxEncodedLen)]
 pub struct DistributionParams {
+	// when capacity less than `DistributedBalance`, will redeem and ignore target value.
 	pub capacity: Balance,
+	// each time maximum amount of mint or burn adjust.
 	pub max_step: Balance,
+	// when current rate less than this target, mint stable asset to reaching this target.
 	pub target_min: Ratio,
-	// when target_max = 0, redeem all stable asset, and not allow mint anymore.
+	// when current rate large than this target, burn stable asset to reaching this target.
 	pub target_max: Ratio,
 }
 
@@ -133,10 +137,6 @@ pub mod module {
 			params: DistributionParams,
 		},
 		AdjustDestination {
-			destination: DistributionDestination<T::AccountId>,
-			amount: Amount,
-		},
-		CloseDistribution {
 			destination: DistributionDestination<T::AccountId>,
 			amount: Amount,
 		},
@@ -259,27 +259,51 @@ impl<T: Config> Pallet<T> {
 			.balances
 			.get(asset_index)
 			.ok_or(Error::<T>::InvalidDestination)?;
-		ensure!(asset_index < asset_length, Error::<T>::InvalidDestination);
 		let distributed = DistributedBalance::<T>::get(destination).unwrap_or_default();
+		let capacity = params.capacity;
 
 		let current_rate = Ratio::saturating_from_rational(*ausd_supply, total_supply);
 		let one: Ratio = One::one();
-		if params.target_max == Zero::zero() {
-			// close distribution protocol, redeem all issued, and not allow mint anymore.
-			// before execute redeem, should decide how much we should redeem.
-			let mint_amount = distributed.min(*ausd_supply);
+		if current_rate > params.target_max || capacity < distributed {
+			// current rate large than target_max, or capacity is less than distributed, burn aUSD
+			let burn_amount = if capacity < distributed {
+				let remain = distributed.saturating_sub(capacity).min(*ausd_supply);
+				let stable_balance = T::Currency::free_balance(StableAssetPoolToken(pool_id), &account_id);
+				remain.min(stable_balance)
+			} else {
+				let target_rate = params.target_max;
+				let remain_rate = one.saturating_sub(target_rate);
+				let remain_reci = one.checked_div(&remain_rate).ok_or(Error::<T>::InvalidDestination)?;
+				let numerator = ausd_supply.saturating_sub(params.target_max.saturating_mul_int(total_supply));
+				// if burned amount is large than `distributed`, use `distributed` value as burn amount.
+				remain_reci
+					.saturating_mul_int(numerator)
+					.min(params.max_step)
+					.min(distributed)
+			};
+			if burn_amount < T::MinimumAdjustAmount::get() {
+				return Ok(0_i128);
+			}
+
+			log::info!(target: "honzon-dist", "current:{:?}, burn:{:?}, ausd_supply:{:?}, distributed:{:?}",
+				current_rate, burn_amount, ausd_supply, distributed);
+
+			// redeem stable asset and withdraw aUSD from treasury account.
 			let (_, stable_amount) = T::StableAsset::redeem_single(
 				&account_id,
 				pool_id,
-				mint_amount,
+				burn_amount,
 				asset_index as u32,
 				0,
 				asset_length as u32,
 			)?;
+			// the `stable_amount` may large than burn amount.
 			T::Currency::withdraw(stable_currency, &account_id, stable_amount)?;
 
+			log::info!(target: "honzon-dist", "current:{:?}, burn:{:?}, stable:{:?}, distributed:{:?}",
+				current_rate, burn_amount, stable_amount, distributed);
 			let burn_amount = 0_i128.saturating_sub(stable_amount as Amount);
-			Pallet::<T>::deposit_event(Event::<T>::CloseDistribution {
+			Pallet::<T>::deposit_event(Event::<T>::AdjustDestination {
 				destination: destination.clone(),
 				amount: burn_amount,
 			});
@@ -316,41 +340,6 @@ impl<T: Config> Pallet<T> {
 				amount: mint_amount as Amount,
 			});
 			return Ok(mint_amount as Amount);
-		} else if current_rate > params.target_max {
-			// large than target_max, burn aUSD
-			let target_rate = params.target_max;
-			let remain_rate = one.saturating_sub(target_rate);
-			let remain_reci = one.checked_div(&remain_rate).ok_or(Error::<T>::InvalidDestination)?;
-			let numerator = ausd_supply.saturating_sub(params.target_max.saturating_mul_int(total_supply));
-			// if burned amount is large than `distributed`, use `distributed` value as burn amount.
-			let burn_amount = remain_reci
-				.saturating_mul_int(numerator)
-				.min(params.max_step)
-				.min(distributed);
-			if burn_amount < T::MinimumAdjustAmount::get() {
-				return Ok(0_i128);
-			}
-
-			// redeem stable asset and withdraw aUSD from treasury account.
-			let (_, stable_amount) = T::StableAsset::redeem_single(
-				&account_id,
-				pool_id,
-				burn_amount,
-				asset_index as u32,
-				0,
-				asset_length as u32,
-			)?;
-			// the `stable_amount` may large than burn amount.
-			T::Currency::withdraw(stable_currency, &account_id, stable_amount)?;
-
-			log::info!(target: "honzon-dist", "current:{:?}, target:{:?}, burn:{:?}, stable:{:?}, distributed:{:?}",
-				current_rate, target_rate, burn_amount, stable_amount, distributed);
-			let burn_amount = 0_i128.saturating_sub(stable_amount as Amount);
-			Pallet::<T>::deposit_event(Event::<T>::AdjustDestination {
-				destination: destination.clone(),
-				amount: burn_amount,
-			});
-			return Ok(burn_amount);
 		}
 
 		Ok(0_i128)

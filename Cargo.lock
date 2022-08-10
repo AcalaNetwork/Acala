@@ -10531,6 +10531,7 @@ dependencies = [
  "module-homa",
  "module-homa-lite",
  "module-honzon",
+ "module-honzon-distribution",
  "module-incentives",
  "module-loans",
  "module-nft",
