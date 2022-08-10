@@ -30,7 +30,7 @@ pub use crate::runner::{
 };
 use codec::{Decode, Encode, FullCodec, MaxEncodedLen};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
+	dispatch::{DispatchError, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo},
 	ensure,
 	error::BadOrigin,
 	log,
@@ -523,6 +523,8 @@ pub mod module {
 		ChargeStorageFailed,
 		/// Invalid decimals
 		InvalidDecimals,
+		/// Batch call failed
+		BatchCallFailed,
 	}
 
 	#[pallet::pallet]
@@ -1173,6 +1175,74 @@ pub mod module {
 			Pallet::<T>::deposit_event(Event::<T>::ContractSelfdestructed { contract });
 
 			Ok(().into())
+		}
+
+		/// Issue an EVM call operation in `Utility::batch_all`. This method returns an error if the
+		/// execution fails.
+		///
+		/// - `target`: the contract address to call
+		/// - `input`: the data supplied for the call
+		/// - `value`: the amount sent for payable calls
+		/// - `gas_limit`: the maximum gas the call can use
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::weight(call_weight::<T>(*gas_limit))]
+		#[transactional]
+		pub fn batch_call(
+			origin: OriginFor<T>,
+			target: EvmAddress,
+			input: Vec<u8>,
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] gas_limit: u64,
+			#[pallet::compact] storage_limit: u32,
+			access_list: Vec<AccessListItem>,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
+
+			match T::Runner::call(
+				source,
+				source,
+				target,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				T::config(),
+			) {
+				Err(e) => Err(DispatchErrorWithPostInfo {
+					post_info: ().into(),
+					error: e,
+				}),
+				Ok(info) => {
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Executed {
+							from: source,
+							contract: target,
+							logs: info.logs,
+							used_gas,
+							used_storage: info.used_storage,
+						});
+					} else {
+						log::debug!(
+							target: "evm",
+							"batch_call failed: [from: {:?}, contract: {:?}, exit_reason: {:?}, output: {:?}, logs: {:?}, used_gas: {:?}]",
+							source, target, info.exit_reason, info.value, info.logs, used_gas
+						);
+						return Err(DispatchErrorWithPostInfo {
+							post_info: ().into(),
+							error: Error::<T>::BatchCallFailed.into(),
+						});
+					}
+
+					Ok(PostDispatchInfo {
+						actual_weight: Some(call_weight::<T>(used_gas)),
+						pays_fee: Pays::Yes,
+					})
+				}
+			}
 		}
 	}
 }
