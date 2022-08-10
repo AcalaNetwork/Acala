@@ -49,6 +49,7 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn update_params() -> Weight;
 	fn force_adjust() -> Weight;
+	fn remove_distribution() -> Weight;
 }
 
 /// Weights for module_homa_lite using the Acala node and recommended hardware.
@@ -60,6 +61,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn force_adjust() -> Weight {
 		(8_000_000 as Weight)
 	}
+	fn remove_distribution() -> Weight {
+		(8_000_000 as Weight)
+	}
 }
 
 // For backwards compatibility and tests
@@ -68,6 +72,9 @@ impl WeightInfo for () {
 		(8_000_000 as Weight)
 	}
 	fn force_adjust() -> Weight {
+		(8_000_000 as Weight)
+	}
+	fn remove_distribution() -> Weight {
 		(8_000_000 as Weight)
 	}
 }

@@ -439,6 +439,8 @@ fn redeem_stable_asset_works() {
 		}));
 		assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), 0);
 
+		assert_eq!(Tokens::free_balance(STABLE_ASSET, &BOB), 199_977_012_013_353);
+
 		// cap > distributed(0), current(49.9%)>target_max(49%), burn amount=0
 		assert_ok!(HonzonDistribution::update_params(
 			Origin::root(),
@@ -457,5 +459,45 @@ fn redeem_stable_asset_works() {
 					| crate::mock::Event::HonzonDistribution(crate::Event::AdjustDestination { .. })
 			)
 		}));
+	});
+}
+
+#[test]
+fn remove_distribution_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(initial_stable_asset(AUSD, LDOT));
+		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
+			pool_id: 0,
+			stable_token_index: 0,
+			account_id: BOB,
+		};
+		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
+
+		// current rate=50%, less than target_min=65%, mint 50 aUSD.
+		let ausd_mint = 50_000_000_000_000u128;
+		update_params(destination.clone(), 60, 70);
+		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+		assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), ausd_mint);
+		assert_eq!(Tokens::free_balance(STABLE_ASSET, &BOB), 249_914_704_134_299);
+
+		// remove distribution
+		assert_ok!(HonzonDistribution::remove_distribution(
+			Origin::root(),
+			destination.clone()
+		));
+		System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::RedeemedSingle {
+			redeemer: BOB,
+			pool_id: 0,
+			a: 3000,
+			input_amount: ausd_mint,
+			output_asset: AUSD,
+			min_output_amount: 0,
+			balances: vec![99914704432597, 100000000000000],
+			total_supply: 199914704134300,
+			fee_amount: 0,
+			output_amount: 50085295567403,
+		}));
+		assert_eq!(DistributedBalance::<Runtime>::get(&destination), None);
+		assert_eq!(Tokens::free_balance(STABLE_ASSET, &BOB), 199_914_704_134_300);
 	});
 }

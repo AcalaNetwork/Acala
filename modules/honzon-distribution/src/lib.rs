@@ -207,29 +207,62 @@ pub mod module {
 			Self::do_adjust_to_destination(destination)?;
 			Ok(())
 		}
+
+		#[pallet::weight(T::WeightInfo::remove_distribution())]
+		#[transactional]
+		pub fn remove_distribution(
+			origin: OriginFor<T>,
+			destination: DistributionDestination<T::AccountId>,
+		) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+
+			Self::do_remove_destination(destination)?;
+			Ok(())
+		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
+	fn update_distributed_balance(
+		destination: DistributionDestination<T::AccountId>,
+		balance: Amount,
+	) -> DispatchResult {
+		// update `DistributedBalance` of destination
+		DistributedBalance::<T>::try_mutate(destination, |maybe_balance| -> DispatchResult {
+			let old_val = maybe_balance.take().unwrap_or_default();
+			let new_val = if balance.is_positive() {
+				old_val.saturating_add(balance as Balance)
+			} else {
+				old_val.saturating_sub(balance.unsigned_abs())
+			};
+			*maybe_balance = Some(new_val);
+
+			Ok(())
+		})?;
+		Ok(())
+	}
+
 	pub fn do_adjust_to_destination(destination: DistributionDestination<T::AccountId>) -> DispatchResult {
 		let params =
 			DistributionDestinationParams::<T>::get(&destination).ok_or(Error::<T>::DistributionParamsNotExist)?;
 		match destination.clone() {
 			DistributionDestination::StableAsset(stable_asset) => {
 				let balance = Self::adjust_for_stable_asset(&destination, stable_asset, params)?;
+				Self::update_distributed_balance(destination, balance)?;
+			}
+		}
+		Ok(())
+	}
 
-				// update `DistributedBalance` of destination
-				DistributedBalance::<T>::try_mutate(destination, |maybe_balance| -> DispatchResult {
-					let old_val = maybe_balance.take().unwrap_or_default();
-					let new_val = if balance.is_positive() {
-						old_val.saturating_add(balance as Balance)
-					} else {
-						old_val.saturating_sub(balance.unsigned_abs())
-					};
-					*maybe_balance = Some(new_val);
-
-					Ok(())
-				})?;
+	pub fn do_remove_destination(destination: DistributionDestination<T::AccountId>) -> DispatchResult {
+		let mut params =
+			DistributionDestinationParams::<T>::get(&destination).ok_or(Error::<T>::DistributionParamsNotExist)?;
+		// manual set capacity to zero, trigger redeem all stable asset.
+		params.capacity = 0;
+		match destination.clone() {
+			DistributionDestination::StableAsset(stable_asset) => {
+				Self::adjust_for_stable_asset(&destination, stable_asset, params)?;
+				DistributedBalance::<T>::remove(destination);
 			}
 		}
 		Ok(())

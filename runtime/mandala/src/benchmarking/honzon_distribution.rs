@@ -16,15 +16,40 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{initialize_swap_pools, SEED, STABLECOIN, STAKING};
+use super::utils::{initialize_swap_pools, SEED};
 use crate::{AccountId, HonzonDistribution, Runtime};
 use frame_benchmarking::account;
-use frame_support::assert_ok;
+use frame_support::{assert_ok, dispatch::DispatchError};
 use frame_system::RawOrigin;
 use module_honzon_distribution::{DistributedBalance, DistributionDestination, DistributionToStableAsset};
 use module_support::Ratio;
 use orml_benchmarking::runtime_benchmarks;
 use sp_runtime::FixedPointNumber;
+
+fn stable_asset_mint_works() -> Result<DistributionDestination<AccountId>, DispatchError> {
+	let treasury: AccountId = account("treasury", 0, SEED);
+	let funder: AccountId = account("funder", 0, SEED);
+
+	// STAKING -> LIQUID -> STABLECOIN
+	initialize_swap_pools(funder)?;
+
+	let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
+		pool_id: 0,
+		stable_token_index: 0,
+		account_id: treasury,
+	};
+	let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
+	assert_ok!(HonzonDistribution::update_params(
+		RawOrigin::Root.into(),
+		destination.clone(),
+		Some(1_000_000_000_000_000),
+		Some(1_000_000_000_000_000),
+		Some(Ratio::saturating_from_rational(6, 10)),
+		Some(Ratio::saturating_from_rational(7, 10)),
+	));
+
+	Ok(destination)
+}
 
 runtime_benchmarks! {
 	{ Runtime, module_honzon_distribution }
@@ -42,30 +67,22 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, destination, None, None, None, None)
 
 	force_adjust {
-		let treasury: AccountId = account("treasury", 0, SEED);
-		let funder: AccountId = account("funder", 0, SEED);
-
-		// STAKING -> LIQUID -> STABLECOIN
-		initialize_swap_pools(funder)?;
-
-		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
-			pool_id: 0,
-			stable_token_index: 0,
-			account_id: treasury,
-		};
-		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
-		assert_ok!(HonzonDistribution::update_params(
-			RawOrigin::Root.into(),
-			destination.clone(),
-			Some(1_000_000_000_000_000),
-			Some(1_000_000_000_000_000),
-			Some(Ratio::saturating_from_rational(6, 10)),
-			Some(Ratio::saturating_from_rational(7, 10)),
-		));
+		let destination = stable_asset_mint_works()?;
 
 	}: _(RawOrigin::Root, destination.clone())
 	verify {
 		assert!(DistributedBalance::<Runtime>::get(&destination).is_some());
+	}
+
+	remove_distribution {
+		let destination = stable_asset_mint_works()?;
+
+		HonzonDistribution::force_adjust(RawOrigin::Root.into(), destination.clone())?;
+		assert!(DistributedBalance::<Runtime>::get(&destination).is_some());
+
+	}: _(RawOrigin::Root, destination.clone())
+	verify {
+		assert_eq!(DistributedBalance::<Runtime>::get(&destination), None);
 	}
 }
 
