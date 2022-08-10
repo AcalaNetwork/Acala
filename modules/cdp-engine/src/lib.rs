@@ -1495,7 +1495,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for ImmediateLiquidation<T> {
 			.expect("the oracle price should be available because liquidation are triggered by it.");
 
 		// try immediate liquidation with DEX
-		let mut dex_price_ratio = Ratio::zero();
+		let dex_price_ratio;
 		if let Err(r) = Self::try_immediate_liquidation(|| {
 			Pallet::<T>::liquidate_via_dex(who, currency_id, amount, target_stable_amount, collateral_oracle_price)
 		}) {
@@ -1505,8 +1505,8 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for ImmediateLiquidation<T> {
 		}
 
 		// try immediate liquidation with contracts
-		let mut contract_max_price_ratio = Ratio::zero();
-		let mut best_offer_contract = EvmAddress::zero();
+		let contract_max_price_ratio;
+		let best_offer_contract;
 		if let Err((c, r)) = Self::try_immediate_liquidation_via_contracts(
 			currency_id,
 			amount,
