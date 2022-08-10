@@ -523,8 +523,8 @@ pub mod module {
 		ChargeStorageFailed,
 		/// Invalid decimals
 		InvalidDecimals,
-		/// Batch call failed
-		BatchCallFailed,
+		/// Strict call failed
+		StrictCallFailed,
 	}
 
 	#[pallet::pallet]
@@ -1177,8 +1177,9 @@ pub mod module {
 			Ok(().into())
 		}
 
-		/// Issue an EVM call operation in `Utility::batch_all`. This method returns an error if the
-		/// execution fails.
+		/// Issue an EVM call operation in `Utility::batch_all`. This is same as the evm.call but
+		/// returns error when it failed. The current evm.call always success and emit event to
+		/// indicate it failed.
 		///
 		/// - `target`: the contract address to call
 		/// - `input`: the data supplied for the call
@@ -1187,7 +1188,7 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(call_weight::<T>(*gas_limit))]
 		#[transactional]
-		pub fn batch_call(
+		pub fn strict_call(
 			origin: OriginFor<T>,
 			target: EvmAddress,
 			input: Vec<u8>,
@@ -1225,22 +1226,26 @@ pub mod module {
 							used_gas,
 							used_storage: info.used_storage,
 						});
+
+						Ok(PostDispatchInfo {
+							actual_weight: Some(call_weight::<T>(used_gas)),
+							pays_fee: Pays::Yes,
+						})
 					} else {
 						log::debug!(
 							target: "evm",
 							"batch_call failed: [from: {:?}, contract: {:?}, exit_reason: {:?}, output: {:?}, logs: {:?}, used_gas: {:?}]",
 							source, target, info.exit_reason, info.value, info.logs, used_gas
 						);
-						return Err(DispatchErrorWithPostInfo {
-							post_info: ().into(),
-							error: Error::<T>::BatchCallFailed.into(),
-						});
-					}
 
-					Ok(PostDispatchInfo {
-						actual_weight: Some(call_weight::<T>(used_gas)),
-						pays_fee: Pays::Yes,
-					})
+						Err(DispatchErrorWithPostInfo {
+							post_info: PostDispatchInfo {
+								actual_weight: Some(call_weight::<T>(used_gas)),
+								pays_fee: Pays::Yes,
+							},
+							error: Error::<T>::StrictCallFailed.into(),
+						})
+					}
 				}
 			}
 		}

@@ -2308,7 +2308,7 @@ fn reserve_deposit_makes_user_developer() {
 }
 
 #[test]
-fn batch_call_works() {
+fn strict_call_works() {
 	// pragma solidity ^0.5.0;
 	//
 	// contract Test {
@@ -2358,7 +2358,7 @@ fn batch_call_works() {
 						value: 6
 					}),
 					// call method `set(123)`
-					Call::EVM(evm_mod::Call::batch_call {
+					Call::EVM(evm_mod::Call::strict_call {
 						target: contract_address,
 						input: from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b")
 							.unwrap(),
@@ -2391,7 +2391,7 @@ fn batch_call_works() {
 						value: 6
 					}),
 					// call undefined method
-					Call::EVM(evm_mod::Call::batch_call {
+					Call::EVM(evm_mod::Call::strict_call {
 						target: contract_address,
 						input: from_hex("0x00000000000000000000000000000000000000000000000000000000000000000000007b")
 							.unwrap(),
@@ -2404,10 +2404,10 @@ fn batch_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(1530107298),
+					actual_weight: Some(1529151000),
 					pays_fee: Pays::Yes
 				},
-				error: Error::<Runtime>::BatchCallFailed.into(),
+				error: Error::<Runtime>::StrictCallFailed.into(),
 			})
 		);
 
@@ -2423,7 +2423,7 @@ fn batch_call_works() {
 					value: 6
 				}),
 				// call method `set(123)`
-				Call::EVM(evm_mod::Call::batch_call {
+				Call::EVM(evm_mod::Call::strict_call {
 					target: contract_address,
 					input: from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b")
 						.unwrap(),
