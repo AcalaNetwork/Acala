@@ -111,6 +111,10 @@ fn remove_distribution_works() {
 				None
 			);
 			assert_eq!(
+				module_honzon_distribution::DistributionDestinationParams::<Runtime>::get(&destination),
+				None
+			);
+			assert_eq!(
 				Tokens::free_balance(CurrencyId::StableAssetPoolToken(0), &treasury_account),
 				0
 			);

@@ -1630,7 +1630,7 @@ impl module_honzon_distribution::Config for Runtime {
 	type AdjustOffset = ConstU32<1>;
 	type MinimumAdjustAmount = MinimumAdjustAmount;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_honzon_distribution::WeightInfo<Runtime>;
 }
 
 construct_runtime!(

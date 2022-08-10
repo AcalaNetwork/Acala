@@ -262,7 +262,8 @@ impl<T: Config> Pallet<T> {
 		match destination.clone() {
 			DistributionDestination::StableAsset(stable_asset) => {
 				Self::adjust_for_stable_asset(&destination, stable_asset, params)?;
-				DistributedBalance::<T>::remove(destination);
+				DistributedBalance::<T>::remove(&destination);
+				DistributionDestinationParams::<T>::remove(&destination);
 			}
 		}
 		Ok(())

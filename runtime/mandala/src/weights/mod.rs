@@ -32,6 +32,7 @@ pub mod module_evm;
 pub mod module_evm_accounts;
 pub mod module_homa;
 pub mod module_honzon;
+pub mod module_honzon_distribution;
 pub mod module_incentives;
 pub mod module_nft;
 pub mod module_nominees_election;

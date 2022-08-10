@@ -21,7 +21,9 @@ use crate::{AccountId, HonzonDistribution, Runtime};
 use frame_benchmarking::account;
 use frame_support::{assert_ok, dispatch::DispatchError};
 use frame_system::RawOrigin;
-use module_honzon_distribution::{DistributedBalance, DistributionDestination, DistributionToStableAsset};
+use module_honzon_distribution::{
+	DistributedBalance, DistributionDestination, DistributionDestinationParams, DistributionToStableAsset,
+};
 use module_support::Ratio;
 use orml_benchmarking::runtime_benchmarks;
 use sp_runtime::FixedPointNumber;
@@ -83,6 +85,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, destination.clone())
 	verify {
 		assert_eq!(DistributedBalance::<Runtime>::get(&destination), None);
+		assert_eq!(DistributionDestinationParams::<Runtime>::get(&destination), None);
 	}
 }
 

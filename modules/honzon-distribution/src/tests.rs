@@ -326,37 +326,7 @@ fn adjust_stable_asset_basic_works() {
 #[test]
 fn redeem_stable_asset_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(initial_stable_asset(AUSD, LDOT));
-		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
-			pool_id: 0,
-			stable_token_index: 0,
-			account_id: BOB,
-		};
-		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
-
-		// current rate=50%, less than target_min=65%, mint 50 aUSD.
-		let ausd_mint = 50_000_000_000_000u128;
-		update_params(destination.clone(), 60, 70);
-		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
-		System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::Minted {
-			minter: BOB,
-			pool_id: 0,
-			a: 3000,
-			input_amounts: vec![ausd_mint, 0],
-			min_output_amount: 0,
-			balances: vec![150_000_000_000_000, 100_000_000_000_000],
-			total_supply: 249_914_704_134_299,
-			fee_amount: 0,
-			output_amount: 49_914_704_134_299,
-		}));
-		System::assert_has_event(crate::mock::Event::HonzonDistribution(
-			crate::Event::AdjustDestination {
-				destination: destination.clone(),
-				amount: ausd_mint as i128,
-			},
-		));
-		assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), ausd_mint);
-		assert_eq!(Tokens::free_balance(STABLE_ASSET, &BOB), 249_914_704_134_299);
+		let (destination, ausd_mint) = first_mint_works();
 
 		// update capacity lower than `DistributedBalance`, burn 10 aUSD
 		let capacity = 40_000_000_000_000;
@@ -465,20 +435,7 @@ fn redeem_stable_asset_works() {
 #[test]
 fn remove_distribution_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(initial_stable_asset(AUSD, LDOT));
-		let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
-			pool_id: 0,
-			stable_token_index: 0,
-			account_id: BOB,
-		};
-		let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
-
-		// current rate=50%, less than target_min=65%, mint 50 aUSD.
-		let ausd_mint = 50_000_000_000_000u128;
-		update_params(destination.clone(), 60, 70);
-		assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
-		assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), ausd_mint);
-		assert_eq!(Tokens::free_balance(STABLE_ASSET, &BOB), 249_914_704_134_299);
+		let (destination, ausd_mint) = first_mint_works();
 
 		// remove distribution
 		assert_ok!(HonzonDistribution::remove_distribution(
@@ -497,7 +454,44 @@ fn remove_distribution_works() {
 			fee_amount: 0,
 			output_amount: 50085295567403,
 		}));
-		assert_eq!(DistributedBalance::<Runtime>::get(&destination), None);
 		assert_eq!(Tokens::free_balance(STABLE_ASSET, &BOB), 199_914_704_134_300);
+		assert_eq!(DistributedBalance::<Runtime>::get(&destination), None);
+		assert_eq!(DistributionDestinationParams::<Runtime>::get(&destination), None);
 	});
+}
+
+fn first_mint_works() -> (DistributionDestination<AccountId>, Balance) {
+	assert_ok!(initial_stable_asset(AUSD, LDOT));
+	let distribution_to_stable_asset = DistributionToStableAsset::<AccountId> {
+		pool_id: 0,
+		stable_token_index: 0,
+		account_id: BOB,
+	};
+	let destination = DistributionDestination::StableAsset(distribution_to_stable_asset);
+
+	// current rate=50%, less than target_min=65%, mint 50 aUSD.
+	let ausd_mint = 50_000_000_000_000u128;
+	update_params(destination.clone(), 60, 70);
+	assert_ok!(HonzonDistribution::force_adjust(Origin::root(), destination.clone()));
+	System::assert_has_event(Event::StableAsset(nutsfinance_stable_asset::Event::Minted {
+		minter: BOB,
+		pool_id: 0,
+		a: 3000,
+		input_amounts: vec![ausd_mint, 0],
+		min_output_amount: 0,
+		balances: vec![150_000_000_000_000, 100_000_000_000_000],
+		total_supply: 249_914_704_134_299,
+		fee_amount: 0,
+		output_amount: 49_914_704_134_299,
+	}));
+	System::assert_has_event(crate::mock::Event::HonzonDistribution(
+		crate::Event::AdjustDestination {
+			destination: destination.clone(),
+			amount: ausd_mint as i128,
+		},
+	));
+	assert_eq!(DistributedBalance::<Runtime>::get(&destination).unwrap(), ausd_mint);
+	assert_eq!(Tokens::free_balance(STABLE_ASSET, &BOB), 249_914_704_134_299);
+
+	(destination, ausd_mint)
 }
