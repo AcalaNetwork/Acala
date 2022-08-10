@@ -29,7 +29,9 @@ pub use frame_support::{
 	traits::{Everything, Get, Nothing},
 	weights::Weight,
 };
-use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfStableAsset};
+use module_asset_registry::{
+	BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfLiquidCrowdloan, BuyWeightRateOfStableAsset,
+};
 use module_support::HomaSubAccountXcm;
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
@@ -147,6 +149,7 @@ pub type Trader = (
 	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfForeignAsset<Runtime>>,
 	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfErc20<Runtime>>,
 	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfStableAsset<Runtime>>,
+	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfLiquidCrowdloan<Runtime>>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<TapPerSecond, ToTreasury>,
@@ -244,7 +247,7 @@ pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::{Erc20, ForeignAsset, StableAssetPoolToken, Token};
+		use CurrencyId::{Erc20, ForeignAsset, LiquidCrowdloan, StableAssetPoolToken, Token};
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => {
@@ -253,6 +256,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			Erc20(address) if !is_system_contract(address) => {
 				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
 			}
+			LiquidCrowdloan(_lease) => Some(native_currency_location(ParachainInfo::get().into(), id.encode())),
 			StableAssetPoolToken(_pool_id) => Some(native_currency_location(ParachainInfo::get().into(), id.encode())),
 			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
@@ -262,7 +266,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		use primitives::TokenSymbol::*;
-		use CurrencyId::{Erc20, StableAssetPoolToken, Token};
+		use CurrencyId::{Erc20, LiquidCrowdloan, StableAssetPoolToken, Token};
 
 		if location == MultiLocation::parent() {
 			return Some(Token(DOT));
@@ -285,6 +289,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 							match currency_id {
 								Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => Some(currency_id),
 								Erc20(address) if !is_system_contract(address) => Some(currency_id),
+								LiquidCrowdloan(_lease) => Some(currency_id),
 								StableAssetPoolToken(_pool_id) => Some(currency_id),
 								_ => None,
 							}
@@ -306,6 +311,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				match currency_id {
 					Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => Some(currency_id),
 					Erc20(address) if !is_system_contract(address) => Some(currency_id),
+					LiquidCrowdloan(_lease) => Some(currency_id),
 					StableAssetPoolToken(_pool_id) => Some(currency_id),
 					_ => None,
 				}

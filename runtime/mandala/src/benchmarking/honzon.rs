@@ -165,27 +165,26 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(receiver), currency_id, sender_lookup)
 
 	close_loan_has_debit_by_dex {
-		let currency_id: CurrencyId = LIQUID;
+		let currency_id: CurrencyId = STAKING;
 		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
 		let debit_value = 100 * dollar(STABLECOIN);
-		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(LIQUID);
+		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(STAKING);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
 		let debit_amount: Amount = debit_amount.unique_saturated_into();
 		let collateral_value = 10 * debit_value;
-		let collateral_amount = Price::saturating_from_rational(dollar(LIQUID), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
+		let collateral_amount = Price::saturating_from_rational(dollar(STAKING), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance and inject liquidity
-		set_balance(LIQUID, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&LIQUID));
-		inject_liquidity(maker.clone(), LIQUID, STAKING, 10_000 * dollar(LIQUID), 10_000 * dollar(STAKING), false)?;
-		inject_liquidity(maker, STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN), false)?;
+		set_balance(STAKING, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&STAKING));
+		initialize_swap_pools(maker)?;
 
 		feed_price(vec![(STAKING, Price::one())])?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(
 			RawOrigin::Root.into(),
-			LIQUID,
+			STAKING,
 			Change::NoChange,
 			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
 			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
@@ -196,11 +195,11 @@ runtime_benchmarks! {
 		// initialize sender's loan
 		Honzon::adjust_loan(
 			RawOrigin::Signed(sender.clone()).into(),
-			LIQUID,
+			STAKING,
 			(10 * collateral_amount).try_into().unwrap(),
 			debit_amount,
 		)?;
-	}: _(RawOrigin::Signed(sender), LIQUID, collateral_amount)
+	}: _(RawOrigin::Signed(sender), STAKING, collateral_amount)
 
 	expand_position_collateral {
 		let currency_id: CurrencyId = STAKING;
