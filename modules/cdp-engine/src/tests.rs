@@ -1937,7 +1937,9 @@ fn liquidation_via_contracts_works() {
 		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
 		MockLiquidationEvmBridge::set_liquidation_result(Ok(()));
 
-		assert_ok!(ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000));
+		assert_ok!(
+			ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000, Price::one())
+		);
 		let contract_account_id =
 			<evm_accounts::EvmAddressMapping<Runtime> as AddressMapping<AccountId>>::get_account_id(&address);
 		assert_eq!(Currencies::free_balance(DOT, &contract_account_id), 100);
@@ -1952,7 +1954,7 @@ fn liquidation_fails_if_no_liquidation_contracts() {
 		MockLiquidationEvmBridge::set_liquidation_result(Ok(()));
 
 		assert_noop!(
-			ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000),
+			ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000, Price::one()),
 			(Default::default(), Default::default())
 		);
 	});
@@ -1968,7 +1970,7 @@ fn liquidation_fails_if_no_liquidation_contracts_can_liquidate() {
 		assert_eq!(CDPEngineModule::liquidation_contracts(), vec![address],);
 
 		assert_err!(
-			ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000),
+			ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000, Price::one()),
 			(Default::default(), Default::default())
 		);
 	});
@@ -1986,7 +1988,7 @@ fn liquidation_fails_if_insufficient_repayment() {
 		MockLiquidationEvmBridge::set_repayment(1);
 
 		assert_err!(
-			ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000),
+			ImmediateLiquidation::<Runtime>::try_immediate_liquidation_via_contracts(DOT, 100, 1_000, Price::one()),
 			(Default::default(), Default::default())
 		);
 	});
