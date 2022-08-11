@@ -47,7 +47,7 @@ env:
 
 jobs:
   build-release:
-    name: Build and publish ${{ env.CHAIN }}
+    name: Build and publish ${{ github.event.inputs.chain || github.ref }}
     runs-on: ubuntu-latest
     steps:
       # Checkout the Acala codebase
