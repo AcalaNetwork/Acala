@@ -1,5 +1,8 @@
 name: Docker Image
 on:
+  create:
+    branches:
+      - release-**
   push:
     branches:
       - release-**

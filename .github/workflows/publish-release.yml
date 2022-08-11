@@ -10,9 +10,9 @@ name: Publish Release
 # - Publish the WASM to Pinata via ipfs
 
 on:
-  push:
+  create:
     branches:
-      - release-**
+      - 'release-(karura|acala)-**'
   workflow_dispatch:
     inputs:
       # Get name of the chain
