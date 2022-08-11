@@ -32,6 +32,7 @@ use codec::MaxEncodedLen;
 use frame_support::{
 	log,
 	pallet_prelude::*,
+	require_transactional,
 	storage::{with_transaction, TransactionOutcome},
 	traits::UnixTime,
 	transactional, BoundedVec, PalletId,
@@ -1384,19 +1385,6 @@ impl<T: Config> Pallet<T> {
 				.checked_div(&collateral_oracle_price)
 				.ok_or(ArithmeticError::DivisionByZero)?;
 			return Ok(ratio);
-		} else if repayment > 0 {
-			// insufficient repayment, refund
-			CurrencyOf::<T>::transfer(stable_coin, &repay_dest_account_id, &contract_account_id, repayment)?;
-			// notify liquidation failed
-			T::LiquidationEvmBridge::on_repayment_refund(
-				InvokeContext {
-					contract,
-					sender: Pallet::<T>::evm_address(),
-					origin: contract,
-				},
-				collateral,
-				repayment,
-			);
 		}
 
 		Err(Error::<T>::LiquidationFailed.into())
