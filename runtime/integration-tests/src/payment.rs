@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
-use crate::stable_asset::enable_stable_asset;
+use crate::stable_asset::enable_default_stable_asset;
 use frame_support::weights::{DispatchClass, DispatchInfo, Pays, PostDispatchInfo, Weight};
 use module_support::AggregatedSwapPath;
 use sp_runtime::{
@@ -465,7 +465,7 @@ fn with_fee_call_works(with_fee_call: <Runtime as module_transaction_payment::Co
 		.build()
 		.execute_with(|| {
 			if is_aggregated_call {
-				enable_stable_asset(
+				enable_default_stable_asset(
 					vec![RELAY_CHAIN_CURRENCY, LIQUID_CURRENCY],
 					vec![100 * dollar(RELAY_CHAIN_CURRENCY), 100 * dollar(LIQUID_CURRENCY)],
 					None,

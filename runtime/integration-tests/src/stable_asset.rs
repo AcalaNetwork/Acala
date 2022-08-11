@@ -21,6 +21,7 @@ use crate::payment::{with_fee_aggregated_path_call, with_fee_currency_call, with
 use crate::setup::*;
 use module_aggregated_dex::SwapPath;
 use module_support::{AggregatedSwapPath, ExchangeRate, Swap, SwapLimit, EVM as EVMTrait};
+use nutsfinance_stable_asset::traits::StableAsset as StableAssetT;
 use primitives::{currency::AssetMetadata, evm::EvmAddress};
 use sp_runtime::{
 	traits::{SignedExtension, UniqueSaturatedInto},
@@ -29,18 +30,78 @@ use sp_runtime::{
 };
 use std::str::FromStr;
 
-pub fn enable_stable_asset(currencies: Vec<CurrencyId>, amounts: Vec<u128>, minter: Option<AccountId>) {
-	let pool_asset = CurrencyId::StableAssetPoolToken(0);
+fn inject_liquidity(
+	account_id: AccountId,
+	currency_id_a: CurrencyId,
+	currency_id_b: CurrencyId,
+	max_amount_a: Balance,
+	max_amount_b: Balance,
+) -> Result<(), &'static str> {
+	let _ = Dex::enable_trading_pair(Origin::root(), currency_id_a, currency_id_b);
+	Dex::add_liquidity(
+		Origin::signed(account_id),
+		currency_id_a,
+		currency_id_b,
+		max_amount_a,
+		max_amount_b,
+		Default::default(),
+		false,
+	)?;
+	Ok(())
+}
+
+pub fn enable_default_stable_asset(currencies: Vec<CurrencyId>, amounts: Vec<u128>, minter: Option<AccountId>) {
 	let precisions = currencies.iter().map(|_| 1u128).collect::<Vec<_>>();
+	enable_stable_asset(
+		currencies,
+		amounts,
+		precisions,
+		minter,
+		10_000_000u128,
+		20_000_000u128,
+		50_000_000u128,
+		1_000u128,
+	);
+}
+
+pub fn mock_production_stable_asset(
+	currencies: Vec<CurrencyId>,
+	amounts: Vec<u128>,
+	minter: Option<AccountId>,
+	precisions: Vec<u128>,
+) {
+	enable_stable_asset(
+		currencies,
+		amounts,
+		precisions,
+		minter,
+		0u128,
+		25_000_000u128,
+		30_000_000u128,
+		3_000u128,
+	);
+}
+
+fn enable_stable_asset(
+	currencies: Vec<CurrencyId>,
+	amounts: Vec<u128>,
+	precisions: Vec<u128>,
+	minter: Option<AccountId>,
+	mint_fee: u128,
+	swap_fee: u128,
+	redeem_fee: u128,
+	initial: u128,
+) {
+	let pool_asset = CurrencyId::StableAssetPoolToken(0);
 	assert_ok!(StableAsset::create_pool(
 		Origin::root(),
 		pool_asset,
 		currencies, // assets
 		precisions,
-		10_000_000u128,           // mint fee
-		20_000_000u128,           // swap fee
-		50_000_000u128,           // redeem fee
-		1_000u128,                // initialA
+		mint_fee,
+		swap_fee,
+		redeem_fee,
+		initial,
 		AccountId::from(BOB),     // fee recipient
 		AccountId::from(CHARLIE), // yield recipient
 		1_000_000_000_000u128,    // precision
@@ -70,12 +131,6 @@ fn stable_asset_mint_works() {
 	ExtBuilder::default()
 		.balances(vec![
 			(
-				// NetworkContractSource
-				MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
-				NATIVE_CURRENCY,
-				1_000_000_000 * dollar(NATIVE_CURRENCY),
-			),
-			(
 				AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
 				1_000_000_000 * dollar(NATIVE_CURRENCY),
@@ -94,7 +149,7 @@ fn stable_asset_mint_works() {
 			let ksm_target_amount = 10_000_123u128;
 			let lksm_target_amount = 10_000_456u128;
 			let account_id: AccountId = StableAssetPalletId::get().into_sub_account_truncating(0);
-			enable_stable_asset(
+			enable_default_stable_asset(
 				vec![RELAY_CHAIN_CURRENCY, LIQUID_CURRENCY],
 				vec![ksm_target_amount, lksm_target_amount],
 				None,
@@ -124,6 +179,113 @@ fn stable_asset_mint_works() {
 }
 
 #[test]
+fn three_usd_pool_mint_redeem_works() {
+	let dollar = dollar(NATIVE_CURRENCY);
+	let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
+	let usdt: CurrencyId = CurrencyId::ForeignAsset(0);
+	let usdc: CurrencyId = CurrencyId::Erc20(erc20_address_0());
+	let minimal_balance = 10_000u128;
+	ExtBuilder::default()
+		.balances(vec![
+			// alice() used to deploy erc20 contract
+			(alice(), NATIVE_CURRENCY, 1_000_000 * dollar),
+			// alith used to mint 3USD.
+			(alith.clone(), NATIVE_CURRENCY, 1_000_000_000 * dollar),
+			(alith.clone(), USD_CURRENCY, 1_000_000_000 * dollar),
+			(AccountId::from(BOB), USD_CURRENCY, 1_000_000 * dollar),
+		])
+		.build()
+		.execute_with(|| {
+			enable_usdt(6, minimal_balance);
+			assert_ok!(Currencies::deposit(usdt, &alith, 1_000_000_000 * dollar));
+
+			// USDC is Erc20 token, decimals=6
+			deploy_usdc_erc20(minimal_balance);
+
+			<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
+
+			mock_production_stable_asset(
+				vec![
+					USD_CURRENCY, // 0: AUSD
+					usdc,         // 1: USDC, decimals=6
+					usdt,         // 2: USDT, decimals=6
+				],
+				vec![320_928_161_121_617_931u128, 902_252_973_831u128, 641_091_908_733u128],
+				Some(alith.clone()),
+				vec![1u128, 1_000_000u128, 1_000_000u128],
+			);
+
+			let lp_token = CurrencyId::StableAssetPoolToken(0);
+			let amount1 = 10_000 * dollar;
+			let amount2 = 100_000 * dollar;
+
+			// mint/inject will increate lp
+			let mut lp = mint_or_redeem(true, amount1, 0, 17, 0);
+			for i in vec![18, 18, 18, 19, 19, 20] {
+				lp = mint_or_redeem(true, amount1, lp, i, 0);
+			}
+			for i in vec![24, 27] {
+				lp = mint_or_redeem(true, amount2, lp, i, 0);
+			}
+
+			// burn/redeem will decrease lp
+			for i in vec![24, 20] {
+				lp = mint_or_redeem(false, amount2, lp, i, 1004);
+			}
+			for i in vec![19, 19, 19, 18, 18] {
+				lp = mint_or_redeem(false, amount1, lp, i, 1004);
+			}
+			for (a, i) in vec![(21281 * dollar, 17), (64 * dollar, 17), (dollar, 17)] {
+				let lp_amount = Tokens::free_balance(lp_token, &AccountId::from(BOB));
+				assert!(lp_amount < a);
+				lp = mint_or_redeem(false, lp_amount, lp, i, 1004);
+			}
+		});
+}
+
+fn mint_or_redeem(mint: bool, amount: Balance, lp: Balance, i: u32, j: u32) -> Balance {
+	let lp_token = CurrencyId::StableAssetPoolToken(0);
+	if !mint {
+		// redeem
+		assert_ok!(StableAsset::redeem_single(
+			Origin::signed(AccountId::from(BOB)),
+			0,
+			amount,
+			0,
+			0,
+			3
+		));
+	} else {
+		// mint
+		assert_ok!(StableAsset::mint(
+			Origin::signed(AccountId::from(BOB)),
+			0,
+			vec![amount, 0, 0],
+			0u128
+		));
+	}
+	let pool = StableAsset::pool(0).unwrap();
+	let lp1 = Tokens::free_balance(lp_token, &AccountId::from(BOB));
+	let asud_proportion = Ratio::saturating_from_rational(pool.balances[0], pool.total_supply);
+	let rate = if !mint {
+		Ratio::saturating_from_rational(amount, lp - lp1)
+	} else {
+		Ratio::saturating_from_rational(amount, lp1 - lp)
+	};
+	assert!(
+		asud_proportion > Ratio::saturating_from_rational(i, 100)
+			&& asud_proportion < Ratio::saturating_from_rational(i + 1, 100)
+	);
+	if !mint {
+		assert!(rate > Ratio::saturating_from_rational(1, 1) && rate < Ratio::saturating_from_rational(j, 1000));
+	} else {
+		assert!(rate < Ratio::saturating_from_rational(1, 1));
+	}
+
+	lp1
+}
+
+#[test]
 fn three_usd_pool_payment_works() {
 	let dollar = dollar(NATIVE_CURRENCY);
 	let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
@@ -134,12 +296,6 @@ fn three_usd_pool_payment_works() {
 		.balances(vec![
 			// alice() used to deploy erc20 contract
 			(alice(), NATIVE_CURRENCY, 1_000_000 * dollar),
-			(
-				// NetworkContractSource
-				MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
-				NATIVE_CURRENCY,
-				1_000_000_000 * dollar,
-			),
 			// alith used to mint 3USD.
 			(alith.clone(), NATIVE_CURRENCY, 1_000_000_000 * dollar),
 			(alith.clone(), USD_CURRENCY, 1_000_000_000 * dollar),
@@ -231,9 +387,22 @@ fn assert_aggregated_dex_event(
 		.any(|r| matches!(r.event, Event::Dex(module_dex::Event::Swap { .. }))));
 }
 
-pub fn deploy_erc20_contracts() {
-	let json: serde_json::Value =
-		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
+pub fn deploy_default_erc20() {
+	deploy_erc20_contracts(
+		include_str!("../../../ts-tests/build/Erc20DemoContract2.json"),
+		100_000_000_000,
+	);
+}
+
+pub fn deploy_usdc_erc20(minimal_balance: Balance) {
+	deploy_erc20_contracts(
+		include_str!("../../../ts-tests/build/Erc20DemoContract1.json"),
+		minimal_balance,
+	);
+}
+
+pub fn deploy_erc20_contracts(json_file: &str, minimal_balance: Balance) {
+	let json: serde_json::Value = serde_json::from_str(json_file).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
 
 	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2100_000, 100000, vec![]));
@@ -241,7 +410,7 @@ pub fn deploy_erc20_contracts() {
 	assert_ok!(AssetRegistry::register_erc20_asset(
 		Origin::root(),
 		erc20_address_0(),
-		100_000_000_000
+		minimal_balance
 	));
 }
 
@@ -249,32 +418,7 @@ pub fn erc20_address_0() -> EvmAddress {
 	EvmAddress::from_str("0x5e0b4bfa0b55932a3587e648c3552a6515ba56b1").unwrap()
 }
 
-fn inject_liquidity(
-	currency_id_a: CurrencyId,
-	currency_id_b: CurrencyId,
-	max_amount_a: Balance,
-	max_amount_b: Balance,
-) -> Result<(), &'static str> {
-	let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
-	let _ = Dex::enable_trading_pair(Origin::root(), currency_id_a, currency_id_b);
-	Dex::add_liquidity(
-		Origin::signed(alith),
-		currency_id_a,
-		currency_id_b,
-		max_amount_a,
-		max_amount_b,
-		Default::default(),
-		false,
-	)?;
-	Ok(())
-}
-
-pub fn enable_3usd_pool(account: AccountId) {
-	let dollar = dollar(NATIVE_CURRENCY);
-	let minimal_balance: u128 = Balances::minimum_balance() / 10;
-	let usdt: CurrencyId = CurrencyId::ForeignAsset(0);
-	let usdc: CurrencyId = CurrencyId::Erc20(erc20_address_0());
-
+fn enable_usdt(decimals: u8, minimal_balance: Balance) {
 	// USDT is asset on Statemine
 	assert_ok!(AssetRegistry::register_foreign_asset(
 		Origin::root(),
@@ -291,15 +435,24 @@ pub fn enable_3usd_pool(account: AccountId) {
 		Box::new(AssetMetadata {
 			name: b"USDT".to_vec(),
 			symbol: b"USDT".to_vec(),
-			decimals: 12,
+			decimals,
 			minimal_balance
 		})
 	));
+}
+
+pub fn enable_3usd_pool(account: AccountId) {
+	let dollar = dollar(NATIVE_CURRENCY);
+	let minimal_balance: u128 = Balances::minimum_balance() / 10;
+	let usdt: CurrencyId = CurrencyId::ForeignAsset(0);
+	let usdc: CurrencyId = CurrencyId::Erc20(erc20_address_0());
+
+	enable_usdt(12, minimal_balance);
 	// deposit USDT to alith, used for 3USD liquidity provider
 	assert_ok!(Currencies::deposit(usdt, &account, 1_000_000 * dollar));
 
 	// USDC is Erc20 token
-	deploy_erc20_contracts();
+	deploy_default_erc20();
 
 	<EVM as EVMTrait<AccountId>>::set_origin(account.clone());
 
@@ -309,7 +462,7 @@ pub fn enable_3usd_pool(account: AccountId) {
 		usdc,         // PoolTokenIndex=1: USDC
 		USD_CURRENCY, // PoolTokenIndex=2: AUSD
 	];
-	enable_stable_asset(
+	enable_default_stable_asset(
 		three_usds,
 		vec![1000 * dollar, 1000 * dollar, 1000 * dollar],
 		Some(account.clone()),
@@ -329,12 +482,14 @@ pub fn enable_3usd_pool(account: AccountId) {
 
 fn enable_aggregated_dex() {
 	let dollar = dollar(NATIVE_CURRENCY);
+	let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
 
 	let usdt: CurrencyId = CurrencyId::ForeignAsset(0);
 	let usdc: CurrencyId = CurrencyId::Erc20(erc20_address_0());
 
 	// inject liquidity of AUSD to native token.
 	assert_ok!(inject_liquidity(
+		alith,
 		USD_CURRENCY,
 		NATIVE_CURRENCY,
 		1000 * dollar,
