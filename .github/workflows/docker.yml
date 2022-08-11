@@ -31,6 +31,7 @@ jobs:
     needs: clean-up-actions
     outputs:
       matrix: ${{ steps.docker-setup-matrix.outputs.matrix }}
+      version: ${{ steps.docker-setup-matrix.outputs.version }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -75,7 +76,7 @@ jobs:
             ghcr.io/acalanetwork/${{ matrix.network }}-node
           # generate Docker tags based on the following events/attributes
           tags: |
-            type=ref,event=branch
+            type=raw,value=${{ needs.setup-matrix.outputs.version || github.ref_name }}
             type=ref,event=pr
             type=sha
       - name: Change Dockerfile to support multi-platform
