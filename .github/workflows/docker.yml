@@ -9,6 +9,11 @@ on:
     paths-ignore:
       - '**/README.md'
   workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to build docker image (optional). Helpful to build docker image for release branches that don't have image
+        required: false
+        type: string
 
 jobs:
   clean-up-actions:
@@ -38,7 +43,7 @@ jobs:
 
       - name: Setup Matrix
         id: docker-setup-matrix
-        run: python .github/scripts/docker_setup_matrix.py
+        run: python .github/scripts/docker_setup_matrix.py ${{ github.event.inputs.branch || github.ref }}
 
   build-image:
     name: "Build docker image ${{ matrix.network }}"
@@ -49,6 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
           submodules: recursive
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2

@@ -1,6 +1,10 @@
+import sys
 import re
 
-f = open("output.txt", "r")
+file = sys.argv[1] if len(sys.argv) > 1 else None
+assert file, "Output file missing"
+
+f = open(file, "r")
 
 items = re.findall("\[\w+\] idx: \d+ -> \d+.+", f.read())
 

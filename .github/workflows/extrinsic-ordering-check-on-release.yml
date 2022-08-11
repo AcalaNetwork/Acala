@@ -97,4 +97,4 @@ jobs:
           docker stop extrinsic-ordering-check-${{ env.CHAIN }}-${{ env.VERSION }}
 
       - name: Analyze output
-        run: python .github/scripts/extrinsic_check_analyze.py
+        run: python .github/scripts/extrinsic_check_analyze.py output.txt
