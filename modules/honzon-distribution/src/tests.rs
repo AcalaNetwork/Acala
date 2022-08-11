@@ -275,6 +275,12 @@ fn adjust_stable_asset_basic_works() {
 		let distributed = DistributedBalance::<Runtime>::get(&destination).unwrap();
 		assert_eq!(distributed, capacity + max_step);
 		assert_eq!(distributed, 1_120_000_000_000_000);
+		System::assert_has_event(crate::mock::Event::HonzonDistribution(
+			crate::Event::AdjustDestination {
+				destination: destination.clone(),
+				amount: 0i128,
+			},
+		));
 
 		// CASE#7. previous rate=0.8767 > target_max=45%, burn aUSD.
 		// burned amount is large than `DistributedBalance`, use `DistributedBalance`.
@@ -426,7 +432,6 @@ fn redeem_stable_asset_works() {
 			!matches!(
 				r.event,
 				Event::StableAsset(nutsfinance_stable_asset::Event::RedeemedSingle { .. })
-					| crate::mock::Event::HonzonDistribution(crate::Event::AdjustDestination { .. })
 			)
 		}));
 	});

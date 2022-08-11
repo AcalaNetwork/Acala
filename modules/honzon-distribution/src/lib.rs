@@ -224,7 +224,7 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	fn update_distributed_balance(
-		destination: DistributionDestination<T::AccountId>,
+		destination: &DistributionDestination<T::AccountId>,
 		balance: Amount,
 	) -> DispatchResult {
 		// update `DistributedBalance` of destination
@@ -247,8 +247,10 @@ impl<T: Config> Pallet<T> {
 			DistributionDestinationParams::<T>::get(&destination).ok_or(Error::<T>::DistributionParamsNotExist)?;
 		match destination.clone() {
 			DistributionDestination::StableAsset(stable_asset) => {
-				let balance = Self::adjust_for_stable_asset(&destination, stable_asset, params)?;
-				Self::update_distributed_balance(destination, balance)?;
+				let amount = Self::adjust_for_stable_asset(&destination, stable_asset, params)?;
+				Self::update_distributed_balance(&destination, amount)?;
+
+				Pallet::<T>::deposit_event(Event::<T>::AdjustDestination { destination, amount });
 			}
 		}
 		Ok(())
@@ -319,14 +321,11 @@ impl<T: Config> Pallet<T> {
 				return Ok(0_i128);
 			}
 
-			log::info!(target: "honzon-dist", "current:{:?}, burn:{:?}, ausd_supply:{:?}, distributed:{:?}",
-				current_rate, burn_amount, ausd_supply, distributed);
-
 			// redeem stable asset and withdraw aUSD from treasury account.
 			let (_, stable_amount) = T::StableAsset::redeem_single(
 				&account_id,
 				pool_id,
-				burn_amount,
+				burn_amount, // this is refer to lp token
 				asset_index as u32,
 				0,
 				asset_length as u32,
@@ -334,13 +333,9 @@ impl<T: Config> Pallet<T> {
 			// the `stable_amount` may large than burn amount.
 			T::Currency::withdraw(stable_currency, &account_id, stable_amount)?;
 
-			log::info!(target: "honzon-dist", "current:{:?}, burn:{:?}, stable:{:?}, distributed:{:?}",
-				current_rate, burn_amount, stable_amount, distributed);
+			log::info!(target: "honzon-dist", "current:{:?}, ausd:{:?}, redeem lp:{:?}, stable:{:?}, distributed:{:?}",
+				current_rate, ausd_supply, burn_amount, stable_amount, distributed);
 			let burn_amount = 0_i128.saturating_sub(stable_amount as Amount);
-			Pallet::<T>::deposit_event(Event::<T>::AdjustDestination {
-				destination: destination.clone(),
-				amount: burn_amount,
-			});
 			return Ok(burn_amount);
 		} else if current_rate < params.target_min {
 			// less than target_min, mint aUSD
@@ -357,8 +352,6 @@ impl<T: Config> Pallet<T> {
 			} else {
 				params.capacity.saturating_sub(distributed)
 			};
-			log::info!(target: "honzon-dist", "current:{:?}, target:{:?}, mint:{:?}, distributed:{:?}",
-				current_rate, target_rate, mint_amount, distributed);
 			if mint_amount < T::MinimumAdjustAmount::get() {
 				return Ok(0_i128);
 			}
@@ -369,10 +362,8 @@ impl<T: Config> Pallet<T> {
 			T::Currency::deposit(T::GetStableCurrencyId::get(), &account_id, mint_amount)?;
 			T::StableAsset::mint(&account_id, pool_id, assets, 0)?;
 
-			Pallet::<T>::deposit_event(Event::<T>::AdjustDestination {
-				destination: destination.clone(),
-				amount: mint_amount as Amount,
-			});
+			log::info!(target: "honzon-dist", "current:{:?}, mint:{:?}, distributed:{:?}",
+				current_rate, mint_amount, distributed);
 			return Ok(mint_amount as Amount);
 		}
 
