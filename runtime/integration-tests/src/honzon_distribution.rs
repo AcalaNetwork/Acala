@@ -25,7 +25,7 @@ use crate::setup::*;
 use crate::stable_asset::enable_3usd_pool;
 use module_honzon_distribution::{DistributionDestination, DistributionToStableAsset};
 
-fn first_mint() -> (DistributionDestination<AccountId>, Balance, AccountId) {
+fn initial_adjust_mint() -> (DistributionDestination<AccountId>, Balance, AccountId) {
 	let dollar = dollar(NATIVE_CURRENCY);
 	let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
 
@@ -86,7 +86,6 @@ fn first_mint() -> (DistributionDestination<AccountId>, Balance, AccountId) {
 
 #[test]
 fn remove_distribution_works() {
-	env_logger::init();
 	let dollar = dollar(NATIVE_CURRENCY);
 	let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
 
@@ -98,7 +97,7 @@ fn remove_distribution_works() {
 		])
 		.build()
 		.execute_with(|| {
-			let (destination, _mint_amount, treasury_account) = first_mint();
+			let (destination, _mint_amount, treasury_account) = initial_adjust_mint();
 			assert_eq!(
 				Tokens::free_balance(CurrencyId::StableAssetPoolToken(0), &treasury_account),
 				225_412_902_865_499
@@ -142,7 +141,7 @@ fn honzon_distribution_mint_burn_works() {
 		])
 		.build()
 		.execute_with(|| {
-			let (destination, mint_amount, treasury_account) = first_mint();
+			let (destination, mint_amount, treasury_account) = initial_adjust_mint();
 
 			let redeem_amount = 100_510_332_095_017;
 			assert_ok!(HonzonDistribution::update_params(
