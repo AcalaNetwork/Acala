@@ -121,7 +121,8 @@ macro_rules! create_currency_id {
 			// Acala tokens
 			let mut acala_tokens = vec![];
 			$(
-				if $val < 128 {
+				// ignore RENBTC and CASH
+				if $val < 128 && $val != 20 && $val != 21 {
 					acala_tokens.push(Token {
 						symbol: stringify!($symbol).to_string(),
 						address: EvmAddress::try_from(CurrencyId::Token(TokenSymbol::$symbol)).unwrap(),
@@ -154,10 +155,10 @@ macro_rules! create_currency_id {
 				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(0)).unwrap(),
 			});
 
-			acala_tokens.push(Token {
-				symbol: "SA_3USD".to_string(),
-				address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(1)).unwrap(),
-			});
+			// acala_tokens.push(Token {
+			// 	symbol: "SA_3USD".to_string(),
+			// 	address: EvmAddress::try_from(CurrencyId::StableAssetPoolToken(1)).unwrap(),
+			// });
 
 			acala_tokens.push(Token {
 				symbol: "LCDOT_13".to_string(),
