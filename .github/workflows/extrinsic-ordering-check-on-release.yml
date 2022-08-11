@@ -61,14 +61,14 @@ jobs:
         run: |
           echo "METADATA COMPARISON" >> output.txt
           echo "Date: $(date)" >> output.txt
-          echo "Reference: ${{ env.PREVIOUS_VERSION }}" >> output.txt
-          echo "Target version: ${{ env.VERSION }}" >> output.txt
+          echo "Reference: release-${{ env.CHAIN }}-${{ env.PREVIOUS_VERSION }}" >> output.txt
+          echo "Target version: release-${{ env.CHAIN }}-${{ env.VERSION }}" >> output.txt
           echo "-------------------------------------------" >> output.txt
 
       - name: Start local node
         run: |
-          docker run --name extrinsic-ordering-check-${{ env.PREVIOUS_VERSION }} -d -p 9944:9944 --rm ghcr.io/acalanetwork/${{ env.CHAIN }}-node:release-${{ env.CHAIN }}-${{ env.PREVIOUS_VERSION }} --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --ws-port=9944 --tmp -- --dev
-          docker run --name extrinsic-ordering-check-${{ env.VERSION }} -d -p 9955:9955 --rm ghcr.io/acalanetwork/${{ env.CHAIN }}-node:release-${{ env.CHAIN }}-${{ env.VERSION }} --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --ws-port=9955 --tmp -- --dev
+          docker run --name extrinsic-ordering-check-${{ env.CHAIN }}-${{ env.PREVIOUS_VERSION }} -d -p 9944:9944 --rm ghcr.io/acalanetwork/${{ env.CHAIN }}-node:release-${{ env.CHAIN }}-${{ env.PREVIOUS_VERSION }} --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --ws-port=9944 --tmp -- --dev
+          docker run --name extrinsic-ordering-check-${{ env.CHAIN }}-${{ env.VERSION }} -d -p 9955:9955 --rm ghcr.io/acalanetwork/${{ env.CHAIN }}-node:release-${{ env.CHAIN }}-${{ env.VERSION }} --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --ws-port=9955 --tmp -- --dev
           sleep 120
 
       - name: Compare the metadata
@@ -93,8 +93,8 @@ jobs:
       - name: Stop our local node
         if: always()
         run: |
-          docker stop extrinsic-ordering-check-${{ env.PREVIOUS_VERSION }}
-          docker stop extrinsic-ordering-check-${{ env.VERSION }}
+          docker stop extrinsic-ordering-check-${{ env.CHAIN }}-${{ env.PREVIOUS_VERSION }}
+          docker stop extrinsic-ordering-check-${{ env.CHAIN }}-${{ env.VERSION }}
 
       - name: Analyze output
         run: python .github/scripts/extrinsic_check_analyze.py

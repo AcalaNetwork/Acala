@@ -24,10 +24,6 @@ jobs:
     outputs:
       matrix: ${{ steps.docker-setup-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
