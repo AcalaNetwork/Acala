@@ -845,7 +845,7 @@ fn subscribe_version_notify_works() {
 
 #[test]
 fn unspent_xcm_fee_is_returned_correctly() {
-	let parachain_account: AccountId = polkadot_parachain::primitives::Id::from(2000).into_account_truncating();
+	let parachain_account: AccountId = polkadot_parachain::primitives::Id::from(KARURA_ID).into_account_truncating();
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 	let dollar_r = dollar(RELAY_CHAIN_CURRENCY);
@@ -993,7 +993,7 @@ fn trapped_asset() -> MultiAsset {
 	};
 
 	KusamaNet::execute_with(|| {
-		let location = MultiLocation::new(0, X1(Parachain(2000)));
+		let location = MultiLocation::new(0, X1(Parachain(KARURA_ID)));
 		let versioned = xcm::VersionedMultiAssets::from(MultiAssets::from(vec![asset.clone()]));
 		let hash = BlakeTwo256::hash_of(&(&location, &versioned));
 		kusama_runtime::System::assert_has_event(kusama_runtime::Event::XcmPallet(pallet_xcm::Event::AssetsTrapped(
