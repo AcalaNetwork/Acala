@@ -86,6 +86,7 @@ fn first_mint() -> (DistributionDestination<AccountId>, Balance, AccountId) {
 
 #[test]
 fn remove_distribution_works() {
+	env_logger::init();
 	let dollar = dollar(NATIVE_CURRENCY);
 	let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
 
@@ -102,9 +103,16 @@ fn remove_distribution_works() {
 				Tokens::free_balance(CurrencyId::StableAssetPoolToken(0), &treasury_account),
 				225_412_902_865_499
 			);
+			System::reset_events();
 			assert_ok!(HonzonDistribution::remove_distribution(
 				Origin::root(),
 				destination.clone()
+			));
+			System::assert_has_event(Event::HonzonDistribution(
+				module_honzon_distribution::Event::RemoveDistribution {
+					destination: destination.clone(),
+					amount: -224453741859548,
+				},
 			));
 			assert_eq!(
 				module_honzon_distribution::DistributedBalance::<Runtime>::get(&destination),

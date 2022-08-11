@@ -140,6 +140,10 @@ pub mod module {
 			destination: DistributionDestination<T::AccountId>,
 			amount: Amount,
 		},
+		RemoveDistribution {
+			destination: DistributionDestination<T::AccountId>,
+			amount: Amount,
+		},
 	}
 
 	#[pallet::pallet]
@@ -263,9 +267,11 @@ impl<T: Config> Pallet<T> {
 		params.capacity = 0;
 		match destination.clone() {
 			DistributionDestination::StableAsset(stable_asset) => {
-				Self::adjust_for_stable_asset(&destination, stable_asset, params)?;
+				let amount = Self::adjust_for_stable_asset(&destination, stable_asset, params)?;
 				DistributedBalance::<T>::remove(&destination);
 				DistributionDestinationParams::<T>::remove(&destination);
+
+				Pallet::<T>::deposit_event(Event::<T>::RemoveDistribution { destination, amount });
 			}
 		}
 		Ok(())

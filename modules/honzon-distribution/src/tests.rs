@@ -459,6 +459,12 @@ fn remove_distribution_works() {
 			fee_amount: 0,
 			output_amount: 50085295567403,
 		}));
+		System::assert_has_event(crate::mock::Event::HonzonDistribution(
+			crate::Event::RemoveDistribution {
+				destination: destination.clone(),
+				amount: -50085295567403,
+			},
+		));
 		assert_eq!(Tokens::free_balance(STABLE_ASSET, &BOB), 199_914_704_134_300);
 		assert_eq!(DistributedBalance::<Runtime>::get(&destination), None);
 		assert_eq!(DistributionDestinationParams::<Runtime>::get(&destination), None);
