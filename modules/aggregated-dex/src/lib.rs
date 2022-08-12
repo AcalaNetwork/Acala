@@ -118,11 +118,10 @@ pub mod module {
 	pub enum Event<T: Config> {
 		/// Rebalance trading path and balance.
 		RebalanceTrading {
-			currency_1: CurrencyId,
-			currency_2: CurrencyId,
-			currency_3: CurrencyId,
+			currency_id: CurrencyId,
 			supply_amount: Balance,
 			target_amount: Balance,
+			swap_path: Vec<SwapPath>,
 		},
 		/// Add rebalance info.
 		SetupRebalanceSwapInfo {
@@ -132,13 +131,21 @@ pub mod module {
 		},
 	}
 
-	/// The specific swap paths for  AggregatedSwap do aggreated_swap to swap TokenA to TokenB
+	/// The specific swap paths for  AggregatedSwap do aggregated_swap to swap TokenA to TokenB
 	///
 	/// AggregatedSwapPaths: Map: (token_a: CurrencyId, token_b: CurrencyId) => paths: Vec<SwapPath>
 	#[pallet::storage]
 	#[pallet::getter(fn aggregated_swap_paths)]
 	pub type AggregatedSwapPaths<T: Config> =
 		StorageMap<_, Twox64Concat, (CurrencyId, CurrencyId), BoundedVec<SwapPath, T::SwapPathLimit>, OptionQuery>;
+
+	/// The specific rebalance swap paths doing aggregated_swap from TokenA to TokenA
+	///
+	/// AggregatedSwapPaths: Map: CurrencyId => paths: Vec<SwapPath>
+	#[pallet::storage]
+	#[pallet::getter(fn rebalance_swap_paths)]
+	pub type RebalanceSwapPaths<T: Config> =
+		StorageMap<_, Twox64Concat, CurrencyId, BoundedVec<SwapPath, T::SwapPathLimit>, OptionQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn rebalance_supply_threshold)]
@@ -248,6 +255,38 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Update the rebalance swap paths for AggregatedSwap to swap TokenA to TokenA.
+		///
+		/// Requires `GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `updates`:  Vec<(Token, Option<Vec<SwapPath>>)>
+		#[pallet::weight(<T as Config>::WeightInfo::update_aggregated_swap_paths(updates.len() as u32))]
+		#[transactional]
+		pub fn update_rebalance_swap_paths(
+			origin: OriginFor<T>,
+			updates: Vec<(CurrencyId, Option<Vec<SwapPath>>)>,
+		) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			for (key, maybe_paths) in updates {
+				if let Some(paths) = maybe_paths {
+					let paths: BoundedVec<SwapPath, T::SwapPathLimit> =
+						paths.try_into().map_err(|_| Error::<T>::InvalidSwapPath)?;
+					let (supply_currency_id, target_currency_id) = Self::check_swap_paths(&paths)?;
+					ensure!(
+						key == supply_currency_id && supply_currency_id == target_currency_id,
+						Error::<T>::InvalidSwapPath
+					);
+					RebalanceSwapPaths::<T>::insert(key, paths);
+				} else {
+					RebalanceSwapPaths::<T>::remove(key);
+				}
+			}
+
+			Ok(())
+		}
+
 		#[pallet::weight(<T as Config>::WeightInfo::set_rebalance_swap_info())]
 		#[transactional]
 		pub fn set_rebalance_swap_info(
@@ -264,12 +303,11 @@ pub mod module {
 		#[transactional]
 		pub fn force_rebalance_swap(
 			origin: OriginFor<T>,
-			currency_1: CurrencyId,
-			currency_2: CurrencyId,
-			currency_3: CurrencyId,
+			currency_id: CurrencyId,
+			swap_path: Vec<SwapPath>,
 		) -> DispatchResult {
 			ensure_none(origin)?;
-			Self::do_rebalance_swap((currency_1, currency_2, currency_3))
+			Self::do_rebalance_swap(currency_id, swap_path)
 		}
 	}
 
@@ -278,19 +316,13 @@ pub mod module {
 		type Call = Call<T>;
 		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 			if let Call::force_rebalance_swap {
-				currency_1,
-				currency_2,
-				currency_3,
+				currency_id,
+				swap_path: _,
 			} = call
 			{
 				ValidTransaction::with_tag_prefix("DexBotOffchainWorker")
 					.priority(T::UnsignedPriority::get())
-					.and_provides((
-						<frame_system::Pallet<T>>::block_number(),
-						currency_1,
-						currency_2,
-						currency_3,
-					))
+					.and_provides((<frame_system::Pallet<T>>::block_number(), currency_id))
 					.longevity(64_u64)
 					.propagate(true)
 					.build()
@@ -505,17 +537,13 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	fn submit_rebalance_swap_tx(currency_1: CurrencyId, currency_2: CurrencyId, currency_3: CurrencyId) {
-		let call = Call::<T>::force_rebalance_swap {
-			currency_1,
-			currency_2,
-			currency_3,
-		};
+	fn submit_rebalance_swap_tx(currency_id: CurrencyId, swap_path: Vec<SwapPath>) {
+		let call = Call::<T>::force_rebalance_swap { currency_id, swap_path };
 		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
 			log::info!(
 				target: "dex-bot",
-				"offchain worker: submit unsigned swap A={:?},B={:?},C={:?}, failed: {:?}",
-				currency_1, currency_2, currency_3, err,
+				"offchain worker: submit unsigned swap from currency:{:?}, failed: {:?}",
+				currency_id, err,
 			);
 		}
 	}
@@ -553,6 +581,7 @@ impl<T: Config> Pallet<T> {
 		let mut last_currency_id: Option<CurrencyId> = None;
 		let iteration_start_time = sp_io::offchain::timestamp();
 
+		// processing pure dex rebalance swap
 		#[allow(clippy::while_let_on_iterator)]
 		'outer: while let Some((currency_id, trading_tokens)) = iterator.next() {
 			// BTreeMap don't have `iter_from(key)`, use compare here to ignore previous processed token.
@@ -580,7 +609,12 @@ impl<T: Config> Pallet<T> {
 						if TradingPairStatuses::<T>::contains_key(&pair) {
 							let pair_status = TradingPairStatuses::<T>::get(&pair);
 							if pair_status.enabled() {
-								Self::submit_rebalance_swap_tx(*currency_id, pair.first(), pair.second());
+								let first_path: Vec<CurrencyId> = vec![*currency_id, pair.first(), pair.second()];
+								let second_path: Vec<CurrencyId> = vec![pair.second(), *currency_id];
+								let swap_path = vec![SwapPath::Dex(first_path), SwapPath::Dex(second_path)];
+								// TODO: do we need check `get_aggregated_swap_amount` large than supply amount before
+								// submit unsigned tx?
+								Self::submit_rebalance_swap_tx(*currency_id, swap_path);
 							}
 						}
 					}
@@ -594,6 +628,24 @@ impl<T: Config> Pallet<T> {
 					// extend offchain worker lock
 					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 				}
+			}
+		}
+
+		// processing aggregated dex rebalance swap
+		if iteration_count < max_iterations {
+			for (currency_id, swap_path) in RebalanceSwapPaths::<T>::iter() {
+				iteration_count += 1;
+
+				Self::submit_rebalance_swap_tx(currency_id, swap_path.into_inner());
+
+				// inner iterator consider as iterations too.
+				if iteration_count == max_iterations {
+					finished = false;
+					break;
+				}
+
+				// extend offchain worker lock
+				guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 			}
 		}
 
@@ -645,38 +697,18 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Rebalance swap of path: `A->B->C->A`, the final output should be large than input.
-	fn do_rebalance_swap(current: (CurrencyId, CurrencyId, CurrencyId)) -> DispatchResult {
-		if let Some((supply_amount, minimum_amount)) = RebalanceSupplyThreshold::<T>::get(&current.0) {
-			// A-B-C-A has two kind of swap: A-B/B-C-A or A-B-C/C-A, either one is ok.
-			let first_path: Vec<CurrencyId> = vec![current.0, current.1, current.2];
-			let second_path: Vec<CurrencyId> = vec![current.2, current.0];
-			let supply_1 = SwapLimit::ExactSupply(supply_amount, 0);
+	fn do_rebalance_swap(currency_id: CurrencyId, swap_path: Vec<SwapPath>) -> DispatchResult {
+		if let Some((supply_amount, minimum_amount)) = RebalanceSupplyThreshold::<T>::get(&currency_id) {
+			let supply = SwapLimit::ExactSupply(supply_amount, 0);
+			if let Some((_, target_amount)) = Pallet::<T>::get_aggregated_swap_amount(&swap_path, supply) {
+				if target_amount > minimum_amount {
+					Pallet::<T>::do_aggregated_swap(&Self::treasury_account(), &swap_path, supply)?;
 
-			let mut valid_swap = false;
-			if let Some((_, target_3)) = T::DEX::get_swap_amount(&first_path, supply_1) {
-				if let Some((_, _)) =
-					T::DEX::get_swap_amount(&second_path, SwapLimit::ExactSupply(target_3, minimum_amount))
-				{
-					valid_swap = true;
-				}
-			}
-			if !valid_swap {
-				return Ok(());
-			}
-
-			if let Ok((_, target_3)) = T::DEX::swap_with_specific_path(&Self::treasury_account(), &first_path, supply_1)
-			{
-				if let Ok((_, target_amount)) = T::DEX::swap_with_specific_path(
-					&Self::treasury_account(),
-					&second_path,
-					SwapLimit::ExactSupply(target_3, minimum_amount),
-				) {
 					Self::deposit_event(Event::RebalanceTrading {
-						currency_1: current.0,
-						currency_2: current.1,
-						currency_3: current.2,
+						currency_id,
 						supply_amount,
 						target_amount,
+						swap_path,
 					});
 				}
 			}

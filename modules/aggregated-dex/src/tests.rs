@@ -697,25 +697,43 @@ fn check_swap_paths_work() {
 		);
 
 		assert_ok!(initial_taiga_dot_ldot_pool());
-		assert_ok!(AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 0, 1)]));
+
 		assert_noop!(
 			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 2, 0)]),
 			Error::<Runtime>::InvalidTokenIndex
 		);
-
-		assert_ok!(AggregatedDex::check_swap_paths(&vec![
-			SwapPath::Taiga(0, 0, 1),
-			SwapPath::Dex(vec![LDOT, AUSD])
-		]),);
 		assert_noop!(
 			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![AUSD, LDOT])]),
 			Error::<Runtime>::InvalidSwapPath
 		);
-
-		assert_ok!(AggregatedDex::check_swap_paths(&vec![
-			SwapPath::Dex(vec![AUSD, LDOT]),
-			SwapPath::Taiga(0, 1, 0)
-		]),);
+		assert_eq!(
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 0, 1)]),
+			Ok((DOT, LDOT))
+		);
+		assert_eq!(
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])]),
+			Ok((DOT, AUSD))
+		);
+		assert_eq!(
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Dex(vec![AUSD, LDOT]), SwapPath::Taiga(0, 1, 0)]),
+			Ok((AUSD, DOT))
+		);
+		assert_eq!(
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, DOT]),]),
+			Ok((DOT, DOT))
+		);
+		assert_eq!(
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 1, 0), SwapPath::Dex(vec![DOT, LDOT]),]),
+			Ok((LDOT, LDOT))
+		);
+		assert_eq!(
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 1, 0), SwapPath::Taiga(0, 0, 1),]),
+			Ok((LDOT, LDOT))
+		);
+		assert_eq!(
+			AggregatedDex::check_swap_paths(&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Taiga(0, 1, 0),]),
+			Ok((DOT, DOT))
+		);
 	});
 }
 
@@ -750,6 +768,8 @@ fn get_aggregated_swap_amount_work() {
 			100_000_000_000u128,
 			20_000_000_000_000u128
 		));
+
+		// dex
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
 				&vec![SwapPath::Dex(vec![AUSD, LDOT])],
@@ -786,6 +806,7 @@ fn get_aggregated_swap_amount_work() {
 			None
 		);
 
+		// taiga
 		assert_ok!(initial_taiga_dot_ldot_pool());
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
@@ -816,6 +837,7 @@ fn get_aggregated_swap_amount_work() {
 			None
 		);
 
+		// taiga + dex
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
 				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])],
@@ -845,6 +867,7 @@ fn get_aggregated_swap_amount_work() {
 			None
 		);
 
+		// dex + taiga
 		assert_eq!(
 			AggregatedDex::get_aggregated_swap_amount(
 				&vec![SwapPath::Dex(vec![AUSD, LDOT]), SwapPath::Taiga(0, 1, 0)],
@@ -865,6 +888,110 @@ fn get_aggregated_swap_amount_work() {
 				SwapLimit::ExactTarget(2_222_627_355_533u128, 1_000_000_000u128)
 			),
 			None
+		);
+
+		// more complicate aggregated dex test.
+		// We've already Taiga(DOT,LDOT), and Dex(LDOT, AUSD).
+		assert_ok!(inject_liquidity(DOT, AUSD, 100_000_000_000u128, 20_000_000_000_000u128));
+		assert_ok!(inject_liquidity(DOT, LDOT, 100_000_000_000u128, 100_000_000_000u128));
+
+		assert_eq!(
+			AggregatedDex::get_aggregated_swap_amount(
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, DOT]),],
+				SwapLimit::ExactSupply(1_000_000_000u128, 0)
+			),
+			Some((1_000_000_000u128, 9_089_554_318u128))
+		);
+		assert_eq!(
+			AggregatedDex::get_aggregated_swap_amount(
+				&vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, DOT]),],
+				SwapLimit::ExactTarget(1_000_000_000u128, 1_000_000_000u128)
+			),
+			Some((101_011_873u128, 1_000_000_960u128))
+		);
+
+		assert_eq!(
+			AggregatedDex::get_aggregated_swap_amount(
+				&vec![SwapPath::Taiga(0, 1, 0), SwapPath::Dex(vec![DOT, LDOT]),],
+				SwapLimit::ExactSupply(1_000_000_000u128, 0)
+			),
+			Some((1_000_000_000u128, 99_898_463u128))
+		);
+		assert_eq!(
+			AggregatedDex::get_aggregated_swap_amount(
+				&vec![SwapPath::Taiga(0, 1, 0), SwapPath::Dex(vec![DOT, LDOT]),],
+				SwapLimit::ExactTarget(2_000_000_000u128, 100_000_000u128)
+			),
+			Some((1_001_018_430u128, 100_000_098u128))
+		);
+
+		assert_eq!(
+			AggregatedDex::get_aggregated_swap_amount(
+				&vec![
+					SwapPath::Taiga(0, 0, 1),
+					SwapPath::Dex(vec![LDOT, AUSD]),
+					SwapPath::Dex(vec![AUSD, DOT]),
+				],
+				SwapLimit::ExactSupply(1_000_000_000u128, 0)
+			),
+			Some((1_000_000_000u128, 8_332_194_934u128))
+		);
+		assert_eq!(
+			AggregatedDex::get_aggregated_swap_amount(
+				&vec![
+					SwapPath::Taiga(0, 0, 1),
+					SwapPath::Dex(vec![LDOT, AUSD]),
+					SwapPath::Dex(vec![AUSD, DOT]),
+				],
+				SwapLimit::ExactTarget(1_000_000_000u128, 1_000_000_000u128)
+			),
+			Some((102_042_622u128, 1_000_000_938u128))
+		);
+
+		assert_eq!(
+			AggregatedDex::get_aggregated_swap_amount(
+				&vec![
+					SwapPath::Dex(vec![LDOT, AUSD]),
+					SwapPath::Dex(vec![AUSD, DOT]),
+					SwapPath::Dex(vec![DOT, LDOT]),
+				],
+				SwapLimit::ExactSupply(1_000_000_000u128, 0)
+			),
+			Some((1_000_000_000u128, 970_873_785u128))
+		);
+		assert_eq!(
+			AggregatedDex::get_aggregated_swap_amount(
+				&vec![
+					SwapPath::Dex(vec![LDOT, AUSD]),
+					SwapPath::Dex(vec![AUSD, DOT]),
+					SwapPath::Dex(vec![DOT, LDOT]),
+				],
+				SwapLimit::ExactTarget(1_000_000_000u128, 100_000_000u128)
+			),
+			Some((100_300_904u128, 100_000_000u128))
+		);
+
+		assert_eq!(
+			AggregatedDex::get_aggregated_swap_amount(
+				&vec![
+					SwapPath::Dex(vec![AUSD, DOT]),
+					SwapPath::Taiga(0, 0, 1),
+					SwapPath::Dex(vec![LDOT, AUSD]),
+				],
+				SwapLimit::ExactSupply(1_000_000_000u128, 0)
+			),
+			Some((1_000_000_000u128, 9_994_493_008u128))
+		);
+		assert_eq!(
+			AggregatedDex::get_aggregated_swap_amount(
+				&vec![
+					SwapPath::Dex(vec![AUSD, DOT]),
+					SwapPath::Taiga(0, 0, 1),
+					SwapPath::Dex(vec![LDOT, AUSD]),
+				],
+				SwapLimit::ExactTarget(1_000_000_000u128, 100_000_000u128)
+			),
+			Some((10_019_806u128, 100_195_498u128))
 		);
 	});
 }
@@ -1319,8 +1446,8 @@ fn aggregated_swap_swap_work() {
 
 fn inject_liquidity_default_pairs() {
 	assert_ok!(inject_liquidity(AUSD, DOT, 1_000_000u128, 2_000_000u128));
-	assert_ok!(inject_liquidity(AUSD, BTC, 1_000_000u128, 2_000_000u128));
 	assert_ok!(inject_liquidity(DOT, BTC, 1_000_000u128, 2_000_000u128));
+	assert_ok!(inject_liquidity(AUSD, BTC, 1_000_000u128, 2_000_000u128));
 }
 
 #[test]
@@ -1336,7 +1463,7 @@ fn offchain_worker_max_iteration_works() {
 		System::set_block_number(1);
 		inject_liquidity_default_pairs();
 
-		trigger_unsigned_rebalance_swap(2, pool_state.clone(), None);
+		trigger_unsigned_rebalance_swap(2, pool_state.clone(), vec![], vec![], None);
 
 		let to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
 		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
@@ -1344,7 +1471,7 @@ fn offchain_worker_max_iteration_works() {
 
 		// sets max iterations value to 1
 		offchain.local_storage_set(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS, &1u32.encode());
-		trigger_unsigned_rebalance_swap(3, pool_state.clone(), None);
+		trigger_unsigned_rebalance_swap(3, pool_state.clone(), vec![], vec![], None);
 
 		let to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
 		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default().unwrap();
@@ -1378,52 +1505,104 @@ fn offchain_worker_trigger_unsigned_rebalance_swap() {
 			supply_amount: 1000,
 			threshold: 1960,
 		}));
-
 		let supply_threshold = RebalanceSupplyThreshold::<Runtime>::get(AUSD).unwrap();
 		assert_eq!(supply_threshold, (1000, 1960));
+
 		assert_ok!(Tokens::deposit(
 			AUSD,
 			&Pallet::<Runtime>::treasury_account(),
-			1_000_000_000_000_000u128
+			1_000_000u128
 		));
 
-		trigger_unsigned_rebalance_swap(2, pool_state.clone(), Some(1990));
-		trigger_unsigned_rebalance_swap(3, pool_state.clone(), Some(1970));
-		trigger_unsigned_rebalance_swap(4, pool_state.clone(), None);
+		// offchain worker execution trigger dex swap: AUSD->DOT-BTC->AUSD
+		trigger_unsigned_rebalance_swap(
+			2,
+			pool_state.clone(),
+			vec![1000, 1998, 3988],
+			vec![3988, 1990],
+			Some(1990),
+		);
+		// treasury account use 1000 to swap 1990, that's gain 990.
+		assert_eq!(
+			Tokens::free_balance(AUSD, &Pallet::<Runtime>::treasury_account()),
+			1000990
+		);
+
+		// treasury account use 1000 to swap 1970, that's gain 970.
+		trigger_unsigned_rebalance_swap(
+			3,
+			pool_state.clone(),
+			vec![1000, 1994, 3964],
+			vec![3964, 1970],
+			Some(1970),
+		);
+		assert_eq!(
+			Tokens::free_balance(AUSD, &Pallet::<Runtime>::treasury_account()),
+			1001960
+		);
+
+		trigger_unsigned_rebalance_swap(4, pool_state.clone(), vec![], vec![], None);
+		assert_eq!(
+			Tokens::free_balance(AUSD, &Pallet::<Runtime>::treasury_account()),
+			1001960
+		);
+
+		// AUSD-DOT: AUSD+(1000+1000), DOT-(1998+1994)
+		assert_eq!(Dex::get_liquidity_pool(AUSD, DOT), (1002000, 1996008));
+		// DOT-BTC: DOT+(1998+1994), BTC-(3988+3964)
+		assert_eq!(Dex::get_liquidity_pool(DOT, BTC), (1003992, 1992048));
+		// BTC-AUSD: BTC+(3988+3964), AUSD-(1990+1970)
+		assert_eq!(Dex::get_liquidity_pool(AUSD, BTC), (996040, 2007952));
 	});
 }
 
-fn trigger_unsigned_rebalance_swap(n: u64, pool_state: Arc<RwLock<PoolState>>, actual_target_amount: Option<u128>) {
+fn trigger_unsigned_rebalance_swap(
+	n: u64,
+	pool_state: Arc<RwLock<PoolState>>,
+	dex_lp1: Vec<Balance>,
+	dex_lp2: Vec<Balance>,
+	actual_target_amount: Option<u128>,
+) {
 	System::reset_events();
 	run_to_block_offchain(n);
 
 	// trigger unsigned tx
 	let tx = pool_state.write().transactions.pop().unwrap();
 	let tx = Extrinsic::decode(&mut &*tx).unwrap();
-	if let MockCall::AggregatedDex(crate::Call::force_rebalance_swap {
-		currency_1,
-		currency_2,
-		currency_3,
-	}) = tx.call
-	{
-		assert_eq!((AUSD, DOT, BTC), (currency_1, currency_2, currency_3));
+	let swap_path = vec![
+		AggregatedSwapPath::Dex(vec![AUSD, DOT, BTC]),
+		AggregatedSwapPath::Dex(vec![BTC, AUSD]),
+	];
+	if let MockCall::AggregatedDex(crate::Call::force_rebalance_swap { currency_id, swap_path }) = tx.call {
 		assert_ok!(AggregatedDex::force_rebalance_swap(
 			Origin::none(),
-			currency_1,
-			currency_2,
-			currency_3
+			currency_id,
+			swap_path
 		));
 	}
 	assert!(pool_state.write().transactions.pop().is_none());
 
 	// if target amount is less than threshold, then rebalance swap not triggered.
 	if let Some(target_amount) = actual_target_amount {
+		System::assert_has_event(crate::mock::Event::Dex(module_dex::Event::Swap {
+			trader: Pallet::<Runtime>::treasury_account(),
+			path: vec![AUSD, DOT, BTC],
+			liquidity_changes: dex_lp1,
+		}));
+		System::assert_has_event(crate::mock::Event::Dex(module_dex::Event::Swap {
+			trader: Pallet::<Runtime>::treasury_account(),
+			path: vec![BTC, AUSD],
+			liquidity_changes: dex_lp2,
+		}));
 		System::assert_last_event(Event::AggregatedDex(crate::Event::RebalanceTrading {
-			currency_1: AUSD,
-			currency_2: DOT,
-			currency_3: BTC,
+			currency_id: AUSD,
 			supply_amount: 1000,
 			target_amount,
+			swap_path,
 		}));
+	} else {
+		assert!(System::events()
+			.iter()
+			.all(|r| { !matches!(r.event, Event::AggregatedDex(crate::Event::RebalanceTrading { .. })) }));
 	}
 }
