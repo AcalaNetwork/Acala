@@ -6118,6 +6118,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-partners"
+version = "2.9.1"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-proxy",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-prices"
 version = "2.9.1"
 dependencies = [
