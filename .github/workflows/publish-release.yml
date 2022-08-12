@@ -11,8 +11,6 @@ name: Publish Release
 
 on:
   create:
-    branches:
-      - 'release-(karura|acala)-**'
   workflow_dispatch:
     inputs:
       # Get name of the chain
@@ -49,6 +47,7 @@ jobs:
   build-release:
     name: Build and publish ${{ github.event.inputs.chain || github.ref }}
     runs-on: ubuntu-latest
+    if: contains(github.ref, 'release-')
     steps:
       # Checkout the Acala codebase
       - name: Checkout Codebase
