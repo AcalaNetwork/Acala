@@ -20,7 +20,8 @@
 //!
 //! ## Overview
 //!
-//! Partners Module:
+//! Partners Module: Allows users to add a referral to their account and
+//! give third party entities a cut of fees
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -95,6 +96,7 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Sub Account cant be generated, should not happen
 		SubAccountGenerationFailed,
 	}
 
@@ -117,7 +119,7 @@ pub mod module {
 	pub type NextId<T: Config> = StorageValue<_, PartnerId, ValueQuery>;
 
 	#[pallet::storage]
-	pub type Partners<T: Config> =
+	pub type PartnerMetadata<T: Config> =
 		StorageMap<_, Identity, PartnerId, BoundedVec<u8, T::MaxMetadataLength>, OptionQuery>;
 
 	#[pallet::storage]
@@ -153,12 +155,13 @@ pub mod module {
 		#[transactional]
 		pub fn set_referral(origin: OriginFor<T>, partner: PartnerId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Referral::<T>::mutate(&who, |referral_info| {
-				*referral_info = Some(ReferralInfo {
+			Referral::<T>::insert(
+				&who,
+				ReferralInfo {
 					partner_id: partner,
 					expiry: T::BlockNumberProvider::current_block_number().saturating_add(T::ReferralExpire::get()),
-				});
-			});
+				},
+			);
 
 			Self::deposit_event(Event::ReferralSet {
 				who,
@@ -186,7 +189,7 @@ pub mod module {
 			metadata: BoundedVec<u8, T::MaxMetadataLength>,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-			Partners::<T>::insert(&partner, metadata);
+			PartnerMetadata::<T>::insert(&partner, metadata);
 
 			Self::deposit_event(Event::PartnerMetadataUpdated { partner_id: partner });
 			Ok(())
@@ -204,9 +207,10 @@ impl<T: Config> Pallet<T> {
 
 		// increment NextId and add partner metadata to storage
 		NextId::<T>::put(id.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?);
-		Partners::<T>::insert(id, metadata);
+		PartnerMetadata::<T>::insert(id, metadata);
 
 		// make caller full proxy (default is the most permissioned value) to the now registered sub account
+		// Still requires proxy fee
 		pallet_proxy::Pallet::<T>::add_proxy_delegate(
 			&owner,
 			sub_account.clone(),

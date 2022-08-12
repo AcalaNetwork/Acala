@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for the loans module.
+//! Mocks for the partner's module.
 
 #![cfg(test)]
 
@@ -27,7 +27,7 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::TokenSymbol;
+use primitives::{Amount, TokenSymbol};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::Header,
@@ -100,7 +100,7 @@ parameter_types! {
 impl orml_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
-	type Amount = i64;
+	type Amount = i128;
 	type CurrencyId = CurrencyId;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, DustAccount>;
@@ -112,6 +112,14 @@ impl orml_tokens::Config for Runtime {
 	type OnNewTokenAccount = ();
 	type OnKilledTokenAccount = ();
 }
+
+impl orml_currencies::Config for Runtime {
+	type MultiCurrency = Tokens;
+	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
+}
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 #[derive(
 	Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, scale_info::TypeInfo,
@@ -167,7 +175,7 @@ ord_parameter_types! {
 
 impl Config for Runtime {
 	type Event = Event;
-	type Currencies = Tokens;
+	type Currencies = Currencies;
 	type AdminOrigin = EnsureSignedBy<Admin, AccountId>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type RegisterFee = ConstU128<100>;
@@ -191,6 +199,31 @@ construct_runtime!(
 		Balances: pallet_balances,
 		Proxy: pallet_proxy,
 		Tokens: orml_tokens,
+		Currencies: orml_currencies,
 		Partners: module,
 	}
 );
+
+pub struct ExtBuilder;
+
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self
+	}
+}
+
+impl ExtBuilder {
+	pub fn build(self) -> sp_io::TestExternalities {
+		let mut t = frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: vec![(ALICE, 10000)],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		t.into()
+	}
+}
