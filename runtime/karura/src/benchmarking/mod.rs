@@ -26,6 +26,9 @@ pub mod utils {
 }
 
 // module benchmarking
+pub mod aggregated_dex {
+	include!("../../../mandala/src/benchmarking/aggregated_dex.rs");
+}
 pub mod asset_registry {
 	include!("../../../mandala/src/benchmarking/asset_registry.rs");
 }

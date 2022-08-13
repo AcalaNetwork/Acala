@@ -30,6 +30,7 @@ nutsfinance-stable-asset = { path = "../../ecosystem-modules/stable-asset/lib/st
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 parking_lot = { version = "0.12.0" }
+env_logger = "0.9.0"
 
 [features]
 default = ["std"]

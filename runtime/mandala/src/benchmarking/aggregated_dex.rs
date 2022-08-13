@@ -16,63 +16,104 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{dollar, set_balance};
-use crate::{
-	AccountId, Balance, CurrencyId, Dex, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
-	GetStakingCurrencyId, Runtime,
-};
+use super::utils::{create_stable_pools, dollar, inject_liquidity, LIQUID, NATIVE, SEED, STABLECOIN, STAKING};
+use crate::{AccountId, AggregatedDex, Balance, Currencies, Dex, Runtime, System, TreasuryPalletId};
 use frame_benchmarking::account;
+use frame_support::assert_ok;
 use frame_system::RawOrigin;
-use sp_runtime::traits::UniqueSaturatedInto;
-
-const SEED: u32 = 0;
-
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const STAKINGCOIN: CurrencyId = GetStakingCurrencyId::get();
-const NATIVECOIN: CurrencyId = GetNativeCurrencyId::get();
-const LIQUIDCOIN: CurrencyId = GetLiquidCurrencyId::get();
-
-fn inject_liquidity(
-	maker: AccountId,
-	currency_id_a: CurrencyId,
-	currency_id_b: CurrencyId,
-	max_amount_a: Balance,
-	max_amount_b: Balance,
-) -> Result<(), &'static str> {
-	// set balance
-	set_balance(currency_id_a, &maker, max_amount_a.unique_saturated_into());
-	set_balance(currency_id_b, &maker, max_amount_b.unique_saturated_into());
-
-	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
-
-	Dex::add_liquidity(
-		RawOrigin::Signed(maker.clone()).into(),
-		currency_id_a,
-		currency_id_b,
-		max_amount_a,
-		max_amount_b,
-		Default::default(),
-		false,
-	)?;
-
-	Ok(())
-}
+use module_aggregated_dex::SwapPath;
+use module_support::DEXManager;
+use orml_traits::MultiCurrency;
+use sp_runtime::traits::AccountIdConversion;
 
 runtime_benchmarks! {
 	{ Runtime, module_aggregated_dex }
 
-	set_rebalance_swap_info {
-		let supply: Balance = 100_000_000_000_000;
-		let threshold: Balance = 110_000_000_000_000;
+	update_aggregated_swap_paths {
+		let funder: AccountId = account("funder", 0, SEED);
 
-	}: _(RawOrigin::Root, STABLECOIN, supply, threshold)
+		create_stable_pools(vec![STAKING, LIQUID], vec![1, 1])?;
+		inject_liquidity(funder.clone(), LIQUID, NATIVE, 1000 * dollar(LIQUID), 1000 * dollar(NATIVE), false)?;
+
+		let swap_path = vec![
+			SwapPath::Taiga(0, 0, 1),
+			SwapPath::Dex(vec![LIQUID, NATIVE])
+		];
+
+		let updates = vec![((STAKING, NATIVE), Some(swap_path.clone()))];
+	}: _(RawOrigin::Root, updates)
+	verify {
+		assert_eq!(module_aggregated_dex::AggregatedSwapPaths::<Runtime>::get((STAKING, NATIVE)).unwrap().into_inner(), swap_path);
+	}
+
+	update_rebalance_swap_paths {
+		let funder: AccountId = account("funder", 0, SEED);
+
+		create_stable_pools(vec![STAKING, LIQUID], vec![1, 1])?;
+		inject_liquidity(funder.clone(), LIQUID, STAKING, 1000 * dollar(LIQUID), 1000 * dollar(STAKING), false)?;
+
+		let swap_path = vec![
+			SwapPath::Taiga(0, 0, 1),
+			SwapPath::Dex(vec![LIQUID, STAKING])
+		];
+
+		let updates = vec![(STAKING, Some(swap_path.clone()))];
+	}: _(RawOrigin::Root, updates)
+	verify {
+		assert_eq!(module_aggregated_dex::RebalanceSwapPaths::<Runtime>::get(STAKING).unwrap().into_inner(), swap_path);
+	}
+
+	set_rebalance_swap_info {
+		let supply_amount: Balance = 100_000_000_000_000;
+		let threshold: Balance = 110_000_000_000_000;
+	}: _(RawOrigin::Root, STABLECOIN, supply_amount, threshold)
+	verify {
+		System::assert_has_event(module_aggregated_dex::Event::SetupRebalanceSwapInfo {
+			currency_id: STABLECOIN,
+			supply_amount,
+			threshold,
+		}.into());
+	}
 
 	force_rebalance_swap {
 		let funder: AccountId = account("funder", 0, SEED);
+		let supply: Balance = 10 * dollar(STABLECOIN);
+		let threshold: Balance = 11 * dollar(STABLECOIN);
 
-		let _ = inject_liquidity(funder.clone(), STABLECOIN, STAKINGCOIN, 100 * dollar(STABLECOIN), 200 * dollar(STAKINGCOIN));
-		let _ = inject_liquidity(funder.clone(), STAKINGCOIN, NATIVECOIN, 100 * dollar(STAKINGCOIN), 200 * dollar(NATIVECOIN));
-	}: _(RawOrigin::None, STABLECOIN, STAKINGCOIN, STAKINGCOIN)
+		inject_liquidity(funder.clone(), STABLECOIN, STAKING, 1000 * dollar(STABLECOIN), 1200 * dollar(STAKING), false)?;
+		inject_liquidity(funder.clone(), STAKING, NATIVE, 1000 * dollar(STAKING), 1000 * dollar(NATIVE), false)?;
+		inject_liquidity(funder.clone(), NATIVE, STABLECOIN, 1000 * dollar(NATIVE), 1000 * dollar(STABLECOIN), false)?;
+
+		assert_ok!(AggregatedDex::set_rebalance_swap_info(RawOrigin::Root.into(), STABLECOIN, supply, threshold));
+
+		let treasury_account: AccountId = TreasuryPalletId::get().into_account_truncating();
+		Currencies::deposit(
+			STABLECOIN,
+			&treasury_account,
+			100 * dollar(STABLECOIN),
+		)?;
+
+		let swap_path = vec![
+			SwapPath::Dex(vec![STABLECOIN, STAKING]),
+			SwapPath::Dex(vec![STAKING, NATIVE]),
+			SwapPath::Dex(vec![NATIVE, STABLECOIN])
+		];
+	}: _(RawOrigin::None, STABLECOIN, swap_path)
+	verify {
+		assert_eq!(Dex::get_liquidity_pool(STABLECOIN, STAKING).0, 1000 * dollar(STABLECOIN) + supply);
+		assert_eq!(
+			1200 * dollar(STAKING) - Dex::get_liquidity_pool(STABLECOIN, STAKING).1,
+			Dex::get_liquidity_pool(STAKING, NATIVE).0 - 1000 * dollar(STAKING)
+		);
+		assert_eq!(
+			1000 * dollar(STAKING) - Dex::get_liquidity_pool(STAKING, NATIVE).1,
+			Dex::get_liquidity_pool(NATIVE, STABLECOIN).0 - 1000 * dollar(NATIVE)
+		);
+		assert_eq!(
+			1000 * dollar(STAKING) - Dex::get_liquidity_pool(NATIVE, STABLECOIN).1,
+			Currencies::free_balance(STABLECOIN, &treasury_account) - 90 * dollar(STABLECOIN)
+		);
+	}
 }
 
 #[cfg(test)]

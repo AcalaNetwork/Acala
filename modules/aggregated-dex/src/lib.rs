@@ -260,7 +260,7 @@ pub mod module {
 		/// Requires `GovernanceOrigin`
 		///
 		/// Parameters:
-		/// - `updates`:  Vec<(Token, Option<Vec<SwapPath>>)>
+		/// - `updates`:  Vec<(CurrencyId, Option<Vec<SwapPath>>)>
 		#[pallet::weight(<T as Config>::WeightInfo::update_aggregated_swap_paths(updates.len() as u32))]
 		#[transactional]
 		pub fn update_rebalance_swap_paths(

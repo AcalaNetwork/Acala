@@ -1813,6 +1813,7 @@ mod benches {
 	define_benchmarks!(
 		[module_dex, benchmarking::dex]
 		[module_dex_oracle, benchmarking::dex_oracle]
+		[module_aggregated_dex, benchmarking::aggregated_dex]
 		[module_asset_registry, benchmarking::asset_registry]
 		[module_auction_manager, benchmarking::auction_manager]
 		[module_cdp_engine, benchmarking::cdp_engine]

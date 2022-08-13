@@ -42,7 +42,7 @@ pub const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 pub const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 pub const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
 pub const STAKING: CurrencyId = GetStakingCurrencyId::get();
-const SEED: u32 = 0;
+pub const SEED: u32 = 0;
 
 pub fn lookup_of_account(who: AccountId) -> <<Runtime as frame_system::Config>::Lookup as StaticLookup>::Source {
 	<Runtime as frame_system::Config>::Lookup::unlookup(who)
