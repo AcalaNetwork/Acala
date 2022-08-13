@@ -1121,7 +1121,7 @@ impl module_aggregated_dex::Config for Runtime {
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
 	type TreasuryPallet = TreasuryPalletId;
-	type UnsignedPriority = runtime_common::DexTriangleSwapUnsignedPriority;
+	type UnsignedPriority = runtime_common::DexRebalanceSwapUnsignedPriority;
 	type WeightInfo = ();
 }
 

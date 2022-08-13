@@ -2242,33 +2242,3 @@ fn with_fee_call_validation_works() {
 			);
 		});
 }
-
-#[test]
-fn compare_currency() {
-	use std::cmp::Ordering;
-
-	let c1 = CurrencyId::Token(TokenSymbol::ACA);
-	let c2 = CurrencyId::Token(TokenSymbol::AUSD);
-	let c3 = CurrencyId::Token(TokenSymbol::DOT);
-
-	cmp_cur(c1, c2);
-	cmp_cur(c2, c1);
-	cmp_cur(c1, c3);
-	cmp_cur(c3, c1);
-	cmp_cur(c2, c3);
-	cmp_cur(c2, c2);
-
-	fn cmp_cur(c1: CurrencyId, c2: CurrencyId) {
-		match c1.cmp(&c2) {
-			Ordering::Equal => {
-				println!("==!");
-			}
-			Ordering::Less => {
-				println!("<-!");
-			}
-			Ordering::Greater => {
-				println!(">-!");
-			}
-		}
-	}
-}

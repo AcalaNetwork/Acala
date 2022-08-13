@@ -5493,7 +5493,6 @@ name = "module-aggregated-dex"
 version = "2.9.1"
 dependencies = [
  "acala-primitives",
- "env_logger",
  "frame-support",
  "frame-system",
  "log",
