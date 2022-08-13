@@ -5256,6 +5256,7 @@ dependencies = [
  "module-loans",
  "module-nft",
  "module-nominees-election",
+ "module-partners",
  "module-prices",
  "module-relaychain",
  "module-session-manager",
@@ -6119,7 +6120,7 @@ dependencies = [
 
 [[package]]
 name = "module-partners"
-version = "2.9.1"
+version = "2.9.2"
 dependencies = [
  "acala-primitives",
  "frame-support",

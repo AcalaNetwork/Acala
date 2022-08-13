@@ -184,6 +184,7 @@ impl Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type MaxMetadataLength = ConstU32<50>;
 	type BlockNumberProvider = System;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

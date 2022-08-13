@@ -44,6 +44,7 @@ pub mod idle_scheduler;
 pub mod incentives;
 pub mod nominees_election;
 pub mod nutsfinance_stable_asset;
+pub mod partners;
 pub mod prices;
 pub mod session_manager;
 pub mod transaction_pause;

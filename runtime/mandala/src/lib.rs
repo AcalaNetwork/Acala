@@ -184,6 +184,7 @@ parameter_types! {
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 	// lock identifier for earning module
 	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
+	pub const PartnersPalletId: PalletId = PalletId(*b"aca/part");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -201,6 +202,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		StarportPalletId::get().into_account_truncating(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account_truncating(),
+		PartnersPalletId::get().into_account_truncating(),
 	]
 }
 
@@ -1798,6 +1800,25 @@ impl module_idle_scheduler::Config for Runtime {
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
+parameter_types! {
+	pub RegisterFee: Balance = 2 * dollar(ACA);
+
+}
+
+impl module_partners::Config for Runtime {
+	type Event = Event;
+	type Currencies = Currencies;
+	type AdminOrigin = EnsureRootOrHalfGeneralCouncil;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type RegisterFee = RegisterFee;
+	type PalletId = PartnersPalletId;
+	type ReferralExpire = ConstU32<1000>;
+	type TreasuryAccount = TreasuryAccount;
+	type MaxMetadataLength = ConstU32<100>;
+	type BlockNumberProvider = System;
+	type WeightInfo = ();
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct ConvertEthereumTx;
 
@@ -1986,6 +2007,7 @@ construct_runtime!(
 		Dex: module_dex = 111,
 		DexOracle: module_dex_oracle = 112,
 		AggregatedDex: module_aggregated_dex = 113,
+		Partners: module_partners = 114,
 
 		// Honzon
 		AuctionManager: module_auction_manager = 120,
@@ -2084,6 +2106,7 @@ mod benches {
 		[orml_oracle, benchmarking::oracle]
 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 		[module_idle_scheduler, benchmarking::idle_scheduler]
+		[module_partners, benchmarking::partners]
 	);
 }
 

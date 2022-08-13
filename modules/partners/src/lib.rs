@@ -36,15 +36,19 @@ use sp_runtime::{
 
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
+pub use weights::WeightInfo;
 
 type PartnerId = u32;
 
 pub trait OnFeeDeposited<AccountId, Balance, CurrencyId> {
+	/// Gives currency amount to some entity
 	fn on_fee_deposited(origin: &AccountId, currency_id: CurrencyId, amount: Balance);
 }
 
+/// Referral Information, includes partner to get cut of fees and expiry of referral
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub struct ReferralInfo<BlockNumber> {
 	partner_id: PartnerId,
@@ -92,6 +96,9 @@ pub mod module {
 
 		/// Provides current blocknumber
 		type BlockNumberProvider: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
+
+		/// WeightInfo for extrinsics in this module
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::error]
@@ -115,13 +122,22 @@ pub mod module {
 		PartnerMetadataUpdated { partner_id: PartnerId },
 	}
 
+	/// Counter for each new partner registered
+	///
+	/// NextId: PartnerId
 	#[pallet::storage]
 	pub type NextId<T: Config> = StorageValue<_, PartnerId, ValueQuery>;
 
+	/// Metadata mapped to each partner, in the form of a string
+	///
+	/// PartnerMetadata: PartnerId => BoundedVec<u8, MaxMetadataLength>
 	#[pallet::storage]
 	pub type PartnerMetadata<T: Config> =
-		StorageMap<_, Identity, PartnerId, BoundedVec<u8, T::MaxMetadataLength>, OptionQuery>;
+		StorageMap<_, Twox64Concat, PartnerId, BoundedVec<u8, T::MaxMetadataLength>, OptionQuery>;
 
+	/// Mapping of user account to a referral, gives partner a cut of fees from this account
+	///
+	/// Referral: AccountId => ReferralInfo
 	#[pallet::storage]
 	pub type Referral<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, ReferralInfo<T::BlockNumber>, OptionQuery>;
@@ -131,7 +147,10 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(0)]
+		/// Registers origin as a partner and gives account full proxy over generated sub-account
+		///
+		/// - `metadata`: string to describe who the PartnerId is
+		#[pallet::weight(<T as module::Config>::WeightInfo::register_partner())]
 		#[transactional]
 		pub fn register_partner(
 			origin: OriginFor<T>,
@@ -151,7 +170,11 @@ pub mod module {
 			Self::feeless_register_partner(who, metadata)
 		}
 
-		#[pallet::weight(0)]
+		/// Origin maps a partner's referral, this gives partner cut of fees from this account
+		/// (rather than all going to treasury)
+		///
+		/// - `PartnerId`: PartnerId that corresponds to some partner
+		#[pallet::weight(<T as module::Config>::WeightInfo::set_referral())]
 		#[transactional]
 		pub fn set_referral(origin: OriginFor<T>, partner: PartnerId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -170,7 +193,13 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		/// Registers partner, but without taking a `RegistrationFee`
+		///
+		/// The dispatch origin of this call must be `AdminOrigin`
+		///
+		/// - `owner`: Account being registered as partner
+		/// - `metadata`: Metadata describing partner
+		#[pallet::weight(<T as module::Config>::WeightInfo::admin_register_partner())]
 		#[transactional]
 		pub fn admin_register_partner(
 			origin: OriginFor<T>,
@@ -181,9 +210,15 @@ pub mod module {
 			Self::feeless_register_partner(owner, metadata)
 		}
 
-		#[pallet::weight(0)]
+		/// Update partners metadata
+		///
+		/// The dispatch origin of this call must be `AdminOrigin`
+		///
+		/// - `partner`: PartnerId being updated
+		/// - `metadata`: New metadata being put in storage
+		#[pallet::weight(<T as module::Config>::WeightInfo::update_partner_metadata())]
 		#[transactional]
-		pub fn update_partner(
+		pub fn update_partner_metadata(
 			origin: OriginFor<T>,
 			partner: PartnerId,
 			metadata: BoundedVec<u8, T::MaxMetadataLength>,

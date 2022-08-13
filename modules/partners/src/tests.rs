@@ -68,10 +68,10 @@ fn set_referral_works() {
 fn update_partner_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			Partners::update_partner(Origin::signed(BOB), 0, b"meta".to_vec().try_into().unwrap()),
+			Partners::update_partner_metadata(Origin::signed(BOB), 0, b"meta".to_vec().try_into().unwrap()),
 			BadOrigin
 		);
-		assert_ok!(Partners::update_partner(
+		assert_ok!(Partners::update_partner_metadata(
 			Origin::signed(ALICE),
 			0,
 			b"meta".to_vec().try_into().unwrap()
