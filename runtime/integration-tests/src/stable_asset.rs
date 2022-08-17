@@ -88,6 +88,7 @@ fn stable_asset_mint_works() {
 		])
 		.build()
 		.execute_with(|| {
+			// Default exchange rate
 			let exchange_rate = Homa::current_exchange_rate();
 			assert_eq!(exchange_rate, ExchangeRate::saturating_from_rational(1, 10)); // 0.1
 

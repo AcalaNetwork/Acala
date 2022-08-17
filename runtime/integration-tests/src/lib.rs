@@ -44,6 +44,13 @@ mod dex;
 	feature = "with-karura-runtime",
 	feature = "with-acala-runtime"
 ))]
+mod aggregated_dex;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod evm;
 
 #[cfg(any(

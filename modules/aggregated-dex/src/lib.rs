@@ -31,6 +31,7 @@ use frame_system::{
 use nutsfinance_stable_asset::traits::StableAsset as StableAssetT;
 use orml_utilities::OffchainErr;
 use primitives::{Balance, CurrencyId, TradingPair};
+use sp_runtime::offchain::storage_lock::StorageLockGuard;
 use sp_runtime::{
 	offchain::{
 		storage::StorageValueRef,
@@ -287,6 +288,12 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Update the rebalance swap information for specify token.
+		///
+		/// Parameters:
+		/// - `currency_id`: the token used for rebalance swap
+		/// - `supply_amount`: the supply amount of `currency_id` used for rebalance swap
+		/// - `threshold`: the target amount of `currency_id` used for rebalance swap
 		#[pallet::weight(<T as Config>::WeightInfo::set_rebalance_swap_info())]
 		#[transactional]
 		pub fn set_rebalance_swap_info(
@@ -299,6 +306,11 @@ pub mod module {
 			Self::do_set_rebalance_swap_info(currency_id, supply_amount, threshold)
 		}
 
+		/// Force execution rebalance swap by offchain worker.
+		///
+		/// Parameters:
+		/// - `currency_id`: the token used for rebalance swap
+		/// - `swap_path`: the aggregated swap path used for rebalance swap
 		#[pallet::weight(<T as Config>::WeightInfo::force_rebalance_swap())]
 		#[transactional]
 		pub fn force_rebalance_swap(
@@ -537,147 +549,6 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	fn submit_rebalance_swap_tx(currency_id: CurrencyId, swap_path: Vec<SwapPath>) {
-		let call = Call::<T>::force_rebalance_swap { currency_id, swap_path };
-		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
-			log::info!(
-				target: "dex-bot",
-				"offchain worker: submit unsigned swap from currency:{:?}, failed: {:?}",
-				currency_id, err,
-			);
-		}
-	}
-
-	fn _offchain_worker(_now: T::BlockNumber) -> Result<(), OffchainErr> {
-		// acquire offchain worker lock
-		let lock_expiration = Duration::from_millis(LOCK_DURATION);
-		let mut lock = StorageLock::<'_, Time>::with_deadline(OFFCHAIN_WORKER_LOCK, lock_expiration);
-		let mut guard = lock.try_lock().map_err(|_| OffchainErr::OffchainLock)?;
-		// get the max iterations config
-		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
-			.get::<u32>()
-			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
-			.unwrap_or(DEFAULT_MAX_ITERATIONS);
-		let mut to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
-		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
-
-		let mut trading_pair_values_map: BTreeMap<CurrencyId, Vec<CurrencyId>> = BTreeMap::new();
-		let mut first_currency: Option<CurrencyId> = None;
-		TradingPairStatuses::<T>::iter()
-			.filter(|(_, status)| status.enabled())
-			.for_each(|(pair, _)| {
-				trading_pair_values_map
-					.entry(pair.first())
-					.or_insert_with(Vec::<CurrencyId>::new)
-					.push(pair.second());
-				if first_currency.is_none() {
-					first_currency = Some(pair.first());
-				}
-			});
-		let mut iterator = trading_pair_values_map.iter();
-
-		let mut finished = true;
-		let mut iteration_count = 0;
-		let mut last_currency_id: Option<CurrencyId> = None;
-		let iteration_start_time = sp_io::offchain::timestamp();
-
-		// processing pure dex rebalance swap
-		#[allow(clippy::while_let_on_iterator)]
-		'outer: while let Some((currency_id, trading_tokens)) = iterator.next() {
-			// BTreeMap don't have `iter_from(key)`, use compare here to ignore previous processed token.
-			match start_key.clone() {
-				Some(key) => {
-					let starter_key = CurrencyId::decode(&mut &*key).map_err(|_| OffchainErr::OffchainLock)?;
-					if *currency_id < starter_key {
-						continue;
-					}
-				}
-				None => {}
-			};
-
-			let len = trading_tokens.len();
-			if len < 2 {
-				continue;
-			}
-			// update last processing CurrencyId
-			last_currency_id = Some(*currency_id);
-			for i in 0..(len - 1) {
-				for j in (i + 1)..len {
-					iteration_count += 1;
-
-					if let Some(pair) = TradingPair::from_currency_ids(trading_tokens[i], trading_tokens[j]) {
-						if TradingPairStatuses::<T>::contains_key(&pair) {
-							let pair_status = TradingPairStatuses::<T>::get(&pair);
-							if pair_status.enabled() {
-								let first_path: Vec<CurrencyId> = vec![*currency_id, pair.first(), pair.second()];
-								let second_path: Vec<CurrencyId> = vec![pair.second(), *currency_id];
-								let swap_path = vec![SwapPath::Dex(first_path), SwapPath::Dex(second_path)];
-								// TODO: do we need check `get_aggregated_swap_amount` large than supply amount before
-								// submit unsigned tx?
-								Self::submit_rebalance_swap_tx(*currency_id, swap_path);
-							}
-						}
-					}
-
-					// inner iterator consider as iterations too.
-					if iteration_count == max_iterations {
-						finished = false;
-						break 'outer;
-					}
-
-					// extend offchain worker lock
-					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
-				}
-			}
-		}
-
-		// processing aggregated dex rebalance swap
-		if iteration_count < max_iterations {
-			for (currency_id, swap_path) in RebalanceSwapPaths::<T>::iter() {
-				iteration_count += 1;
-
-				Self::submit_rebalance_swap_tx(currency_id, swap_path.into_inner());
-
-				// inner iterator consider as iterations too.
-				if iteration_count == max_iterations {
-					finished = false;
-					break;
-				}
-
-				// extend offchain worker lock
-				guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
-			}
-		}
-
-		let iteration_end_time = sp_io::offchain::timestamp();
-		log::debug!(
-			target: "dex-bot",
-			"max iterations: {:?} start key: {:?}, count: {:?} start: {:?}, end: {:?}, cost: {:?}",
-			max_iterations,
-			start_key,
-			iteration_count,
-			iteration_start_time,
-			iteration_end_time,
-			iteration_end_time.diff(&iteration_start_time)
-		);
-
-		// if iteration for map storage finished, clear to be continue record
-		// otherwise, update to be continue record
-		if finished {
-			to_be_continue.clear();
-		} else {
-			match last_currency_id {
-				Some(last_currency_id) => to_be_continue.set(&last_currency_id.encode()),
-				None => to_be_continue.clear(),
-			}
-		}
-
-		// Consume the guard but **do not** unlock the underlying lock.
-		guard.forget();
-
-		Ok(())
-	}
-
 	fn do_set_rebalance_swap_info(
 		currency_id: CurrencyId,
 		supply_amount: Balance,
@@ -696,7 +567,160 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Rebalance swap of path: `A->B->C->A`, the final output should be large than input.
+	fn submit_rebalance_swap_tx(currency_id: CurrencyId, swap_path: Vec<SwapPath>) {
+		let call = Call::<T>::force_rebalance_swap { currency_id, swap_path };
+		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
+			log::info!(
+				target: "dex-bot",
+				"offchain worker: submit unsigned swap from currency:{:?}, failed: {:?}",
+				currency_id, err,
+			);
+		}
+	}
+
+	pub fn calculate_rebalance_paths(
+		mut _finished: bool,
+		mut iteration_count: u32,
+		max_iterations: u32,
+		mut _last_currency_id: Option<CurrencyId>,
+		start_key: Option<Vec<u8>>,
+		mut guard: Option<&mut StorageLockGuard<Time>>,
+		f: impl Fn(CurrencyId, Vec<SwapPath>),
+	) -> Result<(), OffchainErr> {
+		let mut trading_pair_values_map: BTreeMap<CurrencyId, Vec<CurrencyId>> = BTreeMap::new();
+		let mut first_currency: Option<CurrencyId> = None;
+		TradingPairStatuses::<T>::iter()
+			.filter(|(_, status)| status.enabled())
+			.for_each(|(pair, _)| {
+				trading_pair_values_map
+					.entry(pair.first())
+					.or_insert_with(Vec::<CurrencyId>::new)
+					.push(pair.second());
+				if first_currency.is_none() {
+					first_currency = Some(pair.first());
+				}
+			});
+		let mut iterator = trading_pair_values_map.iter();
+
+		// processing pure dex rebalance swap
+		#[allow(clippy::while_let_on_iterator)]
+		'outer: while let Some((currency_id, trading_tokens)) = iterator.next() {
+			// BTreeMap don't have `iter_from(key)`, use compare to ignore previous processed token.
+			match start_key.clone() {
+				Some(key) => {
+					let starter_key = CurrencyId::decode(&mut &*key).map_err(|_| OffchainErr::OffchainLock)?;
+					if *currency_id < starter_key {
+						continue;
+					}
+				}
+				None => {}
+			};
+
+			let len = trading_tokens.len();
+			if len < 2 {
+				continue;
+			}
+			// update last processing CurrencyId
+			_last_currency_id = Some(*currency_id);
+			for i in 0..(len - 1) {
+				for j in (i + 1)..len {
+					iteration_count += 1;
+
+					if let Some(pair) = TradingPair::from_currency_ids(trading_tokens[i], trading_tokens[j]) {
+						if TradingPairStatuses::<T>::contains_key(&pair) {
+							let pair_status = TradingPairStatuses::<T>::get(&pair);
+							if pair_status.enabled() {
+								let first_path: Vec<CurrencyId> = vec![*currency_id, pair.first(), pair.second()];
+								let second_path: Vec<CurrencyId> = vec![pair.second(), *currency_id];
+								let swap_path = vec![SwapPath::Dex(first_path), SwapPath::Dex(second_path)];
+								// TODO: check swap_amount before submit unsigned tx?
+								f(*currency_id, swap_path);
+							}
+						}
+					}
+
+					// inner iterator consider as iterations too.
+					if iteration_count == max_iterations {
+						_finished = false;
+						break 'outer;
+					}
+
+					// extend offchain worker lock
+					if let Some(ref mut guard) = guard {
+						guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
+					}
+				}
+			}
+		}
+
+		// processing aggregated dex rebalance swap
+		if iteration_count < max_iterations {
+			for (currency_id, swap_path) in RebalanceSwapPaths::<T>::iter() {
+				iteration_count += 1;
+
+				f(currency_id, swap_path.into_inner());
+
+				// inner iterator consider as iterations too.
+				if iteration_count == max_iterations {
+					_finished = false;
+					break;
+				}
+
+				// extend offchain worker lock
+				if let Some(ref mut guard) = guard {
+					guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
+				}
+			}
+		}
+
+		Ok(())
+	}
+
+	fn _offchain_worker(_now: T::BlockNumber) -> Result<(), OffchainErr> {
+		// acquire offchain worker lock
+		let lock_expiration = Duration::from_millis(LOCK_DURATION);
+		let mut lock = StorageLock::<'_, Time>::with_deadline(OFFCHAIN_WORKER_LOCK, lock_expiration);
+		let mut guard = lock.try_lock().map_err(|_| OffchainErr::OffchainLock)?;
+		// get the max iterations config
+		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
+			.get::<u32>()
+			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
+			.unwrap_or(DEFAULT_MAX_ITERATIONS);
+		let mut to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
+		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
+
+		let finished = true;
+		let iteration_count = 0;
+		let last_currency_id: Option<CurrencyId> = None;
+
+		Self::calculate_rebalance_paths(
+			finished,
+			iteration_count,
+			max_iterations,
+			last_currency_id,
+			start_key,
+			Some(&mut guard),
+			|currency_id, swap_path| Self::submit_rebalance_swap_tx(currency_id, swap_path),
+		)?;
+
+		// if iteration for map storage finished, clear to be continue record
+		// otherwise, update to be continue record
+		if finished {
+			to_be_continue.clear();
+		} else {
+			match last_currency_id {
+				Some(last_currency_id) => to_be_continue.set(&last_currency_id.encode()),
+				None => to_be_continue.clear(),
+			}
+		}
+
+		// Consume the guard but **do not** unlock the underlying lock.
+		guard.forget();
+
+		Ok(())
+	}
+
+	/// Rebalance swap on path, the final output should be large than input.
 	fn do_rebalance_swap(currency_id: CurrencyId, swap_path: Vec<SwapPath>) -> DispatchResult {
 		if let Some((supply_amount, minimum_amount)) = RebalanceSupplyThreshold::<T>::get(&currency_id) {
 			let supply = SwapLimit::ExactSupply(supply_amount, 0);

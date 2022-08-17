@@ -101,14 +101,17 @@ runtime_benchmarks! {
 	}: _(RawOrigin::None, STABLECOIN, swap_path)
 	verify {
 		assert_eq!(Dex::get_liquidity_pool(STABLECOIN, STAKING).0, 1000 * dollar(STABLECOIN) + supply);
+		#[cfg(any(feature = "with-karura-runtime"))]
 		assert_eq!(
 			1200 * dollar(STAKING) - Dex::get_liquidity_pool(STABLECOIN, STAKING).1,
 			Dex::get_liquidity_pool(STAKING, NATIVE).0 - 1000 * dollar(STAKING)
 		);
+		#[cfg(any(feature = "with-karura-runtime"))]
 		assert_eq!(
 			1000 * dollar(STAKING) - Dex::get_liquidity_pool(STAKING, NATIVE).1,
 			Dex::get_liquidity_pool(NATIVE, STABLECOIN).0 - 1000 * dollar(NATIVE)
 		);
+		#[cfg(any(feature = "with-karura-runtime"))]
 		assert_eq!(
 			1000 * dollar(STAKING) - Dex::get_liquidity_pool(NATIVE, STABLECOIN).1,
 			Currencies::free_balance(STABLECOIN, &treasury_account) - 90 * dollar(STABLECOIN)
