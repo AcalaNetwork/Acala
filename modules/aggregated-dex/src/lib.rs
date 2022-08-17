@@ -579,14 +579,18 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn calculate_rebalance_paths(
-		mut _finished: bool,
-		mut iteration_count: u32,
+		// mut _finished: bool,
+		// mut iteration_count: u32,
 		max_iterations: u32,
-		mut _last_currency_id: Option<CurrencyId>,
+		// mut _last_currency_id: Option<CurrencyId>,
 		start_key: Option<Vec<u8>>,
 		mut guard: Option<&mut StorageLockGuard<Time>>,
 		f: impl Fn(CurrencyId, Vec<SwapPath>),
-	) -> Result<(), OffchainErr> {
+	) -> Result<(bool, Option<CurrencyId>), OffchainErr> {
+		let mut finished = true;
+		let mut iteration_count = 0;
+		let mut last_currency_id: Option<CurrencyId> = None;
+
 		let mut trading_pair_values_map: BTreeMap<CurrencyId, Vec<CurrencyId>> = BTreeMap::new();
 		let mut first_currency: Option<CurrencyId> = None;
 		TradingPairStatuses::<T>::iter()
@@ -621,7 +625,7 @@ impl<T: Config> Pallet<T> {
 				continue;
 			}
 			// update last processing CurrencyId
-			_last_currency_id = Some(*currency_id);
+			last_currency_id = Some(*currency_id);
 			for i in 0..(len - 1) {
 				for j in (i + 1)..len {
 					iteration_count += 1;
@@ -641,7 +645,7 @@ impl<T: Config> Pallet<T> {
 
 					// inner iterator consider as iterations too.
 					if iteration_count == max_iterations {
-						_finished = false;
+						finished = false;
 						break 'outer;
 					}
 
@@ -662,7 +666,7 @@ impl<T: Config> Pallet<T> {
 
 				// inner iterator consider as iterations too.
 				if iteration_count == max_iterations {
-					_finished = false;
+					finished = false;
 					break;
 				}
 
@@ -673,7 +677,7 @@ impl<T: Config> Pallet<T> {
 			}
 		}
 
-		Ok(())
+		Ok((finished, last_currency_id))
 	}
 
 	fn _offchain_worker(_now: T::BlockNumber) -> Result<(), OffchainErr> {
@@ -689,19 +693,10 @@ impl<T: Config> Pallet<T> {
 		let mut to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
 		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
 
-		let finished = true;
-		let iteration_count = 0;
-		let last_currency_id: Option<CurrencyId> = None;
-
-		Self::calculate_rebalance_paths(
-			finished,
-			iteration_count,
-			max_iterations,
-			last_currency_id,
-			start_key,
-			Some(&mut guard),
-			|currency_id, swap_path| Self::submit_rebalance_swap_tx(currency_id, swap_path),
-		)?;
+		let (finished, last_currency_id) =
+			Self::calculate_rebalance_paths(max_iterations, start_key, Some(&mut guard), |currency_id, swap_path| {
+				Self::submit_rebalance_swap_tx(currency_id, swap_path)
+			})?;
 
 		// if iteration for map storage finished, clear to be continue record
 		// otherwise, update to be continue record

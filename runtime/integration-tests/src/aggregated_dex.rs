@@ -358,22 +358,23 @@ fn produciton_rebalance_swap_path() {
 
 			let trading_pair_values_map = dex_pools();
 
-			let finished = true;
-			let iteration_count = 0;
-			let last_currency_id: Option<CurrencyId> = None;
 			let rebalance_paths = Arc::new(Mutex::new(BTreeMap::new()));
-			assert_ok!(module_aggregated_dex::Pallet::<Runtime>::calculate_rebalance_paths(
-				finished,
-				iteration_count,
-				10,
-				last_currency_id,
-				None,
-				None,
-				|currency_id, swap_path| {
-					rebalance_paths.lock().unwrap().insert(currency_id, swap_path);
-					()
-				}
-			));
+			#[cfg(any(feature = "with-acala-runtime", feature = "with-karura-runtime"))]
+			let last_currency_id = USD_CURRENCY;
+			#[cfg(feature = "with-mandala-runtime")]
+			let last_currency_id = RELAY_CHAIN_CURRENCY;
+			assert_eq!(
+				Ok((true, Some(last_currency_id))),
+				module_aggregated_dex::Pallet::<Runtime>::calculate_rebalance_paths(
+					10,
+					None,
+					None,
+					|currency_id, swap_path| {
+						rebalance_paths.lock().unwrap().insert(currency_id, swap_path);
+						()
+					}
+				)
+			);
 
 			let rebalance_paths = rebalance_paths.lock().unwrap();
 			for (currency_id, swap_path) in rebalance_paths.iter() {
