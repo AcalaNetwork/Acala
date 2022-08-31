@@ -124,7 +124,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2090,
+	spec_version: 2092,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -616,11 +616,11 @@ impl pallet_tips::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 5 * DAYS;
-	pub const VotingPeriod: BlockNumber = 5 * DAYS;
+	pub const LaunchPeriod: BlockNumber = DAYS; // 5 * DAYS;
+	pub const VotingPeriod: BlockNumber = DAYS; // 5 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
-	pub MinimumDeposit: Balance = 200 * dollar(ACA);
-	pub const EnactmentPeriod: BlockNumber = 2 * DAYS;
+	pub MinimumDeposit: Balance = 1000 * dollar(ACA); // 200 * dollar(ACA);
+	pub const EnactmentPeriod: BlockNumber = 8 * HOURS; // 2 * DAYS;
 	pub const VoteLockingPeriod: BlockNumber = 14 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 }
@@ -1007,8 +1007,8 @@ where
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			runtime_common::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
-			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			module_evm::SetEvmOrigin::<Runtime>::new(),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -1745,8 +1745,11 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	runtime_common::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	module_transaction_payment::ChargeTransactionPayment<Runtime>,
+	// `SetEvmOrigin` needs ahead of `ChargeTransactionPayment`, we set origin in `SetEvmOrigin::validate()`, then
+	// `ChargeTransactionPayment::validate()` can process erc20 token transfer successfully in the case of using erc20
+	// as fee token.
 	module_evm::SetEvmOrigin<Runtime>,
+	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<
@@ -1762,60 +1765,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	TransactionPaymentMigration,
->;
-
-parameter_types! {
-	pub FeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT, LCDOT];
-}
-pub struct TransactionPaymentMigration;
-impl OnRuntimeUpgrade for TransactionPaymentMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		let poo_size = 5 * dollar(ACA);
-		let threshold = Ratio::saturating_from_rational(1, 2).saturating_mul_int(dollar(ACA));
-		for token in FeeTokens::get() {
-			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
-			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, poo_size, threshold);
-		}
-		<Runtime as frame_system::Config>::BlockWeights::get().max_block
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		for token in FeeTokens::get() {
-			assert_eq!(
-				module_transaction_payment::TokenExchangeRate::<Runtime>::contains_key(&token),
-				true
-			);
-			assert_eq!(
-				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::contains_key(&token),
-				true
-			);
-		}
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		for token in FeeTokens::get() {
-			assert_eq!(
-				module_transaction_payment::TokenExchangeRate::<Runtime>::contains_key(&token),
-				true
-			);
-			assert_eq!(
-				module_transaction_payment::GlobalFeeSwapPath::<Runtime>::contains_key(&token),
-				false
-			);
-		}
-		Ok(())
-	}
-}
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -2199,7 +2150,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 				return Err(InvalidTransaction::Stale);
 			}
 
-			let (_, _, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
+			let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
 
 			if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
 				// require immortal

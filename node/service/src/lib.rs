@@ -34,9 +34,10 @@ use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvid
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
 use cumulus_relay_chain_rpc_interface::RelayChainRPCInterface;
+pub use futures::stream::StreamExt;
 use jsonrpsee::RpcModule;
 use sc_consensus::LongestChain;
-use sc_consensus_aura::ImportQueueParams;
+use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
 use sc_executor::WasmExecutor;
 use sc_network::NetworkService;
 pub use sc_service::{
@@ -62,7 +63,6 @@ use polkadot_service::CollatorPair;
 
 pub mod chain_spec;
 mod client;
-#[cfg(feature = "with-mandala-runtime")]
 mod instant_finalize;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
@@ -76,9 +76,7 @@ type HostFunctions = (
 
 #[cfg(feature = "with-mandala-runtime")]
 mod mandala_executor {
-	pub use futures::stream::StreamExt;
 	pub use mandala_runtime;
-	pub use sc_consensus_aura::StartAuraParams;
 
 	pub struct MandalaExecutorDispatch;
 	impl sc_executor::NativeExecutionDispatch for MandalaExecutorDispatch {
@@ -149,9 +147,6 @@ pub trait IdentifyVariant {
 	/// Returns `true` if this is a configuration for the `Mandala` network.
 	fn is_mandala(&self) -> bool;
 
-	/// Returns `true` if this is a configuration for the `Mandala` dev network.
-	fn is_mandala_dev(&self) -> bool;
-
 	/// Returns `true` if this is a configuration for the dev network.
 	fn is_dev(&self) -> bool;
 }
@@ -167,10 +162,6 @@ impl IdentifyVariant for Box<dyn ChainSpec> {
 
 	fn is_mandala(&self) -> bool {
 		self.id().starts_with("mandala")
-	}
-
-	fn is_mandala_dev(&self) -> bool {
-		self.id().starts_with("mandala-dev")
 	}
 
 	fn is_dev(&self) -> bool {
@@ -645,7 +636,7 @@ pub fn new_chain_ops(
 	ServiceError,
 > {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
-	if config.chain_spec.is_mandala_dev() || config.chain_spec.is_mandala() {
+	if config.chain_spec.is_mandala() {
 		#[cfg(feature = "with-mandala-runtime")]
 		{
 			let PartialComponents {
@@ -654,7 +645,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial(config, config.chain_spec.is_mandala_dev(), false)?;
+			} = new_partial(config, config.chain_spec.is_dev(), false)?;
 			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]
@@ -690,8 +681,12 @@ pub fn new_chain_ops(
 	}
 }
 
-#[cfg(feature = "with-mandala-runtime")]
-fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError> {
+pub fn start_dev_node<RuntimeApi>(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
+{
 	let sc_service::PartialComponents {
 		client,
 		backend,
@@ -700,8 +695,8 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		keystore_container,
 		select_chain: maybe_select_chain,
 		transaction_pool,
-		other: (mut telemetry, _),
-	} = new_partial::<mandala_runtime::RuntimeApi>(&config, true, instant_sealing)?;
+		other: (_, _),
+	} = new_partial::<RuntimeApi>(&config, true, instant_sealing)?;
 
 	let (network, system_rpc_tx, network_starter) = sc_service::build_network(sc_service::BuildNetworkParams {
 		config: &config,
@@ -735,22 +730,19 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		);
 	}
 
-	let prometheus_registry = config.prometheus_registry().cloned();
-
 	let role = config.role.clone();
 	let force_authoring = config.force_authoring;
 	let backoff_authoring_blocks: Option<()> = None;
 
-	let select_chain =
-		maybe_select_chain.expect("In mandala dev mode, `new_partial` will return some `select_chain`; qed");
+	let select_chain = maybe_select_chain.expect("In `dev` mode, `new_partial` will return some `select_chain`; qed");
 
 	let command_sink = if role.is_authority() {
 		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
 			task_manager.spawn_handle(),
 			client.clone(),
 			transaction_pool.clone(),
-			prometheus_registry.as_ref(),
-			telemetry.as_ref().map(|x| x.handle()),
+			None,
+			None,
 		);
 
 		if instant_sealing {
@@ -862,7 +854,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
 				// And a maximum of 750ms if slots are skipped
 				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
-				telemetry: telemetry.as_ref().map(|x| x.handle()),
+				telemetry: None,
 			})?;
 
 			// the AURA authoring task is considered essential, i.e. if it
@@ -903,15 +895,10 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		backend,
 		network,
 		system_rpc_tx,
-		telemetry: telemetry.as_mut(),
+		telemetry: None,
 	})?;
 
 	network_starter.start_network();
 
 	Ok(task_manager)
-}
-
-#[cfg(feature = "with-mandala-runtime")]
-pub fn mandala_dev(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError> {
-	inner_mandala_dev(config, instant_sealing)
 }

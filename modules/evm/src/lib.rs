@@ -30,7 +30,7 @@ pub use crate::runner::{
 };
 use codec::{Decode, Encode, FullCodec, MaxEncodedLen};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
+	dispatch::{DispatchError, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo},
 	ensure,
 	error::BadOrigin,
 	log,
@@ -523,6 +523,8 @@ pub mod module {
 		ChargeStorageFailed,
 		/// Invalid decimals
 		InvalidDecimals,
+		/// Strict call failed
+		StrictCallFailed,
 	}
 
 	#[pallet::pallet]
@@ -1174,6 +1176,79 @@ pub mod module {
 
 			Ok(().into())
 		}
+
+		/// Issue an EVM call operation in `Utility::batch_all`. This is same as the evm.call but
+		/// returns error when it failed. The current evm.call always success and emit event to
+		/// indicate it failed.
+		///
+		/// - `target`: the contract address to call
+		/// - `input`: the data supplied for the call
+		/// - `value`: the amount sent for payable calls
+		/// - `gas_limit`: the maximum gas the call can use
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::weight(call_weight::<T>(*gas_limit))]
+		#[transactional]
+		pub fn strict_call(
+			origin: OriginFor<T>,
+			target: EvmAddress,
+			input: Vec<u8>,
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] gas_limit: u64,
+			#[pallet::compact] storage_limit: u32,
+			access_list: Vec<AccessListItem>,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
+
+			match T::Runner::call(
+				source,
+				source,
+				target,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				T::config(),
+			) {
+				Err(e) => Err(DispatchErrorWithPostInfo {
+					post_info: ().into(),
+					error: e,
+				}),
+				Ok(info) => {
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Executed {
+							from: source,
+							contract: target,
+							logs: info.logs,
+							used_gas,
+							used_storage: info.used_storage,
+						});
+
+						Ok(PostDispatchInfo {
+							actual_weight: Some(call_weight::<T>(used_gas)),
+							pays_fee: Pays::Yes,
+						})
+					} else {
+						log::debug!(
+							target: "evm",
+							"batch_call failed: [from: {:?}, contract: {:?}, exit_reason: {:?}, output: {:?}, logs: {:?}, used_gas: {:?}]",
+							source, target, info.exit_reason, info.value, info.logs, used_gas
+						);
+
+						Err(DispatchErrorWithPostInfo {
+							post_info: PostDispatchInfo {
+								actual_weight: Some(call_weight::<T>(used_gas)),
+								pays_fee: Pays::Yes,
+							},
+							error: Error::<T>::StrictCallFailed.into(),
+						})
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -1589,7 +1664,7 @@ impl<T: Config> Pallet<T> {
 		{
 			// https://github.com/AcalaNetwork/Acala/blob/af1c277/modules/evm/rpc/src/lib.rs#L176
 			// when rpc is called, from is empty, allowing the call
-			published || maintainer == *caller || Self::is_developer_or_contract(caller) || *caller == H160::default()
+			published || maintainer == *caller || *caller == H160::default() || Self::is_developer_or_contract(caller)
 		} else {
 			// contract non exist, we don't override default evm behaviour
 			true
@@ -1597,13 +1672,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn is_developer_or_contract(caller: &H160) -> bool {
-		if let Some(AccountInfo { contract_info, .. }) = Accounts::<T>::get(caller) {
-			let account_id = T::AddressMapping::get_account_id(caller);
-			contract_info.is_some()
-				|| !T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &account_id).is_zero()
-		} else {
-			false
-		}
+		let account_id = T::AddressMapping::get_account_id(caller);
+		Self::query_developer_status(account_id) || Self::is_contract(caller)
 	}
 
 	fn reserve_storage(caller: &H160, limit: u32) -> DispatchResult {
@@ -1901,6 +1971,17 @@ impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 
 	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
 		Ok(())
+	}
+
+	fn validate(
+		&self,
+		who: &Self::AccountId,
+		_call: &Self::Call,
+		_info: &DispatchInfoOf<Self::Call>,
+		_len: usize,
+	) -> TransactionValidity {
+		ExtrinsicOrigin::<T>::set(Some(who.clone()));
+		Ok(ValidTransaction::default())
 	}
 
 	fn pre_dispatch(

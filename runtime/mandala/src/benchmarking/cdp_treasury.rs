@@ -16,18 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CdpTreasury, Currencies, CurrencyId, Dex, GetStableCurrencyId, GetStakingCurrencyId, Runtime};
+use crate::{AccountId, CdpTreasury, Currencies, Runtime};
 
-use super::utils::{dollar, set_balance};
+use super::utils::{dollar, initialize_swap_pools, set_balance, STABLECOIN, STAKING};
 use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use module_support::{CDPTreasury, SwapLimit};
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
-
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_cdp_treasury }
@@ -45,16 +42,8 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		set_balance(STABLECOIN, &caller, 1000 * dollar(STABLECOIN));
 		set_balance(STAKING, &caller, 1000 * dollar(STAKING));
-		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), STABLECOIN, STAKING);
-		Dex::add_liquidity(
-			RawOrigin::Signed(caller.clone()).into(),
-			STABLECOIN,
-			STAKING,
-			1000 * dollar(STABLECOIN),
-			100 * dollar(STAKING),
-			0,
-			false,
-		)?;
+		initialize_swap_pools(caller.clone())?;
+
 		CdpTreasury::deposit_collateral(&caller, STAKING, 100 * dollar(STAKING))?;
 	}: _(RawOrigin::Root, STAKING, SwapLimit::ExactSupply(100 * dollar(STAKING), 0))
 

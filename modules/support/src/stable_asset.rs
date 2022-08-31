@@ -188,7 +188,7 @@ where
 		i: PoolTokenIndex,
 		min_redeem_amount: Self::Balance,
 		asset_length: u32,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Self::Balance, Self::Balance), DispatchError> {
 		let pool_info = StableAsset::pool(pool_id)
 			.ok_or_else(|| ErrorConvertor::convert(RebasedStableAssetError::InvalidPoolId))?;
 		let currency_id = pool_info

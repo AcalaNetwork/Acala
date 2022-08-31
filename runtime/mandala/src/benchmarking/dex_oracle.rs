@@ -16,58 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::dollar;
-use crate::{
-	AccountId, Balance, Currencies, CurrencyId, Dex, DexOracle, GetNativeCurrencyId, GetStableCurrencyId,
-	GetStakingCurrencyId, Runtime, Timestamp,
-};
+use super::utils::{dollar, inject_liquidity, NATIVE, STABLECOIN, STAKING};
+use crate::{AccountId, DexOracle, Runtime, Timestamp};
 use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::MultiCurrencyExtended;
 use primitives::TradingPair;
-use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
-
-fn inject_liquidity(
-	maker: AccountId,
-	currency_id_a: CurrencyId,
-	currency_id_b: CurrencyId,
-	max_amount_a: Balance,
-	max_amount_b: Balance,
-	deposit: bool,
-) -> Result<(), &'static str> {
-	// set balance
-	<Currencies as MultiCurrencyExtended<_>>::update_balance(
-		currency_id_a,
-		&maker,
-		max_amount_a.unique_saturated_into(),
-	)?;
-	<Currencies as MultiCurrencyExtended<_>>::update_balance(
-		currency_id_b,
-		&maker,
-		max_amount_b.unique_saturated_into(),
-	)?;
-
-	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
-
-	Dex::add_liquidity(
-		RawOrigin::Signed(maker.clone()).into(),
-		currency_id_a,
-		currency_id_b,
-		max_amount_a,
-		max_amount_b,
-		Default::default(),
-		deposit,
-	)?;
-
-	Ok(())
-}
 
 runtime_benchmarks! {
 	{ Runtime, module_dex_oracle }

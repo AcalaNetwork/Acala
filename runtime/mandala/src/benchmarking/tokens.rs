@@ -16,8 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{dollar, lookup_of_account, set_balance as update_balance};
-use crate::{AccountId, Balance, CurrencyId, GetStableCurrencyId, Runtime, Tokens};
+use super::utils::{dollar, lookup_of_account, set_balance as update_balance, STABLECOIN};
+use crate::{AccountId, Balance, Runtime, Tokens};
 
 use sp_std::prelude::*;
 
@@ -28,8 +28,6 @@ use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 
 const SEED: u32 = 0;
-
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, orml_tokens }

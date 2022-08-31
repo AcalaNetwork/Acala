@@ -19,7 +19,7 @@
 #![cfg(test)]
 
 use super::*;
-use mock::{Event, IdleScheduler, *};
+use mock::{evm_mod, Call, Event, IdleScheduler, *};
 
 use crate::runner::{
 	stack::SubstrateStackState,
@@ -2281,4 +2281,158 @@ fn auto_publish_works() {
 			})
 		);
 	});
+}
+
+#[test]
+fn reserve_deposit_makes_user_developer() {
+	new_test_ext().execute_with(|| {
+		let addr = H160(hex!("1100000000000000000000000000000000000011"));
+		let who = <Runtime as Config>::AddressMapping::get_account_id(&addr);
+
+		assert_eq!(Pallet::<Runtime>::is_developer_or_contract(&addr), false);
+
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			GetNativeCurrencyId::get(),
+			&<Runtime as Config>::AddressMapping::get_account_id(&alice()),
+			&who,
+			DEVELOPER_DEPOSIT,
+		));
+
+		assert_ok!(<Runtime as Config>::Currency::ensure_reserved_named(
+			&RESERVE_ID_DEVELOPER_DEPOSIT,
+			&who,
+			DEVELOPER_DEPOSIT,
+		));
+		assert_eq!(Pallet::<Runtime>::is_developer_or_contract(&addr), true);
+	})
+}
+
+#[test]
+fn strict_call_works() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Test {
+	//     mapping(address => uint256) public values;
+	//
+	//     constructor() public {
+	//         values[msg.sender] = 42;
+	//     }
+	//
+	//     function set(uint val) public {
+	//      values[msg.sender] = val;
+	//     }
+	// }
+
+	let contract = from_hex(
+		"0x608060405234801561001057600080fd5b50602a6000803373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002081905550610154806100646000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c806354fe9fd71461003b57806360fe47b114610093575b600080fd5b61007d6004803603602081101561005157600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506100c1565b6040518082815260200191505060405180910390f35b6100bf600480360360208110156100a957600080fd5b81019080803590602001909291905050506100d9565b005b60006020528060005260406000206000915090505481565b806000803373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020819055505056fea265627a7a723158207ab6991e97c9c12f57d81df0c7f955435418354adeb26116b581d7f2f035ca8f64736f6c63430005110032"
+	).unwrap();
+
+	new_test_ext().execute_with(|| {
+		// create contract
+		let result = <Runtime as Config>::Runner::create(
+			alice(),
+			contract,
+			0,
+			500000,
+			100000,
+			vec![],
+			<Runtime as Config>::config(),
+		)
+		.unwrap();
+
+		let contract_address = result.value;
+
+		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
+
+		assert_eq!(
+			Utility::batch_all(
+				Origin::signed(bob_account_id.clone()),
+				vec![
+					Call::Balances(pallet_balances::Call::transfer {
+						dest: bob_account_id.clone(),
+						value: 5
+					}),
+					Call::Balances(pallet_balances::Call::transfer {
+						dest: bob_account_id.clone(),
+						value: 6
+					}),
+					// call method `set(123)`
+					Call::EVM(evm_mod::Call::strict_call {
+						target: contract_address,
+						input: from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b")
+							.unwrap(),
+						value: 0,
+						gas_limit: 1000000,
+						storage_limit: 0,
+						access_list: vec![],
+					})
+				]
+			),
+			Err(DispatchErrorWithPostInfo {
+				post_info: PostDispatchInfo {
+					actual_weight: Some(1530107298),
+					pays_fee: Pays::Yes
+				},
+				error: Error::<Runtime>::NoPermission.into(),
+			})
+		);
+
+		assert_eq!(
+			Utility::batch_all(
+				Origin::signed(alice_account_id.clone()),
+				vec![
+					Call::Balances(pallet_balances::Call::transfer {
+						dest: bob_account_id.clone(),
+						value: 5
+					}),
+					Call::Balances(pallet_balances::Call::transfer {
+						dest: bob_account_id.clone(),
+						value: 6
+					}),
+					// call undefined method
+					Call::EVM(evm_mod::Call::strict_call {
+						target: contract_address,
+						input: from_hex("0x00000000000000000000000000000000000000000000000000000000000000000000007b")
+							.unwrap(),
+						value: 0,
+						gas_limit: 1000000,
+						storage_limit: 0,
+						access_list: vec![],
+					})
+				]
+			),
+			Err(DispatchErrorWithPostInfo {
+				post_info: PostDispatchInfo {
+					actual_weight: Some(1529151000),
+					pays_fee: Pays::Yes
+				},
+				error: Error::<Runtime>::StrictCallFailed.into(),
+			})
+		);
+
+		assert_ok!(Utility::batch_all(
+			Origin::signed(alice_account_id.clone()),
+			vec![
+				Call::Balances(pallet_balances::Call::transfer {
+					dest: bob_account_id.clone(),
+					value: 5
+				}),
+				Call::Balances(pallet_balances::Call::transfer {
+					dest: bob_account_id.clone(),
+					value: 6
+				}),
+				// call method `set(123)`
+				Call::EVM(evm_mod::Call::strict_call {
+					target: contract_address,
+					input: from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b")
+						.unwrap(),
+					value: 0,
+					gas_limit: 1000000,
+					storage_limit: 0,
+					access_list: vec![],
+				})
+			]
+		));
+	})
 }

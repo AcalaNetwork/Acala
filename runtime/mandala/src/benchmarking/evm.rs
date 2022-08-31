@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, Origin, Runtime, System, EVM};
+use crate::{AccountId, Event, EvmAccounts, Origin, Runtime, System, EVM};
 
-use super::utils::{dollar, set_balance};
+use super::utils::{dollar, set_balance, NATIVE};
 use frame_support::dispatch::DispatchError;
 use frame_system::RawOrigin;
 use module_evm::MaxCodeSize;
@@ -27,8 +27,6 @@ use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use sp_core::{H160, H256};
 use sp_io::hashing::keccak_256;
 use sp_std::{str::FromStr, vec};
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 
 fn contract_addr() -> H160 {
 	H160::from_str("0x5e0b4bfa0b55932a3587e648c3552a6515ba56b1").unwrap()

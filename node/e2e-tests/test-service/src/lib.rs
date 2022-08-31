@@ -187,8 +187,8 @@ pub fn construct_extrinsic(
 		frame_system::CheckEra::<Runtime>::from(Era::mortal(period, current_block)),
 		runtime_common::CheckNonce::<Runtime>::from(nonce),
 		frame_system::CheckWeight::<Runtime>::new(),
-		module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		module_evm::SetEvmOrigin::<Runtime>::new(),
+		module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 	);
 	let raw_payload = runtime::SignedPayload::from_raw(
 		function,

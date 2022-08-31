@@ -6,18 +6,16 @@ name: Publish Release
 # - Use subwasm to obtain build data
 # - Generate release note
 # - Create release issue
-# - Archive the build artifacts to Github 
+# - Archive the build artifacts to Github
 # - Publish the WASM to Pinata via ipfs
 
-env:
-  SUBWASM_VERSION: 0.17.0
-
 on:
+  create:
   workflow_dispatch:
     inputs:
       # Get name of the chain
       chain:
-        description: Chain Runtime (default = karura)    
+        description: Chain Runtime (default = karura)
         required: true
         default: karura
         type: choice
@@ -40,16 +38,32 @@ on:
         description: Default to use the latest. You can use an alternate image, use with caution!
         required: false
 
+env:
+  SUBWASM_VERSION: 0.17.0
+  CHAIN: ${{ github.event.inputs.chain }}
+  SCOPE: ${{ github.event.inputs.scope }}
+
 jobs:
   build-release:
-    name: Build and publish ${{ github.event.inputs.chain }}
+    name: Build and publish ${{ github.event.inputs.chain || github.ref }}
     runs-on: ubuntu-latest
+    if: contains(github.ref, 'release-')
     steps:
       # Checkout the Acala codebase
       - name: Checkout Codebase
         uses: actions/checkout@v3
         with:
+          fetch-depth: 0
           submodules: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Setup ENV
+        if: ${{ env.CHAIN == '' || env.SCOPE == '' }}
+        run: python .github/scripts/publish_release_setup_env.py
 
       # Build WASM with Substrate Runtime Tool
       - name: Srtool build
@@ -58,14 +72,14 @@ jobs:
         env:
           BUILD_OPTS: "--features on-chain-release-build,no-metadata-docs"
         with:
-          chain: ${{ github.event.inputs.chain }}
+          chain: ${{ env.CHAIN }}
           tag: ${{ github.event.inputs.srtool_image }}
 
       # Output the build summary
       - name: Build Summary
         run: |
-          echo '${{ steps.srtool_build.outputs.json }}' | jq . > ${{ github.event.inputs.chain }}-srtool-digest.json
-          cat ${{ github.event.inputs.chain }}-srtool-digest.json
+          echo '${{ steps.srtool_build.outputs.json }}' | jq . > ${{ env.CHAIN }}-srtool-digest.json
+          cat ${{ env.CHAIN }}-srtool-digest.json
           echo "Runtime location: ${{ steps.srtool_build.outputs.wasm }}"
 
       # install subwasm
@@ -78,29 +92,29 @@ jobs:
       # Display information for wasm
       - name: Extract metadata
         run: |
-          subwasm  --json info ${{ steps.srtool_build.outputs.wasm }} > ${{ github.event.inputs.chain }}-info.json
-          subwasm info ${{ steps.srtool_build.outputs.wasm }} > ${{ github.event.inputs.chain }}-info.txt
-          cat ${{ github.event.inputs.chain }}-info.txt
+          subwasm  --json info ${{ steps.srtool_build.outputs.wasm }} > ${{ env.CHAIN }}-info.json
+          subwasm info ${{ steps.srtool_build.outputs.wasm }} > ${{ env.CHAIN }}-info.txt
+          cat ${{ env.CHAIN }}-info.txt
 
-          subwasm  --json info ${{ steps.srtool_build.outputs.wasm_compressed }} > ${{ github.event.inputs.chain }}-subwam-info.json
-          subwasm info ${{ steps.srtool_build.outputs.wasm_compressed }} > ${{ github.event.inputs.chain }}-subwam-info.txt
-          cat ${{ github.event.inputs.chain }}-subwam-info.txt
+          subwasm  --json info ${{ steps.srtool_build.outputs.wasm_compressed }} > ${{ env.CHAIN }}-subwam-info.json
+          subwasm info ${{ steps.srtool_build.outputs.wasm_compressed }} > ${{ env.CHAIN }}-subwam-info.txt
+          cat ${{ env.CHAIN }}-subwam-info.txt
 
       # Diff new wasm with current
       - name: Check the metadata diff
         run: |
-          subwasm diff ${{ steps.srtool_build.outputs.wasm }} --chain-b ${{ github.event.inputs.chain }} | tee ${{ github.event.inputs.chain }}-diff.txt
+          subwasm diff ${{ steps.srtool_build.outputs.wasm }} --chain-b ${{ env.CHAIN }} | tee ${{ env.CHAIN }}-diff.txt
 
       # Generate release notes
       - name: Generate note
         id: generate-note
         uses: AcalaNetwork/acala-release-note-action@master
         with:
-          scope: ${{ github.event.inputs.scope }}
-          chain: ${{ github.event.inputs.chain }}
-          subwasm_info: ${{ github.event.inputs.chain }}-subwam-info.txt
-          srtool_details: ${{ github.event.inputs.chain }}-srtool-digest.json
-      
+          scope: ${{ env.SCOPE }}
+          chain: ${{ env.CHAIN }}
+          subwasm_info: ${{ env.CHAIN }}-subwam-info.txt
+          srtool_details: ${{ env.CHAIN }}-srtool-digest.json
+
       # Create release checklist issue
       - name: Crate Release Checklist issue
         uses: JasonEtco/create-an-issue@v2
@@ -108,20 +122,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           filename: ${{ steps.generate-note.outputs.release-note }}
-      
-      - name: Archive Artifacts for ${{ github.event.inputs.chain }}
+
+      - name: Archive Artifacts for ${{ env.CHAIN }}
         uses: actions/upload-artifact@v2
         with:
-          name: ${{ github.event.inputs.chain }}-runtime
+          name: ${{ env.CHAIN }}-runtime
           path: |
             ${{ steps.srtool_build.outputs.wasm }}
             ${{ steps.srtool_build.outputs.wasm_compressed }}
-            ${{ github.event.inputs.chain }}-srtool-digest.json
-            ${{ github.event.inputs.chain }}-metadata.json
-            ${{ github.event.inputs.chain }}-metadata.txt
-            ${{ github.event.inputs.chain }}-subwam-info.json
-            ${{ github.event.inputs.chain }}-subwam-info.txt
-            ${{ github.event.inputs.chain }}-diff.txt
+            ${{ env.CHAIN }}-srtool-digest.json
+            ${{ env.CHAIN }}-metadata.json
+            ${{ env.CHAIN }}-metadata.txt
+            ${{ env.CHAIN }}-subwam-info.json
+            ${{ env.CHAIN }}-subwam-info.txt
+            ${{ env.CHAIN }}-diff.txt
 
       - name: Upload wasm to pinata
         uses: aquiladev/ipfs-action@v0.1.6

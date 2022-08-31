@@ -16,11 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CdpTreasury, CurrencyId, EmergencyShutdown, GetStableCurrencyId, Price, Runtime};
+use crate::{AccountId, CdpTreasury, CurrencyId, EmergencyShutdown, Price, Runtime};
 
 use super::{
 	get_benchmarking_collateral_currency_ids,
-	utils::{dollar, feed_price, set_balance},
+	utils::{dollar, feed_price, set_balance, STABLECOIN},
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
@@ -30,8 +30,6 @@ use sp_runtime::traits::One;
 use sp_std::vec;
 
 const SEED: u32 = 0;
-
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_emergency_shutdown }
