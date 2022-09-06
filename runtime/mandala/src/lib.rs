@@ -749,6 +749,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type DesiredRunnersUp = ConstU32<7>;
 	type LoserCandidate = ();
 	type KickedMember = ();
+	type MaxVoters = ConstU32<10000>;
+	type MaxCandidates = ConstU32<1000>;
 	type WeightInfo = ();
 }
 
