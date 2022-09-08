@@ -1,6 +1,6 @@
 [package]
 name = "module-earning"
-version = "2.9.2"
+version = "2.9.3"
 authors = ["Acala Developers"]
 edition = "2021"
 

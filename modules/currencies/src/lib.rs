@@ -243,6 +243,37 @@ pub mod module {
 			}
 			Ok(())
 		}
+
+		/// Set lock by lock_id
+		///
+		/// The dispatch origin of this call must be _Root_.
+		#[pallet::weight(T::WeightInfo::update_balance_non_native_currency())]
+		pub fn force_set_lock(
+			origin: OriginFor<T>,
+			who: <T::Lookup as StaticLookup>::Source,
+			currency_id: CurrencyId,
+			#[pallet::compact] amount: BalanceOf<T>,
+			lock_id: LockIdentifier,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			let who = T::Lookup::lookup(who)?;
+			<Self as MultiLockableCurrency<T::AccountId>>::set_lock(lock_id, currency_id, &who, amount)
+		}
+
+		/// Remove lock by lock_id
+		///
+		/// The dispatch origin of this call must be _Root_.
+		#[pallet::weight(T::WeightInfo::update_balance_non_native_currency())]
+		pub fn force_remove_lock(
+			origin: OriginFor<T>,
+			who: <T::Lookup as StaticLookup>::Source,
+			currency_id: CurrencyId,
+			lock_id: LockIdentifier,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			let who = T::Lookup::lookup(who)?;
+			<Self as MultiLockableCurrency<T::AccountId>>::remove_lock(lock_id, currency_id, &who)
+		}
 	}
 }
 
