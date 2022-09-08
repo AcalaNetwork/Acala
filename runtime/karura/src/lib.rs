@@ -766,7 +766,7 @@ parameter_type_with_key! {
 					Self::get(&currency_id_0)
 				}
 			},
-			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
+			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::max_value(), |metatata| metatata.minimal_balance),
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetId(*stable_asset_id)).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)

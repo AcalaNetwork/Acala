@@ -28,7 +28,7 @@ use module_evm_bridge::EVMBridge;
 use module_support::{EVMBridge as EVMBridgeT, Erc20InfoMapping, EVM as EVMTrait};
 use primitives::{
 	evm::{convert_decimals_to_evm, EvmAddress},
-	TradingPair,
+	Position, TradingPair,
 };
 use sp_core::{H256, U256};
 use sp_runtime::{traits::SignedExtension, Percent};
@@ -1151,4 +1151,275 @@ fn evm_limits() {
 		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 33_323_744);
 		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_storage_limit(), 3_670_016);
 	});
+}
+
+#[test]
+fn honzon_works_with_evm_contract() {
+	let erc20_token = CurrencyId::Erc20(erc20_address_0());
+	let alice_evm_account = MockAddressMapping::get_account_id(&alice_evm_addr());
+
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), NATIVE_CURRENCY, 1_000_000_000 * dollar(NATIVE_CURRENCY)),
+			(
+				// evm alice
+				alice_evm_account.clone(),
+				NATIVE_CURRENCY,
+				1_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+			(
+				// evm alice
+				alice_evm_account.clone(),
+				USD_CURRENCY,
+				1_000_000_000 * dollar(USD_CURRENCY),
+			),
+			(
+				alice_evm_account.clone(),
+				RELAY_CHAIN_CURRENCY,
+				1_000_000_000 * dollar(RELAY_CHAIN_CURRENCY),
+			),
+		])
+		.build()
+		.execute_with(|| {
+			deploy_erc20_contracts();
+
+			assert_ok!(CdpEngine::set_collateral_params(
+				Origin::root(),
+				erc20_token,
+				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+				Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+				Change::NewValue(10000 * dollar(NATIVE_CURRENCY)),
+			));
+
+			assert_ok!(CdpEngine::set_collateral_params(
+				Origin::root(),
+				RELAY_CHAIN_CURRENCY,
+				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+				Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+				Change::NewValue(10000 * dollar(NATIVE_CURRENCY)),
+			));
+
+			assert_eq!(
+				Loans::positions(USD_CURRENCY, alice_evm_account.clone()),
+				Position {
+					collateral: 0,
+					debit: 0
+				}
+			);
+			assert_eq!(
+				Loans::positions(erc20_token, alice_evm_account.clone()),
+				Position {
+					collateral: 0,
+					debit: 0
+				}
+			);
+
+			assert_eq!(
+				Loans::total_positions(erc20_token),
+				Position {
+					collateral: 0,
+					debit: 0
+				}
+			);
+
+			set_oracle_price(vec![
+				(erc20_token, Price::saturating_from_rational(2, 1)), // 2 usd
+				(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(10, 1)), // 10 usd
+			]);
+
+			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
+			// 1.Honzon::adjust_loan
+			// erc20 decimals is 17, DefaultDebitExchangeRate is 1/10
+			assert_ok!(Honzon::adjust_loan(
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
+				1_000_000_000_000_000_000,
+				10 * MinimumDebitValue::get() as i128
+			));
+
+			assert_eq!(
+				Loans::positions(erc20_token, alice_evm_account.clone()),
+				Position {
+					collateral: 1000000000000000000,
+					debit: 10000000000000
+				}
+			);
+			assert_eq!(
+				Loans::total_positions(erc20_token),
+				Position {
+					collateral: 1000000000000000000,
+					debit: 10000000000000
+				}
+			);
+
+			// collateral = 0
+			assert_ok!(Honzon::adjust_loan(
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
+				0,
+				10 * MinimumDebitValue::get() as i128
+			));
+
+			assert_eq!(
+				Loans::positions(erc20_token, alice_evm_account.clone()),
+				Position {
+					collateral: 1000000000000000000,
+					debit: 20000000000000
+				}
+			);
+
+			// debit = 0
+			assert_ok!(Honzon::adjust_loan(
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
+				2_000_000_000_000_000_000,
+				0,
+			));
+
+			assert_eq!(
+				Loans::positions(erc20_token, alice_evm_account.clone()),
+				Position {
+					collateral: 3000000000000000000,
+					debit: 20000000000000
+				}
+			);
+
+			// 2.Honzon::adjust_loan_by_debit_value
+			// withdraws debit
+			assert_ok!(Honzon::adjust_loan_by_debit_value(
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
+				0,
+				-30 * MinimumDebitValue::get() as i128,
+			));
+			assert_eq!(
+				Loans::positions(erc20_token, alice_evm_account.clone()),
+				Position {
+					collateral: 3000000000000000000,
+					debit: 0
+				}
+			);
+
+			// Honzon::adjust_loan_by_debit_value
+			// withdraws collateral
+			assert_ok!(Honzon::adjust_loan_by_debit_value(
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
+				-3_000_000_000_000_000_000,
+				0,
+			));
+			assert_eq!(
+				Loans::positions(erc20_token, alice_evm_account.clone()),
+				Position {
+					collateral: 0,
+					debit: 0
+				}
+			);
+
+			// 3.Honzon::transfer_debit
+			assert_ok!(Honzon::adjust_loan(
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
+				1_000_000_000_000_000_000,
+				10 * MinimumDebitValue::get() as i128
+			));
+			assert_ok!(Honzon::adjust_loan(
+				Origin::signed(alice_evm_account.clone()),
+				RELAY_CHAIN_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY) as i128,
+				10 * MinimumDebitValue::get() as i128
+			));
+			assert_eq!(
+				Loans::positions(erc20_token, alice_evm_account.clone()),
+				Position {
+					collateral: 1000000000000000000,
+					debit: 10000000000000
+				}
+			);
+			assert_eq!(
+				Loans::positions(RELAY_CHAIN_CURRENCY, alice_evm_account.clone()),
+				Position {
+					collateral: 1000000000000,
+					debit: 10000000000000
+				}
+			);
+
+			// Honzon::transfer_debit
+			assert_ok!(Honzon::transfer_debit(
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
+				RELAY_CHAIN_CURRENCY,
+				10 * MinimumDebitValue::get()
+			));
+			assert_eq!(
+				Loans::positions(erc20_token, alice_evm_account.clone()),
+				Position {
+					collateral: 1000000000000000000,
+					debit: 0
+				}
+			);
+			assert_eq!(
+				Loans::positions(RELAY_CHAIN_CURRENCY, alice_evm_account.clone()),
+				Position {
+					collateral: 1000000000000,
+					debit: 20000000000000
+				}
+			);
+			assert_ok!(Honzon::transfer_debit(
+				Origin::signed(alice_evm_account.clone()),
+				RELAY_CHAIN_CURRENCY,
+				erc20_token,
+				20 * MinimumDebitValue::get()
+			));
+			assert_eq!(
+				Loans::positions(erc20_token, alice_evm_account.clone()),
+				Position {
+					collateral: 1000000000000000000,
+					debit: 20000000000000
+				}
+			);
+
+			// 4.Honzon::expand_position_collateral
+			assert_ok!(Dex::list_provisioning(
+				Origin::root(),
+				erc20_token,
+				USD_CURRENCY,
+				10,
+				100,
+				100,
+				1000,
+				0,
+			));
+
+			assert_ok!(Dex::add_provision(
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
+				USD_CURRENCY,
+				100_000_000_000_000_000_000,
+				1000 * MinimumDebitValue::get()
+			));
+			assert_ok!(Dex::end_provisioning(
+				Origin::signed(AccountId::from(BOB)),
+				erc20_token,
+				USD_CURRENCY,
+			));
+			assert_ok!(Honzon::expand_position_collateral(
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
+				10 * MinimumDebitValue::get(),
+				1_000_000_000_000_000
+			));
+
+			// 5.Honzon::shrink_position_debit
+			assert_ok!(Honzon::shrink_position_debit(
+				Origin::signed(alice_evm_account.clone()),
+				erc20_token,
+				1_000_000_000_000_000_000,
+				1 * MinimumDebitValue::get()
+			));
+		});
 }
