@@ -138,6 +138,7 @@ cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumul
 statemine-runtime = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.28" }
 statemint-runtime = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.28" }
 
+polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
 polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
 kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
@@ -145,7 +146,7 @@ kusama-runtime-constants = { git = "https://github.com/paritytech/polkadot", bra
 polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
 polkadot-runtime-constants = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
 
-xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "ab5cd6c5fabe6ddda52ed6803ee1bf54c258fefe" }
+xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "6c02911a3eeb04c342e4eb273d2ffbedd45dabff" }
 
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 module-aggregated-dex = { path = "../../modules/aggregated-dex" }
