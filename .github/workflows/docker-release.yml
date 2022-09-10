@@ -3,26 +3,14 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: Branch to build docker image (optional). Helpful to build docker image for release branches that don't have image
+        description: Branch to build docker image (optional).
         required: false
         type: string
 
 jobs:
-  clean-up-actions:
-    runs-on: ubuntu-latest
-    if: contains(github.ref, 'release-')
-    steps:
-      - name: Cancel Previous Runs
-        # Only cancel non-master branch runs
-        if: ${{ github.ref != 'refs/heads/master' }}
-        uses: styfle/cancel-workflow-action@0.9.0
-        with:
-          access_token: ${{ github.token }}
-
   build-image:
     name: "Build docker image ${{ matrix.network }}"
     runs-on: ubuntu-latest
-    needs: clean-up-actions
     strategy:
       matrix:
         network: [karura, acala]
