@@ -469,9 +469,8 @@ impl<T: Config> Pallet<T> {
 				};
 				let dex_saving_reward_amount = dex_saving_reward_rate.saturating_mul_int(dex_saving_reward_base);
 
-				// issue stable currency without backing.
 				if !dex_saving_reward_amount.is_zero() {
-					let res = T::CDPTreasury::issue_debit(&Self::account_id(), dex_saving_reward_amount, false);
+					let res = T::CDPTreasury::withdraw_surplus(&Self::account_id(), dex_saving_reward_amount);
 					match res {
 						Ok(_) => {
 							let _ = <orml_rewards::Pallet<T>>::accumulate_reward(
