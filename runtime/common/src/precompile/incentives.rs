@@ -106,16 +106,11 @@ where
 				})
 			}
 			Action::GetDexRewardRate => {
-				let pool_currency_id = input.currency_id_at(1)?;
-				let _pool_id = PoolId::Dex(pool_currency_id);
-
-				// NOTE: dex reward rate has been deprecated in runtime
-				let value = Rate::default();
-
+				// NOTE: return default , or return PrecompileFailure?
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::encode_uint(value.into_inner()),
+					output: Output::encode_uint(Rate::default().into_inner()),
 					logs: Default::default(),
 				})
 			}
