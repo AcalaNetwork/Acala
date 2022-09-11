@@ -152,9 +152,6 @@ pub mod module {
 			reward_currency_id: CurrencyId,
 			reward_amount_per_period: Balance,
 		},
-		/// NOTE: remove it?
-		/// Saving reward rate updated.
-		SavingRewardRateUpdated { pool: PoolId, reward_rate_per_period: Rate },
 		/// Payout deduction rate updated.
 		ClaimRewardDeductionRateUpdated { pool: PoolId, deduction_rate: Rate },
 	}
