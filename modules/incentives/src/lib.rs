@@ -489,7 +489,7 @@ impl<T: Config> Pallet<T> {
 						Err(e) => {
 							log::warn!(
 								target: "incentives",
-								"issue_debit: failed to issue {:?} unbacked stable to {:?}: {:?}. \
+								"accumulate_reward: failed to withdraw surplus {:?} to {:?}: {:?}. \
 								This is unexpected but should be safe",
 								dex_saving_reward_amount, Self::account_id(), e
 							);
