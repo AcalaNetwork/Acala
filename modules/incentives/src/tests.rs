@@ -820,7 +820,7 @@ fn on_initialize_should_work() {
 			TokensModule::free_balance(ACA, &VAULT::get()),
 			1300 + (1000 + 2000 + 100 + 200)
 		);
-		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 500 + 500); // 9 from debit_issue,  500 from RewardsSource
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 500 + 500); // 500 from RewardsSource
 		assert_eq!(TokensModule::free_balance(LDOT, &VAULT::get()), 0 + 50);
 		// 1000 ACA and 500 AUSD are incentive reward
 		assert_eq!(
