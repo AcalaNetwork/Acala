@@ -969,37 +969,3 @@ fn earning_booster_should_work() {
 		);
 	});
 }
-
-#[test]
-fn clear_dex_saving_reward_rates_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		DexSavingRewardRates::<Runtime>::insert(PoolId::Dex(BTC_AUSD_LP), Rate::saturating_from_rational(1, 100000000));
-		DexSavingRewardRates::<Runtime>::insert(PoolId::Dex(DOT_AUSD_LP), Rate::zero());
-		assert_eq!(
-			IncentivesModule::dex_saving_reward_rates(PoolId::Dex(BTC_AUSD_LP)),
-			Rate::saturating_from_rational(1, 100000000)
-		);
-		assert_eq!(
-			IncentivesModule::dex_saving_reward_rates(PoolId::Dex(DOT_AUSD_LP)),
-			Rate::zero()
-		);
-		assert_eq!(
-			DexSavingRewardRates::<Runtime>::contains_key(PoolId::Dex(BTC_AUSD_LP)),
-			true
-		);
-		assert_eq!(
-			DexSavingRewardRates::<Runtime>::contains_key(PoolId::Dex(DOT_AUSD_LP)),
-			true
-		);
-
-		IncentivesModule::on_runtime_upgrade();
-		assert_eq!(
-			DexSavingRewardRates::<Runtime>::contains_key(PoolId::Dex(BTC_AUSD_LP)),
-			false
-		);
-		assert_eq!(
-			DexSavingRewardRates::<Runtime>::contains_key(PoolId::Dex(DOT_AUSD_LP)),
-			false
-		);
-	});
-}

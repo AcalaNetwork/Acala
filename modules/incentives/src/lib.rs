@@ -50,6 +50,7 @@ use sp_runtime::{
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, IncentivesManager, PoolId, Rate};
 
+pub mod migration;
 mod mock;
 mod tests;
 pub mod weights;
@@ -200,14 +201,6 @@ pub mod module {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		/// need remove it after next runtime upgrade
-		fn on_runtime_upgrade() -> Weight {
-			// clear storage DexSavingRewardRates
-			let _ = DexSavingRewardRates::<T>::clear(u32::max_value(), None);
-
-			0
-		}
-
 		fn on_initialize(now: T::BlockNumber) -> Weight {
 			// accumulate reward periodically
 			if now % T::AccumulatePeriod::get() == Zero::zero() {
