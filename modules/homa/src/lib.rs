@@ -683,7 +683,8 @@ pub mod module {
 				.saturating_mul_int(liquid_amount);
 			let liquid_add_to_void = liquid_amount.saturating_sub(liquid_issue_to_minter);
 
-			T::Currency::deposit(T::LiquidCurrencyId::get(), &minter, liquid_issue_to_minter)?;
+			Self::issue_liquid_currency(&minter, liquid_issue_to_minter)?;
+
 			ToBondPool::<T>::mutate(|pool| *pool = pool.saturating_add(amount));
 			TotalVoidLiquid::<T>::mutate(|total| *total = total.saturating_add(liquid_add_to_void));
 
@@ -833,7 +834,7 @@ pub mod module {
 
 						// burn liquid_to_burn for redeemed_staking and burn fee_in_liquid to reward all holders of
 						// liquid currency.
-						T::Currency::withdraw(T::LiquidCurrencyId::get(), &module_account, actual_liquid_to_redeem)?;
+						Self::burn_liquid_currency(&module_account, actual_liquid_to_redeem)?;
 
 						// transfer redeemed_staking to redeemer.
 						T::Currency::transfer(
@@ -897,7 +898,6 @@ pub mod module {
 
 				let commission_rate = Self::commission_rate();
 				if !total_reward_staking.is_zero() && !commission_rate.is_zero() {
-					let liquid_currency_id = T::LiquidCurrencyId::get();
 					let commission_staking_amount = commission_rate.saturating_mul_int(total_reward_staking);
 					let commission_ratio =
 						Ratio::checked_from_rational(commission_staking_amount, TotalStakingBonded::<T>::get())
@@ -907,7 +907,7 @@ pub mod module {
 						.unwrap_or_else(Ratio::max_value);
 					let inflate_liquid_amount = inflate_rate.saturating_mul_int(Self::get_total_liquid_currency());
 
-					T::Currency::deposit(liquid_currency_id, &T::TreasuryAccount::get(), inflate_liquid_amount)?;
+					Self::issue_liquid_currency(&T::TreasuryAccount::get(), inflate_liquid_amount)?;
 				}
 			}
 
@@ -937,11 +937,7 @@ pub mod module {
 			}
 
 			// issue withdrawn unbonded to module account for redeemer to claim
-			T::Currency::deposit(
-				T::StakingCurrencyId::get(),
-				&Self::account_id(),
-				total_withdrawn_staking,
-			)?;
+			Self::issue_staking_currency(&Self::account_id(), total_withdrawn_staking)?;
 			UnclaimedRedemption::<T>::mutate(|total| *total = total.saturating_add(total_withdrawn_staking));
 
 			Ok(())
@@ -1050,7 +1046,7 @@ pub mod module {
 			}
 
 			// burn total_redeem_amount.
-			T::Currency::withdraw(T::LiquidCurrencyId::get(), &Self::account_id(), total_redeem_amount)
+			Self::burn_liquid_currency(&Self::account_id(), total_redeem_amount)
 		}
 
 		pub fn era_amount_should_to_bump(relaychain_block_number: T::BlockNumber) -> EraIndex {
@@ -1089,6 +1085,22 @@ pub mod module {
 			);
 
 			res
+		}
+
+		/// This should be the only function in the system that issues liquid currency
+		fn issue_liquid_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::deposit(T::LiquidCurrencyId::get(), who, amount)
+		}
+
+		/// This should be the only function in the system that burn liquid currency
+		fn burn_liquid_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::withdraw(T::LiquidCurrencyId::get(), who, amount)
+		}
+
+		/// Issue staking currency based on the subaccounts transfer the unbonded staking currency
+		/// to the parachain account
+		fn issue_staking_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::deposit(T::StakingCurrencyId::get(), who, amount)
 		}
 	}
 
