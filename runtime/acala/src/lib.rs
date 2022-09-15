@@ -2268,6 +2268,13 @@ mod tests {
 	use frame_system::offchain::CreateSignedTransaction;
 	use sp_runtime::traits::Convert;
 
+	#[test]
+	fn t() {
+		use sp_runtime::traits::AccountIdConversion;
+		let acc: AccountId = cumulus_primitives_core::ParaId::from(2000).into_account_truncating();
+		print!(">>> {:?}", acc);
+	}
+
 	fn run_with_system_weight<F>(w: Weight, mut assertions: F)
 	where
 		F: FnMut(),

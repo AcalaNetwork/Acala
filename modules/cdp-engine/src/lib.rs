@@ -1303,8 +1303,7 @@ impl<T: Config> Pallet<T> {
 		currency_id: CurrencyId,
 		amount: Balance,
 		target_stable_amount: Balance,
-		collateral_oracle_price: Price,
-	) -> Result<Ratio, DispatchError> {
+	) -> Result<Price, DispatchError> {
 		let (actual_supply_collateral, actual_target_amount) = <T as Config>::CDPTreasury::swap_collateral_to_stable(
 			currency_id,
 			SwapLimit::ExactTarget(amount, target_stable_amount),
@@ -1329,11 +1328,10 @@ impl<T: Config> Pallet<T> {
 			)?;
 		}
 
-		let swap_price = Price::saturating_from_rational(actual_target_amount, actual_supply_collateral);
-		let ratio = swap_price
-			.checked_div(&collateral_oracle_price)
-			.ok_or(ArithmeticError::DivisionByZero)?;
-		Ok(ratio)
+		Ok(Price::saturating_from_rational(
+			actual_target_amount,
+			actual_supply_collateral,
+		))
 	}
 
 	fn liquidate_via_contract(
@@ -1341,8 +1339,7 @@ impl<T: Config> Pallet<T> {
 		currency_id: CurrencyId,
 		amount: Balance,
 		target_stable_amount: Balance,
-		collateral_oracle_price: Price,
-	) -> Result<Ratio, DispatchError> {
+	) -> Result<Price, DispatchError> {
 		let collateral = currency_id
 			.erc20_address()
 			.ok_or(Error::<T>::CollateralContractNotFound)?;
@@ -1379,11 +1376,7 @@ impl<T: Config> Pallet<T> {
 				collateral,
 				target_stable_amount,
 			);
-			let liquidated_price = Price::saturating_from_rational(repayment, amount);
-			let ratio = liquidated_price
-				.checked_div(&collateral_oracle_price)
-				.ok_or(ArithmeticError::DivisionByZero)?;
-			return Ok(ratio);
+			return Ok(Price::saturating_from_rational(repayment, amount));
 		}
 
 		Err(Error::<T>::LiquidationFailed.into())
@@ -1394,6 +1387,35 @@ type LiquidateByPriority<T> = (ImmediateLiquidation<T>, LiquidateViaAuction<T>);
 
 pub struct ImmediateLiquidation<T>(PhantomData<T>);
 impl<T: Config> ImmediateLiquidation<T> {
+	fn liquidate_via_dex(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+		collateral_oracle_price: Price,
+	) -> Result<Ratio, DispatchError> {
+		let swap_price = Pallet::<T>::liquidate_via_dex(who, currency_id, amount, target_stable_amount)?;
+		let ratio = swap_price
+			.checked_div(&collateral_oracle_price)
+			.ok_or(ArithmeticError::DivisionByZero)?;
+		Ok(ratio)
+	}
+
+	fn liquidate_via_contract(
+		contract: EvmAddress,
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+		collateral_oracle_price: Price,
+	) -> Result<Ratio, DispatchError> {
+		let liquidation_price =
+			Pallet::<T>::liquidate_via_contract(contract, currency_id, amount, target_stable_amount)?;
+		let ratio = liquidation_price
+			.checked_div(&collateral_oracle_price)
+			.ok_or(ArithmeticError::DivisionByZero)?;
+		Ok(ratio)
+	}
+
 	fn try_immediate_liquidation(f: impl FnOnce() -> Result<Ratio, DispatchError>) -> Result<(), Ratio> {
 		let mut ratio = Ratio::zero();
 		let mut immediate_liquidation = false;
@@ -1449,7 +1471,7 @@ impl<T: Config> ImmediateLiquidation<T> {
 		let mut best_offer_contract = EvmAddress::zero();
 		for contract in contracts_by_priority.into_iter() {
 			if let Err(r) = Self::try_immediate_liquidation(|| {
-				Pallet::<T>::liquidate_via_contract(
+				Self::liquidate_via_contract(
 					contract,
 					currency_id,
 					amount,
@@ -1484,7 +1506,7 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for ImmediateLiquidation<T> {
 		// try immediate liquidation with DEX
 		let dex_price_ratio;
 		if let Err(r) = Self::try_immediate_liquidation(|| {
-			Pallet::<T>::liquidate_via_dex(who, currency_id, amount, target_stable_amount, collateral_oracle_price)
+			Self::liquidate_via_dex(who, currency_id, amount, target_stable_amount, collateral_oracle_price)
 		}) {
 			dex_price_ratio = r;
 		} else {
@@ -1509,18 +1531,13 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for ImmediateLiquidation<T> {
 		if dex_price_ratio >= contract_max_price_ratio {
 			if dex_price_ratio >= T::MinLiquidationPriceRatio::get() {
 				// can't fail as it's the replay of an `Ok` call
-				let _ = Pallet::<T>::liquidate_via_dex(
-					who,
-					currency_id,
-					amount,
-					target_stable_amount,
-					collateral_oracle_price,
-				);
+				let _ =
+					Self::liquidate_via_dex(who, currency_id, amount, target_stable_amount, collateral_oracle_price);
 				return Ok(());
 			}
 		} else if contract_max_price_ratio >= T::MinLiquidationPriceRatio::get() {
 			// can't fail as it's the replay of an `Ok` call
-			let _ = Pallet::<T>::liquidate_via_contract(
+			let _ = Self::liquidate_via_contract(
 				best_offer_contract,
 				currency_id,
 				amount,
@@ -1553,6 +1570,23 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaAuction<T> {
 		.map(|_| ())
 	}
 }
+//
+// pub struct PostAuctionLiquidation<T>(PhantomData<T>);
+// impl<T: Config> LiquidateCollateral<T::AccountId> for PostAuctionLiquidation<T> {
+// 	#[transactional]
+// 	fn liquidate(
+// 		who: &T::AccountId,
+// 		currency_id: CurrencyId,
+// 		amount: Balance,
+// 		target_stable_amount: Balance,
+// 	) -> DispatchResult {
+// 		let winning_bid_price = Price::saturating_from_rational(target_stable_amount, amount);
+//
+//
+//
+// 		Err(Error::<T>::LiquidationFailed.into())
+// 	}
+// }
 
 impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pallet<T> {
 	fn get_debit_value(currency_id: CurrencyId, debit_balance: Balance) -> Balance {
