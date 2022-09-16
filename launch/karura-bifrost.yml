@@ -46,7 +46,7 @@ parachains:
     - --bob
   - flags:
     - --charlie
-- image: bifrostnetwork/bifrost:bifrost-v0.9.44
+- image: bifrostnetwork/bifrost:bifrost-v0.9.54
   chain:
     base: bifrost-local
     sudo: alice
