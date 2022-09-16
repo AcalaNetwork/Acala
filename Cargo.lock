@@ -10425,6 +10425,7 @@ dependencies = [
  "module-nft",
  "module-prices",
  "module-support",
+ "module-transaction-pause",
  "module-transaction-payment",
  "num_enum",
  "nutsfinance-stable-asset",

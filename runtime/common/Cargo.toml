@@ -65,6 +65,7 @@ module-loans = { path = "../../modules/loans", default-features = false }
 module-cdp-engine = { path = "../../modules/cdp-engine", default-features = false }
 module-cdp-treasury = { path = "../../modules/cdp-treasury", default-features = false, optional = true }
 module-incentives = { path = "../../modules/incentives", default-features = false }
+module-transaction-pause = { path = "../../modules/transaction-pause", default-features = false }
 
 # orml
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -128,6 +129,7 @@ std = [
 	"module-honzon/std",
 	"module-cdp-treasury/std",
 	"module-incentives/std",
+	"module-transaction-pause/std",
 
 	"xcm/std",
 	"xcm-executor/std",
