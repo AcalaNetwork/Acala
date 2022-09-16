@@ -78,9 +78,9 @@ jobs:
             type=raw,value=${{ needs.setup-matrix.outputs.version || github.ref_name }}
             type=ref,event=pr
             type=sha
-      - name: Change Dockerfile to support multi-platform
-        run: |
-          sed -i 's/FROM /FROM --platform=$BUILDPLATFORM /g' scripts/Dockerfile
+      # - name: Change Dockerfile to support multi-platform
+      #   run: |
+      #     sed -i 's/FROM /FROM --platform=$BUILDPLATFORM /g' scripts/Dockerfile
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
