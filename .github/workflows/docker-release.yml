@@ -1,11 +1,8 @@
 name: Docker Image Release
 on:
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: Branch to build docker image (optional).
-        required: false
-        type: string
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build-image:
