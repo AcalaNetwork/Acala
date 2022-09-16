@@ -22,6 +22,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
+use cumulus_pallet_parachain_system::CheckAssociatedRelayNumber;
 use frame_support::{
 	parameter_types,
 	traits::{Contains, EitherOfDiverse, Get},
@@ -34,7 +35,11 @@ use frame_support::{
 use frame_system::{limits, EnsureRoot};
 use module_evm::GenesisAccount;
 use orml_traits::GetByKey;
-use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
+use polkadot_parachain::primitives::RelayChainBlockNumber;
+use primitives::{
+	evm::{is_system_contract, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},
+	Balance, CurrencyId, Nonce,
+};
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
 use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
@@ -130,6 +135,28 @@ impl Convert<Weight, u64> for WeightToGas {
 		weight
 			.checked_div(gas_to_weight_ratio::RATIO)
 			.expect("Compile-time constant is not zero; qed;")
+	}
+}
+
+pub struct CheckRelayNumber<EvmChainID, RelayNumberStrictlyIncreases>(EvmChainID, RelayNumberStrictlyIncreases);
+impl<EvmChainID: Get<u64>, RelayNumberStrictlyIncreases: CheckAssociatedRelayNumber> CheckAssociatedRelayNumber
+	for CheckRelayNumber<EvmChainID, RelayNumberStrictlyIncreases>
+{
+	fn check_associated_relay_number(current: RelayChainBlockNumber, previous: RelayChainBlockNumber) {
+		if EvmChainID::get() == CHAIN_ID_MANDALA
+			|| EvmChainID::get() == CHAIN_ID_KARURA_TESTNET
+			|| EvmChainID::get() == CHAIN_ID_ACALA_TESTNET
+		{
+			if current <= previous {
+				log::warn!(
+					"Relay chain block number was reset, current: {:?}, previous: {:?}",
+					current,
+					previous
+				);
+			}
+		} else {
+			RelayNumberStrictlyIncreases::check_associated_relay_number(current, previous)
+		}
 	}
 }
 

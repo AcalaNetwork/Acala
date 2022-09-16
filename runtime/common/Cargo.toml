@@ -40,6 +40,7 @@ cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus
 
 # polkadot
 pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26", default-features = false, optional = true }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26", default-features = false }
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26", default-features = false }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26", default-features = false }
 xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26", default-features = false }
@@ -129,6 +130,7 @@ std = [
 	"module-cdp-treasury/std",
 	"module-incentives/std",
 
+	"polkadot-parachain/std",
 	"xcm/std",
 	"xcm-executor/std",
 	"xcm-builder/std",
