@@ -35,8 +35,6 @@ jobs:
             ghcr.io/acalanetwork/${{ matrix.network }}-node
           # generate Docker tags based on the following events/attributes
           tags: |
-            type=raw,value=${{ github.ref_name }}
-            type=ref,event=pr
             type=sha
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
