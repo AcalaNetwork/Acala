@@ -13,7 +13,7 @@ jobs:
     runs-on: [self-hosted, linux]
     strategy:
       matrix:
-        network: [karura, acala]
+        network: [acala]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -52,7 +52,7 @@ jobs:
           build-args: |
             BUILD_ARGS=build-${{ matrix.network }}-release
             GIT_COMMIT=${{ env.GITHUB_SHA }}
-            PROFILE=release
+            PROFILE=debug
           file: scripts/Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -15,7 +15,7 @@ ARG PROFILE=production
 
 COPY . .
 
-RUN make $BUILD_ARGS
+RUN cargo build --locked --features with-acala-runtime --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 # =============
 
