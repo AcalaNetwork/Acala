@@ -155,6 +155,7 @@ fn paused_transaction_filter_work() {
 
 #[test]
 fn pause_and_unpause_evm_precompile_works() {
+	use module_support::PrecompilePauseFilter;
 	ExtBuilder::default().build().execute_with(|| {
 		let one = H160::from_low_u64_be(1);
 
@@ -163,9 +164,9 @@ fn pause_and_unpause_evm_precompile_works() {
 			BadOrigin
 		);
 
-		assert!(PausedPrecompileFilter::<Runtime>::is_allowed(one));
+		assert!(!PausedPrecompileFilter::<Runtime>::is_paused(one));
 		assert_ok!(TransactionPause::pause_evm_precompile(Origin::signed(1), one));
-		assert!(!PausedPrecompileFilter::<Runtime>::is_allowed(one));
+		assert!(PausedPrecompileFilter::<Runtime>::is_paused(one));
 
 		assert_noop!(
 			TransactionPause::unpause_evm_precompile(Origin::signed(2), one),
@@ -173,6 +174,6 @@ fn pause_and_unpause_evm_precompile_works() {
 		);
 
 		assert_ok!(TransactionPause::unpause_evm_precompile(Origin::signed(1), one));
-		assert!(PausedPrecompileFilter::<Runtime>::is_allowed(one));
+		assert!(!PausedPrecompileFilter::<Runtime>::is_paused(one));
 	});
 }

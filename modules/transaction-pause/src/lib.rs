@@ -26,7 +26,6 @@ use frame_support::{
 	transactional,
 };
 use frame_system::pallet_prelude::*;
-use module_support::PrecompileCallerFilter as PrecompileCallerFilterT;
 use sp_core::H160;
 use sp_runtime::DispatchResult;
 use sp_std::{prelude::*, vec::Vec};
@@ -184,8 +183,8 @@ where
 }
 
 pub struct PausedPrecompileFilter<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> PrecompileCallerFilterT for PausedPrecompileFilter<T> {
-	fn is_allowed(address: H160) -> bool {
-		!PausedEvmPrecompiles::<T>::contains_key(&address)
+impl<T: Config> module_support::PrecompilePauseFilter for PausedPrecompileFilter<T> {
+	fn is_paused(address: H160) -> bool {
+		PausedEvmPrecompiles::<T>::contains_key(&address)
 	}
 }

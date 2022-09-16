@@ -35,7 +35,7 @@ use module_evm::{
 	runner::state::{PrecompileFailure, PrecompileResult, PrecompileSet},
 	Context, ExitRevert,
 };
-use module_support::PrecompileCallerFilter as PrecompileCallerFilterT;
+use module_support::{PrecompileCallerFilter, PrecompilePauseFilter};
 use sp_core::H160;
 use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
@@ -206,10 +206,10 @@ where
 	}
 }
 
-impl<R, PrecompileFilter> PrecompileSet for AllPrecompiles<R, PrecompileFilter>
+impl<R, PausedPrecompile> PrecompileSet for AllPrecompiles<R, PausedPrecompile>
 where
 	R: module_evm::Config,
-	PrecompileFilter: PrecompileCallerFilterT,
+	PausedPrecompile: PrecompilePauseFilter,
 	MultiCurrencyPrecompile<R>: Precompile,
 	NFTPrecompile<R>: Precompile,
 	EVMPrecompile<R>: Precompile,
@@ -235,7 +235,7 @@ where
 		}
 
 		// ensure precompile is not paused
-		if !PrecompileFilter::is_allowed(address) {
+		if PausedPrecompile::is_paused(address) {
 			log::debug!(target: "evm", "Precompile {:?} is paused", address);
 			return Some(Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
