@@ -16,7 +16,6 @@ on:
 jobs:
   clean-up-actions:
     runs-on: ubuntu-latest
-    if: contains(github.ref, 'release-')
     steps:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
