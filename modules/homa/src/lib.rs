@@ -170,6 +170,8 @@ pub mod module {
 		FastMatchIsNotAllowed,
 		/// The fast match cannot be matched completely.
 		CannotCompletelyFastMatch,
+		/// Invalid last era bumped block config
+		InvalidLastEraBumpedBlock,
 	}
 
 	#[pallet::event]
@@ -527,15 +529,32 @@ pub mod module {
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			if let Some(change) = last_era_bumped_block {
-				LastEraBumpedBlock::<T>::put(change);
-				Self::deposit_event(Event::<T>::LastEraBumpedBlockUpdated {
-					last_era_bumped_block: change,
-				});
-			}
 			if let Some(change) = frequency {
 				BumpEraFrequency::<T>::put(change);
 				Self::deposit_event(Event::<T>::BumpEraFrequencyUpdated { frequency: change });
+			}
+
+			if let Some(change) = last_era_bumped_block {
+				// config last_era_bumped_block should not cause bump era to occur immediately, because
+				// the last_era_bumped_block after the bump era will not be same with the actual relaychain
+				// era bumped block  again, especially if it leads to multiple bump era.
+				// and it should be config after config no-zero bump_era_frequency.
+				let bump_era_frequency = Self::bump_era_frequency();
+				let current_relay_chain_block = T::RelayChainBlockNumber::current_block_number();
+				if !bump_era_frequency.is_zero() {
+					// ensure change in this range (current_relay_chain_block-bump_era_frequency,
+					// current_relay_chain_block]
+					ensure!(
+						change > current_relay_chain_block.saturating_sub(bump_era_frequency)
+							&& change <= current_relay_chain_block,
+						Error::<T>::InvalidLastEraBumpedBlock
+					);
+
+					LastEraBumpedBlock::<T>::put(change);
+					Self::deposit_event(Event::<T>::LastEraBumpedBlockUpdated {
+						last_era_bumped_block: change,
+					});
+				}
 			}
 
 			Ok(())
