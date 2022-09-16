@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Origin, Runtime, TransactionPause};
+use crate::{Origin, Runtime, TransactionPause, H160};
 
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
@@ -30,6 +30,13 @@ runtime_benchmarks! {
 	unpause_transaction {
 		TransactionPause::pause_transaction(Origin::root(), b"Balances".to_vec(), b"transfer".to_vec())?;
 	}: _(RawOrigin::Root, b"Balances".to_vec(), b"transfer".to_vec())
+
+	pause_evm_precompile {
+	}: _(RawOrigin::Root, H160::from_low_u64_be(1))
+
+	unpause_evm_precompile {
+		TransactionPause::pause_evm_precompile(Origin::root(), H160::from_low_u64_be(1))?;
+	}: _(RawOrigin::Root, H160::from_low_u64_be(1))
 }
 
 #[cfg(test)]

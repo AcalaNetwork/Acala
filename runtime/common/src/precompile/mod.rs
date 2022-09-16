@@ -97,18 +97,18 @@ pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
 	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
 }
 
-pub struct AllPrecompiles<R> {
-	active: BTreeSet<H160>,
-	_marker: PhantomData<R>,
+pub struct AllPrecompiles<R, F> {
+	set: BTreeSet<H160>,
+	_marker: PhantomData<(R, F)>,
 }
 
-impl<R> AllPrecompiles<R>
+impl<R, F> AllPrecompiles<R, F>
 where
 	R: module_evm::Config,
 {
 	pub fn acala() -> Self {
 		Self {
-			active: BTreeSet::from([
+			set: BTreeSet::from([
 				ECRECOVER,
 				SHA256,
 				RIPEMD,
@@ -141,7 +141,7 @@ where
 
 	pub fn karura() -> Self {
 		Self {
-			active: BTreeSet::from([
+			set: BTreeSet::from([
 				ECRECOVER,
 				SHA256,
 				RIPEMD,
@@ -174,7 +174,7 @@ where
 
 	pub fn mandala() -> Self {
 		Self {
-			active: BTreeSet::from([
+			set: BTreeSet::from([
 				ECRECOVER,
 				SHA256,
 				RIPEMD,
@@ -206,9 +206,10 @@ where
 	}
 }
 
-impl<R> PrecompileSet for AllPrecompiles<R>
+impl<R, PrecompileFilter> PrecompileSet for AllPrecompiles<R, PrecompileFilter>
 where
 	R: module_evm::Config,
+	PrecompileFilter: PrecompileCallerFilterT,
 	MultiCurrencyPrecompile<R>: Precompile,
 	NFTPrecompile<R>: Precompile,
 	EVMPrecompile<R>: Precompile,
@@ -231,6 +232,16 @@ where
 	) -> Option<PrecompileResult> {
 		if !self.is_precompile(address) {
 			return None;
+		}
+
+		// ensure precompile is not paused
+		if !PrecompileFilter::is_allowed(address) {
+			log::debug!(target: "evm", "Precompile {:?} is paused", address);
+			return Some(Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "precompile is paused".into(),
+				cost: target_gas.unwrap_or_default(),
+			}));
 		}
 
 		// Filter known precompile addresses except Ethereum officials
@@ -339,7 +350,7 @@ where
 	}
 
 	fn is_precompile(&self, address: H160) -> bool {
-		self.active.contains(&address)
+		self.set.contains(&address)
 	}
 }
 

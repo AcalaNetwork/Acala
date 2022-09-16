@@ -6198,6 +6198,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "module-support",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
