@@ -30,6 +30,7 @@ use sp_runtime::{
 use sp_std::{prelude::*, result::Result};
 use xcm::latest::prelude::*;
 
+pub mod bounded;
 pub mod dex;
 pub mod evm;
 pub mod homa;
@@ -38,6 +39,7 @@ pub mod incentives;
 pub mod mocks;
 pub mod stable_asset;
 
+pub use crate::bounded::*;
 pub use crate::dex::*;
 pub use crate::evm::*;
 pub use crate::homa::*;

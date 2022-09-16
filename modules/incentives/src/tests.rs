@@ -344,11 +344,11 @@ fn update_claim_reward_deduction_rates_works() {
 		);
 
 		assert_eq!(
-			IncentivesModule::claim_reward_deduction_rates(PoolId::Dex(DOT_AUSD_LP)),
+			IncentivesModule::claim_reward_deduction_rates(&PoolId::Dex(DOT_AUSD_LP)),
 			Rate::zero()
 		);
 		assert_eq!(
-			IncentivesModule::claim_reward_deduction_rates(PoolId::Dex(BTC_AUSD_LP)),
+			IncentivesModule::claim_reward_deduction_rates(&PoolId::Dex(BTC_AUSD_LP)),
 			Rate::zero()
 		);
 
@@ -368,7 +368,7 @@ fn update_claim_reward_deduction_rates_works() {
 			deduction_rate: Rate::saturating_from_rational(2, 100),
 		}));
 		assert_eq!(
-			IncentivesModule::claim_reward_deduction_rates(PoolId::Dex(DOT_AUSD_LP)),
+			IncentivesModule::claim_reward_deduction_rates(&PoolId::Dex(DOT_AUSD_LP)),
 			Rate::saturating_from_rational(1, 100)
 		);
 		assert_eq!(
@@ -376,7 +376,7 @@ fn update_claim_reward_deduction_rates_works() {
 			true
 		);
 		assert_eq!(
-			IncentivesModule::claim_reward_deduction_rates(PoolId::Dex(BTC_AUSD_LP)),
+			IncentivesModule::claim_reward_deduction_rates(&PoolId::Dex(BTC_AUSD_LP)),
 			Rate::saturating_from_rational(2, 100)
 		);
 
@@ -396,7 +396,7 @@ fn update_claim_reward_deduction_rates_works() {
 			deduction_rate: Rate::zero(),
 		}));
 		assert_eq!(
-			IncentivesModule::claim_reward_deduction_rates(PoolId::Dex(DOT_AUSD_LP)),
+			IncentivesModule::claim_reward_deduction_rates(&PoolId::Dex(DOT_AUSD_LP)),
 			Rate::saturating_from_rational(5, 100)
 		);
 		assert_eq!(
@@ -404,7 +404,7 @@ fn update_claim_reward_deduction_rates_works() {
 			false
 		);
 		assert_eq!(
-			IncentivesModule::claim_reward_deduction_rates(PoolId::Dex(BTC_AUSD_LP)),
+			IncentivesModule::claim_reward_deduction_rates(&PoolId::Dex(BTC_AUSD_LP)),
 			Rate::zero()
 		);
 	});
@@ -591,9 +591,31 @@ fn claim_rewards_works() {
 		assert_ok!(IncentivesModule::update_claim_reward_deduction_rates(
 			Origin::signed(ROOT::get()),
 			vec![
-				(PoolId::Dex(BTC_AUSD_LP), Rate::saturating_from_rational(50, 100)),
-				(PoolId::Loans(BTC), Rate::saturating_from_rational(90, 100)),
+				(PoolId::Dex(BTC_AUSD_LP), Rate::saturating_from_rational(20, 100)),
+				(PoolId::Loans(BTC), Rate::saturating_from_rational(20, 100)),
 			]
+		));
+		assert_ok!(IncentivesModule::update_claim_reward_deduction_rates(
+			Origin::signed(ROOT::get()),
+			vec![
+				(PoolId::Dex(BTC_AUSD_LP), Rate::saturating_from_rational(40, 100)),
+				(PoolId::Loans(BTC), Rate::saturating_from_rational(40, 100)),
+			]
+		));
+		assert_ok!(IncentivesModule::update_claim_reward_deduction_rates(
+			Origin::signed(ROOT::get()),
+			vec![
+				(PoolId::Dex(BTC_AUSD_LP), Rate::saturating_from_rational(50, 100)),
+				(PoolId::Loans(BTC), Rate::saturating_from_rational(60, 100)),
+			]
+		));
+		assert_ok!(IncentivesModule::update_claim_reward_deduction_rates(
+			Origin::signed(ROOT::get()),
+			vec![(PoolId::Loans(BTC), Rate::saturating_from_rational(80, 100)),]
+		));
+		assert_ok!(IncentivesModule::update_claim_reward_deduction_rates(
+			Origin::signed(ROOT::get()),
+			vec![(PoolId::Loans(BTC), Rate::saturating_from_rational(90, 100)),]
 		));
 
 		// alice add shares before accumulate rewards
