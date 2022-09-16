@@ -4,7 +4,6 @@ import TestCalls from "../build/TestCalls.json"
 import { describeWithAcala } from "./util";
 import { deployContract } from "ethereum-waffle";
 import { Contract, Signer } from "ethers";
-import { TestProvider } from "@acala-network/bodhi";
 
 describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 	let alice: Signer;
