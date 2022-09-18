@@ -341,6 +341,29 @@ fn parachain_subaccounts_are_unique() {
 	});
 }
 
+#[test]
+#[should_panic(expected = "Relay chain block number needs to strictly increase between Parachain blocks!")]
+fn cumulus_check_relay_chain_block_number() {
+	env_logger::init();
+	ExtBuilder::default().build().execute_with(|| {
+		set_relaychain_block_number(10);
+		assert_eq!(ParachainSystem::validation_data().unwrap().relay_parent_number, 10);
+
+		// testnet skip checking relay chain block number
+		set_relaychain_block_number(9);
+		assert_eq!(ParachainSystem::validation_data().unwrap().relay_parent_number, 9);
+
+		// set chain_id mainnet
+		#[cfg(feature = "with-mandala-runtime")]
+		module_evm::ChainId::<Runtime>::set(CHAIN_ID_KARURA_MAINNET);
+		#[cfg(feature = "with-karura-runtime")]
+		module_evm::ChainId::<Runtime>::set(CHAIN_ID_KARURA_MAINNET);
+		#[cfg(feature = "with-acala-runtime")]
+		module_evm::ChainId::<Runtime>::set(CHAIN_ID_ACALA_MAINNET);
+		set_relaychain_block_number(8);
+	});
+}
+
 #[cfg(feature = "with-mandala-runtime")]
 mod mandala_only_tests {
 	use super::*;

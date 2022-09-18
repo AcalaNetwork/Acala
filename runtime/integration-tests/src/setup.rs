@@ -30,7 +30,13 @@ pub use module_support::{
 pub use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 pub use orml_traits::{location::RelativeLocations, Change, GetByKey, MultiCurrency};
 
-pub use primitives::currency::*;
+pub use primitives::{
+	currency::*,
+	evm::{
+		CHAIN_ID_ACALA_MAINNET, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_MAINNET, CHAIN_ID_KARURA_TESTNET,
+		CHAIN_ID_MANDALA,
+	},
+};
 pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
@@ -355,7 +361,12 @@ impl ExtBuilder {
 		.unwrap();
 
 		module_evm::GenesisConfig::<Runtime> {
-			chain_id: 595u64,
+			#[cfg(feature = "with-mandala-runtime")]
+			chain_id: CHAIN_ID_MANDALA,
+			#[cfg(feature = "with-karura-runtime")]
+			chain_id: CHAIN_ID_KARURA_TESTNET,
+			#[cfg(feature = "with-acala-runtime")]
+			chain_id: CHAIN_ID_ACALA_TESTNET,
 			accounts: evm_genesis_accounts,
 		}
 		.assimilate_storage(&mut t)
