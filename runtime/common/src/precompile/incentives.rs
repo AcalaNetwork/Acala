@@ -28,7 +28,7 @@ use module_evm::{
 	Context, ExitError, ExitRevert, ExitSucceed,
 };
 use module_incentives::WeightInfo;
-use module_support::{IncentivesManager, PoolId};
+use module_support::{IncentivesManager, PoolId, Rate};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Convert, RuntimeDebug};
@@ -106,20 +106,11 @@ where
 				})
 			}
 			Action::GetDexRewardRate => {
-				let pool_currency_id = input.currency_id_at(1)?;
-				let pool_id = PoolId::Dex(pool_currency_id);
-
-				let value = <module_incentives::Pallet<Runtime> as IncentivesManager<
-					Runtime::AccountId,
-					Balance,
-					CurrencyId,
-					PoolId,
-				>>::get_dex_reward_rate(pool_id);
-
+				// NOTE: return default , or return PrecompileFailure?
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::encode_uint(value.into_inner()),
+					output: Output::encode_uint(Rate::default().into_inner()),
 					logs: Default::default(),
 				})
 			}
@@ -429,11 +420,6 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 
-			assert_ok!(Incentives::update_dex_saving_rewards(
-				Origin::signed(ALICE),
-				vec![(PoolId::Dex(LP_ACA_AUSD), FixedU128::saturating_from_rational(1, 10))]
-			));
-
 			// getDexRewardRate(address) => 0x7ec93136
 			// lp_currency_id
 			let input = hex! {"
@@ -441,9 +427,9 @@ mod tests {
 				000000000000000000000000 0000000000000000000200000000000000000001
 			"};
 
-			// value for FixedU128::saturating_from_rational(1,10)
+			// value for FixedU128::default()
 			let expected_output = hex! {"
-				00000000000000000000000000000000 0000000000000000016345785d8a0000
+				00000000000000000000000000000000 00000000000000000000000000000000
 			"};
 
 			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
