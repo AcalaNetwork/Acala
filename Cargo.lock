@@ -10443,6 +10443,7 @@ dependencies = [
  "pallet-utility",
  "pallet-xcm",
  "parity-scale-codec",
+ "polkadot-parachain",
  "scale-info",
  "serde",
  "serde_json",
