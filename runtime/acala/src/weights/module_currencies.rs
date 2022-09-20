@@ -100,4 +100,22 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(c as Weight)))
 	}
+	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
+	// Storage: Tokens Locks (r:1 w:1)
+	// Storage: Tokens Accounts (r:1 w:1)
+	// Storage: System Account (r:1 w:1)
+	fn force_set_lock() -> Weight {
+		(32_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(4 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+	}
+	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
+	// Storage: Tokens Locks (r:1 w:1)
+	// Storage: Tokens Accounts (r:1 w:1)
+	// Storage: System Account (r:1 w:1)
+	fn force_remove_lock() -> Weight {
+		(32_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(4 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+	}
 }

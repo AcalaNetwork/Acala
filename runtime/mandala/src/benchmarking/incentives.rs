@@ -22,15 +22,13 @@ use super::{
 	get_benchmarking_collateral_currency_ids,
 	utils::{dollar, set_balance, NATIVE, STABLECOIN, STAKING},
 };
-use frame_benchmarking::{account, whitelisted_caller, BenchmarkError};
+use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use module_support::PoolId;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use sp_std::prelude::*;
-
-const SEED: u32 = 0;
 
 runtime_benchmarks! {
 	{ Runtime, module_incentives }

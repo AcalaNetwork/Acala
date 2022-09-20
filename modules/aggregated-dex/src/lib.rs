@@ -126,7 +126,7 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(
+		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target(
 			paths.iter().fold(0, |u, swap_path| match swap_path {
 				SwapPath::Dex(v) => u + (v.len() as u32),
 				SwapPath::Taiga(_, _, _) => u + 1

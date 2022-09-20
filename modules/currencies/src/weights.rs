@@ -53,6 +53,8 @@ pub trait WeightInfo {
 	fn update_balance_native_currency_creating() -> Weight;
 	fn update_balance_native_currency_killing() -> Weight;
 	fn sweep_dust(c: u32, ) -> Weight;
+	fn force_set_lock() -> Weight;
+	fn force_remove_lock() -> Weight;
 }
 
 /// Weights for module_currencies using the Acala node and recommended hardware.
@@ -92,6 +94,16 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(c as Weight)))
 	}
+	fn force_set_lock() -> Weight {
+		(32_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(4 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+	}
+	fn force_remove_lock() -> Weight {
+		(32_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(4 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -129,5 +141,15 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(c as Weight)))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes((2 as Weight).saturating_mul(c as Weight)))
+	}
+	fn force_set_lock() -> Weight {
+		(32_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
+	}
+	fn force_remove_lock() -> Weight {
+		(32_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
 	}
 }

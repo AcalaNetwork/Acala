@@ -26,7 +26,7 @@ use frame_system::RawOrigin;
 use sp_runtime::traits::{AccountIdConversion, UniqueSaturatedInto};
 
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::MultiCurrency;
+use orml_traits::{LockIdentifier, MultiCurrency};
 
 const SEED: u32 = 0;
 
@@ -133,6 +133,35 @@ runtime_benchmarks! {
 			assert_eq!(orml_tokens::Accounts::<Runtime>::contains_key(account, STAKING), false);
 		});
 		assert_eq!(Tokens::free_balance(STAKING, &treasury), dollar(STAKING) + (100 * c) as Balance);
+	}
+
+	force_set_lock {
+		let amount: Balance = 1_000 * dollar(STAKING);
+		let who: AccountId = account("who", 0, SEED);
+		let who_lookup = lookup_of_account(who.clone());
+		let lock_id: LockIdentifier = *b"aca/test";
+		set_balance(STAKING, &who, amount);
+	}: _(RawOrigin::Root, who_lookup, STAKING, amount, lock_id)
+	verify {
+		assert_eq!(
+			Tokens::locks(&who, STAKING),
+			vec![orml_tokens::BalanceLock { id: lock_id, amount: amount }]
+		);
+	}
+
+	force_remove_lock {
+		let amount: Balance = 1_000 * dollar(STAKING);
+		let who: AccountId = account("who", 0, SEED);
+		let who_lookup = lookup_of_account(who.clone());
+		let lock_id: LockIdentifier = *b"aca/test";
+		set_balance(STAKING, &who, amount);
+		Currencies::force_set_lock(RawOrigin::Root.into(), who_lookup.clone(), STAKING, amount, lock_id)?;
+	}: _(RawOrigin::Root, who_lookup, STAKING, lock_id)
+	verify {
+		assert_eq!(
+			Tokens::locks(&who, STAKING),
+			vec![]
+		);
 	}
 }
 
