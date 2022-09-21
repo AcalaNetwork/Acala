@@ -38,7 +38,7 @@ use sp_runtime::{
 };
 use sp_std::cell::RefCell;
 use support::mocks::MockStableAsset;
-use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio, SpecificJointsSwap};
+use support::{AuctionManager, ExchangeRate, FractionalRate, Price, PriceProvider, Rate, Ratio, SpecificJointsSwap};
 
 mod honzon {
 	pub use super::super::*;
@@ -249,7 +249,7 @@ parameter_type_with_key! {
 parameter_types! {
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
+	pub DefaultLiquidationPenalty: FractionalRate = FractionalRate::try_from(Rate::saturating_from_rational(10, 100)).unwrap();
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(80, 100);
 	pub const CDPEnginePalletId: PalletId = PalletId(*b"aca/cdpe");

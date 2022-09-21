@@ -551,6 +551,14 @@ mod tests {
 
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
 				Origin::signed(ALICE),
+				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(20, 100)),]
+			));
+			assert_ok!(Incentives::update_claim_reward_deduction_rates(
+				Origin::signed(ALICE),
+				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(40, 100)),]
+			));
+			assert_ok!(Incentives::update_claim_reward_deduction_rates(
+				Origin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(50, 100)),]
 			));
 			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
@@ -644,8 +652,17 @@ mod tests {
 
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
 				Origin::signed(ALICE),
+				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(20, 100)),]
+			));
+			assert_ok!(Incentives::update_claim_reward_deduction_rates(
+				Origin::signed(ALICE),
+				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(40, 100)),]
+			));
+			assert_ok!(Incentives::update_claim_reward_deduction_rates(
+				Origin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(50, 100)),]
 			));
+
 			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
 			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000));
 			Rewards::add_share(&bob(), &PoolId::Loans(ACA), 100);

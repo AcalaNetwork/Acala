@@ -57,7 +57,7 @@ use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, PoolId};
+use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
@@ -1043,7 +1043,8 @@ where
 parameter_types! {
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
+	pub DefaultLiquidationPenalty: FractionalRate = FractionalRate::try_from(Rate::saturating_from_rational(8, 100))
+		.expect("Rate is in range; qed");
 	pub MinimumDebitValue: Balance = 50 * dollar(KUSD);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(10, 100);
 	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);

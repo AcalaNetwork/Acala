@@ -412,7 +412,7 @@ impl<T: Config> Pallet<T> {
 		T::PalletId::get().into_account_truncating()
 	}
 
-	fn claim_reward_deduction_rates(pool_id: &PoolId) -> Rate {
+	pub(crate) fn claim_reward_deduction_rates(pool_id: &PoolId) -> Rate {
 		ClaimRewardDeductionRates::<T>::get(pool_id).get()
 	}
 

@@ -55,7 +55,7 @@ use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, PoolId};
+use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 use scale_info::TypeInfo;
 
@@ -1089,7 +1089,8 @@ where
 parameter_types! {
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
+	pub DefaultLiquidationPenalty: FractionalRate = FractionalRate::try_from(Rate::saturating_from_rational(5, 100))
+	.expect("Rate is in range; qed");
 	pub MinimumDebitValue: Balance = dollar(AUSD);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(10, 100);
 	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);

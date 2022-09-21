@@ -432,9 +432,9 @@ impl<T: Config> HonzonManager<T::AccountId, CurrencyId, Amount, Balance> for Pal
 
 		vec![
 			U256::from(params.maximum_total_debit_value),
-			U256::from(params.interest_rate_per_sec.unwrap_or_default().into_inner()),
+			U256::from(params.interest_rate_per_sec.unwrap_or_default().get().into_inner()),
 			U256::from(params.liquidation_ratio.unwrap_or_default().into_inner()),
-			U256::from(params.liquidation_penalty.unwrap_or_default().into_inner()),
+			U256::from(params.liquidation_penalty.unwrap_or_default().get().into_inner()),
 			U256::from(params.required_collateral_ratio.unwrap_or_default().into_inner()),
 		]
 	}

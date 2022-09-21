@@ -86,7 +86,7 @@ pub use sp_runtime::BuildStorage;
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
-use module_support::ExchangeRateProvider;
+use module_support::{ExchangeRateProvider, FractionalRate};
 use primitives::currency::AssetIds;
 pub use primitives::{
 	define_combined_task,
@@ -1037,7 +1037,8 @@ where
 parameter_types! {
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
+	pub DefaultLiquidationPenalty: FractionalRate = FractionalRate::try_from(Rate::saturating_from_rational(8, 100))
+		.expect("Rate is in range; qed");
 	pub MinimumDebitValue: Balance = 50 * dollar(AUSD);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(10, 100);
 	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);

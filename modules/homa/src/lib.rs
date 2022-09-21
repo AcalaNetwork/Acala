@@ -23,7 +23,7 @@
 
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{ExchangeRate, ExchangeRateProvider, HomaManager, HomaSubAccountXcm, Rate, Ratio};
+use module_support::{ExchangeRate, ExchangeRateProvider, FractionalRate, HomaManager, HomaSubAccountXcm, Rate, Ratio};
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
@@ -170,6 +170,8 @@ pub mod module {
 		FastMatchIsNotAllowed,
 		/// The fast match cannot be matched completely.
 		CannotCompletelyFastMatch,
+		// Invalid rate,
+		InvalidRate,
 	}
 
 	#[pallet::event]
@@ -312,8 +314,7 @@ pub mod module {
 	///
 	/// EstimatedRewardRatePerEra: value: Rate
 	#[pallet::storage]
-	#[pallet::getter(fn estimated_reward_rate_per_era)]
-	pub type EstimatedRewardRatePerEra<T: Config> = StorageValue<_, Rate, ValueQuery>;
+	pub type EstimatedRewardRatePerEra<T: Config> = StorageValue<_, FractionalRate, ValueQuery>;
 
 	/// The maximum amount of bonded staking currency for a single sub on relaychain to obtain the
 	/// best staking rewards.
@@ -328,15 +329,13 @@ pub mod module {
 	///
 	/// CommissionRate: value: Rate
 	#[pallet::storage]
-	#[pallet::getter(fn commission_rate)]
-	pub type CommissionRate<T: Config> = StorageValue<_, Rate, ValueQuery>;
+	pub type CommissionRate<T: Config> = StorageValue<_, FractionalRate, ValueQuery>;
 
 	/// The fixed fee rate for redeem request is fast matched.
 	///
 	/// FastMatchFeeRate: value: Rate
 	#[pallet::storage]
-	#[pallet::getter(fn fast_match_fee_rate)]
-	pub type FastMatchFeeRate<T: Config> = StorageValue<_, Rate, ValueQuery>;
+	pub type FastMatchFeeRate<T: Config> = StorageValue<_, FractionalRate, ValueQuery>;
 
 	/// The relaychain block number of last era bumped.
 	///
@@ -497,15 +496,24 @@ pub mod module {
 				Self::deposit_event(Event::<T>::SoftBondedCapPerSubAccountUpdated { cap_amount });
 			}
 			if let Some(reward_rate) = estimated_reward_rate_per_era {
-				EstimatedRewardRatePerEra::<T>::put(reward_rate);
+				EstimatedRewardRatePerEra::<T>::mutate(|rate| -> DispatchResult {
+					rate.set(reward_rate).map_err(|_| Error::<T>::InvalidRate)?;
+					Ok(())
+				})?;
 				Self::deposit_event(Event::<T>::EstimatedRewardRatePerEraUpdated { reward_rate });
 			}
 			if let Some(commission_rate) = commission_rate {
-				CommissionRate::<T>::put(commission_rate);
+				CommissionRate::<T>::mutate(|rate| -> DispatchResult {
+					rate.set(commission_rate).map_err(|_| Error::<T>::InvalidRate)?;
+					Ok(())
+				})?;
 				Self::deposit_event(Event::<T>::CommissionRateUpdated { commission_rate });
 			}
 			if let Some(fast_match_fee_rate) = fast_match_fee_rate {
-				FastMatchFeeRate::<T>::put(fast_match_fee_rate);
+				FastMatchFeeRate::<T>::mutate(|rate| -> DispatchResult {
+					rate.set(fast_match_fee_rate).map_err(|_| Error::<T>::InvalidRate)?;
+					Ok(())
+				})?;
 				Self::deposit_event(Event::<T>::FastMatchFeeRateUpdated { fast_match_fee_rate });
 			}
 
@@ -633,6 +641,18 @@ pub mod module {
 		/// Module account id
 		pub fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
+		}
+
+		pub(crate) fn estimated_reward_rate_per_era() -> Rate {
+			EstimatedRewardRatePerEra::<T>::get().get()
+		}
+
+		pub(crate) fn commission_rate() -> Rate {
+			CommissionRate::<T>::get().get()
+		}
+
+		pub(crate) fn fast_match_fee_rate() -> Rate {
+			FastMatchFeeRate::<T>::get().get()
 		}
 
 		pub fn do_update_ledger<R, E>(
@@ -1113,15 +1133,15 @@ impl<T: Config> HomaManager<T::AccountId, Balance> for Pallet<T> {
 	}
 
 	fn get_estimated_reward_rate() -> Rate {
-		EstimatedRewardRatePerEra::<T>::get()
+		EstimatedRewardRatePerEra::<T>::get().get()
 	}
 
 	fn get_commission_rate() -> Rate {
-		CommissionRate::<T>::get()
+		CommissionRate::<T>::get().get()
 	}
 
 	fn get_fast_match_fee() -> Rate {
-		FastMatchFeeRate::<T>::get()
+		FastMatchFeeRate::<T>::get().get()
 	}
 }
 

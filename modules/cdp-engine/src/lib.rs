@@ -58,8 +58,9 @@ use sp_runtime::{
 };
 use sp_std::{marker::PhantomData, prelude::*};
 use support::{
-	AddressMapping, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, InvokeContext,
-	LiquidateCollateral, LiquidationEvmBridge, Price, PriceProvider, Rate, Ratio, RiskManager, Swap, SwapLimit,
+	AddressMapping, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, FractionalRate,
+	InvokeContext, LiquidateCollateral, LiquidationEvmBridge, Price, PriceProvider, Rate, Ratio, RiskManager, Swap,
+	SwapLimit,
 };
 
 mod mock;
@@ -87,7 +88,7 @@ pub struct RiskManagementParams {
 	pub maximum_total_debit_value: Balance,
 
 	/// Extra interest rate per sec, `None` value means not set
-	pub interest_rate_per_sec: Option<Rate>,
+	pub interest_rate_per_sec: Option<FractionalRate>,
 
 	/// Liquidation ratio, when the collateral ratio of
 	/// CDP under this collateral type is below the liquidation ratio, this
@@ -97,7 +98,7 @@ pub struct RiskManagementParams {
 	/// Liquidation penalty rate, when liquidation occurs,
 	/// CDP will be deducted an additional penalty base on the product of
 	/// penalty rate and debit value. `None` value means not set
-	pub liquidation_penalty: Option<Rate>,
+	pub liquidation_penalty: Option<FractionalRate>,
 
 	/// Required collateral ratio, if it's set, cannot adjust the position
 	/// of CDP so that the current collateral ratio is lower than the
@@ -141,7 +142,7 @@ pub mod module {
 
 		/// The default liquidation penalty rate when liquidate unsafe CDP
 		#[pallet::constant]
-		type DefaultLiquidationPenalty: Get<Rate>;
+		type DefaultLiquidationPenalty: Get<FractionalRate>;
 
 		/// The minimum debit value to avoid debit dust
 		#[pallet::constant]
@@ -251,6 +252,8 @@ pub mod module {
 		TooManyLiquidationContracts,
 		/// Collateral ERC20 contract not found.
 		CollateralContractNotFound,
+		/// Invalid rate
+		InvalidRate,
 	}
 
 	#[pallet::event]
@@ -365,9 +368,11 @@ pub mod module {
 						currency_id,
 						RiskManagementParams {
 							maximum_total_debit_value: *maximum_total_debit_value,
-							interest_rate_per_sec: *interest_rate_per_sec,
+							interest_rate_per_sec: interest_rate_per_sec
+								.map(|v| FractionalRate::try_from(v).expect("interest_rate_per_sec out of bound")),
 							liquidation_ratio: *liquidation_ratio,
-							liquidation_penalty: *liquidation_penalty,
+							liquidation_penalty: liquidation_penalty
+								.map(|v| FractionalRate::try_from(v).expect("liquidation_penalty out of bound")),
 							required_collateral_ratio: *required_collateral_ratio,
 						},
 					);
@@ -488,11 +493,21 @@ pub mod module {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
 			let mut collateral_params = Self::collateral_params(currency_id).unwrap_or_default();
-			if let Change::NewValue(update) = interest_rate_per_sec {
-				collateral_params.interest_rate_per_sec = update;
+			if let Change::NewValue(maybe_rate) = interest_rate_per_sec {
+				if let (Some(existing), Some(rate)) = (collateral_params.interest_rate_per_sec.as_mut(), maybe_rate) {
+					// existing rate is some, new rate is some
+					existing.set(rate).map_err(|_| Error::<T>::InvalidRate)?;
+				} else if let Some(rate) = maybe_rate {
+					// existing rate is none, new rate is some
+					let fractional_rate = FractionalRate::try_from(rate).map_err(|_| Error::<T>::InvalidRate)?;
+					collateral_params.interest_rate_per_sec = Some(fractional_rate);
+				} else {
+					// new rate is none
+					collateral_params.interest_rate_per_sec = None;
+				}
 				Self::deposit_event(Event::InterestRatePerSecUpdated {
 					collateral_type: currency_id,
-					new_interest_rate_per_sec: update,
+					new_interest_rate_per_sec: maybe_rate,
 				});
 			}
 			if let Change::NewValue(update) = liquidation_ratio {
@@ -502,11 +517,21 @@ pub mod module {
 					new_liquidation_ratio: update,
 				});
 			}
-			if let Change::NewValue(update) = liquidation_penalty {
-				collateral_params.liquidation_penalty = update;
+			if let Change::NewValue(maybe_rate) = liquidation_penalty {
+				if let (Some(existing), Some(rate)) = (collateral_params.liquidation_penalty.as_mut(), maybe_rate) {
+					// existing rate is some, new rate is some
+					existing.set(rate).map_err(|_| Error::<T>::InvalidRate)?;
+				} else if let Some(rate) = maybe_rate {
+					// existing rate is none, new rate is some
+					let fractional_rate = FractionalRate::try_from(rate).map_err(|_| Error::<T>::InvalidRate)?;
+					collateral_params.liquidation_penalty = Some(fractional_rate);
+				} else {
+					// new rate is none
+					collateral_params.liquidation_penalty = None;
+				}
 				Self::deposit_event(Event::LiquidationPenaltyUpdated {
 					collateral_type: currency_id,
-					new_liquidation_penalty: update,
+					new_liquidation_penalty: maybe_rate,
 				});
 			}
 			if let Change::NewValue(update) = required_collateral_ratio {
@@ -818,6 +843,7 @@ impl<T: Config> Pallet<T> {
 		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
 		params
 			.interest_rate_per_sec
+			.map(|v| v.get())
 			.ok_or_else(|| Error::<T>::InvalidCollateralType.into())
 	}
 
@@ -837,7 +863,8 @@ impl<T: Config> Pallet<T> {
 		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
 		Ok(params
 			.liquidation_penalty
-			.unwrap_or_else(T::DefaultLiquidationPenalty::get))
+			.map(|v| v.get())
+			.unwrap_or_else(|| T::DefaultLiquidationPenalty::get().get()))
 	}
 
 	pub fn get_debit_exchange_rate(currency_id: CurrencyId) -> ExchangeRate {

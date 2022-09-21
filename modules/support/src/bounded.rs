@@ -18,17 +18,20 @@
 
 use super::Rate;
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::Get;
 use primitives::{Balance, BlockNumber};
 use scale_info::TypeInfo;
-use serde::{Deserialize, Serialize};
 use sp_runtime::{
 	traits::{CheckedSub, One, Zero},
 	FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{marker::PhantomData, prelude::*, result::Result};
 
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
+#[derive(RuntimeDebug, PartialEq, Eq)]
 pub enum Error {
 	OutOfBound,
 	ExceedMaxChangeAbs,
@@ -36,7 +39,7 @@ pub enum Error {
 
 //TODO: manually implement Deserialize and Decode?
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize), serde(transparent))]
-#[derive(Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, TypeInfo, RuntimeDebug)]
+#[derive(Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[scale_info(skip_type_params(Range, MaxChangeAbs))]
 pub struct BoundedType<T: Encode + Decode, Range, MaxChangeAbs>(
 	T,
@@ -73,7 +76,7 @@ impl<T: Encode + Decode + CheckedSub + PartialOrd + Copy, Range: Get<(T, T)>, Ma
 
 		let abs = if value > *old_value {
 			value
-				.checked_sub(&old_value)
+				.checked_sub(old_value)
 				.expect("greater number subtracting smaller one can't underflow; qed")
 		} else {
 			old_value
@@ -93,7 +96,7 @@ impl<T: Encode + Decode + CheckedSub + PartialOrd + Copy, Range: Get<(T, T)>, Ma
 	}
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
 pub struct Fractional;
 impl Get<(Rate, Rate)> for Fractional {
 	fn get() -> (Rate, Rate) {
@@ -101,7 +104,7 @@ impl Get<(Rate, Rate)> for Fractional {
 	}
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
 pub struct OneFifth;
 impl Get<Rate> for OneFifth {
 	fn get() -> Rate {
@@ -109,10 +112,43 @@ impl Get<Rate> for OneFifth {
 	}
 }
 
-pub type BoundedTypeRate<Range, MaxChangeAbs> = BoundedType<Rate, Range, MaxChangeAbs>;
+pub type BoundedRate<Range, MaxChangeAbs> = BoundedType<Rate, Range, MaxChangeAbs>;
 
-pub type FractionalRate = BoundedTypeRate<Fractional, OneFifth>;
+pub type FractionalRate = BoundedRate<Fractional, OneFifth>;
 
-pub type BoundedTypeBalance<Range, MaxChangeAbs> = BoundedType<Balance, Range, MaxChangeAbs>;
+pub type BoundedBalance<Range, MaxChangeAbs> = BoundedType<Balance, Range, MaxChangeAbs>;
 
-pub type BoundedTypeBlockNumber<Range, MaxChangeAbs> = BoundedType<BlockNumber, Range, MaxChangeAbs>;
+pub type BoundedBlockNumber<Range, MaxChangeAbs> = BoundedType<BlockNumber, Range, MaxChangeAbs>;
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use frame_support::{assert_err, assert_ok};
+
+	#[test]
+	fn fractional_rate_works() {
+		assert_err!(FractionalRate::try_from(Rate::from_rational(11, 10)), Error::OutOfBound);
+
+		let mut rate = FractionalRate::try_from(Rate::from_rational(8, 10)).unwrap();
+		assert_ok!(rate.set(Rate::from_rational(10, 10)));
+		assert_err!(rate.set(Rate::from_rational(11, 10)), Error::OutOfBound);
+		assert_err!(rate.set(Rate::from_rational(79, 100)), Error::ExceedMaxChangeAbs);
+
+		assert_eq!(FractionalRate::default().get(), Rate::zero());
+	}
+
+	#[test]
+	fn bounded_type_default_is_range_min() {
+		#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+		pub struct OneToTwo;
+		impl Get<(Rate, Rate)> for OneToTwo {
+			fn get() -> (Rate, Rate) {
+				(Rate::one(), Rate::from_rational(2, 1))
+			}
+		}
+
+		type BoundedRateOneToTwo = BoundedRate<OneToTwo, OneFifth>;
+
+		assert_eq!(BoundedRateOneToTwo::default().get(), Rate::one());
+	}
+}
