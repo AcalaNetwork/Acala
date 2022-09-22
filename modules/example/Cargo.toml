@@ -1,6 +1,6 @@
 [package]
 name = "module-example"
-version = "2.9.4"
+version = "2.9.5"
 authors = ["Acala Developers"]
 edition = "2021"
 
