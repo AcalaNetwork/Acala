@@ -152,7 +152,7 @@ impl<T: Config> Runner<T> {
 					Error::<T>::ChargeStorageFailed
 				})?;
 			}
-			sum_storage += storage;
+			sum_storage = sum_storage.saturating_add(*storage);
 		}
 		if actual_storage != sum_storage {
 			log::debug!(
@@ -422,7 +422,7 @@ struct SubstrateStackSubstate<'config> {
 	metadata: StackSubstateMetadata<'config>,
 	deletes: BTreeSet<H160>,
 	logs: Vec<Log>,
-	storage_logs: Vec<(H160, i32)>,
+	storage_logs: BTreeMap<H160, i32>,
 	parent: Option<Box<SubstrateStackSubstate<'config>>>,
 	known_original_storage: BTreeMap<(H160, H256), H256>,
 }
@@ -442,7 +442,7 @@ impl<'config> SubstrateStackSubstate<'config> {
 			parent: None,
 			deletes: BTreeSet::new(),
 			logs: Vec::new(),
-			storage_logs: Vec::new(),
+			storage_logs: BTreeMap::new(),
 			known_original_storage: BTreeMap::new(),
 		};
 		mem::swap(&mut entering, self);
@@ -466,8 +466,17 @@ impl<'config> SubstrateStackSubstate<'config> {
 		self.logs.append(&mut exited.logs);
 		self.deletes.append(&mut exited.deletes);
 
-		exited.storage_logs.push((target, storage));
-		self.storage_logs.append(&mut exited.storage_logs);
+		self.storage_logs
+			.entry(target)
+			.and_modify(|x| *x = x.saturating_add(storage))
+			.or_insert(storage);
+
+		for (target, storage) in exited.storage_logs {
+			self.storage_logs
+				.entry(target)
+				.and_modify(|x| *x = x.saturating_add(storage))
+				.or_insert(storage);
+		}
 
 		sp_io::storage::commit_transaction();
 		Ok(())
@@ -581,7 +590,7 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 				metadata,
 				deletes: BTreeSet::new(),
 				logs: Vec::new(),
-				storage_logs: Vec::new(),
+				storage_logs: BTreeMap::new(),
 				parent: None,
 				known_original_storage: BTreeMap::new(),
 			},
