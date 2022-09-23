@@ -31,13 +31,18 @@ use sp_std::{marker::PhantomData, prelude::*, result::Result};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
+/// The bounded type errors.
 #[derive(RuntimeDebug, PartialEq, Eq)]
 pub enum Error {
+	/// The value is out of bound.
 	OutOfBound,
+	/// The change diff exceeds the max absolute value.
 	ExceedMaxChangeAbs,
 }
 
-//TODO: manually implement Deserialize and Decode?
+/// An abstract definition of bounded type. The type is within the range of `Range`
+/// and while update the inner value, the max absolute value of the diff is `MaxChangeAbs`.
+/// The `Default` value is minimum value of the range.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize), serde(transparent))]
 #[derive(Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[scale_info(skip_type_params(Range, MaxChangeAbs))]
@@ -58,6 +63,7 @@ impl<T: Default + Encode + Decode, Range: Get<(T, T)>, MaxChangeAbs: Get<T>> Def
 impl<T: Encode + Decode + CheckedSub + PartialOrd + Copy, Range: Get<(T, T)>, MaxChangeAbs: Get<T>>
 	BoundedType<T, Range, MaxChangeAbs>
 {
+	/// Try to create a new instance of `BoundedType`. Returns `Err` if out of bound.
 	pub fn try_from(value: T) -> Result<Self, Error> {
 		let (min, max) = Range::get();
 		if value < min || value > max {
@@ -66,6 +72,8 @@ impl<T: Encode + Decode + CheckedSub + PartialOrd + Copy, Range: Get<(T, T)>, Ma
 		Ok(Self(value, PhantomData))
 	}
 
+	/// Set the inner value. Returns `Err` if out of bound or the diff with current value exceeds
+	/// the max absolute value.
 	pub fn set(&mut self, value: T) -> Result<(), Error> {
 		let (min, max) = Range::get();
 		let max_change_abs = MaxChangeAbs::get();
@@ -96,6 +104,7 @@ impl<T: Encode + Decode + CheckedSub + PartialOrd + Copy, Range: Get<(T, T)>, Ma
 	}
 }
 
+/// Fractional range between `Rate::zero()` and `Rate::one()`.
 #[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
 pub struct Fractional;
 impl Get<(Rate, Rate)> for Fractional {
@@ -104,6 +113,7 @@ impl Get<(Rate, Rate)> for Fractional {
 	}
 }
 
+/// Maximum absolute change is 1/5.
 #[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
 pub struct OneFifth;
 impl Get<Rate> for OneFifth {
@@ -114,6 +124,9 @@ impl Get<Rate> for OneFifth {
 
 pub type BoundedRate<Range, MaxChangeAbs> = BoundedType<Rate, Range, MaxChangeAbs>;
 
+/// Fractional rate.
+///
+/// The range is between 0 to 1, and max absolute value of change diff is 1/5.
 pub type FractionalRate = BoundedRate<Fractional, OneFifth>;
 
 pub type BoundedBalance<Range, MaxChangeAbs> = BoundedType<Balance, Range, MaxChangeAbs>;

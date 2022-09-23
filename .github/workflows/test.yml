@@ -44,8 +44,6 @@ jobs:
           default: true
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
-      - name: Temp cargo clean
-        run: cargo clean
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build
