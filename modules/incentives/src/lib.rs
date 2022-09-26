@@ -165,14 +165,6 @@ pub mod module {
 	pub type IncentiveRewardAmounts<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, PoolId, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
-	/// NOTE: already deprecated, need remove it after next runtime upgrade
-	/// Mapping from pool to its fixed reward rate per period.
-	///
-	/// DexSavingRewardRates: map Pool => SavingRatePerPeriod
-	#[pallet::storage]
-	#[pallet::getter(fn dex_saving_reward_rates)]
-	pub type DexSavingRewardRates<T: Config> = StorageMap<_, Twox64Concat, PoolId, Rate, ValueQuery>;
-
 	/// Mapping from pool to its claim reward deduction rate.
 	///
 	/// ClaimRewardDeductionRates: map Pool => DeductionRate
