@@ -1,4 +1,4 @@
-name: Docker Image Release
+name: Docker Build
 on:
   workflow_dispatch:
     inputs:
