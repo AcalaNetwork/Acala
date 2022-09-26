@@ -1,4 +1,5 @@
-name: Docker Image
+# Runs when `release-*` branch is created or push changes into `release-*` branch.
+name: Build Release
 on:
   create:
   push:
@@ -16,6 +17,8 @@ on:
 jobs:
   clean-up-actions:
     runs-on: ubuntu-latest
+    # Skip non-release branches
+    if: contains(github.ref, 'release-')
     steps:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
