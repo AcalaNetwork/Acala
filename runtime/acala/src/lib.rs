@@ -1779,7 +1779,7 @@ pub type Executive = frame_executive::Executive<
 	Runtime,
 	AllPalletsWithSystem,
 	(
-		module_incentives::migration::ResetSharesAndWithdrawnRewards<Runtime, GetAusdIbtcPoolId>,
+		module_incentives::migration::ResetRewardsRecord<Runtime, GetAusdIbtcPoolId>,
 		module_incentives::migration::ClearPendingMultiRewards<Runtime, GetAusdIbtcPoolId>,
 	),
 >;

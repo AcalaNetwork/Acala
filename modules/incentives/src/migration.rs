@@ -55,22 +55,33 @@ impl<T: Config, GetPoolId: Get<PoolId>> OnRuntimeUpgrade for ClearPendingMultiRe
 	}
 }
 
-/// Reset WithdrawnRewards records for rewards.SharesAndWithdrawnRewards at specific PoolId
-pub struct ResetSharesAndWithdrawnRewards<T, GetPoolId>(PhantomData<T>, PhantomData<GetPoolId>);
-impl<T: Config, GetPoolId: Get<PoolId>> OnRuntimeUpgrade for ResetSharesAndWithdrawnRewards<T, GetPoolId> {
+/// Reset rewards record for storage rewards.SharesAndWithdrawnRewards and rewards.PoolInfos at
+/// specific PoolId
+pub struct ResetRewardsRecord<T, GetPoolId>(PhantomData<T>, PhantomData<GetPoolId>);
+impl<T: Config, GetPoolId: Get<PoolId>> OnRuntimeUpgrade for ResetRewardsRecord<T, GetPoolId> {
 	fn on_runtime_upgrade() -> Weight {
 		let pool_id = GetPoolId::get();
 		log::info!(
 			target: "rewards",
-			"ResetSharesAndWithdrawnRewards::on_runtime_upgrade execute, will reset Storage SharesAndWithdrawnRewards for Pool {:?}",
+			"ResetRewardsRecord::on_runtime_upgrade execute, will reset Storage SharesAndWithdrawnRewards and PoolInfos for Pool {:?}",
 			pool_id
 		);
 
-		for (who, (_, _)) in orml_rewards::SharesAndWithdrawnRewards::<T>::iter_prefix(&pool_id) {
+		let mut total_share: Balance = Default::default();
+
+		// reset SharesAndWithdrawnRewards
+		for (who, (share, _)) in orml_rewards::SharesAndWithdrawnRewards::<T>::iter_prefix(&pool_id) {
 			orml_rewards::SharesAndWithdrawnRewards::<T>::mutate(&pool_id, &who, |(_, withdrawn_rewards)| {
 				*withdrawn_rewards = WithdrawnRewards::new();
 			});
+
+			total_share = total_share.saturating_add(share);
 		}
+
+		// reset PoolInfos
+		let mut pool_info = orml_rewards::PoolInfo::<Balance, Balance, CurrencyId>::default();
+		pool_info.total_shares = total_share;
+		orml_rewards::PoolInfos::<T>::insert(&pool_id, pool_info);
 
 		0
 	}
@@ -78,14 +89,18 @@ impl<T: Config, GetPoolId: Get<PoolId>> OnRuntimeUpgrade for ResetSharesAndWithd
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade() -> Result<(), &'static str> {
 		let pool_id = GetPoolId::get();
+		let mut total_share = Balance::default();
 
-		for (_, (_, withdrawn_rewards)) in orml_rewards::SharesAndWithdrawnRewards::<T>::iter_prefix(&pool_id) {
+		for (_, (share, withdrawn_rewards)) in orml_rewards::SharesAndWithdrawnRewards::<T>::iter_prefix(&pool_id) {
 			assert_eq!(withdrawn_rewards, WithdrawnRewards::new());
+			total_share = total_share.saturating_add(share);
 		}
+
+		assert_eq!(orml_rewards::PoolInfos::<T>::get(&pool_id).total_shares, total_share);
 
 		log::info!(
 			target: "rewards",
-			"ResetSharesAndWithdrawnRewards for Pool {:?} done!",
+			"ResetRewardsRecord for Pool {:?} done!",
 			pool_id,
 		);
 
