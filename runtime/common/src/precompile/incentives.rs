@@ -28,7 +28,7 @@ use module_evm::{
 	Context, ExitError, ExitRevert, ExitSucceed,
 };
 use module_incentives::WeightInfo;
-use module_support::{IncentivesManager, PoolId, Rate};
+use module_support::{IncentivesManager, PoolId};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Convert, RuntimeDebug};
