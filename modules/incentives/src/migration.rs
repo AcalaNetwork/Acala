@@ -79,8 +79,10 @@ impl<T: Config, GetPoolId: Get<PoolId>> OnRuntimeUpgrade for ResetRewardsRecord<
 		}
 
 		// reset PoolInfos
-		let mut pool_info = orml_rewards::PoolInfo::<Balance, Balance, CurrencyId>::default();
-		pool_info.total_shares = total_share;
+		let pool_info = orml_rewards::PoolInfo::<Balance, Balance, CurrencyId> {
+			total_shares: total_share,
+			..Default::default()
+		};
 		orml_rewards::PoolInfos::<T>::insert(&pool_id, pool_info);
 
 		0
