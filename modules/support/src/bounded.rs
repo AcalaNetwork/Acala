@@ -74,7 +74,7 @@ impl<T: Encode + Decode + CheckedSub + PartialOrd + Copy, Range: Get<(T, T)>, Ma
 
 	/// Set the inner value. Returns `Err` if out of bound or the diff with current value exceeds
 	/// the max absolute value.
-	pub fn set(&mut self, value: T) -> Result<(), Error> {
+	pub fn try_set(&mut self, value: T) -> Result<(), Error> {
 		let (min, max) = Range::get();
 		let max_change_abs = MaxChangeAbs::get();
 		let old_value = &self.0;
@@ -143,9 +143,9 @@ mod tests {
 		assert_err!(FractionalRate::try_from(Rate::from_rational(11, 10)), Error::OutOfBound);
 
 		let mut rate = FractionalRate::try_from(Rate::from_rational(8, 10)).unwrap();
-		assert_ok!(rate.set(Rate::from_rational(10, 10)));
-		assert_err!(rate.set(Rate::from_rational(11, 10)), Error::OutOfBound);
-		assert_err!(rate.set(Rate::from_rational(79, 100)), Error::ExceedMaxChangeAbs);
+		assert_ok!(rate.try_set(Rate::from_rational(10, 10)));
+		assert_err!(rate.try_set(Rate::from_rational(11, 10)), Error::OutOfBound);
+		assert_err!(rate.try_set(Rate::from_rational(79, 100)), Error::ExceedMaxChangeAbs);
 
 		assert_eq!(FractionalRate::default().get(), Rate::zero());
 	}

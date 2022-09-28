@@ -494,16 +494,13 @@ pub mod module {
 
 			let mut collateral_params = Self::collateral_params(currency_id).unwrap_or_default();
 			if let Change::NewValue(maybe_rate) = interest_rate_per_sec {
-				if let (Some(existing), Some(rate)) = (collateral_params.interest_rate_per_sec.as_mut(), maybe_rate) {
-					// existing rate is some, new rate is some
-					existing.set(rate).map_err(|_| Error::<T>::InvalidRate)?;
-				} else if let Some(rate) = maybe_rate {
-					// existing rate is none, new rate is some
-					let fractional_rate = FractionalRate::try_from(rate).map_err(|_| Error::<T>::InvalidRate)?;
-					collateral_params.interest_rate_per_sec = Some(fractional_rate);
-				} else {
-					// new rate is none
-					collateral_params.interest_rate_per_sec = None;
+				match (collateral_params.interest_rate_per_sec.as_mut(), maybe_rate) {
+					(Some(existing), Some(rate)) => existing.try_set(rate).map_err(|_| Error::<T>::InvalidRate)?,
+					(None, Some(rate)) => {
+						let fractional_rate = FractionalRate::try_from(rate).map_err(|_| Error::<T>::InvalidRate)?;
+						collateral_params.interest_rate_per_sec = Some(fractional_rate);
+					}
+					_ => collateral_params.interest_rate_per_sec = None,
 				}
 				Self::deposit_event(Event::InterestRatePerSecUpdated {
 					collateral_type: currency_id,
@@ -518,16 +515,13 @@ pub mod module {
 				});
 			}
 			if let Change::NewValue(maybe_rate) = liquidation_penalty {
-				if let (Some(existing), Some(rate)) = (collateral_params.liquidation_penalty.as_mut(), maybe_rate) {
-					// existing rate is some, new rate is some
-					existing.set(rate).map_err(|_| Error::<T>::InvalidRate)?;
-				} else if let Some(rate) = maybe_rate {
-					// existing rate is none, new rate is some
-					let fractional_rate = FractionalRate::try_from(rate).map_err(|_| Error::<T>::InvalidRate)?;
-					collateral_params.liquidation_penalty = Some(fractional_rate);
-				} else {
-					// new rate is none
-					collateral_params.liquidation_penalty = None;
+				match (collateral_params.liquidation_penalty.as_mut(), maybe_rate) {
+					(Some(existing), Some(rate)) => existing.try_set(rate).map_err(|_| Error::<T>::InvalidRate)?,
+					(None, Some(rate)) => {
+						let fractional_rate = FractionalRate::try_from(rate).map_err(|_| Error::<T>::InvalidRate)?;
+						collateral_params.liquidation_penalty = Some(fractional_rate);
+					}
+					_ => collateral_params.liquidation_penalty = None,
 				}
 				Self::deposit_event(Event::LiquidationPenaltyUpdated {
 					collateral_type: currency_id,

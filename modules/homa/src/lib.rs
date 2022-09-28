@@ -497,22 +497,21 @@ pub mod module {
 			}
 			if let Some(reward_rate) = estimated_reward_rate_per_era {
 				EstimatedRewardRatePerEra::<T>::mutate(|rate| -> DispatchResult {
-					rate.set(reward_rate).map_err(|_| Error::<T>::InvalidRate)?;
-					Ok(())
+					rate.try_set(reward_rate).map_err(|_| Error::<T>::InvalidRate.into())
 				})?;
 				Self::deposit_event(Event::<T>::EstimatedRewardRatePerEraUpdated { reward_rate });
 			}
 			if let Some(commission_rate) = commission_rate {
 				CommissionRate::<T>::mutate(|rate| -> DispatchResult {
-					rate.set(commission_rate).map_err(|_| Error::<T>::InvalidRate)?;
-					Ok(())
+					rate.try_set(commission_rate)
+						.map_err(|_| Error::<T>::InvalidRate.into())
 				})?;
 				Self::deposit_event(Event::<T>::CommissionRateUpdated { commission_rate });
 			}
 			if let Some(fast_match_fee_rate) = fast_match_fee_rate {
 				FastMatchFeeRate::<T>::mutate(|rate| -> DispatchResult {
-					rate.set(fast_match_fee_rate).map_err(|_| Error::<T>::InvalidRate)?;
-					Ok(())
+					rate.try_set(fast_match_fee_rate)
+						.map_err(|_| Error::<T>::InvalidRate.into())
 				})?;
 				Self::deposit_event(Event::<T>::FastMatchFeeRateUpdated { fast_match_fee_rate });
 			}

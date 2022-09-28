@@ -44,7 +44,7 @@ use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
-	traits::{AccountIdConversion, One, UniqueSaturatedInto, Zero},
+	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},
 	DispatchResult, FixedPointNumber, Permill,
 };
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
@@ -344,7 +344,7 @@ pub mod module {
 				ClaimRewardDeductionRates::<T>::mutate_exists(&pool_id, |maybe_rate| -> DispatchResult {
 					let mut v = maybe_rate.unwrap_or_default();
 					if deduction_rate != v.get() {
-						v.set(deduction_rate).map_err(|_| Error::<T>::InvalidRate)?;
+						v.try_set(deduction_rate).map_err(|_| Error::<T>::InvalidRate)?;
 						Self::deposit_event(Event::ClaimRewardDeductionRateUpdated {
 							pool: pool_id,
 							deduction_rate,
