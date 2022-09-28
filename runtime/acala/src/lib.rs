@@ -948,7 +948,7 @@ impl pallet_preimage::Config for Runtime {
 parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
-	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
+	pub const AuctionDurationSoftCap: BlockNumber = 24 * HOURS;
 }
 
 impl module_auction_manager::Config for Runtime {
