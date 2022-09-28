@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::AccountId;
+use acala_primitives::{evm::CHAIN_ID_KARURA_TESTNET, AccountId};
 use sc_chain_spec::{ChainType, Properties};
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -153,7 +153,7 @@ fn karura_dev_genesis(
 		},
 		asset_registry: Default::default(),
 		evm: EVMConfig {
-			chain_id: 596u64,
+			chain_id: CHAIN_ID_KARURA_TESTNET,
 			accounts: Default::default(),
 		},
 		dex: DexConfig {
