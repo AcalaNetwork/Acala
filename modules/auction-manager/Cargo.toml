@@ -1,6 +1,6 @@
 [package]
 name = "module-auction-manager"
-version = "2.9.5"
+version = "2.9.6"
 authors = ["Acala Developers"]
 edition = "2021"
 
