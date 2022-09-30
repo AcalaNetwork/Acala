@@ -29,13 +29,13 @@ use sp_runtime::{
 use sp_std::{marker::PhantomData, prelude::*, result::Result};
 
 #[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+use serde::{de::Error as SerdeError, Deserialize, Deserializer, Serialize};
 
 /// The bounded type errors.
 #[derive(RuntimeDebug, PartialEq, Eq)]
 pub enum Error {
 	/// The value is out of bound.
-	OutOfBound,
+	OutOfBounds,
 	/// The change diff exceeds the max absolute value.
 	ExceedMaxChangeAbs,
 }
@@ -43,7 +43,7 @@ pub enum Error {
 /// An abstract definition of bounded type. The type is within the range of `Range`
 /// and while update the inner value, the max absolute value of the diff is `MaxChangeAbs`.
 /// The `Default` value is minimum value of the range.
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize), serde(transparent))]
+#[cfg_attr(feature = "std", derive(Serialize), serde(transparent))]
 #[derive(Encode, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[scale_info(skip_type_params(Range, MaxChangeAbs))]
 pub struct BoundedType<T: Encode + Decode, Range, MaxChangeAbs>(
@@ -56,7 +56,7 @@ impl<T: Encode + Decode + CheckedSub + PartialOrd, Range: Get<(T, T)>, MaxChange
 {
 	fn decode<I: codec::Input>(input: &mut I) -> Result<Self, codec::Error> {
 		let inner = T::decode(input)?;
-		Self::try_from(inner).map_err(|_| "BoundedType: value out of bound".into())
+		Self::try_from(inner).map_err(|_| "BoundedType: value out of bounds".into())
 	}
 }
 
@@ -76,7 +76,7 @@ impl<T: Encode + Decode + CheckedSub + PartialOrd, Range: Get<(T, T)>, MaxChange
 	pub fn try_from(value: T) -> Result<Self, Error> {
 		let (min, max) = Range::get();
 		if value < min || value > max {
-			return Err(Error::OutOfBound);
+			return Err(Error::OutOfBounds);
 		}
 		Ok(Self(value, PhantomData))
 	}
@@ -88,7 +88,7 @@ impl<T: Encode + Decode + CheckedSub + PartialOrd, Range: Get<(T, T)>, MaxChange
 		let max_change_abs = MaxChangeAbs::get();
 		let old_value = &self.0;
 		if value < min || value > max {
-			return Err(Error::OutOfBound);
+			return Err(Error::OutOfBounds);
 		}
 
 		let abs = if value > *old_value {
@@ -137,6 +137,17 @@ impl Get<Rate> for OneFifth {
 
 pub type BoundedRate<Range, MaxChangeAbs> = BoundedType<Rate, Range, MaxChangeAbs>;
 
+#[cfg(feature = "std")]
+impl<'de, Range: Get<(Rate, Rate)>, MaxChangeAbs: Get<Rate>> Deserialize<'de> for BoundedRate<Range, MaxChangeAbs> {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let rate = Rate::deserialize(deserializer)?;
+		BoundedType::try_from(rate).map_err(|_| SerdeError::custom("out of bounds"))
+	}
+}
+
 /// Fractional rate.
 ///
 /// The range is between 0 to 1, and max absolute value of change diff is 1/5.
@@ -153,17 +164,54 @@ mod tests {
 
 	#[test]
 	fn fractional_rate_works() {
-		assert_err!(FractionalRate::try_from(Rate::from_rational(11, 10)), Error::OutOfBound);
+		assert_err!(
+			FractionalRate::try_from(Rate::from_rational(11, 10)),
+			Error::OutOfBounds
+		);
 
 		let mut rate = FractionalRate::try_from(Rate::from_rational(8, 10)).unwrap();
 		assert_ok!(rate.try_set(Rate::from_rational(10, 10)));
-		assert_err!(rate.try_set(Rate::from_rational(11, 10)), Error::OutOfBound);
+		assert_err!(rate.try_set(Rate::from_rational(11, 10)), Error::OutOfBounds);
 		assert_err!(rate.try_set(Rate::from_rational(79, 100)), Error::ExceedMaxChangeAbs);
 
 		assert_eq!(FractionalRate::default().into_inner(), Rate::zero());
+	}
 
+	#[test]
+	fn encode_decode_works() {
+		let rate = FractionalRate::try_from(Rate::from_rational(8, 10)).unwrap();
 		let encoded = rate.encode();
 		assert_eq!(FractionalRate::decode(&mut &encoded[..]).unwrap(), rate);
+
+		assert_eq!(encoded, Rate::from_rational(8, 10).encode());
+	}
+
+	#[test]
+	fn decode_fails_if_out_of_bounds() {
+		let bad_rate = BoundedType::<Rate, Fractional, OneFifth>(Rate::from_rational(11, 10), PhantomData);
+		let bad_rate_encoded = bad_rate.encode();
+		assert_err!(
+			FractionalRate::decode(&mut &bad_rate_encoded[..]),
+			"BoundedType: value out of bounds"
+		);
+	}
+
+	#[test]
+	fn ser_de_works() {
+		let rate = FractionalRate::try_from(Rate::from_rational(8, 10)).unwrap();
+		assert_eq!(serde_json::json!(&rate).to_string(), r#""800000000000000000""#);
+
+		let deserialized: FractionalRate = serde_json::from_str(r#""800000000000000000""#).unwrap();
+		assert_eq!(deserialized, rate);
+	}
+
+	#[test]
+	fn deserialize_fails_if_out_of_bounds() {
+		let failed: Result<FractionalRate, _> = serde_json::from_str(r#""1100000000000000000""#);
+		match failed {
+			Err(msg) => assert_eq!(msg.to_string(), "out of bounds"),
+			_ => panic!("should fail"),
+		}
 	}
 
 	#[test]
