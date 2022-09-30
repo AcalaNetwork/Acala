@@ -87,6 +87,12 @@ impl<Balance, BlockNumber> Default for TradingPairStatus<Balance, BlockNumber> {
 	}
 }
 
+impl<Balance, BlockNumber> TradingPairStatus<Balance, BlockNumber> {
+	pub fn enabled(&self) -> bool {
+		matches!(self, TradingPairStatus::<_, _>::Enabled)
+	}
+}
+
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
@@ -740,10 +746,7 @@ pub mod module {
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
-				matches!(
-					Self::trading_pair_statuses(trading_pair),
-					TradingPairStatus::<_, _>::Enabled
-				),
+				Self::trading_pair_statuses(trading_pair).enabled(),
 				Error::<T>::MustBeEnabled
 			);
 
@@ -1001,10 +1004,7 @@ impl<T: Config> Pallet<T> {
 		let trading_pair =
 			TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 		ensure!(
-			matches!(
-				Self::trading_pair_statuses(trading_pair),
-				TradingPairStatus::<_, _>::Enabled
-			),
+			Self::trading_pair_statuses(trading_pair).enabled(),
 			Error::<T>::MustBeEnabled,
 		);
 
@@ -1245,10 +1245,7 @@ impl<T: Config> Pallet<T> {
 			let trading_pair =
 				TradingPair::from_currency_ids(path[i], path[i + 1]).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
-				matches!(
-					Self::trading_pair_statuses(trading_pair),
-					TradingPairStatus::<_, _>::Enabled
-				),
+				Self::trading_pair_statuses(trading_pair).enabled(),
 				Error::<T>::MustBeEnabled
 			);
 			let (supply_pool, target_pool) = Self::get_liquidity(path[i], path[i + 1]);
@@ -1281,10 +1278,7 @@ impl<T: Config> Pallet<T> {
 			let trading_pair =
 				TradingPair::from_currency_ids(path[i - 1], path[i]).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
-				matches!(
-					Self::trading_pair_statuses(trading_pair),
-					TradingPairStatus::<_, _>::Enabled
-				),
+				Self::trading_pair_statuses(trading_pair).enabled(),
 				Error::<T>::MustBeEnabled
 			);
 			let (supply_pool, target_pool) = Self::get_liquidity(path[i - 1], path[i]);

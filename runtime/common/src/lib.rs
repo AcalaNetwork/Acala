@@ -95,6 +95,7 @@ parameter_types! {
 	pub CdpEngineUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 1000;
 	pub AuctionManagerUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 2000;
 	pub RenvmBridgeUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 3000;
+	pub DexRebalanceSwapUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 4000;
 }
 
 /// The call is allowed only if caller is a system contract.

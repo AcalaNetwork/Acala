@@ -1178,11 +1178,14 @@ impl module_dex::Config for Runtime {
 }
 
 impl module_aggregated_dex::Config for Runtime {
+	type Event = Event;
 	type DEX = Dex;
 	type StableAsset = RebasedStableAsset;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
+	type TreasuryPallet = TreasuryPalletId;
+	type UnsignedPriority = runtime_common::DexRebalanceSwapUnsignedPriority;
 	type WeightInfo = ();
 }
 
@@ -2058,10 +2061,11 @@ extern crate orml_benchmarking;
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
 	define_benchmarks!(
+		[module_asset_registry, benchmarking::asset_registry]
+		[module_aggregated_dex, benchmarking::aggregated_dex]
+		[module_auction_manager, benchmarking::auction_manager]
 		[module_dex, benchmarking::dex]
 		[module_dex_oracle, benchmarking::dex_oracle]
-		[module_asset_registry, benchmarking::asset_registry]
-		[module_auction_manager, benchmarking::auction_manager]
 		[module_cdp_engine, benchmarking::cdp_engine]
 		[module_earning, benchmarking::earning]
 		[module_emergency_shutdown, benchmarking::emergency_shutdown]

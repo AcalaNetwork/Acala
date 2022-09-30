@@ -49,7 +49,14 @@ pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const STABLE_ASSET: CurrencyId = CurrencyId::StableAssetPoolToken(0);
+
+parameter_types! {
+	pub static AUSDBTCPair: TradingPair = TradingPair::from_currency_ids(AUSD, BTC).unwrap();
+	pub static AUSDDOTPair: TradingPair = TradingPair::from_currency_ids(AUSD, DOT).unwrap();
+	pub static DOTBTCPair: TradingPair = TradingPair::from_currency_ids(DOT, BTC).unwrap();
+}
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
@@ -191,14 +198,18 @@ impl nutsfinance_stable_asset::Config for Runtime {
 parameter_types! {
 	pub static DexSwapJointList: Vec<Vec<CurrencyId>> = vec![];
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
+	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trea");
 }
 
 impl Config for Runtime {
+	type Event = Event;
 	type DEX = Dex;
 	type StableAsset = StableAssetWrapper;
 	type GovernanceOrigin = EnsureSignedBy<Admin, AccountId>;
 	type DexSwapJointList = DexSwapJointList;
 	type SwapPathLimit = ConstU32<3>;
+	type TreasuryPallet = TreasuryPalletId;
+	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type WeightInfo = ();
 }
 
@@ -215,12 +226,22 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		AggregatedDex: aggregated_dex::{Pallet, Call, Storage},
+		AggregatedDex: aggregated_dex::{Pallet, Call, Storage, Event<T>},
 		Dex: module_dex::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>},
 	}
 );
+
+pub type Extrinsic = sp_runtime::testing::TestXt<Call, ()>;
+
+impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = Extrinsic;
+}
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
