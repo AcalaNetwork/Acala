@@ -343,7 +343,7 @@ pub mod module {
 				}
 				ClaimRewardDeductionRates::<T>::mutate_exists(&pool_id, |maybe_rate| -> DispatchResult {
 					let mut v = maybe_rate.unwrap_or_default();
-					if deduction_rate != v.get() {
+					if deduction_rate != *v.inner() {
 						v.try_set(deduction_rate).map_err(|_| Error::<T>::InvalidRate)?;
 						Self::deposit_event(Event::ClaimRewardDeductionRateUpdated {
 							pool: pool_id,
@@ -351,7 +351,7 @@ pub mod module {
 						});
 					}
 
-					if v.get().is_zero() {
+					if v.inner().is_zero() {
 						*maybe_rate = None;
 					} else {
 						*maybe_rate = Some(v);
@@ -370,7 +370,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub(crate) fn claim_reward_deduction_rates(pool_id: &PoolId) -> Rate {
-		ClaimRewardDeductionRates::<T>::get(pool_id).get()
+		ClaimRewardDeductionRates::<T>::get(pool_id).into_inner()
 	}
 
 	// accumulate incentive rewards of multi currencies

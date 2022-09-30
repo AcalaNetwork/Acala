@@ -837,7 +837,7 @@ impl<T: Config> Pallet<T> {
 		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
 		params
 			.interest_rate_per_sec
-			.map(|v| v.get())
+			.map(|v| v.into_inner())
 			.ok_or_else(|| Error::<T>::InvalidCollateralType.into())
 	}
 
@@ -857,8 +857,8 @@ impl<T: Config> Pallet<T> {
 		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
 		Ok(params
 			.liquidation_penalty
-			.map(|v| v.get())
-			.unwrap_or_else(|| T::DefaultLiquidationPenalty::get().get()))
+			.map(|v| v.into_inner())
+			.unwrap_or_else(|| T::DefaultLiquidationPenalty::get().into_inner()))
 	}
 
 	pub fn get_debit_exchange_rate(currency_id: CurrencyId) -> ExchangeRate {

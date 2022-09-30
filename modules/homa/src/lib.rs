@@ -643,15 +643,15 @@ pub mod module {
 		}
 
 		pub(crate) fn estimated_reward_rate_per_era() -> Rate {
-			EstimatedRewardRatePerEra::<T>::get().get()
+			EstimatedRewardRatePerEra::<T>::get().into_inner()
 		}
 
 		pub(crate) fn commission_rate() -> Rate {
-			CommissionRate::<T>::get().get()
+			CommissionRate::<T>::get().into_inner()
 		}
 
 		pub(crate) fn fast_match_fee_rate() -> Rate {
-			FastMatchFeeRate::<T>::get().get()
+			FastMatchFeeRate::<T>::get().into_inner()
 		}
 
 		pub fn do_update_ledger<R, E>(
@@ -1132,15 +1132,15 @@ impl<T: Config> HomaManager<T::AccountId, Balance> for Pallet<T> {
 	}
 
 	fn get_estimated_reward_rate() -> Rate {
-		EstimatedRewardRatePerEra::<T>::get().get()
+		EstimatedRewardRatePerEra::<T>::get().into_inner()
 	}
 
 	fn get_commission_rate() -> Rate {
-		CommissionRate::<T>::get().get()
+		CommissionRate::<T>::get().into_inner()
 	}
 
 	fn get_fast_match_fee() -> Rate {
-		FastMatchFeeRate::<T>::get().get()
+		FastMatchFeeRate::<T>::get().into_inner()
 	}
 }
 

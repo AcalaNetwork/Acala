@@ -211,7 +211,7 @@ fn set_collateral_params_work() {
 		let new_collateral_params = CDPEngineModule::collateral_params(BTC).unwrap();
 
 		assert_eq!(
-			new_collateral_params.interest_rate_per_sec.map(|v| v.get()),
+			new_collateral_params.interest_rate_per_sec.map(|v| v.into_inner()),
 			Some(Rate::saturating_from_rational(1, 100000))
 		);
 		assert_eq!(
@@ -219,7 +219,7 @@ fn set_collateral_params_work() {
 			Some(Ratio::saturating_from_rational(3, 2))
 		);
 		assert_eq!(
-			new_collateral_params.liquidation_penalty.map(|v| v.get()),
+			new_collateral_params.liquidation_penalty.map(|v| v.into_inner()),
 			Some(Rate::saturating_from_rational(2, 10))
 		);
 		assert_eq!(

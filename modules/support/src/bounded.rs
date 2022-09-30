@@ -44,12 +44,21 @@ pub enum Error {
 /// and while update the inner value, the max absolute value of the diff is `MaxChangeAbs`.
 /// The `Default` value is minimum value of the range.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize), serde(transparent))]
-#[derive(Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+#[derive(Encode, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[scale_info(skip_type_params(Range, MaxChangeAbs))]
 pub struct BoundedType<T: Encode + Decode, Range, MaxChangeAbs>(
 	T,
 	#[cfg_attr(feature = "std", serde(skip_serializing))] PhantomData<(Range, MaxChangeAbs)>,
 );
+
+impl<T: Encode + Decode + CheckedSub + PartialOrd, Range: Get<(T, T)>, MaxChangeAbs: Get<T>> Decode
+	for BoundedType<T, Range, MaxChangeAbs>
+{
+	fn decode<I: codec::Input>(input: &mut I) -> Result<Self, codec::Error> {
+		let inner = T::decode(input)?;
+		Self::try_from(inner).map_err(|_| "BoundedType: value out of bound".into())
+	}
+}
 
 impl<T: Default + Encode + Decode, Range: Get<(T, T)>, MaxChangeAbs: Get<T>> Default
 	for BoundedType<T, Range, MaxChangeAbs>
@@ -60,7 +69,7 @@ impl<T: Default + Encode + Decode, Range: Get<(T, T)>, MaxChangeAbs: Get<T>> Def
 	}
 }
 
-impl<T: Encode + Decode + CheckedSub + PartialOrd + Copy, Range: Get<(T, T)>, MaxChangeAbs: Get<T>>
+impl<T: Encode + Decode + CheckedSub + PartialOrd, Range: Get<(T, T)>, MaxChangeAbs: Get<T>>
 	BoundedType<T, Range, MaxChangeAbs>
 {
 	/// Try to create a new instance of `BoundedType`. Returns `Err` if out of bound.
@@ -99,8 +108,12 @@ impl<T: Encode + Decode + CheckedSub + PartialOrd + Copy, Range: Get<(T, T)>, Ma
 		Ok(())
 	}
 
-	pub fn get(&self) -> T {
+	pub fn into_inner(self) -> T {
 		self.0
+	}
+
+	pub fn inner(&self) -> &T {
+		&self.0
 	}
 }
 
@@ -147,7 +160,10 @@ mod tests {
 		assert_err!(rate.try_set(Rate::from_rational(11, 10)), Error::OutOfBound);
 		assert_err!(rate.try_set(Rate::from_rational(79, 100)), Error::ExceedMaxChangeAbs);
 
-		assert_eq!(FractionalRate::default().get(), Rate::zero());
+		assert_eq!(FractionalRate::default().into_inner(), Rate::zero());
+
+		let encoded = rate.encode();
+		assert_eq!(FractionalRate::decode(&mut &encoded[..]).unwrap(), rate);
 	}
 
 	#[test]
@@ -162,6 +178,6 @@ mod tests {
 
 		type BoundedRateOneToTwo = BoundedRate<OneToTwo, OneFifth>;
 
-		assert_eq!(BoundedRateOneToTwo::default().get(), Rate::one());
+		assert_eq!(BoundedRateOneToTwo::default().into_inner(), Rate::one());
 	}
 }
