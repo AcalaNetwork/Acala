@@ -274,6 +274,7 @@ dependencies = [
  "orml-tokens-rpc",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
+ "polkadot-cli",
  "polkadot-primitives",
  "polkadot-service",
  "runtime-common",
