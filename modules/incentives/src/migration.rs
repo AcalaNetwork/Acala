@@ -21,6 +21,34 @@ use crate::log;
 use frame_support::traits::OnRuntimeUpgrade;
 use sp_std::marker::PhantomData;
 
+/// Clear all DexSavingRewardRates storage
+pub struct ClearDexSavingRewardRates<T>(PhantomData<T>);
+impl<T: Config> OnRuntimeUpgrade for ClearDexSavingRewardRates<T> {
+	fn on_runtime_upgrade() -> Weight {
+		log::info!(
+			target: "incentives",
+			"ClearDexSavingRewardRates::on_runtime_upgrade execute, will clear Storage DexSavingRewardRates",
+		);
+
+		// clear storage DexSavingRewardRates,
+		let _ = DexSavingRewardRates::<T>::clear(u32::max_value(), None);
+
+		0
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		assert_eq!(DexSavingRewardRates::<T>::iter().count(), 0);
+
+		log::info!(
+			target: "incentives",
+			"ClearDexSavingRewardRates done!",
+		);
+
+		Ok(())
+	}
+}
+
 type WithdrawnRewards = BTreeMap<CurrencyId, Balance>;
 
 /// Clear all PendingMultiRewards for specific Pool
@@ -98,7 +126,13 @@ impl<T: Config, GetPoolId: Get<PoolId>> OnRuntimeUpgrade for ResetRewardsRecord<
 			total_share = total_share.saturating_add(share);
 		}
 
-		assert_eq!(orml_rewards::PoolInfos::<T>::get(&pool_id).total_shares, total_share);
+		assert_eq!(
+			orml_rewards::PoolInfos::<T>::get(&pool_id),
+			orml_rewards::PoolInfo::<Balance, Balance, CurrencyId> {
+				total_shares: total_share,
+				..Default::default()
+			}
+		);
 
 		log::info!(
 			target: "rewards",
