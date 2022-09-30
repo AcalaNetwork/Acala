@@ -7168,7 +7168,7 @@ dependencies = [
 [[package]]
 name = "pallet-asset-tx-payment"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#b4db729801bd648941439d5b8324e6ea618a013c"
+source = "git+https://github.com/paritytech//substrate?rev=b4db729801bd648941439d5b8324e6ea618a013c#b4db729801bd648941439d5b8324e6ea618a013c"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7185,7 +7185,7 @@ dependencies = [
 [[package]]
 name = "pallet-assets"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#b4db729801bd648941439d5b8324e6ea618a013c"
+source = "git+https://github.com/paritytech//substrate?rev=b4db729801bd648941439d5b8324e6ea618a013c#b4db729801bd648941439d5b8324e6ea618a013c"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -7362,7 +7362,7 @@ dependencies = [
 [[package]]
 name = "pallet-child-bounties"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#b4db729801bd648941439d5b8324e6ea618a013c"
+source = "git+https://github.com/paritytech//substrate?rev=b4db729801bd648941439d5b8324e6ea618a013c#b4db729801bd648941439d5b8324e6ea618a013c"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -7680,7 +7680,7 @@ dependencies = [
 [[package]]
 name = "pallet-nomination-pools-runtime-api"
 version = "1.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#b4db729801bd648941439d5b8324e6ea618a013c"
+source = "git+https://github.com/paritytech//substrate?rev=b4db729801bd648941439d5b8324e6ea618a013c#b4db729801bd648941439d5b8324e6ea618a013c"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -7996,7 +7996,7 @@ dependencies = [
 [[package]]
 name = "pallet-uniques"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#b4db729801bd648941439d5b8324e6ea618a013c"
+source = "git+https://github.com/paritytech//substrate?rev=b4db729801bd648941439d5b8324e6ea618a013c#b4db729801bd648941439d5b8324e6ea618a013c"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -13248,7 +13248,7 @@ dependencies = [
 [[package]]
 name = "substrate-state-trie-migration-rpc"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#b4db729801bd648941439d5b8324e6ea618a013c"
+source = "git+https://github.com/paritytech//substrate?rev=b4db729801bd648941439d5b8324e6ea618a013c#b4db729801bd648941439d5b8324e6ea618a013c"
 dependencies = [
  "jsonrpsee",
  "log",
