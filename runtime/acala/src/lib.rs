@@ -94,8 +94,8 @@ pub use primitives::{
 	task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
-	DataProviderId, EraIndex, Hash, Lease, Moment, Multiplier, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
-	TradingPair,
+	DataProviderId, DexShare, EraIndex, Hash, Lease, Moment, Multiplier, Nonce, ReserveIdentifier, Share, Signature,
+	TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles, CheckRelayNumber,
@@ -1244,6 +1244,12 @@ impl orml_rewards::Config for Runtime {
 parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = MINUTES;
 	pub const EarnShareBooster: Permill = Permill::from_percent(30);
+	pub const GetAusdIbtcPoolId: PoolId = PoolId::Dex(
+		CurrencyId::DexShare(
+			DexShare::Token(TokenSymbol::AUSD),
+			DexShare::ForeignAsset(3)
+		)
+	);
 }
 
 impl module_incentives::Config for Runtime {
@@ -1772,7 +1778,10 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	module_incentives::migration::ClearDexSavingRewardRates<Runtime>,
+	(
+		module_incentives::migration::ResetRewardsRecord<Runtime, GetAusdIbtcPoolId>,
+		module_incentives::migration::ClearPendingMultiRewards<Runtime, GetAusdIbtcPoolId>,
+	),
 >;
 
 #[cfg(feature = "runtime-benchmarks")]
