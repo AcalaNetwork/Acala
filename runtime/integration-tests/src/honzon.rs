@@ -448,7 +448,7 @@ fn test_cdp_engine_module() {
 			let new_collateral_params = maybe_new_collateral_params.unwrap();
 
 			assert_eq!(
-				new_collateral_params.interest_rate_per_sec.map(|v| v.get()),
+				new_collateral_params.interest_rate_per_sec.map(|v| v.into_inner()),
 				Some(Rate::saturating_from_rational(1, 100000))
 			);
 			assert_eq!(
@@ -456,7 +456,7 @@ fn test_cdp_engine_module() {
 				Some(Ratio::saturating_from_rational(3, 2))
 			);
 			assert_eq!(
-				new_collateral_params.liquidation_penalty.map(|v| v.get()),
+				new_collateral_params.liquidation_penalty.map(|v| v.into_inner()),
 				Some(Rate::saturating_from_rational(2, 10))
 			);
 			assert_eq!(
