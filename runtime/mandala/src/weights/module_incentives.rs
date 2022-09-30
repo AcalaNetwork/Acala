@@ -96,14 +96,6 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
-	// Storage: Incentives DexSavingRewardRates (r:1 w:1)
-	fn update_dex_saving_rewards(c: u32, ) -> Weight {
-		(1_721_000 as Weight)
-			// Standard Error: 56_000
-			.saturating_add((1_471_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
-	}
 	// Storage: Incentives ClaimRewardDeductionRates (r:1 w:1)
 	fn update_claim_reward_deduction_rates(c: u32, ) -> Weight {
 		(2_574_000 as Weight)

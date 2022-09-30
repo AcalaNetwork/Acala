@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
+use acala_primitives::{evm::CHAIN_ID_MANDALA, orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
 use coins_bip39::{English, Mnemonic, Wordlist};
 use elliptic_curve::sec1::ToEncodedPoint;
 use hex_literal::hex;
@@ -437,7 +437,7 @@ fn testnet_genesis(
 			],
 		},
 		evm: EVMConfig {
-			chain_id: 595u64,
+			chain_id: CHAIN_ID_MANDALA,
 			accounts: evm_genesis_accounts,
 		},
 		dex: DexConfig {
@@ -626,7 +626,7 @@ fn mandala_genesis(
 			],
 		},
 		evm: EVMConfig {
-			chain_id: 595u64,
+			chain_id: CHAIN_ID_MANDALA,
 			accounts: evm_genesis_accounts,
 		},
 		dex: DexConfig {

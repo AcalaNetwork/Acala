@@ -1,6 +1,6 @@
 [package]
 name = "module-relaychain"
-version = "2.9.3"
+version = "2.9.5"
 authors = ["Acala Developers"]
 edition = "2021"
 
