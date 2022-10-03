@@ -60,6 +60,22 @@ impl<T: Encode + Decode + CheckedSub + PartialOrd, Range: Get<(T, T)>, MaxChange
 	}
 }
 
+#[cfg(feature = "std")]
+impl<'de, T, Range, MaxChangeAbs> Deserialize<'de> for BoundedType<T, Range, MaxChangeAbs>
+where
+	T: Encode + Decode + CheckedSub + PartialOrd + Deserialize<'de>,
+	Range: Get<(T, T)>,
+	MaxChangeAbs: Get<T>,
+{
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let value: T = T::deserialize(deserializer)?;
+		Self::try_from(value).map_err(|_| SerdeError::custom("out of bounds"))
+	}
+}
+
 impl<T: Default + Encode + Decode, Range: Get<(T, T)>, MaxChangeAbs: Get<T>> Default
 	for BoundedType<T, Range, MaxChangeAbs>
 {
@@ -69,8 +85,11 @@ impl<T: Default + Encode + Decode, Range: Get<(T, T)>, MaxChangeAbs: Get<T>> Def
 	}
 }
 
-impl<T: Encode + Decode + CheckedSub + PartialOrd, Range: Get<(T, T)>, MaxChangeAbs: Get<T>>
-	BoundedType<T, Range, MaxChangeAbs>
+impl<T, Range, MaxChangeAbs> BoundedType<T, Range, MaxChangeAbs>
+where
+	T: Encode + Decode + CheckedSub + PartialOrd,
+	Range: Get<(T, T)>,
+	MaxChangeAbs: Get<T>,
 {
 	/// Try to create a new instance of `BoundedType`. Returns `Err` if out of bound.
 	pub fn try_from(value: T) -> Result<Self, Error> {
@@ -136,17 +155,6 @@ impl Get<Rate> for OneFifth {
 }
 
 pub type BoundedRate<Range, MaxChangeAbs> = BoundedType<Rate, Range, MaxChangeAbs>;
-
-#[cfg(feature = "std")]
-impl<'de, Range: Get<(Rate, Rate)>, MaxChangeAbs: Get<Rate>> Deserialize<'de> for BoundedRate<Range, MaxChangeAbs> {
-	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-	where
-		D: Deserializer<'de>,
-	{
-		let rate = Rate::deserialize(deserializer)?;
-		BoundedType::try_from(rate).map_err(|_| SerdeError::custom("out of bounds"))
-	}
-}
 
 /// Fractional rate.
 ///
