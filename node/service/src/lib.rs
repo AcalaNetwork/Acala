@@ -33,19 +33,20 @@ use cumulus_primitives_core::ParaId;
 use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
-use cumulus_relay_chain_rpc_interface::RelayChainRPCInterface;
+use cumulus_relay_chain_rpc_interface::{create_client_and_start_worker, RelayChainRpcInterface};
 pub use futures::stream::StreamExt;
 use jsonrpsee::RpcModule;
 use sc_consensus::LongestChain;
 use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
 use sc_executor::WasmExecutor;
 use sc_network::NetworkService;
+use sc_network_common::service::NetworkBlock;
 pub use sc_service::{
 	config::{DatabaseSource, PrometheusConfig},
 	ChainSpec,
 };
 use sc_service::{
-	error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager,
+	error::Error as ServiceError, Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 pub use sp_api::ConstructRuntimeApi;
@@ -348,10 +349,10 @@ async fn build_relay_chain_interface(
 	collator_options: CollatorOptions,
 ) -> RelayChainResult<(Arc<(dyn RelayChainInterface + 'static)>, Option<CollatorPair>)> {
 	match collator_options.relay_chain_rpc_url {
-		Some(relay_chain_url) => Ok((
-			Arc::new(RelayChainRPCInterface::new(relay_chain_url).await?) as Arc<_>,
-			None,
-		)),
+		Some(relay_chain_url) => {
+			let client = create_client_and_start_worker(relay_chain_url, task_manager).await?;
+			Ok((Arc::new(RelayChainRpcInterface::new(client)) as Arc<_>, None))
+		}
 		None => build_inprocess_relay_chain(
 			polkadot_config,
 			parachain_config,
@@ -393,10 +394,6 @@ where
 		bool,
 	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
 {
-	if matches!(parachain_config.role, Role::Light) {
-		return Err("Light client not supported!".into());
-	}
-
 	let parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial(&parachain_config, false, false)?;

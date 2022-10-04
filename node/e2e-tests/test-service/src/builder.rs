@@ -211,10 +211,7 @@ impl TestNodeBuilder {
 		};
 
 		let peer_id = network.local_peer_id();
-		let addr = MultiaddrWithPeerId {
-			multiaddr,
-			peer_id: *peer_id,
-		};
+		let addr = MultiaddrWithPeerId { multiaddr, peer_id };
 
 		TestNode {
 			task_manager,
@@ -295,7 +292,7 @@ pub fn node_config(
 		state_cache_size: 67108864,
 		state_cache_child_ratio: None,
 		state_pruning: Some(PruningMode::ArchiveAll),
-		keep_blocks: KeepBlocks::All,
+		blocks_pruning: BlocksPruning::All,
 		chain_spec: spec,
 		wasm_method: WasmExecutionMethod::Compiled {
 			instantiation_strategy: WasmtimeInstantiationStrategy::PoolingCopyOnWrite,

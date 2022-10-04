@@ -93,25 +93,6 @@ runtime_benchmarks! {
 		}
 	}: _(RawOrigin::Root, updates)
 
-	update_dex_saving_rewards {
-		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
-		let currency_ids = get_benchmarking_collateral_currency_ids();
-		let caller: AccountId = account("caller", 0, SEED);
-		let mut updates = vec![];
-
-		for i in 0 .. c {
-			let currency_id = currency_ids[i as usize];
-			if matches!(currency_id, CurrencyId::StableAssetPoolToken(_)) {
-				continue;
-			}
-			if let Some(lp_share_currency_id) = CurrencyId::join_dex_share_currency_id(currency_id, STABLECOIN) {
-				updates.push((PoolId::Dex(lp_share_currency_id), Rate::default()));
-			} else {
-				return Err(BenchmarkError::Stop("invalid currency id"));
-			}
-		}
-	}: _(RawOrigin::Root, updates)
-
 	update_claim_reward_deduction_rates {
 		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
 		let currency_ids = get_benchmarking_collateral_currency_ids();

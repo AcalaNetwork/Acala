@@ -1,30 +1,30 @@
 [package]
 name = "acala-cli"
-version = "2.9.3"
+version = "2.9.5"
 authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
 log = "0.4.17"
-clap = { version = "3.1.6", features = ["derive"] }
+clap = { version = "3.2.15", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.0.0" }
 
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", optional = true }
-sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", optional = true }
-sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", optional = true }
-sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
-sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
-frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", optional = true }
-try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26", optional = true }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
+sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
+sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
+sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
+frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
+try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
 
-cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.26" }
-cumulus-client-cli = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.26" }
-cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.26" }
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26" }
-polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26" }
-polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26" }
-polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26" }
+cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.28" }
+cumulus-client-cli = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.28" }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.28" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
+polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
+polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
 
 inspect = { package = "acala-inspect", path = "../../inspect" }
 service = { package = "acala-service", path = "../service", default-features = false, optional = true }
