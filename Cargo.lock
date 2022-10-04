@@ -6205,6 +6205,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "module-support",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -7458,7 +7459,7 @@ dependencies = [
 [[package]]
 name = "pallet-election-provider-support-benchmarking"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#b4db729801bd648941439d5b8324e6ea618a013c"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#ce10b9f29353e89fc3e59d447041bb29622def3f"
 dependencies = [
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -7645,7 +7646,7 @@ dependencies = [
 [[package]]
 name = "pallet-nomination-pools"
 version = "1.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#b4db729801bd648941439d5b8324e6ea618a013c"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#ce10b9f29353e89fc3e59d447041bb29622def3f"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7662,7 +7663,7 @@ dependencies = [
 [[package]]
 name = "pallet-nomination-pools-benchmarking"
 version = "1.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#b4db729801bd648941439d5b8324e6ea618a013c"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.28#ce10b9f29353e89fc3e59d447041bb29622def3f"
 dependencies = [
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -10455,6 +10456,7 @@ dependencies = [
  "module-nft",
  "module-prices",
  "module-support",
+ "module-transaction-pause",
  "module-transaction-payment",
  "num_enum",
  "nutsfinance-stable-asset",
