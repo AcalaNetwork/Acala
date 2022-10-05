@@ -50,7 +50,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BUILD_ARGS=build-${{ matrix.network }}-release
+            BUILD_ARGS=build-${{ matrix.network }}-internal-release
             GIT_COMMIT=${{ env.GITHUB_SHA }}
             PROFILE=release
           file: scripts/Dockerfile
