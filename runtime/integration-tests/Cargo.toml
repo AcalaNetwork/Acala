@@ -124,8 +124,6 @@ acala-runtime = { path = "../acala", optional = true }
 
 # ecosystem
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
-ecosystem-starport = { path = "../../ecosystem-modules/starport" }
-ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash" }
 
 [dev-dependencies]
 env_logger = "0.9.0"

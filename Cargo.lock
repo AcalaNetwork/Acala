@@ -2523,23 +2523,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ecosystem-compound-cash"
-version = "2.9.4"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
-]
-
-[[package]]
 name = "ecosystem-renvm-bridge"
 version = "2.9.4"
 dependencies = [
@@ -2555,26 +2538,6 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "ecosystem-starport"
-version = "2.9.4"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-currencies",
- "module-support",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -5188,9 +5151,9 @@ dependencies = [
 
 [[package]]
 name = "lz4-sys"
-version = "1.9.4"
+version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57d27b317e207b10f69f5e75494119e391a96f48861ae870d1da6edac98ca900"
+checksum = "d7be8908e2ed6f31c02db8a9fa962f03e36c53fbfde437363eae3306b85d7e17"
 dependencies = [
  "cc",
  "libc",
@@ -5221,9 +5184,7 @@ dependencies = [
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "cumulus-test-relay-sproof-builder",
- "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
- "ecosystem-starport",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -10474,9 +10435,7 @@ dependencies = [
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "cumulus-test-relay-sproof-builder",
- "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
- "ecosystem-starport",
  "env_logger",
  "frame-support",
  "frame-system",
