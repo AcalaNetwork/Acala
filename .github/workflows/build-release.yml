@@ -89,9 +89,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BUILD_ARGS=build-${{ matrix.network }}-internal-release
+            BUILD_ARGS=build-${{ matrix.network }}-release
             GIT_COMMIT=${{ env.GITHUB_SHA }}
-            PROFILE=release
+            PROFILE=production
           file: scripts/Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max

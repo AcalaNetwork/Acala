@@ -37,6 +37,11 @@ pub trait PrecompileCallerFilter {
 	fn is_allowed(caller: H160) -> bool;
 }
 
+/// Return true if the EVM precompile is paused.
+pub trait PrecompilePauseFilter {
+	fn is_paused(address: H160) -> bool;
+}
+
 /// An abstraction of EVM for EVMBridge
 pub trait EVM<AccountId> {
 	type Balance: AtLeast32BitUnsigned + Copy + MaybeSerializeDeserialize + Default;
