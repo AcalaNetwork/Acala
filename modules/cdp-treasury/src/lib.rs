@@ -293,7 +293,7 @@ impl<T: Config> Pallet<T> {
 
 		// Burn the amount that is equal to offset amount of stable currency.
 		if !offset_amount.is_zero() {
-			let res = T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount);
+			let res = Self::burn_debit(&Self::account_id(), offset_amount);
 			match res {
 				Ok(_) => {
 					DebitPool::<T>::mutate(|debit| {
@@ -346,6 +346,7 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 		Self::issue_debit(&Self::account_id(), amount, true)
 	}
 
+	/// This should be the only function in the system that issues stable coin
 	fn issue_debit(who: &T::AccountId, debit: Self::Balance, backed: bool) -> DispatchResult {
 		// increase system debit if the debit is unbacked
 		if !backed {
@@ -356,6 +357,7 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 		Ok(())
 	}
 
+	/// This should be the only function in the system that burns stable coin
 	fn burn_debit(who: &T::AccountId, debit: Self::Balance) -> DispatchResult {
 		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, debit)
 	}

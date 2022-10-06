@@ -300,6 +300,8 @@ fn update_bump_era_params_works() {
 		assert_eq!(Homa::last_era_bumped_block(), 0);
 		assert_eq!(Homa::bump_era_frequency(), 0);
 
+		MockRelayBlockNumberProvider::set(10);
+
 		assert_ok!(Homa::update_bump_era_params(
 			Origin::signed(HomaAdmin::get()),
 			Some(10),
@@ -1147,6 +1149,7 @@ fn era_amount_should_to_bump_works() {
 		assert_eq!(Homa::era_amount_should_to_bump(11), 1);
 		assert_eq!(Homa::era_amount_should_to_bump(30), 3);
 
+		MockRelayBlockNumberProvider::set(10);
 		assert_ok!(Homa::update_bump_era_params(
 			Origin::signed(HomaAdmin::get()),
 			Some(1),
@@ -1358,4 +1361,54 @@ fn bump_current_era_works() {
 				589_344
 			);
 		});
+}
+
+#[test]
+fn last_era_bumped_block_config_check_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Homa::last_era_bumped_block(), 0);
+		assert_eq!(Homa::bump_era_frequency(), 0);
+		assert_eq!(MockRelayBlockNumberProvider::current_block_number(), 0);
+
+		MockRelayBlockNumberProvider::set(100);
+
+		// it's ok, nothing happen because bump_era_frequency is zero
+		assert_ok!(Homa::update_bump_era_params(
+			Origin::signed(HomaAdmin::get()),
+			Some(100),
+			None,
+		));
+		assert_eq!(Homa::last_era_bumped_block(), 0);
+		assert_eq!(Homa::bump_era_frequency(), 0);
+
+		// 50 will trigger bump era
+		assert_noop!(
+			Homa::update_bump_era_params(Origin::signed(HomaAdmin::get()), Some(50), Some(50),),
+			Error::<Runtime>::InvalidLastEraBumpedBlock
+		);
+
+		assert_ok!(Homa::update_bump_era_params(
+			Origin::signed(HomaAdmin::get()),
+			Some(51),
+			Some(50),
+		));
+		assert_eq!(Homa::last_era_bumped_block(), 51);
+		assert_eq!(Homa::bump_era_frequency(), 50);
+		assert_eq!(MockRelayBlockNumberProvider::current_block_number(), 100);
+
+		// 101 is great than current relaychain block
+		assert_noop!(
+			Homa::update_bump_era_params(Origin::signed(HomaAdmin::get()), Some(101), None,),
+			Error::<Runtime>::InvalidLastEraBumpedBlock
+		);
+
+		assert_ok!(Homa::update_bump_era_params(
+			Origin::signed(HomaAdmin::get()),
+			Some(100),
+			None,
+		));
+		assert_eq!(Homa::last_era_bumped_block(), 100);
+		assert_eq!(Homa::bump_era_frequency(), 50);
+		assert_eq!(MockRelayBlockNumberProvider::current_block_number(), 100);
+	});
 }
