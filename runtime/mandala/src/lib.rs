@@ -180,7 +180,6 @@ parameter_types! {
 	// because transaction payment pallet will ensure the accounts always have enough ED.
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	// Ecosystem modules
-	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 	// lock identifier for earning module
 	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
@@ -198,7 +197,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		IncentivesPalletId::get().into_account_truncating(),
 		TreasuryReservePalletId::get().into_account_truncating(),
 		CollatorPotId::get().into_account_truncating(),
-		StarportPalletId::get().into_account_truncating(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account_truncating(),
 	]
@@ -1572,26 +1570,6 @@ impl ecosystem_renvm_bridge::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CashCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::CASH);
-	pub const PercentThresholdForGatewayAuthoritySignature: Perbill = Perbill::from_percent(50);
-}
-
-impl ecosystem_starport::Config for Runtime {
-	type Event = Event;
-	type Currency = Currencies;
-	type CashCurrencyId = CashCurrencyId;
-	type PalletId = StarportPalletId;
-	type MaxGatewayAuthorities = ConstU32<8>;
-	type PercentThresholdForAuthoritySignature = PercentThresholdForGatewayAuthoritySignature;
-	type Cash = CompoundCash;
-}
-
-impl ecosystem_compound_cash::Config for Runtime {
-	type Event = Event;
-	type UnixTime = Timestamp;
-}
-
-parameter_types! {
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub PrecompilesValue: AllPrecompiles<Runtime, module_transaction_pause::PausedPrecompileFilter<Runtime>> = AllPrecompiles::<_, _>::mandala();
 }
@@ -2010,8 +1988,6 @@ construct_runtime!(
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge = 150,
-		Starport: ecosystem_starport = 151,
-		CompoundCash: ecosystem_compound_cash exclude_parts { Call } = 152,
 
 		// Parachain
 		ParachainInfo: parachain_info exclude_parts { Call } = 161,

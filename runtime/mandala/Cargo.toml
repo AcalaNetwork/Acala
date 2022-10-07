@@ -133,8 +133,6 @@ runtime-common = { path = "../common", default-features = false }
 
 # ecosystem
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
-ecosystem-starport = { path = "../../ecosystem-modules/starport", default-features = false }
-ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 
 [build-dependencies]
@@ -269,8 +267,6 @@ std = [
 	"module-evm-rpc-runtime-api/std",
 
 	"ecosystem-renvm-bridge/std",
-	"ecosystem-starport/std",
-	"ecosystem-compound-cash/std",
 ]
 runtime-benchmarks = [
 	"orml-benchmarking",
@@ -373,8 +369,6 @@ try-runtime = [
 	"module-session-manager/try-runtime",
 
 	"ecosystem-renvm-bridge/try-runtime",
-	"ecosystem-starport/try-runtime",
-	"ecosystem-compound-cash/try-runtime",
 ]
 # By default some types have documentation, `no-metadata-docs` allows to reduce the documentation
 # in the metadata.

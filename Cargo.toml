@@ -44,8 +44,6 @@ members = [
 	"orml/unknown-tokens",
 
 	"ecosystem-modules/ren/renvm-bridge",
-	"ecosystem-modules/starport",
-	"ecosystem-modules/compound-cash",
 	"ecosystem-modules/stable-asset/lib/stable-asset",
 
 ]
