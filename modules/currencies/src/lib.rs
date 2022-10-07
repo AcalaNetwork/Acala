@@ -247,7 +247,7 @@ pub mod module {
 		/// Set lock by lock_id
 		///
 		/// The dispatch origin of this call must be _Root_.
-		#[pallet::weight(T::WeightInfo::update_balance_non_native_currency())]
+		#[pallet::weight(T::WeightInfo::force_set_lock())]
 		pub fn force_set_lock(
 			origin: OriginFor<T>,
 			who: <T::Lookup as StaticLookup>::Source,
@@ -263,7 +263,7 @@ pub mod module {
 		/// Remove lock by lock_id
 		///
 		/// The dispatch origin of this call must be _Root_.
-		#[pallet::weight(T::WeightInfo::update_balance_non_native_currency())]
+		#[pallet::weight(T::WeightInfo::force_remove_lock())]
 		pub fn force_remove_lock(
 			origin: OriginFor<T>,
 			who: <T::Lookup as StaticLookup>::Source,

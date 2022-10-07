@@ -1119,7 +1119,7 @@ impl module_aggregated_dex::Config for Runtime {
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_aggregated_dex::WeightInfo<Runtime>;
 }
 
 pub type RebasedStableAsset = module_support::RebasedStableAsset<
@@ -1815,6 +1815,7 @@ mod benches {
 		[orml_authority, benchmarking::authority]
 		[orml_oracle, benchmarking::oracle]
 		[module_idle_scheduler, benchmarking::idle_scheduler]
+		[module_aggregated_dex, benchmarking::aggregated_dex]
 	);
 }
 
