@@ -14955,13 +14955,3 @@ dependencies = [
  "cc",
  "libc",
 ]
-
-[[patch.unused]]
-name = "sc-consensus-uncles"
-version = "0.10.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=ce10b9f29353e89fc3e59d447041bb29622def3f#ce10b9f29353e89fc3e59d447041bb29622def3f"
-
-[[patch.unused]]
-name = "sp-serializer"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=ce10b9f29353e89fc3e59d447041bb29622def3f#ce10b9f29353e89fc3e59d447041bb29622def3f"
