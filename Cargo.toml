@@ -205,7 +205,6 @@ sc-consensus-babe-rpc = { git = "https://github.com/paritytech//substrate", rev 
 sc-consensus-epochs = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
 sc-consensus-manual-seal = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
 sc-consensus-slots = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
-sc-consensus-uncles = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
 sc-executor = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
 sc-executor-common = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
 sc-executor-wasmtime = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
@@ -256,7 +255,6 @@ sp-rpc = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353
 sp-runtime = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
 sp-runtime-interface = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
 sp-runtime-interface-proc-macro = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
-sp-serializer = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
 sp-session = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
 sp-staking = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
 sp-state-machine = { git = "https://github.com/paritytech//substrate", rev = "ce10b9f29353e89fc3e59d447041bb29622def3f" }
