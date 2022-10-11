@@ -37,6 +37,17 @@ use sp_std::vec::Vec;
 /// Evm Address.
 pub type EvmAddress = sp_core::H160;
 
+/// mandala 595
+pub const CHAIN_ID_MANDALA: u64 = 595u64;
+/// karura testnet 596
+pub const CHAIN_ID_KARURA_TESTNET: u64 = 596u64;
+/// acala testnet 597
+pub const CHAIN_ID_ACALA_TESTNET: u64 = 597u64;
+/// karura mainnet 686
+pub const CHAIN_ID_KARURA_MAINNET: u64 = 686u64;
+/// acala mainnet 787
+pub const CHAIN_ID_ACALA_MAINNET: u64 = 787u64;
+
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// External input from the transaction.
@@ -67,6 +78,15 @@ pub struct ExecutionInfo<T> {
 
 pub type CallInfo = ExecutionInfo<Vec<u8>>;
 pub type CreateInfo = ExecutionInfo<H160>;
+
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct BlockLimits {
+	/// Max gas limit
+	pub max_gas_limit: u64,
+	/// Max storage limit
+	pub max_storage_limit: u32,
+}
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -113,6 +133,8 @@ pub const PRECOMPILE_ADDRESS_START: EvmAddress = H160(hex!("00000000000000000000
 pub const PREDEPLOY_ADDRESS_START: EvmAddress = H160(hex!("0000000000000000000000000000000000000800"));
 pub const MIRRORED_TOKENS_ADDRESS_START: EvmAddress = H160(hex!("0000000000000000000100000000000000000000"));
 pub const MIRRORED_NFT_ADDRESS_START: u64 = 0x2000000;
+/// ERC20 Holding Account used for transfer ERC20 token
+pub const ERC20_HOLDING_ACCOUNT: EvmAddress = H160(hex_literal::hex!("000000000000000000ff00000000000000000000"));
 /// System contract address prefix
 pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
 
@@ -127,6 +149,7 @@ pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
 ///                     ^^                     CurrencyId Type: 1-Token 2-DexShare 3-StableAsset
 ///                                                             4-LiquidCrowdloan
 ///                                                             5-ForeignAsset(ignore Erc20, without the prefix of system contracts)
+///                                                             FF-Erc20 Holding Account
 ///                                         ^^ CurrencyId Type is 1-Token, Token
 ///                                   ^^^^^^^^ CurrencyId Type is 1-Token, NFT
 ///                       ^^                   CurrencyId Type is 2-DexShare, DexShare Left Type:

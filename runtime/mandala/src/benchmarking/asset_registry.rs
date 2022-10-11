@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, AssetRegistry, CurrencyId, GetNativeCurrencyId, Origin, Runtime, EVM};
+use crate::{AccountId, AssetRegistry, CurrencyId, Origin, Runtime, EVM};
 
-use super::utils::{dollar, set_balance};
+use super::utils::{dollar, set_balance, NATIVE};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use module_evm::EvmAddress;
@@ -27,8 +27,6 @@ use orml_benchmarking::runtime_benchmarks;
 use primitives::{currency::AssetMetadata, TokenSymbol};
 use sp_std::{boxed::Box, str::FromStr, vec};
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 
 pub fn alice() -> AccountId {
 	<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr())

@@ -343,6 +343,18 @@ pub async fn start_dev_node(
 		}
 	}
 
+	let rpc_builder = {
+		let client = client.clone();
+		move |_, _| {
+			let deps = crate::rpc::FullDeps {
+				client: client.clone(),
+				command_sink: rpc_sink.clone(),
+				_marker: Default::default(),
+			};
+			crate::rpc::create_full(deps).map_err(Into::into)
+		}
+	};
+
 	let rpc_handlers = sc_service::spawn_tasks(SpawnTasksParams {
 		config,
 		client: client.clone(),
@@ -350,11 +362,7 @@ pub async fn start_dev_node(
 		task_manager: &mut task_manager,
 		keystore: keystore_container.sync_keystore(),
 		transaction_pool: transaction_pool.clone(),
-		rpc_extensions_builder: Box::new(move |_, _| {
-			let mut io = jsonrpc_core::IoHandler::default();
-			io.extend_with(ManualSealApi::to_delegate(ManualSeal::new(rpc_sink.clone())));
-			Ok(io)
-		}),
+		rpc_builder: Box::new(rpc_builder),
 		network: network.clone(),
 		system_rpc_tx,
 		telemetry: None,
@@ -380,7 +388,8 @@ async fn build_relay_chain_interface(
 	task_manager: &mut TaskManager,
 ) -> RelayChainResult<Arc<dyn RelayChainInterface + 'static>> {
 	if let Some(relay_chain_url) = collator_options.relay_chain_rpc_url {
-		return Ok(Arc::new(RelayChainRPCInterface::new(relay_chain_url).await?) as Arc<_>);
+		let client = create_client_and_start_worker(relay_chain_url, task_manager).await?;
+		return Ok(Arc::new(RelayChainRpcInterface::new(client)) as Arc<_>);
 	}
 
 	let relay_chain_full_node = polkadot_test_service::new_full(
@@ -397,7 +406,7 @@ async fn build_relay_chain_interface(
 	Ok(Arc::new(RelayChainInProcessInterface::new(
 		relay_chain_full_node.client.clone(),
 		relay_chain_full_node.backend.clone(),
-		Arc::new(Mutex::new(Box::new(relay_chain_full_node.network.clone()))),
+		Arc::new(relay_chain_full_node.network.clone()),
 		relay_chain_full_node.overseer_handle,
 	)) as Arc<_>)
 }
@@ -426,12 +435,8 @@ pub async fn start_node_impl<RB>(
 	Sender<EngineCommand<H256>>,
 )>
 where
-	RB: Fn(Arc<Client>) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error> + Send + 'static,
+	RB: Fn(Arc<Client>) -> Result<RpcModule<()>, sc_service::Error> + Send + 'static,
 {
-	if matches!(parachain_config.role, Role::Light) {
-		return Err("Light client not supported!".into());
-	}
-
 	let parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial(&parachain_config, seal_mode)?;
@@ -473,14 +478,14 @@ where
 		warp_sync: None,
 	})?;
 
-	let rpc_extensions_builder = {
+	let rpc_builder = {
 		let client = client.clone();
 
-		Box::new(move |_, _| rpc_ext_builder(client.clone()))
+		move |_, _| rpc_ext_builder(client.clone())
 	};
 
 	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
-		rpc_extensions_builder,
+		rpc_builder: Box::new(rpc_builder),
 		client: client.clone(),
 		transaction_pool: transaction_pool.clone(),
 		task_manager: &mut task_manager,

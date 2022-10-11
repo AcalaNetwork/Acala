@@ -40,7 +40,7 @@ use sp_runtime::{
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
 use sp_std::prelude::*;
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio, SwapLimit};
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio, Swap, SwapLimit};
 
 mod mock;
 mod tests;
@@ -71,9 +71,11 @@ pub mod module {
 		/// Auction manager creates auction to handle system surplus and debit
 		type AuctionManagerHandler: AuctionManager<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		/// Dex manager is used to swap confiscated collateral assets to stable
-		/// currency
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+		/// Dex manager
+		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
+
+		/// Swap
+		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
 
 		type StableAsset: StableAsset<
 			AssetId = CurrencyId,
@@ -96,11 +98,6 @@ pub mod module {
 		/// from liquidation.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-
-		/// The alternative swap path joint list, which can be concated to
-		/// alternative swap path when cdp treasury swap collateral to stable.
-		#[pallet::constant]
-		type AlternativeSwapPathJointList: Get<Vec<Vec<CurrencyId>>>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -198,7 +195,7 @@ pub mod module {
 		/// - `currency_id`: collateral type
 		/// - `amount`: collateral amount
 		/// - `target`: target amount
-		/// - `splited`: splite collateral to multiple auction according to the config size
+		/// - `splited`: split collateral to multiple auction according to the config size
 		#[pallet::weight(
 			if *splited {
 				T::WeightInfo::auction_collateral(T::MaxAuctionsCount::get())
@@ -272,7 +269,7 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	/// Get account of cdp treasury module.
 	pub fn account_id() -> T::AccountId {
-		T::PalletId::get().into_account()
+		T::PalletId::get().into_account_truncating()
 	}
 
 	/// Get current total surplus of system.
@@ -296,7 +293,7 @@ impl<T: Config> Pallet<T> {
 
 		// Burn the amount that is equal to offset amount of stable currency.
 		if !offset_amount.is_zero() {
-			let res = T::Currency::withdraw(T::GetStableCurrencyId::get(), &Self::account_id(), offset_amount);
+			let res = Self::burn_debit(&Self::account_id(), offset_amount);
 			match res {
 				Ok(_) => {
 					DebitPool::<T>::mutate(|debit| {
@@ -349,6 +346,7 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 		Self::issue_debit(&Self::account_id(), amount, true)
 	}
 
+	/// This should be the only function in the system that issues stable coin
 	fn issue_debit(who: &T::AccountId, debit: Self::Balance, backed: bool) -> DispatchResult {
 		// increase system debit if the debit is unbacked
 		if !backed {
@@ -359,6 +357,7 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 		Ok(())
 	}
 
+	/// This should be the only function in the system that burns stable coin
 	fn burn_debit(who: &T::AccountId, debit: Self::Balance) -> DispatchResult {
 		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, debit)
 	}
@@ -441,33 +440,21 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 
 					if !amount.is_zero() {
 						let swap_limit = SwapLimit::ExactSupply(amount, 0);
-						let swap_path = T::DEX::get_best_price_swap_path(
+						let response = T::Swap::swap(
+							&Self::account_id(),
 							redemption_currency,
 							T::GetStableCurrencyId::get(),
 							swap_limit,
-							T::AlternativeSwapPathJointList::get(),
-						)
-						.ok_or(Error::<T>::CannotSwap)?;
-
-						let response = T::DEX::swap_with_specific_path(&Self::account_id(), &swap_path, swap_limit)?;
-						supply_sum = supply_sum.checked_add(response.0).ok_or(Error::<T>::CannotSwap)?;
-						target_sum = target_sum.checked_add(response.1).ok_or(Error::<T>::CannotSwap)?;
+						)?;
+						supply_sum = supply_sum.checked_add(response.0).ok_or(ArithmeticError::Overflow)?;
+						target_sum = target_sum.checked_add(response.1).ok_or(ArithmeticError::Overflow)?;
 					}
 				}
 
-				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap,);
+				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap);
 				Ok((supply_sum, target_sum))
 			}
-			_ => {
-				let swap_path = T::DEX::get_best_price_swap_path(
-					currency_id,
-					T::GetStableCurrencyId::get(),
-					limit,
-					T::AlternativeSwapPathJointList::get(),
-				)
-				.ok_or(Error::<T>::CannotSwap)?;
-				T::DEX::swap_with_specific_path(&Self::account_id(), &swap_path, limit)
-			}
+			_ => T::Swap::swap(&Self::account_id(), currency_id, T::GetStableCurrencyId::get(), limit),
 		}
 	}
 

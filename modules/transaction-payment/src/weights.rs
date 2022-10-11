@@ -51,7 +51,9 @@ pub trait WeightInfo {
 	fn disable_charge_fee_pool() -> Weight;
 	fn on_finalize() -> Weight;
 	fn with_fee_path() -> Weight;
+	fn with_fee_aggregated_path() -> Weight;
 	fn with_fee_currency() -> Weight;
+	fn with_fee_paid_by() -> Weight;
 }
 
 /// Weights for module_transaction_payment using the Acala node and recommended hardware.
@@ -93,7 +95,14 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn with_fee_path() -> Weight {
 		(156_000_000 as Weight)
 	}
+	fn with_fee_aggregated_path() -> Weight {
+		(156_000_000 as Weight)
+	}
 	fn with_fee_currency() -> Weight {
+		(193_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+	}
+	fn with_fee_paid_by() -> Weight {
 		(193_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 	}
@@ -131,7 +140,14 @@ impl WeightInfo for () {
 	fn with_fee_path() -> Weight {
 		(156_000_000 as Weight)
 	}
+	fn with_fee_aggregated_path() -> Weight {
+		(156_000_000 as Weight)
+	}
 	fn with_fee_currency() -> Weight {
+		(193_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+	}
+	fn with_fee_paid_by() -> Weight {
 		(193_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 	}

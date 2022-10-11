@@ -6,6 +6,14 @@ run:
 run-eth:
 	cargo run --features with-mandala-runtime --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
 
+.PHONY: run-karura-dev
+run-karura-dev:
+	cargo run --features with-karura-runtime -- --chain=karura-dev --alice --instant-sealing --tmp -lruntime=debug
+
+.PHONY: run-acala-dev
+run-acala-dev:
+	cargo run --features with-acala-runtime -- --chain=acala-dev --alice --instant-sealing --tmp -lruntime=debug
+
 .PHONY: run-karura
 run-karura:
 	cargo run --features with-karura-runtime -- --chain=karura
@@ -29,6 +37,11 @@ build-full: githooks
 .PHONY: build-all
 build-all:
 	cargo build --locked --features with-all-runtime
+
+.PHONY: build-benches
+build-benches:
+	cargo bench --locked --no-run --features bench --package module-evm
+	cargo bench --locked --no-run --features bench --package runtime-common
 
 .PHONY: build-release
 build-release:
@@ -79,7 +92,12 @@ check-all: check-runtimes check-benchmarks check-integration-tests
 
 .PHONY: check-runtimes
 check-runtimes:
-	SKIP_WASM_BUILD= cargo check --features with-all-runtime --tests --all
+	SKIP_WASM_BUILD= cargo check -p mandala-runtime --features "runtime-benchmarks try-runtime with-ethereum-compatibility on-chain-release-build" --tests
+	SKIP_WASM_BUILD= cargo check -p mandala-runtime --features disable-runtime-api
+	SKIP_WASM_BUILD= cargo check -p karura-runtime --features "runtime-benchmarks try-runtime on-chain-release-build" --tests
+	SKIP_WASM_BUILD= cargo check -p karura-runtime --features disable-runtime-api
+	SKIP_WASM_BUILD= cargo check -p acala-runtime --features "runtime-benchmarks try-runtime on-chain-release-build" --tests
+	SKIP_WASM_BUILD= cargo check -p acala-runtime --features disable-runtime-api
 
 .PHONY: check-benchmarks
 check-benchmarks:
@@ -137,7 +155,7 @@ test-runtimes:
 
 .PHONY: test-e2e
 test-e2e:
-	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
+	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test --test-threads=1
 
 .PHONY: test-ts
 test-ts: build-mandala-internal-release
@@ -145,7 +163,7 @@ test-ts: build-mandala-internal-release
 
 .PHONY: test-benchmarking
 test-benchmarking:
-	cargo test --features bench --package module-evm
+	cargo test --features bench --package module-evm --package runtime-common
 	cargo test --features runtime-benchmarks --features with-all-runtime --features --all benchmarking
 
 .PHONY: test-all
@@ -206,15 +224,15 @@ build-wasm-acala:
 
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:
-	PACKAGE=mandala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
+	PACKAGE=mandala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build,no-metadata-docs" ./scripts/srtool-build.sh
 
 .PHONY: srtool-build-wasm-karura
 srtool-build-wasm-karura:
-	PACKAGE=karura-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
+	PACKAGE=karura-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build,no-metadata-docs" ./scripts/srtool-build.sh
 
 .PHONY: srtool-build-wasm-acala
 srtool-build-wasm-acala:
-	PACKAGE=acala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
+	PACKAGE=acala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build,no-metadata-docs" ./scripts/srtool-build.sh
 
 .PHONY: generate-tokens
 generate-tokens:
@@ -231,6 +249,10 @@ benchmark-karura:
 .PHONY: benchmark-acala
 benchmark-acala:
 	 cargo run --profile production --features=runtime-benchmarks --features=with-acala-runtime -- benchmark --chain=acala-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
+
+.PHONY: benchmark-machine
+benchmark-machine:
+	 cargo run --profile production --features=with-acala-runtime -- benchmark machine --chain=acala-dev
 
 .PHONY: clippy-fix
 clippy-fix:

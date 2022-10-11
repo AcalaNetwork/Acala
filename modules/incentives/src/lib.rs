@@ -34,9 +34,6 @@
 //! 1. Incentives: periodicly(AccumulatePeriod), accumulate fixed amount according to Incentive.
 //! Rewards come from RewardsSource, please transfer enough tokens to RewardsSource before
 //! start incentive plan.
-//! 2. DexSaving: periodicly(AccumulatePeriod), the reward currency is Stable(KUSD/AUSD),
-//! the accumulation amount is the multiplier of DexSavingRewardRates and the stable amount of
-//! corresponding liquidity pool. CDPTreasury will issue the stable currency to RewardsSource.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
@@ -46,30 +43,20 @@ use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
-use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, One, UniqueSaturatedInto, Zero},
-	DispatchResult, FixedPointNumber, Permill, RuntimeDebug,
+	DispatchResult, FixedPointNumber, Permill,
 };
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
-use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, Rate};
+use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, IncentivesManager, PoolId, Rate};
 
+pub mod migration;
 mod mock;
 mod tests;
 pub mod weights;
 
 pub use module::*;
 pub use weights::WeightInfo;
-
-/// PoolId for various rewards pools
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-pub enum PoolId {
-	/// Rewards and shares pool for users who open CDP(CollateralCurrencyId)
-	Loans(CurrencyId),
-
-	/// Rewards and shares pool for DEX makers who stake LP token(LPCurrencyId)
-	Dex(CurrencyId),
-}
 
 #[frame_support::pallet]
 pub mod module {
@@ -112,7 +99,7 @@ pub mod module {
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// DEX to supply liquidity info
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
 		/// Emergency shutdown.
 		type EmergencyShutdown: EmergencyShutdown;
@@ -166,8 +153,6 @@ pub mod module {
 			reward_currency_id: CurrencyId,
 			reward_amount_per_period: Balance,
 		},
-		/// Saving reward rate updated.
-		SavingRewardRateUpdated { pool: PoolId, reward_rate_per_period: Rate },
 		/// Payout deduction rate updated.
 		ClaimRewardDeductionRateUpdated { pool: PoolId, deduction_rate: Rate },
 	}
@@ -180,6 +165,7 @@ pub mod module {
 	pub type IncentiveRewardAmounts<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, PoolId, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
+	/// NOTE: already deprecated, need remove it after next runtime upgrade
 	/// Mapping from pool to its fixed reward rate per period.
 	///
 	/// DexSavingRewardRates: map Pool => SavingRatePerPeriod
@@ -229,11 +215,7 @@ pub mod module {
 								count += 1;
 								Self::accumulate_incentives(pool_id);
 							}
-							PoolId::Dex(lp_currency_id) => {
-								// do not accumulate dex saving any more after shutdown
-								if !shutdown {
-									Self::accumulate_dex_saving(lp_currency_id, pool_id);
-								}
+							PoolId::Dex(_) => {
 								count += 1;
 								Self::accumulate_incentives(pool_id);
 							}
@@ -297,41 +279,7 @@ pub mod module {
 		pub fn claim_rewards(origin: OriginFor<T>, pool_id: PoolId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			// orml_rewards will claim rewards for all currencies rewards
-			<orml_rewards::Pallet<T>>::claim_rewards(&who, &pool_id);
-
-			let pending_multi_rewards: BTreeMap<CurrencyId, Balance> = PendingMultiRewards::<T>::take(&pool_id, &who);
-			let deduction_rate = Self::claim_reward_deduction_rates(&pool_id);
-
-			for (currency_id, pending_reward) in pending_multi_rewards {
-				if pending_reward.is_zero() {
-					continue;
-				}
-				// calculate actual rewards and deduction amount
-				let (actual_amount, deduction_amount) = {
-					let deduction_amount = deduction_rate.saturating_mul_int(pending_reward).min(pending_reward);
-					if !deduction_amount.is_zero() {
-						// re-accumulate deduction to rewards pool if deduction amount is not zero
-						<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, deduction_amount)?;
-					}
-					(pending_reward.saturating_sub(deduction_amount), deduction_amount)
-				};
-
-				// transfer the actual reward(pending reward exclude deduction) to user from the pool. it should not
-				// affect the process, ignore the result to continue. if it fails, just the user will not
-				// be rewarded, there will not increase user balance.
-				T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount)?;
-
-				Self::deposit_event(Event::ClaimRewards {
-					who: who.clone(),
-					pool: pool_id,
-					reward_currency_id: currency_id,
-					actual_amount,
-					deduction_amount,
-				});
-			}
-
-			Ok(())
+			Self::do_claim_rewards(who, pool_id)
 		}
 
 		/// Update incentive reward amount for specific PoolId
@@ -372,42 +320,6 @@ pub mod module {
 						}
 					});
 				}
-			}
-			Ok(())
-		}
-
-		/// Update DEX saving reward rate for specific PoolId
-		///
-		/// The dispatch origin of this call must be `UpdateOrigin`.
-		///
-		/// - `updates`: Vec<(PoolId, Rate)>
-		#[pallet::weight(<T as Config>::WeightInfo::update_dex_saving_rewards(updates.len() as u32))]
-		#[transactional]
-		pub fn update_dex_saving_rewards(origin: OriginFor<T>, updates: Vec<(PoolId, Rate)>) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
-			for (pool_id, rate) in updates {
-				match pool_id {
-					PoolId::Dex(currency_id) if currency_id.is_dex_share_currency_id() => {}
-					_ => return Err(Error::<T>::InvalidPoolId.into()),
-				}
-				ensure!(rate <= Rate::one(), Error::<T>::InvalidRate);
-
-				DexSavingRewardRates::<T>::mutate_exists(&pool_id, |maybe_rate| {
-					let mut v = maybe_rate.unwrap_or_default();
-					if rate != v {
-						v = rate;
-						Self::deposit_event(Event::SavingRewardRateUpdated {
-							pool: pool_id,
-							reward_rate_per_period: rate,
-						});
-					}
-
-					if v.is_zero() {
-						*maybe_rate = None;
-					} else {
-						*maybe_rate = Some(v);
-					}
-				});
 			}
 			Ok(())
 		}
@@ -453,7 +365,7 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	pub fn account_id() -> T::AccountId {
-		T::PalletId::get().into_account()
+		T::PalletId::get().into_account_truncating()
 	}
 
 	// accumulate incentive rewards of multi currencies
@@ -497,53 +409,56 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	// accumulate DEX saving reward(stable currency) for Dex Pool
-	fn accumulate_dex_saving(lp_currency_id: CurrencyId, pool_id: PoolId) {
-		let stable_currency_id = T::StableCurrencyId::get();
-		let dex_saving_reward_rate = Self::dex_saving_reward_rates(&pool_id);
+	fn do_claim_rewards(who: T::AccountId, pool_id: PoolId) -> DispatchResult {
+		// orml_rewards will claim rewards for all currencies rewards
+		<orml_rewards::Pallet<T>>::claim_rewards(&who, &pool_id);
 
-		if !dex_saving_reward_rate.is_zero() {
-			if let Some((currency_id_a, currency_id_b)) = lp_currency_id.split_dex_share_currency_id() {
-				// accumulate saving reward only for liquidity pool of stable currency id
-				let dex_saving_reward_base = if currency_id_a == stable_currency_id {
-					T::DEX::get_liquidity_pool(stable_currency_id, currency_id_b).0
-				} else if currency_id_b == stable_currency_id {
-					T::DEX::get_liquidity_pool(stable_currency_id, currency_id_a).0
-				} else {
-					Zero::zero()
-				};
-				let dex_saving_reward_amount = dex_saving_reward_rate.saturating_mul_int(dex_saving_reward_base);
+		let pending_multi_rewards: BTreeMap<CurrencyId, Balance> = PendingMultiRewards::<T>::take(&pool_id, &who);
+		let deduction_rate = Self::claim_reward_deduction_rates(&pool_id);
 
-				// issue stable currency without backing.
-				if !dex_saving_reward_amount.is_zero() {
-					let res = T::CDPTreasury::issue_debit(&Self::account_id(), dex_saving_reward_amount, false);
-					match res {
-						Ok(_) => {
-							let _ = <orml_rewards::Pallet<T>>::accumulate_reward(
-								&pool_id,
-								stable_currency_id,
-								dex_saving_reward_amount,
-							)
-							.map_err(|e| {
-								log::error!(
-									target: "incentives",
-									"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency {:?}, amount {:?}: {:?}",
-									pool_id, stable_currency_id, dex_saving_reward_amount, e
-								);
-							});
-						}
-						Err(e) => {
-							log::warn!(
-								target: "incentives",
-								"issue_debit: failed to issue {:?} unbacked stable to {:?}: {:?}. \
-								This is unexpected but should be safe",
-								dex_saving_reward_amount, Self::account_id(), e
-							);
-						}
-					}
-				}
+		for (currency_id, pending_reward) in pending_multi_rewards {
+			if pending_reward.is_zero() {
+				continue;
 			}
+			// calculate actual rewards and deduction amount
+			let (actual_amount, deduction_amount) = {
+				let deduction_amount = deduction_rate.saturating_mul_int(pending_reward).min(pending_reward);
+				if !deduction_amount.is_zero() {
+					// re-accumulate deduction to rewards pool if deduction amount is not zero
+					let _ = <orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, deduction_amount).map_err(|e| {
+						log::error!(
+							target: "incentives",
+							"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
+							pool_id, currency_id, deduction_amount, e
+						);
+					});
+				}
+				(pending_reward.saturating_sub(deduction_amount), deduction_amount)
+			};
+
+			// transfer to `who` maybe fail because of the reward amount is below ED and `who` is not alive.
+			// if transfer failed, do not throw err directly and try to put the tiny reward back to pool.
+			let res = T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount);
+			if res.is_err() {
+				let _ = <orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, actual_amount).map_err(|e| {
+					log::error!(
+						target: "incentives",
+						"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
+						pool_id, currency_id, actual_amount, e
+					);
+				});
+			}
+
+			Self::deposit_event(Event::ClaimRewards {
+				who: who.clone(),
+				pool: pool_id,
+				reward_currency_id: currency_id,
+				actual_amount,
+				deduction_amount,
+			});
 		}
+
+		Ok(())
 	}
 }
 
@@ -578,6 +493,38 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 			withdraw: amount,
 		});
 		Ok(())
+	}
+}
+
+impl<T: Config> IncentivesManager<T::AccountId, Balance, CurrencyId, PoolId> for Pallet<T> {
+	fn get_incentive_reward_amount(pool_id: PoolId, currency_id: CurrencyId) -> Balance {
+		IncentiveRewardAmounts::<T>::get(pool_id, currency_id)
+	}
+
+	fn deposit_dex_share(who: &T::AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		Self::do_deposit_dex_share(who, lp_currency_id, amount)
+	}
+
+	fn withdraw_dex_share(who: &T::AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		Self::do_withdraw_dex_share(who, lp_currency_id, amount)
+	}
+
+	fn claim_rewards(who: T::AccountId, pool_id: PoolId) -> DispatchResult {
+		Self::do_claim_rewards(who, pool_id)
+	}
+
+	fn get_claim_reward_deduction_rate(pool_id: PoolId) -> Rate {
+		ClaimRewardDeductionRates::<T>::get(pool_id)
+	}
+
+	fn get_pending_rewards(pool_id: PoolId, who: T::AccountId, reward_currencies: Vec<CurrencyId>) -> Vec<Balance> {
+		let rewards_map = PendingMultiRewards::<T>::get(pool_id, who);
+		let mut reward_balances = Vec::new();
+		for reward_currency in reward_currencies {
+			let reward_amount = rewards_map.get(&reward_currency).copied().unwrap_or_default();
+			reward_balances.push(reward_amount);
+		}
+		reward_balances
 	}
 }
 

@@ -90,6 +90,10 @@ pub mod module {
 		#[pallet::constant]
 		type GetNativeCurrencyId: Get<CurrencyId>;
 
+		/// Used as temporary account for ERC20 token `withdraw` and `deposit`.
+		#[pallet::constant]
+		type Erc20HoldingAccount: Get<EvmAddress>;
+
 		/// Weight information for extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
@@ -131,6 +135,18 @@ pub mod module {
 			currency_id: CurrencyId,
 			from: T::AccountId,
 			to: T::AccountId,
+			amount: BalanceOf<T>,
+		},
+		/// Withdrawn some balances from an account
+		Withdrawn {
+			currency_id: CurrencyId,
+			who: T::AccountId,
+			amount: BalanceOf<T>,
+		},
+		/// Deposited some balance into an account
+		Deposited {
+			currency_id: CurrencyId,
+			who: T::AccountId,
 			amount: BalanceOf<T>,
 		},
 		/// Dust swept.
@@ -226,6 +242,37 @@ pub mod module {
 				}
 			}
 			Ok(())
+		}
+
+		/// Set lock by lock_id
+		///
+		/// The dispatch origin of this call must be _Root_.
+		#[pallet::weight(T::WeightInfo::force_set_lock())]
+		pub fn force_set_lock(
+			origin: OriginFor<T>,
+			who: <T::Lookup as StaticLookup>::Source,
+			currency_id: CurrencyId,
+			#[pallet::compact] amount: BalanceOf<T>,
+			lock_id: LockIdentifier,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			let who = T::Lookup::lookup(who)?;
+			<Self as MultiLockableCurrency<T::AccountId>>::set_lock(lock_id, currency_id, &who, amount)
+		}
+
+		/// Remove lock by lock_id
+		///
+		/// The dispatch origin of this call must be _Root_.
+		#[pallet::weight(T::WeightInfo::force_remove_lock())]
+		pub fn force_remove_lock(
+			origin: OriginFor<T>,
+			who: <T::Lookup as StaticLookup>::Source,
+			currency_id: CurrencyId,
+			lock_id: LockIdentifier,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			let who = T::Lookup::lookup(who)?;
+			<Self as MultiLockableCurrency<T::AccountId>>::remove_lock(lock_id, currency_id, &who)
 		}
 	}
 }
@@ -360,7 +407,38 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			return Ok(());
 		}
 		match currency_id {
-			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
+			CurrencyId::Erc20(contract) => {
+				// deposit from erc20 holding account to receiver(who). in xcm case which receive erc20 from sibling
+				// parachain, we choose receiver to charge storage fee. we must make sure receiver has enough native
+				// token to charge storage fee.
+				let sender = T::Erc20HoldingAccount::get();
+				let from = T::AddressMapping::get_account_id(&sender);
+				ensure!(
+					!Self::free_balance(currency_id, &from).is_zero(),
+					Error::<T>::DepositFailed
+				);
+				let receiver = T::AddressMapping::get_or_create_evm_address(who);
+				T::EVMBridge::transfer(
+					InvokeContext {
+						contract,
+						sender,
+						origin: receiver,
+					},
+					receiver,
+					amount,
+				)?;
+				Self::deposit_event(Event::Withdrawn {
+					currency_id,
+					who: from,
+					amount,
+				});
+				Self::deposit_event(Event::Deposited {
+					currency_id,
+					who: who.clone(),
+					amount,
+				});
+				Ok(())
+			}
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::deposit(who, amount),
 			_ => T::MultiCurrency::deposit(currency_id, who, amount),
 		}
@@ -372,7 +450,34 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		}
 
 		match currency_id {
-			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
+			CurrencyId::Erc20(contract) => {
+				// withdraw from sender(who) to erc20 holding account. in xcm case which receive erc20 from sibling
+				// parachain, sender is sibling parachain sovereign account. As the origin here is used to charge
+				// storage fee, we must make sure sibling parachain sovereign account has enough native token to
+				// charge storage fee.
+				let receiver = T::Erc20HoldingAccount::get();
+				let sender = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
+				T::EVMBridge::transfer(
+					InvokeContext {
+						contract,
+						sender,
+						origin: sender,
+					},
+					receiver,
+					amount,
+				)?;
+				Self::deposit_event(Event::Withdrawn {
+					currency_id,
+					who: who.clone(),
+					amount,
+				});
+				Self::deposit_event(Event::Deposited {
+					currency_id,
+					who: T::AddressMapping::get_account_id(&receiver),
+					amount,
+				});
+				Ok(())
+			}
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::withdraw(who, amount),
 			_ => T::MultiCurrency::withdraw(currency_id, who, amount),
 		}
@@ -649,7 +754,12 @@ impl<T: Config> fungibles::Inspect<T::AccountId> for Pallet<T> {
 		}
 	}
 
-	fn can_deposit(asset_id: Self::AssetId, who: &T::AccountId, amount: Self::Balance) -> DepositConsequence {
+	fn can_deposit(
+		asset_id: Self::AssetId,
+		who: &T::AccountId,
+		amount: Self::Balance,
+		mint: bool,
+	) -> DepositConsequence {
 		match asset_id {
 			CurrencyId::Erc20(_) => {
 				if amount.is_zero() {
@@ -672,9 +782,9 @@ impl<T: Config> fungibles::Inspect<T::AccountId> for Pallet<T> {
 				DepositConsequence::Success
 			}
 			id if id == T::GetNativeCurrencyId::get() => {
-				<T::NativeCurrency as fungible::Inspect<_>>::can_deposit(who, amount)
+				<T::NativeCurrency as fungible::Inspect<_>>::can_deposit(who, amount, mint)
 			}
-			_ => <T::MultiCurrency as fungibles::Inspect<_>>::can_deposit(asset_id, who, amount),
+			_ => <T::MultiCurrency as fungibles::Inspect<_>>::can_deposit(asset_id, who, amount, mint),
 		}
 	}
 
@@ -1032,8 +1142,8 @@ where
 	fn reducible_balance(who: &T::AccountId, keep_alive: bool) -> Self::Balance {
 		<Pallet<T> as fungibles::Inspect<_>>::reducible_balance(GetCurrencyId::get(), who, keep_alive)
 	}
-	fn can_deposit(who: &T::AccountId, amount: Self::Balance) -> DepositConsequence {
-		<Pallet<T> as fungibles::Inspect<_>>::can_deposit(GetCurrencyId::get(), who, amount)
+	fn can_deposit(who: &T::AccountId, amount: Self::Balance, mint: bool) -> DepositConsequence {
+		<Pallet<T> as fungibles::Inspect<_>>::can_deposit(GetCurrencyId::get(), who, amount, mint)
 	}
 	fn can_withdraw(who: &T::AccountId, amount: Self::Balance) -> WithdrawConsequence<Self::Balance> {
 		<Pallet<T> as fungibles::Inspect<_>>::can_withdraw(GetCurrencyId::get(), who, amount)
@@ -1308,8 +1418,8 @@ where
 	fn reducible_balance(who: &AccountId, keep_alive: bool) -> Self::Balance {
 		Currency::reducible_balance(who, keep_alive)
 	}
-	fn can_deposit(who: &AccountId, amount: Self::Balance) -> DepositConsequence {
-		Currency::can_deposit(who, amount)
+	fn can_deposit(who: &AccountId, amount: Self::Balance, mint: bool) -> DepositConsequence {
+		Currency::can_deposit(who, amount, mint)
 	}
 	fn can_withdraw(who: &AccountId, amount: Self::Balance) -> WithdrawConsequence<Self::Balance> {
 		Currency::can_withdraw(who, amount)

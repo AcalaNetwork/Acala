@@ -16,9 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Unit tests for example module.
-// This is only a place holder. Tests will be written once the spec is confirmed.
-
-// #![cfg(test)]
-//
-// use crate::mock::*;
+/// Version 1
+///
+/// Adds TotalStakingBonded to homa storage
+pub mod v1;

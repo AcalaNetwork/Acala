@@ -1,8 +1,8 @@
 FROM rust:buster as builder
 WORKDIR /app
 
-RUN rustup default nightly-2022-02-19 && \
-	rustup target add wasm32-unknown-unknown --toolchain nightly-2022-02-19
+RUN rustup default nightly-2022-05-15 && \
+	rustup target add wasm32-unknown-unknown --toolchain nightly-2022-05-15
 
 RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
@@ -19,7 +19,7 @@ RUN make $BUILD_ARGS
 
 # =============
 
-FROM phusion/baseimage:bionic-1.0.0
+FROM phusion/baseimage:focal-1.2.0
 LABEL maintainer="hello@acala.network"
 
 ARG PROFILE
@@ -39,7 +39,7 @@ RUN ldd /usr/local/bin/acala && \
 
 # Shrinking
 RUN rm -rf /usr/lib/python* && \
-	rm -rf /usr/bin /usr/sbin /usr/share/man
+	rm -rf /usr/sbin /usr/share/man
 
 USER acala
 EXPOSE 30333 9933 9944

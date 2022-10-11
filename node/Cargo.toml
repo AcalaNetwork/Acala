@@ -1,6 +1,6 @@
 [package]
 name = "acala"
-version = "2.6.0"
+version = "2.10.0"
 authors = ["Acala Developers"]
 edition = "2021"
 default-run = "acala"
@@ -10,7 +10,7 @@ name = "acala"
 path = "src/main.rs"
 
 [dependencies]
-futures = "0.3.15"
+futures = "0.3.21"
 parity-util-mem = { version = "0.11", default-features = false, features = ["jemalloc-global"] }
 acala-cli = { path = "cli" }
 acala-service = { path = "service" }

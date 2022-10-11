@@ -18,6 +18,9 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
+use super::{CurrencyId, KAR, KSM, LKSM};
+use sp_std::prelude::*;
+
 pub mod utils {
 	include!("../../../mandala/src/benchmarking/utils.rs");
 }
@@ -83,6 +86,9 @@ pub mod session_manager {
 pub mod nutsfinance_stable_asset {
 	include!("../../../mandala/src/benchmarking/nutsfinance_stable_asset.rs");
 }
+pub mod aggregated_dex {
+	include!("../../../mandala/src/benchmarking/aggregated_dex.rs");
+}
 
 // orml benchmarking
 pub mod auction {
@@ -104,4 +110,8 @@ pub mod honzon_bridge;
 
 pub fn get_vesting_account() -> super::AccountId {
 	super::KaruraFoundationAccounts::get()[0].clone()
+}
+
+pub fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
+	vec![KSM, LKSM, KAR, CurrencyId::StableAssetPoolToken(0)]
 }

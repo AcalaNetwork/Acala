@@ -91,7 +91,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u32(output),
+					output: Output::encode_uint(output),
 					logs: Default::default(),
 				})
 			}
@@ -100,7 +100,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(deposit),
+					output: Output::encode_uint(deposit),
 					logs: Default::default(),
 				})
 			}
@@ -118,7 +118,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_address(&maintainer),
+					output: Output::encode_address(maintainer),
 					logs: Default::default(),
 				})
 			}
@@ -127,7 +127,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(deposit),
+					output: Output::encode_uint(deposit),
 					logs: Default::default(),
 				})
 			}
@@ -136,7 +136,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(fee),
+					output: Output::encode_uint(fee),
 					logs: Default::default(),
 				})
 			}
@@ -227,7 +227,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_bool(developer_status),
+					output: Output::encode_bool(developer_status),
 					logs: Default::default(),
 				})
 			}

@@ -18,25 +18,32 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::from_over_into)]
+#![allow(clippy::type_complexity)]
 
 use codec::FullCodec;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
-use primitives::{task::TaskResult, CurrencyId};
+use primitives::{task::TaskResult, Balance, CurrencyId, Multiplier, ReserveIdentifier};
 use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
-use sp_std::prelude::*;
-
+use sp_std::{prelude::*, result::Result};
 use xcm::latest::prelude::*;
 
 pub mod dex;
 pub mod evm;
+pub mod homa;
 pub mod honzon;
+pub mod incentives;
 pub mod mocks;
+pub mod stable_asset;
 
 pub use crate::dex::*;
 pub use crate::evm::*;
+pub use crate::homa::*;
 pub use crate::honzon::*;
+pub use crate::incentives::*;
+pub use crate::stable_asset::*;
 
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;
@@ -67,25 +74,9 @@ pub trait ExchangeRateProvider {
 	fn get_exchange_rate() -> ExchangeRate;
 }
 
-pub trait DEXIncentives<AccountId, CurrencyId, Balance> {
-	fn do_deposit_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
-	fn do_withdraw_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
-}
-
-#[cfg(feature = "std")]
-impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balance> for () {
-	fn do_deposit_dex_share(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
-		Ok(())
-	}
-
-	fn do_withdraw_dex_share(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
-		Ok(())
-	}
-}
-
 pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
-	fn reserve_fee(who: &AccountId, weight: Weight) -> Result<Balance, DispatchError>;
-	fn unreserve_fee(who: &AccountId, fee: Balance);
+	fn reserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Result<Balance, DispatchError>;
+	fn unreserve_fee(who: &AccountId, fee: Balance, named: Option<ReserveIdentifier>) -> Balance;
 	fn unreserve_and_charge_fee(
 		who: &AccountId,
 		weight: Weight,
@@ -99,45 +90,8 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 		pays_fee: Pays,
 		class: DispatchClass,
 	) -> Result<(), TransactionValidityError>;
-}
-
-#[cfg(feature = "std")]
-use frame_support::traits::Imbalance;
-#[cfg(feature = "std")]
-impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
-	TransactionPayment<AccountId, Balance, NegativeImbalance> for ()
-{
-	fn reserve_fee(_who: &AccountId, _weight: Weight) -> Result<Balance, DispatchError> {
-		Ok(Default::default())
-	}
-
-	fn unreserve_fee(_who: &AccountId, _fee: Balance) {}
-
-	fn unreserve_and_charge_fee(
-		_who: &AccountId,
-		_weight: Weight,
-	) -> Result<(Balance, NegativeImbalance), TransactionValidityError> {
-		Ok((Default::default(), Imbalance::zero()))
-	}
-
-	fn refund_fee(
-		_who: &AccountId,
-		_weight: Weight,
-		_payed: NegativeImbalance,
-	) -> Result<(), TransactionValidityError> {
-		Ok(())
-	}
-
-	fn charge_fee(
-		_who: &AccountId,
-		_len: u32,
-		_weight: Weight,
-		_tip: Balance,
-		_pays_fee: Pays,
-		_class: DispatchClass,
-	) -> Result<(), TransactionValidityError> {
-		Ok(())
-	}
+	fn weight_to_fee(weight: Weight) -> Balance;
+	fn apply_multiplier_to_fee(fee: Balance, multiplier: Option<Multiplier>) -> Balance;
 }
 
 /// Used to interface with the Compound's Cash module
@@ -224,18 +178,35 @@ pub trait NomineesProvider<AccountId> {
 	fn nominees() -> Vec<AccountId>;
 }
 
-pub trait HomaSubAccountXcm<AccountId, Balance> {
-	/// Cross-chain transfer staking currency to sub account on relaychain.
-	fn transfer_staking_to_sub_account(sender: &AccountId, sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency and
-	/// send it back.
-	fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// Send XCM message to the relaychain for sub account to bond extra.
-	fn bond_extra_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// Send XCM message to the relaychain for sub account to unbond.
-	fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// The fee of cross-chain transfer is deducted from the recipient.
-	fn get_xcm_transfer_fee() -> Balance;
-	/// The fee of parachain
-	fn get_parachain_fee(location: MultiLocation) -> Balance;
+pub trait LiquidateCollateral<AccountId> {
+	fn liquidate(
+		who: &AccountId,
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+	) -> DispatchResult;
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(30)]
+impl<AccountId> LiquidateCollateral<AccountId> for Tuple {
+	fn liquidate(
+		who: &AccountId,
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+	) -> DispatchResult {
+		let mut last_error = None;
+		for_tuples!( #(
+			match Tuple::liquidate(who, currency_id, amount, target_stable_amount) {
+				Ok(_) => return Ok(()),
+				Err(e) => { last_error = Some(e) }
+			}
+		)* );
+		let last_error = last_error.unwrap_or(DispatchError::Other("No liquidation impl."));
+		Err(last_error)
+	}
+}
+
+pub trait BuyWeightRate {
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio>;
 }

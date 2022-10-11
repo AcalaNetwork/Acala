@@ -22,7 +22,7 @@ use super::{
 	weights::PrecompileWeights,
 };
 use crate::WeightToGas;
-use frame_support::{log, sp_runtime::FixedPointNumber};
+use frame_support::log;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
@@ -105,7 +105,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(output),
+					output: Output::encode_uint(output),
 					logs: Default::default(),
 				})
 			}

@@ -16,15 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, AssetRegistry, DispatchResult, Runtime, StableAsset};
+use crate::{AccountId, Runtime, StableAsset};
 
-use super::utils::set_balance_fungibles;
+use super::utils::{create_stable_pools, register_stable_asset, set_balance_fungibles};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use primitives::{
-	currency::{AssetMetadata, CurrencyId, AUSD, BNC, LDOT, VSKSM},
+	currency::{CurrencyId, AUSD, BNC, LDOT, VSKSM},
 	DexShare, TokenSymbol,
 };
 use sp_std::prelude::*;
@@ -37,41 +37,6 @@ const CURRENCY_LIST: [CurrencyId; 5] = [
 	BNC,
 	VSKSM,
 ];
-
-fn register_stable_asset() -> DispatchResult {
-	let asset_metadata = AssetMetadata {
-		name: b"Token Name".to_vec(),
-		symbol: b"TN".to_vec(),
-		decimals: 12,
-		minimal_balance: 1,
-	};
-	AssetRegistry::register_stable_asset(RawOrigin::Root.into(), Box::new(asset_metadata.clone()))
-}
-
-fn create_pools(assets: Vec<CurrencyId>, precisions: Vec<u128>) -> DispatchResult {
-	let pool_asset = CurrencyId::StableAssetPoolToken(0);
-	let mint_fee = 10000000u128;
-	let swap_fee = 20000000u128;
-	let redeem_fee = 50000000u128;
-	let intial_a = 10000u128;
-	let fee_recipient: AccountId = account("fee", 0, SEED);
-	let yield_recipient: AccountId = account("yield", 1, SEED);
-
-	register_stable_asset()?;
-	StableAsset::create_pool(
-		RawOrigin::Root.into(),
-		pool_asset,
-		assets,
-		precisions,
-		mint_fee,
-		swap_fee,
-		redeem_fee,
-		intial_a,
-		fee_recipient,
-		yield_recipient,
-		1000000000000000000u128,
-	)
-}
 
 runtime_benchmarks! {
 	{ Runtime, nutsfinance_stable_asset }
@@ -92,9 +57,23 @@ runtime_benchmarks! {
 	modify_a {
 		let assets = vec![LDOT, AUSD];
 		let precisions = vec![1u128, 1u128];
-		create_pools(assets, precisions)?;
+		create_stable_pools(assets, precisions)?;
 		let pool_id = StableAsset::pool_count() - 1;
 	}: _(RawOrigin::Root, pool_id, 1000u128, 2629112370)
+
+	modify_fees {
+		let assets = vec![LDOT, AUSD];
+		let precisions = vec![1u128, 1u128];
+		create_stable_pools(assets, precisions)?;
+		let pool_id = StableAsset::pool_count() - 1;
+	}: _(RawOrigin::Root, pool_id, Some(100u128), Some(200u128), Some(300u128))
+
+	modify_recipients {
+		let assets = vec![LDOT, AUSD];
+		let precisions = vec![1u128, 1u128];
+		create_stable_pools(assets, precisions)?;
+		let pool_id = StableAsset::pool_count() - 1;
+	}: _(RawOrigin::Root, pool_id, Some(account("fee-1", 3, SEED)), Some(account("yield-1", 4, SEED)))
 
 	mint {
 		let tester: AccountId = whitelisted_caller();
@@ -107,12 +86,12 @@ runtime_benchmarks! {
 			let multiple: u128 = (i + 1).into();
 			assets.push(CURRENCY_LIST[i_idx]);
 			precisions.push(1u128);
-			mint_args.push(10000000000u128 * multiple);
+			mint_args.push(10000000000000u128 * multiple);
 		}
 		for asset in &CURRENCY_LIST {
-			set_balance_fungibles(*asset, &tester, 200000000000u128);
+			set_balance_fungibles(*asset, &tester, 200000000000000u128);
 		}
-		create_pools(assets, precisions)?;
+		create_stable_pools(assets, precisions)?;
 		let pool_id = StableAsset::pool_count() - 1;
 	}: _(RawOrigin::Signed(tester), pool_id, mint_args, 0u128)
 
@@ -127,12 +106,12 @@ runtime_benchmarks! {
 			let multiple: u128 = (i + 1).into();
 			assets.push(CURRENCY_LIST[i_idx]);
 			precisions.push(1u128);
-			mint_args.push(10000000000u128 * multiple);
+			mint_args.push(10000000000000u128 * multiple);
 		}
 		for asset in &CURRENCY_LIST {
-			set_balance_fungibles(*asset, &tester, 200000000000u128);
+			set_balance_fungibles(*asset, &tester, 200000000000000u128);
 		}
-		create_pools(assets, precisions)?;
+		create_stable_pools(assets, precisions)?;
 		let pool_id = StableAsset::pool_count() - 1;
 		StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, mint_args, 0u128)?;
 	}: _(RawOrigin::Signed(tester), pool_id, 0, 1, 5000000u128, 0u128, u)
@@ -149,13 +128,13 @@ runtime_benchmarks! {
 			let multiple: u128 = (i + 1).into();
 			assets.push(CURRENCY_LIST[i_idx]);
 			precisions.push(1u128);
-			mint_args.push(10000000000u128 * multiple);
+			mint_args.push(10000000000000u128 * multiple);
 			redeem_args.push(0u128);
 		}
 		for asset in &CURRENCY_LIST {
-			set_balance_fungibles(*asset, &tester, 200000000000u128);
+			set_balance_fungibles(*asset, &tester, 200000000000000u128);
 		}
-		create_pools(assets, precisions)?;
+		create_stable_pools(assets, precisions)?;
 		let pool_id = StableAsset::pool_count() - 1;
 		StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, mint_args, 0u128)?;
 	}: _(RawOrigin::Signed(tester), pool_id, 100000000u128, redeem_args)
@@ -172,12 +151,12 @@ runtime_benchmarks! {
 			let multiple: u128 = (i + 1).into();
 			assets.push(CURRENCY_LIST[i_idx]);
 			precisions.push(1u128);
-			mint_args.push(10000000000u128 * multiple);
+			mint_args.push(10000000000000u128 * multiple);
 		}
 		for asset in &CURRENCY_LIST {
-			set_balance_fungibles(*asset, &tester, 200000000000u128);
+			set_balance_fungibles(*asset, &tester, 200000000000000u128);
 		}
-		create_pools(assets, precisions)?;
+		create_stable_pools(assets, precisions)?;
 		let pool_id = StableAsset::pool_count() - 1;
 		StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, mint_args, 0u128)?;
 	}: _(RawOrigin::Signed(tester), pool_id, 100000000u128, 0u32, 0u128, u)
@@ -194,13 +173,13 @@ runtime_benchmarks! {
 			let multiple: u128 = (i + 1).into();
 			assets.push(CURRENCY_LIST[i_idx]);
 			precisions.push(1u128);
-			mint_args.push(10000000000u128 * multiple);
+			mint_args.push(10000000000000u128 * multiple);
 			redeem_args.push(500000u128);
 		}
 		for asset in &CURRENCY_LIST {
-			set_balance_fungibles(*asset, &tester, 200000000000u128);
+			set_balance_fungibles(*asset, &tester, 200000000000000u128);
 		}
-		create_pools(assets, precisions)?;
+		create_stable_pools(assets, precisions)?;
 		let pool_id = StableAsset::pool_count() - 1;
 		StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, mint_args, 0u128)?;
 	}: _(RawOrigin::Signed(tester), pool_id, redeem_args, 1100000000000000000u128)

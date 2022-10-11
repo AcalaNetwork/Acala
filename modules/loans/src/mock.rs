@@ -37,7 +37,7 @@ use sp_runtime::{
 use sp_std::cell::RefCell;
 use std::collections::HashMap;
 use support::mocks::MockStableAsset;
-use support::{AuctionManager, RiskManager};
+use support::{AuctionManager, RiskManager, SpecificJointsSwap};
 
 pub type AccountId = u128;
 pub type AuctionId = u32;
@@ -99,6 +99,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -160,7 +162,7 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
-	pub TreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
+	pub TreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account_truncating();
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![];
 }
 
@@ -171,10 +173,10 @@ impl cdp_treasury::Config for Runtime {
 	type AuctionManagerHandler = MockAuctionManager;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type DEX = ();
+	type Swap = SpecificJointsSwap<(), AlternativeSwapPathJointList>;
 	type MaxAuctionsCount = ConstU32<10_000>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }

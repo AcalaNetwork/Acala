@@ -49,13 +49,14 @@ pub use frame_support::{
 };
 use frame_system::{EnsureRoot, RawOrigin};
 use hex_literal::hex;
-use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
+use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
+use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::{BasicCurrencyAdapter, Currency};
-use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
+use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
-use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
+use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, PoolId};
+use module_transaction_payment::TargetedFeeAdjustment;
 use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
@@ -76,6 +77,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup,
+		Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
@@ -94,12 +96,14 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	currency::AssetIds, evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, Amount, AuctionId,
-	AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Lease, Moment, Nonce,
-	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	currency::AssetIds,
+	evm::{BlockLimits, EstimateResourcesRequest},
+	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
+	DataProviderId, EraIndex, Hash, Lease, Moment, Multiplier, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
+	TradingPair,
 };
 pub use runtime_common::{
-	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles,
+	cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles, CheckRelayNumber,
 	EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil,
 	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
@@ -128,9 +132,12 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2060,
+	spec_version: 2100,
 	impl_version: 0,
+	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
+	#[cfg(feature = "disable-runtime-api")]
+	apis: sp_version::create_apis_vec![[]],
 	transaction_version: 1,
 	state_version: 0,
 };
@@ -157,6 +164,7 @@ parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
+	pub const CDPEnginePalletId: PalletId = PalletId(*b"aca/cdpe");
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaPalletId: PalletId = PalletId(*b"aca/homa");
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
@@ -167,12 +175,11 @@ parameter_types! {
 	pub const PhragmenElectionPalletId: LockIdentifier = *b"aca/phre";
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
-	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
+	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account_truncating();
 	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
 	// because transaction payment pallet will ensure the accounts always have enough ED.
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	// Ecosystem modules
-	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 	// lock identifier for earning module
 	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
@@ -180,18 +187,18 @@ parameter_types! {
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
 	vec![
-		TreasuryPalletId::get().into_account(),
-		LoansPalletId::get().into_account(),
-		DEXPalletId::get().into_account(),
-		CDPTreasuryPalletId::get().into_account(),
-		HonzonTreasuryPalletId::get().into_account(),
-		HomaTreasuryPalletId::get().into_account(),
-		IncentivesPalletId::get().into_account(),
-		TreasuryReservePalletId::get().into_account(),
-		CollatorPotId::get().into_account(),
-		StarportPalletId::get().into_account(),
+		CDPEnginePalletId::get().into_account_truncating(),
+		TreasuryPalletId::get().into_account_truncating(),
+		LoansPalletId::get().into_account_truncating(),
+		DEXPalletId::get().into_account_truncating(),
+		CDPTreasuryPalletId::get().into_account_truncating(),
+		HonzonTreasuryPalletId::get().into_account_truncating(),
+		HomaTreasuryPalletId::get().into_account_truncating(),
+		IncentivesPalletId::get().into_account_truncating(),
+		TreasuryReservePalletId::get().into_account_truncating(),
+		CollatorPotId::get().into_account_truncating(),
 		UnreleasedNativeVaultAccountId::get(),
-		StableAssetPalletId::get().into_account(),
+		StableAssetPalletId::get().into_account_truncating(),
 	]
 }
 
@@ -548,6 +555,7 @@ impl pallet_treasury::Config for Runtime {
 	type Currency = Balances;
 	type ApproveOrigin = EnsureRootOrHalfGeneralCouncil;
 	type RejectOrigin = EnsureRootOrHalfGeneralCouncil;
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type Event = Event;
 	type OnSlash = ();
 	type ProposalBond = ProposalBond;
@@ -601,6 +609,7 @@ impl pallet_recovery::Config for Runtime {
 	type FriendDepositFactor = FriendDepositFactor;
 	type MaxFriends = ConstU32<9>;
 	type RecoveryDeposit = RecoveryDeposit;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -674,6 +683,48 @@ impl orml_authority::Config for Runtime {
 	type WeightInfo = weights::orml_authority::WeightInfo<Runtime>;
 }
 
+pub struct PaymentsDisputeResolver;
+impl orml_payments::DisputeResolver<AccountId> for PaymentsDisputeResolver {
+	fn get_resolver_account() -> AccountId {
+		Sudo::key().expect("Sudo key not set!")
+	}
+}
+
+pub struct PaymentsFeeHandler;
+impl orml_payments::FeeHandler<Runtime> for PaymentsFeeHandler {
+	fn apply_fees(
+		_from: &AccountId,
+		_to: &AccountId,
+		_detail: &orml_payments::PaymentDetail<Runtime>,
+		_remark: Option<&[u8]>,
+	) -> (AccountId, Percent) {
+		// we do not charge any fee
+		const MARKETPLACE_FEE_PERCENT: Percent = Percent::from_percent(0);
+		let fee_receiver = Sudo::key().expect("Sudo key not set!");
+		(fee_receiver, MARKETPLACE_FEE_PERCENT)
+	}
+}
+
+parameter_types! {
+	pub const IncentivePercentage: Percent = Percent::from_percent(5);
+	pub const MaxRemarkLength: u32 = 10;
+	// 1hr buffer period (60*60)/12
+	pub const CancelBufferBlockLength: BlockNumber = 300;
+	pub const MaxScheduledTaskListLength : u32 = 5;
+}
+
+impl orml_payments::Config for Runtime {
+	type Event = Event;
+	type Asset = Currencies;
+	type DisputeResolver = PaymentsDisputeResolver;
+	type IncentivePercentage = IncentivePercentage;
+	type FeeHandler = PaymentsFeeHandler;
+	type MaxRemarkLength = MaxRemarkLength;
+	type CancelBufferBlockLength = CancelBufferBlockLength;
+	type MaxScheduledTaskListLength = MaxScheduledTaskListLength;
+	type WeightInfo = orml_payments::weights::SubstrateWeight<Runtime>;
+}
+
 parameter_types! {
 	pub CandidacyBond: Balance = 10 * dollar(LDOT);
 	pub VotingBondBase: Balance = 2 * dollar(LDOT);
@@ -696,6 +747,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type DesiredRunnersUp = ConstU32<7>;
 	type LoserCandidate = ();
 	type KickedMember = ();
+	type MaxVoters = ConstU32<10000>;
+	type MaxCandidates = ConstU32<1000>;
 	type WeightInfo = ();
 }
 
@@ -757,6 +810,7 @@ parameter_type_with_key! {
 				TokenSymbol::KINT |
 				TokenSymbol::KBTC |
 				TokenSymbol::TAI => 10 * millicent(*currency_id),
+				TokenSymbol::TAP => 10 * millicent(*currency_id),
 				TokenSymbol::ACA |
 				TokenSymbol::KAR |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
@@ -776,7 +830,7 @@ parameter_type_with_key! {
 					Self::get(&currency_id_0)
 				}
 			},
-			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
+			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::max_value(), |metatata| metatata.minimal_balance),
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetId(*stable_asset_id)).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
@@ -791,7 +845,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -806,6 +860,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = DustRemovalWhitelist;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_type_with_key! {
@@ -851,6 +907,7 @@ impl module_prices::Config for Runtime {
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub Erc20HoldingAccount: H160 = primitives::evm::ERC20_HOLDING_ACCOUNT;
 }
 
 impl module_currencies::Config for Runtime {
@@ -858,6 +915,7 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
@@ -872,9 +930,9 @@ impl EnsureOrigin<Origin> for EnsureRootOrTreasury {
 
 	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
 		Into::<Result<RawOrigin<AccountId>, Origin>>::into(o).and_then(|o| match o {
-			RawOrigin::Root => Ok(TreasuryPalletId::get().into_account()),
+			RawOrigin::Root => Ok(TreasuryPalletId::get().into_account_truncating()),
 			RawOrigin::Signed(caller) => {
-				if caller == TreasuryPalletId::get().into_account() {
+				if caller == TreasuryPalletId::get().into_account_truncating() {
 					Ok(caller)
 				} else {
 					Err(Origin::from(Some(caller)))
@@ -1000,8 +1058,8 @@ where
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			runtime_common::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
-			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			module_evm::SetEvmOrigin::<Runtime>::new(),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -1029,18 +1087,17 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![ACA, DOT, LDOT, RENBTC, CurrencyId::StableAssetPoolToken(0)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
 	pub MinimumDebitValue: Balance = dollar(AUSD);
-	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(15, 100);
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(10, 100);
+	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);
 }
 
 impl module_cdp_engine::Config for Runtime {
 	type Event = Event;
 	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
 	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
@@ -1055,8 +1112,14 @@ impl module_cdp_engine::Config for Runtime {
 	type EmergencyShutdown = EmergencyShutdown;
 	type UnixTime = Timestamp;
 	type Currency = Currencies;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type DEX = Dex;
+	type LiquidationContractsUpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type MaxLiquidationContractSlippage = MaxLiquidationContractSlippage;
+	type MaxLiquidationContracts = ConstU32<10>;
+	type LiquidationEvmBridge = module_evm_bridge::LiquidationEvmBridge<Runtime>;
+	type PalletId = CDPEnginePalletId;
+	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
+	type Swap = AcalaSwap;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1068,12 +1131,13 @@ impl module_honzon::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type DepositPerAuthorization = DepositPerAuthorization;
+	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type WeightInfo = weights::module_honzon::WeightInfo<Runtime>;
 }
 
 impl module_emergency_shutdown::Config for Runtime {
 	type Event = Event;
-	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type PriceSource = Prices;
 	type CDPTreasury = CdpTreasury;
 	type AuctionManagerHandler = AuctionManager;
@@ -1092,6 +1156,11 @@ parameter_types! {
 	];
 	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
 	pub const TradingPathLimit: u32 = 4;
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![GetStakingCurrencyId::get()],
+		vec![GetStableCurrencyId::get()],
+		vec![GetLiquidCurrencyId::get()],
+	];
 }
 
 impl module_dex::Config for Runtime {
@@ -1105,9 +1174,25 @@ impl module_dex::Config for Runtime {
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
-	type StableAsset = StableAsset;
 	type OnLiquidityPoolUpdated = ();
 }
+
+impl module_aggregated_dex::Config for Runtime {
+	type DEX = Dex;
+	type StableAsset = RebasedStableAsset;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type DexSwapJointList = AlternativeSwapPathJointList;
+	type SwapPathLimit = ConstU32<3>;
+	type WeightInfo = weights::module_aggregated_dex::WeightInfo<Runtime>;
+}
+
+pub type RebasedStableAsset = module_support::RebasedStableAsset<
+	StableAsset,
+	ConvertBalanceHoma,
+	module_aggregated_dex::RebasedStableAssetErrorConvertor<Runtime>,
+>;
+
+pub type AcalaSwap = module_aggregated_dex::AggregatedSwap<Runtime>;
 
 impl module_dex_oracle::Config for Runtime {
 	type DEX = Dex;
@@ -1117,8 +1202,7 @@ impl module_dex_oracle::Config for Runtime {
 }
 
 parameter_types! {
-	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
-	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![vec![GetStakingCurrencyId::get()]];
+	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account_truncating();
 }
 
 impl module_cdp_treasury::Config for Runtime {
@@ -1128,12 +1212,12 @@ impl module_cdp_treasury::Config for Runtime {
 	type AuctionManagerHandler = AuctionManager;
 	type UpdateOrigin = EnsureRootOrHalfFinancialCouncil;
 	type DEX = Dex;
+	type Swap = AcalaSwap;
 	type MaxAuctionsCount = ConstU32<50>;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
-	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
-	type StableAsset = StableAsset;
+	type StableAsset = RebasedStableAsset;
 }
 
 impl module_transaction_pause::Config for Runtime {
@@ -1177,13 +1261,13 @@ impl module_transaction_payment::Config for Runtime {
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
 	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
-	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = MaxTipsOfPriority;
 	type WeightToFee = WeightToFee;
+	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
-	type DEX = Dex;
+	type Swap = AcalaSwap;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
@@ -1219,7 +1303,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
-	type ChainId = ChainId;
+	type ChainId = EvmChainId<Runtime>;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
@@ -1235,7 +1319,7 @@ impl module_asset_registry::Config for Runtime {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolId = module_incentives::PoolId;
+	type PoolId = PoolId;
 	type CurrencyId = CurrencyId;
 	type Handler = Incentives;
 }
@@ -1272,13 +1356,13 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 		1,
 		X1(AccountId32 {
 			network: NetworkId::Any,
-			id: Utility::derivative_account_id(ParachainInfo::get().into_account(), index).into(),
+			id: Utility::derivative_account_id(ParachainInfo::get().into_account_truncating(), index).into(),
 		}),
 	)
 }
 
 parameter_types! {
-	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
+	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account_truncating();
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
 		0,  // 15sr8Dvq3AT3Z2Z1y8FnQ4VipekAHhmQnrkgzegUr1tNgbcn
 	];
@@ -1305,7 +1389,7 @@ impl module_homa::Config for Runtime {
 }
 
 parameter_types! {
-	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
+	pub ParachainAccount: AccountId = ParachainInfo::get().into_account_truncating();
 }
 
 pub struct SubAccountIndexMultiLocationConvertor;
@@ -1406,6 +1490,8 @@ impl InstanceFilter<Call> for ProxyType {
 					c,
 					Call::Dex(module_dex::Call::swap_with_exact_supply { .. })
 						| Call::Dex(module_dex::Call::swap_with_exact_target { .. })
+						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_supply { .. })
+						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_target { .. })
 				)
 			}
 			ProxyType::Loan => {
@@ -1413,6 +1499,8 @@ impl InstanceFilter<Call> for ProxyType {
 					c,
 					Call::Honzon(module_honzon::Call::adjust_loan { .. })
 						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex { .. })
+						| Call::Honzon(module_honzon::Call::adjust_loan_by_debit_value { .. })
+						| Call::Honzon(module_honzon::Call::transfer_debit { .. })
 				)
 			}
 			ProxyType::DexLiquidity => {
@@ -1432,6 +1520,12 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_proportion { .. })
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_single { .. })
 						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_multi { .. })
+				)
+			}
+			ProxyType::Homa => {
+				matches!(
+					c,
+					Call::Homa(module_homa::Call::mint { .. }) | Call::Homa(module_homa::Call::request_redeem { .. })
 				)
 			}
 		}
@@ -1476,29 +1570,8 @@ impl ecosystem_renvm_bridge::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CashCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::CASH);
-	pub const PercentThresholdForGatewayAuthoritySignature: Perbill = Perbill::from_percent(50);
-}
-
-impl ecosystem_starport::Config for Runtime {
-	type Event = Event;
-	type Currency = Currencies;
-	type CashCurrencyId = CashCurrencyId;
-	type PalletId = StarportPalletId;
-	type MaxGatewayAuthorities = ConstU32<8>;
-	type PercentThresholdForAuthoritySignature = PercentThresholdForGatewayAuthoritySignature;
-	type Cash = CompoundCash;
-}
-
-impl ecosystem_compound_cash::Config for Runtime {
-	type Event = Event;
-	type UnixTime = Timestamp;
-}
-
-parameter_types! {
-	pub const ChainId: u64 = 595;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::mandala();
+	pub PrecompilesValue: AllPrecompiles<Runtime, module_transaction_pause::PausedPrecompileFilter<Runtime>> = AllPrecompiles::<_, _>::mandala();
 }
 
 #[cfg(feature = "with-ethereum-compatibility")]
@@ -1549,9 +1622,8 @@ impl module_evm::Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
-	type PrecompilesType = AllPrecompiles<Self>;
+	type PrecompilesType = AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>>;
 	type PrecompilesValue = PrecompilesValue;
-	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
@@ -1596,6 +1668,8 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type CheckAssociatedRelayNumber =
+		CheckRelayNumber<EvmChainId<Runtime>, cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases>;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -1622,7 +1696,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => {
+			CurrencyId::Token(TokenSymbol::LDOT) => {
 				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
 			}
 			_ => balance,
@@ -1636,10 +1710,9 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 		 * transactions have a possibility to fail, and this is undesirable.
 		 */
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate()
+			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate()
 				.reciprocal()
 				.and_then(|x| x.checked_mul_int(balance))
-				.and_then(|x| x.checked_add(1))
 				.unwrap_or_default(),
 			_ => balance,
 		}
@@ -1649,7 +1722,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 pub struct IsLiquidToken;
 impl Contains<CurrencyId> for IsLiquidToken {
 	fn contains(currency_id: &CurrencyId) -> bool {
-		matches!(currency_id, CurrencyId::Token(TokenSymbol::LKSM))
+		matches!(currency_id, CurrencyId::Token(TokenSymbol::LDOT))
 	}
 }
 
@@ -1661,7 +1734,7 @@ type RebaseTokens = orml_tokens::Combiner<
 >;
 
 parameter_types! {
-	pub const GetStableAssetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+	pub const GetStableAssetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 }
 
 impl nutsfinance_stable_asset::Config for Runtime {
@@ -1729,7 +1802,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 					return Err(InvalidTransaction::Stale);
 				}
 
-				let (_, _, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
+				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
 
 				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
 					// require immortal
@@ -1743,7 +1816,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 
 				Ok((
 					EthereumTransactionMessage {
-						chain_id: ChainId::get(),
+						chain_id: EVM::chain_id(),
 						genesis: System::block_hash(0),
 						nonce,
 						tip,
@@ -1760,6 +1833,32 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 			}
 			_ => Err(InvalidTransaction::BadProof),
 		}
+	}
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct PayerSignatureVerification;
+
+impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSignatureVerification {
+	fn convert((call, extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
+		if let Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+			call,
+			payer_addr,
+			payer_sig,
+		}) = call
+		{
+			let payer_account: [u8; 32] = payer_addr
+				.encode()
+				.as_slice()
+				.try_into()
+				.map_err(|_| InvalidTransaction::BadSigner)?;
+			// payer signature is aim at inner call of `with_fee_paid_by` call.
+			let raw_payload = SignedPayload::new(*call, extra).map_err(|_| InvalidTransaction::BadSigner)?;
+			if !raw_payload.using_encoded(|payload| payer_sig.verify(payload, &payer_account.into())) {
+				return Err(InvalidTransaction::BadProof);
+			}
+		}
+		Ok(())
 	}
 }
 
@@ -1780,12 +1879,21 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	runtime_common::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	module_transaction_payment::ChargeTransactionPayment<Runtime>,
+	// `SetEvmOrigin` needs ahead of `ChargeTransactionPayment`, we set origin in `SetEvmOrigin::validate()`, then
+	// `ChargeTransactionPayment::validate()` can process erc20 token transfer successfully in the case of using erc20
+	// as fee token.
 	module_evm::SetEvmOrigin<Runtime>,
+	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic =
-	AcalaUncheckedExtrinsic<Call, SignedExtra, ConvertEthereumTx, StorageDepositPerByte, TxFeePerGas>;
+pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<
+	Call,
+	SignedExtra,
+	ConvertEthereumTx,
+	StorageDepositPerByte,
+	TxFeePerGas,
+	PayerSignatureVerification,
+>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
@@ -1858,6 +1966,7 @@ construct_runtime!(
 		Prices: module_prices = 110,
 		Dex: module_dex = 111,
 		DexOracle: module_dex_oracle = 112,
+		AggregatedDex: module_aggregated_dex = 113,
 
 		// Honzon
 		AuctionManager: module_auction_manager = 120,
@@ -1879,8 +1988,6 @@ construct_runtime!(
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge = 150,
-		Starport: ecosystem_starport = 151,
-		CompoundCash: ecosystem_compound_cash exclude_parts { Call } = 152,
 
 		// Parachain
 		ParachainInfo: parachain_info exclude_parts { Call } = 161,
@@ -1904,11 +2011,12 @@ construct_runtime!(
 		CollatorSelection: module_collator_selection = 191,
 		Session: pallet_session = 192,
 		Aura: pallet_aura = 193,
-		AuraExt: cumulus_pallet_aura_ext exclude_parts { Call } = 194,
+		AuraExt: cumulus_pallet_aura_ext = 194,
 		SessionManager: module_session_manager = 195,
 
 		// Stable asset
 		StableAsset: nutsfinance_stable_asset = 200,
+		Payments: orml_payments = 201,
 
 		// Staking related pallets
 		Earning: module_earning = 210,
@@ -1955,6 +2063,7 @@ mod benches {
 		[orml_oracle, benchmarking::oracle]
 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 		[module_idle_scheduler, benchmarking::idle_scheduler]
+		[module_aggregated_dex, benchmarking::aggregated_dex]
 	);
 }
 
@@ -2093,6 +2202,13 @@ impl_runtime_apis! {
 	}
 
 	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance> for Runtime {
+		fn block_limits() -> BlockLimits {
+			BlockLimits {
+				max_gas_limit: runtime_common::EvmLimits::<Runtime>::max_gas_limit(),
+				max_storage_limit: runtime_common::EvmLimits::<Runtime>::max_storage_limit(),
+			}
+		}
+
 		fn call(
 			from: H160,
 			to: H160,
@@ -2101,17 +2217,9 @@ impl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			estimate: bool,
+			_estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			let config = if estimate {
-				let mut config = <Runtime as module_evm::Config>::config().clone();
-				config.estimate = true;
-				Some(config)
-			} else {
-				None
-			};
-
-			module_evm::runner::stack::Runner::<Runtime>::call(
+			<Runtime as module_evm::Config>::Runner::rpc_call(
 				from,
 				from,
 				to,
@@ -2120,7 +2228,7 @@ impl_runtime_apis! {
 				gas_limit,
 				storage_limit,
 				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
+				<Runtime as module_evm::Config>::config(),
 			)
 		}
 
@@ -2131,24 +2239,16 @@ impl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			estimate: bool,
+			_estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
-			let config = if estimate {
-				let mut config = <Runtime as module_evm::Config>::config().clone();
-				config.estimate = true;
-				Some(config)
-			} else {
-				None
-			};
-
-			module_evm::runner::stack::Runner::<Runtime>::create(
+			<Runtime as module_evm::Config>::Runner::rpc_create(
 				from,
 				data,
 				value,
 				gas_limit,
 				storage_limit,
 				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
+				<Runtime as module_evm::Config>::config(),
 			)
 		}
 
@@ -2158,28 +2258,22 @@ impl_runtime_apis! {
 
 			let request = match utx.0.function {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
-					// use MAX_VALUE for no limit
-					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
-					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: Some(target),
-						gas_limit,
-						storage_limit,
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
 						value: Some(value),
 						data: Some(input),
 						access_list: Some(access_list)
 					})
 				}
 				Call::EVM(module_evm::Call::create{input, value, gas_limit, storage_limit, access_list}) => {
-					// use MAX_VALUE for no limit
-					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
-					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,
-						gas_limit,
-						storage_limit,
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
 						value: Some(value),
 						data: Some(input),
 						access_list: Some(access_list)
@@ -2388,8 +2482,8 @@ mod tests {
 				frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
 				runtime_common::CheckNonce::<Runtime>::from(3),
 				frame_system::CheckWeight::<Runtime>::new(),
-				module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
 				module_evm::SetEvmOrigin::<Runtime>::new(),
+				module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
 			);
 
 			let mut expected_extra = extra.clone();
@@ -2406,7 +2500,7 @@ mod tests {
 						action: module_evm::TransactionAction::Create,
 						value: 0,
 						input: vec![0x01],
-						chain_id: ChainId::get(),
+						chain_id: 0,
 						genesis: sp_core::H256::default(),
 						valid_until: 30,
 						access_list: vec![],
@@ -2452,6 +2546,76 @@ mod tests {
 					propagate: true,
 				})
 			);
+		});
+	}
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let t = frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap();
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
+	#[test]
+	fn payer_signature_verify() {
+		use sp_core::Pair;
+
+		let extra: SignedExtra = (
+			frame_system::CheckNonZeroSender::<Runtime>::new(),
+			frame_system::CheckSpecVersion::<Runtime>::new(),
+			frame_system::CheckTxVersion::<Runtime>::new(),
+			frame_system::CheckGenesis::<Runtime>::new(),
+			frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
+			runtime_common::CheckNonce::<Runtime>::from(0),
+			frame_system::CheckWeight::<Runtime>::new(),
+			module_evm::SetEvmOrigin::<Runtime>::new(),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
+		);
+
+		// correct payer signature
+		new_test_ext().execute_with(|| {
+			let payer = sp_keyring::AccountKeyring::Charlie;
+
+			let call = Call::Balances(pallet_balances::Call::transfer {
+				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Bob.to_account_id()),
+				value: 100,
+			});
+
+			let raw_payload = SignedPayload::new(call.clone(), extra.clone()).unwrap();
+			let payer_signature = raw_payload.using_encoded(|payload| payer.pair().sign(payload));
+
+			let fee_call = Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+				call: Box::new(call),
+				payer_addr: payer.to_account_id(),
+				payer_sig: sp_runtime::MultiSignature::Sr25519(payer_signature),
+			});
+			assert!(PayerSignatureVerification::convert((fee_call, extra.clone())).is_ok());
+		});
+
+		// wrong payer signature
+		new_test_ext().execute_with(|| {
+			let hacker = sp_keyring::AccountKeyring::Dave;
+
+			let call = Call::Balances(pallet_balances::Call::transfer {
+				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Bob.to_account_id()),
+				value: 100,
+			});
+			let hacker_call = Call::Balances(pallet_balances::Call::transfer {
+				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Dave.to_account_id()),
+				value: 100,
+			});
+
+			let raw_payload = SignedPayload::new(hacker_call.clone(), extra.clone()).unwrap();
+			let payer_signature = raw_payload.using_encoded(|payload| hacker.pair().sign(payload));
+
+			let fee_call = Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+				call: Box::new(call),
+				payer_addr: hacker.to_account_id(),
+				payer_sig: sp_runtime::MultiSignature::Sr25519(payer_signature),
+			});
+			assert!(PayerSignatureVerification::convert((fee_call, extra)).is_err());
 		});
 	}
 }

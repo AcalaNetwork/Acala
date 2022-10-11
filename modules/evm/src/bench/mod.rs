@@ -91,6 +91,13 @@ fn whitelist_keys(b: &mut Bencher, from: H160, code: Vec<u8>) -> H160 {
 	let bounded_code: BoundedVec<u8, MaxCodeSize> = out.try_into().unwrap();
 	let code_hash = code_hash(bounded_code.as_slice());
 
+	// unknown key
+	b.whitelist(
+		hex_literal::hex!("3a7472616e73616374696f6e5f6c6576656c3a").to_vec(),
+		true,
+		true,
+	);
+
 	// non-existent contract will end up reading this key
 	b.whitelist(
 		Codes::<Runtime>::hashed_key_for(&H256::from_slice(&hex_literal::hex!(

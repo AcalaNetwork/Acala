@@ -89,8 +89,12 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Default::default()
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+
+		match currency_id {
+			CurrencyId::Token(TokenSymbol::AUSD) => 10,
+			_ => Default::default()
+		}
 	};
 }
 
@@ -106,6 +110,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 pub struct MockCDPTreasury;
@@ -163,7 +169,7 @@ impl CDPTreasury<AccountId> for MockCDPTreasury {
 }
 
 pub struct MockDEX;
-impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
+impl DEXManager<AccountId, Balance, CurrencyId> for MockDEX {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
 		match (currency_id_a, currency_id_b) {
 			(AUSD, BTC) => (500, 100),
@@ -187,7 +193,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_: CurrencyId,
 		_: SwapLimit<Balance>,
 		_: Vec<Vec<CurrencyId>>,
-	) -> Option<Vec<CurrencyId>> {
+	) -> Option<(Vec<CurrencyId>, Balance, Balance)> {
 		unimplemented!()
 	}
 

@@ -36,7 +36,7 @@ use sp_core::U256;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
-	RuntimeDebug,
+	FixedU128, RuntimeDebug,
 };
 use sp_std::prelude::*;
 
@@ -108,6 +108,9 @@ pub type BlockId = generic::BlockId<Block>;
 /// Opaque, encoded, unchecked extrinsic.
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 
+/// Fee multiplier.
+pub type Multiplier = FixedU128;
+
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AuthoritysOriginId {
@@ -164,6 +167,14 @@ impl Decode for TradingPair {
 		let (first, second): (CurrencyId, CurrencyId) = Decode::decode(input)?;
 		TradingPair::from_currency_ids(first, second).ok_or_else(|| codec::Error::from("invalid currency id"))
 	}
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default, MaxEncodedLen, TypeInfo)]
+pub struct Position {
+	/// The amount of collateral.
+	pub collateral: Balance,
+	/// The amount of debit.
+	pub debit: Balance,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, MaxEncodedLen, TypeInfo)]

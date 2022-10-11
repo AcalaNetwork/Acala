@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::AccountId;
+use acala_primitives::{evm::CHAIN_ID_ACALA_TESTNET, AccountId};
 use sc_chain_spec::{ChainType, Properties};
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -27,10 +27,10 @@ use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_f
 
 use acala_runtime::{
 	dollar, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
-	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
-	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig,
-	SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-	TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
+	DexConfig, EVMConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
+	HomaCouncilMembershipConfig, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig,
+	SS58Prefix, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig,
+	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
 };
 use runtime_common::TokenInfo;
 
@@ -69,7 +69,7 @@ pub fn acala_dev_config() -> Result<ChainSpec, String> {
 		"acala-dev",
 		ChainType::Development,
 		move || {
-			acala_genesis(
+			acala_dev_genesis(
 				wasm_binary,
 				// Initial PoA authorities
 				vec![get_parachain_authority_keys_from_seed("Alice")],
@@ -100,7 +100,7 @@ pub fn acala_dev_config() -> Result<ChainSpec, String> {
 	))
 }
 
-fn acala_genesis(
+fn acala_dev_genesis(
 	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AuraId)>,
 	root_key: AccountId,
@@ -119,26 +119,26 @@ fn acala_genesis(
 		sudo: SudoConfig { key: Some(root_key) },
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
-			members: general_councils,
+			members: general_councils.try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		financial_council: Default::default(),
 		financial_council_membership: FinancialCouncilMembershipConfig {
-			members: vec![],
+			members: vec![].try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		homa_council: Default::default(),
 		homa_council_membership: HomaCouncilMembershipConfig {
-			members: vec![],
+			members: vec![].try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		technical_committee: Default::default(),
 		technical_committee_membership: TechnicalCommitteeMembershipConfig {
-			members: vec![],
+			members: vec![].try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
-			members: vec![],
+			members: vec![].try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		democracy: Default::default(),
@@ -152,7 +152,10 @@ fn acala_genesis(
 			collaterals_params: vec![],
 		},
 		asset_registry: Default::default(),
-		evm: Default::default(),
+		evm: EVMConfig {
+			chain_id: CHAIN_ID_ACALA_TESTNET,
+			accounts: Default::default(),
+		},
 		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: vec![],

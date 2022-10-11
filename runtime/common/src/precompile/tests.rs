@@ -19,62 +19,68 @@
 #![allow(clippy::erasing_op)]
 #![cfg(test)]
 use super::*;
-use crate::precompile::mock::PrecompilesValue;
+use crate::precompile::mock::{new_test_ext, PrecompilesValue};
 use module_evm::{Context, ExitRevert};
 use primitives::evm::{PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START};
 
 #[test]
 fn precompile_filter_works_on_acala_precompiles() {
-	let precompile = PRECOMPILE_ADDRESS_START;
+	new_test_ext().execute_with(|| {
+		let precompile = PRECOMPILE_ADDRESS_START;
 
-	let mut non_system = [0u8; 20];
-	non_system[0] = 1;
+		let mut non_system = [0u8; 20];
+		non_system[0] = 1;
 
-	let non_system_caller_context = Context {
-		address: precompile,
-		caller: non_system.into(),
-		apparent_value: 0.into(),
-	};
-	assert_eq!(
-		PrecompilesValue::get().execute(precompile, &[0u8; 1], Some(10), &non_system_caller_context, false),
-		Some(Err(PrecompileFailure::Revert {
-			exit_status: ExitRevert::Reverted,
-			output: "NoPermission".into(),
-			cost: 10,
-		})),
-	);
+		let non_system_caller_context = Context {
+			address: precompile,
+			caller: non_system.into(),
+			apparent_value: 0.into(),
+		};
+		assert_eq!(
+			PrecompilesValue::get().execute(precompile, &[0u8; 1], Some(10), &non_system_caller_context, false),
+			Some(Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "NoPermission".into(),
+				cost: 10,
+			})),
+		);
+	});
 }
 
 #[test]
 fn precompile_filter_does_not_work_on_system_contracts() {
-	let system = PREDEPLOY_ADDRESS_START;
+	new_test_ext().execute_with(|| {
+		let system = PREDEPLOY_ADDRESS_START;
 
-	let mut non_system = [0u8; 20];
-	non_system[0] = 1;
+		let mut non_system = [0u8; 20];
+		non_system[0] = 1;
 
-	let non_system_caller_context = Context {
-		address: system,
-		caller: non_system.into(),
-		apparent_value: 0.into(),
-	};
-	assert!(PrecompilesValue::get()
-		.execute(non_system.into(), &[0u8; 1], None, &non_system_caller_context, false)
-		.is_none());
+		let non_system_caller_context = Context {
+			address: system,
+			caller: non_system.into(),
+			apparent_value: 0.into(),
+		};
+		assert!(PrecompilesValue::get()
+			.execute(non_system.into(), &[0u8; 1], None, &non_system_caller_context, false)
+			.is_none());
+	});
 }
 
 #[test]
 fn precompile_filter_does_not_work_on_non_system_contracts() {
-	let mut non_system = [0u8; 20];
-	non_system[0] = 1;
-	let mut another_non_system = [0u8; 20];
-	another_non_system[0] = 2;
+	new_test_ext().execute_with(|| {
+		let mut non_system = [0u8; 20];
+		non_system[0] = 1;
+		let mut another_non_system = [0u8; 20];
+		another_non_system[0] = 2;
 
-	let non_system_caller_context = Context {
-		address: non_system.into(),
-		caller: another_non_system.into(),
-		apparent_value: 0.into(),
-	};
-	assert!(PrecompilesValue::get()
-		.execute(non_system.into(), &[0u8; 1], None, &non_system_caller_context, false)
-		.is_none());
+		let non_system_caller_context = Context {
+			address: non_system.into(),
+			caller: another_non_system.into(),
+			apparent_value: 0.into(),
+		};
+		assert!(PrecompilesValue::get()
+			.execute(non_system.into(), &[0u8; 1], None, &non_system_caller_context, false)
+			.is_none());
+	});
 }

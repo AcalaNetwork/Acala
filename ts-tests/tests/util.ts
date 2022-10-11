@@ -68,7 +68,7 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 				console.log(chunk.toString());
 			}
 			binaryLogs.push(chunk);
-			if (chunk.toString().match(/Listening for new connections on/)) {
+			if (chunk.toString().match(/best: #0/)) {
 				try {
 					provider = new TestProvider({
 						provider: new WsProvider(`ws://localhost:${WS_PORT}`),

@@ -21,50 +21,52 @@
 
 mod builder;
 mod node;
+mod rpc;
 mod service;
 
 use futures::channel::{mpsc, oneshot};
 use std::{future::Future, sync::Arc, time::Duration};
 
-use cumulus_client_cli::CollatorOptions;
+use cumulus_client_cli::{generate_genesis_block, CollatorOptions};
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::{ParachainCandidate, ParachainConsensus};
 use cumulus_client_network::BlockAnnounceValidator;
 use cumulus_client_service::{
-	genesis::generate_genesis_block, prepare_node_config, start_collator, start_full_node, StartCollatorParams,
-	StartFullNodeParams,
+	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_inprocess_interface::RelayChainInProcessInterface;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
-use cumulus_relay_chain_rpc_interface::RelayChainRPCInterface;
+use cumulus_relay_chain_rpc_interface::{create_client_and_start_worker, RelayChainRpcInterface};
 
 use frame_system_rpc_runtime_api::AccountNonceApi;
 use futures::{channel::mpsc::Sender, SinkExt};
-use parking_lot::Mutex;
+use jsonrpsee::RpcModule;
 use polkadot_primitives::v2::{CollatorPair, Hash as PHash, HeadData, PersistedValidationData};
-use polkadot_service::ProvideRuntimeApi;
 use sc_client_api::{execution_extensions::ExecutionStrategies, Backend, CallExecutor, ExecutorProvider};
 use sc_consensus::LongestChain;
 use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
 use sc_consensus_manual_seal::{
-	rpc::{ManualSeal, ManualSealApi},
+	rpc::{ManualSeal, ManualSealApiServer},
 	EngineCommand,
 };
-use sc_executor::NativeElseWasmExecutor;
+use sc_executor::{NativeElseWasmExecutor, WasmExecutionMethod, WasmtimeInstantiationStrategy};
 use sc_network::{config::TransportConfig, multiaddr, NetworkService};
+use sc_network_common::service::{NetworkBlock, NetworkStateInfo};
+pub use sc_rpc::SubscriptionTaskExecutor;
 use sc_service::{
 	config::{
-		DatabaseSource, KeepBlocks, KeystoreConfig, MultiaddrWithPeerId, NetworkConfiguration, OffchainWorkerConfig,
-		PruningMode, WasmExecutionMethod,
+		BlocksPruning, DatabaseSource, KeystoreConfig, MultiaddrWithPeerId, NetworkConfiguration, OffchainWorkerConfig,
+		PruningMode,
 	},
 	BasePath, ChainSpec, Configuration, PartialComponents, Role, RpcHandlers, SpawnTasksParams, TFullBackend,
 	TFullCallExecutor, TFullClient, TaskManager,
 };
 use sc_transaction_pool_api::TransactionPool;
+use sp_api::ProvideRuntimeApi;
 use sp_api::{OverlayedChanges, StorageTransactionCache};
 use sp_arithmetic::traits::SaturatedConversion;
-use sp_blockchain::HeaderBackend;
+use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_core::{ExecutionContext, Pair, H256};
 use sp_keyring::Sr25519Keyring;
 use sp_runtime::{
@@ -185,8 +187,8 @@ pub fn construct_extrinsic(
 		frame_system::CheckEra::<Runtime>::from(Era::mortal(period, current_block)),
 		runtime_common::CheckNonce::<Runtime>::from(nonce),
 		frame_system::CheckWeight::<Runtime>::new(),
-		module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		module_evm::SetEvmOrigin::<Runtime>::new(),
+		module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 	);
 	let raw_payload = runtime::SignedPayload::from_raw(
 		function,
@@ -231,8 +233,8 @@ pub fn run_relay_chain_validator_node(
 
 /// Returns the initial head data for a parachain ID.
 pub fn initial_head_data() -> HeadData {
-	let spec = Box::new(dev_testnet_config(None).unwrap());
-	let block: Block = generate_genesis_block(&(spec as Box<_>), sp_runtime::StateVersion::V1).unwrap();
+	let spec = dev_testnet_config(None).unwrap();
+	let block: Block = generate_genesis_block(&spec, sp_runtime::StateVersion::V1).unwrap();
 	let genesis_state = block.header().encode();
 	genesis_state.into()
 }

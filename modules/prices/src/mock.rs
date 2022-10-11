@@ -135,7 +135,7 @@ impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 }
 
 pub struct MockDEX;
-impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
+impl DEXManager<AccountId, Balance, CurrencyId> for MockDEX {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
 		match (currency_id_a, currency_id_b) {
 			(AUSD, DOT) => (10000, 200),
@@ -156,7 +156,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_: CurrencyId,
 		_: SwapLimit<Balance>,
 		_: Vec<Vec<CurrencyId>>,
-	) -> Option<Vec<CurrencyId>> {
+	) -> Option<(Vec<CurrencyId>, Balance, Balance)> {
 		unimplemented!()
 	}
 
@@ -211,6 +211,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 impl BlockNumberProvider for MockRelayBlockNumberProvider {

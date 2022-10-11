@@ -36,17 +36,14 @@ use frame_support::{
 		WithdrawReasons,
 	},
 	transactional,
-	weights::{
-		constants::WEIGHT_PER_SECOND, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient,
-		WeightToFeePolynomial,
-	},
+	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFee},
 	BoundedVec, PalletId,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, InclusionFee};
-use primitives::{Balance, CurrencyId, ReserveIdentifier};
+use primitives::{Balance, CurrencyId, Multiplier, ReserveIdentifier};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
@@ -56,13 +53,11 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	FixedPointNumber, FixedPointOperand, FixedU128, Percent, Perquintill,
+	FixedPointNumber, FixedPointOperand, MultiSignature, Percent, Perquintill,
 };
 use sp_std::prelude::*;
-use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
-use xcm::opaque::latest::{prelude::XcmError, AssetId, Fungibility::Fungible, MultiAsset, MultiLocation};
-use xcm_builder::TakeRevenue;
-use xcm_executor::{traits::WeightTrader, Assets};
+use support::{AggregatedSwapPath, BuyWeightRate, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment};
+use xcm::opaque::latest::MultiLocation;
 
 mod mock;
 mod tests;
@@ -70,9 +65,6 @@ pub mod weights;
 
 pub use module::*;
 pub use weights::WeightInfo;
-
-/// Fee multiplier.
-pub type Multiplier = FixedU128;
 
 type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type NegativeImbalanceOf<T> =
@@ -305,14 +297,14 @@ pub mod module {
 
 		/// Convert a weight value into a deductible fee based on the currency
 		/// type.
-		type WeightToFee: WeightToFeePolynomial<Balance = PalletBalanceOf<Self>>;
+		type WeightToFee: WeightToFee<Balance = PalletBalanceOf<Self>>;
 
 		/// Update the multiplier of the next block, based on the previous
 		/// block's weight.
 		type FeeMultiplierUpdate: MultiplierUpdate;
 
-		/// DEX to exchange currencies.
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+		/// Swap
+		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
 
 		/// When swap with DEX, the acceptable max slippage for the price from oracle.
 		#[pallet::constant]
@@ -352,16 +344,6 @@ pub mod module {
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 	}
 
-	#[pallet::extra_constants]
-	impl<T: Config> Pallet<T> {
-		//TODO: rename to snake case after https://github.com/paritytech/substrate/issues/8826 fixed.
-		#[allow(non_snake_case)]
-		/// The polynomial that is applied in order to derive fee from weight.
-		fn WeightToFee() -> Vec<WeightToFeeCoefficient<PalletBalanceOf<T>>> {
-			T::WeightToFee::polynomial().to_vec()
-		}
-	}
-
 	#[pallet::type_value]
 	pub fn DefaultFeeMultiplier() -> Multiplier {
 		Multiplier::saturating_from_integer(1)
@@ -390,7 +372,6 @@ pub mod module {
 		ChargeFeePoolEnabled {
 			sub_account: T::AccountId,
 			currency_id: CurrencyId,
-			fee_swap_path: Vec<CurrencyId>,
 			exchange_rate: Ratio,
 			pool_size: Balance,
 			swap_threshold: Balance,
@@ -409,6 +390,15 @@ pub mod module {
 			currency_id: CurrencyId,
 			foreign_amount: Balance,
 			native_amount: Balance,
+		},
+		/// A transaction `actual_fee`, of which `actual_tip` was added to the minimum inclusion
+		/// fee, has been paid by `who`. `actual_surplus` indicate extra amount when paid by none
+		/// native token.
+		TransactionFeePaid {
+			who: T::AccountId,
+			actual_fee: PalletBalanceOf<T>,
+			actual_tip: PalletBalanceOf<T>,
+			actual_surplus: PalletBalanceOf<T>,
 		},
 	}
 
@@ -553,12 +543,11 @@ pub mod module {
 		pub fn enable_charge_fee_pool(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
-			swap_path: Vec<CurrencyId>,
 			pool_size: Balance,
 			swap_threshold: Balance,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			Self::initialize_pool(currency_id, swap_path, pool_size, swap_threshold)
+			Self::initialize_pool(currency_id, pool_size, swap_threshold)
 		}
 
 		/// Disable charge fee pool.
@@ -569,7 +558,7 @@ pub mod module {
 			Self::disable_pool(currency_id)
 		}
 
-		/// Dapp wrap call, and user pay tx fee as provided trading path. this dispatch call should
+		/// Dapp wrap call, and user pay tx fee as provided dex swap path. this dispatch call should
 		/// make sure the trading path is valid.
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
@@ -593,6 +582,36 @@ pub mod module {
 		pub fn with_fee_currency(
 			origin: OriginFor<T>,
 			_currency_id: CurrencyId,
+			call: Box<CallOf<T>>,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin.clone())?;
+			call.dispatch(origin)
+		}
+
+		/// Wrap call with fee paid by other account
+		#[pallet::weight({
+			let dispatch_info = call.get_dispatch_info();
+			(T::WeightInfo::with_fee_paid_by().saturating_add(dispatch_info.weight), dispatch_info.class,)
+		})]
+		pub fn with_fee_paid_by(
+			origin: OriginFor<T>,
+			call: Box<CallOf<T>>,
+			_payer_addr: T::AccountId,
+			_payer_sig: MultiSignature,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin.clone())?;
+			call.dispatch(origin)
+		}
+
+		/// Dapp wrap call, and user pay tx fee as provided aggregated swap path. this dispatch call
+		/// should make sure the trading path is valid.
+		#[pallet::weight({
+			let dispatch_info = call.get_dispatch_info();
+			(T::WeightInfo::with_fee_aggregated_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
+		})]
+		pub fn with_fee_aggregated_path(
+			origin: OriginFor<T>,
+			_fee_aggregated_path: Vec<AggregatedSwapPath<CurrencyId>>,
 			call: Box<CallOf<T>>,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin.clone())?;
@@ -751,35 +770,46 @@ where
 		}
 	}
 
-	fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {
+	pub fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {
 		// cap the weight to the maximum defined in runtime, otherwise it will be the
 		// `Bounded` maximum of its data type, which is not desired.
 		let capped_weight = weight.min(T::BlockWeights::get().max_block);
-		T::WeightToFee::calc(&capped_weight)
+		T::WeightToFee::weight_to_fee(&capped_weight)
 	}
 
 	/// If native asset is enough, return `None`, else return the fee amount should be swapped.
-	fn check_native_is_not_enough(who: &T::AccountId, fee: PalletBalanceOf<T>) -> Option<Balance> {
+	fn check_native_is_not_enough(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		reason: WithdrawReasons,
+	) -> Option<Balance> {
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
 		let total_native = <T as Config>::Currency::free_balance(who);
+
 		if fee.saturating_add(native_existential_deposit) <= total_native {
-			None
+			// User's locked balance can't be transferable, which means can't be used for fee payment.
+			if let Some(new_free_balance) = total_native.checked_sub(fee) {
+				if T::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok() {
+					return None;
+				}
+			}
+			Some(fee)
 		} else {
 			Some(fee.saturating_add(native_existential_deposit.saturating_sub(total_native)))
 		}
 	}
 
 	/// Determine the fee and surplus that should be withdraw from user. There are three kind call:
-	/// - TransactionPayment::with_fee_path: swap with dex
-	/// - TransactionPayment::with_fee_currency: swap with tx fee pool
+	/// - TransactionPayment::with_fee_currency: swap with tx fee pool if token is enable charge fee
+	///   pool, else swap with dex.
+	/// - TransactionPayment::with_fee_path: swap with specific trading path.
 	/// - others call: first use native asset, if not enough use alternative, or else use default.
 	fn ensure_can_charge_fee_with_call(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
 		call: &CallOf<T>,
-	) -> Result<Balance, DispatchError> {
-		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
-		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
+		reason: WithdrawReasons,
+	) -> Result<(T::AccountId, Balance), DispatchError> {
 		match call.is_sub_type() {
 			Some(Call::with_fee_path { fee_swap_path, .. }) => {
 				ensure!(
@@ -788,42 +818,107 @@ where
 						&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
 					Error::<T>::InvalidSwapPath
 				);
-				T::DEX::swap_with_specific_path(
+				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
+				let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+				T::Swap::swap_by_path(
 					who,
 					fee_swap_path,
-					SwapLimit::ExactTarget(Balance::MAX, custom_fee_amount),
+					SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
 				)
-				.map(|_| custom_fee_surplus)
+				.map(|_| (who.clone(), custom_fee_surplus))
+			}
+			Some(Call::with_fee_aggregated_path {
+				fee_aggregated_path, ..
+			}) => {
+				let last_should_be_dex = fee_aggregated_path.last();
+				match last_should_be_dex {
+					Some(AggregatedSwapPath::<CurrencyId>::Dex(fee_swap_path)) => {
+						ensure!(
+							fee_swap_path.len() > 1
+								&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
+								&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
+							Error::<T>::InvalidSwapPath
+						);
+						let fee =
+							Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
+						let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+						T::Swap::swap_by_aggregated_path(
+							who,
+							fee_aggregated_path,
+							SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
+						)
+						.map(|_| (who.clone(), custom_fee_surplus))
+					}
+					_ => Err(Error::<T>::InvalidSwapPath.into()),
+				}
 			}
 			Some(Call::with_fee_currency { currency_id, .. }) => {
-				ensure!(
-					TokenExchangeRate::<T>::contains_key(currency_id),
-					Error::<T>::InvalidToken
-				);
-				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
+				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
+				let alternative_fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
+				let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+				let (fee_amount, fee_surplus) = if T::DefaultFeeTokens::get().contains(currency_id) {
+					(fee.saturating_add(alternative_fee_surplus), alternative_fee_surplus)
+				} else {
+					(fee.saturating_add(custom_fee_surplus), custom_fee_surplus)
+				};
+				if TokenExchangeRate::<T>::contains_key(currency_id) {
+					// token in charge fee pool should have `TokenExchangeRate` info.
+					Self::swap_from_pool_or_dex(who, fee_amount, *currency_id).map(|_| (who.clone(), fee_surplus))
+				} else {
+					// `supply_currency_id` not in charge fee pool, direct swap.
+					T::Swap::swap(
+						who,
+						*currency_id,
+						T::NativeCurrencyId::get(),
+						SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
+					)
+					.map(|_| (who.clone(), custom_fee_surplus))
+				}
 			}
-			_ => Self::native_then_alternative_or_default(who, fee),
+			Some(Call::with_fee_paid_by {
+				call: _,
+				payer_addr,
+				payer_sig: _,
+			}) => {
+				// validate payer signature in runtime side, because `SignedExtension` between different runtime
+				// may be different.
+				Self::native_then_alternative_or_default(payer_addr, fee, WithdrawReasons::TRANSACTION_PAYMENT)
+					.map(|surplus| (payer_addr.clone(), surplus))
+			}
+			_ => Self::native_then_alternative_or_default(who, fee, reason).map(|surplus| (who.clone(), surplus)),
 		}
 	}
 
 	/// If native is enough, do nothing, return `Ok(0)` means there are none extra surplus fee.
-	/// If native is not enough, try swap from tx fee pool or dex. As user can set his own
-	/// `AlternativeFeeSwapPath`, this will direct swap from dex. Sometimes, user setting of
-	/// `AlternativeFeeSwapPath` may be wrong or dex is not available, or user do not set any
-	/// `AlternativeFeeSwapPath`, then use the `DefaultFeeTokens` to swap from tx fee pool.
+	/// If native is not enough, try swap from tx fee pool or dex:
+	/// - As user can set his own `AlternativeFeeSwapPath`, this will direct swap from dex. Notice:
+	///   we're using `Swap::swap`, so the real swap path may not equal to `AlternativeFeeSwapPath`,
+	///   and even though `AlternativeFeeSwapPath` is invalid, once swap is success, it's also
+	///   acceptable.
+	/// - When swap failed or user not setting `AlternativeFeeSwapPath`, then trying iterating
+	///   `DefaultFeeTokens` token list to directly swap from charge fee pool. All token in
+	///   `DefaultFeeTokens` is using charge fee pool mechanism.
+	/// - If token is not in `DefaultFeeTokens`, but is enabled using charge fee pool. so it still
+	///   can swap from charge fee pool. the different between this case and second case is that
+	///   this case exhaust more surplus.
+	/// - so invoker must make sure user `who` either has `AlternativeFeeSwapPath` or is enabled
+	///   using charge fee pool to pay for fee. if not, then invoker should use
+	///   `with_fee_currency(currency_id, call)` or else return DispatchError.
 	fn native_then_alternative_or_default(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
+		reason: WithdrawReasons,
 	) -> Result<Balance, DispatchError> {
-		if let Some(amount) = Self::check_native_is_not_enough(who, fee) {
+		if let Some(amount) = Self::check_native_is_not_enough(who, fee, reason) {
 			// native asset is not enough
 			let fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
 			let fee_amount = fee_surplus.saturating_add(amount);
+			let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+			let custom_fee_amount = custom_fee_surplus.saturating_add(amount);
 
 			// alter native fee swap path, swap from dex: O(1)
 			if let Some(path) = AlternativeFeeSwapPath::<T>::get(who) {
-				if T::DEX::swap_with_specific_path(who, &path, SwapLimit::ExactTarget(Balance::MAX, fee_amount)).is_ok()
-				{
+				if T::Swap::swap_by_path(who, &path, SwapLimit::ExactTarget(Balance::MAX, fee_amount)).is_ok() {
 					return Ok(fee_surplus);
 				}
 			}
@@ -835,15 +930,13 @@ where
 				}
 			}
 
-			// migration of `GlobalFeeSwapPath`. after Dapp using `with_fee_currency`, we can delete this.
-			let global_fee_swap_path = GlobalFeeSwapPath::<T>::iter_values()
-				.map(|v| v.into_inner())
+			// other token use charge fee pool mechanism.
+			let tokens_non_default = TokenExchangeRate::<T>::iter_keys()
+				.filter(|v| !T::DefaultFeeTokens::get().contains(v))
 				.collect::<Vec<_>>();
-			for path in global_fee_swap_path {
-				if let Some(supply_currency_id) = path.first() {
-					if Self::swap_from_pool_or_dex(who, fee_amount, *supply_currency_id).is_ok() {
-						return Ok(fee_surplus);
-					}
+			for supply_currency_id in tokens_non_default {
+				if Self::swap_from_pool_or_dex(who, custom_fee_amount, supply_currency_id).is_ok() {
+					return Ok(custom_fee_surplus);
 				}
 			}
 
@@ -868,33 +961,31 @@ where
 		let native_balance = T::Currency::free_balance(&sub_account);
 		let threshold_balance = SwapBalanceThreshold::<T>::get(supply_currency_id);
 		if native_balance < threshold_balance {
-			if let Some(trading_path) = GlobalFeeSwapPath::<T>::get(supply_currency_id) {
-				let supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &sub_account);
-				let supply_amount =
-					supply_balance.saturating_sub(T::MultiCurrency::minimum_balance(supply_currency_id));
-				if let Ok((supply_amount, swap_native_balance)) = T::DEX::swap_with_specific_path(
-					&sub_account,
-					&trading_path,
-					SwapLimit::ExactSupply(supply_amount, 0),
-				) {
-					// calculate and update new rate, also update the pool size
-					let swap_exchange_rate = Ratio::saturating_from_rational(supply_amount, swap_native_balance);
-					let new_pool_size = swap_native_balance.saturating_add(native_balance);
-					let new_exchange_rate = Self::calculate_exchange_rate(supply_currency_id, swap_exchange_rate)?;
+			let supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &sub_account);
+			let supply_amount = supply_balance.saturating_sub(T::MultiCurrency::minimum_balance(supply_currency_id));
+			if let Ok((supply_amount, swap_native_balance)) = T::Swap::swap(
+				&sub_account,
+				supply_currency_id,
+				T::NativeCurrencyId::get(),
+				SwapLimit::ExactSupply(supply_amount, 0),
+			) {
+				// calculate and update new rate, also update the pool size
+				let swap_exchange_rate = Ratio::saturating_from_rational(supply_amount, swap_native_balance);
+				let new_pool_size = swap_native_balance.saturating_add(native_balance);
+				let new_exchange_rate = Self::calculate_exchange_rate(supply_currency_id, swap_exchange_rate)?;
 
-					TokenExchangeRate::<T>::insert(supply_currency_id, new_exchange_rate);
-					PoolSize::<T>::insert(supply_currency_id, new_pool_size);
-					Pallet::<T>::deposit_event(Event::<T>::ChargeFeePoolSwapped {
-						sub_account: sub_account.clone(),
-						supply_currency_id,
-						old_exchange_rate: rate,
-						swap_exchange_rate,
-						new_exchange_rate,
-						new_pool_size,
-					});
-				} else {
-					debug_assert!(false, "Swap tx fee pool should not fail!");
-				}
+				TokenExchangeRate::<T>::insert(supply_currency_id, new_exchange_rate);
+				PoolSize::<T>::insert(supply_currency_id, new_pool_size);
+				Pallet::<T>::deposit_event(Event::<T>::ChargeFeePoolSwapped {
+					sub_account: sub_account.clone(),
+					supply_currency_id,
+					old_exchange_rate: rate,
+					swap_exchange_rate,
+					new_exchange_rate,
+					new_pool_size,
+				});
+			} else {
+				debug_assert!(false, "Swap tx fee pool should not fail!");
 			}
 		}
 
@@ -907,7 +998,7 @@ where
 
 	/// The sub account derivated by `PalletId`.
 	fn sub_account_id(id: CurrencyId) -> T::AccountId {
-		T::PalletId::get().into_sub_account(id)
+		T::PalletId::get().into_sub_account_truncating(id)
 	}
 
 	/// Calculate the new exchange rate.
@@ -925,30 +1016,8 @@ where
 	}
 
 	/// Initiate a charge fee pool, transfer token from treasury account to sub account.
-	pub fn initialize_pool(
-		currency_id: CurrencyId,
-		fee_swap_path: Vec<CurrencyId>,
-		pool_size: Balance,
-		swap_threshold: Balance,
-	) -> DispatchResult {
-		// first add to GlobalFeeSwapPath mapping storage
-		ensure!(
-			fee_swap_path.len() > 1
-				&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
-				&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
-			Error::<T>::InvalidSwapPath
-		);
-		let first_currency = *fee_swap_path.get(0).expect("ensured path not empty; qed");
-		ensure!(currency_id == first_currency, Error::<T>::InvalidSwapPath);
-		let global_mut = GlobalFeeSwapPath::<T>::try_mutate(currency_id, |maybe_path| -> DispatchResult {
-			let path: BoundedVec<CurrencyId, T::TradingPathLimit> = fee_swap_path
-				.clone()
-				.try_into()
-				.map_err(|_| Error::<T>::InvalidSwapPath)?;
-			*maybe_path = Some(path);
-			Ok(())
-		});
-		ensure!(global_mut.is_ok(), Error::<T>::InvalidSwapPath);
+	pub fn initialize_pool(currency_id: CurrencyId, pool_size: Balance, swap_threshold: Balance) -> DispatchResult {
+		ensure!(currency_id != T::NativeCurrencyId::get(), Error::<T>::InvalidSwapPath);
 
 		// do tx fee pool pre-check
 		let treasury_account = T::TreasuryAccount::get();
@@ -964,8 +1033,9 @@ where
 		);
 
 		// make sure trading path is valid, and the trading path is valid when swap from dex
-		let (supply_amount, _) = T::DEX::get_swap_amount(
-			&fee_swap_path,
+		let (supply_amount, _) = T::Swap::get_swap_amount(
+			currency_id,
+			T::NativeCurrencyId::get(),
 			SwapLimit::ExactTarget(Balance::MAX, native_existential_deposit),
 		)
 		.ok_or(Error::<T>::DexNotAvailable)?;
@@ -993,7 +1063,6 @@ where
 		Self::deposit_event(Event::ChargeFeePoolEnabled {
 			sub_account,
 			currency_id,
-			fee_swap_path,
 			exchange_rate,
 			pool_size,
 			swap_threshold,
@@ -1034,94 +1103,17 @@ where
 	}
 }
 
-/// `WeightTrader` implementation used for `Trader`, the `rate` is read from storage,
-/// and `token_per_second` is calculated by `rate` * `native_asset_per_second`.
-pub struct TransactionFeePoolTrader<T, C, K: Get<u128>, R: TakeRevenue> {
-	weight: Weight,
-	amount: u128,
-	asset_location: Option<MultiLocation>,
-	asset_per_second: u128,
-	_marker: PhantomData<(T, C, K, R)>,
-}
-
-impl<T: Config, C, K: Get<u128>, R: TakeRevenue> WeightTrader for TransactionFeePoolTrader<T, C, K, R>
+/// Calculate the exchange rate of token in transaction fee pool.
+pub struct BuyWeightRateOfTransactionFeePool<T, C>(sp_std::marker::PhantomData<(T, C)>);
+impl<T: Config, C> BuyWeightRate for BuyWeightRateOfTransactionFeePool<T, C>
 where
 	C: Convert<MultiLocation, Option<CurrencyId>>,
 {
-	fn new() -> Self {
-		Self {
-			weight: 0,
-			amount: 0,
-			asset_location: None,
-			asset_per_second: 0,
-			_marker: Default::default(),
-		}
-	}
-
-	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
-		// only support first fungible assets now.
-		let asset_id = payment
-			.fungible
-			.iter()
-			.next()
-			.map_or(Err(XcmError::TooExpensive), |v| Ok(v.0))?;
-
-		if let AssetId::Concrete(ref multi_location) = asset_id.clone() {
-			if let Some(token_id) = C::convert(multi_location.clone()) {
-				if let Some(rate) = TokenExchangeRate::<T>::get(token_id) {
-					// calculate the amount of fungible asset.
-					let weight_ratio = Ratio::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
-					let asset_per_second = rate.saturating_mul_int(K::get());
-					let amount = weight_ratio.saturating_mul_int(asset_per_second);
-					let required = MultiAsset {
-						id: asset_id.clone(),
-						fun: Fungible(amount),
-					};
-					let unused = payment.checked_sub(required).map_err(|_| XcmError::TooExpensive)?;
-					self.weight = self.weight.saturating_add(weight);
-					self.amount = self.amount.saturating_add(amount);
-					self.asset_location = Some(multi_location.clone());
-					self.asset_per_second = asset_per_second;
-					return Ok(unused);
-				}
-			}
-		}
-		Err(XcmError::TooExpensive)
-	}
-
-	fn refund_weight(&mut self, weight: Weight) -> Option<MultiAsset> {
-		let weight = weight.min(self.weight);
-		let weight_ratio = Ratio::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
-		let amount = weight_ratio.saturating_mul_int(self.asset_per_second);
-		self.weight = self.weight.saturating_sub(weight);
-		self.amount = self.amount.saturating_sub(amount);
-		if amount > 0 && self.asset_location.is_some() {
-			Some(
-				(
-					self.asset_location.as_ref().expect("checked is non-empty; qed").clone(),
-					amount,
-				)
-					.into(),
-			)
-		} else {
-			None
-		}
+	fn calculate_rate(multi_location: MultiLocation) -> Option<Ratio> {
+		C::convert(multi_location).and_then(TokenExchangeRate::<T>::get)
 	}
 }
 
-impl<T, C, K: Get<u128>, R: TakeRevenue> Drop for TransactionFeePoolTrader<T, C, K, R> {
-	fn drop(&mut self) {
-		if self.amount > 0 && self.asset_location.is_some() {
-			R::take_revenue(
-				(
-					self.asset_location.as_ref().expect("checked is non-empty; qed").clone(),
-					self.amount,
-				)
-					.into(),
-			);
-		}
-	}
-}
 impl<T> Convert<Weight, PalletBalanceOf<T>> for Pallet<T>
 where
 	T: Config,
@@ -1182,7 +1174,8 @@ where
 		(
 			PalletBalanceOf<T>,
 			Option<NegativeImbalanceOf<T>>,
-			Option<PalletBalanceOf<T>>,
+			PalletBalanceOf<T>,
+			T::AccountId,
 		),
 		TransactionValidityError,
 	> {
@@ -1191,7 +1184,7 @@ where
 
 		// Only mess with balances if fee is not zero.
 		if fee.is_zero() {
-			return Ok((fee, None, None));
+			return Ok((fee, None, 0, who.clone()));
 		}
 
 		let reason = if tip.is_zero() {
@@ -1200,12 +1193,12 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		let fee_surplus =
-			Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call).map_err(|_| InvalidTransaction::Payment)?;
+		let (payer, fee_surplus) = Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call, reason)
+			.map_err(|_| InvalidTransaction::Payment)?;
 
 		// withdraw native currency as fee, also consider surplus when swap from dex or pool.
-		match <T as Config>::Currency::withdraw(who, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
-			Ok(imbalance) => Ok((fee + fee_surplus, Some(imbalance), Some(fee_surplus))),
+		match <T as Config>::Currency::withdraw(&payer, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
+			Ok(imbalance) => Ok((fee + fee_surplus, Some(imbalance), fee_surplus, payer)),
 			Err(_) => Err(InvalidTransaction::Payment.into()),
 		}
 	}
@@ -1302,8 +1295,8 @@ where
 		PalletBalanceOf<T>,
 		Self::AccountId,
 		Option<NegativeImbalanceOf<T>>,
-		PalletBalanceOf<T>,         // fee includes surplus
-		Option<PalletBalanceOf<T>>, // surplus
+		PalletBalanceOf<T>, // fee includes surplus
+		PalletBalanceOf<T>, // surplus
 	);
 
 	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
@@ -1317,7 +1310,7 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
-		let (final_fee, _, _) = self.withdraw_fee(who, call, info, len)?;
+		let (final_fee, _, _, _) = self.withdraw_fee(who, call, info, len)?;
 		let tip = self.0;
 		Ok(ValidTransaction {
 			priority: Self::get_priority(info, len, tip, final_fee),
@@ -1332,8 +1325,8 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let (fee, imbalance, surplus) = self.withdraw_fee(who, call, info, len)?;
-		Ok((self.0, who.clone(), imbalance, fee, surplus))
+		let (fee, imbalance, surplus, payer) = self.withdraw_fee(who, call, info, len)?;
+		Ok((self.0, payer, imbalance, fee, surplus))
 	}
 
 	fn post_dispatch(
@@ -1359,11 +1352,10 @@ where
 				actual_tip = tip.saturating_sub(refund_tip);
 			}
 			// the refund surplus also need to return back to user
-			if let Some(surplus) = surplus {
-				let percent = Percent::from_rational(surplus, fee.saturating_sub(surplus));
-				let actual_surplus = percent.mul_ceil(actual_fee);
-				refund = refund.saturating_sub(actual_surplus);
-			}
+			let rate = Ratio::saturating_from_rational(surplus, fee.saturating_sub(surplus));
+			let actual_surplus = rate.saturating_mul_int(actual_fee);
+			refund = refund.saturating_sub(actual_surplus);
+
 			let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
 				Ok(refund_imbalance) => {
 					// The refund cannot be larger than the up front payed max weight.
@@ -1382,6 +1374,13 @@ where
 
 			// distribute fee
 			<T as Config>::OnTransactionPayment::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
+
+			Pallet::<T>::deposit_event(Event::<T>::TransactionFeePaid {
+				who,
+				actual_fee,
+				actual_tip,
+				actual_surplus,
+			});
 		}
 		Ok(())
 	}
@@ -1392,14 +1391,22 @@ impl<T: Config + Send + Sync> TransactionPayment<T::AccountId, PalletBalanceOf<T
 where
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
-	fn reserve_fee(who: &T::AccountId, weight: Weight) -> Result<PalletBalanceOf<T>, DispatchError> {
-		let fee = Pallet::<T>::weight_to_fee(weight);
-		<T as Config>::Currency::reserve_named(&RESERVE_ID, who, fee)?;
+	fn reserve_fee(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		named: Option<ReserveIdentifier>,
+	) -> Result<PalletBalanceOf<T>, DispatchError> {
+		Pallet::<T>::native_then_alternative_or_default(who, fee, WithdrawReasons::TRANSACTION_PAYMENT)?;
+		T::Currency::reserve_named(&named.unwrap_or(RESERVE_ID), who, fee)?;
 		Ok(fee)
 	}
 
-	fn unreserve_fee(who: &T::AccountId, fee: PalletBalanceOf<T>) {
-		<T as Config>::Currency::unreserve_named(&RESERVE_ID, who, fee);
+	fn unreserve_fee(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		named: Option<ReserveIdentifier>,
+	) -> PalletBalanceOf<T> {
+		<T as Config>::Currency::unreserve_named(&named.unwrap_or(RESERVE_ID), who, fee)
 	}
 
 	fn unreserve_and_charge_fee(
@@ -1468,5 +1475,16 @@ where
 		// distribute fee
 		<T as Config>::OnTransactionPayment::on_unbalanced(actual_payment);
 		Ok(())
+	}
+
+	fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {
+		Pallet::<T>::weight_to_fee(weight)
+	}
+
+	/// Apply multiplier to fee, return the final fee. If multiplier is `None`, use
+	/// `next_fee_multiplier`.
+	fn apply_multiplier_to_fee(fee: PalletBalanceOf<T>, multiplier: Option<Multiplier>) -> PalletBalanceOf<T> {
+		let multiplier = multiplier.unwrap_or_else(|| Pallet::<T>::next_fee_multiplier());
+		multiplier.saturating_mul_int(fee)
 	}
 }

@@ -201,7 +201,7 @@ impl TestNodeBuilder {
 					collator_options,
 					self.para_id,
 					self.wrap_announce_block,
-					|_| Ok(Default::default()),
+					|_| Ok(RpcModule::new(())),
 					self.consensus,
 					self.seal_mode,
 				)
@@ -211,10 +211,7 @@ impl TestNodeBuilder {
 		};
 
 		let peer_id = network.local_peer_id();
-		let addr = MultiaddrWithPeerId {
-			multiaddr,
-			peer_id: *peer_id,
-		};
+		let addr = MultiaddrWithPeerId { multiaddr, peer_id };
 
 		TestNode {
 			task_manager,
@@ -294,10 +291,12 @@ pub fn node_config(
 		},
 		state_cache_size: 67108864,
 		state_cache_child_ratio: None,
-		state_pruning: PruningMode::ArchiveAll,
-		keep_blocks: KeepBlocks::All,
+		state_pruning: Some(PruningMode::ArchiveAll),
+		blocks_pruning: BlocksPruning::All,
 		chain_spec: spec,
-		wasm_method: WasmExecutionMethod::Compiled,
+		wasm_method: WasmExecutionMethod::Compiled {
+			instantiation_strategy: WasmtimeInstantiationStrategy::PoolingCopyOnWrite,
+		},
 		// NOTE: we enforce the use of the native runtime to make the errors more debuggable
 		execution_strategies: ExecutionStrategies {
 			syncing: sc_client_api::ExecutionStrategy::NativeWhenPossible,
@@ -313,6 +312,10 @@ pub fn node_config(
 		rpc_cors: None,
 		rpc_methods: Default::default(),
 		rpc_max_payload: None,
+		rpc_max_request_size: None,
+		rpc_max_response_size: None,
+		rpc_id_provider: None,
+		rpc_max_subs_per_conn: None,
 		ws_max_out_buffer_capacity: None,
 		prometheus_config: None,
 		telemetry_endpoints: None,

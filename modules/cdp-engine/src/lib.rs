@@ -29,15 +29,14 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use codec::MaxEncodedLen;
-use frame_support::{log, pallet_prelude::*, traits::UnixTime, transactional};
+use frame_support::{log, pallet_prelude::*, traits::UnixTime, transactional, BoundedVec, PalletId};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
 };
-use loans::Position;
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_utilities::OffchainErr;
-use primitives::{Amount, Balance, CurrencyId};
+use primitives::{evm::EvmAddress, Amount, Balance, CurrencyId, Position};
 use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
 	ChaChaRng,
@@ -49,16 +48,18 @@ use sp_runtime::{
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{Bounded, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
+	traits::{
+		AccountIdConversion, BlockNumberProvider, Bounded, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero,
+	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
-	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
+	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
-use sp_std::prelude::*;
+use sp_std::{marker::PhantomData, prelude::*};
 use support::{
-	CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio,
-	RiskManager, SwapLimit,
+	AddressMapping, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, InvokeContext,
+	LiquidateCollateral, LiquidationEvmBridge, Price, PriceProvider, Rate, Ratio, RiskManager, Swap, SwapLimit,
 };
 
 mod mock;
@@ -75,6 +76,7 @@ pub const LOCK_DURATION: u64 = 100;
 pub const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
 pub type LoansOf<T> = loans::Pallet<T>;
+pub type CurrencyOf<T> = <T as Config>::Currency;
 
 /// Risk management params
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo, MaxEncodedLen)]
@@ -129,10 +131,6 @@ pub mod module {
 		/// always do this.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
-		/// The list of valid collateral currency types
-		#[pallet::constant]
-		type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
-
 		/// The default liquidation ratio for all collateral types of CDP
 		#[pallet::constant]
 		type DefaultLiquidationRatio: Get<Ratio>;
@@ -185,13 +183,29 @@ pub mod module {
 		/// Currency for transfer assets
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		/// The alternative swap path joint list, which can be concated to
-		/// alternative swap path when cdp treasury swap collateral to stable.
-		#[pallet::constant]
-		type AlternativeSwapPathJointList: Get<Vec<Vec<CurrencyId>>>;
-
 		/// Dex
-		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
+
+		/// Swap
+		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
+
+		/// The origin for liquidation contracts registering and deregistering.
+		type LiquidationContractsUpdateOrigin: EnsureOrigin<Self::Origin>;
+
+		/// When settle collateral with smart contracts, the acceptable max slippage for the price
+		/// from oracle.
+		#[pallet::constant]
+		type MaxLiquidationContractSlippage: Get<Ratio>;
+
+		#[pallet::constant]
+		type MaxLiquidationContracts: Get<u32>;
+
+		type LiquidationEvmBridge: LiquidationEvmBridge;
+
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
+		type EvmAddressMapping: AddressMapping<Self::AccountId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -214,7 +228,8 @@ pub mod module {
 		InvalidCollateralType,
 		/// Remain debit value in CDP below the dust amount
 		RemainDebitValueTooSmall,
-		/// Remain collateral value in CDP below the dust amount
+		/// Remain collateral value in CDP below the dust amount.
+		/// Withdraw all collateral or leave more than the minimum.
 		CollateralAmountBelowMinimum,
 		/// Feed price is invalid
 		InvalidFeedPrice,
@@ -224,14 +239,18 @@ pub mod module {
 		AlreadyShutdown,
 		/// Must after system shutdown
 		MustAfterShutdown,
-		/// Cannot swap
-		CannotSwap,
 		/// Collateral in CDP is not enough
 		CollateralNotEnough,
 		/// debit value decrement is not enough
 		NotEnoughDebitDecrement,
 		/// convert debit value to debit balance failed
 		ConvertDebitBalanceFailed,
+		/// Collateral liquidation failed.
+		LiquidationFailed,
+		/// Exceeds `T::MaxLiquidationContracts`.
+		TooManyLiquidationContracts,
+		/// Collateral ERC20 contract not found.
+		CollateralContractNotFound,
 	}
 
 	#[pallet::event]
@@ -283,6 +302,10 @@ pub mod module {
 			collateral_type: CurrencyId,
 			new_total_debit_value: Balance,
 		},
+		/// A new liquidation contract is registered.
+		LiquidationContractRegistered { address: EvmAddress },
+		/// A new liquidation contract is deregistered.
+		LiquidationContractDeregistered { address: EvmAddress },
 	}
 
 	/// Mapping from collateral type to its exchange rate of debit units and
@@ -293,12 +316,12 @@ pub mod module {
 	#[pallet::getter(fn debit_exchange_rate)]
 	pub type DebitExchangeRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, ExchangeRate, OptionQuery>;
 
-	/// Mapping from collateral type to its risk management params
+	/// Mapping from valid collateral type to its risk management params
 	///
-	/// CollateralParams: CurrencyId => RiskManagementParams
+	/// CollateralParams: CurrencyId => Option<RiskManagementParams>
 	#[pallet::storage]
 	#[pallet::getter(fn collateral_params)]
-	pub type CollateralParams<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, RiskManagementParams, ValueQuery>;
+	pub type CollateralParams<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, RiskManagementParams, OptionQuery>;
 
 	/// Timestamp in seconds of the last interest accumulation
 	///
@@ -306,6 +329,11 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn last_accumulation_secs)]
 	pub type LastAccumulationSecs<T: Config> = StorageValue<_, u64, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn liquidation_contracts)]
+	pub type LiquidationContracts<T: Config> =
+		StorageValue<_, BoundedVec<EvmAddress, T::MaxLiquidationContracts>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	#[cfg_attr(feature = "std", derive(Default))]
@@ -438,8 +466,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `currency_id`: collateral type.
-		/// - `interest_rate_per_sec`: extra interest rate per sec, `None` means do not update,
-		///   `Some(None)` means update it to `None`.
+		/// - `interest_rate_per_sec`: Interest rate per sec, `None` means do not update,
 		/// - `liquidation_ratio`: liquidation ratio, `None` means do not update, `Some(None)` means
 		///   update it to `None`.
 		/// - `liquidation_penalty`: liquidation penalty, `None` means do not update, `Some(None)`
@@ -459,12 +486,8 @@ pub mod module {
 			maximum_total_debit_value: ChangeBalance,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			ensure!(
-				T::CollateralCurrencyIds::get().contains(&currency_id),
-				Error::<T>::InvalidCollateralType,
-			);
 
-			let mut collateral_params = Self::collateral_params(currency_id);
+			let mut collateral_params = Self::collateral_params(currency_id).unwrap_or_default();
 			if let Change::NewValue(update) = interest_rate_per_sec {
 				collateral_params.interest_rate_per_sec = update;
 				Self::deposit_event(Event::InterestRatePerSecUpdated {
@@ -501,6 +524,26 @@ pub mod module {
 				});
 			}
 			CollateralParams::<T>::insert(currency_id, collateral_params);
+			Ok(())
+		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::register_liquidation_contract())]
+		#[transactional]
+		pub fn register_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
+			T::LiquidationContractsUpdateOrigin::ensure_origin(origin)?;
+			LiquidationContracts::<T>::try_append(address).map_err(|()| Error::<T>::TooManyLiquidationContracts)?;
+			Self::deposit_event(Event::LiquidationContractRegistered { address });
+			Ok(())
+		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::deregister_liquidation_contract())]
+		#[transactional]
+		pub fn deregister_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
+			T::LiquidationContractsUpdateOrigin::ensure_origin(origin)?;
+			LiquidationContracts::<T>::mutate(|contracts| {
+				contracts.retain(|c| c != &address);
+			});
+			Self::deposit_event(Event::LiquidationContractDeregistered { address });
 			Ok(())
 		}
 	}
@@ -556,7 +599,7 @@ impl<T: Config> Pallet<T> {
 		if !T::EmergencyShutdown::is_shutdown() && !now_secs.is_zero() {
 			let interval_secs = now_secs.saturating_sub(last_accumulation_secs);
 
-			for currency_id in T::CollateralCurrencyIds::get() {
+			for currency_id in Self::get_collateral_currency_ids() {
 				if let Ok(interest_rate) = Self::get_interest_rate_per_sec(currency_id) {
 					let rate_to_accumulate = Self::compound_interest_rate(interest_rate, interval_secs);
 					let total_debits = <LoansOf<T>>::total_positions(currency_id).debit;
@@ -626,7 +669,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn _offchain_worker() -> Result<(), OffchainErr> {
-		let collateral_currency_ids = T::CollateralCurrencyIds::get();
+		let collateral_currency_ids = Self::get_collateral_currency_ids();
 		if collateral_currency_ids.len().is_zero() {
 			return Ok(());
 		}
@@ -653,17 +696,30 @@ impl<T: Config> Pallet<T> {
 				(pick_u32(&mut rng, collateral_currency_ids.len() as u32), None)
 			};
 
-		// get the max iterationns config
+		// get the max iterations config
 		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
 			.get::<u32>()
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
 			.unwrap_or(DEFAULT_MAX_ITERATIONS);
 
-		let currency_id = collateral_currency_ids[collateral_position as usize];
+		let currency_id = match collateral_currency_ids.get(collateral_position as usize) {
+			Some(currency_id) => *currency_id,
+			None => {
+				log::debug!(
+					target: "cdp-engine offchain worker",
+					"collateral_currency was removed, need to reset the offchain worker: collateral_position is {:?}, collateral_currency_ids: {:?}",
+					collateral_position,
+					collateral_currency_ids
+				);
+				to_be_continue.set(&(0, Option::<Vec<u8>>::None));
+				return Ok(());
+			}
+		};
+
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 
 		// If start key is Some(value) continue iterating from that point in storage otherwise start
-		// iterating from the beginning of <loans::Positons<T>>
+		// iterating from the beginning of <loans::Positions<T>>
 		let mut map_iterator = match start_key.clone() {
 			Some(key) => <loans::Positions<T>>::iter_prefix_from(currency_id, key),
 			None => <loans::Positions<T>>::iter_prefix(currency_id),
@@ -733,26 +789,34 @@ impl<T: Config> Pallet<T> {
 		if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, stable_currency_id) {
 			let collateral_ratio =
 				Self::calculate_collateral_ratio(currency_id, collateral_amount, debit_amount, feed_price);
-			if collateral_ratio < Self::get_liquidation_ratio(currency_id) {
-				CDPStatus::Unsafe
-			} else {
-				CDPStatus::Safe
+			match Self::get_liquidation_ratio(currency_id) {
+				Ok(liquidation_ratio) => {
+					if collateral_ratio < liquidation_ratio {
+						CDPStatus::Unsafe
+					} else {
+						CDPStatus::Safe
+					}
+				}
+				Err(e) => CDPStatus::ChecksFailed(e),
 			}
 		} else {
 			CDPStatus::ChecksFailed(Error::<T>::InvalidFeedPrice.into())
 		}
 	}
 
-	pub fn maximum_total_debit_value(currency_id: CurrencyId) -> Balance {
-		Self::collateral_params(currency_id).maximum_total_debit_value
+	pub fn maximum_total_debit_value(currency_id: CurrencyId) -> Result<Balance, DispatchError> {
+		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
+		Ok(params.maximum_total_debit_value)
 	}
 
-	pub fn required_collateral_ratio(currency_id: CurrencyId) -> Option<Ratio> {
-		Self::collateral_params(currency_id).required_collateral_ratio
+	pub fn required_collateral_ratio(currency_id: CurrencyId) -> Result<Option<Ratio>, DispatchError> {
+		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
+		Ok(params.required_collateral_ratio)
 	}
 
 	pub fn get_interest_rate_per_sec(currency_id: CurrencyId) -> Result<Rate, DispatchError> {
-		Self::collateral_params(currency_id)
+		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
+		params
 			.interest_rate_per_sec
 			.ok_or_else(|| Error::<T>::InvalidCollateralType.into())
 	}
@@ -764,16 +828,16 @@ impl<T: Config> Pallet<T> {
 			.saturating_sub(Rate::one())
 	}
 
-	pub fn get_liquidation_ratio(currency_id: CurrencyId) -> Ratio {
-		Self::collateral_params(currency_id)
-			.liquidation_ratio
-			.unwrap_or_else(T::DefaultLiquidationRatio::get)
+	pub fn get_liquidation_ratio(currency_id: CurrencyId) -> Result<Ratio, DispatchError> {
+		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
+		Ok(params.liquidation_ratio.unwrap_or_else(T::DefaultLiquidationRatio::get))
 	}
 
-	pub fn get_liquidation_penalty(currency_id: CurrencyId) -> Rate {
-		Self::collateral_params(currency_id)
+	pub fn get_liquidation_penalty(currency_id: CurrencyId) -> Result<Rate, DispatchError> {
+		let params = Self::collateral_params(currency_id).ok_or(Error::<T>::InvalidCollateralType)?;
+		Ok(params
 			.liquidation_penalty
-			.unwrap_or_else(T::DefaultLiquidationPenalty::get)
+			.unwrap_or_else(T::DefaultLiquidationPenalty::get))
 	}
 
 	pub fn get_debit_exchange_rate(currency_id: CurrencyId) -> ExchangeRate {
@@ -809,11 +873,70 @@ impl<T: Config> Pallet<T> {
 		debit_adjustment: Amount,
 	) -> DispatchResult {
 		ensure!(
-			T::CollateralCurrencyIds::get().contains(&currency_id),
+			CollateralParams::<T>::contains_key(&currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 		<LoansOf<T>>::adjust_position(who, currency_id, collateral_adjustment, debit_adjustment)?;
 		Ok(())
+	}
+
+	pub fn adjust_position_by_debit_value(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
+		debit_value_adjustment: Amount,
+	) -> DispatchResult {
+		let debit_value_adjustment_abs = <LoansOf<T>>::balance_try_from_amount_abs(debit_value_adjustment)?;
+		let debit_adjustment_abs = Self::try_convert_to_debit_balance(currency_id, debit_value_adjustment_abs)
+			.ok_or(Error::<T>::ConvertDebitBalanceFailed)?;
+
+		if debit_value_adjustment.is_negative() {
+			let Position { collateral: _, debit } = <LoansOf<T>>::positions(currency_id, who);
+			let actual_adjustment_abs = debit.min(debit_adjustment_abs);
+			let debit_adjustment = <LoansOf<T>>::amount_try_from_balance(actual_adjustment_abs)?;
+
+			Self::adjust_position(
+				who,
+				currency_id,
+				collateral_adjustment,
+				debit_adjustment.saturating_neg(),
+			)?;
+		} else {
+			let debit_adjustment = <LoansOf<T>>::amount_try_from_balance(debit_adjustment_abs)?;
+			Self::adjust_position(who, currency_id, collateral_adjustment, debit_adjustment)?;
+		}
+
+		Ok(())
+	}
+
+	/// If reverse is false, swap stable coin to given `token`.
+	/// If reverse is true, swap given `token` to stable coin.
+	fn swap_stable_and_lp_token(
+		token: CurrencyId,
+		amount: Balance,
+		reverse: bool,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		let stable_currency_id = T::GetStableCurrencyId::get();
+		let loans_module_account = <LoansOf<T>>::account_id();
+
+		// do nothing if given token is stable coin
+		if token == stable_currency_id {
+			return Ok(amount);
+		}
+
+		let (supply, target) = if reverse {
+			(token, stable_currency_id)
+		} else {
+			(stable_currency_id, token)
+		};
+
+		T::Swap::swap(
+			&loans_module_account,
+			supply,
+			target,
+			SwapLimit::ExactSupply(amount, Zero::zero()),
+		)
+		.map(|e| e.1)
 	}
 
 	/// Generate new debit in advance, buy collateral and deposit it into CDP,
@@ -829,7 +952,7 @@ impl<T: Config> Pallet<T> {
 		min_increase_collateral: Balance,
 	) -> DispatchResult {
 		ensure!(
-			T::CollateralCurrencyIds::get().contains(&currency_id),
+			CollateralParams::<T>::contains_key(&currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 		let loans_module_account = <LoansOf<T>>::account_id();
@@ -847,31 +970,10 @@ impl<T: Config> Pallet<T> {
 				// need better distribution methods to avoid unused component tokens.
 				let stable_for_token_0 = increase_debit_value / 2;
 				let stable_for_token_1 = increase_debit_value.saturating_sub(stable_for_token_0);
-				let stable_currency_id = T::GetStableCurrencyId::get();
-				let stable_to_lp_component = |token: CurrencyId,
-				                              stable_amount: Balance|
-				 -> sp_std::result::Result<Balance, DispatchError> {
-					// do nothing if component token is stable coin
-					if token == stable_currency_id {
-						Ok(stable_amount)
-					} else {
-						// swap compnent token in DEX
-						let limit = SwapLimit::ExactSupply(stable_amount, Zero::zero());
-						let swap_path = T::DEX::get_best_price_swap_path(
-							stable_currency_id,
-							token,
-							limit,
-							T::AlternativeSwapPathJointList::get(),
-						)
-						.ok_or(Error::<T>::CannotSwap)?;
-						let (_, target) = T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
-						Ok(target)
-					}
-				};
 
 				// swap stable coin to lp component tokens.
-				let available_0 = stable_to_lp_component(token_0, stable_for_token_0)?;
-				let available_1 = stable_to_lp_component(token_1, stable_for_token_1)?;
+				let available_0 = Self::swap_stable_and_lp_token(token_0, stable_for_token_0, false)?;
+				let available_1 = Self::swap_stable_and_lp_token(token_1, stable_for_token_1, false)?;
 				let (consumption_0, consumption_1, actual_increase_lp) = T::DEX::add_liquidity(
 					&loans_module_account,
 					token_0,
@@ -895,15 +997,8 @@ impl<T: Config> Pallet<T> {
 			_ => {
 				// swap stable coin to collateral
 				let limit = SwapLimit::ExactSupply(increase_debit_value, min_increase_collateral);
-				let swap_path = T::DEX::get_best_price_swap_path(
-					T::GetStableCurrencyId::get(),
-					currency_id,
-					limit,
-					T::AlternativeSwapPathJointList::get(),
-				)
-				.ok_or(Error::<T>::CannotSwap)?;
 				let (_, actual_increase_collateral) =
-					T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
+					T::Swap::swap(&loans_module_account, T::GetStableCurrencyId::get(), currency_id, limit)?;
 
 				actual_increase_collateral
 			}
@@ -918,13 +1013,13 @@ impl<T: Config> Pallet<T> {
 
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
 		// check the CDP if is still at valid risk
-		Self::check_position_valid(currency_id, collateral, debit, true)?;
+		Self::check_position_valid(currency_id, collateral, debit, false)?;
 		// debit cap check due to new issued stable coin
 		Self::check_debit_cap(currency_id, <LoansOf<T>>::total_positions(currency_id).debit)?;
 		Ok(())
 	}
 
-	/// Sell ​​the collateral locked in CDP to get stable coin to repay the debit,
+	/// Sell the collateral locked in CDP to get stable coin to repay the debit,
 	/// and the collateral ratio will be increased. For single token collateral,
 	/// try to swap stable coin by DEX. For lp token collateral, try to remove liquidity
 	/// for lp token first, then swap the non-stable coin to get stable coin. If all
@@ -938,7 +1033,7 @@ impl<T: Config> Pallet<T> {
 		min_decrease_debit_value: Balance,
 	) -> DispatchResult {
 		ensure!(
-			T::CollateralCurrencyIds::get().contains(&currency_id),
+			CollateralParams::<T>::contains_key(&currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 
@@ -964,29 +1059,9 @@ impl<T: Config> Pallet<T> {
 					Zero::zero(),
 					false,
 				)?;
-				let component_to_stable = |token: CurrencyId,
-				                           amount: Balance|
-				 -> sp_std::result::Result<Balance, DispatchError> {
-					// do nothing if component token is stable coin
-					if token == stable_currency_id {
-						Ok(amount)
-					} else {
-						// swap component token to stable coin
-						let limit = SwapLimit::ExactSupply(amount, Zero::zero());
-						let swap_path = T::DEX::get_best_price_swap_path(
-							token,
-							stable_currency_id,
-							limit,
-							T::AlternativeSwapPathJointList::get(),
-						)
-						.ok_or(Error::<T>::CannotSwap)?;
-						let (_, target) = T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
-						Ok(target)
-					}
-				};
 
-				let stable_0 = component_to_stable(token_0, available_0)?;
-				let stable_1 = component_to_stable(token_1, available_1)?;
+				let stable_0 = Self::swap_stable_and_lp_token(token_0, available_0, true)?;
+				let stable_1 = Self::swap_stable_and_lp_token(token_1, available_1, true)?;
 				let total_stable = stable_0.saturating_add(stable_1);
 
 				// check whether the amount of stable token obtained by selling lptokens is enough as expected
@@ -1000,14 +1075,7 @@ impl<T: Config> Pallet<T> {
 			_ => {
 				// swap collateral to stable coin
 				let limit = SwapLimit::ExactSupply(decrease_collateral, min_decrease_debit_value);
-				let swap_path = T::DEX::get_best_price_swap_path(
-					currency_id,
-					stable_currency_id,
-					limit,
-					T::AlternativeSwapPathJointList::get(),
-				)
-				.ok_or(Error::<T>::CannotSwap)?;
-				let (_, actual_stable) = T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
+				let (_, actual_stable) = T::Swap::swap(&loans_module_account, currency_id, stable_currency_id, limit)?;
 
 				actual_stable
 			}
@@ -1103,7 +1171,7 @@ impl<T: Config> Pallet<T> {
 		// refund remain collateral to CDP owner
 		let refund_collateral_amount = collateral
 			.checked_sub(actual_supply_collateral)
-			.expect("swap succecced means collateral >= actual_supply_collateral; qed");
+			.expect("swap success means collateral >= actual_supply_collateral; qed");
 		<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
 
 		Self::deposit_event(Event::CloseCDPInDebitByDEX {
@@ -1133,14 +1201,15 @@ impl<T: Config> Pallet<T> {
 		<LoansOf<T>>::confiscate_collateral_and_debit(&who, currency_id, collateral, debit)?;
 
 		let bad_debt_value = Self::get_debit_value(currency_id, debit);
-		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
+		let liquidation_penalty = Self::get_liquidation_penalty(currency_id)?;
+		let target_stable_amount = liquidation_penalty.saturating_mul_acc_int(bad_debt_value);
 
 		match currency_id {
 			CurrencyId::DexShare(dex_share_0, dex_share_1) => {
 				let token_0: CurrencyId = dex_share_0.into();
 				let token_1: CurrencyId = dex_share_1.into();
 
-				// remove liqudity first
+				// remove liquidity first
 				let (amount_0, amount_1) =
 					<T as Config>::CDPTreasury::remove_liquidity_for_lp_collateral(currency_id, collateral)?;
 
@@ -1202,7 +1271,33 @@ impl<T: Config> Pallet<T> {
 			}
 			return Ok(());
 		}
+		LiquidateByPriority::<T>::liquidate(who, currency_id, amount, target_stable_amount)
+	}
 
+	pub fn get_collateral_currency_ids() -> Vec<CurrencyId> {
+		CollateralParams::<T>::iter_keys().collect()
+	}
+
+	fn account_id() -> T::AccountId {
+		<T as Config>::PalletId::get().into_account_truncating()
+	}
+
+	/// Pallet EVM address, derived from pallet id.
+	fn evm_address() -> EvmAddress {
+		T::EvmAddressMapping::get_or_create_evm_address(&Self::account_id())
+	}
+}
+
+type LiquidateByPriority<T> = (LiquidateViaDex<T>, LiquidateViaContracts<T>, LiquidateViaAuction<T>);
+
+pub struct LiquidateViaDex<T>(PhantomData<T>);
+impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaDex<T> {
+	fn liquidate(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+	) -> DispatchResult {
 		// calculate the supply limit by slippage limit for the price of oracle,
 		let max_supply_limit = Ratio::one()
 			.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
@@ -1210,48 +1305,184 @@ impl<T: Config> Pallet<T> {
 			.unwrap_or_else(Ratio::max_value)
 			.saturating_mul_int(
 				T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
-					.expect("the oracle price should be avalible because liquidation are triggered by it.")
+					.expect("the oracle price should be available because liquidation are triggered by it.")
 					.saturating_mul_int(target_stable_amount),
 			);
 		let collateral_supply = amount.min(max_supply_limit);
 
-		// try swap collateral to stable to settle debit swap succeed.
-		if let Ok((actual_supply_collateral, actual_target_amount)) =
-			<T as Config>::CDPTreasury::swap_collateral_to_stable(
-				currency_id,
-				SwapLimit::ExactTarget(collateral_supply, target_stable_amount),
-				false,
-			) {
-			let refund_collateral_amount = amount
-				.checked_sub(actual_supply_collateral)
-				.expect("swap succecced means collateral >= actual_supply_collateral; qed");
+		let (actual_supply_collateral, actual_target_amount) = <T as Config>::CDPTreasury::swap_collateral_to_stable(
+			currency_id,
+			SwapLimit::ExactTarget(collateral_supply, target_stable_amount),
+			false,
+		)?;
 
-			// refund remain collateral to CDP owner
-			if !refund_collateral_amount.is_zero() {
-				<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
-			}
+		let refund_collateral_amount = amount
+			.checked_sub(actual_supply_collateral)
+			.expect("swap success means collateral >= actual_supply_collateral; qed");
+		// refund remain collateral to CDP owner
+		if !refund_collateral_amount.is_zero() {
+			<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
+		}
 
-			// Note: for StableAsset, the swap of cdp treasury is always on `ExactSupply`
-			// regardless of this swap_limit params. There will be excess stablecoins that
-			// need to be returned to the `who` from cdp treasury account.
-			if actual_target_amount > target_stable_amount {
-				<T as Config>::CDPTreasury::withdraw_surplus(
-					who,
-					actual_target_amount.saturating_sub(target_stable_amount),
-				)?;
-			}
-		} else {
-			// if cannot liquidate by swap, create collateral auctions by cdp treasury
-			<T as Config>::CDPTreasury::create_collateral_auctions(
-				currency_id,
-				amount,
-				target_stable_amount,
-				who.clone(),
-				true,
+		// Note: for StableAsset, the swap of cdp treasury is always on `ExactSupply`
+		// regardless of this swap_limit params. There will be excess stablecoins that
+		// need to be returned to the `who` from cdp treasury account.
+		if actual_target_amount > target_stable_amount {
+			<T as Config>::CDPTreasury::withdraw_surplus(
+				who,
+				actual_target_amount.saturating_sub(target_stable_amount),
 			)?;
 		}
 
 		Ok(())
+	}
+}
+
+pub struct LiquidateViaContracts<T>(PhantomData<T>);
+impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
+	fn liquidate(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+	) -> DispatchResult {
+		let liquidation_contracts = Pallet::<T>::liquidation_contracts();
+		let liquidation_contracts_len = liquidation_contracts.len();
+		if liquidation_contracts_len.is_zero() {
+			return Err(Error::<T>::LiquidationFailed.into());
+		}
+
+		let max_supply_limit = Ratio::one()
+			.saturating_sub(T::MaxLiquidationContractSlippage::get())
+			.reciprocal()
+			.unwrap_or_else(Ratio::max_value)
+			.saturating_mul_int(
+				T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
+					.expect("the oracle price should be available because liquidation are triggered by it.")
+					.saturating_mul_int(target_stable_amount),
+			);
+		let collateral_supply = amount.min(max_supply_limit);
+
+		let collateral = currency_id
+			.erc20_address()
+			.ok_or(Error::<T>::CollateralContractNotFound)?;
+		let repay_dest = Pallet::<T>::evm_address();
+		let repay_dest_account_id = Pallet::<T>::account_id();
+
+		let stable_coin = T::GetStableCurrencyId::get();
+
+		let contracts_by_priority = {
+			let now: usize = frame_system::Pallet::<T>::current_block_number()
+				.try_into()
+				.map_err(|_| ArithmeticError::Overflow)?;
+			// can't fail as ensured `liquidation_contracts_len` non-zero
+			let start_at = now % liquidation_contracts_len;
+			let mut all: Vec<EvmAddress> = liquidation_contracts.into();
+			let mut right = all.split_off(start_at);
+			right.append(&mut all);
+			right
+		};
+
+		// try liquidation on each contract
+		for contract in contracts_by_priority.into_iter() {
+			let repay_dest_balance = CurrencyOf::<T>::free_balance(stable_coin, &repay_dest_account_id);
+			if T::LiquidationEvmBridge::liquidate(
+				InvokeContext {
+					contract,
+					sender: repay_dest,
+					origin: contract,
+				},
+				collateral,
+				repay_dest,
+				collateral_supply,
+				target_stable_amount,
+			)
+			.is_ok()
+			{
+				let repayment = CurrencyOf::<T>::free_balance(stable_coin, &repay_dest_account_id)
+					.saturating_sub(repay_dest_balance);
+				let contract_account_id = T::EvmAddressMapping::get_account_id(&contract);
+				if repayment >= target_stable_amount {
+					// sufficient repayment, transfer collateral to contract and notify
+					if let Err(e) = <T as Config>::CDPTreasury::withdraw_collateral(
+						&contract_account_id,
+						currency_id,
+						collateral_supply,
+					) {
+						log::error!(
+							target: "cdp-engine",
+							"LiquidateViaContracts: transfer collateral to contract failed. \
+							Collateral: {:?}, amount: {:?} contract: {:?}, error: {:?}. \
+							This is unexpected, need extra action.",
+							currency_id, collateral_supply, contract, e,
+						);
+					} else {
+						// notify liquidation success
+						T::LiquidationEvmBridge::on_collateral_transfer(
+							InvokeContext {
+								contract,
+								sender: repay_dest,
+								origin: contract,
+							},
+							collateral,
+							target_stable_amount,
+						);
+					}
+					// refund rest collateral to CDP owner
+					let refund_collateral_amount = amount
+						.checked_sub(collateral_supply)
+						.expect("Ensured collateral supply <= amount; qed");
+					if !refund_collateral_amount.is_zero() {
+						if let Err(e) =
+							<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)
+						{
+							log::error!(
+								target: "cdp-engine",
+								"LiquidateViaContracts: refund rest collateral to CDP owner failed. \
+								Collateral: {:?}, amount: {:?} error: {:?}. \
+								This is unexpected, need extra action.",
+								currency_id, refund_collateral_amount, e,
+							);
+						}
+					}
+					return Ok(());
+				} else if repayment > 0 {
+					// insufficient repayment, refund
+					CurrencyOf::<T>::transfer(stable_coin, &repay_dest_account_id, &contract_account_id, repayment)?;
+					// notify liquidation failed
+					T::LiquidationEvmBridge::on_repayment_refund(
+						InvokeContext {
+							contract,
+							sender: Pallet::<T>::evm_address(),
+							origin: contract,
+						},
+						collateral,
+						repayment,
+					);
+				}
+			}
+		}
+
+		Err(Error::<T>::LiquidationFailed.into())
+	}
+}
+
+pub struct LiquidateViaAuction<T>(PhantomData<T>);
+impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaAuction<T> {
+	fn liquidate(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+	) -> DispatchResult {
+		<T as Config>::CDPTreasury::create_collateral_auctions(
+			currency_id,
+			amount,
+			target_stable_amount,
+			who.clone(),
+			true,
+		)
+		.map(|_| ())
 	}
 }
 
@@ -1275,7 +1506,7 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 
 			// check the required collateral ratio
 			if check_required_ratio {
-				if let Some(required_collateral_ratio) = Self::required_collateral_ratio(currency_id) {
+				if let Some(required_collateral_ratio) = Self::required_collateral_ratio(currency_id)? {
 					ensure!(
 						collateral_ratio >= required_collateral_ratio,
 						Error::<T>::BelowRequiredCollateralRatio
@@ -1284,18 +1515,16 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 			}
 
 			// check the liquidation ratio
-			ensure!(
-				collateral_ratio >= Self::get_liquidation_ratio(currency_id),
-				Error::<T>::BelowLiquidationRatio
-			);
+			let liquidation_ratio = Self::get_liquidation_ratio(currency_id)?;
+			ensure!(collateral_ratio >= liquidation_ratio, Error::<T>::BelowLiquidationRatio);
 
 			// check the minimum_debit_value
 			ensure!(
 				debit_value >= T::MinimumDebitValue::get(),
 				Error::<T>::RemainDebitValueTooSmall,
 			);
-		} else {
-			// check the collateral amount is above minimum when debit is 0
+		} else if !collateral_balance.is_zero() {
+			// If there are any collateral remaining, then it must be above the minimum
 			ensure!(
 				collateral_balance >= T::MinimumCollateralAmount::get(&currency_id),
 				Error::<T>::CollateralAmountBelowMinimum,
@@ -1306,12 +1535,20 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 	}
 
 	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: Balance) -> DispatchResult {
-		let hard_cap = Self::maximum_total_debit_value(currency_id);
+		let hard_cap = Self::maximum_total_debit_value(currency_id)?;
 		let total_debit_value = Self::get_debit_value(currency_id, total_debit_balance);
 
-		ensure!(total_debit_value <= hard_cap, Error::<T>::ExceedDebitValueHardCap,);
+		ensure!(total_debit_value <= hard_cap, Error::<T>::ExceedDebitValueHardCap);
 
 		Ok(())
+	}
+}
+
+pub struct CollateralCurrencyIds<T>(PhantomData<T>);
+// Returns a list of currently supported/configured collateral currency
+impl<T: Config> Get<Vec<CurrencyId>> for CollateralCurrencyIds<T> {
+	fn get() -> Vec<CurrencyId> {
+		Pallet::<T>::get_collateral_currency_ids()
 	}
 }
 

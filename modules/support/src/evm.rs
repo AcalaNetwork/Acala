@@ -20,7 +20,7 @@ use codec::{Decode, Encode};
 use primitives::currency::AssetIds;
 use primitives::{
 	evm::{CallInfo, EvmAddress},
-	CurrencyId,
+	Balance, CurrencyId,
 };
 use sp_core::H160;
 use sp_runtime::{
@@ -35,6 +35,11 @@ use sp_std::{
 /// Return true if the call of EVM precompile contract is allowed.
 pub trait PrecompileCallerFilter {
 	fn is_allowed(caller: H160) -> bool;
+}
+
+/// Return true if the EVM precompile is paused.
+pub trait PrecompilePauseFilter {
+	fn is_paused(address: H160) -> bool;
 }
 
 /// An abstraction of EVM for EVMBridge
@@ -121,6 +126,36 @@ impl<AccountId, Balance: Default> EVMBridge<AccountId, Balance> for () {
 	fn set_origin(_origin: AccountId) {}
 }
 
+/// EVM bridge for collateral liquidation.
+pub trait LiquidationEvmBridge {
+	/// Execute liquidation. Sufficient repayment is expected to be transferred to `repay_dest`,
+	/// if not received or below `min_repayment`, the liquidation would be seen as failed.
+	fn liquidate(
+		context: InvokeContext,
+		collateral: EvmAddress,
+		repay_dest: EvmAddress,
+		amount: Balance,
+		min_repayment: Balance,
+	) -> DispatchResult;
+	/// Called on sufficient repayment received and collateral transferred to liquidation contract.
+	fn on_collateral_transfer(context: InvokeContext, collateral: EvmAddress, amount: Balance);
+	/// Called on insufficient repayment received and repayment refunded to liquidation contract.
+	fn on_repayment_refund(context: InvokeContext, collateral: EvmAddress, repayment: Balance);
+}
+impl LiquidationEvmBridge for () {
+	fn liquidate(
+		_context: InvokeContext,
+		_collateral: EvmAddress,
+		_repay_dest: EvmAddress,
+		_amount: Balance,
+		_min_repayment: Balance,
+	) -> DispatchResult {
+		Err(DispatchError::Other("unimplemented evm bridge"))
+	}
+	fn on_collateral_transfer(_context: InvokeContext, _collateral: EvmAddress, _amount: Balance) {}
+	fn on_repayment_refund(_context: InvokeContext, _collateral: EvmAddress, _repayment: Balance) {}
+}
+
 /// An abstraction of EVMManager
 pub trait EVMManager<AccountId, Balance> {
 	/// Query the constants `NewContractExtraBytes` value from evm module.
@@ -143,6 +178,18 @@ pub trait EVMManager<AccountId, Balance> {
 	fn enable_account_contract_development(who: AccountId) -> DispatchResult;
 	/// Disable developer mode
 	fn disable_account_contract_development(who: AccountId) -> DispatchResult;
+}
+
+/// An abstraction of EVMAccountsManager
+pub trait EVMAccountsManager<AccountId> {
+	/// Returns the AccountId used to generate the given EvmAddress.
+	fn get_account_id(address: &EvmAddress) -> AccountId;
+	/// Returns the EvmAddress associated with a given AccountId or the underlying EvmAddress of the
+	/// AccountId.
+	fn get_evm_address(account_id: &AccountId) -> Option<EvmAddress>;
+	/// Claim account mapping between AccountId and a generated EvmAddress based off of the
+	/// AccountId.
+	fn claim_default_evm_address(account_id: &AccountId) -> Result<EvmAddress, DispatchError>;
 }
 
 /// A mapping between `AccountId` and `EvmAddress`.
@@ -243,5 +290,13 @@ pub mod limits {
 		pub const TOTAL_SUPPLY: Limit = Limit::new(100_000, 0);
 		pub const BALANCE_OF: Limit = Limit::new(100_000, 0);
 		pub const TRANSFER: Limit = Limit::new(200_000, 960);
+	}
+
+	pub mod liquidation {
+		use super::*;
+
+		pub const LIQUIDATE: Limit = Limit::new(200_000, 1_000);
+		pub const ON_COLLATERAL_TRANSFER: Limit = Limit::new(200_000, 1_000);
+		pub const ON_REPAYMENT_REFUND: Limit = Limit::new(200_000, 1_000);
 	}
 }

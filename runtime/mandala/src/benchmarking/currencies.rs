@@ -16,11 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{dollar, lookup_of_account, set_balance};
-use crate::{
-	AccountId, Amount, Balance, Currencies, CurrencyId, GetNativeCurrencyId, GetStakingCurrencyId,
-	NativeTokenExistentialDeposit, Runtime, Tokens, TreasuryPalletId,
-};
+use super::utils::{dollar, lookup_of_account, set_balance, NATIVE, STAKING};
+use crate::{AccountId, Amount, Balance, Currencies, NativeTokenExistentialDeposit, Runtime, Tokens, TreasuryPalletId};
 
 use sp_std::prelude::*;
 
@@ -29,12 +26,9 @@ use frame_system::RawOrigin;
 use sp_runtime::traits::{AccountIdConversion, UniqueSaturatedInto};
 
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::MultiCurrency;
+use orml_traits::{LockIdentifier, MultiCurrency};
 
 const SEED: u32 = 0;
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_currencies }
@@ -123,7 +117,7 @@ runtime_benchmarks! {
 
 	sweep_dust {
 		let c in 1..3u32;
-		let treasury: AccountId = TreasuryPalletId::get().into_account();
+		let treasury: AccountId = TreasuryPalletId::get().into_account_truncating();
 		let accounts: Vec<AccountId> = vec!["alice", "bob", "charlie"].into_iter().map(|x| account(x, 0, SEED)).collect();
 		accounts.iter().for_each(|account| {
 			orml_tokens::Accounts::<Runtime>::insert(account, STAKING, orml_tokens::AccountData {
@@ -139,6 +133,35 @@ runtime_benchmarks! {
 			assert_eq!(orml_tokens::Accounts::<Runtime>::contains_key(account, STAKING), false);
 		});
 		assert_eq!(Tokens::free_balance(STAKING, &treasury), dollar(STAKING) + (100 * c) as Balance);
+	}
+
+	force_set_lock {
+		let amount: Balance = 1_000 * dollar(STAKING);
+		let who: AccountId = account("who", 0, SEED);
+		let who_lookup = lookup_of_account(who.clone());
+		let lock_id: LockIdentifier = *b"aca/test";
+		set_balance(STAKING, &who, amount);
+	}: _(RawOrigin::Root, who_lookup, STAKING, amount, lock_id)
+	verify {
+		assert_eq!(
+			Tokens::locks(&who, STAKING),
+			vec![orml_tokens::BalanceLock { id: lock_id, amount: amount }]
+		);
+	}
+
+	force_remove_lock {
+		let amount: Balance = 1_000 * dollar(STAKING);
+		let who: AccountId = account("who", 0, SEED);
+		let who_lookup = lookup_of_account(who.clone());
+		let lock_id: LockIdentifier = *b"aca/test";
+		set_balance(STAKING, &who, amount);
+		Currencies::force_set_lock(RawOrigin::Root.into(), who_lookup.clone(), STAKING, amount, lock_id)?;
+	}: _(RawOrigin::Root, who_lookup, STAKING, lock_id)
+	verify {
+		assert_eq!(
+			Tokens::locks(&who, STAKING),
+			vec![]
+		);
 	}
 }
 

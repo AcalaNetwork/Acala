@@ -47,12 +47,22 @@ decl_test_parachain! {
 }
 
 decl_test_parachain! {
-	pub struct Sibling {
+	pub struct MockBifrost {
 		Runtime = Runtime,
 		Origin = Origin,
 		XcmpMessageHandler = karura_runtime::XcmpQueue,
 		DmpMessageHandler = karura_runtime::DmpQueue,
 		new_ext = para_ext(2001),
+	}
+}
+
+decl_test_parachain! {
+	pub struct Sibling {
+		Runtime = Runtime,
+		Origin = Origin,
+		XcmpMessageHandler = karura_runtime::XcmpQueue,
+		DmpMessageHandler = karura_runtime::DmpQueue,
+		new_ext = para_ext(2002),
 	}
 }
 
@@ -72,7 +82,8 @@ decl_test_network! {
 		parachains = vec![
 			(1000, Statemine),
 			(2000, Karura),
-			(2001, Sibling),
+			(2001, MockBifrost),
+			(2002, Sibling),
 		],
 	}
 }
@@ -125,7 +136,7 @@ pub fn kusama_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
 			(AccountId::from(ALICE), 2002 * dollar(KSM)),
-			(ParaId::from(2000).into_account(), 2 * dollar(KSM)),
+			(ParaId::from(2000).into_account_truncating(), 2 * dollar(KSM)),
 		],
 	}
 	.assimilate_storage(&mut t)

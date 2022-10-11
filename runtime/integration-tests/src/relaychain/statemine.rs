@@ -32,15 +32,15 @@ use xcm_emulator::TestExt;
 pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
-pub const FEE_STATEMINE: Balance = 10_666_664;
-pub const FEE_KUSAMA: Balance = 165_940_672;
+pub const FEE: Balance = 20_000_000;
+pub const FEE_STATEMINE: Balance = 15_450_332;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
 		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
 	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
 		Origin::root(),
-		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(4_000_000_000),)],
+		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(20_000_000),)],
 	));
 	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmDestWeightUpdated {
 		xcm_operation: xcm_operation.clone(),
@@ -48,36 +48,37 @@ fn init_statemine_xcm_interface() {
 	}));
 	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
 		xcm_operation,
-		new_xcm_dest_weight: 4_000_000_000,
+		new_xcm_dest_weight: 20_000_000,
 	}));
 }
 
 #[test]
 fn statemine_min_xcm_fee_matched() {
 	Statemine::execute_with(|| {
-		use frame_support::weights::{IdentityFee, WeightToFeePolynomial};
+		use frame_support::weights::{IdentityFee, WeightToFee};
 
 		init_statemine_xcm_interface();
 		let weight = FEE_WEIGHT as u64;
 
-		let fee: Balance = IdentityFee::calc(&weight);
+		let fee: Balance = IdentityFee::weight_to_fee(&weight);
 		let statemine: MultiLocation = (1, Parachain(parachains::statemine::ID)).into();
 		let bifrost: MultiLocation = (1, Parachain(parachains::bifrost::ID)).into();
 
-		let statemine_fee: u128 = ParachainMinFee::get(&statemine);
-		assert_eq!(fee, statemine_fee);
+		let statemine_fee: u128 = ParachainMinFee::get(&statemine).unwrap();
+		assert_eq!(statemine_fee, FEE);
+		assert_eq!(fee, FEE_WEIGHT);
 
-		let bifrost_fee: u128 = ParachainMinFee::get(&bifrost);
-		assert_eq!(u128::MAX, bifrost_fee);
+		let bifrost_fee: Option<u128> = ParachainMinFee::get(&bifrost);
+		assert_eq!(None, bifrost_fee);
 	});
 }
 
 #[test]
-fn transfer_from_relay_chain() {
+fn teleport_from_relay_chain() {
 	let child_1000: AccountId = ParaId::from(1000).into_account();
 
 	KusamaNet::execute_with(|| {
-		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
+		assert_ok!(kusama_runtime::XcmPallet::teleport_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
 			Box::new(Parachain(1000).into().into()),
 			Box::new(
@@ -105,10 +106,9 @@ fn transfer_from_relay_chain() {
 #[test]
 fn statemine_transfer_ksm_to_karura_failed() {
 	TestNet::reset();
-
-	let para_2000: AccountId = Sibling::from(2000).into_account();
-	let child_2000: AccountId = ParaId::from(2000).into_account();
-	let child_1000: AccountId = ParaId::from(1000).into_account();
+	let para_2000: AccountId = Sibling::from(2000).into_account_truncating();
+	let child_2000: AccountId = ParaId::from(2000).into_account_truncating();
+	let child_1000: AccountId = ParaId::from(1000).into_account_truncating();
 
 	Statemine::execute_with(|| {
 		Balances::make_free_balance_be(&ALICE.into(), 2 * dollar(KSM));
@@ -226,27 +226,21 @@ fn karura_statemine_transfer_use_ksm_as_fee() {
 
 	// minimum asset should be: FEE_WEIGHT+FEE_KUSAMA+max(KUSAMA_ED,STATEMINE_ED+FEE_STATEMINE).
 	// but due to current half fee, sender asset should at lease: FEE_WEIGHT + 2 * FEE_KUSAMA
-	let asset = FEE_WEIGHT + 2 * FEE_KUSAMA;
+	let asset = FEE_WEIGHT + 2 * 31_488_122;
 
 	// Alice in Statemine send RMRK to Bob on Karura
 	statemine_side(UNIT);
 
 	KusamaNet::execute_with(|| {
 		let _ = kusama_runtime::Balances::make_free_balance_be(&child_2000, TEN);
+		assert_eq!(0, kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	// Bob on Karura send back RMRK with KSM as fee to Bob on Statemine
 	karura_side(asset);
 
 	KusamaNet::execute_with(|| {
-		assert_eq!(
-			TEN - (asset - FEE_WEIGHT),
-			kusama_runtime::Balances::free_balance(&child_2000)
-		);
-		assert_eq!(
-			asset - FEE_WEIGHT - FEE_KUSAMA,
-			kusama_runtime::Balances::free_balance(&child_1000)
-		);
+		assert_eq!(TEN - (asset - FEE), kusama_runtime::Balances::free_balance(&child_2000));
 	});
 
 	Statemine::execute_with(|| {
@@ -258,13 +252,10 @@ fn karura_statemine_transfer_use_ksm_as_fee() {
 		assert_eq!(9 * UNIT, Assets::balance(asset_id, &para_2000));
 
 		assert_eq!(
-			UNIT + FEE_WEIGHT - FEE_STATEMINE,
+			UNIT + FEE - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(
-			UNIT + asset - FEE_WEIGHT - FEE_KUSAMA - FEE_STATEMINE - FEE_WEIGHT,
-			Balances::free_balance(&para_2000)
-		);
+		assert_eq!(1_003_977_888_486, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -274,7 +265,7 @@ fn karura_side(fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			9_999_936_000_000,
+			9_999_907_304_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough KSM balance to be charged as fee
@@ -325,7 +316,7 @@ fn karura_side(fee_amount: u128) {
 		}
 
 		assert_eq!(
-			8_999_936_000_000,
+			8_999_907_304_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - fee_amount, Tokens::free_balance(KSM, &AccountId::from(BOB)));
@@ -336,7 +327,7 @@ fn karura_side(fee_amount: u128) {
 fn statemine_side(para_2000_init_amount: u128) {
 	register_asset();
 
-	let para_2000: AccountId = Sibling::from(2000).into_account();
+	let para_2000: AccountId = Sibling::from(2000).into_account_truncating();
 	let asset_id: u32 = 0;
 
 	Statemine::execute_with(|| {
@@ -346,14 +337,14 @@ fn statemine_side(para_2000_init_amount: u128) {
 		Balances::make_free_balance_be(&ALICE.into(), TEN);
 		Balances::make_free_balance_be(&BOB.into(), UNIT);
 
-		// create custom asset cost 1 KSM
+		// create custom asset cost 0.1 KSM
 		assert_ok!(Assets::create(
 			origin.clone(),
 			asset_id,
 			MultiAddress::Id(ALICE.into()),
 			UNIT / 100
 		));
-		assert_eq!(9 * UNIT, Balances::free_balance(&AccountId::from(ALICE)));
+		assert_eq!(9_900_000_000_000, Balances::free_balance(&AccountId::from(ALICE)));
 
 		assert_ok!(Assets::mint(
 			origin.clone(),

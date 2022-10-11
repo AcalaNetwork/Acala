@@ -30,14 +30,14 @@ pub use crate::runner::{
 };
 use codec::{Decode, Encode, FullCodec, MaxEncodedLen};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
+	dispatch::{DispatchError, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo},
 	ensure,
 	error::BadOrigin,
 	log,
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
-		BalanceStatus, Currency, EnsureOneOf, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
+		BalanceStatus, Currency, EitherOfDiverse, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
 		NamedReservableCurrency, OnKilledAccount,
 	},
 	transactional,
@@ -69,7 +69,6 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
-use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::{
 	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto, Zero},
 	transaction_validity::TransactionValidityError,
@@ -199,10 +198,6 @@ pub mod module {
 		type PrecompilesType: PrecompileSet;
 		type PrecompilesValue: Get<Self::PrecompilesType>;
 
-		/// Chain ID of EVM.
-		#[pallet::constant]
-		type ChainId: Get<u64>;
-
 		/// Convert gas to weight.
 		type GasToWeight: Convert<u64, Weight>;
 
@@ -291,6 +286,13 @@ pub mod module {
 		pub enable_contract_development: bool,
 	}
 
+	/// The EVM Chain ID.
+	///
+	/// ChainId: u64
+	#[pallet::storage]
+	#[pallet::getter(fn chain_id)]
+	pub type ChainId<T: Config> = StorageValue<_, u64, ValueQuery>;
+
 	/// The EVM accounts info.
 	///
 	/// Accounts: map EvmAddress => Option<AccountInfo<T>>
@@ -346,6 +348,7 @@ pub mod module {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
+		pub chain_id: u64,
 		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
 	}
 
@@ -353,6 +356,7 @@ pub mod module {
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig {
+				chain_id: Default::default(),
 				accounts: Default::default(),
 			}
 		}
@@ -418,16 +422,14 @@ pub mod module {
 					);
 
 					let out = runtime.machine().return_value();
-					<Pallet<T>>::create_contract(source, *address, out);
-
-					#[cfg(not(feature = "with-ethereum-compatibility"))]
-					<Pallet<T>>::mark_published(*address, None).expect("Genesis contract failed to publish");
+					<Pallet<T>>::create_contract(source, *address, true, out);
 
 					for (index, value) in &account.storage {
 						AccountStorages::<T>::insert(address, index, value);
 					}
 				}
 			});
+			ChainId::<T>::put(self.chain_id);
 			NetworkContractIndex::<T>::put(MIRRORED_NFT_ADDRESS_START);
 		}
 	}
@@ -521,6 +523,8 @@ pub mod module {
 		ChargeStorageFailed,
 		/// Invalid decimals
 		InvalidDecimals,
+		/// Strict call failed
+		StrictCallFailed,
 	}
 
 	#[pallet::pallet]
@@ -1172,6 +1176,79 @@ pub mod module {
 
 			Ok(().into())
 		}
+
+		/// Issue an EVM call operation in `Utility::batch_all`. This is same as the evm.call but
+		/// returns error when it failed. The current evm.call always success and emit event to
+		/// indicate it failed.
+		///
+		/// - `target`: the contract address to call
+		/// - `input`: the data supplied for the call
+		/// - `value`: the amount sent for payable calls
+		/// - `gas_limit`: the maximum gas the call can use
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::weight(call_weight::<T>(*gas_limit))]
+		#[transactional]
+		pub fn strict_call(
+			origin: OriginFor<T>,
+			target: EvmAddress,
+			input: Vec<u8>,
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] gas_limit: u64,
+			#[pallet::compact] storage_limit: u32,
+			access_list: Vec<AccessListItem>,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
+
+			match T::Runner::call(
+				source,
+				source,
+				target,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				T::config(),
+			) {
+				Err(e) => Err(DispatchErrorWithPostInfo {
+					post_info: ().into(),
+					error: e,
+				}),
+				Ok(info) => {
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Executed {
+							from: source,
+							contract: target,
+							logs: info.logs,
+							used_gas,
+							used_storage: info.used_storage,
+						});
+
+						Ok(PostDispatchInfo {
+							actual_weight: Some(call_weight::<T>(used_gas)),
+							pays_fee: Pays::Yes,
+						})
+					} else {
+						log::debug!(
+							target: "evm",
+							"batch_call failed: [from: {:?}, contract: {:?}, exit_reason: {:?}, output: {:?}, logs: {:?}, used_gas: {:?}]",
+							source, target, info.exit_reason, info.value, info.logs, used_gas
+						);
+
+						Err(DispatchErrorWithPostInfo {
+							post_info: PostDispatchInfo {
+								actual_weight: Some(call_weight::<T>(used_gas)),
+								pays_fee: Pays::Yes,
+							},
+							error: Error::<T>::StrictCallFailed.into(),
+						})
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -1287,7 +1364,7 @@ impl<T: Config> Pallet<T> {
 	/// - Update codes info.
 	/// - Update maintainer of the contract.
 	/// - Save `code` if not saved yet.
-	pub fn create_contract(source: H160, address: H160, code: Vec<u8>) {
+	pub fn create_contract(source: H160, address: H160, publish: bool, code: Vec<u8>) {
 		let bounded_code: BoundedVec<u8, MaxCodeSize> = code
 			.try_into()
 			.expect("checked by create_contract_limit in ACALA_CONFIG; qed");
@@ -1296,13 +1373,8 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// if source is account, the maintainer of the new contract is source.
-		// if source is contract, the maintainer of the new contract is the maintainer of the contract.
-		let maintainer = Self::accounts(source).map_or(source, |account_info| {
-			account_info
-				.contract_info
-				.map_or(source, |contract_info| contract_info.maintainer)
-		});
-
+		// if source is contract, the maintainer of the new contract is the source contract.
+		let maintainer = source;
 		let code_hash = code_hash(bounded_code.as_slice());
 		let code_size = bounded_code.len() as u32;
 
@@ -1312,7 +1384,7 @@ impl<T: Config> Pallet<T> {
 			#[cfg(feature = "with-ethereum-compatibility")]
 			published: true,
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			published: false,
+			published: publish,
 		};
 
 		CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
@@ -1387,6 +1459,16 @@ impl<T: Config> Pallet<T> {
 	/// Get code at given address.
 	pub fn code_at_address(address: &EvmAddress) -> BoundedVec<u8, MaxCodeSize> {
 		Self::codes(&Self::code_hash_at_address(address))
+	}
+
+	pub fn is_contract(address: &EvmAddress) -> bool {
+		matches!(
+			Self::accounts(address),
+			Some(AccountInfo {
+				contract_info: Some(_),
+				..
+			})
+		)
 	}
 
 	pub fn update_contract_storage_size(address: &EvmAddress, change: i32) {
@@ -1482,7 +1564,7 @@ impl<T: Config> Pallet<T> {
 	///
 	/// - Ensures signer is maintainer or root.
 	/// - Update codes info.
-	/// - Save `code`if not saved yet.
+	/// - Save `code` if not saved yet.
 	fn do_set_code(root_or_signed: Either<(), T::AccountId>, contract: EvmAddress, code: Vec<u8>) -> DispatchResult {
 		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
@@ -1507,20 +1589,20 @@ impl<T: Config> Pallet<T> {
 			let code_hash = code_hash(bounded_code.as_slice());
 			let code_size = bounded_code.len() as u32;
 			// The code_hash of the same contract is definitely different.
-			// The `contract_info.code_hash` hashed by on_contract_initialization which constructored.
+			// The `contract_info.code_hash` hashed by on_contract_initialization which constructed.
 			// Still check it here.
 			if code_hash == contract_info.code_hash {
 				return Ok(());
 			}
 
-			let storage_size_chainged: i32 =
+			let storage_size_changed: i32 =
 				code_size.saturating_add(T::NewContractExtraBytes::get()) as i32 - old_code_info.code_size as i32;
 
-			if storage_size_chainged.is_positive() {
-				Self::reserve_storage(&source, storage_size_chainged as u32)?;
+			if storage_size_changed.is_positive() {
+				Self::reserve_storage(&source, storage_size_changed as u32)?;
 			}
-			Self::charge_storage(&source, &contract, storage_size_chainged)?;
-			Self::update_contract_storage_size(&contract, storage_size_chainged);
+			Self::charge_storage(&source, &contract, storage_size_changed)?;
+			Self::update_contract_storage_size(&contract, storage_size_changed);
 
 			// try remove old codes
 			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| -> DispatchResult {
@@ -1568,7 +1650,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn ensure_root_or_signed(o: T::Origin) -> Result<Either<(), T::AccountId>, BadOrigin> {
-		EnsureOneOf::<EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o).map_or(Err(BadOrigin), Ok)
+		EitherOfDiverse::<EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o)
+			.map_or(Err(BadOrigin), Ok)
 	}
 
 	fn can_call_contract(address: &H160, caller: &H160) -> bool {
@@ -1581,21 +1664,16 @@ impl<T: Config> Pallet<T> {
 		{
 			// https://github.com/AcalaNetwork/Acala/blob/af1c277/modules/evm/rpc/src/lib.rs#L176
 			// when rpc is called, from is empty, allowing the call
-			published || maintainer == *caller || Self::is_developer_or_contract(caller) || *caller == H160::default()
+			published || maintainer == *caller || *caller == H160::default() || Self::is_developer_or_contract(caller)
 		} else {
-			// contract non exist, we don't override defualt evm behaviour
+			// contract non exist, we don't override default evm behaviour
 			true
 		}
 	}
 
 	fn is_developer_or_contract(caller: &H160) -> bool {
-		if let Some(AccountInfo { contract_info, .. }) = Accounts::<T>::get(caller) {
-			let account_id = T::AddressMapping::get_account_id(caller);
-			contract_info.is_some()
-				|| !T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &account_id).is_zero()
-		} else {
-			false
-		}
+		let account_id = T::AddressMapping::get_account_id(caller);
+		Self::query_developer_status(account_id) || Self::is_contract(caller)
 	}
 
 	fn reserve_storage(caller: &H160, limit: u32) -> DispatchResult {
@@ -1612,7 +1690,8 @@ impl<T: Config> Pallet<T> {
 			caller, user, limit, amount
 		);
 
-		T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount)
+		T::ChargeTransactionPayment::reserve_fee(&user, amount, Some(RESERVE_ID_STORAGE_DEPOSIT))?;
+		Ok(())
 	}
 
 	fn unreserve_storage(caller: &H160, limit: u32, used: u32, refunded: u32) -> DispatchResult {
@@ -1633,7 +1712,7 @@ impl<T: Config> Pallet<T> {
 
 		// should always be able to unreserve the amount
 		// but otherwise we will just ignore the issue here.
-		let err_amount = T::Currency::unreserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount);
+		let err_amount = T::ChargeTransactionPayment::unreserve_fee(&user, amount, Some(RESERVE_ID_STORAGE_DEPOSIT));
 		debug_assert!(err_amount.is_zero());
 		Ok(())
 	}
@@ -1645,7 +1724,7 @@ impl<T: Config> Pallet<T> {
 
 		let user = T::AddressMapping::get_account_id(caller);
 		let contract_acc = T::AddressMapping::get_account_id(contract);
-		let amount = Self::get_storage_deposit_per_byte().saturating_mul((storage.abs() as u32).into());
+		let amount = Self::get_storage_deposit_per_byte().saturating_mul(storage.unsigned_abs().into());
 
 		log::debug!(
 			target: "evm",
@@ -1777,6 +1856,13 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 	}
 }
 
+pub struct EvmChainId<T>(PhantomData<T>);
+impl<T: Config> Get<u64> for EvmChainId<T> {
+	fn get() -> u64 {
+		Pallet::<T>::chain_id()
+	}
+}
+
 impl<T: Config> EVMManager<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	fn query_new_contract_extra_bytes() -> u32 {
 		T::NewContractExtraBytes::get()
@@ -1887,6 +1973,17 @@ impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 		Ok(())
 	}
 
+	fn validate(
+		&self,
+		who: &Self::AccountId,
+		_call: &Self::Call,
+		_info: &DispatchInfoOf<Self::Call>,
+		_len: usize,
+	) -> TransactionValidity {
+		ExtrinsicOrigin::<T>::set(Some(who.clone()));
+		Ok(ValidTransaction::default())
+	}
+
 	fn pre_dispatch(
 		self,
 		who: &Self::AccountId,
@@ -1953,40 +2050,34 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 					100,
 				) as u32;
 
-				match <AccountStorages<T>>::remove_prefix(contract, Some(limit)) {
-					AllRemoved(count) => {
-						let res = Pallet::<T>::refund_storage(&caller, &contract, &maintainer);
-						log::debug!(
-							target: "evm",
-							"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}, result: {:?}]",
-							caller, contract, maintainer, count, res
-						);
+				let r = <AccountStorages<T>>::clear_prefix(contract, limit, None);
+				let count = r.unique;
+				let used_weight = <T as frame_system::Config>::DbWeight::get()
+					.write
+					.saturating_mul(count.into());
+				log::debug!(
+					target: "evm",
+					"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",
+					caller, contract, maintainer, count
+				);
+				if r.maybe_cursor.is_none() {
+					// AllRemoved
+					let result = Pallet::<T>::refund_storage(&caller, &contract, &maintainer);
 
-						// Remove account after all of the storages are cleared.
-						Pallet::<T>::remove_account_if_empty(&contract);
+					// Remove account after all of the storages are cleared.
+					Pallet::<T>::remove_account_if_empty(&contract);
 
-						TaskResult {
-							result: res,
-							used_weight: <T as frame_system::Config>::DbWeight::get()
-								.write
-								.saturating_mul(count.into()),
-							finished: true,
-						}
+					TaskResult {
+						result,
+						used_weight,
+						finished: true,
 					}
-					SomeRemaining(count) => {
-						log::debug!(
-							target: "evm",
-							"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",
-							caller, contract, maintainer, count
-						);
-
-						TaskResult {
-							result: Ok(()),
-							used_weight: <T as frame_system::Config>::DbWeight::get()
-								.write
-								.saturating_mul(count.into()),
-							finished: false,
-						}
+				} else {
+					// SomeRemaining
+					TaskResult {
+						result: Ok(()),
+						used_weight,
+						finished: false,
 					}
 				}
 			}

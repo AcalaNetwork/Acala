@@ -49,7 +49,7 @@ parameter_types! {
 	pub storage EvmSchedulerNextID: u32 = 0u32;
 }
 
-#[derive(RuntimeDebug, PartialEq, Encode, Decode)]
+#[derive(RuntimeDebug, PartialEq, Eq, Encode, Decode)]
 pub struct TaskInfo {
 	pub prefix: Vec<u8>,
 	pub id: u32,
@@ -133,7 +133,7 @@ where
 				let gas_limit = input.u64_at(4)?;
 				let storage_limit = input.u32_at(5)?;
 				let min_delay = input.u32_at(6)?;
-				// solidity abi enocde bytes will add an length at input[7]
+				// solidity abi encode bytes will add an length at input[7]
 				let input_len = input.u32_at(8)?;
 				let input_data = input.bytes_at(9, input_len as usize)?;
 
@@ -159,9 +159,11 @@ where
 					use sp_runtime::traits::Convert;
 					let from_account = Runtime::AddressMapping::get_account_id(&from);
 					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
+					let fee = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::weight_to_fee(weight);
 					_fee = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::reserve_fee(
 						&from_account,
-						weight,
+						fee,
+						None,
 					)
 					.map_err(|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -226,13 +228,13 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().encode_bytes(&task_id),
+					output: Output::encode_bytes(&task_id),
 					logs: Default::default(),
 				})
 			}
 			Action::Cancel => {
 				let from = input.evm_address_at(1)?;
-				// solidity abi enocde bytes will add an length at input[2]
+				// solidity abi encode bytes will add an length at input[2]
 				let task_id_len = input.u32_at(3)?;
 				let task_id = input.bytes_at(4, task_id_len as usize)?;
 
@@ -272,9 +274,10 @@ where
 				{
 					// unreserve the transaction fee for gas_limit
 					let from_account = Runtime::AddressMapping::get_account_id(&from);
-					<module_transaction_payment::ChargeTransactionPayment<Runtime>>::unreserve_fee(
+					let _err_amount = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::unreserve_fee(
 						&from_account,
 						task_info.fee,
+						None,
 					);
 				}
 
@@ -288,7 +291,7 @@ where
 			Action::Reschedule => {
 				let from = input.evm_address_at(1)?;
 				let min_delay = input.u32_at(2)?;
-				// solidity abi enocde bytes will add an length at input[3]
+				// solidity abi encode bytes will add an length at input[3]
 				let task_id_len = input.u32_at(4)?;
 				let task_id = input.bytes_at(5, task_id_len as usize)?;
 
@@ -484,7 +487,7 @@ mod tests {
 			run_to_block(5);
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			{
-				assert_eq!(Balances::free_balance(from_account.clone()), 999999930074);
+				assert_eq!(Balances::free_balance(from_account.clone()), 999999931325);
 				assert_eq!(Balances::reserved_balance(from_account), 0);
 				assert_eq!(Balances::free_balance(to_account), 1000000001000);
 			}

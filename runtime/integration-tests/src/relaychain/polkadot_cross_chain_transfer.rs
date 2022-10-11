@@ -18,6 +18,7 @@
 
 //! Cross-chain transfer tests within Polkadot network.
 
+use crate::relaychain::fee_test::*;
 use crate::relaychain::polkadot_test_net::*;
 use crate::setup::*;
 
@@ -25,12 +26,28 @@ use frame_support::assert_ok;
 use orml_traits::MultiCurrency;
 use xcm_emulator::TestExt;
 
+pub const ACALA_ID: u32 = 2000;
+pub const MOCK_BIFROST_ID: u32 = 2001;
+
+fn bifrost_reserve_account() -> AccountId {
+	polkadot_parachain::primitives::Sibling::from(MOCK_BIFROST_ID).into_account_truncating()
+}
+
+#[test]
+fn token_per_second_works() {
+	let aca_per_second = acala_runtime::aca_per_second();
+	assert_eq!(11_587_000_000_000, aca_per_second);
+
+	let dot_per_second = acala_runtime::dot_per_second();
+	assert_eq!(2_317_400_000, dot_per_second);
+}
+
 #[test]
 fn transfer_from_relay_chain() {
 	PolkadotNet::execute_with(|| {
 		assert_ok!(polkadot_runtime::XcmPallet::reserve_transfer_assets(
 			polkadot_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(ACALA_ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
 					id: BOB,
@@ -45,7 +62,7 @@ fn transfer_from_relay_chain() {
 	});
 
 	Acala::execute_with(|| {
-		assert_eq!(9_998_720_000, Tokens::free_balance(DOT, &AccountId::from(BOB)));
+		assert_eq!(9_998_146_080, Tokens::free_balance(DOT, &AccountId::from(BOB)));
 	});
 }
 
@@ -72,12 +89,114 @@ fn transfer_to_relay_chain() {
 
 	PolkadotNet::execute_with(|| {
 		assert_eq!(
-			49517228896,
+			// v0.9.19: 49_517_228_896
+			// v0.9.22: 49_530_582_548
+			49_530_582_548,
 			polkadot_runtime::Balances::free_balance(&AccountId::from(BOB))
 		);
 		assert_eq!(
 			5 * dollar(DOT),
-			polkadot_runtime::Balances::free_balance(&ParaId::from(2000).into_account())
+			polkadot_runtime::Balances::free_balance(&ParaId::from(ACALA_ID).into_account_truncating())
 		);
+	});
+}
+
+#[test]
+fn liquid_crowdloan_xtokens_works() {
+	TestNet::reset();
+	let foreign_asset = CurrencyId::ForeignAsset(0);
+	let dollar = dollar(KAR);
+	let minimal_balance = Balances::minimum_balance() / 10; // 10%
+	let foreign_fee = foreign_per_second_as_fee(4, minimal_balance);
+
+	MockBifrost::execute_with(|| {
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(Parachain(ACALA_ID), GeneralKey(LCDOT.encode().try_into().unwrap()))
+				)
+				.into()
+			),
+			Box::new(AssetMetadata {
+				name: b"Liquid Crowdloan Token".to_vec(),
+				symbol: b"LCDOT".to_vec(),
+				decimals: 12,
+				minimal_balance
+			})
+		));
+	});
+
+	Acala::execute_with(|| {
+		assert_ok!(AssetRegistry::register_native_asset(
+			Origin::root(),
+			LCDOT,
+			Box::new(AssetMetadata {
+				name: b"Liquid Crowdloan Token".to_vec(),
+				symbol: b"LCDOT".to_vec(),
+				decimals: 12,
+				minimal_balance
+			})
+		));
+		assert_ok!(Tokens::deposit(LCDOT, &AccountId::from(BOB), 10 * dollar));
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(BOB.into()),
+			LCDOT,
+			5 * dollar,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(MOCK_BIFROST_ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: ALICE.into(),
+						}
+					)
+				)
+				.into()
+			),
+			8_000_000_000,
+		));
+
+		assert_eq!(Tokens::free_balance(LCDOT, &AccountId::from(BOB)), 5 * dollar);
+		assert_eq!(Tokens::free_balance(LCDOT, &bifrost_reserve_account()), 5 * dollar);
+	});
+
+	MockBifrost::execute_with(|| {
+		assert_eq!(
+			Tokens::free_balance(foreign_asset, &AccountId::from(ALICE)),
+			5 * dollar - foreign_fee
+		);
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			foreign_asset,
+			dollar,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(ACALA_ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			8_000_000_000,
+		));
+	});
+
+	Acala::execute_with(|| {
+		assert_eq!(
+			Tokens::free_balance(LCDOT, &AccountId::from(BOB)),
+			6 * dollar - foreign_fee
+		);
+		assert_eq!(Tokens::free_balance(LCDOT, &bifrost_reserve_account()), 4 * dollar);
 	});
 }

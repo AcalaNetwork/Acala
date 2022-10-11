@@ -37,15 +37,22 @@ use sp_runtime::{
 use sp_std::{marker::PhantomData, prelude::*};
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-#[scale_info(skip_type_params(ConvertTx))]
-pub struct AcalaUncheckedExtrinsic<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas>(
+#[scale_info(skip_type_params(ConvertEthTx, CheckPayerTx))]
+pub struct AcalaUncheckedExtrinsic<
+	Call,
+	Extra: SignedExtension,
+	ConvertEthTx,
+	StorageDepositPerByte,
+	TxFeePerGas,
+	CheckPayerTx,
+>(
 	pub UncheckedExtrinsic<Address, Call, AcalaMultiSignature, Extra>,
-	PhantomData<(ConvertTx, StorageDepositPerByte, TxFeePerGas)>,
+	PhantomData<(ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx)>,
 );
 
 #[cfg(feature = "std")]
-impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas> parity_util_mem::MallocSizeOf
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
+impl<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> parity_util_mem::MallocSizeOf
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 where
 	Extra: SignedExtension,
 {
@@ -55,8 +62,8 @@ where
 	}
 }
 
-impl<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas> Extrinsic
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
+impl<Call, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> Extrinsic
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	type Call = Call;
 
@@ -78,27 +85,28 @@ impl<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas
 	}
 }
 
-impl<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas> ExtrinsicMetadata
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
+impl<Call, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> ExtrinsicMetadata
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	const VERSION: u8 = UncheckedExtrinsic::<Address, Call, AcalaMultiSignature, Extra>::VERSION;
 	type SignedExtensions = Extra;
 }
 
-impl<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas> ExtrinsicCall
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
+impl<Call, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> ExtrinsicCall
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	fn call(&self) -> &Self::Call {
 		self.0.call()
 	}
 }
 
-impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, Lookup> Checkable<Lookup>
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
+impl<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, Lookup, CheckPayerTx> Checkable<Lookup>
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 where
 	Call: Encode + Member,
 	Extra: SignedExtension<AccountId = AccountId32>,
-	ConvertTx: Convert<(Call, Extra), Result<(EthereumTransactionMessage, Extra), InvalidTransaction>>,
+	ConvertEthTx: Convert<(Call, Extra), Result<(EthereumTransactionMessage, Extra), InvalidTransaction>>,
+	CheckPayerTx: Convert<(Call, Extra), Result<(), InvalidTransaction>>,
 	StorageDepositPerByte: Get<Balance>,
 	TxFeePerGas: Get<Balance>,
 	Lookup: traits::Lookup<Source = Address, Target = AccountId32>,
@@ -106,11 +114,15 @@ where
 	type Checked = CheckedExtrinsic<AccountId32, Call, Extra>;
 
 	fn check(self, lookup: &Lookup) -> Result<Self::Checked, TransactionValidityError> {
+		let function = self.0.function.clone();
+		let signature = self.0.signature.clone();
+		if let Some((_, _, extra)) = signature {
+			CheckPayerTx::convert((function.clone(), extra))?;
+		}
+
 		match self.0.signature {
 			Some((addr, AcalaMultiSignature::Ethereum(sig), extra)) => {
-				let function = self.0.function;
-
-				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
 				log::trace!(
 					target: "evm", "Ethereum eth_msg: {:?}", eth_msg
 				);
@@ -159,8 +171,7 @@ where
 				})
 			}
 			Some((addr, AcalaMultiSignature::Eip1559(sig), extra)) => {
-				let function = self.0.function;
-				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
 				log::trace!(
 					target: "evm", "Eip1559 eth_msg: {:?}", eth_msg
 				);
@@ -204,9 +215,7 @@ where
 				})
 			}
 			Some((addr, AcalaMultiSignature::AcalaEip712(sig), extra)) => {
-				let function = self.0.function;
-
-				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
 				log::trace!(
 					target: "evm", "AcalaEip712 eth_msg: {:?}", eth_msg
 				);
@@ -230,8 +239,8 @@ where
 	}
 }
 
-impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas> GetDispatchInfo
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
+impl<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> GetDispatchInfo
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 where
 	Call: GetDispatchInfo,
 	Extra: SignedExtension,
@@ -242,8 +251,9 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<Call: Encode, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas> serde::Serialize
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
+impl<Call: Encode, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
+	serde::Serialize
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	fn serialize<S>(&self, seq: S) -> Result<S::Ok, S::Error>
 	where
@@ -254,8 +264,9 @@ impl<Call: Encode, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxF
 }
 
 #[cfg(feature = "std")]
-impl<'a, Call: Decode, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas> serde::Deserialize<'a>
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
+impl<'a, Call: Decode, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
+	serde::Deserialize<'a>
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	fn deserialize<D>(de: D) -> Result<Self, D::Error>
 	where

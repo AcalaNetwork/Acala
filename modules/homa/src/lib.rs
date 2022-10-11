@@ -23,7 +23,7 @@
 
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, Rate, Ratio};
+use module_support::{ExchangeRate, ExchangeRateProvider, HomaManager, HomaSubAccountXcm, Rate, Ratio};
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
@@ -39,6 +39,7 @@ use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
 pub use module::*;
 pub use weights::WeightInfo;
 
+pub mod migrations;
 mod mock;
 mod tests;
 pub mod weights;
@@ -169,6 +170,8 @@ pub mod module {
 		FastMatchIsNotAllowed,
 		/// The fast match cannot be matched completely.
 		CannotCompletelyFastMatch,
+		/// Invalid last era bumped block config
+		InvalidLastEraBumpedBlock,
 	}
 
 	#[pallet::event]
@@ -259,6 +262,13 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn staking_ledgers)]
 	pub type StakingLedgers<T: Config> = StorageMap<_, Twox64Concat, u16, StakingLedger, OptionQuery>;
+
+	/// The total amount of staking currency bonded in the homa protocol
+	///
+	/// TotalStakingBonded value: Balance
+	#[pallet::storage]
+	#[pallet::getter(fn get_total_bonded)]
+	pub type TotalStakingBonded<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The total staking currency to bond on relaychain when new era,
 	/// and that is available to be match fast redeem request.
@@ -354,6 +364,12 @@ pub mod module {
 			let bump_era_number = Self::era_amount_should_to_bump(T::RelayChainBlockNumber::current_block_number());
 			if !bump_era_number.is_zero() {
 				let _ = Self::bump_current_era(bump_era_number);
+				debug_assert_eq!(
+					TotalStakingBonded::<T>::get(),
+					StakingLedgers::<T>::iter().fold(Zero::zero(), |total_bonded: Balance, (_, ledger)| {
+						total_bonded.saturating_add(ledger.bonded)
+					})
+				);
 				<T as Config>::WeightInfo::on_initialize_with_bump_era()
 			} else {
 				<T as Config>::WeightInfo::on_initialize()
@@ -371,38 +387,7 @@ pub mod module {
 		#[transactional]
 		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let minter = ensure_signed(origin)?;
-
-			// Ensure the amount is above the MintThreshold.
-			ensure!(amount >= T::MintThreshold::get(), Error::<T>::BelowMintThreshold);
-
-			// Ensure the total staking currency will not exceed soft cap.
-			ensure!(
-				Self::get_total_staking_currency().saturating_add(amount) <= Self::get_staking_currency_soft_cap(),
-				Error::<T>::ExceededStakingCurrencySoftCap
-			);
-
-			T::Currency::transfer(T::StakingCurrencyId::get(), &minter, &Self::account_id(), amount)?;
-
-			// calculate the liquid amount by the current exchange rate.
-			let liquid_amount = Self::convert_staking_to_liquid(amount)?;
-			let liquid_issue_to_minter = Rate::one()
-				.saturating_add(Self::estimated_reward_rate_per_era())
-				.reciprocal()
-				.expect("shouldn't be invalid!")
-				.saturating_mul_int(liquid_amount);
-			let liquid_add_to_void = liquid_amount.saturating_sub(liquid_issue_to_minter);
-
-			T::Currency::deposit(T::LiquidCurrencyId::get(), &minter, liquid_issue_to_minter)?;
-			ToBondPool::<T>::mutate(|pool| *pool = pool.saturating_add(amount));
-			TotalVoidLiquid::<T>::mutate(|total| *total = total.saturating_add(liquid_add_to_void));
-
-			Self::deposit_event(Event::<T>::Minted {
-				minter,
-				staking_currency_amount: amount,
-				liquid_amount_received: liquid_issue_to_minter,
-				liquid_amount_added_to_void: liquid_add_to_void,
-			});
-			Ok(())
+			Self::do_mint(minter, amount)
 		}
 
 		/// Build/Cancel/Overwrite a redeem request, use liquid currency to redeem staking currency.
@@ -427,53 +412,7 @@ pub mod module {
 			allow_fast_match: bool,
 		) -> DispatchResult {
 			let redeemer = ensure_signed(origin)?;
-
-			RedeemRequests::<T>::try_mutate_exists(&redeemer, |maybe_request| -> DispatchResult {
-				let (previous_request_amount, _) = maybe_request.take().unwrap_or_default();
-				let liquid_currency_id = T::LiquidCurrencyId::get();
-
-				ensure!(
-					(!previous_request_amount.is_zero() && amount.is_zero()) || amount >= T::RedeemThreshold::get(),
-					Error::<T>::BelowRedeemThreshold
-				);
-
-				match amount.cmp(&previous_request_amount) {
-					Ordering::Greater => {
-						// pay more liquid currency.
-						T::Currency::transfer(
-							liquid_currency_id,
-							&redeemer,
-							&Self::account_id(),
-							amount.saturating_sub(previous_request_amount),
-						)
-					}
-					Ordering::Less => {
-						// refund the difference.
-						T::Currency::transfer(
-							liquid_currency_id,
-							&Self::account_id(),
-							&redeemer,
-							previous_request_amount.saturating_sub(amount),
-						)
-					}
-					_ => Ok(()),
-				}?;
-
-				if !amount.is_zero() {
-					*maybe_request = Some((amount, allow_fast_match));
-					Self::deposit_event(Event::<T>::RequestedRedeem {
-						redeemer: redeemer.clone(),
-						liquid_amount: amount,
-						allow_fast_match,
-					});
-				} else if !previous_request_amount.is_zero() {
-					Self::deposit_event(Event::<T>::RedeemRequestCancelled {
-						redeemer: redeemer.clone(),
-						cancelled_liquid_amount: previous_request_amount,
-					});
-				}
-				Ok(())
-			})
+			Self::do_request_redeem(redeemer, amount, allow_fast_match)
 		}
 
 		/// Execute fast match for specific redeem requests.
@@ -590,15 +529,32 @@ pub mod module {
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			if let Some(change) = last_era_bumped_block {
-				LastEraBumpedBlock::<T>::put(change);
-				Self::deposit_event(Event::<T>::LastEraBumpedBlockUpdated {
-					last_era_bumped_block: change,
-				});
-			}
 			if let Some(change) = frequency {
 				BumpEraFrequency::<T>::put(change);
 				Self::deposit_event(Event::<T>::BumpEraFrequencyUpdated { frequency: change });
+			}
+
+			if let Some(change) = last_era_bumped_block {
+				// config last_era_bumped_block should not cause bump era to occur immediately, because
+				// the last_era_bumped_block after the bump era will not be same with the actual relaychain
+				// era bumped block  again, especially if it leads to multiple bump era.
+				// and it should be config after config no-zero bump_era_frequency.
+				let bump_era_frequency = Self::bump_era_frequency();
+				let current_relay_chain_block = T::RelayChainBlockNumber::current_block_number();
+				if !bump_era_frequency.is_zero() {
+					// ensure change in this range (current_relay_chain_block-bump_era_frequency,
+					// current_relay_chain_block]
+					ensure!(
+						change > current_relay_chain_block.saturating_sub(bump_era_frequency)
+							&& change <= current_relay_chain_block,
+						Error::<T>::InvalidLastEraBumpedBlock
+					);
+
+					LastEraBumpedBlock::<T>::put(change);
+					Self::deposit_event(Event::<T>::LastEraBumpedBlockUpdated {
+						last_era_bumped_block: change,
+					});
+				}
 			}
 
 			Ok(())
@@ -695,7 +651,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		/// Module account id
 		pub fn account_id() -> T::AccountId {
-			T::PalletId::get().into_account()
+			T::PalletId::get().into_account_truncating()
 		}
 
 		pub fn do_update_ledger<R, E>(
@@ -704,14 +660,112 @@ pub mod module {
 		) -> sp_std::result::Result<R, E> {
 			StakingLedgers::<T>::try_mutate_exists(sub_account_index, |maybe_ledger| {
 				let mut ledger = maybe_ledger.take().unwrap_or_default();
+				let old_bonded_amount = ledger.bonded;
+
 				f(&mut ledger).map(move |result| {
 					*maybe_ledger = if ledger == Default::default() {
+						TotalStakingBonded::<T>::mutate(|staking_balance| {
+							*staking_balance = staking_balance.saturating_sub(old_bonded_amount)
+						});
 						None
 					} else {
+						TotalStakingBonded::<T>::mutate(|staking_balance| {
+							*staking_balance = staking_balance
+								.saturating_add(ledger.bonded)
+								.saturating_sub(old_bonded_amount)
+						});
 						Some(ledger)
 					};
 					result
 				})
+			})
+		}
+
+		pub(super) fn do_mint(minter: T::AccountId, amount: Balance) -> DispatchResult {
+			// Ensure the amount is above the MintThreshold.
+			ensure!(amount >= T::MintThreshold::get(), Error::<T>::BelowMintThreshold);
+
+			// Ensure the total staking currency will not exceed soft cap.
+			ensure!(
+				Self::get_total_staking_currency().saturating_add(amount) <= Self::get_staking_currency_soft_cap(),
+				Error::<T>::ExceededStakingCurrencySoftCap
+			);
+
+			T::Currency::transfer(T::StakingCurrencyId::get(), &minter, &Self::account_id(), amount)?;
+
+			// calculate the liquid amount by the current exchange rate.
+			let liquid_amount = Self::convert_staking_to_liquid(amount)?;
+			let liquid_issue_to_minter = Rate::one()
+				.saturating_add(Self::estimated_reward_rate_per_era())
+				.reciprocal()
+				.expect("shouldn't be invalid!")
+				.saturating_mul_int(liquid_amount);
+			let liquid_add_to_void = liquid_amount.saturating_sub(liquid_issue_to_minter);
+
+			Self::issue_liquid_currency(&minter, liquid_issue_to_minter)?;
+
+			ToBondPool::<T>::mutate(|pool| *pool = pool.saturating_add(amount));
+			TotalVoidLiquid::<T>::mutate(|total| *total = total.saturating_add(liquid_add_to_void));
+
+			Self::deposit_event(Event::<T>::Minted {
+				minter,
+				staking_currency_amount: amount,
+				liquid_amount_received: liquid_issue_to_minter,
+				liquid_amount_added_to_void: liquid_add_to_void,
+			});
+			Ok(())
+		}
+
+		pub(super) fn do_request_redeem(
+			redeemer: T::AccountId,
+			amount: Balance,
+			allow_fast_match: bool,
+		) -> DispatchResult {
+			RedeemRequests::<T>::try_mutate_exists(&redeemer, |maybe_request| -> DispatchResult {
+				let (previous_request_amount, _) = maybe_request.take().unwrap_or_default();
+				let liquid_currency_id = T::LiquidCurrencyId::get();
+
+				ensure!(
+					(!previous_request_amount.is_zero() && amount.is_zero()) || amount >= T::RedeemThreshold::get(),
+					Error::<T>::BelowRedeemThreshold
+				);
+
+				match amount.cmp(&previous_request_amount) {
+					Ordering::Greater => {
+						// pay more liquid currency.
+						T::Currency::transfer(
+							liquid_currency_id,
+							&redeemer,
+							&Self::account_id(),
+							amount.saturating_sub(previous_request_amount),
+						)
+					}
+					Ordering::Less => {
+						// refund the difference.
+						T::Currency::transfer(
+							liquid_currency_id,
+							&Self::account_id(),
+							&redeemer,
+							previous_request_amount.saturating_sub(amount),
+						)
+					}
+					_ => Ok(()),
+				}?;
+
+				if !amount.is_zero() {
+					*maybe_request = Some((amount, allow_fast_match));
+					Self::deposit_event(Event::<T>::RequestedRedeem {
+						redeemer: redeemer.clone(),
+						liquid_amount: amount,
+						allow_fast_match,
+					});
+				} else if !previous_request_amount.is_zero() {
+					Self::deposit_event(Event::<T>::RedeemRequestCancelled {
+						redeemer: redeemer.clone(),
+						cancelled_liquid_amount: previous_request_amount,
+					});
+				}
+				Ok(())
 			})
 		}
 
@@ -722,16 +776,9 @@ pub mod module {
 				.saturating_mul(T::ActiveSubAccountsIndexList::get().len() as Balance)
 		}
 
-		/// Calculate the total amount of bonded staking currency.
-		pub fn get_total_bonded() -> Balance {
-			StakingLedgers::<T>::iter().fold(Zero::zero(), |total_bonded, (_, ledger)| {
-				total_bonded.saturating_add(ledger.bonded)
-			})
-		}
-
 		/// Calculate the total amount of staking currency belong to Homa.
 		pub fn get_total_staking_currency() -> Balance {
-			Self::get_total_bonded().saturating_add(Self::to_bond_pool())
+			TotalStakingBonded::<T>::get().saturating_add(Self::to_bond_pool())
 		}
 
 		/// Calculate the total amount of liquid currency.
@@ -806,7 +853,7 @@ pub mod module {
 
 						// burn liquid_to_burn for redeemed_staking and burn fee_in_liquid to reward all holders of
 						// liquid currency.
-						T::Currency::withdraw(T::LiquidCurrencyId::get(), &module_account, actual_liquid_to_redeem)?;
+						Self::burn_liquid_currency(&module_account, actual_liquid_to_redeem)?;
 
 						// transfer redeemed_staking to redeemer.
 						T::Currency::transfer(
@@ -870,17 +917,16 @@ pub mod module {
 
 				let commission_rate = Self::commission_rate();
 				if !total_reward_staking.is_zero() && !commission_rate.is_zero() {
-					let liquid_currency_id = T::LiquidCurrencyId::get();
 					let commission_staking_amount = commission_rate.saturating_mul_int(total_reward_staking);
 					let commission_ratio =
-						Ratio::checked_from_rational(commission_staking_amount, Self::get_total_bonded())
+						Ratio::checked_from_rational(commission_staking_amount, TotalStakingBonded::<T>::get())
 							.unwrap_or_else(Ratio::min_value);
 					let inflate_rate = commission_ratio
 						.checked_div(&Ratio::one().saturating_sub(commission_ratio))
 						.unwrap_or_else(Ratio::max_value);
 					let inflate_liquid_amount = inflate_rate.saturating_mul_int(Self::get_total_liquid_currency());
 
-					T::Currency::deposit(liquid_currency_id, &T::TreasuryAccount::get(), inflate_liquid_amount)?;
+					Self::issue_liquid_currency(&T::TreasuryAccount::get(), inflate_liquid_amount)?;
 				}
 			}
 
@@ -910,11 +956,7 @@ pub mod module {
 			}
 
 			// issue withdrawn unbonded to module account for redeemer to claim
-			T::Currency::deposit(
-				T::StakingCurrencyId::get(),
-				&Self::account_id(),
-				total_withdrawn_staking,
-			)?;
+			Self::issue_staking_currency(&Self::account_id(), total_withdrawn_staking)?;
 			UnclaimedRedemption::<T>::mutate(|total| *total = total.saturating_add(total_withdrawn_staking));
 
 			Ok(())
@@ -971,7 +1013,7 @@ pub mod module {
 		#[transactional]
 		pub fn process_redeem_requests(new_era: EraIndex) -> DispatchResult {
 			let era_index_to_expire = new_era + T::BondingDuration::get();
-			let total_bonded = Self::get_total_bonded();
+			let total_bonded = TotalStakingBonded::<T>::get();
 			let mut total_redeem_amount: Balance = Zero::zero();
 			let mut remain_total_bonded = total_bonded;
 
@@ -1023,7 +1065,7 @@ pub mod module {
 			}
 
 			// burn total_redeem_amount.
-			T::Currency::withdraw(T::LiquidCurrencyId::get(), &Self::account_id(), total_redeem_amount)
+			Self::burn_liquid_currency(&Self::account_id(), total_redeem_amount)
 		}
 
 		pub fn era_amount_should_to_bump(relaychain_block_number: T::BlockNumber) -> EraIndex {
@@ -1063,12 +1105,54 @@ pub mod module {
 
 			res
 		}
+
+		/// This should be the only function in the system that issues liquid currency
+		fn issue_liquid_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::deposit(T::LiquidCurrencyId::get(), who, amount)
+		}
+
+		/// This should be the only function in the system that burn liquid currency
+		fn burn_liquid_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::withdraw(T::LiquidCurrencyId::get(), who, amount)
+		}
+
+		/// Issue staking currency based on the subaccounts transfer the unbonded staking currency
+		/// to the parachain account
+		fn issue_staking_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::deposit(T::StakingCurrencyId::get(), who, amount)
+		}
 	}
 
 	impl<T: Config> ExchangeRateProvider for Pallet<T> {
 		fn get_exchange_rate() -> ExchangeRate {
 			Self::current_exchange_rate()
 		}
+	}
+}
+
+impl<T: Config> HomaManager<T::AccountId, Balance> for Pallet<T> {
+	fn mint(who: T::AccountId, amount: Balance) -> DispatchResult {
+		Self::do_mint(who, amount)
+	}
+
+	fn request_redeem(who: T::AccountId, amount: Balance, fast_match: bool) -> DispatchResult {
+		Self::do_request_redeem(who, amount, fast_match)
+	}
+
+	fn get_exchange_rate() -> ExchangeRate {
+		Self::current_exchange_rate()
+	}
+
+	fn get_estimated_reward_rate() -> Rate {
+		EstimatedRewardRatePerEra::<T>::get()
+	}
+
+	fn get_commission_rate() -> Rate {
+		CommissionRate::<T>::get()
+	}
+
+	fn get_fast_match_fee() -> Rate {
+		FastMatchFeeRate::<T>::get()
 	}
 }
 

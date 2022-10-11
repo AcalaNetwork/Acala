@@ -19,12 +19,13 @@
 //! Common runtime code for Acala, Karura and Mandala.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::Get;
+use cumulus_pallet_parachain_system::CheckAssociatedRelayNumber;
 use frame_support::{
 	parameter_types,
-	traits::{Contains, EnsureOneOf},
+	traits::{Contains, EitherOfDiverse, Get},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 		DispatchClass, Weight,
@@ -32,13 +33,32 @@ use frame_support::{
 	RuntimeDebug,
 };
 use frame_system::{limits, EnsureRoot};
-pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
+use module_evm::GenesisAccount;
+use orml_traits::GetByKey;
+use polkadot_parachain::primitives::RelayChainBlockNumber;
+use primitives::{
+	evm::{is_system_contract, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},
+	Balance, CurrencyId, Nonce,
+};
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
-use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, FixedPointNumber, Perbill};
-use sp_std::collections::btree_map::BTreeMap;
+use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
+use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, prelude::*};
 use static_assertions::const_assert;
+
+pub use check_nonce::CheckNonce;
+pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
+pub use precompile::{
+	AllPrecompiles, DEXPrecompile, EVMPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile,
+	SchedulePrecompile, StableAssetPrecompile,
+};
+pub use primitives::{
+	currency::{
+		TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, TAI, TAP, VSKSM,
+	},
+	AccountId,
+};
+pub use xcm_impl::{local_currency_location, native_currency_location, AcalaDropAssets, FixedRateOfAsset};
 
 #[cfg(feature = "std")]
 use sp_core::bytes::from_hex;
@@ -48,27 +68,11 @@ use std::str::FromStr;
 pub mod bench;
 pub mod check_nonce;
 pub mod precompile;
-
-#[cfg(test)]
-mod mock;
-
-pub use check_nonce::CheckNonce;
-use module_evm::GenesisAccount;
-use orml_traits::GetByKey;
-pub use precompile::{
-	AllPrecompiles, DEXPrecompile, EVMPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile,
-	SchedulePrecompile, StableAssetPrecompile,
-};
-pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
-	AccountId,
-};
-use sp_std::{marker::PhantomData, prelude::*};
-pub use xcm::latest::prelude::*;
-pub use xcm_builder::TakeRevenue;
-pub use xcm_executor::{traits::DropAssets, Assets};
+pub mod xcm_impl;
 
 mod gas_to_weight_ratio;
+#[cfg(test)]
+mod mock;
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
@@ -131,6 +135,26 @@ impl Convert<Weight, u64> for WeightToGas {
 		weight
 			.checked_div(gas_to_weight_ratio::RATIO)
 			.expect("Compile-time constant is not zero; qed;")
+	}
+}
+
+pub struct CheckRelayNumber<EvmChainID, RelayNumberStrictlyIncreases>(EvmChainID, RelayNumberStrictlyIncreases);
+impl<EvmChainID: Get<u64>, RelayNumberStrictlyIncreases: CheckAssociatedRelayNumber> CheckAssociatedRelayNumber
+	for CheckRelayNumber<EvmChainID, RelayNumberStrictlyIncreases>
+{
+	fn check_associated_relay_number(current: RelayChainBlockNumber, previous: RelayChainBlockNumber) {
+		match EvmChainID::get() {
+			CHAIN_ID_MANDALA | CHAIN_ID_KARURA_TESTNET | CHAIN_ID_ACALA_TESTNET => {
+				if current <= previous {
+					log::warn!(
+						"Relay chain block number was reset, current: {:?}, previous: {:?}",
+						current,
+						previous
+					);
+				}
+			}
+			_ => RelayNumberStrictlyIncreases::check_associated_relay_number(current, previous),
+		}
 	}
 }
 
@@ -204,10 +228,6 @@ pub fn microcent(currency_id: CurrencyId) -> Balance {
 	millicent(currency_id) / 1000
 }
 
-pub fn calculate_asset_ratio(foreign_asset: (AssetId, u128), native_asset: (AssetId, u128)) -> Ratio {
-	Ratio::saturating_from_rational(foreign_asset.1, native_asset.1)
-}
-
 pub type GeneralCouncilInstance = pallet_collective::Instance1;
 pub type FinancialCouncilInstance = pallet_collective::Instance2;
 pub type HomaCouncilInstance = pallet_collective::Instance3;
@@ -220,108 +240,108 @@ pub type TechnicalCommitteeMembershipInstance = pallet_membership::Instance4;
 pub type OperatorMembershipInstanceAcala = pallet_membership::Instance5;
 
 // General Council
-pub type EnsureRootOrAllGeneralCouncil = EnsureOneOf<
+pub type EnsureRootOrAllGeneralCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 1, 1>,
 >;
 
-pub type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
+pub type EnsureRootOrHalfGeneralCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 1, 2>,
 >;
 
-pub type EnsureRootOrOneThirdsGeneralCouncil = EnsureOneOf<
+pub type EnsureRootOrOneThirdsGeneralCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 1, 3>,
 >;
 
-pub type EnsureRootOrTwoThirdsGeneralCouncil = EnsureOneOf<
+pub type EnsureRootOrTwoThirdsGeneralCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 2, 3>,
 >;
 
-pub type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
+pub type EnsureRootOrThreeFourthsGeneralCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, GeneralCouncilInstance, 3, 4>,
 >;
 
 pub type EnsureRootOrOneGeneralCouncil =
-	EnsureOneOf<EnsureRoot<AccountId>, pallet_collective::EnsureMember<AccountId, GeneralCouncilInstance>>;
+	EitherOfDiverse<EnsureRoot<AccountId>, pallet_collective::EnsureMember<AccountId, GeneralCouncilInstance>>;
 
 // Financial Council
-pub type EnsureRootOrAllFinancialCouncil = EnsureOneOf<
+pub type EnsureRootOrAllFinancialCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 1, 1>,
 >;
 
-pub type EnsureRootOrHalfFinancialCouncil = EnsureOneOf<
+pub type EnsureRootOrHalfFinancialCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 1, 2>,
 >;
 
-pub type EnsureRootOrOneThirdsFinancialCouncil = EnsureOneOf<
+pub type EnsureRootOrOneThirdsFinancialCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 1, 3>,
 >;
 
-pub type EnsureRootOrTwoThirdsFinancialCouncil = EnsureOneOf<
+pub type EnsureRootOrTwoThirdsFinancialCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 2, 3>,
 >;
 
-pub type EnsureRootOrThreeFourthsFinancialCouncil = EnsureOneOf<
+pub type EnsureRootOrThreeFourthsFinancialCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, FinancialCouncilInstance, 3, 4>,
 >;
 
 // Homa Council
-pub type EnsureRootOrAllHomaCouncil = EnsureOneOf<
+pub type EnsureRootOrAllHomaCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 1, 1>,
 >;
 
-pub type EnsureRootOrHalfHomaCouncil = EnsureOneOf<
+pub type EnsureRootOrHalfHomaCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 1, 2>,
 >;
 
-pub type EnsureRootOrOneThirdsHomaCouncil = EnsureOneOf<
+pub type EnsureRootOrOneThirdsHomaCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 1, 3>,
 >;
 
-pub type EnsureRootOrTwoThirdsHomaCouncil = EnsureOneOf<
+pub type EnsureRootOrTwoThirdsHomaCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 2, 3>,
 >;
 
-pub type EnsureRootOrThreeFourthsHomaCouncil = EnsureOneOf<
+pub type EnsureRootOrThreeFourthsHomaCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, HomaCouncilInstance, 3, 4>,
 >;
 
 // Technical Committee Council
-pub type EnsureRootOrAllTechnicalCommittee = EnsureOneOf<
+pub type EnsureRootOrAllTechnicalCommittee = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 1, 1>,
 >;
 
-pub type EnsureRootOrHalfTechnicalCommittee = EnsureOneOf<
+pub type EnsureRootOrHalfTechnicalCommittee = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 1, 2>,
 >;
 
-pub type EnsureRootOrOneThirdsTechnicalCommittee = EnsureOneOf<
+pub type EnsureRootOrOneThirdsTechnicalCommittee = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 1, 3>,
 >;
 
-pub type EnsureRootOrTwoThirdsTechnicalCommittee = EnsureOneOf<
+pub type EnsureRootOrTwoThirdsTechnicalCommittee = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 2, 3>,
 >;
 
-pub type EnsureRootOrThreeFourthsTechnicalCommittee = EnsureOneOf<
+pub type EnsureRootOrThreeFourthsTechnicalCommittee = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 3, 4>,
 >;
@@ -338,6 +358,7 @@ pub enum ProxyType {
 	DexLiquidity,
 	StableAssetSwap,
 	StableAssetLiquidity,
+	Homa,
 }
 
 impl Default for ProxyType {
@@ -346,70 +367,20 @@ impl Default for ProxyType {
 	}
 }
 
-/// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.
-///
-/// parameters type:
-/// - `NC`: native currency_id type.
-/// - `NB`: the ExistentialDeposit amount of native currency_id.
-/// - `GK`: the ExistentialDeposit amount of tokens.
-pub struct AcalaDropAssets<X, T, C, NC, NB, GK>(PhantomData<(X, T, C, NC, NB, GK)>);
-impl<X, T, C, NC, NB, GK> DropAssets for AcalaDropAssets<X, T, C, NC, NB, GK>
+pub struct EvmLimits<T>(PhantomData<T>);
+impl<T> EvmLimits<T>
 where
-	X: DropAssets,
-	T: TakeRevenue,
-	C: Convert<MultiLocation, Option<CurrencyId>>,
-	NC: Get<CurrencyId>,
-	NB: Get<Balance>,
-	GK: GetByKey<CurrencyId, Balance>,
+	T: frame_system::Config,
 {
-	fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
-		let multi_assets: Vec<MultiAsset> = assets.into();
-		let mut asset_traps: Vec<MultiAsset> = vec![];
-		for asset in multi_assets {
-			if let MultiAsset {
-				id: Concrete(location),
-				fun: Fungible(amount),
-			} = asset.clone()
-			{
-				let currency_id = C::convert(location);
-				// burn asset(do nothing here) if convert result is None
-				if let Some(currency_id) = currency_id {
-					let ed = ExistentialDepositsForDropAssets::<NC, NB, GK>::get(&currency_id);
-					if amount < ed {
-						T::take_revenue(asset);
-					} else {
-						asset_traps.push(asset);
-					}
-				}
-			}
-		}
-		if !asset_traps.is_empty() {
-			X::drop_assets(origin, asset_traps.into());
-		}
-		0
+	pub fn max_gas_limit() -> u64 {
+		let weights = T::BlockWeights::get();
+		let normal_weight = weights.get(DispatchClass::Normal);
+		WeightToGas::convert(normal_weight.max_extrinsic.unwrap_or(weights.max_block))
 	}
-}
 
-/// `ExistentialDeposit` for tokens, give priority to match native token, then handled by
-/// `ExistentialDeposits`.
-///
-/// parameters type:
-/// - `NC`: native currency_id type.
-/// - `NB`: the ExistentialDeposit amount of native currency_id.
-/// - `GK`: the ExistentialDeposit amount of tokens.
-pub struct ExistentialDepositsForDropAssets<NC, NB, GK>(PhantomData<(NC, NB, GK)>);
-impl<NC, NB, GK> ExistentialDepositsForDropAssets<NC, NB, GK>
-where
-	NC: Get<CurrencyId>,
-	NB: Get<Balance>,
-	GK: GetByKey<CurrencyId, Balance>,
-{
-	fn get(currency_id: &CurrencyId) -> Balance {
-		if currency_id == &NC::get() {
-			NB::get()
-		} else {
-			GK::get(currency_id)
-		}
+	pub fn max_storage_limit() -> u32 {
+		let length = T::BlockLength::get();
+		*length.max.get(DispatchClass::Normal)
 	}
 }
 

@@ -25,22 +25,24 @@ pub use crate as transaction_payment;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
-	weights::WeightToFeeCoefficients,
+	weights::{WeightToFeeCoefficients, WeightToFeePolynomial},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
-use sp_core::{crypto::AccountId32, H256};
+use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup, One},
 	Perbill,
 };
 use sp_std::cell::RefCell;
-use support::mocks::MockStableAsset;
-use support::{mocks::MockAddressMapping, Price};
+use support::{
+	mocks::{MockAddressMapping, MockStableAsset},
+	Price, SpecificJointsSwap,
+};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -48,9 +50,11 @@ pub type BlockNumber = u64;
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const CHARLIE: AccountId = AccountId::new([3u8; 32]);
+pub const DAVE: AccountId = AccountId::new([4u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 parameter_types! {
 	pub static ExtrinsicBaseWeight: u64 = 0;
@@ -102,7 +106,7 @@ parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match *currency_id {
 			AUSD => 100,
-			DOT => 1,
+			DOT | LDOT => 1,
 			_ => Default::default(),
 		}
 	};
@@ -120,6 +124,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -138,6 +144,7 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 }
 
 impl module_currencies::Config for Runtime {
@@ -145,6 +152,7 @@ impl module_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = ();
@@ -167,6 +175,7 @@ parameter_types! {
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+		TradingPair::from_currency_ids(ACA, LDOT).unwrap(),
 	];
 	pub const TradingPathLimit: u32 = 4;
 }
@@ -180,17 +189,25 @@ impl module_dex::Config for Runtime {
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
-	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
-	type ListingOrigin = frame_system::EnsureSignedBy<Zero, AccountId>;
+	type ListingOrigin = EnsureSignedBy<Zero, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
 	type OnLiquidityPoolUpdated = ();
+}
+
+impl module_aggregated_dex::Config for Runtime {
+	type DEX = DEXModule;
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
+	type GovernanceOrigin = EnsureSignedBy<Zero, AccountId>;
+	type DexSwapJointList = AlternativeSwapPathJointList;
+	type SwapPathLimit = ConstU32<3>;
+	type WeightInfo = ();
 }
 
 parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(1, 2);
 	pub static TransactionByteFee: u128 = 1;
 	pub static TipPerWeightStep: u128 = 1;
-	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
 	pub AusdFeeSwapPath: Vec<CurrencyId> = vec![AUSD, ACA];
 	pub DotFeeSwapPath: Vec<CurrencyId> = vec![DOT, AUSD, ACA];
 }
@@ -240,7 +257,10 @@ parameter_types! {
 	pub const HigerSwapThreshold: Balance = 9500;
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
-	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![AUSD],
+	];
 }
 ord_parameter_types! {
 	pub const ListingOrigin: AccountId = ALICE;
@@ -256,13 +276,13 @@ impl Config for Runtime {
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
-	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = ConstU64<5>;
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type WeightToFee = WeightToFee;
+	type TransactionByteFee = TransactionByteFee;
 	type FeeMultiplierUpdate = ();
-	type DEX = DEXModule;
+	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;
@@ -323,7 +343,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			balances: vec![(ALICE, AUSD, 10000), (ALICE, DOT, 1000)],
+			balances: vec![(ALICE, AUSD, 10000), (ALICE, DOT, 1000), (ALICE, LDOT, 1000)],
 			base_weight: 0,
 			byte_fee: 2,
 			weight_to_fee: 1,

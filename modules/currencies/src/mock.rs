@@ -20,27 +20,26 @@
 
 #![cfg(test)]
 
+use super::*;
+pub use crate as currencies;
+
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, GenesisBuild, Nothing},
 	PalletId,
 };
+use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{evm::convert_decimals_to_evm, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
+use sp_core::{H160, U256};
 use sp_runtime::{
 	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup},
 	AccountId32,
 };
-use support::{mocks::MockAddressMapping, AddressMapping};
-
-use super::*;
-use frame_system::EnsureSignedBy;
-use sp_core::{H160, U256};
 use sp_std::str::FromStr;
-
-pub use crate as currencies;
+use support::{mocks::MockAddressMapping, AddressMapping};
 
 pub type AccountId = AccountId32;
 impl frame_system::Config for Runtime {
@@ -80,7 +79,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub DustAccount: AccountId = PalletId(*b"orml/dst").into_account();
+	pub DustAccount: AccountId = PalletId(*b"orml/dst").into_account_truncating();
 }
 
 impl tokens::Config for Runtime {
@@ -95,6 +94,8 @@ impl tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -157,9 +158,8 @@ impl module_evm::Config for Runtime {
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
-	type ChainId = ();
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = ();
+	type ChargeTransactionPayment = support::mocks::MockReservedTransactionPayment<Balances>;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 
@@ -179,11 +179,16 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
+parameter_types! {
+	pub Erc20HoldingAccount: H160 = primitives::evm::ERC20_HOLDING_ACCOUNT;
+}
+
 impl Config for Runtime {
 	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type Erc20HoldingAccount = Erc20HoldingAccount;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;

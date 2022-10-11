@@ -10,8 +10,9 @@
 *.wasm
 *.state
 
-.vscode/launch.json
-.vscode/settings.json
+.vscode
+
+__pycache__
 
 ts-tests/cache/
 ts-tests/node_modules/

@@ -22,7 +22,7 @@
 use crate::{
 	runner::{
 		state::{Accessed, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
-		Runner as RunnerT,
+		Runner as RunnerT, RunnerExtended,
 	},
 	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, One, Pallet,
 	STORAGE_SIZE,
@@ -67,6 +67,7 @@ impl<T: Config> Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &'config evm::Config,
+		skip_storage_rent: bool,
 		precompiles: &'precompiles T::PrecompilesType,
 		f: F,
 	) -> Result<ExecutionInfo<R>, sp_runtime::DispatchError>
@@ -87,11 +88,14 @@ impl<T: Config> Runner<T> {
 		let mut executor = StackExecutor::new_with_precompiles(state, config, precompiles);
 
 		ensure!(
-			convert_decimals_from_evm(value.low_u128()).is_some(),
+			convert_decimals_from_evm(
+				TryInto::<BalanceOf<T>>::try_into(value).map_err(|_| Error::<T>::InvalidDecimals)?
+			)
+			.is_some(),
 			Error::<T>::InvalidDecimals
 		);
 
-		if !config.estimate {
+		if !skip_storage_rent {
 			Pallet::<T>::reserve_storage(&origin, storage_limit).map_err(|e| {
 				log::debug!(
 					target: "evm",
@@ -135,7 +139,7 @@ impl<T: Config> Runner<T> {
 		);
 		let mut sum_storage: i32 = 0;
 		for (target, storage) in &state.substate.storage_logs {
-			if !config.estimate {
+			if !skip_storage_rent {
 				Pallet::<T>::charge_storage(&origin, target, *storage).map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -159,7 +163,7 @@ impl<T: Config> Runner<T> {
 			return Err(Error::<T>::ChargeStorageFailed.into());
 		}
 
-		if !config.estimate {
+		if !skip_storage_rent {
 			Pallet::<T>::unreserve_storage(&origin, storage_limit, used_storage, refunded_storage).map_err(|e| {
 				log::debug!(
 					target: "evm",
@@ -237,6 +241,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			gas_limit,
 			storage_limit,
 			config,
+			false,
 			&precompiles,
 			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list),
 		)
@@ -262,6 +267,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			gas_limit,
 			storage_limit,
 			config,
+			false,
 			&precompiles,
 			|executor| {
 				let address = executor
@@ -297,6 +303,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			gas_limit,
 			storage_limit,
 			config,
+			false,
 			&precompiles,
 			|executor| {
 				let address = executor
@@ -335,10 +342,75 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			gas_limit,
 			storage_limit,
 			config,
+			false,
 			&precompiles,
 			|executor| {
 				(
 					executor.transact_create_at_address(source, address, value, init, gas_limit, access_list),
+					address,
+				)
+			},
+		)
+	}
+}
+
+impl<T: Config> RunnerExtended<T> for Runner<T> {
+	/// Special method for rpc call which won't charge for storage rent
+	/// Same as call but with skip_storage_rent: true
+	fn rpc_call(
+		source: H160,
+		origin: H160,
+		target: H160,
+		input: Vec<u8>,
+		value: BalanceOf<T>,
+		gas_limit: u64,
+		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
+		config: &evm::Config,
+	) -> Result<CallInfo, DispatchError> {
+		let precompiles = T::PrecompilesValue::get();
+		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
+		Self::execute(
+			source,
+			origin,
+			value,
+			gas_limit,
+			storage_limit,
+			config,
+			true,
+			&precompiles,
+			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list),
+		)
+	}
+
+	/// Special method for rpc create which won't charge for storage rent
+	/// Same as create but with skip_storage_rent: true
+	fn rpc_create(
+		source: H160,
+		init: Vec<u8>,
+		value: BalanceOf<T>,
+		gas_limit: u64,
+		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
+		config: &evm::Config,
+	) -> Result<CreateInfo, DispatchError> {
+		let precompiles = T::PrecompilesValue::get();
+		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
+		Self::execute(
+			source,
+			source,
+			value,
+			gas_limit,
+			storage_limit,
+			config,
+			true,
+			&precompiles,
+			|executor| {
+				let address = executor
+					.create_address(evm::CreateScheme::Legacy { caller: source })
+					.unwrap_or_default(); // transact_create will check the address
+				(
+					executor.transact_create(source, value, init, gas_limit, access_list),
 					address,
 				)
 			},
@@ -575,7 +647,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn chain_id(&self) -> U256 {
-		U256::from(T::ChainId::get())
+		U256::from(Pallet::<T>::chain_id())
 	}
 
 	#[cfg(feature = "evm-tests")]
@@ -704,7 +776,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn reset_storage(&mut self, address: H160) {
-		<AccountStorages<T>>::remove_prefix(address, None);
+		let _ = <AccountStorages<T>>::clear_prefix(address, u32::MAX, None);
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) {
@@ -723,13 +795,10 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			address
 		);
 
-		let caller: H160;
-		let mut substate = &self.substate;
-
-		loop {
-			// get maintainer from parent caller
-			// `enter_substate` will do `spit_child`
-			if substate.parent.is_none() {
+		// get maintainer from parent caller `enter_substate` will do `spit_child`
+		let parent = match self.substate.parent {
+			Some(ref parent) => parent,
+			None => {
 				log::error!(
 					target: "evm",
 					"get parent's maintainer failed. address: {:?}",
@@ -738,28 +807,35 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 				debug_assert!(false);
 				return;
 			}
+		};
 
-			substate = substate.parent.as_ref().expect("has checked; qed");
-
-			if let Some(c) = substate.metadata().caller() {
-				// the caller maybe is contract and not published.
-				// get the parent's maintainer.
-				if !Pallet::<T>::is_account_empty(c) {
-					caller = *c;
-					break;
-				}
+		let caller = match parent.metadata().caller() {
+			Some(ref caller) => caller,
+			None => {
+				log::error!(
+					target: "evm",
+					"get parent's caller failed. address: {:?}",
+					address
+				);
+				debug_assert!(false);
+				return;
 			}
-		}
+		};
+
+		let is_published = self.substate.metadata.origin_code_address().map_or(false, |addr| {
+			Pallet::<T>::accounts(addr).map_or(false, |account| account.contract_info.map_or(false, |v| v.published))
+		});
 
 		log::debug!(
 			target: "evm",
-			"set_code: address: {:?}, maintainer: {:?}",
+			"set_code: address: {:?}, maintainer: {:?}, publish: {:?}",
 			address,
-			caller
+			caller,
+			is_published
 		);
 
 		let code_size = code.len() as u32;
-		Pallet::<T>::create_contract(caller, address, code);
+		Pallet::<T>::create_contract(*caller, address, is_published, code);
 
 		let used_storage = code_size.saturating_add(T::NewContractExtraBytes::get());
 		Pallet::<T>::update_contract_storage_size(&address, used_storage as i32);
@@ -773,9 +849,10 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		}
 		let source = T::AddressMapping::get_account_id(&transfer.source);
 		let target = T::AddressMapping::get_account_id(&transfer.target);
-		let amount = convert_decimals_from_evm(transfer.value.low_u128())
-			.ok_or(ExitError::Other(Into::<&str>::into(Error::<T>::InvalidDecimals).into()))?
-			.unique_saturated_into();
+		let amount = convert_decimals_from_evm(
+			TryInto::<BalanceOf<T>>::try_into(transfer.value).map_err(|_| ExitError::OutOfFund)?,
+		)
+		.ok_or(ExitError::Other(Into::<&str>::into(Error::<T>::InvalidDecimals).into()))?;
 
 		log::debug!(
 			target: "evm",

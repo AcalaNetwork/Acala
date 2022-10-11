@@ -20,10 +20,8 @@
 #![allow(clippy::borrowed_box)]
 
 use crate::cli::{Cli, RelayChainCli, Subcommand};
-use codec::Encode;
-use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
-use frame_benchmarking_cli::BenchmarkCmd;
+use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams, NetworkParams, Result,
@@ -31,9 +29,7 @@ use sc_cli::{
 };
 use sc_service::config::{BasePath, PrometheusConfig};
 use service::{chain_spec, new_partial, IdentifyVariant};
-use sp_core::hexdisplay::HexDisplay;
-use sp_runtime::traits::Block as BlockT;
-use std::{io::Write, net::SocketAddr};
+use std::net::SocketAddr;
 
 fn chain_name() -> String {
 	"Acala".into()
@@ -220,15 +216,6 @@ fn ensure_dev(spec: &Box<dyn service::ChainSpec>) -> std::result::Result<(), Str
 	}
 }
 
-fn extract_genesis_wasm(chain_spec: &Box<dyn service::ChainSpec>) -> Result<Vec<u8>> {
-	let mut storage = chain_spec.build_storage()?;
-
-	storage
-		.top
-		.remove(sp_core::storage::well_known_keys::CODE)
-		.ok_or_else(|| "Could not find wasm file in genesis state!".into())
-}
-
 macro_rules! with_runtime_or_err {
 	($chain_spec:expr, { $( $code:tt )* }) => {
 		if $chain_spec.is_acala() {
@@ -287,29 +274,36 @@ pub fn run() -> sc_cli::Result<()> {
 
 			with_runtime_or_err!(chain_spec, {
 				{
-					match cmd {
+					runner.sync_run(|config| match cmd {
 						BenchmarkCmd::Pallet(cmd) => {
-							if cfg!(feature = "runtime-benchmarks") {
-								runner.sync_run(|config| cmd.run::<Block, Executor>(config))
-							} else {
-								Err("Benchmarking wasn't enabled when building the node. \
+							if !cfg!(feature = "runtime-benchmarks") {
+								return Err("Benchmarking wasn't enabled when building the node. \
 						You can enable it with `--features runtime-benchmarks`."
-									.into())
+									.into());
 							}
+
+							cmd.run::<Block, Executor>(config)
 						}
-						BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
+						BenchmarkCmd::Block(cmd) => {
 							let partials = new_partial::<RuntimeApi>(&config, true, false)?;
 							cmd.run(partials.client)
-						}),
-						BenchmarkCmd::Storage(cmd) => runner.sync_run(|config| {
+						}
+						#[cfg(not(feature = "runtime-benchmarks"))]
+						BenchmarkCmd::Storage(_) => {
+							Err("Storage benchmarking can be enabled with `--features runtime-benchmarks`.".into())
+						}
+						#[cfg(feature = "runtime-benchmarks")]
+						BenchmarkCmd::Storage(cmd) => {
 							let partials = new_partial::<RuntimeApi>(&config, true, false)?;
 							let db = partials.backend.expose_db();
 							let storage = partials.backend.expose_storage();
 
 							cmd.run(config, partials.client.clone(), db, storage)
-						}),
+						}
 						BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
-					}
+						BenchmarkCmd::Extrinsic(_) => Err("Unsupported benchmarking command".into()),
+						BenchmarkCmd::Machine(cmd) => cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()),
+					})
 				}
 			})
 		}
@@ -410,55 +404,25 @@ pub fn run() -> sc_cli::Result<()> {
 			})
 		}
 
-		Some(Subcommand::ExportGenesisState(params)) => {
-			let mut builder = sc_cli::LoggerBuilder::new("");
-			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
-			let _ = builder.init();
+		Some(Subcommand::ExportGenesisState(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
 
-			let chain_spec = cli.load_spec(&params.chain.clone().unwrap_or_default())?;
-			let state_version = Cli::native_runtime_version(&chain_spec).state_version();
-			let output_buf = with_runtime_or_err!(chain_spec, {
-				{
-					let block: Block =
-						generate_genesis_block(&chain_spec, state_version).map_err(|e| format!("{:?}", e))?;
-					let raw_header = block.header().encode();
-					let buf = if params.raw {
-						raw_header
-					} else {
-						format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
-					};
-					buf
-				}
-			});
-
-			if let Some(output) = &params.output {
-				std::fs::write(output, output_buf)?;
-			} else {
-				std::io::stdout().write_all(&output_buf)?;
-			}
-
-			Ok(())
+			with_runtime_or_err!(chain_spec, {
+				return runner.sync_run(|_config| {
+					let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
+					let state_version = Cli::native_runtime_version(&spec).state_version();
+					cmd.run::<Block>(&*spec, state_version)
+				});
+			})
 		}
 
-		Some(Subcommand::ExportGenesisWasm(params)) => {
-			let mut builder = sc_cli::LoggerBuilder::new("");
-			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
-			let _ = builder.init();
-
-			let raw_wasm_blob = extract_genesis_wasm(&cli.load_spec(&params.chain.clone().unwrap_or_default())?)?;
-			let output_buf = if params.raw {
-				raw_wasm_blob
-			} else {
-				format!("0x{:?}", HexDisplay::from(&raw_wasm_blob)).into_bytes()
-			};
-
-			if let Some(output) = &params.output {
-				std::fs::write(output, output_buf)?;
-			} else {
-				std::io::stdout().write_all(&output_buf)?;
-			}
-
-			Ok(())
+		Some(Subcommand::ExportGenesisWasm(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.sync_run(|_config| {
+				let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
+				cmd.run(&*spec)
+			})
 		}
 
 		#[cfg(feature = "try-runtime")]
@@ -482,24 +446,26 @@ pub fn run() -> sc_cli::Result<()> {
 		None => {
 			let runner = cli.create_runner(&cli.run.normalize())?;
 			let chain_spec = &runner.config().chain_spec;
-			let is_mandala_dev = chain_spec.is_mandala_dev();
+			let is_dev = chain_spec.is_dev();
 			let collator_options = cli.run.collator_options();
 
 			set_default_ss58_version(chain_spec);
 
 			runner.run_node_until_exit(|config| async move {
+				if is_dev {
+					with_runtime_or_err!(config.chain_spec, {
+						{
+							return service::start_dev_node::<RuntimeApi>(config, cli.instant_sealing)
+								.map_err(Into::into);
+						}
+					})
+				} else if cli.instant_sealing {
+					return Err("Instant sealing can be turned on only in `dev` mode".into());
+				}
+
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
 					.map(|e| e.para_id)
 					.ok_or("Could not find parachain extension for chain-spec.")?;
-
-				if is_mandala_dev {
-					#[cfg(feature = "with-mandala-runtime")]
-					return service::mandala_dev(config, cli.instant_sealing).map_err(Into::into);
-					#[cfg(not(feature = "with-mandala-runtime"))]
-					return Err(service::MANDALA_RUNTIME_NOT_AVAILABLE.into());
-				} else if cli.instant_sealing {
-					return Err("Instant sealing can be turned on only in `--dev` mode".into());
-				}
 
 				let polkadot_cli = RelayChainCli::new(
 					&config,
@@ -622,8 +588,8 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.role(is_dev)
 	}
 
-	fn transaction_pool(&self) -> Result<sc_service::config::TransactionPoolOptions> {
-		self.base.base.transaction_pool()
+	fn transaction_pool(&self, is_dev: bool) -> Result<sc_service::config::TransactionPoolOptions> {
+		self.base.base.transaction_pool(is_dev)
 	}
 
 	fn state_cache_child_ratio(&self) -> Result<Option<usize>> {

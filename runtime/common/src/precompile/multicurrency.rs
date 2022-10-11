@@ -108,7 +108,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_bytes(&name),
+					output: Output::encode_bytes(&name),
 					logs: Default::default(),
 				})
 			}
@@ -124,7 +124,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_bytes(&symbol),
+					output: Output::encode_bytes(&symbol),
 					logs: Default::default(),
 				})
 			}
@@ -140,7 +140,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u8(decimals),
+					output: Output::encode_uint(decimals),
 					logs: Default::default(),
 				})
 			}
@@ -152,7 +152,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(total_issuance),
+					output: Output::encode_uint(total_issuance),
 					logs: Default::default(),
 				})
 			}
@@ -169,7 +169,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::default().encode_u128(balance),
+					output: Output::encode_uint(balance),
 					logs: Default::default(),
 				})
 			}

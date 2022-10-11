@@ -83,7 +83,7 @@ impl TestNode {
 		nonce: Nonce,
 	) -> Result<H256, sc_transaction_pool::error::Error> {
 		let extrinsic = match caller {
-			Some(caller) => construct_extrinsic(&*self.client, function, caller.pair(), Some(nonce)),
+			Some(caller) => construct_extrinsic(&self.client, function, caller.pair(), Some(nonce)),
 			None => runtime::UncheckedExtrinsic::new(function.into(), None).unwrap(),
 		};
 		let at = self.client.info().best_hash;
@@ -107,7 +107,7 @@ impl TestNode {
 			.into_iter()
 			.enumerate()
 			.map(|(index, function)| match caller {
-				Some(caller) => construct_extrinsic(&*self.client, function, caller.pair(), Some(nonce + index as u32)),
+				Some(caller) => construct_extrinsic(&self.client, function, caller.pair(), Some(nonce + index as u32)),
 				None => runtime::UncheckedExtrinsic::new(function.into(), None).unwrap(),
 			})
 			.collect();
@@ -148,7 +148,7 @@ impl TestNode {
 		caller: Sr25519Keyring,
 		nonce: Nonce,
 	) -> Result<RpcTransactionOutput, RpcTransactionError> {
-		let extrinsic = construct_extrinsic(&*self.client, function, caller.pair(), Some(nonce));
+		let extrinsic = construct_extrinsic(&self.client, function, caller.pair(), Some(nonce));
 
 		self.rpc_handlers.send_transaction(extrinsic.0.into()).await
 	}
