@@ -11,7 +11,7 @@ def get_chain_and_version(branch_name):
 	return chain, version
 
 def get_previous_version(chain):
-	cmd = os.popen("git branch --remote | grep origin/release-{}-".format(chain));
+	cmd = os.popen("git branch --remote --sort=committerdate | grep origin/release-{}-".format(chain));
 	branches = cmd.read().split("\n")
 	cmd.__exit__()
 	branches = map(lambda x: x.strip(), branches)

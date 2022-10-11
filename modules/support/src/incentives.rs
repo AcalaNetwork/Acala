@@ -36,8 +36,6 @@ pub enum PoolId {
 pub trait IncentivesManager<AccountId, Balance, CurrencyId, PoolId> {
 	/// Gets reward amount for the given reward currency added per period
 	fn get_incentive_reward_amount(pool_id: PoolId, currency_id: CurrencyId) -> Balance;
-	/// Gets fixed reward rate for `PoolId::Dex` per period
-	fn get_dex_reward_rate(pool_id: PoolId) -> Rate;
 	/// Stake LP token to add shares to pool
 	fn deposit_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
 	/// Unstake LP token to remove shares from pool

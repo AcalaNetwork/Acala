@@ -47,6 +47,7 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for module_aggregated_dex.
 pub trait WeightInfo {
 	fn swap_with_exact_supply(u: u32, ) -> Weight;
+	fn swap_with_exact_target(u: u32, ) -> Weight;
 	fn update_aggregated_swap_paths(u: u32, ) -> Weight;
 }
 
@@ -54,39 +55,57 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn swap_with_exact_supply(u: u32, ) -> Weight {
-		(93_799_000 as Weight)
-			// Standard Error: 117_000
-			.saturating_add((16_008_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+		(70_917_000 as Weight)
+			// Standard Error: 1_041_000
+			.saturating_add((8_550_000 as Weight).saturating_mul(u as Weight))
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
 	}
-	fn update_aggregated_swap_paths(u: u32, ) -> Weight {
-		(2_268_000 as Weight)
-			// Standard Error: 245_000
-			.saturating_add((19_990_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(u as Weight)))
+	fn swap_with_exact_target(u: u32, ) -> Weight {
+		(58_717_000 as Weight)
+			// Standard Error: 147_000
+			.saturating_add((15_650_000 as Weight).saturating_mul(u as Weight))
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
+	}
+	fn update_aggregated_swap_paths(n: u32, ) -> Weight {
+		(4_558_000 as Weight)
+			// Standard Error: 25_000
+			.saturating_add((1_533_000 as Weight).saturating_mul(n as Weight))
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn swap_with_exact_supply(u: u32, ) -> Weight {
-		(93_799_000 as Weight)
-			// Standard Error: 117_000
-			.saturating_add((16_008_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+		(70_917_000 as Weight)
+			// Standard Error: 1_041_000
+			.saturating_add((8_550_000 as Weight).saturating_mul(u as Weight))
+			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
 	}
-	fn update_aggregated_swap_paths(u: u32, ) -> Weight {
-		(2_268_000 as Weight)
-			// Standard Error: 245_000
-			.saturating_add((19_990_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(u as Weight)))
+	fn swap_with_exact_target(u: u32, ) -> Weight {
+		(58_717_000 as Weight)
+			// Standard Error: 147_000
+			.saturating_add((15_650_000 as Weight).saturating_mul(u as Weight))
+			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
+			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
+	}
+	fn update_aggregated_swap_paths(n: u32, ) -> Weight {
+		(4_558_000 as Weight)
+			// Standard Error: 25_000
+			.saturating_add((1_533_000 as Weight).saturating_mul(n as Weight))
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
 }

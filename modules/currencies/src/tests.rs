@@ -22,7 +22,7 @@
 
 use super::*;
 use crate::mock::Erc20HoldingAccount;
-use frame_support::{assert_noop, assert_ok, weights::GetDispatchInfo};
+use frame_support::{assert_noop, assert_ok, traits::WithdrawReasons, weights::GetDispatchInfo};
 use mock::{
 	alice, bob, deploy_contracts, erc20_address, eva, AccountId, AdaptedBasicCurrency, CouncilAccount, Currencies,
 	DustAccount, Event, ExtBuilder, NativeCurrency, Origin, PalletBalances, Runtime, System, Tokens, ALICE_BALANCE,
@@ -35,6 +35,103 @@ use sp_runtime::{
 };
 use support::mocks::MockAddressMapping;
 use support::EVM as EVMTrait;
+
+#[test]
+fn force_set_lock_and_force_remove_lock_should_work() {
+	ExtBuilder::default()
+		.one_hundred_for_alice_n_bob()
+		.build()
+		.execute_with(|| {
+			assert_noop!(
+				Currencies::force_set_lock(Some(bob()).into(), alice(), DOT, 100, ID_1,),
+				BadOrigin
+			);
+
+			assert_eq!(Tokens::locks(&alice(), DOT).len(), 0);
+			assert_eq!(PalletBalances::locks(&alice()).len(), 0);
+
+			assert_ok!(Currencies::force_set_lock(Origin::root(), alice(), DOT, 100, ID_1,));
+			assert_ok!(Currencies::force_set_lock(
+				Origin::root(),
+				alice(),
+				NATIVE_CURRENCY_ID,
+				1000,
+				ID_1,
+			));
+
+			assert_eq!(
+				Tokens::locks(&alice(), DOT)[0],
+				tokens::BalanceLock { id: ID_1, amount: 100 }
+			);
+			assert_eq!(
+				PalletBalances::locks(&alice())[0],
+				pallet_balances::BalanceLock {
+					id: ID_1,
+					amount: 1000,
+					reasons: WithdrawReasons::all().into(),
+				}
+			);
+
+			assert_ok!(Currencies::force_set_lock(Origin::root(), alice(), DOT, 10, ID_1,));
+			assert_ok!(Currencies::force_set_lock(
+				Origin::root(),
+				alice(),
+				NATIVE_CURRENCY_ID,
+				100,
+				ID_1,
+			));
+			assert_eq!(
+				Tokens::locks(&alice(), DOT)[0],
+				tokens::BalanceLock { id: ID_1, amount: 10 }
+			);
+			assert_eq!(
+				PalletBalances::locks(&alice())[0],
+				pallet_balances::BalanceLock {
+					id: ID_1,
+					amount: 100,
+					reasons: WithdrawReasons::all().into(),
+				}
+			);
+
+			// do nothing
+			assert_ok!(Currencies::force_set_lock(Origin::root(), alice(), DOT, 0, ID_1,));
+			assert_ok!(Currencies::force_set_lock(
+				Origin::root(),
+				alice(),
+				NATIVE_CURRENCY_ID,
+				0,
+				ID_1,
+			));
+			assert_eq!(
+				Tokens::locks(&alice(), DOT)[0],
+				tokens::BalanceLock { id: ID_1, amount: 10 }
+			);
+			assert_eq!(
+				PalletBalances::locks(&alice())[0],
+				pallet_balances::BalanceLock {
+					id: ID_1,
+					amount: 100,
+					reasons: WithdrawReasons::all().into(),
+				}
+			);
+
+			// remove lock
+			assert_noop!(
+				Currencies::force_remove_lock(Some(bob()).into(), alice(), DOT, ID_1,),
+				BadOrigin
+			);
+
+			assert_ok!(Currencies::force_remove_lock(Origin::root(), alice(), DOT, ID_1,));
+			assert_ok!(Currencies::force_remove_lock(
+				Origin::root(),
+				alice(),
+				NATIVE_CURRENCY_ID,
+				ID_1,
+			));
+			assert_eq!(Tokens::locks(&alice(), DOT).len(), 0);
+			assert_eq!(PalletBalances::locks(&alice()).len(), 0);
+		});
+}
 
 #[test]
 fn multi_lockable_currency_should_work() {

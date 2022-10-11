@@ -26,6 +26,7 @@ use sp_std::prelude::*;
 pub mod utils;
 
 // module benchmarking
+pub mod aggregated_dex;
 pub mod asset_registry;
 pub mod auction_manager;
 pub mod cdp_engine;

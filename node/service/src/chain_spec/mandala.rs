@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
+use acala_primitives::{evm::CHAIN_ID_MANDALA, orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
 use coins_bip39::{English, Mnemonic, Wordlist};
 use elliptic_curve::sec1::ToEncodedPoint;
 use hex_literal::hex;
@@ -30,8 +30,8 @@ use mandala_runtime::{
 	FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 	NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
 	PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
-	StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA,
-	AUSD, DOT, LDOT, RENBTC,
+	SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
+	RENBTC,
 };
 use runtime_common::evm_genesis;
 use sc_chain_spec::ChainType;
@@ -354,9 +354,6 @@ fn testnet_genesis(
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 		},
-		starport: StarportConfig {
-			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
-		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
 		sudo: SudoConfig { key: Some(root_key) },
@@ -437,7 +434,7 @@ fn testnet_genesis(
 			],
 		},
 		evm: EVMConfig {
-			chain_id: 595u64,
+			chain_id: CHAIN_ID_MANDALA,
 			accounts: evm_genesis_accounts,
 		},
 		dex: DexConfig {
@@ -544,9 +541,6 @@ fn mandala_genesis(
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 		},
-		starport: StarportConfig {
-			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
-		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
 		sudo: SudoConfig {
@@ -626,7 +620,7 @@ fn mandala_genesis(
 			],
 		},
 		evm: EVMConfig {
-			chain_id: 595u64,
+			chain_id: CHAIN_ID_MANDALA,
 			accounts: evm_genesis_accounts,
 		},
 		dex: DexConfig {

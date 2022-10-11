@@ -22,15 +22,13 @@ use super::{
 	get_benchmarking_collateral_currency_ids,
 	utils::{dollar, set_balance, NATIVE, STABLECOIN, STAKING},
 };
-use frame_benchmarking::{account, whitelisted_caller, BenchmarkError};
+use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use module_support::PoolId;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use sp_std::prelude::*;
-
-const SEED: u32 = 0;
 
 runtime_benchmarks! {
 	{ Runtime, module_incentives }
@@ -90,25 +88,6 @@ runtime_benchmarks! {
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
 			updates.push((PoolId::Loans(currency_id), vec![(NATIVE, dollar(NATIVE))]));
-		}
-	}: _(RawOrigin::Root, updates)
-
-	update_dex_saving_rewards {
-		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
-		let currency_ids = get_benchmarking_collateral_currency_ids();
-		let caller: AccountId = account("caller", 0, SEED);
-		let mut updates = vec![];
-
-		for i in 0 .. c {
-			let currency_id = currency_ids[i as usize];
-			if matches!(currency_id, CurrencyId::StableAssetPoolToken(_)) {
-				continue;
-			}
-			if let Some(lp_share_currency_id) = CurrencyId::join_dex_share_currency_id(currency_id, STABLECOIN) {
-				updates.push((PoolId::Dex(lp_share_currency_id), Rate::default()));
-			} else {
-				return Err(BenchmarkError::Stop("invalid currency id"));
-			}
 		}
 	}: _(RawOrigin::Root, updates)
 

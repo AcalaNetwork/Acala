@@ -86,6 +86,9 @@ pub mod session_manager {
 pub mod nutsfinance_stable_asset {
 	include!("../../../mandala/src/benchmarking/nutsfinance_stable_asset.rs");
 }
+pub mod aggregated_dex {
+	include!("../../../mandala/src/benchmarking/aggregated_dex.rs");
+}
 
 // orml benchmarking
 pub mod auction {
