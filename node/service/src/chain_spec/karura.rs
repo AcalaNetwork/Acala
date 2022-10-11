@@ -93,6 +93,45 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 		None,
 		Some(karura_properties()),
 		Extensions {
+			relay_chain: "dev".into(),
+			para_id: PARA_ID,
+			bad_blocks: None,
+		},
+	))
+}
+
+pub fn karura_local_config() -> Result<ChainSpec, String> {
+	let wasm_binary = karura_runtime::WASM_BINARY.unwrap_or_default();
+
+	Ok(ChainSpec::from_genesis(
+		"Acala Karura Local",
+		"karura-local",
+		ChainType::Development,
+		move || {
+			karura_dev_genesis(
+				wasm_binary,
+				// Initial PoA authorities
+				vec![get_parachain_authority_keys_from_seed("Alice")],
+				// Sudo account
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					(get_account_id_from_seed::<sr25519::Public>("Alice"), 1000 * dollar(KAR)),
+					(get_account_id_from_seed::<sr25519::Public>("Bob"), 1000 * dollar(KAR)),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						1000 * dollar(KAR),
+					),
+				],
+				vec![],
+				vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Some(karura_properties()),
+		Extensions {
 			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
 			bad_blocks: None,

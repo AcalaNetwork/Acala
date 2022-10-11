@@ -84,12 +84,17 @@ impl SubstrateCli for Cli {
 			"karura-rococo" => Box::new(chain_spec::karura::karura_rococo_config()?),
 			#[cfg(feature = "with-karura-runtime")]
 			"karura-dev" => Box::new(chain_spec::karura::karura_dev_config()?),
+			#[cfg(feature = "with-karura-runtime")]
+			"karura-local" => Box::new(chain_spec::karura::karura_local_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"wendala" => Box::new(chain_spec::acala::wendala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala-dev" => Box::new(chain_spec::acala::acala_dev_config()?),
+			#[cfg(feature = "with-acala-runtime")]
+			"acala-local" => Box::new(chain_spec::acala::acala_local_config()?),
+
 			path => {
 				let path = std::path::PathBuf::from(path);
 
