@@ -454,15 +454,15 @@ fn statemine_transfer_asset_to_karura() {
 		Balances::make_free_balance_be(&ALICE.into(), TEN);
 		Balances::make_free_balance_be(&BOB.into(), UNIT);
 
-		// create custom asset cost 0.1 KSM
+		// If using non root, create custom asset cost 0.1 KSM
+		// We're using force_create here to make sure asset is sufficient.
 		assert_ok!(Assets::force_create(
 			Origin::root(),
 			ASSET_ID,
 			MultiAddress::Id(ALICE.into()),
-			true, // make sure asset is sufficient.
+			true,
 			UNIT / 100
 		));
-		// assert_eq!(9_900_000_000_000, Balances::free_balance(&AccountId::from(ALICE)));
 
 		assert_ok!(Assets::mint(
 			origin.clone(),
