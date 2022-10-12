@@ -67,5 +67,4 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           fail_ci_if_error: true # optional (default = false)
-          verbose: true # optional (default = false)
-          token: ${{ secrets.GITHUB_TOKEN }}
+          #verbose: true # optional (default = false)
