@@ -138,7 +138,15 @@ impl<T: Config> Runner<T> {
 			state.substate.storage_logs
 		);
 		let mut sum_storage: i32 = 0;
-		for (target, storage) in &state.substate.storage_logs {
+		for (target, storage) in &state.substate.storage_logs.into_iter().fold(
+			BTreeMap::<H160, i32>::new(),
+			|mut bmap, (target, storage)| {
+				bmap.entry(target)
+					.and_modify(|x| *x = x.saturating_add(storage))
+					.or_insert(storage);
+				bmap
+			},
+		) {
 			if !skip_storage_rent {
 				Pallet::<T>::charge_storage(&origin, target, *storage).map_err(|e| {
 					log::debug!(
@@ -152,7 +160,7 @@ impl<T: Config> Runner<T> {
 					Error::<T>::ChargeStorageFailed
 				})?;
 			}
-			sum_storage += storage;
+			sum_storage = sum_storage.saturating_add(*storage);
 		}
 		if actual_storage != sum_storage {
 			log::debug!(
