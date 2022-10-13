@@ -1,6 +1,6 @@
 [package]
 name = "module-evm-utility-macro"
-version = "2.9.4"
+version = "2.10.0"
 authors = ["Acala Developers"]
 edition = "2021"
 

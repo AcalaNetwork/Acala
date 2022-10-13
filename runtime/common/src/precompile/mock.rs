@@ -543,13 +543,19 @@ impl nutsfinance_stable_asset::Config for Test {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
+impl module_transaction_pause::Config for Test {
+	type Event = Event;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type WeightInfo = ();
+}
+
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
 pub type EvmErc20InfoMapping = module_asset_registry::EvmErc20InfoMapping<Test>;
 
 parameter_types! {
 	pub NetworkContractSource: H160 = alice_evm_addr();
-	pub PrecompilesValue: AllPrecompiles<Test> = AllPrecompiles::<_>::mandala();
+	pub PrecompilesValue: AllPrecompiles<Test, module_transaction_pause::PausedPrecompileFilter<Test>> = AllPrecompiles::<_, _>::mandala();
 }
 
 ord_parameter_types! {
@@ -574,7 +580,7 @@ impl module_evm::Config for Test {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<10>;
 	type Event = Event;
-	type PrecompilesType = AllPrecompiles<Self>;
+	type PrecompilesType = AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>>;
 	type PrecompilesValue = PrecompilesValue;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
@@ -816,6 +822,7 @@ frame_support::construct_runtime!(
 		EVMBridge: module_evm_bridge exclude_parts { Call },
 		AssetRegistry: module_asset_registry,
 		NFTModule: module_nft,
+		TransactionPause: module_transaction_pause,
 		TransactionPayment: module_transaction_payment,
 		Prices: module_prices,
 		Proxy: pallet_proxy,

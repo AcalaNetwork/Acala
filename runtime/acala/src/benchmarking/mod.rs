@@ -83,6 +83,9 @@ pub mod transaction_payment {
 pub mod session_manager {
 	include!("../../../mandala/src/benchmarking/session_manager.rs");
 }
+pub mod aggregated_dex {
+	include!("../../../mandala/src/benchmarking/aggregated_dex.rs");
+}
 
 // orml benchmarking
 pub mod auction {

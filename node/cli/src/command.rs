@@ -84,12 +84,17 @@ impl SubstrateCli for Cli {
 			"karura-rococo" => Box::new(chain_spec::karura::karura_rococo_config()?),
 			#[cfg(feature = "with-karura-runtime")]
 			"karura-dev" => Box::new(chain_spec::karura::karura_dev_config()?),
+			#[cfg(feature = "with-karura-runtime")]
+			"karura-local" => Box::new(chain_spec::karura::karura_local_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"wendala" => Box::new(chain_spec::acala::wendala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala-dev" => Box::new(chain_spec::acala::acala_dev_config()?),
+			#[cfg(feature = "with-acala-runtime")]
+			"acala-local" => Box::new(chain_spec::acala::acala_local_config()?),
+
 			path => {
 				let path = std::path::PathBuf::from(path);
 
@@ -274,32 +279,36 @@ pub fn run() -> sc_cli::Result<()> {
 
 			with_runtime_or_err!(chain_spec, {
 				{
-					match cmd {
+					runner.sync_run(|config| match cmd {
 						BenchmarkCmd::Pallet(cmd) => {
-							if cfg!(feature = "runtime-benchmarks") {
-								runner.sync_run(|config| cmd.run::<Block, Executor>(config))
-							} else {
-								Err("Benchmarking wasn't enabled when building the node. \
+							if !cfg!(feature = "runtime-benchmarks") {
+								return Err("Benchmarking wasn't enabled when building the node. \
 						You can enable it with `--features runtime-benchmarks`."
-									.into())
+									.into());
 							}
+
+							cmd.run::<Block, Executor>(config)
 						}
-						BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
+						BenchmarkCmd::Block(cmd) => {
 							let partials = new_partial::<RuntimeApi>(&config, true, false)?;
 							cmd.run(partials.client)
-						}),
-						BenchmarkCmd::Storage(cmd) => runner.sync_run(|config| {
+						}
+						#[cfg(not(feature = "runtime-benchmarks"))]
+						BenchmarkCmd::Storage(_) => {
+							Err("Storage benchmarking can be enabled with `--features runtime-benchmarks`.".into())
+						}
+						#[cfg(feature = "runtime-benchmarks")]
+						BenchmarkCmd::Storage(cmd) => {
 							let partials = new_partial::<RuntimeApi>(&config, true, false)?;
 							let db = partials.backend.expose_db();
 							let storage = partials.backend.expose_storage();
 
 							cmd.run(config, partials.client.clone(), db, storage)
-						}),
-						BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
-						BenchmarkCmd::Machine(cmd) => {
-							runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()))
 						}
-					}
+						BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
+						BenchmarkCmd::Extrinsic(_) => Err("Unsupported benchmarking command".into()),
+						BenchmarkCmd::Machine(cmd) => cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()),
+					})
 				}
 			})
 		}
@@ -584,8 +593,8 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.role(is_dev)
 	}
 
-	fn transaction_pool(&self) -> Result<sc_service::config::TransactionPoolOptions> {
-		self.base.base.transaction_pool()
+	fn transaction_pool(&self, is_dev: bool) -> Result<sc_service::config::TransactionPoolOptions> {
+		self.base.base.transaction_pool(is_dev)
 	}
 
 	fn state_cache_child_ratio(&self) -> Result<Option<usize>> {

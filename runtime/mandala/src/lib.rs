@@ -132,7 +132,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2094,
+	spec_version: 2100,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -180,7 +180,6 @@ parameter_types! {
 	// because transaction payment pallet will ensure the accounts always have enough ED.
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	// Ecosystem modules
-	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 	// lock identifier for earning module
 	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
@@ -198,7 +197,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		IncentivesPalletId::get().into_account_truncating(),
 		TreasuryReservePalletId::get().into_account_truncating(),
 		CollatorPotId::get().into_account_truncating(),
-		StarportPalletId::get().into_account_truncating(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account_truncating(),
 	]
@@ -749,6 +747,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type DesiredRunnersUp = ConstU32<7>;
 	type LoserCandidate = ();
 	type KickedMember = ();
+	type MaxVoters = ConstU32<10000>;
+	type MaxCandidates = ConstU32<1000>;
 	type WeightInfo = ();
 }
 
@@ -1184,7 +1184,7 @@ impl module_aggregated_dex::Config for Runtime {
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_aggregated_dex::WeightInfo<Runtime>;
 }
 
 pub type RebasedStableAsset = module_support::RebasedStableAsset<
@@ -1571,28 +1571,8 @@ impl ecosystem_renvm_bridge::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CashCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::CASH);
-	pub const PercentThresholdForGatewayAuthoritySignature: Perbill = Perbill::from_percent(50);
-}
-
-impl ecosystem_starport::Config for Runtime {
-	type Event = Event;
-	type Currency = Currencies;
-	type CashCurrencyId = CashCurrencyId;
-	type PalletId = StarportPalletId;
-	type MaxGatewayAuthorities = ConstU32<8>;
-	type PercentThresholdForAuthoritySignature = PercentThresholdForGatewayAuthoritySignature;
-	type Cash = CompoundCash;
-}
-
-impl ecosystem_compound_cash::Config for Runtime {
-	type Event = Event;
-	type UnixTime = Timestamp;
-}
-
-parameter_types! {
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::mandala();
+	pub PrecompilesValue: AllPrecompiles<Runtime, module_transaction_pause::PausedPrecompileFilter<Runtime>> = AllPrecompiles::<_, _>::mandala();
 }
 
 #[cfg(feature = "with-ethereum-compatibility")]
@@ -1643,7 +1623,7 @@ impl module_evm::Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
-	type PrecompilesType = AllPrecompiles<Self>;
+	type PrecompilesType = AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>>;
 	type PrecompilesValue = PrecompilesValue;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
@@ -1920,14 +1900,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	module_incentives::migration::ClearDexSavingRewardRates<Runtime>,
->;
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 construct_runtime!(
 	pub enum Runtime where
@@ -2015,8 +1989,6 @@ construct_runtime!(
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge = 150,
-		Starport: ecosystem_starport = 151,
-		CompoundCash: ecosystem_compound_cash exclude_parts { Call } = 152,
 
 		// Parachain
 		ParachainInfo: parachain_info exclude_parts { Call } = 161,
@@ -2092,6 +2064,7 @@ mod benches {
 		[orml_oracle, benchmarking::oracle]
 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 		[module_idle_scheduler, benchmarking::idle_scheduler]
+		[module_aggregated_dex, benchmarking::aggregated_dex]
 	);
 }
 

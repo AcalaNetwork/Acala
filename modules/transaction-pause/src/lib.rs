@@ -26,6 +26,7 @@ use frame_support::{
 	transactional,
 };
 use frame_system::pallet_prelude::*;
+use sp_core::H160;
 use sp_runtime::DispatchResult;
 use sp_std::{prelude::*, vec::Vec};
 
@@ -72,6 +73,10 @@ pub mod module {
 			pallet_name_bytes: Vec<u8>,
 			function_name_bytes: Vec<u8>,
 		},
+		/// Paused EVM precompile
+		EvmPrecompilePaused { address: H160 },
+		/// Unpaused EVM precompile
+		EvmPrecompileUnpaused { address: H160 },
 	}
 
 	/// The paused transaction map
@@ -80,6 +85,13 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn paused_transactions)]
 	pub type PausedTransactions<T: Config> = StorageMap<_, Twox64Concat, (Vec<u8>, Vec<u8>), (), OptionQuery>;
+
+	/// The paused EVM precompile map
+	///
+	/// map (PrecompileAddress) => Option<()>
+	#[pallet::storage]
+	#[pallet::getter(fn paused_evm_precompiles)]
+	pub type PausedEvmPrecompiles<T: Config> = StorageMap<_, Blake2_128Concat, H160, (), OptionQuery>;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
@@ -130,6 +142,29 @@ pub mod module {
 			};
 			Ok(())
 		}
+
+		#[pallet::weight(T::WeightInfo::pause_evm_precompile())]
+		#[transactional]
+		pub fn pause_evm_precompile(origin: OriginFor<T>, address: H160) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			PausedEvmPrecompiles::<T>::mutate_exists(&address, |maybe_paused| {
+				if maybe_paused.is_none() {
+					*maybe_paused = Some(());
+					Self::deposit_event(Event::EvmPrecompilePaused { address });
+				}
+			});
+			Ok(())
+		}
+
+		#[pallet::weight(T::WeightInfo::unpause_evm_precompile())]
+		#[transactional]
+		pub fn unpause_evm_precompile(origin: OriginFor<T>, address: H160) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			if PausedEvmPrecompiles::<T>::take(&address).is_some() {
+				Self::deposit_event(Event::EvmPrecompileUnpaused { address });
+			};
+			Ok(())
+		}
 	}
 }
 
@@ -144,5 +179,12 @@ where
 			pallet_name,
 		} = call.get_call_metadata();
 		PausedTransactions::<T>::contains_key((pallet_name.as_bytes(), function_name.as_bytes()))
+	}
+}
+
+pub struct PausedPrecompileFilter<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> module_support::PrecompilePauseFilter for PausedPrecompileFilter<T> {
+	fn is_paused(address: H160) -> bool {
+		PausedEvmPrecompiles::<T>::contains_key(&address)
 	}
 }

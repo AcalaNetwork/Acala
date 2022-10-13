@@ -172,6 +172,8 @@ pub mod module {
 		CannotCompletelyFastMatch,
 		// Invalid rate,
 		InvalidRate,
+		/// Invalid last era bumped block config
+		InvalidLastEraBumpedBlock,
 	}
 
 	#[pallet::event]
@@ -534,15 +536,32 @@ pub mod module {
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			if let Some(change) = last_era_bumped_block {
-				LastEraBumpedBlock::<T>::put(change);
-				Self::deposit_event(Event::<T>::LastEraBumpedBlockUpdated {
-					last_era_bumped_block: change,
-				});
-			}
 			if let Some(change) = frequency {
 				BumpEraFrequency::<T>::put(change);
 				Self::deposit_event(Event::<T>::BumpEraFrequencyUpdated { frequency: change });
+			}
+
+			if let Some(change) = last_era_bumped_block {
+				// config last_era_bumped_block should not cause bump era to occur immediately, because
+				// the last_era_bumped_block after the bump era will not be same with the actual relaychain
+				// era bumped block  again, especially if it leads to multiple bump era.
+				// and it should be config after config no-zero bump_era_frequency.
+				let bump_era_frequency = Self::bump_era_frequency();
+				let current_relay_chain_block = T::RelayChainBlockNumber::current_block_number();
+				if !bump_era_frequency.is_zero() {
+					// ensure change in this range (current_relay_chain_block-bump_era_frequency,
+					// current_relay_chain_block]
+					ensure!(
+						change > current_relay_chain_block.saturating_sub(bump_era_frequency)
+							&& change <= current_relay_chain_block,
+						Error::<T>::InvalidLastEraBumpedBlock
+					);
+
+					LastEraBumpedBlock::<T>::put(change);
+					Self::deposit_event(Event::<T>::LastEraBumpedBlockUpdated {
+						last_era_bumped_block: change,
+					});
+				}
 			}
 
 			Ok(())
@@ -702,7 +721,8 @@ pub mod module {
 				.saturating_mul_int(liquid_amount);
 			let liquid_add_to_void = liquid_amount.saturating_sub(liquid_issue_to_minter);
 
-			T::Currency::deposit(T::LiquidCurrencyId::get(), &minter, liquid_issue_to_minter)?;
+			Self::issue_liquid_currency(&minter, liquid_issue_to_minter)?;
+
 			ToBondPool::<T>::mutate(|pool| *pool = pool.saturating_add(amount));
 			TotalVoidLiquid::<T>::mutate(|total| *total = total.saturating_add(liquid_add_to_void));
 
@@ -852,7 +872,7 @@ pub mod module {
 
 						// burn liquid_to_burn for redeemed_staking and burn fee_in_liquid to reward all holders of
 						// liquid currency.
-						T::Currency::withdraw(T::LiquidCurrencyId::get(), &module_account, actual_liquid_to_redeem)?;
+						Self::burn_liquid_currency(&module_account, actual_liquid_to_redeem)?;
 
 						// transfer redeemed_staking to redeemer.
 						T::Currency::transfer(
@@ -916,7 +936,6 @@ pub mod module {
 
 				let commission_rate = Self::commission_rate();
 				if !total_reward_staking.is_zero() && !commission_rate.is_zero() {
-					let liquid_currency_id = T::LiquidCurrencyId::get();
 					let commission_staking_amount = commission_rate.saturating_mul_int(total_reward_staking);
 					let commission_ratio =
 						Ratio::checked_from_rational(commission_staking_amount, TotalStakingBonded::<T>::get())
@@ -926,7 +945,7 @@ pub mod module {
 						.unwrap_or_else(Ratio::max_value);
 					let inflate_liquid_amount = inflate_rate.saturating_mul_int(Self::get_total_liquid_currency());
 
-					T::Currency::deposit(liquid_currency_id, &T::TreasuryAccount::get(), inflate_liquid_amount)?;
+					Self::issue_liquid_currency(&T::TreasuryAccount::get(), inflate_liquid_amount)?;
 				}
 			}
 
@@ -956,11 +975,7 @@ pub mod module {
 			}
 
 			// issue withdrawn unbonded to module account for redeemer to claim
-			T::Currency::deposit(
-				T::StakingCurrencyId::get(),
-				&Self::account_id(),
-				total_withdrawn_staking,
-			)?;
+			Self::issue_staking_currency(&Self::account_id(), total_withdrawn_staking)?;
 			UnclaimedRedemption::<T>::mutate(|total| *total = total.saturating_add(total_withdrawn_staking));
 
 			Ok(())
@@ -1069,7 +1084,7 @@ pub mod module {
 			}
 
 			// burn total_redeem_amount.
-			T::Currency::withdraw(T::LiquidCurrencyId::get(), &Self::account_id(), total_redeem_amount)
+			Self::burn_liquid_currency(&Self::account_id(), total_redeem_amount)
 		}
 
 		pub fn era_amount_should_to_bump(relaychain_block_number: T::BlockNumber) -> EraIndex {
@@ -1108,6 +1123,22 @@ pub mod module {
 			);
 
 			res
+		}
+
+		/// This should be the only function in the system that issues liquid currency
+		fn issue_liquid_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::deposit(T::LiquidCurrencyId::get(), who, amount)
+		}
+
+		/// This should be the only function in the system that burn liquid currency
+		fn burn_liquid_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::withdraw(T::LiquidCurrencyId::get(), who, amount)
+		}
+
+		/// Issue staking currency based on the subaccounts transfer the unbonded staking currency
+		/// to the parachain account
+		fn issue_staking_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::deposit(T::StakingCurrencyId::get(), who, amount)
 		}
 	}
 
