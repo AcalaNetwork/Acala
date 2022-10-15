@@ -38,7 +38,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-05-15
+          toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
@@ -72,7 +72,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-05-15
+          toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
@@ -94,7 +94,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-05-15
+          toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
@@ -124,7 +124,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-05-15
+          toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
