@@ -25,7 +25,7 @@ jobs:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
         if: ${{ github.ref != 'refs/heads/master' }}
-        uses: styfle/cancel-workflow-action@0.9.0
+        uses: styfle/cancel-workflow-action@0.11.0
         with:
           access_token: ${{ github.token }}
   test:
@@ -41,7 +41,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-05-15
+          toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
@@ -66,5 +66,6 @@ jobs:
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
