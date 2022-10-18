@@ -21,6 +21,9 @@ orml-tokens = { path = "../../orml/tokens", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
+[dev-dependencies]
+serde_json = { version = "1.0.85" }
+
 [features]
 default = ["std"]
 std = [
