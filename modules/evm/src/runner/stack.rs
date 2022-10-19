@@ -42,7 +42,6 @@ pub use primitives::{
 	evm::{convert_decimals_from_evm, EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START},
 	ReserveIdentifier,
 };
-use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::{
@@ -281,10 +280,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 				let address = executor
 					.create_address(evm::CreateScheme::Legacy { caller: source })
 					.unwrap_or_default(); // transact_create will check the address
-				(
-					executor.transact_create(source, value, init, gas_limit, access_list),
-					address,
-				)
+				let (reason, _) = executor.transact_create(source, value, init, gas_limit, access_list);
+				(reason, address)
 			},
 		)
 	}
@@ -303,7 +300,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	) -> Result<CreateInfo, DispatchError> {
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
+		let code_hash = H256::from(sp_io::hashing::keccak_256(&init));
 		Self::execute(
 			source,
 			source,
@@ -321,10 +318,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 						salt,
 					})
 					.unwrap_or_default(); // transact_create2 will check the address
-				(
-					executor.transact_create2(source, value, init, salt, gas_limit, access_list),
-					address,
-				)
+				let (reason, _) = executor.transact_create2(source, value, init, salt, gas_limit, access_list);
+				(reason, address)
 			},
 		)
 	}
@@ -353,10 +348,9 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			false,
 			&precompiles,
 			|executor| {
-				(
-					executor.transact_create_at_address(source, address, value, init, gas_limit, access_list),
-					address,
-				)
+				let (reason, _) =
+					executor.transact_create_at_address(source, address, value, init, gas_limit, access_list);
+				(reason, address)
 			},
 		)
 	}
@@ -417,10 +411,8 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 				let address = executor
 					.create_address(evm::CreateScheme::Legacy { caller: source })
 					.unwrap_or_default(); // transact_create will check the address
-				(
-					executor.transact_create(source, value, init, gas_limit, access_list),
-					address,
-				)
+				let (reason, _) = executor.transact_create(source, value, init, gas_limit, access_list);
+				(reason, address)
 			},
 		)
 	}
@@ -624,7 +616,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_hash(&self, number: U256) -> H256 {
-		if number > U256::from(u32::max_value()) {
+		if number > U256::from(u32::MAX) {
 			H256::default()
 		} else {
 			let number = T::BlockNumber::from(number.as_u32());
