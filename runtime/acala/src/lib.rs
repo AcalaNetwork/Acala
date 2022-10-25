@@ -1778,10 +1778,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	(
-		module_incentives::migration::ResetRewardsRecord<Runtime, GetAusdIbtcPoolId>,
-		module_incentives::migration::ClearPendingMultiRewards<Runtime, GetAusdIbtcPoolId>,
-	),
+	(module_incentives::migration::ResetRewardsRecord<Runtime, GetAusdIbtcPoolId>,),
 >;
 
 #[cfg(feature = "runtime-benchmarks")]
