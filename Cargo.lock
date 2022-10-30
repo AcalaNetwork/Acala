@@ -6727,6 +6727,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-asset-registry"
+version = "0.4.1-dev"
+dependencies = [
+ "cumulus-pallet-dmp-queue",
+ "cumulus-pallet-xcm",
+ "cumulus-pallet-xcmp-queue",
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "orml-tokens",
+ "orml-traits",
+ "orml-xcm",
+ "orml-xcm-support",
+ "orml-xtokens",
+ "pallet-balances",
+ "pallet-xcm",
+ "parachain-info",
+ "parity-scale-codec",
+ "polkadot-parachain",
+ "polkadot-runtime-parachains",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
+ "xcm-simulator",
+]
+
+[[package]]
 name = "orml-auction"
 version = "0.4.1-dev"
 dependencies = [
