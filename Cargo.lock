@@ -46,6 +46,7 @@ dependencies = [
  "sc-tracing",
  "sp-core",
  "sp-runtime",
+ "substrate-build-script-utils",
  "try-runtime-cli",
 ]
 
@@ -6818,6 +6819,7 @@ name = "orml-build-script-utils"
 version = "0.4.1-dev"
 dependencies = [
  "platforms 1.1.0",
+ "walkdir",
 ]
 
 [[package]]

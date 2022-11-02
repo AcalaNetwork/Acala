@@ -31,6 +31,7 @@ service = { package = "acala-service", path = "../service", default-features = f
 
 [build-dependencies]
 orml-build-script-utils = { path = "../../orml/build-script-utils"}
+substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
 
 [features]
 default = [ "wasmtime", "cli" ]

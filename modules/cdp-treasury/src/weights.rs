@@ -1,4 +1,3 @@
-
 // This file is part of Acala.
 
 // Copyright (C) 2020-2022 Acala Foundation.
