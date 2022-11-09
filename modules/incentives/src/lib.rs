@@ -418,50 +418,80 @@ impl<T: Config> Pallet<T> {
 		// orml_rewards will claim rewards for all currencies rewards
 		<orml_rewards::Pallet<T>>::claim_rewards(&who, &pool_id);
 
-		let pending_multi_rewards: BTreeMap<CurrencyId, Balance> = PendingMultiRewards::<T>::take(&pool_id, &who);
-		let deduction_rate = Self::claim_reward_deduction_rates(&pool_id);
+		PendingMultiRewards::<T>::mutate_exists(&pool_id, &who, |maybe_pending_multi_rewards| {
+			if let Some(pending_multi_rewards) = maybe_pending_multi_rewards {
+				let deduction_rate = Self::claim_reward_deduction_rates(&pool_id);
 
-		for (currency_id, pending_reward) in pending_multi_rewards {
-			if pending_reward.is_zero() {
-				continue;
-			}
-			// calculate actual rewards and deduction amount
-			let (actual_amount, deduction_amount) = {
-				let deduction_amount = deduction_rate.saturating_mul_int(pending_reward).min(pending_reward);
-				if !deduction_amount.is_zero() {
-					// re-accumulate deduction to rewards pool if deduction amount is not zero
-					let _ = <orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, deduction_amount).map_err(|e| {
-						log::error!(
-							target: "incentives",
-							"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
-							pool_id, currency_id, deduction_amount, e
-						);
+				for (currency_id, pending_reward) in pending_multi_rewards.iter_mut() {
+					if pending_reward.is_zero() {
+						continue;
+					}
+
+					let (should_payout_amount, should_deduction_amount) = {
+						let should_deduction_amount =
+							deduction_rate.saturating_mul_int(*pending_reward).min(*pending_reward);
+						(
+							pending_reward.saturating_sub(should_deduction_amount),
+							should_deduction_amount,
+						)
+					};
+
+					// re-accumulate should_deduction_amount to rewards pool
+					let actual_deduction = match <orml_rewards::Pallet<T>>::accumulate_reward(
+						&pool_id,
+						*currency_id,
+						should_deduction_amount,
+					) {
+						Ok(_) => should_deduction_amount,
+						Err(e) => {
+							log::error!(
+								target: "incentives",
+								"accumulate_reward: failed to re-accumulate reward to pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
+								pool_id, currency_id, should_deduction_amount, e
+							);
+
+							Zero::zero()
+						}
+					};
+
+					// transfer should_payout_amount from module account to `who`
+					let actual_payout =
+						match T::Currency::transfer(*currency_id, &Self::account_id(), &who, should_payout_amount) {
+							Ok(_) => should_payout_amount,
+							Err(e) => {
+								log::error!(
+									target: "incentives",
+									"transfer rewards: {:?} pool failed to transfer {:?} {:?} to {:?} : {:?}",
+									pool_id, currency_id, should_payout_amount, &who, e
+								);
+
+								Zero::zero()
+							}
+						};
+
+					// update state
+					*pending_reward = pending_reward
+						.saturating_sub(actual_deduction)
+						.saturating_sub(actual_payout);
+
+					Self::deposit_event(Event::ClaimRewards {
+						who: who.clone(),
+						pool: pool_id,
+						reward_currency_id: *currency_id,
+						actual_amount: actual_payout,
+						deduction_amount: actual_deduction,
 					});
 				}
-				(pending_reward.saturating_sub(deduction_amount), deduction_amount)
-			};
 
-			// transfer to `who` maybe fail because of the reward amount is below ED and `who` is not alive.
-			// if transfer failed, do not throw err directly and try to put the tiny reward back to pool.
-			let res = T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount);
-			if res.is_err() {
-				let _ = <orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, actual_amount).map_err(|e| {
-					log::error!(
-						target: "incentives",
-						"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
-						pool_id, currency_id, actual_amount, e
-					);
-				});
+				// clear zero value item of BTreeMap
+				pending_multi_rewards.retain(|_, v| *v != 0);
+
+				// if pending_multi_rewards is default, clear the storage
+				if *pending_multi_rewards == BTreeMap::new() {
+					*maybe_pending_multi_rewards = None;
+				}
 			}
-
-			Self::deposit_event(Event::ClaimRewards {
-				who: who.clone(),
-				pool: pool_id,
-				reward_currency_id: currency_id,
-				actual_amount,
-				deduction_amount,
-			});
-		}
+		});
 
 		Ok(())
 	}

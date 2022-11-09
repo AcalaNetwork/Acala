@@ -418,37 +418,49 @@ fn payout_works() {
 #[test]
 fn transfer_failed_when_claim_rewards() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(TokensModule::deposit(AUSD, &VAULT::get(), 100));
+		System::set_block_number(1);
+		assert_ok!(TokensModule::deposit(AUSD, &VAULT::get(), 27));
 		RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(BTC), 100);
-		RewardsModule::add_share(&BOB::get(), &PoolId::Loans(BTC), 100);
-		assert_ok!(RewardsModule::accumulate_reward(&PoolId::Loans(BTC), AUSD, 18));
+		RewardsModule::add_share(&BOB::get(), &PoolId::Loans(BTC), 200);
+		assert_ok!(RewardsModule::accumulate_reward(&PoolId::Loans(BTC), AUSD, 27));
 
-		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 100);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 27);
 		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 0);
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(BTC)),
 			PoolInfo {
-				total_shares: 200,
-				rewards: vec![(AUSD, (18, 0))].into_iter().collect(),
+				total_shares: 300,
+				rewards: vec![(AUSD, (27, 0))].into_iter().collect(),
 			}
 		);
 		assert_eq!(
 			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(BTC), ALICE::get()),
 			(100, Default::default())
 		);
+		assert_eq!(
+			IncentivesModule::pending_multi_rewards(PoolId::Loans(BTC), ALICE::get()),
+			Default::default()
+		);
 
-		// Alice claim rewards, but the rewards are put back to pool because transfer rewards failed.
+		// Alice claim rewards,transfer rewards failed, keep the amount in PendingMultiRewards
 		assert_ok!(IncentivesModule::claim_rewards(
 			Origin::signed(ALICE::get()),
 			PoolId::Loans(BTC)
 		));
+		System::assert_last_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+			who: ALICE::get(),
+			pool: PoolId::Loans(BTC),
+			reward_currency_id: AUSD,
+			actual_amount: 0,
+			deduction_amount: 0,
+		}));
 
-		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 100);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 27);
 		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 0);
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(BTC)),
 			PoolInfo {
-				total_shares: 200,
+				total_shares: 300,
 				rewards: vec![(AUSD, (27, 9))].into_iter().collect(),
 			}
 		);
@@ -456,11 +468,19 @@ fn transfer_failed_when_claim_rewards() {
 			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(BTC), ALICE::get()),
 			(100, vec![(AUSD, 9)].into_iter().collect())
 		);
+		assert_eq!(
+			IncentivesModule::pending_multi_rewards(PoolId::Loans(BTC), ALICE::get()),
+			vec![(AUSD, 9)].into_iter().collect()
+		);
 
 		assert_eq!(TokensModule::free_balance(AUSD, &BOB::get()), 0);
 		assert_eq!(
 			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(BTC), BOB::get()),
-			(100, Default::default())
+			(200, Default::default())
+		);
+		assert_eq!(
+			IncentivesModule::pending_multi_rewards(PoolId::Loans(BTC), BOB::get()),
+			Default::default()
 		);
 
 		// BOB claim reward and receive the reward.
@@ -468,19 +488,136 @@ fn transfer_failed_when_claim_rewards() {
 			Origin::signed(BOB::get()),
 			PoolId::Loans(BTC)
 		));
-		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 87);
-		assert_eq!(TokensModule::free_balance(AUSD, &BOB::get()), 13);
+		System::assert_last_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+			who: BOB::get(),
+			pool: PoolId::Loans(BTC),
+			reward_currency_id: AUSD,
+			actual_amount: 18,
+			deduction_amount: 0,
+		}));
+
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 9);
+		assert_eq!(TokensModule::free_balance(AUSD, &BOB::get()), 18);
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(BTC)),
 			PoolInfo {
-				total_shares: 200,
-				rewards: vec![(AUSD, (27, 22))].into_iter().collect(),
+				total_shares: 300,
+				rewards: vec![(AUSD, (27, 27))].into_iter().collect(),
 			}
 		);
 		assert_eq!(
 			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(BTC), BOB::get()),
-			(100, vec![(AUSD, 13)].into_iter().collect())
+			(200, vec![(AUSD, 18)].into_iter().collect())
 		);
+		assert_eq!(
+			IncentivesModule::pending_multi_rewards(PoolId::Loans(BTC), BOB::get()),
+			Default::default()
+		);
+
+		// accumulate 6 aUSD
+		assert_ok!(TokensModule::deposit(AUSD, &VAULT::get(), 6));
+		assert_ok!(RewardsModule::accumulate_reward(&PoolId::Loans(BTC), AUSD, 6));
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 15);
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Loans(BTC)),
+			PoolInfo {
+				total_shares: 300,
+				rewards: vec![(AUSD, (33, 27))].into_iter().collect(),
+			}
+		);
+
+		// Alice claim rewards again, succeed this time!
+		assert_ok!(IncentivesModule::claim_rewards(
+			Origin::signed(ALICE::get()),
+			PoolId::Loans(BTC)
+		));
+		System::assert_last_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+			who: ALICE::get(),
+			pool: PoolId::Loans(BTC),
+			reward_currency_id: AUSD,
+			actual_amount: 11,
+			deduction_amount: 0,
+		}));
+
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 4);
+		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 11);
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Loans(BTC)),
+			PoolInfo {
+				total_shares: 300,
+				rewards: vec![(AUSD, (33, 29))].into_iter().collect(),
+			}
+		);
+		assert_eq!(
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(BTC), ALICE::get()),
+			(100, vec![(AUSD, 11)].into_iter().collect())
+		);
+		assert_eq!(
+			IncentivesModule::pending_multi_rewards(PoolId::Loans(BTC), ALICE::get()),
+			Default::default()
+		);
+
+		// mock the Vault is enough for some reasons
+		assert_ok!(TokensModule::withdraw(AUSD, &VAULT::get(), 3));
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 1);
+
+		// Bob claim rewards again, transfer rewards failed, keep the amount in PendingMultiRewards
+		assert_ok!(IncentivesModule::claim_rewards(
+			Origin::signed(BOB::get()),
+			PoolId::Loans(BTC)
+		));
+		System::assert_last_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+			who: BOB::get(),
+			pool: PoolId::Loans(BTC),
+			reward_currency_id: AUSD,
+			actual_amount: 0,
+			deduction_amount: 0,
+		}));
+
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 1);
+		assert_eq!(TokensModule::free_balance(AUSD, &BOB::get()), 18);
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Loans(BTC)),
+			PoolInfo {
+				total_shares: 300,
+				rewards: vec![(AUSD, (33, 33))].into_iter().collect(),
+			}
+		);
+		assert_eq!(
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(BTC), BOB::get()),
+			(200, vec![(AUSD, 22)].into_iter().collect())
+		);
+		assert_eq!(
+			IncentivesModule::pending_multi_rewards(PoolId::Loans(BTC), BOB::get()),
+			vec![(AUSD, 4)].into_iter().collect()
+		);
+
+		// depoit enough reward token to module account
+		assert_ok!(TokensModule::deposit(AUSD, &VAULT::get(), 3));
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 4);
+
+		assert_ok!(IncentivesModule::update_claim_reward_deduction_rates(
+			Origin::signed(ROOT::get()),
+			vec![
+				(PoolId::Loans(BTC), Rate::saturating_from_rational(20, 100)),
+				(PoolId::Loans(BTC), Rate::saturating_from_rational(40, 100)),
+				(PoolId::Loans(BTC), Rate::saturating_from_rational(50, 100)),
+			]
+		));
+
+		// mock rewards.PoolInfos is killed for some weird reasons.
+		orml_rewards::PoolInfos::<Runtime>::remove(PoolId::Loans(BTC));
+		assert_eq!(RewardsModule::pool_infos(PoolId::Loans(BTC)), Default::default());
+
+		// Bob claim rewards again, 2 transferred , 2 should be deducted and re-accumulated but failed
+		assert_ok!(IncentivesModule::claim_rewards(
+			Origin::signed(BOB::get()),
+			PoolId::Loans(BTC)
+		));
+		// assert_eq!(
+		// 	RewardsModule::pool_infos(PoolId::Loans(BTC)),
+		// 	Default::default()
+		// );
 	});
 }
 
