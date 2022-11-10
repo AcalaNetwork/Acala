@@ -22,19 +22,17 @@
 
 use super::*;
 use frame_support::{
-	construct_runtime,
-	dispatch::{DispatchError, DispatchResult},
-	ord_parameter_types, parameter_types,
+	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU64, Everything, Nothing},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol};
-use sp_core::{H160, H256};
+use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 use sp_std::cell::RefCell;
-pub use support::{CDPTreasury, DEXManager, Price, Ratio, SwapLimit};
+pub use support::{Price, Ratio, SwapLimit};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -114,122 +112,6 @@ impl orml_tokens::Config for Runtime {
 	type OnKilledTokenAccount = ();
 }
 
-pub struct MockCDPTreasury;
-impl CDPTreasury<AccountId> for MockCDPTreasury {
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-
-	fn get_surplus_pool() -> Balance {
-		unimplemented!()
-	}
-
-	fn get_debit_pool() -> Balance {
-		unimplemented!()
-	}
-
-	fn get_total_collaterals(_: CurrencyId) -> Balance {
-		unimplemented!()
-	}
-
-	fn get_debit_proportion(_: Balance) -> Ratio {
-		unimplemented!()
-	}
-
-	fn on_system_debit(_: Balance) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn on_system_surplus(_: Balance) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn issue_debit(who: &AccountId, debit: Balance, _: bool) -> DispatchResult {
-		TokensModule::deposit(AUSD, who, debit)
-	}
-
-	fn burn_debit(_: &AccountId, _: Balance) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn deposit_surplus(_: &AccountId, _: Balance) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn withdraw_surplus(_: &AccountId, _: Balance) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn deposit_collateral(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn withdraw_collateral(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
-		unimplemented!()
-	}
-}
-
-pub struct MockDEX;
-impl DEXManager<AccountId, Balance, CurrencyId> for MockDEX {
-	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
-		match (currency_id_a, currency_id_b) {
-			(AUSD, BTC) => (500, 100),
-			(AUSD, DOT) => (400, 100),
-			(BTC, AUSD) => (100, 500),
-			(DOT, AUSD) => (100, 400),
-			_ => (0, 0),
-		}
-	}
-
-	fn get_liquidity_token_address(_currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> Option<H160> {
-		unimplemented!()
-	}
-
-	fn get_swap_amount(_: &[CurrencyId], _: SwapLimit<Balance>) -> Option<(Balance, Balance)> {
-		unimplemented!()
-	}
-
-	fn get_best_price_swap_path(
-		_: CurrencyId,
-		_: CurrencyId,
-		_: SwapLimit<Balance>,
-		_: Vec<Vec<CurrencyId>>,
-	) -> Option<(Vec<CurrencyId>, Balance, Balance)> {
-		unimplemented!()
-	}
-
-	fn swap_with_specific_path(
-		_: &AccountId,
-		_: &[CurrencyId],
-		_: SwapLimit<Balance>,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
-		unimplemented!()
-	}
-
-	fn add_liquidity(
-		_: &AccountId,
-		_: CurrencyId,
-		_: CurrencyId,
-		_: Balance,
-		_: Balance,
-		_: Balance,
-		_: bool,
-	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError> {
-		unimplemented!()
-	}
-
-	fn remove_liquidity(
-		_: &AccountId,
-		_: CurrencyId,
-		_: CurrencyId,
-		_: Balance,
-		_: Balance,
-		_: Balance,
-		_: bool,
-	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
-		unimplemented!()
-	}
-}
-
 thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
@@ -254,7 +136,6 @@ impl orml_rewards::Config for Runtime {
 }
 
 parameter_types! {
-	pub const StableCurrencyId: CurrencyId = AUSD;
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 }
@@ -268,13 +149,10 @@ impl Config for Runtime {
 	type Event = Event;
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = ConstU64<10>;
-	type StableCurrencyId = StableCurrencyId;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type EarnShareBooster = EarnShareBooster;
 	type UpdateOrigin = EnsureSignedBy<ROOT, AccountId>;
-	type CDPTreasury = MockCDPTreasury;
 	type Currency = TokensModule;
-	type DEX = MockDEX;
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = ();

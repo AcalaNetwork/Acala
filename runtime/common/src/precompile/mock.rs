@@ -747,13 +747,10 @@ impl module_incentives::Config for Test {
 	type Event = Event;
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = ConstU32<10>;
-	type StableCurrencyId = GetStableCurrencyId;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type EarnShareBooster = EarnShareBooster;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type CDPTreasury = CDPTreasury;
 	type Currency = Tokens;
-	type DEX = DexModule;
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = ();

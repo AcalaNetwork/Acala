@@ -1256,14 +1256,11 @@ parameter_types! {
 impl module_incentives::Config for Runtime {
 	type Event = Event;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
-	type StableCurrencyId = GetStableCurrencyId;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type EarnShareBooster = EarnShareBooster;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
-	type CDPTreasury = CdpTreasury;
 	type Currency = Currencies;
-	type DEX = Dex;
 	type EmergencyShutdown = EmergencyShutdown;
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
@@ -1773,14 +1770,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	(module_incentives::migration::ResetRewardsRecord<Runtime, GetAusdIbtcPoolId>,),
->;
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
