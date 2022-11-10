@@ -604,20 +604,6 @@ fn transfer_failed_when_claim_rewards() {
 				(PoolId::Loans(BTC), Rate::saturating_from_rational(50, 100)),
 			]
 		));
-
-		// mock rewards.PoolInfos is killed for some weird reasons.
-		orml_rewards::PoolInfos::<Runtime>::remove(PoolId::Loans(BTC));
-		assert_eq!(RewardsModule::pool_infos(PoolId::Loans(BTC)), Default::default());
-
-		// Bob claim rewards again, 2 transferred , 2 should be deducted and re-accumulated but failed
-		assert_ok!(IncentivesModule::claim_rewards(
-			Origin::signed(BOB::get()),
-			PoolId::Loans(BTC)
-		));
-		// assert_eq!(
-		// 	RewardsModule::pool_infos(PoolId::Loans(BTC)),
-		// 	Default::default()
-		// );
 	});
 }
 
@@ -1125,6 +1111,75 @@ fn earning_booster_should_work() {
 		assert_eq!(
 			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(ACA), ALICE::get()),
 			(0, Default::default())
+		);
+	});
+}
+
+#[test]
+fn transfer_reward_and_update_rewards_storage_atomically_when_accumulate_incentives_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(TokensModule::deposit(AUSD, &RewardsSource::get(), 100));
+		assert_ok!(TokensModule::deposit(ACA, &RewardsSource::get(), 100));
+		assert_eq!(TokensModule::free_balance(ACA, &RewardsSource::get()), 100);
+		assert_eq!(TokensModule::free_balance(AUSD, &RewardsSource::get()), 100);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 0);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 0);
+		assert_eq!(
+			orml_rewards::PoolInfos::<Runtime>::contains_key(PoolId::Dex(LDOT)),
+			false
+		);
+
+		assert_ok!(IncentivesModule::update_incentive_rewards(
+			Origin::signed(ROOT::get()),
+			vec![(PoolId::Loans(LDOT), vec![(ACA, 30), (AUSD, 90)]),],
+		));
+
+		// accumulate ACA and AUSD failed, because pool dosen't exist
+		IncentivesModule::accumulate_incentives(PoolId::Loans(LDOT));
+		assert_eq!(
+			orml_rewards::PoolInfos::<Runtime>::contains_key(PoolId::Dex(LDOT)),
+			false
+		);
+		assert_eq!(TokensModule::free_balance(ACA, &RewardsSource::get()), 100);
+		assert_eq!(TokensModule::free_balance(AUSD, &RewardsSource::get()), 100);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 0);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 0);
+
+		RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(LDOT), 1);
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Loans(LDOT)),
+			PoolInfo {
+				total_shares: 1,
+				..Default::default()
+			}
+		);
+
+		// accumulate ACA and AUSD rewards succeeded
+		IncentivesModule::accumulate_incentives(PoolId::Loans(LDOT));
+		assert_eq!(TokensModule::free_balance(ACA, &RewardsSource::get()), 70);
+		assert_eq!(TokensModule::free_balance(AUSD, &RewardsSource::get()), 10);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 30);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 90);
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Loans(LDOT)),
+			PoolInfo {
+				total_shares: 1,
+				rewards: vec![(ACA, (30, 0)), (AUSD, (90, 0))].into_iter().collect()
+			}
+		);
+
+		// accumulate ACA reward succeeded， accumulate AUSD reward failed
+		IncentivesModule::accumulate_incentives(PoolId::Loans(LDOT));
+		assert_eq!(TokensModule::free_balance(ACA, &RewardsSource::get()), 40);
+		assert_eq!(TokensModule::free_balance(AUSD, &RewardsSource::get()), 10);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 60);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 90);
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Loans(LDOT)),
+			PoolInfo {
+				total_shares: 1,
+				rewards: vec![(ACA, (60, 0)), (AUSD, (90, 0))].into_iter().collect()
+			}
 		);
 	});
 }

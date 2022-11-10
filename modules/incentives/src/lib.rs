@@ -380,38 +380,33 @@ impl<T: Config> Pallet<T> {
 				continue;
 			}
 
-			let res = T::Currency::transfer(
-				reward_currency_id,
-				&T::RewardsSource::get(),
-				&Self::account_id(),
-				reward_amount,
-			);
-
-			match res {
-				Ok(_) => {
-					let _ = <orml_rewards::Pallet<T>>::accumulate_reward(
-						&pool_id,
-						reward_currency_id,
-						reward_amount,
-					)
-					.map_err(|e| {
-						log::error!(
-							target: "incentives",
-							"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
-							pool_id, reward_currency_id, reward_amount, e
-						);
-					});
-				}
-				Err(e) => {
+			// ignore result, if fail, just miss a cycle of rewards
+			let _ =
+				Self::transfer_rewards_and_update_records(pool_id, reward_currency_id, reward_amount).map_err(|e| {
 					log::warn!(
 						target: "incentives",
-						"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
-						This is unexpected but should be safe",
-						reward_amount, reward_currency_id, T::RewardsSource::get(), Self::account_id(), e
+						"accumulate_incentives: failed to accumulate {:?} {:?} rewards for pool {:?} : {:?}",
+						reward_amount, reward_currency_id, pool_id, e
 					);
-				}
-			}
+				});
 		}
+	}
+
+	/// Ensure atomic
+	#[transactional]
+	fn transfer_rewards_and_update_records(
+		pool_id: PoolId,
+		reward_currency_id: CurrencyId,
+		reward_amount: Balance,
+	) -> DispatchResult {
+		T::Currency::transfer(
+			reward_currency_id,
+			&T::RewardsSource::get(),
+			&Self::account_id(),
+			reward_amount,
+		)?;
+		<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, reward_currency_id, reward_amount)?;
+		Ok(())
 	}
 
 	fn do_claim_rewards(who: T::AccountId, pool_id: PoolId) -> DispatchResult {
