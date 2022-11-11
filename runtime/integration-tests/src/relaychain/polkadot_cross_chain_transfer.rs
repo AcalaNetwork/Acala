@@ -22,8 +22,9 @@ use crate::relaychain::fee_test::*;
 use crate::relaychain::polkadot_test_net::*;
 use crate::setup::*;
 
-use frame_support::assert_ok;
+use frame_support::{assert_noop, assert_ok};
 use orml_traits::MultiCurrency;
+use xcm::VersionedXcm;
 use xcm_emulator::TestExt;
 
 pub const ACALA_ID: u32 = 2000;
@@ -198,5 +199,21 @@ fn liquid_crowdloan_xtokens_works() {
 			6 * dollar - foreign_fee
 		);
 		assert_eq!(Tokens::free_balance(LCDOT, &bifrost_reserve_account()), 4 * dollar);
+	});
+}
+
+#[test]
+fn send_arbitrary_xcm_fails() {
+	TestNet::reset();
+
+	Acala::execute_with(|| {
+		assert_noop!(
+			PolkadotXcm::send(
+				acala_runtime::Origin::signed(ALICE.into()),
+				Box::new(MultiLocation::new(1, Here).into()),
+				Box::new(VersionedXcm::from(Xcm(vec![WithdrawAsset((Here, 1).into())]))),
+			),
+			BadOrigin
+		);
 	});
 }
