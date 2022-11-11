@@ -380,7 +380,7 @@ impl<T: Config> Pallet<T> {
 				continue;
 			}
 
-			// ignore result, if fail, just miss a cycle of rewards
+			// ignore result so that failure will not block accumulate other type reward for the pool
 			let _ =
 				Self::transfer_rewards_and_update_records(pool_id, reward_currency_id, reward_amount).map_err(|e| {
 					log::warn!(
@@ -422,7 +422,7 @@ impl<T: Config> Pallet<T> {
 						continue;
 					}
 
-					let (should_payout_amount, should_deduction_amount) = {
+					let (payout_amount, deduction_amount) = {
 						let should_deduction_amount =
 							deduction_rate.saturating_mul_int(*pending_reward).min(*pending_reward);
 						(
@@ -431,51 +431,34 @@ impl<T: Config> Pallet<T> {
 						)
 					};
 
-					// re-accumulate should_deduction_amount to rewards pool
-					let actual_deduction = match <orml_rewards::Pallet<T>>::accumulate_reward(
-						&pool_id,
+					// payout reward to claimer and re-accumuated reward.
+					match Self::payout_reward_and_reaccumulate_reward(
+						pool_id,
+						&who,
 						*currency_id,
-						should_deduction_amount,
+						payout_amount,
+						deduction_amount,
 					) {
-						Ok(_) => should_deduction_amount,
+						Ok(_) => {
+							// update state
+							*pending_reward = Zero::zero();
+
+							Self::deposit_event(Event::ClaimRewards {
+								who: who.clone(),
+								pool: pool_id,
+								reward_currency_id: *currency_id,
+								actual_amount: payout_amount,
+								deduction_amount,
+							});
+						}
 						Err(e) => {
 							log::error!(
 								target: "incentives",
-								"accumulate_reward: failed to re-accumulate reward to pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
-								pool_id, currency_id, should_deduction_amount, e
+								"payout_reward_and_reaccumulate_reward: failed to payout {:?} to {:?} and re-accumulate {:?} {:?} to pool {:?}: {:?}",
+								payout_amount, who, deduction_amount, currency_id, pool_id, e
 							);
-
-							Zero::zero()
 						}
 					};
-
-					// transfer should_payout_amount from module account to `who`
-					let actual_payout =
-						match T::Currency::transfer(*currency_id, &Self::account_id(), &who, should_payout_amount) {
-							Ok(_) => should_payout_amount,
-							Err(e) => {
-								log::error!(
-									target: "incentives",
-									"transfer rewards: {:?} pool failed to transfer {:?} {:?} to {:?} : {:?}",
-									pool_id, currency_id, should_payout_amount, &who, e
-								);
-
-								Zero::zero()
-							}
-						};
-
-					// update state
-					*pending_reward = pending_reward
-						.saturating_sub(actual_deduction)
-						.saturating_sub(actual_payout);
-
-					Self::deposit_event(Event::ClaimRewards {
-						who: who.clone(),
-						pool: pool_id,
-						reward_currency_id: *currency_id,
-						actual_amount: actual_payout,
-						deduction_amount: actual_deduction,
-					});
 				}
 
 				// clear zero value item of BTreeMap
@@ -488,6 +471,22 @@ impl<T: Config> Pallet<T> {
 			}
 		});
 
+		Ok(())
+	}
+
+	/// Ensure atomic
+	#[transactional]
+	fn payout_reward_and_reaccumulate_reward(
+		pool_id: PoolId,
+		who: &T::AccountId,
+		reward_currency_id: CurrencyId,
+		payout_amount: Balance,
+		reaccumulate_amount: Balance,
+	) -> DispatchResult {
+		if !reaccumulate_amount.is_zero() {
+			<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, reward_currency_id, reaccumulate_amount)?;
+		}
+		T::Currency::transfer(reward_currency_id, &Self::account_id(), who, payout_amount)?;
 		Ok(())
 	}
 }
