@@ -24,6 +24,7 @@ use crate::setup::*;
 
 use frame_support::assert_ok;
 use sp_runtime::traits::{AccountIdConversion, BlakeTwo256};
+use xcm::VersionedXcm;
 use xcm_builder::ParentIsPreset;
 
 use karura_runtime::parachains::bifrost::{BNC_KEY, ID as BIFROST_ID};
@@ -1242,6 +1243,22 @@ fn sibling_trap_assets_works() {
 		assert_eq!(
 			Currencies::free_balance(BNC, &KaruraTreasuryAccount::get()),
 			bnc_asset_amount
+		);
+	});
+}
+
+#[test]
+fn send_arbitrary_xcm_fails() {
+	TestNet::reset();
+
+	Karura::execute_with(|| {
+		assert_noop!(
+			PolkadotXcm::send(
+				karura_runtime::Origin::signed(ALICE.into()),
+				Box::new(MultiLocation::new(1, Here).into()),
+				Box::new(VersionedXcm::from(Xcm(vec![WithdrawAsset((Here, 1).into())]))),
+			),
+			BadOrigin
 		);
 	});
 }
