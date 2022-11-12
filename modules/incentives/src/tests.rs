@@ -572,6 +572,16 @@ fn transfer_failed_when_claim_rewards() {
 		assert_ok!(TokensModule::withdraw(AUSD, &VAULT::get(), 3));
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 1);
 
+		assert_eq!(TokensModule::free_balance(AUSD, &BOB::get()), 18);
+		assert_eq!(
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(BTC), BOB::get()),
+			(200, vec![(AUSD, 18), (DOT, 20)].into_iter().collect())
+		);
+		assert_eq!(
+			IncentivesModule::pending_multi_rewards(PoolId::Loans(BTC), BOB::get()),
+			Default::default()
+		);
+
 		// Bob claim rewards, payout AUSD failed for drained vault, the pending reward record of AUSD will
 		// not change.
 		assert_ok!(IncentivesModule::claim_rewards(

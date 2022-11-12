@@ -465,7 +465,7 @@ impl<T: Config> Pallet<T> {
 				pending_multi_rewards.retain(|_, v| *v != 0);
 
 				// if pending_multi_rewards is default, clear the storage
-				if *pending_multi_rewards == BTreeMap::new() {
+				if pending_multi_rewards.is_empty() {
 					*maybe_pending_multi_rewards = None;
 				}
 			}
