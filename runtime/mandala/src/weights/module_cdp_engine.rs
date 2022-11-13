@@ -55,19 +55,19 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: Tokens Accounts (r:1 w:1)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	fn on_initialize(c: u32, ) -> Weight {
-		(38_014_000 as Weight)
+		Weight::from_ref_time(38_014_000)
 			// Standard Error: 779_000
-			.saturating_add((15_770_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(12 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(15_770_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(12 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	// Storage: CdpEngine CollateralParams (r:1 w:1)
 	fn set_collateral_params() -> Weight {
-		(24_141_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(24_141_000)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
 	// Storage: Loans Positions (r:1 w:1)
@@ -92,12 +92,12 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: Auction AuctionEndTime (r:0 w:1)
 	// Storage: Auction Auctions (r:0 w:1)
 	fn liquidate_by_auction(b: u32, ) -> Weight {
-		(157_181_000 as Weight)
+		Weight::from_ref_time(157_181_000)
 			// Standard Error: 60_000
-			.saturating_add((9_624_000 as Weight).saturating_mul(b as Weight))
-			.saturating_add(T::DbWeight::get().reads(23 as Weight))
-			.saturating_add(T::DbWeight::get().writes(15 as Weight))
-			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(b as Weight)))
+			.saturating_add(Weight::from_ref_time(9_624_000).saturating_mul(b as u64))
+			.saturating_add(T::DbWeight::get().reads(23 as u64))
+			.saturating_add(T::DbWeight::get().writes(15 as u64))
+			.saturating_add(T::DbWeight::get().writes((3 as u64).saturating_mul(b as u64)))
 	}
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
 	// Storage: Loans Positions (r:1 w:1)
@@ -120,9 +120,9 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: Dex TradingPairStatuses (r:3 w:0)
 	// Storage: Dex LiquidityPool (r:2 w:2)
 	fn liquidate_by_dex() -> Weight {
-		(212_201_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(32 as Weight))
-			.saturating_add(T::DbWeight::get().writes(16 as Weight))
+		Weight::from_ref_time(212_201_000)
+			.saturating_add(T::DbWeight::get().reads(32 as u64))
+			.saturating_add(T::DbWeight::get().writes(16 as u64))
 	}
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
 	// Storage: Loans Positions (r:1 w:1)
@@ -135,18 +135,18 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: Rewards PoolInfos (r:1 w:1)
 	// Storage: Loans TotalPositions (r:1 w:1)
 	fn settle() -> Weight {
-		(82_897_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(13 as Weight))
-			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+		Weight::from_ref_time(82_897_000)
+			.saturating_add(T::DbWeight::get().reads(13 as u64))
+			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
 	fn register_liquidation_contract() -> Weight {
-		(94_660_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(15 as Weight))
-			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+		Weight::from_ref_time(94_660_000)
+			.saturating_add(T::DbWeight::get().reads(15 as u64))
+			.saturating_add(T::DbWeight::get().writes(9 as u64))
 	}
 	fn deregister_liquidation_contract() -> Weight {
-		(94_660_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(15 as Weight))
-			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+		Weight::from_ref_time(94_660_000)
+			.saturating_add(T::DbWeight::get().reads(15 as u64))
+			.saturating_add(T::DbWeight::get().writes(9 as u64))
 	}
 }

@@ -59,22 +59,22 @@ impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightIn
 	// Storage: Homa TotalVoidLiquid (r:1 w:0)
 	// Storage: Prices LockedPrice (r:0 w:2)
 	fn emergency_shutdown(c: u32, ) -> Weight {
-		(60_648_000 as Weight)
+		Weight::from_ref_time(60_648_000)
 			// Standard Error: 461_000
-			.saturating_add((8_646_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(21 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(8_646_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(21 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
+			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(c as u64)))
 	}
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
 	// Storage: AuctionManager TotalCollateralInAuction (r:4 w:0)
 	// Storage: Loans TotalPositions (r:4 w:0)
 	// Storage: EmergencyShutdown CanRefund (r:0 w:1)
 	fn open_collateral_refund() -> Weight {
-		(24_629_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(9 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(24_629_000)
+			.saturating_add(T::DbWeight::get().reads(9 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: EmergencyShutdown CanRefund (r:1 w:0)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
@@ -84,12 +84,12 @@ impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightIn
 	// Storage: EvmAccounts Accounts (r:0 w:1)
 	// Storage: System Account (r:1 w:0)
 	fn refund_collaterals(c: u32, ) -> Weight {
-		(62_523_000 as Weight)
+		Weight::from_ref_time(62_523_000)
 			// Standard Error: 669_000
-			.saturating_add((17_476_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(10 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(17_476_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(10 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(T::DbWeight::get().writes(4 as u64))
+			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(c as u64)))
 	}
 }

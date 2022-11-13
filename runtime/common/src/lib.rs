@@ -24,12 +24,10 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use cumulus_pallet_parachain_system::CheckAssociatedRelayNumber;
 use frame_support::{
+	dispatch::{DispatchClass, Weight},
 	parameter_types,
 	traits::{Contains, EitherOfDiverse, Get},
-	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
-		DispatchClass, Weight,
-	},
+	weights::constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 	RuntimeDebug,
 };
 use frame_system::{limits, EnsureRoot};
@@ -109,7 +107,7 @@ impl PrecompileCallerFilter for SystemContractsFilter {
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(gas: u64) -> Weight {
-		gas.saturating_mul(gas_to_weight_ratio::RATIO)
+		Weight::from_ref_time(gas.saturating_mul(gas_to_weight_ratio::RATIO))
 	}
 }
 
@@ -133,6 +131,7 @@ pub struct WeightToGas;
 impl Convert<Weight, u64> for WeightToGas {
 	fn convert(weight: Weight) -> u64 {
 		weight
+			.ref_time()
 			.checked_div(gas_to_weight_ratio::RATIO)
 			.expect("Compile-time constant is not zero; qed;")
 	}
@@ -163,7 +162,7 @@ pub const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
 /// The ratio that `Normal` extrinsics should occupy. Start from a conservative value.
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(70);
 /// Parachain only have 0.5 second of computation time.
-pub const MAXIMUM_BLOCK_WEIGHT: Weight = 500 * WEIGHT_PER_MILLIS;
+pub const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_MILLIS.mul(500);
 
 const_assert!(NORMAL_DISPATCH_RATIO.deconstruct() >= AVERAGE_ON_INITIALIZE_RATIO.deconstruct());
 

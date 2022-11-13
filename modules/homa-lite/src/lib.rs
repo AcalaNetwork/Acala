@@ -45,7 +45,7 @@ use sp_std::{
 	ops::Mul,
 	prelude::*,
 };
-use xcm::latest::prelude::*;
+use xcm::{latest::Weight as XcmWeight, prelude::*};
 
 pub use module::*;
 pub use weights::WeightInfo;
@@ -66,7 +66,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_xcm::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -84,7 +84,7 @@ pub mod module {
 		type LiquidCurrencyId: Get<CurrencyId>;
 
 		/// Origin represented Governance
-		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The minimal amount of Staking currency to be locked
 		#[pallet::constant]
@@ -249,7 +249,7 @@ pub mod module {
 	/// xcm_dest_weight: value: Weight
 	#[pallet::storage]
 	#[pallet::getter(fn xcm_dest_weight)]
-	pub type XcmDestWeight<T: Config> = StorageValue<_, Weight, ValueQuery>;
+	pub type XcmDestWeight<T: Config> = StorageValue<_, XcmWeight, ValueQuery>;
 
 	/// Requests to redeem staked currencies.
 	/// RedeemRequests: Map: AccountId => Option<(liquid_amount: Balance, additional_fee: Permill)>
@@ -289,9 +289,9 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
-			let mut current_weight = 0;
+			let mut current_weight = Weight::zero();
 			// If enough weight, process the next XCM unbond.
-			if remaining_weight > <T as Config>::WeightInfo::xcm_unbond() {
+			if remaining_weight.ref_time() > <T as Config>::WeightInfo::xcm_unbond().ref_time() {
 				let mut scheduled_unbond = Self::scheduled_unbond();
 				if !scheduled_unbond.is_empty() {
 					let (staking_amount, block_number) = scheduled_unbond[0];
@@ -312,8 +312,9 @@ pub mod module {
 
 			// With remaining weight, calculate max number of redeems that can be matched
 			let num_redeem_matches = remaining_weight
-				.saturating_sub(current_weight)
-				.checked_div(<T as Config>::WeightInfo::redeem_with_available_staking_balance())
+				.ref_time()
+				.saturating_sub(current_weight.ref_time())
+				.checked_div(<T as Config>::WeightInfo::redeem_with_available_staking_balance().ref_time())
 				.unwrap_or_default();
 
 			// Iterate through existing redeem_requests, and try to match them with `available_staking_balance`
@@ -324,7 +325,7 @@ pub mod module {
 			debug_assert!(res.is_ok());
 			if let Ok((_, count)) = res {
 				current_weight = current_weight.saturating_add(
-					<T as Config>::WeightInfo::redeem_with_available_staking_balance().saturating_mul(count as Weight),
+					<T as Config>::WeightInfo::redeem_with_available_staking_balance().saturating_mul(count.into()),
 				);
 			}
 
@@ -456,7 +457,7 @@ pub mod module {
 		pub fn set_xcm_dest_weight(origin: OriginFor<T>, #[pallet::compact] xcm_dest_weight: Weight) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			XcmDestWeight::<T>::put(xcm_dest_weight);
+			XcmDestWeight::<T>::put(xcm_dest_weight.ref_time());
 			Self::deposit_event(Event::<T>::XcmDestWeightSet {
 				new_weight: xcm_dest_weight,
 			});
@@ -643,7 +644,7 @@ pub mod module {
 		/// redeem requests matched.
 		#[pallet::weight(
 			< T as Config >::WeightInfo::adjust_available_staking_balance_with_no_matches().saturating_add(
-			(*max_num_matches as Weight).saturating_mul(< T as Config >::WeightInfo::redeem_with_available_staking_balance())
+			< T as Config >::WeightInfo::redeem_with_available_staking_balance().saturating_mul((*max_num_matches).into())
 			)
 		)]
 		#[transactional]

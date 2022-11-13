@@ -27,9 +27,9 @@ use frame_support::assert_ok;
 fn set_dummy_work() {
 	new_test_ext().execute_with(|| {
 		assert_eq!(Example::dummy(), None);
-		assert_ok!(Example::set_dummy(Origin::root(), 20));
+		assert_ok!(Example::set_dummy(RuntimeOrigin::root(), 20));
 		assert_eq!(Example::dummy(), Some(20));
-		System::assert_last_event(Event::Example(crate::Event::Dummy { value: 20 }));
+		System::assert_last_event(RuntimeEvent::Example(crate::Event::Dummy { value: 20 }));
 	});
 }
 

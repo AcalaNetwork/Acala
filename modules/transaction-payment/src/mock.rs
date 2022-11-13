@@ -57,35 +57,36 @@ pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 parameter_types! {
-	pub static ExtrinsicBaseWeight: u64 = 0;
+	static ExtrinsicBaseWeight: Weight = Weight::zero();
 }
 
 pub struct BlockWeights;
 impl Get<frame_system::limits::BlockWeights> for BlockWeights {
 	fn get() -> frame_system::limits::BlockWeights {
 		frame_system::limits::BlockWeights::builder()
-			.base_block(0)
+			.base_block(Weight::zero())
 			.for_class(DispatchClass::all(), |weights| {
-				weights.base_extrinsic = EXTRINSIC_BASE_WEIGHT.with(|v| *v.borrow());
+				weights.base_extrinsic = ExtrinsicBaseWeight::get().into();
 			})
 			.for_class(DispatchClass::non_mandatory(), |weights| {
-				weights.max_total = 1024.into();
+				//weights.max_total = Weight::from_ref_time(1024).set_proof_size(u64::MAX).into();
+				weights.max_total = Weight::from_ref_time(1024).into();
 			})
 			.build_or_panic()
 	}
 }
 
 impl frame_system::Config for Runtime {
-	type Origin = Origin;
+	type RuntimeOrigin = RuntimeOrigin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = BlockWeights;
 	type BlockLength = ();
@@ -113,13 +114,16 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
+	type OnSlash = ();
+	type OnDeposit = ();
+	type OnTransfer = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
@@ -131,7 +135,7 @@ impl orml_tokens::Config for Runtime {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<10>;
 	type AccountStore = System;
 	type MaxLocks = ();
@@ -148,7 +152,7 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -181,7 +185,7 @@ parameter_types! {
 }
 
 impl module_dex::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
@@ -269,8 +273,8 @@ ord_parameter_types! {
 }
 
 impl Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type AlternativeFeeSwapDeposit = ConstU128<1000>;
 	type Currency = PalletBalances;
@@ -311,6 +315,11 @@ impl WeightToFeePolynomial for WeightToFee {
 			negative: false,
 		}]
 	}
+
+	//fn weight_to_fee(weight: &Weight) -> Self::Balance {
+	//    Self::Balance::saturated_from(weight.ref_time())
+	//        .saturating_mul(TRANSACTION_BYTE_FEE.with(|v| *v.borrow()))
+	//}
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -333,7 +342,7 @@ construct_runtime!(
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
-	base_weight: u64,
+	base_weight: Weight,
 	byte_fee: u128,
 	weight_to_fee: u128,
 	tip_per_weight_step: u128,
@@ -344,7 +353,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			balances: vec![(ALICE, AUSD, 10000), (ALICE, DOT, 1000), (ALICE, LDOT, 1000)],
-			base_weight: 0,
+			base_weight: Weight::zero(),
 			byte_fee: 2,
 			weight_to_fee: 1,
 			tip_per_weight_step: 1,
@@ -354,7 +363,7 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	pub fn base_weight(mut self, base_weight: u64) -> Self {
+	pub fn base_weight(mut self, base_weight: Weight) -> Self {
 		self.base_weight = base_weight;
 		self
 	}
@@ -375,10 +384,9 @@ impl ExtBuilder {
 		self
 	}
 	fn set_constants(&self) {
-		EXTRINSIC_BASE_WEIGHT.with(|v| *v.borrow_mut() = self.base_weight);
+		ExtrinsicBaseWeight::mutate(|v| *v = self.base_weight);
 		TRANSACTION_BYTE_FEE.with(|v| *v.borrow_mut() = self.byte_fee);
 		WEIGHT_TO_FEE.with(|v| *v.borrow_mut() = self.weight_to_fee);
-		TIP_PER_WEIGHT_STEP.with(|v| *v.borrow_mut() = self.tip_per_weight_step);
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
 		self.set_constants();

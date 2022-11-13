@@ -52,7 +52,6 @@ use support::{
 	CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate,
 };
 
-pub mod migration;
 mod mock;
 mod tests;
 pub mod weights;
@@ -69,7 +68,7 @@ pub mod module {
 		frame_system::Config
 		+ orml_rewards::Config<Share = Balance, Balance = Balance, PoolId = PoolId, CurrencyId = CurrencyId>
 	{
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The period to accumulate rewards
 		#[pallet::constant]
@@ -92,7 +91,7 @@ pub mod module {
 		type EarnShareBooster: Get<Permill>;
 
 		/// The origin which may update incentive related params
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// CDP treasury to issue rewards in stable token
 		type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
@@ -227,7 +226,7 @@ pub mod module {
 
 				T::WeightInfo::on_initialize(count)
 			} else {
-				0
+				Weight::zero()
 			}
 		}
 	}

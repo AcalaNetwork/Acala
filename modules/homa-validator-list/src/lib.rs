@@ -63,25 +63,25 @@ pub trait WeightInfo {
 // TODO: do benchmarking test.
 impl WeightInfo for () {
 	fn bond() -> Weight {
-		10_000
+		Weight::from_ref_time(10_000)
 	}
 	fn unbond() -> Weight {
-		10_000
+		Weight::from_ref_time(10_000)
 	}
 	fn rebond() -> Weight {
-		10_000
+		Weight::from_ref_time(10_000)
 	}
 	fn withdraw_unbonded() -> Weight {
-		10_000
+		Weight::from_ref_time(10_000)
 	}
 	fn freeze(_u: u32) -> Weight {
-		10_000
+		Weight::from_ref_time(10_000)
 	}
 	fn thaw() -> Weight {
-		10_000
+		Weight::from_ref_time(10_000)
 	}
 	fn slash() -> Weight {
-		10_000
+		Weight::from_ref_time(10_000)
 	}
 }
 
@@ -167,7 +167,7 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// The AccountId of a relay chain account.
 		type RelaychainAccountId: Parameter
 			+ Member
@@ -189,9 +189,9 @@ pub mod module {
 		/// The minimum amount of insurance a validator needs.
 		type ValidatorInsuranceThreshold: Get<Balance>;
 		/// The AccountId that can perform a freeze.
-		type FreezeOrigin: EnsureOrigin<Self::Origin>;
+		type FreezeOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		/// The AccountId that can perform a slash.
-		type SlashOrigin: EnsureOrigin<Self::Origin>;
+		type SlashOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		/// Callback to be called when a slash occurs.
 		type OnSlash: Happened<Balance>;
 		/// Exchange rate between staked token and liquid token equivalent.

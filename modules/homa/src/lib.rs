@@ -39,7 +39,6 @@ use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
 pub use module::*;
 pub use weights::WeightInfo;
 
-pub mod migrations;
 mod mock;
 mod tests;
 pub mod weights;
@@ -99,13 +98,13 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Multi-currency support for asset management
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Origin represented Governance
-		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The currency id of the Staking asset
 		#[pallet::constant]

@@ -76,8 +76,8 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup,
-		Verify,
+		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Bounded, Convert, SaturatedConversion,
+		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
@@ -114,7 +114,7 @@ pub use runtime_common::{
 	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT, RENBTC,
 };
-pub use xcm::latest::prelude::*;
+pub use xcm::{latest::Weight as XcmWeight, prelude::*};
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
@@ -209,24 +209,24 @@ parameter_types! {
 }
 
 pub struct BaseCallFilter;
-impl Contains<Call> for BaseCallFilter {
-	fn contains(call: &Call) -> bool {
+impl Contains<RuntimeCall> for BaseCallFilter {
+	fn contains(call: &RuntimeCall) -> bool {
 		!module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call)
-			&& !matches!(call, Call::Democracy(pallet_democracy::Call::propose { .. }),)
+			&& !matches!(call, RuntimeCall::Democracy(pallet_democracy::Call::propose { .. }),)
 	}
 }
 
 impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type Lookup = (Indices, EvmAccounts);
 	type Index = Nonce;
 	type BlockNumber = BlockNumber;
 	type Hash = Hash;
 	type Hashing = BlakeTwo256;
 	type Header = generic::Header<BlockNumber, BlakeTwo256>;
-	type Event = Event;
-	type Origin = Origin;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type BlockHashCount = BlockHashCount;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
@@ -265,7 +265,7 @@ parameter_types! {
 }
 
 impl pallet_session::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	// we don't have stash and controller, thus we don't need the convert as well.
 	type ValidatorIdOf = module_collator_selection::IdentityCollator;
@@ -285,7 +285,7 @@ parameter_types! {
 }
 
 impl module_collator_selection::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -305,7 +305,7 @@ parameter_types! {
 
 impl pallet_indices::Config for Runtime {
 	type AccountIndex = AccountIndex;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type Deposit = IndexDeposit;
 	type WeightInfo = ();
@@ -335,7 +335,7 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = Treasury;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = MaxLocks;
@@ -349,11 +349,12 @@ parameter_types! {
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
 	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
 	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
+	pub MaximumMultiplier: Multiplier = Bounded::max_value();
 }
 
 impl pallet_sudo::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 }
 
 parameter_types! {
@@ -363,9 +364,9 @@ parameter_types! {
 }
 
 impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
-	type Origin = Origin;
-	type Proposal = Call;
-	type Event = Event;
+	type RuntimeOrigin = RuntimeOrigin;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
 	type MotionDuration = GeneralCouncilMotionDuration;
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
@@ -374,7 +375,7 @@ impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
 }
 
 impl pallet_membership::Config<GeneralCouncilMembershipInstance> for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type AddOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type SwapOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
@@ -391,9 +392,9 @@ parameter_types! {
 }
 
 impl pallet_collective::Config<FinancialCouncilInstance> for Runtime {
-	type Origin = Origin;
-	type Proposal = Call;
-	type Event = Event;
+	type RuntimeOrigin = RuntimeOrigin;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
 	type MotionDuration = FinancialCouncilMotionDuration;
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
@@ -402,7 +403,7 @@ impl pallet_collective::Config<FinancialCouncilInstance> for Runtime {
 }
 
 impl pallet_membership::Config<FinancialCouncilMembershipInstance> for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
@@ -419,9 +420,9 @@ parameter_types! {
 }
 
 impl pallet_collective::Config<HomaCouncilInstance> for Runtime {
-	type Origin = Origin;
-	type Proposal = Call;
-	type Event = Event;
+	type RuntimeOrigin = RuntimeOrigin;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
 	type MotionDuration = HomaCouncilMotionDuration;
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
@@ -430,7 +431,7 @@ impl pallet_collective::Config<HomaCouncilInstance> for Runtime {
 }
 
 impl pallet_membership::Config<HomaCouncilMembershipInstance> for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
@@ -447,9 +448,9 @@ parameter_types! {
 }
 
 impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
-	type Origin = Origin;
-	type Proposal = Call;
-	type Event = Event;
+	type RuntimeOrigin = RuntimeOrigin;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
 	type MotionDuration = TechnicalCommitteeMotionDuration;
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
@@ -458,7 +459,7 @@ impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 }
 
 impl pallet_membership::Config<TechnicalCommitteeMembershipInstance> for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
@@ -471,7 +472,7 @@ impl pallet_membership::Config<TechnicalCommitteeMembershipInstance> for Runtime
 }
 
 impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
@@ -484,8 +485,8 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 }
 
 impl pallet_utility::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 	type PalletsOrigin = OriginCaller;
 	type WeightInfo = ();
 }
@@ -496,8 +497,8 @@ parameter_types! {
 }
 
 impl pallet_multisig::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 	type Currency = Balances;
 	type DepositBase = MultisigDepositBase;
 	type DepositFactor = MultisigDepositFactor;
@@ -556,7 +557,7 @@ impl pallet_treasury::Config for Runtime {
 	type ApproveOrigin = EnsureRootOrHalfGeneralCouncil;
 	type RejectOrigin = EnsureRootOrHalfGeneralCouncil;
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type OnSlash = ();
 	type ProposalBond = ProposalBond;
 	type ProposalBondMinimum = ProposalBondMinimum;
@@ -570,7 +571,7 @@ impl pallet_treasury::Config for Runtime {
 }
 
 impl pallet_bounties::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BountyDepositBase = BountyDepositBase;
 	type BountyDepositPayoutDelay = BountyDepositPayoutDelay;
 	type BountyUpdatePeriod = BountyUpdatePeriod;
@@ -585,7 +586,7 @@ impl pallet_bounties::Config for Runtime {
 }
 
 impl pallet_tips::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type DataDepositPerByte = DataDepositPerByte;
 	type MaximumReasonLength = MaximumReasonLength;
 	type Tippers = GeneralCouncilProvider;
@@ -602,8 +603,8 @@ parameter_types! {
 }
 
 impl pallet_recovery::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 	type Currency = Balances;
 	type ConfigDepositBase = ConfigDepositBase;
 	type FriendDepositFactor = FriendDepositFactor;
@@ -622,8 +623,8 @@ parameter_types! {
 }
 
 impl pallet_democracy::Config for Runtime {
-	type Proposal = Call;
-	type Event = Event;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type EnactmentPeriod = EnactmentPeriod;
 	type LaunchPeriod = LaunchPeriod;
@@ -665,7 +666,7 @@ impl pallet_democracy::Config for Runtime {
 }
 
 impl orml_auction::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type AuctionId = AuctionId;
 	type Handler = AuctionManager;
@@ -673,10 +674,10 @@ impl orml_auction::Config for Runtime {
 }
 
 impl orml_authority::Config for Runtime {
-	type Event = Event;
-	type Origin = Origin;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type PalletsOrigin = OriginCaller;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type Scheduler = Scheduler;
 	type AsOriginId = AuthoritysOriginId;
 	type AuthorityConfig = AuthorityConfigImpl;
@@ -714,7 +715,7 @@ parameter_types! {
 }
 
 impl orml_payments::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Asset = Currencies;
 	type DisputeResolver = PaymentsDisputeResolver;
 	type IncentivePercentage = IncentivePercentage;
@@ -734,7 +735,7 @@ parameter_types! {
 
 impl pallet_elections_phragmen::Config for Runtime {
 	type PalletId = PhragmenElectionPalletId;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = CurrencyAdapter<Runtime, GetLiquidCurrencyId>;
 	type CurrencyToVote = U128CurrencyToVote;
 	type ChangeMembers = HomaCouncil;
@@ -760,7 +761,7 @@ parameter_types! {
 
 type AcalaDataProvider = orml_oracle::Instance1;
 impl orml_oracle::Config<AcalaDataProvider> for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type OnNewData = ();
 	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn, AcalaDataProvider>;
 	type Time = Timestamp;
@@ -849,13 +850,16 @@ parameter_types! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
+	type OnSlash = ();
+	type OnDeposit = ();
+	type OnTransfer = ();
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
@@ -886,7 +890,7 @@ parameter_types! {
 }
 
 impl module_prices::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Source = AggregatedDataProvider;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
@@ -911,7 +915,7 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -925,33 +929,33 @@ impl module_currencies::Config for Runtime {
 }
 
 pub struct EnsureRootOrTreasury;
-impl EnsureOrigin<Origin> for EnsureRootOrTreasury {
+impl EnsureOrigin<RuntimeOrigin> for EnsureRootOrTreasury {
 	type Success = AccountId;
 
-	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
-		Into::<Result<RawOrigin<AccountId>, Origin>>::into(o).and_then(|o| match o {
+	fn try_origin(o: RuntimeOrigin) -> Result<Self::Success, RuntimeOrigin> {
+		Into::<Result<RawOrigin<AccountId>, RuntimeOrigin>>::into(o).and_then(|o| match o {
 			RawOrigin::Root => Ok(TreasuryPalletId::get().into_account_truncating()),
 			RawOrigin::Signed(caller) => {
 				if caller == TreasuryPalletId::get().into_account_truncating() {
 					Ok(caller)
 				} else {
-					Err(Origin::from(Some(caller)))
+					Err(RuntimeOrigin::from(Some(caller)))
 				}
 			}
-			r => Err(Origin::from(r)),
+			r => Err(RuntimeOrigin::from(r)),
 		})
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin() -> Origin {
+	fn successful_origin() -> RuntimeOrigin {
 		let zero_account_id = AccountId::decode(&mut sp_runtime::traits::TrailingZeroInput::zeroes())
 			.expect("infinite length input; no invalid inputs for type; qed");
-		Origin::from(RawOrigin::Signed(zero_account_id))
+		RuntimeOrigin::from(RawOrigin::Signed(zero_account_id))
 	}
 }
 
 impl orml_vesting::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = pallet_balances::Pallet<Runtime>;
 	type MinVestedTransfer = ConstU128<0>;
 	type VestedTransferOrigin = EnsureRootOrTreasury;
@@ -967,10 +971,10 @@ parameter_types! {
 }
 
 impl pallet_scheduler::Config for Runtime {
-	type Event = Event;
-	type Origin = Origin;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type PalletsOrigin = OriginCaller;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = ConstU32<50>;
@@ -987,7 +991,7 @@ parameter_types! {
 
 impl pallet_preimage::Config for Runtime {
 	type WeightInfo = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
 	// Max size 4MB allowed: 4096 * 1024
@@ -1003,7 +1007,7 @@ parameter_types! {
 }
 
 impl module_auction_manager::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type Auction = Auction;
 	type MinimumIncrementSize = MinimumIncrementSize;
@@ -1018,7 +1022,7 @@ impl module_auction_manager::Config for Runtime {
 }
 
 impl module_loans::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type RiskManager = CdpEngine;
 	type CDPTreasury = CdpTreasury;
@@ -1028,15 +1032,15 @@ impl module_loans::Config for Runtime {
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
-	Call: From<LocalCall>,
+	RuntimeCall: From<LocalCall>,
 {
 	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
-		call: Call,
+		call: RuntimeCall,
 		public: <Signature as sp_runtime::traits::Verify>::Signer,
 		account: AccountId,
 		nonce: Nonce,
 	) -> Option<(
-		Call,
+		RuntimeCall,
 		<UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
 	)> {
 		// take the biggest period possible.
@@ -1080,9 +1084,9 @@ impl frame_system::offchain::SigningTypes for Runtime {
 
 impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
 where
-	Call: From<C>,
+	RuntimeCall: From<C>,
 {
-	type OverarchingCall = Call;
+	type OverarchingCall = RuntimeCall;
 	type Extrinsic = UncheckedExtrinsic;
 }
 
@@ -1097,7 +1101,7 @@ parameter_types! {
 }
 
 impl module_cdp_engine::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
@@ -1129,7 +1133,7 @@ parameter_types! {
 }
 
 impl module_honzon::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type DepositPerAuthorization = DepositPerAuthorization;
 	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
@@ -1137,7 +1141,7 @@ impl module_honzon::Config for Runtime {
 }
 
 impl module_emergency_shutdown::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type PriceSource = Prices;
 	type CDPTreasury = CdpTreasury;
@@ -1165,7 +1169,7 @@ parameter_types! {
 }
 
 impl module_dex::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
@@ -1207,7 +1211,7 @@ parameter_types! {
 }
 
 impl module_cdp_treasury::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = AuctionManager;
@@ -1222,7 +1226,7 @@ impl module_cdp_treasury::Config for Runtime {
 }
 
 impl module_transaction_pause::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type WeightInfo = weights::module_transaction_pause::WeightInfo<Runtime>;
 }
@@ -1255,8 +1259,8 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 }
 
 impl module_transaction_payment::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
@@ -1267,7 +1271,8 @@ impl module_transaction_payment::Config for Runtime {
 	type MaxTipsOfPriority = MaxTipsOfPriority;
 	type WeightToFee = WeightToFee;
 	type TransactionByteFee = TransactionByteFee;
-	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
+	type FeeMultiplierUpdate =
+		TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier, MaximumMultiplier>;
 	type Swap = AcalaSwap;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
@@ -1286,7 +1291,7 @@ parameter_types! {
 }
 
 impl module_earning::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
 	type OnUnbonded = module_incentives::OnEarningUnbonded<Runtime>;
@@ -1300,7 +1305,7 @@ impl module_earning::Config for Runtime {
 }
 
 impl module_evm_accounts::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
@@ -1309,7 +1314,7 @@ impl module_evm_accounts::Config for Runtime {
 }
 
 impl module_asset_registry::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
@@ -1331,7 +1336,7 @@ parameter_types! {
 }
 
 impl module_incentives::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
 	type StableCurrencyId = GetStableCurrencyId;
 	type NativeCurrencyId = GetNativeCurrencyId;
@@ -1372,7 +1377,7 @@ parameter_types! {
 }
 
 impl module_homa::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type StakingCurrencyId = GetStakingCurrencyId;
@@ -1401,7 +1406,7 @@ impl Convert<u16, MultiLocation> for SubAccountIndexMultiLocationConvertor {
 }
 
 impl module_xcm_interface::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type ParachainAccount = ParachainAccount;
@@ -1416,7 +1421,7 @@ parameter_types! {
 }
 
 impl module_nominees_election::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
 	type NomineeId = AccountId;
 	type PalletId = NomineesElectionId;
@@ -1434,7 +1439,7 @@ parameter_types! {
 }
 
 impl module_nft::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
@@ -1462,71 +1467,75 @@ parameter_types! {
 	pub AnnouncementDepositFactor: Balance = deposit(0, 66);
 }
 
-impl InstanceFilter<Call> for ProxyType {
-	fn filter(&self, c: &Call) -> bool {
+impl InstanceFilter<RuntimeCall> for ProxyType {
+	fn filter(&self, c: &RuntimeCall) -> bool {
 		match self {
 			// Always allowed Call::Utility no matter type.
 			// Only transactions allowed by Proxy.filter can be executed,
 			// otherwise `BadOrigin` will be returned in Call::Utility.
-			_ if matches!(c, Call::Utility(..)) => true,
+			_ if matches!(c, RuntimeCall::Utility(..)) => true,
 			ProxyType::Any => true,
-			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement { .. })),
+			ProxyType::CancelProxy => matches!(c, RuntimeCall::Proxy(pallet_proxy::Call::reject_announcement { .. })),
 			ProxyType::Governance => {
 				matches!(
 					c,
-					Call::Authority(..)
-						| Call::Democracy(..) | Call::PhragmenElection(..)
-						| Call::GeneralCouncil(..)
-						| Call::FinancialCouncil(..)
-						| Call::HomaCouncil(..) | Call::TechnicalCommittee(..)
-						| Call::Treasury(..) | Call::Bounties(..)
-						| Call::Tips(..)
+					RuntimeCall::Authority(..)
+						| RuntimeCall::Democracy(..)
+						| RuntimeCall::PhragmenElection(..)
+						| RuntimeCall::GeneralCouncil(..)
+						| RuntimeCall::FinancialCouncil(..)
+						| RuntimeCall::HomaCouncil(..)
+						| RuntimeCall::TechnicalCommittee(..)
+						| RuntimeCall::Treasury(..)
+						| RuntimeCall::Bounties(..)
+						| RuntimeCall::Tips(..)
 				)
 			}
 			ProxyType::Auction => {
-				matches!(c, Call::Auction(orml_auction::Call::bid { .. }))
+				matches!(c, RuntimeCall::Auction(orml_auction::Call::bid { .. }))
 			}
 			ProxyType::Swap => {
 				matches!(
 					c,
-					Call::Dex(module_dex::Call::swap_with_exact_supply { .. })
-						| Call::Dex(module_dex::Call::swap_with_exact_target { .. })
-						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_supply { .. })
-						| Call::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_target { .. })
+					RuntimeCall::Dex(module_dex::Call::swap_with_exact_supply { .. })
+						| RuntimeCall::Dex(module_dex::Call::swap_with_exact_target { .. })
+						| RuntimeCall::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_supply { .. })
+						| RuntimeCall::AggregatedDex(module_aggregated_dex::Call::swap_with_exact_target { .. })
 				)
 			}
 			ProxyType::Loan => {
 				matches!(
 					c,
-					Call::Honzon(module_honzon::Call::adjust_loan { .. })
-						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex { .. })
-						| Call::Honzon(module_honzon::Call::adjust_loan_by_debit_value { .. })
-						| Call::Honzon(module_honzon::Call::transfer_debit { .. })
+					RuntimeCall::Honzon(module_honzon::Call::adjust_loan { .. })
+						| RuntimeCall::Honzon(module_honzon::Call::close_loan_has_debit_by_dex { .. })
+						| RuntimeCall::Honzon(module_honzon::Call::adjust_loan_by_debit_value { .. })
+						| RuntimeCall::Honzon(module_honzon::Call::transfer_debit { .. })
 				)
 			}
 			ProxyType::DexLiquidity => {
 				matches!(
 					c,
-					Call::Dex(module_dex::Call::add_liquidity { .. })
-						| Call::Dex(module_dex::Call::remove_liquidity { .. })
+					RuntimeCall::Dex(module_dex::Call::add_liquidity { .. })
+						| RuntimeCall::Dex(module_dex::Call::remove_liquidity { .. })
 				)
 			}
 			ProxyType::StableAssetSwap => {
-				matches!(c, Call::StableAsset(nutsfinance_stable_asset::Call::swap { .. }))
+				matches!(c, RuntimeCall::StableAsset(nutsfinance_stable_asset::Call::swap { .. }))
 			}
 			ProxyType::StableAssetLiquidity => {
 				matches!(
 					c,
-					Call::StableAsset(nutsfinance_stable_asset::Call::mint { .. })
-						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_proportion { .. })
-						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_single { .. })
-						| Call::StableAsset(nutsfinance_stable_asset::Call::redeem_multi { .. })
+					RuntimeCall::StableAsset(nutsfinance_stable_asset::Call::mint { .. })
+						| RuntimeCall::StableAsset(nutsfinance_stable_asset::Call::redeem_proportion { .. })
+						| RuntimeCall::StableAsset(nutsfinance_stable_asset::Call::redeem_single { .. })
+						| RuntimeCall::StableAsset(nutsfinance_stable_asset::Call::redeem_multi { .. })
 				)
 			}
 			ProxyType::Homa => {
 				matches!(
 					c,
-					Call::Homa(module_homa::Call::mint { .. }) | Call::Homa(module_homa::Call::request_redeem { .. })
+					RuntimeCall::Homa(module_homa::Call::mint { .. })
+						| RuntimeCall::Homa(module_homa::Call::request_redeem { .. })
 				)
 			}
 		}
@@ -1542,8 +1551,8 @@ impl InstanceFilter<Call> for ProxyType {
 }
 
 impl pallet_proxy::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 	type Currency = Balances;
 	type ProxyType = ProxyType;
 	type ProxyDepositBase = ProxyDepositBase;
@@ -1562,7 +1571,7 @@ parameter_types! {
 }
 
 impl ecosystem_renvm_bridge::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type BridgedTokenCurrency = Currency<Runtime, RENBTCCurrencyId>;
 	type CurrencyIdentifier = RENBTCIdentifier;
@@ -1622,7 +1631,7 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>>;
 	type PrecompilesValue = PrecompilesValue;
 	type GasToWeight = GasToWeight;
@@ -1650,7 +1659,7 @@ impl module_evm_bridge::Config for Runtime {
 }
 
 impl module_session_manager::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ValidatorSet = Session;
 	type WeightInfo = weights::module_session_manager::WeightInfo<Runtime>;
 }
@@ -1661,7 +1670,7 @@ parameter_types! {
 }
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type OnSystemEvent = ();
 	type SelfParaId = ParachainInfo;
 	type DmpMessageHandler = DmpQueue;
@@ -1676,11 +1685,11 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 impl parachain_info::Config for Runtime {}
 
 impl orml_unknown_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 }
 
 impl orml_xcm::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type SovereignOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
@@ -1739,7 +1748,7 @@ parameter_types! {
 }
 
 impl nutsfinance_stable_asset::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type AssetId = CurrencyId;
 	type Balance = Balance;
 	type Assets = RebaseTokens;
@@ -1768,7 +1777,7 @@ parameter_types!(
 );
 
 impl module_idle_scheduler::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
@@ -1783,14 +1792,14 @@ impl cumulus_pallet_aura_ext::Config for Runtime {}
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct ConvertEthereumTx;
 
-impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtra), InvalidTransaction>>
+impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, SignedExtra), InvalidTransaction>>
 	for ConvertEthereumTx
 {
 	fn convert(
-		(call, mut extra): (Call, SignedExtra),
+		(call, mut extra): (RuntimeCall, SignedExtra),
 	) -> Result<(EthereumTransactionMessage, SignedExtra), InvalidTransaction> {
 		match call {
-			Call::EVM(module_evm::Call::eth_call {
+			RuntimeCall::EVM(module_evm::Call::eth_call {
 				action,
 				input,
 				value,
@@ -1840,9 +1849,9 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct PayerSignatureVerification;
 
-impl Convert<(Call, SignedExtra), Result<(), InvalidTransaction>> for PayerSignatureVerification {
-	fn convert((call, extra): (Call, SignedExtra)) -> Result<(), InvalidTransaction> {
-		if let Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+impl Convert<(RuntimeCall, SignedExtra), Result<(), InvalidTransaction>> for PayerSignatureVerification {
+	fn convert((call, extra): (RuntimeCall, SignedExtra)) -> Result<(), InvalidTransaction> {
+		if let RuntimeCall::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
 			call,
 			payer_addr,
 			payer_sig,
@@ -1888,7 +1897,7 @@ pub type SignedExtra = (
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<
-	Call,
+	RuntimeCall,
 	SignedExtra,
 	ConvertEthereumTx,
 	StorageDepositPerByte,
@@ -1896,9 +1905,9 @@ pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<
 	PayerSignatureVerification,
 >;
 /// The payload being signed in transactions.
-pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
+pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
+pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
 pub type Executive =
 	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
@@ -2258,7 +2267,7 @@ impl_runtime_apis! {
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
 			let request = match utx.0.function {
-				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
+				RuntimeCall::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: Some(target),
@@ -2269,7 +2278,7 @@ impl_runtime_apis! {
 						access_list: Some(access_list)
 					})
 				}
-				Call::EVM(module_evm::Call::create{input, value, gas_limit, storage_limit, access_list}) => {
+				RuntimeCall::EVM(module_evm::Call::create{input, value, gas_limit, storage_limit, access_list}) => {
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,
@@ -2579,7 +2588,7 @@ mod tests {
 		new_test_ext().execute_with(|| {
 			let payer = sp_keyring::AccountKeyring::Charlie;
 
-			let call = Call::Balances(pallet_balances::Call::transfer {
+			let call = RuntimeCall::Balances(pallet_balances::Call::transfer {
 				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Bob.to_account_id()),
 				value: 100,
 			});
@@ -2587,7 +2596,7 @@ mod tests {
 			let raw_payload = SignedPayload::new(call.clone(), extra.clone()).unwrap();
 			let payer_signature = raw_payload.using_encoded(|payload| payer.pair().sign(payload));
 
-			let fee_call = Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+			let fee_call = RuntimeCall::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
 				call: Box::new(call),
 				payer_addr: payer.to_account_id(),
 				payer_sig: sp_runtime::MultiSignature::Sr25519(payer_signature),
@@ -2599,11 +2608,11 @@ mod tests {
 		new_test_ext().execute_with(|| {
 			let hacker = sp_keyring::AccountKeyring::Dave;
 
-			let call = Call::Balances(pallet_balances::Call::transfer {
+			let call = RuntimeCall::Balances(pallet_balances::Call::transfer {
 				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Bob.to_account_id()),
 				value: 100,
 			});
-			let hacker_call = Call::Balances(pallet_balances::Call::transfer {
+			let hacker_call = RuntimeCall::Balances(pallet_balances::Call::transfer {
 				dest: sp_runtime::MultiAddress::Id(sp_keyring::AccountKeyring::Dave.to_account_id()),
 				value: 100,
 			});
@@ -2611,7 +2620,7 @@ mod tests {
 			let raw_payload = SignedPayload::new(hacker_call.clone(), extra.clone()).unwrap();
 			let payer_signature = raw_payload.using_encoded(|payload| hacker.pair().sign(payload));
 
-			let fee_call = Call::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
+			let fee_call = RuntimeCall::TransactionPayment(module_transaction_payment::Call::with_fee_paid_by {
 				call: Box::new(call),
 				payer_addr: hacker.to_account_id(),
 				payer_sig: sp_runtime::MultiSignature::Sr25519(payer_signature),

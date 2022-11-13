@@ -30,7 +30,10 @@ pub use crate::runner::{
 };
 use codec::{Decode, Encode, FullCodec, MaxEncodedLen};
 use frame_support::{
-	dispatch::{DispatchError, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo},
+	dispatch::{
+		DispatchError, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, Pays, PostDispatchInfo,
+		Weight,
+	},
 	ensure,
 	error::BadOrigin,
 	log,
@@ -40,9 +43,7 @@ use frame_support::{
 		BalanceStatus, Currency, EitherOfDiverse, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
 		NamedReservableCurrency, OnKilledAccount,
 	},
-	transactional,
-	weights::{Pays, PostDispatchInfo, Weight},
-	BoundedVec, RuntimeDebug,
+	transactional, BoundedVec, RuntimeDebug,
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureRoot, EnsureSigned};
 use hex_literal::hex;
@@ -192,7 +193,7 @@ pub mod module {
 		type TxFeePerGas: Get<BalanceOf<Self>>;
 
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Precompiles associated with this EVM engine.
 		type PrecompilesType: PrecompileSet;
@@ -210,7 +211,7 @@ pub mod module {
 		}
 
 		/// Required origin for creating system contract.
-		type NetworkContractOrigin: EnsureOrigin<Self::Origin>;
+		type NetworkContractOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The EVM address for creating system contract.
 		#[pallet::constant]
@@ -227,7 +228,7 @@ pub mod module {
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
-		type FreePublicationOrigin: EnsureOrigin<Self::Origin>;
+		type FreePublicationOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// EVM execution runner.
 		type Runner: Runner<Self>;
@@ -1649,7 +1650,7 @@ impl<T: Config> Pallet<T> {
 		Self::remove_contract(caller, contract)
 	}
 
-	fn ensure_root_or_signed(o: T::Origin) -> Result<Either<(), T::AccountId>, BadOrigin> {
+	fn ensure_root_or_signed(o: T::RuntimeOrigin) -> Result<Either<(), T::AccountId>, BadOrigin> {
 		EitherOfDiverse::<EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o)
 			.map_or(Err(BadOrigin), Ok)
 	}
@@ -1965,7 +1966,7 @@ impl<T: Config + Send + Sync> Default for SetEvmOrigin<T> {
 impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 	const IDENTIFIER: &'static str = "SetEvmOrigin";
 	type AccountId = T::AccountId;
-	type Call = T::Call;
+	type Call = T::RuntimeCall;
 	type AdditionalSigned = ();
 	type Pre = ();
 
@@ -2033,7 +2034,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 				// check weight and call `scheduled_call`
 				TaskResult {
 					result: Ok(()),
-					used_weight: 0,
+					used_weight: Weight::zero(),
 					finished: false,
 				}
 			}
@@ -2045,6 +2046,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 				// default limit 100
 				let limit = cmp::min(
 					weight
+						.ref_time()
 						.checked_div(<T as frame_system::Config>::DbWeight::get().write)
 						.unwrap_or(100),
 					100,
@@ -2052,9 +2054,11 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 
 				let r = <AccountStorages<T>>::clear_prefix(contract, limit, None);
 				let count = r.unique;
-				let used_weight = <T as frame_system::Config>::DbWeight::get()
-					.write
-					.saturating_mul(count.into());
+				let used_weight = Weight::from_ref_time(
+					<T as frame_system::Config>::DbWeight::get()
+						.write
+						.saturating_mul(count.into()),
+				);
 				log::debug!(
 					target: "evm",
 					"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",

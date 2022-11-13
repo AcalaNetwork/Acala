@@ -29,6 +29,7 @@
 #![allow(clippy::type_complexity)]
 
 use frame_support::{
+	dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo},
 	dispatch::{DispatchResult, Dispatchable},
 	pallet_prelude::*,
 	traits::{
@@ -36,7 +37,7 @@ use frame_support::{
 		WithdrawReasons,
 	},
 	transactional,
-	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFee},
+	weights::WeightToFee,
 	BoundedVec, PalletId,
 };
 use frame_system::pallet_prelude::*;
@@ -69,7 +70,7 @@ pub use weights::WeightInfo;
 type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
-type CallOf<T> = <T as Config>::Call;
+type RuntimeCallOf<T> = <T as Config>::RuntimeCall;
 
 /// A struct to update the weight multiplier per block. It implements
 /// `Convert<Multiplier, Multiplier>`, meaning that it can convert the
@@ -120,12 +121,14 @@ type CallOf<T> = <T as Config>::Call;
 ///
 /// More info can be found at:
 /// https://w3f-research.readthedocs.io/en/latest/polkadot/Token%20Economics.html
-pub struct TargetedFeeAdjustment<T, S, V, M>(sp_std::marker::PhantomData<(T, S, V, M)>);
+pub struct TargetedFeeAdjustment<T, S, V, M, X>(sp_std::marker::PhantomData<(T, S, V, M, X)>);
 
 /// Something that can convert the current multiplier to the next one.
 pub trait MultiplierUpdate: Convert<Multiplier, Multiplier> {
-	/// Minimum multiplier
+	/// Minimum multiplier. Any outcome of the `convert` function should be at least this.
 	fn min() -> Multiplier;
+	/// Maximum multiplier. Any outcome of the `convert` function should be less or equal this.
+	fn max() -> Multiplier;
 	/// Target block saturation level
 	fn target() -> Perquintill;
 	/// Variability factor
@@ -136,6 +139,9 @@ impl MultiplierUpdate for () {
 	fn min() -> Multiplier {
 		Default::default()
 	}
+	fn max() -> Multiplier {
+		<Multiplier as sp_runtime::traits::Bounded>::max_value()
+	}
 	fn target() -> Perquintill {
 		Default::default()
 	}
@@ -144,15 +150,19 @@ impl MultiplierUpdate for () {
 	}
 }
 
-impl<T, S, V, M> MultiplierUpdate for TargetedFeeAdjustment<T, S, V, M>
+impl<T, S, V, M, X> MultiplierUpdate for TargetedFeeAdjustment<T, S, V, M, X>
 where
 	T: frame_system::Config,
 	S: Get<Perquintill>,
 	V: Get<Multiplier>,
 	M: Get<Multiplier>,
+	X: Get<Multiplier>,
 {
 	fn min() -> Multiplier {
 		M::get()
+	}
+	fn max() -> Multiplier {
+		X::get()
 	}
 	fn target() -> Perquintill {
 		S::get()
@@ -162,18 +172,20 @@ where
 	}
 }
 
-impl<T, S, V, M> Convert<Multiplier, Multiplier> for TargetedFeeAdjustment<T, S, V, M>
+impl<T, S, V, M, X> Convert<Multiplier, Multiplier> for TargetedFeeAdjustment<T, S, V, M, X>
 where
 	T: frame_system::Config,
 	S: Get<Perquintill>,
 	V: Get<Multiplier>,
 	M: Get<Multiplier>,
+	X: Get<Multiplier>,
 {
 	fn convert(previous: Multiplier) -> Multiplier {
 		// Defensive only. The multiplier in storage should always be at most positive.
 		// Nonetheless we recover here in case of errors, because any value below this
 		// would be stale and can never change.
 		let min_multiplier = M::get();
+		let max_multiplier = X::get();
 		let previous = previous.max(min_multiplier);
 
 		let weights = T::BlockWeights::get();
@@ -183,7 +195,11 @@ where
 			.max_total
 			.unwrap_or(weights.max_block);
 		let current_block_weight = <frame_system::Pallet<T>>::block_weight();
-		let normal_block_weight = *current_block_weight.get(DispatchClass::Normal).min(&normal_max_weight);
+		let normal_block_weight = current_block_weight.get(DispatchClass::Normal).min(normal_max_weight);
+
+		// TODO: Handle all weight dimensions
+		let normal_max_weight = normal_max_weight.ref_time();
+		let normal_block_weight = normal_block_weight.ref_time();
 
 		let s = S::get();
 		let v = V::get();
@@ -207,14 +223,45 @@ where
 
 		if positive {
 			let excess = first_term.saturating_add(second_term).saturating_mul(previous);
-			previous.saturating_add(excess).max(min_multiplier)
+			previous.saturating_add(excess).clamp(min_multiplier, max_multiplier)
 		} else {
 			// Defensive-only: first_term > second_term. Safe subtraction.
 			let negative = first_term.saturating_sub(second_term).saturating_mul(previous);
-			previous.saturating_sub(negative).max(min_multiplier)
+			previous.saturating_sub(negative).clamp(min_multiplier, max_multiplier)
 		}
 	}
 }
+
+/// A struct to make the fee multiplier a constant
+pub struct ConstFeeMultiplier<M: Get<Multiplier>>(sp_std::marker::PhantomData<M>);
+
+impl<M: Get<Multiplier>> MultiplierUpdate for ConstFeeMultiplier<M> {
+	fn min() -> Multiplier {
+		M::get()
+	}
+	fn max() -> Multiplier {
+		M::get()
+	}
+	fn target() -> Perquintill {
+		Default::default()
+	}
+	fn variability() -> Multiplier {
+		Default::default()
+	}
+}
+
+impl<M> Convert<Multiplier, Multiplier> for ConstFeeMultiplier<M>
+where
+	M: Get<Multiplier>,
+{
+	fn convert(_previous: Multiplier) -> Multiplier {
+		Self::min()
+	}
+}
+
+/// Default value for NextFeeMultiplier. This is used in genesis and is also used in
+/// NextFeeMultiplierOnEmpty() to provide a value when none exists in storage.
+const MULTIPLIER_DEFAULT_VALUE: Multiplier = Multiplier::from_u32(1);
 
 #[frame_support::pallet]
 pub mod module {
@@ -225,14 +272,14 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The aggregated call type.
-		type Call: Parameter
-			+ Dispatchable<Origin = Self::Origin, PostInfo = PostDispatchInfo, Info = DispatchInfo>
+		type RuntimeCall: Parameter
+			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin, PostInfo = PostDispatchInfo, Info = DispatchInfo>
 			+ GetDispatchInfo
 			+ IsSubType<Call<Self>>
-			+ IsType<<Self as frame_system::Config>::Call>;
+			+ IsType<<Self as frame_system::Config>::RuntimeCall>;
 
 		/// Native currency id, the actual received currency type as fee for
 		/// treasury. Should be ACA
@@ -341,12 +388,12 @@ pub mod module {
 		type DefaultFeeTokens: Get<Vec<CurrencyId>>;
 
 		/// The origin which change swap balance threshold or enable charge fee pool.
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 	}
 
 	#[pallet::type_value]
 	pub fn DefaultFeeMultiplier() -> Multiplier {
-		Multiplier::saturating_from_integer(1)
+		MULTIPLIER_DEFAULT_VALUE
 	}
 
 	#[pallet::error]
@@ -472,8 +519,10 @@ pub mod module {
 			// multiplier without loss.
 			assert!(
 				<Multiplier as sp_runtime::traits::Bounded>::max_value()
-					>= Multiplier::checked_from_integer::<u128>(T::BlockWeights::get().max_block.try_into().unwrap())
-						.unwrap(),
+					>= Multiplier::checked_from_integer::<u128>(
+						T::BlockWeights::get().max_block.ref_time().try_into().unwrap()
+					)
+					.unwrap(),
 			);
 
 			// This is the minimum value of the multiplier. Make sure that if we collapse to
@@ -489,8 +538,9 @@ pub mod module {
 
 			// add 1 percent;
 			let addition = target / 100;
-			if addition == 0 {
-				// this is most likely because in a test setup we set everything to ().
+			if addition == Weight::zero() {
+				// this is most likely because in a test setup we set everything to ()
+				// or to `ConstFeeMultiplier`.
 				return;
 			}
 			target += addition;
@@ -567,7 +617,7 @@ pub mod module {
 		pub fn with_fee_path(
 			origin: OriginFor<T>,
 			_fee_swap_path: Vec<CurrencyId>,
-			call: Box<CallOf<T>>,
+			call: Box<RuntimeCallOf<T>>,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin.clone())?;
 			call.dispatch(origin)
@@ -582,7 +632,7 @@ pub mod module {
 		pub fn with_fee_currency(
 			origin: OriginFor<T>,
 			_currency_id: CurrencyId,
-			call: Box<CallOf<T>>,
+			call: Box<RuntimeCallOf<T>>,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin.clone())?;
 			call.dispatch(origin)
@@ -595,7 +645,7 @@ pub mod module {
 		})]
 		pub fn with_fee_paid_by(
 			origin: OriginFor<T>,
-			call: Box<CallOf<T>>,
+			call: Box<RuntimeCallOf<T>>,
 			_payer_addr: T::AccountId,
 			_payer_sig: MultiSignature,
 		) -> DispatchResultWithPostInfo {
@@ -612,7 +662,7 @@ pub mod module {
 		pub fn with_fee_aggregated_path(
 			origin: OriginFor<T>,
 			_fee_aggregated_path: Vec<AggregatedSwapPath<CurrencyId>>,
-			call: Box<CallOf<T>>,
+			call: Box<RuntimeCallOf<T>>,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin.clone())?;
 			call.dispatch(origin)
@@ -671,7 +721,7 @@ where
 	/// Compute the fee details for a particular transaction.
 	pub fn compute_fee_details(
 		len: u32,
-		info: &DispatchInfoOf<CallOf<T>>,
+		info: &DispatchInfoOf<RuntimeCallOf<T>>,
 		tip: PalletBalanceOf<T>,
 	) -> FeeDetails<PalletBalanceOf<T>> {
 		Self::compute_fee_raw(len, info.weight, tip, info.pays_fee, info.class)
@@ -699,7 +749,11 @@ where
 	/// inclusion_fee = base_fee + len_fee + [targeted_fee_adjustment * weight_fee];
 	/// final_fee = inclusion_fee + tip;
 	/// ```
-	pub fn compute_fee(len: u32, info: &DispatchInfoOf<CallOf<T>>, tip: PalletBalanceOf<T>) -> PalletBalanceOf<T> {
+	pub fn compute_fee(
+		len: u32,
+		info: &DispatchInfoOf<RuntimeCallOf<T>>,
+		tip: PalletBalanceOf<T>,
+	) -> PalletBalanceOf<T> {
 		Self::compute_fee_details(len, info, tip).final_fee()
 	}
 
@@ -707,8 +761,8 @@ where
 	/// transaction.
 	pub fn compute_actual_fee_details(
 		len: u32,
-		info: &DispatchInfoOf<CallOf<T>>,
-		post_info: &PostDispatchInfoOf<CallOf<T>>,
+		info: &DispatchInfoOf<RuntimeCallOf<T>>,
+		post_info: &PostDispatchInfoOf<RuntimeCallOf<T>>,
 		tip: PalletBalanceOf<T>,
 	) -> FeeDetails<PalletBalanceOf<T>> {
 		Self::compute_fee_raw(
@@ -726,8 +780,8 @@ where
 	/// dispatch corrected weight is used for the weight fee calculation.
 	pub fn compute_actual_fee(
 		len: u32,
-		info: &DispatchInfoOf<CallOf<T>>,
-		post_info: &PostDispatchInfoOf<CallOf<T>>,
+		info: &DispatchInfoOf<RuntimeCallOf<T>>,
+		post_info: &PostDispatchInfoOf<RuntimeCallOf<T>>,
 		tip: PalletBalanceOf<T>,
 	) -> PalletBalanceOf<T> {
 		Self::compute_actual_fee_details(len, info, post_info, tip).final_fee()
@@ -807,7 +861,7 @@ where
 	fn ensure_can_charge_fee_with_call(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
-		call: &CallOf<T>,
+		call: &RuntimeCallOf<T>,
 		reason: WithdrawReasons,
 	) -> Result<(T::AccountId, Balance), DispatchError> {
 		match call.is_sub_type() {
@@ -1167,8 +1221,8 @@ where
 	fn withdraw_fee(
 		&self,
 		who: &T::AccountId,
-		call: &CallOf<T>,
-		info: &DispatchInfoOf<CallOf<T>>,
+		call: &RuntimeCallOf<T>,
+		info: &DispatchInfoOf<RuntimeCallOf<T>>,
 		len: usize,
 	) -> Result<
 		(
@@ -1217,7 +1271,7 @@ where
 	/// state of-the-art blockchains, number of per-block transactions is expected to be in a
 	/// range reasonable enough to not saturate the `Balance` type while multiplying by the tip.
 	fn get_priority(
-		info: &DispatchInfoOf<CallOf<T>>,
+		info: &DispatchInfoOf<RuntimeCallOf<T>>,
 		len: usize,
 		tip: PalletBalanceOf<T>,
 		final_fee: PalletBalanceOf<T>,
@@ -1227,8 +1281,12 @@ where
 		let max_block_weight = T::BlockWeights::get().max_block;
 		let max_block_length = *T::BlockLength::get().max.get(info.class) as u64;
 
-		let bounded_weight = info.weight.max(1).min(max_block_weight);
-		let bounded_length = (len as u64).max(1).min(max_block_length);
+		// TODO: Take into account all dimensions of weight
+		let max_block_weight = max_block_weight.ref_time();
+		let info_weight = info.weight.ref_time();
+
+		let bounded_weight = info_weight.clamp(1, max_block_weight);
+		let bounded_length = (len as u64).clamp(1, max_block_length);
 
 		let max_tx_per_block_weight = max_block_weight / bounded_weight;
 		let max_tx_per_block_length = max_block_length / bounded_length;
@@ -1289,7 +1347,7 @@ where
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;
-	type Call = CallOf<T>;
+	type Call = RuntimeCallOf<T>;
 	type AdditionalSigned = ();
 	type Pre = (
 		PalletBalanceOf<T>,
@@ -1345,9 +1403,14 @@ where
 			if !tip.is_zero() && !info.weight.is_zero() {
 				// tip_pre_weight * unspent_weight
 				let refund_tip = tip
-					.checked_div(info.weight.saturated_into::<PalletBalanceOf<T>>())
+					.checked_div(info.weight.ref_time().saturated_into::<PalletBalanceOf<T>>())
 					.expect("checked is non-zero; qed")
-					.saturating_mul(post_info.calc_unspent(info).saturated_into::<PalletBalanceOf<T>>());
+					.saturating_mul(
+						post_info
+							.calc_unspent(info)
+							.ref_time()
+							.saturated_into::<PalletBalanceOf<T>>(),
+					);
 				refund = refund_fee.saturating_add(refund_tip);
 				actual_tip = tip.saturating_sub(refund_tip);
 			}

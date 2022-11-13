@@ -37,7 +37,6 @@ use sp_runtime::traits::Convert;
 use sp_std::{convert::From, prelude::*, vec, vec::Vec};
 use xcm::latest::prelude::*;
 
-pub mod migrations;
 pub use module::*;
 
 #[frame_support::pallet]
@@ -58,10 +57,10 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_xcm::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Origin represented Governance
-		type UpdateOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+		type UpdateOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The currency id of the Staking asset
 		#[pallet::constant]
@@ -174,7 +173,9 @@ pub mod module {
 				T::StakingCurrencyId::get(),
 				amount,
 				T::SovereignSubAccountLocationConvert::convert(sub_account_index),
-				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0,
+				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer)
+					.0
+					.ref_time(),
 			)
 		}
 
@@ -191,7 +192,7 @@ pub mod module {
 					sub_account_index,
 				),
 				xcm_fee,
-				xcm_dest_weight,
+				xcm_dest_weight.ref_time(),
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
 			log::debug!(
@@ -213,7 +214,7 @@ pub mod module {
 					sub_account_index,
 				),
 				xcm_fee,
-				xcm_dest_weight,
+				xcm_dest_weight.ref_time(),
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
 			log::debug!(
@@ -235,7 +236,7 @@ pub mod module {
 					sub_account_index,
 				),
 				xcm_fee,
-				xcm_dest_weight,
+				xcm_dest_weight.ref_time(),
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
 			log::debug!(

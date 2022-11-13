@@ -42,13 +42,13 @@ pub mod module {
 		type Balance: Parameter
 			+ codec::HasCompact
 			+ From<u32>
-			+ Into<Weight>
+			+ Into<u64>
 			+ Default
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 		#[pallet::constant]
 		type SomeConst: Get<Self::Balance>;
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
 
 	#[pallet::error]
@@ -121,7 +121,7 @@ pub mod module {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			Dummy::<T>::put(T::Balance::from(10));
-			10
+			Weight::from_ref_time(10)
 		}
 
 		fn on_finalize(_n: T::BlockNumber) {
@@ -131,7 +131,7 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(<T::Balance as Into<Weight>>::into(new_value.clone()))]
+		#[pallet::weight(<T::Balance as Into<u64>>::into(new_value.clone()))]
 		pub fn set_dummy(origin: OriginFor<T>, #[pallet::compact] new_value: T::Balance) -> DispatchResult {
 			ensure_root(origin)?;
 

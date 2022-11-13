@@ -54,7 +54,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The data source, such as Oracle.
 		type Source: DataProvider<CurrencyId, Price> + DataFeeder<CurrencyId, Price, Self::AccountId>;
@@ -76,7 +76,7 @@ pub mod module {
 		type GetLiquidCurrencyId: Get<CurrencyId>;
 
 		/// The origin which may lock and unlock prices feed to system.
-		type LockOrigin: EnsureOrigin<Self::Origin>;
+		type LockOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The provider of the exchange rate between liquid currency and
 		/// staking currency.
