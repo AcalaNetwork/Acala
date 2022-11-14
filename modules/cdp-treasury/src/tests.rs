@@ -599,3 +599,57 @@ fn exchange_collateral_to_stable_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 67);
 	});
 }
+
+#[test]
+fn set_debit_offset_buffer_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 0);
+		assert_noop!(
+			CDPTreasuryModule::set_debit_offset_buffer(Origin::signed(5), 200),
+			BadOrigin
+		);
+		assert_ok!(CDPTreasuryModule::set_debit_offset_buffer(Origin::signed(1), 200));
+		System::assert_last_event(Event::CDPTreasuryModule(crate::Event::DebitOffsetBufferUpdated {
+			amount: 200,
+		}));
+	});
+}
+
+#[test]
+fn offset_surplus_and_debit_limited_by_debit_offset_buffer() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPTreasuryModule::on_system_surplus(1000));
+		assert_ok!(CDPTreasuryModule::on_system_debit(2000));
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 1000);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 2000);
+		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 0);
+
+		// offset all debit pool when surplus is enough
+		CDPTreasuryModule::offset_surplus_and_debit();
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 1000);
+		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 0);
+
+		assert_ok!(CDPTreasuryModule::set_debit_offset_buffer(Origin::signed(1), 100));
+		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 100);
+		assert_ok!(CDPTreasuryModule::on_system_surplus(2000));
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 2000);
+
+		// keep the buffer for debit pool when surplus is enough
+		CDPTreasuryModule::offset_surplus_and_debit();
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 1100);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
+		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 100);
+
+		assert_ok!(CDPTreasuryModule::set_debit_offset_buffer(Origin::signed(1), 200));
+		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 200);
+		assert_ok!(CDPTreasuryModule::on_system_debit(1400));
+		assert_eq!(CDPTreasuryModule::debit_pool(), 1500);
+
+		CDPTreasuryModule::offset_surplus_and_debit();
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
+		assert_eq!(CDPTreasuryModule::debit_pool(), 400);
+		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 200);
+	});
+}

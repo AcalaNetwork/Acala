@@ -1531,6 +1531,23 @@ impl orml_unknown_tokens::Config for Runtime {
 	type Event = Event;
 }
 
+pub struct GetTotalFrozenStableCurrency;
+impl frame_support::traits::Get<Balance> for GetTotalFrozenStableCurrency {
+	fn get() -> Balance {
+		let stable_currency_id = GetStableCurrencyId::get();
+		let mut total_frozen_stable_currency = Balance::default();
+		for (_, currency_id, orml_tokens::AccountData::<Balance> { free, frozen, .. }) in
+			orml_tokens::Accounts::<Runtime>::iter()
+		{
+			if currency_id == stable_currency_id {
+				total_frozen_stable_currency = total_frozen_stable_currency.saturating_add(free.min(frozen));
+			}
+		}
+
+		total_frozen_stable_currency
+	}
+}
+
 impl orml_xcm::Config for Runtime {
 	type Event = Event;
 	type SovereignOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
@@ -1770,8 +1787,14 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	(module_cdp_treasury::InitializeDebitOffsetBuffer<Runtime, GetTotalFrozenStableCurrency>,),
+>;
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
