@@ -1536,10 +1536,11 @@ impl frame_support::traits::Get<Balance> for GetTotalFrozenStableCurrency {
 	fn get() -> Balance {
 		let stable_currency_id = GetStableCurrencyId::get();
 		let mut total_frozen_stable_currency = Balance::default();
-		for (_, currency_id, orml_tokens::AccountData::<Balance> { free, frozen, .. }) in
-			orml_tokens::Accounts::<Runtime>::iter()
-		{
-			if currency_id == stable_currency_id {
+
+		for (who, currency_id, locks) in orml_tokens::Locks::<Runtime>::iter() {
+			if currency_id == stable_currency_id && !locks.is_empty() {
+				let orml_tokens::AccountData::<Balance> { free, frozen, .. } =
+					orml_tokens::Accounts::<Runtime>::get(who, currency_id);
 				total_frozen_stable_currency = total_frozen_stable_currency.saturating_add(free.min(frozen));
 			}
 		}
