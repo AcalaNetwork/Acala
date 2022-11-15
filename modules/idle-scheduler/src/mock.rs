@@ -77,7 +77,7 @@ impl BlockNumberProvider for MockBlockNumberProvider {
 }
 
 parameter_types! {
-		pub MinimumWeightRemainInBlock: Weight = Weight::from_ref_time(100_000_000_000);
+	pub MinimumWeightRemainInBlock: Weight = Weight::from_ref_time(100_000_000_000);
 }
 
 impl module_idle_scheduler::Config for Runtime {

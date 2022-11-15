@@ -134,7 +134,6 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
 		EvmAccountsModule: evm_accounts::{Pallet, Call, Storage, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},

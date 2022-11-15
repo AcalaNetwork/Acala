@@ -2727,6 +2727,7 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "18.0.0"
+source = "git+https://github.com/zjb0807/ethabi?branch=bump-18.0.0#58d0695e26a1b057bad070c7e26b0388203d9757"
 dependencies = [
  "ethereum-types",
  "hex",
@@ -5938,7 +5939,6 @@ dependencies = [
  "frame-system",
  "module-support",
  "parity-scale-codec",
- "scale-info",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -15002,6 +15002,7 @@ dependencies = [
 [[package]]
 name = "xcm-emulator"
 version = "0.1.0"
+source = "git+https://github.com/shaunxw/xcm-simulator?rev=8492fcc2224fb8fe3bee398faad1fe05948a055b#8492fcc2224fb8fe3bee398faad1fe05948a055b"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",

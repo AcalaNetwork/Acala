@@ -2497,7 +2497,7 @@ mod tests {
 				},
 			);
 
-			let call = Call::EVM(module_evm::Call::eth_call {
+			let call = RuntimeCall::EVM(module_evm::Call::eth_call {
 				action: module_evm::TransactionAction::Create,
 				input: vec![0x01],
 				value: 0,

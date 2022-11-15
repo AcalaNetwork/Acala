@@ -6,7 +6,6 @@ edition = "2021"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-scale-info = { version = "2.2.0", default-features = false, features = ["derive"] }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
@@ -26,7 +25,6 @@ kusama = []
 polkadot = []
 std = [
 	"codec/std",
-	"scale-info/std",
 	"sp-runtime/std",
 	"sp-std/std",
 	"frame-support/std",

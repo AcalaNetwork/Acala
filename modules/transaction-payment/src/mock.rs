@@ -314,11 +314,6 @@ impl WeightToFeePolynomial for WeightToFee {
 			negative: false,
 		}]
 	}
-
-	//fn weight_to_fee(weight: &Weight) -> Self::Balance {
-	//    Self::Balance::saturated_from(weight.ref_time())
-	//        .saturating_mul(TRANSACTION_BYTE_FEE.with(|v| *v.borrow()))
-	//}
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
