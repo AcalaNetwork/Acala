@@ -16,14 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, Authority, AuthoritysOriginId, BlockNumber, Call, Origin, Runtime, System};
+use crate::{AccountId, Authority, AuthoritysOriginId, BlockNumber, Runtime, RuntimeCall, RuntimeOrigin, System};
 
 use sp_runtime::{traits::Hash, Perbill};
 use sp_std::prelude::*;
 
 use frame_support::{
+	dispatch::GetDispatchInfo,
 	traits::{schedule::DispatchTime, OriginTrait},
-	weights::GetDispatchInfo,
 };
 use frame_system::RawOrigin;
 use orml_benchmarking::{runtime_benchmarks, whitelisted_caller};
@@ -33,13 +33,13 @@ runtime_benchmarks! {
 
 	// dispatch a dispatchable as other origin
 	dispatch_as {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let ensure_root_call = RuntimeCall::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
 	}: _(RawOrigin::Root, AuthoritysOriginId::Root, Box::new(ensure_root_call.clone()))
 
 	// schdule a dispatchable to be dispatched at later block.
 	schedule_dispatch_without_delay {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
-		let call = Call::Authority(orml_authority::Call::dispatch_as {
+		let ensure_root_call = RuntimeCall::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 			as_origin: AuthoritysOriginId::Root,
 			call: Box::new(ensure_root_call.clone()),
 		});
@@ -48,8 +48,8 @@ runtime_benchmarks! {
 	// schdule a dispatchable to be dispatched at later block.
 	// ensure that the delay is reached when scheduling
 	schedule_dispatch_with_delay {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
-		let call = Call::Authority(orml_authority::Call::dispatch_as {
+		let ensure_root_call = RuntimeCall::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 			as_origin: AuthoritysOriginId::Root,
 			call: Box::new(ensure_root_call.clone()),
 		});
@@ -57,22 +57,22 @@ runtime_benchmarks! {
 
 	// fast track a scheduled dispatchable.
 	fast_track_scheduled_dispatch {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
-		let call = Call::Authority(orml_authority::Call::dispatch_as {
+		let ensure_root_call = RuntimeCall::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 			as_origin: AuthoritysOriginId::Root,
 			call: Box::new(ensure_root_call.clone()),
 		});
 		System::set_block_number(1u32);
 		Authority::schedule_dispatch(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			DispatchTime::At(2),
 			0,
 			true,
 			Box::new(call.clone())
 		)?;
 		let schedule_origin = {
-			let origin: <Runtime as frame_system::Config>::Origin = From::from(Origin::root());
-			let origin: <Runtime as frame_system::Config>::Origin =
+			let origin: <Runtime as frame_system::Config>::RuntimeOrigin = From::from(RuntimeOrigin::root());
+			let origin: <Runtime as frame_system::Config>::RuntimeOrigin =
 				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin> {
 					delay: 1,
 					origin: Box::new(origin.caller().clone()),
@@ -85,22 +85,22 @@ runtime_benchmarks! {
 
 	// delay a scheduled dispatchable.
 	delay_scheduled_dispatch {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
-		let call = Call::Authority(orml_authority::Call::dispatch_as {
+		let ensure_root_call = RuntimeCall::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 			as_origin: AuthoritysOriginId::Root,
 			call: Box::new(ensure_root_call.clone()),
 		});
 		System::set_block_number(1u32);
 		Authority::schedule_dispatch(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			DispatchTime::At(2),
 			0,
 			true,
 			Box::new(call.clone())
 		)?;
 		let schedule_origin = {
-			let origin: <Runtime as frame_system::Config>::Origin = From::from(Origin::root());
-			let origin: <Runtime as frame_system::Config>::Origin =
+			let origin: <Runtime as frame_system::Config>::RuntimeOrigin = From::from(RuntimeOrigin::root());
+			let origin: <Runtime as frame_system::Config>::RuntimeOrigin =
 				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin> {
 					delay: 1,
 					origin: Box::new(origin.caller().clone()),
@@ -113,22 +113,22 @@ runtime_benchmarks! {
 
 	// cancel a scheduled dispatchable
 	cancel_scheduled_dispatch {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
-		let call = Call::Authority(orml_authority::Call::dispatch_as {
+		let ensure_root_call = RuntimeCall::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 			as_origin: AuthoritysOriginId::Root,
 			call: Box::new(ensure_root_call.clone()),
 		});
 		System::set_block_number(1u32);
 		Authority::schedule_dispatch(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			DispatchTime::At(2),
 			0,
 			true,
 			Box::new(call.clone())
 		)?;
 		let schedule_origin = {
-			let origin: <Runtime as frame_system::Config>::Origin = From::from(Origin::root());
-			let origin: <Runtime as frame_system::Config>::Origin =
+			let origin: <Runtime as frame_system::Config>::RuntimeOrigin = From::from(RuntimeOrigin::root());
+			let origin: <Runtime as frame_system::Config>::RuntimeOrigin =
 				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin> {
 					delay: 1,
 					origin: Box::new(origin.caller().clone()),
@@ -142,7 +142,7 @@ runtime_benchmarks! {
 	// authorize a call that can be triggered later
 	authorize_call {
 		let caller: AccountId = whitelisted_caller();
-		let call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = RuntimeCall::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
 		System::set_block_number(1u32);
 	}: _(RawOrigin::Root, Box::new(call.clone()), Some(caller.clone()))
@@ -152,10 +152,10 @@ runtime_benchmarks! {
 
 	remove_authorized_call {
 		let caller: AccountId = whitelisted_caller();
-		let call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = RuntimeCall::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
 		System::set_block_number(1u32);
-		Authority::authorize_call(Origin::root(), Box::new(call.clone()), Some(caller.clone()))?;
+		Authority::authorize_call(RuntimeOrigin::root(), Box::new(call.clone()), Some(caller.clone()))?;
 	}: _(RawOrigin::Signed(caller), hash)
 	verify {
 		assert_eq!(Authority::saved_calls(&hash), None);
@@ -163,11 +163,11 @@ runtime_benchmarks! {
 
 	trigger_call {
 		let caller: AccountId = whitelisted_caller();
-		let call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = RuntimeCall::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
 		let call_weight_bound = call.get_dispatch_info().weight;
 		System::set_block_number(1u32);
-		Authority::authorize_call(Origin::root(), Box::new(call.clone()), Some(caller.clone()))?;
+		Authority::authorize_call(RuntimeOrigin::root(), Box::new(call.clone()), Some(caller.clone()))?;
 	}: _(RawOrigin::Signed(caller), hash, call_weight_bound)
 	verify {
 		assert_eq!(Authority::saved_calls(&hash), None);

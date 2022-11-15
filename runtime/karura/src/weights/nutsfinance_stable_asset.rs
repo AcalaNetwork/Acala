@@ -52,30 +52,30 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: StableAsset Pools (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn create_pool() -> Weight {
-		(27_424_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+		Weight::from_ref_time(27_424_000)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(4 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: StableAsset Pools (r:1 w:1)
 	fn modify_a() -> Weight {
-		(19_766_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(19_766_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: StableAsset Pools (r:1 w:1)
 	fn modify_fees() -> Weight {
-		(18_975_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(18_975_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: StableAsset Pools (r:1 w:1)
 	fn modify_recipients() -> Weight {
-		(19_158_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(19_158_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: StableAsset Pools (r:1 w:1)
@@ -84,13 +84,13 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:0)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	fn mint(u: u32, ) -> Weight {
-		(96_486_000 as Weight)
+		Weight::from_ref_time(96_486_000)
 			// Standard Error: 459_000
-			.saturating_add((26_523_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(Weight::from_ref_time(26_523_000).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads(8 as u64))
+			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
+			.saturating_add(T::DbWeight::get().writes(7 as u64))
+			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(u as u64)))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: StableAsset Pools (r:1 w:1)
@@ -99,12 +99,12 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:0)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	fn swap(u: u32, ) -> Weight {
-		(112_396_000 as Weight)
+		Weight::from_ref_time(112_396_000)
 			// Standard Error: 454_000
-			.saturating_add((8_328_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+			.saturating_add(Weight::from_ref_time(8_328_000).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads(8 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(u as u64)))
+			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: StableAsset Pools (r:1 w:1)
@@ -113,13 +113,13 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:0)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	fn redeem_proportion(u: u32, ) -> Weight {
-		(106_745_000 as Weight)
+		Weight::from_ref_time(106_745_000)
 			// Standard Error: 438_000
-			.saturating_add((23_133_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(Weight::from_ref_time(23_133_000).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads(7 as u64))
+			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
+			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(u as u64)))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: StableAsset Pools (r:1 w:1)
@@ -128,12 +128,12 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: System Account (r:1 w:0)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	fn redeem_single(u: u32, ) -> Weight {
-		(103_017_000 as Weight)
+		Weight::from_ref_time(103_017_000)
 			// Standard Error: 283_000
-			.saturating_add((13_076_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+			.saturating_add(Weight::from_ref_time(13_076_000).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads(8 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(u as u64)))
+			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: StableAsset Pools (r:1 w:1)
@@ -142,12 +142,12 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: System Account (r:1 w:0)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	fn redeem_multi(u: u32, ) -> Weight {
-		(102_621_000 as Weight)
+		Weight::from_ref_time(102_621_000)
 			// Standard Error: 579_000
-			.saturating_add((23_837_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(Weight::from_ref_time(23_837_000).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads(7 as u64))
+			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
+			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(u as u64)))
 	}
 }

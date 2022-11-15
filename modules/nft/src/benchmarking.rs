@@ -23,7 +23,7 @@
 use sp_std::vec;
 
 use frame_benchmarking::{account, benchmarks};
-use frame_support::{dispatch::DispatchErrorWithPostInfo, traits::Get, weights::DispatchClass};
+use frame_support::{dispatch::DispatchClass, dispatch::DispatchErrorWithPostInfo, traits::Get};
 use frame_system::RawOrigin;
 use sp_runtime::traits::{AccountIdConversion, StaticLookup, UniqueSaturatedInto};
 use sp_std::collections::btree_map::BTreeMap;

@@ -18,8 +18,8 @@
 
 use super::utils::{dollar, inject_liquidity, set_balance, LIQUID, NATIVE, STABLECOIN, STAKING};
 use crate::{
-	AccountId, AssetRegistry, Balance, Currencies, CurrencyId, Dex, Event, NativeTokenExistentialDeposit, Origin,
-	Runtime, StableAsset, System, TransactionPayment, TreasuryPalletId,
+	AccountId, AssetRegistry, Balance, Currencies, CurrencyId, Dex, NativeTokenExistentialDeposit, Runtime,
+	RuntimeEvent, RuntimeOrigin, StableAsset, System, TransactionPayment, TreasuryPalletId,
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::{assert_ok, traits::OnFinalize};
@@ -33,7 +33,7 @@ use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 
-fn assert_has_event(generic_event: Event) {
+fn assert_has_event(generic_event: RuntimeEvent) {
 	System::assert_has_event(generic_event.into());
 }
 
@@ -81,7 +81,7 @@ fn enable_stable_asset() {
 	// create stable asset pool
 	let pool_asset = CurrencyId::StableAssetPoolToken(0);
 	assert_ok!(StableAsset::create_pool(
-		Origin::root(),
+		RuntimeOrigin::root(),
 		pool_asset,
 		vec![STAKING, LIQUID],
 		vec![1u128, 1u128],
@@ -104,7 +104,7 @@ fn enable_stable_asset() {
 		Box::new(asset_metadata.clone())
 	));
 	assert_ok!(StableAsset::mint(
-		Origin::signed(funder.clone()),
+		RuntimeOrigin::signed(funder.clone()),
 		0,
 		vec![100 * dollar(STAKING), 100 * dollar(LIQUID)],
 		0u128

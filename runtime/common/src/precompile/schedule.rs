@@ -361,7 +361,7 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{
-		alice_evm_addr, bob_evm_addr, new_test_ext, run_to_block, Balances, Event as TestEvent, System, Test,
+		alice_evm_addr, bob_evm_addr, new_test_ext, run_to_block, Balances, RuntimeEvent as TestEvent, System, Test,
 	};
 	use hex_literal::hex;
 	use sp_core::H160;

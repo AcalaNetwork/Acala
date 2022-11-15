@@ -52,19 +52,19 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: CdpEngine CollateralParams (r:1 w:0)
 	// Storage: Timestamp Now (r:0 w:1)
 	fn on_initialize(c: u32, ) -> Weight {
-		(9_196_000 as Weight)
+		Weight::from_ref_time(9_196_000)
 			// Standard Error: 205_000
-			.saturating_add((5_446_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+			.saturating_add(Weight::from_ref_time(5_446_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: CdpEngine CollateralParams (r:1 w:1)
 	fn set_collateral_params() -> Weight {
-		(27_260_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(27_260_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
@@ -93,12 +93,12 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: Auction AuctionEndTime (r:0 w:1)
 	// Storage: Auction Auctions (r:0 w:1)
 	fn liquidate_by_auction(b: u32, ) -> Weight {
-		(167_739_000 as Weight)
+		Weight::from_ref_time(167_739_000)
 			// Standard Error: 55_000
-			.saturating_add((11_593_000 as Weight).saturating_mul(b as Weight))
-			.saturating_add(T::DbWeight::get().reads(29 as Weight))
-			.saturating_add(T::DbWeight::get().writes(16 as Weight))
-			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(b as Weight)))
+			.saturating_add(Weight::from_ref_time(11_593_000).saturating_mul(b as u64))
+			.saturating_add(T::DbWeight::get().reads(29 as u64))
+			.saturating_add(T::DbWeight::get().writes(16 as u64))
+			.saturating_add(T::DbWeight::get().writes((3 as u64).saturating_mul(b as u64)))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
@@ -125,9 +125,9 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: StableAsset Pools (r:1 w:0)
 	// Storage: AggregatedDex AggregatedSwapPaths (r:1 w:0)
 	fn liquidate_by_dex() -> Weight {
-		(265_161_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(37 as Weight))
-			.saturating_add(T::DbWeight::get().writes(17 as Weight))
+		Weight::from_ref_time(265_161_000)
+			.saturating_add(T::DbWeight::get().reads(37 as u64))
+			.saturating_add(T::DbWeight::get().writes(17 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
@@ -142,22 +142,22 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: Rewards PoolInfos (r:1 w:1)
 	// Storage: Loans TotalPositions (r:1 w:1)
 	fn settle() -> Weight {
-		(94_545_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(15 as Weight))
-			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+		Weight::from_ref_time(94_545_000)
+			.saturating_add(T::DbWeight::get().reads(15 as u64))
+			.saturating_add(T::DbWeight::get().writes(9 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: CdpEngine LiquidationContracts (r:1 w:1)
 	fn register_liquidation_contract() -> Weight {
-		(14_749_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(14_749_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: CdpEngine LiquidationContracts (r:1 w:1)
 	fn deregister_liquidation_contract() -> Weight {
-		(15_346_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(15_346_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 }

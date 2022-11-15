@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Synchronize with https://github.com/rust-blockchain/evm/blob/9ac4d47b5e/src/executor/stack/executor.rs
+// Synchronize with https://github.com/rust-blockchain/evm/blob/6534c1dd/src/executor/stack/executor.rs
 
 use crate::{encode_revert_message, StorageMeter};
 use core::{cmp::min, convert::Infallible};
@@ -30,7 +30,6 @@ use module_evm_utility::{
 	evm_gasometer::{self as gasometer, Gasometer, StorageTarget},
 	evm_runtime::Handler,
 };
-use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	currency::CurrencyIdType,
 	evm::{
@@ -40,6 +39,7 @@ pub use primitives::{
 	ReserveIdentifier,
 };
 use sha3::{Digest, Keccak256};
+use sp_core::{H160, H256, U256};
 use sp_runtime::traits::Zero;
 use sp_std::{
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
@@ -506,7 +506,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		init_code: Vec<u8>,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
-	) -> ExitReason {
+	) -> (ExitReason, Vec<u8>) {
 		event!(TransactCreate {
 			caller,
 			value,
@@ -516,7 +516,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		});
 
 		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
-			return emit_exit!(e.into());
+			return emit_exit!(e.into(), Vec::new());
 		}
 		self.initialize_with_access_list(access_list);
 
@@ -528,7 +528,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Some(gas_limit),
 			false,
 		) {
-			Capture::Exit((s, _, _)) => emit_exit!(s),
+			Capture::Exit((s, _, v)) => emit_exit!(s, v),
 			Capture::Trap(_) => unreachable!(),
 		}
 	}
@@ -542,7 +542,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		salt: H256,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
-	) -> ExitReason {
+	) -> (ExitReason, Vec<u8>) {
 		let code_hash = H256::from_slice(Keccak256::digest(&init_code).as_slice());
 		event!(TransactCreate2 {
 			caller,
@@ -558,7 +558,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		});
 
 		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
-			return emit_exit!(e.into());
+			return emit_exit!(e.into(), Vec::new());
 		}
 		self.initialize_with_access_list(access_list);
 
@@ -574,7 +574,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Some(gas_limit),
 			false,
 		) {
-			Capture::Exit((s, _, _)) => emit_exit!(s),
+			Capture::Exit((s, _, v)) => emit_exit!(s, v),
 			Capture::Trap(_) => unreachable!(),
 		}
 	}
@@ -588,7 +588,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		init_code: Vec<u8>,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>,
-	) -> ExitReason {
+	) -> (ExitReason, Vec<u8>) {
 		event!(TransactCreate {
 			caller,
 			value,
@@ -598,7 +598,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		});
 
 		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
-			return emit_exit!(e.into());
+			return emit_exit!(e.into(), Vec::new());
 		}
 		self.initialize_with_access_list(access_list);
 
@@ -610,7 +610,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Some(gas_limit),
 			false,
 		) {
-			Capture::Exit((s, _, _)) => emit_exit!(s),
+			Capture::Exit((s, _, v)) => emit_exit!(s, v),
 			Capture::Trap(_) => unreachable!(),
 		}
 	}
@@ -768,10 +768,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		}
 
 		fn check_first_byte(config: &Config, code: &[u8]) -> Result<(), ExitError> {
-			if config.disallow_executable_format {
-				if let Some(0xef) = code.first() {
-					return Err(ExitError::InvalidCode);
-				}
+			if config.disallow_executable_format && Some(&Opcode::EOFMAGIC.as_u8()) == code.first() {
+				return Err(ExitError::InvalidCode(Opcode::EOFMAGIC));
 			}
 			Ok(())
 		}
@@ -1009,9 +1007,13 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			}
 		}
 
-		if let Some(result) = self
-			.precompile_set
-			.execute(code_address, &input, Some(gas_limit), &context, is_static)
+		// At this point, the state has been modified in enter_substate to
+		// reflect both the is_static parameter of this call and the is_static
+		// of the caller context.
+		let precompile_is_static = self.state.metadata().is_static();
+		if let Some(result) =
+			self.precompile_set
+				.execute(code_address, &input, Some(gas_limit), &context, precompile_is_static)
 		{
 			return match result {
 				Ok(PrecompileOutput {

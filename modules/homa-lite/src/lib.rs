@@ -27,7 +27,13 @@ mod mock_no_fees;
 mod tests_no_fees;
 pub mod weights;
 
-use frame_support::{log, pallet_prelude::*, transactional, weights::Weight, BoundedVec};
+use frame_support::{
+	log,
+	pallet_prelude::*,
+	transactional,
+	weights::{OldWeight, Weight},
+	BoundedVec,
+};
 use frame_system::{ensure_signed, pallet_prelude::*};
 
 use module_support::{CallBuilder, ExchangeRate, ExchangeRateProvider, Ratio};
@@ -447,6 +453,28 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Sets the xcm_dest_old_weight for XCM transfers.
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `xcm_dest_weight`: The new weight for XCM transfers.
+		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_dest_weight())]
+		#[allow(deprecated)]
+		#[deprecated(note = "1D weight is used in this extrinsic, please migrate to `set_xcm_dest_weight`")]
+		#[transactional]
+		pub fn set_xcm_dest_old_weight(
+			origin: OriginFor<T>,
+			#[pallet::compact] xcm_dest_weight: OldWeight,
+		) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			XcmDestWeight::<T>::put(xcm_dest_weight.0);
+			Self::deposit_event(Event::<T>::XcmDestWeightSet {
+				new_weight: Weight::from_ref_time(xcm_dest_weight.0),
+			});
+			Ok(())
+		}
+
 		/// Sets the xcm_dest_weight for XCM transfers.
 		/// Requires `T::GovernanceOrigin`
 		///
@@ -454,7 +482,7 @@ pub mod module {
 		/// - `xcm_dest_weight`: The new weight for XCM transfers.
 		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_dest_weight())]
 		#[transactional]
-		pub fn set_xcm_dest_weight(origin: OriginFor<T>, #[pallet::compact] xcm_dest_weight: Weight) -> DispatchResult {
+		pub fn set_xcm_dest_weight(origin: OriginFor<T>, xcm_dest_weight: Weight) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
 			XcmDestWeight::<T>::put(xcm_dest_weight.ref_time());

@@ -39,6 +39,7 @@ use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
 pub use module::*;
 pub use weights::WeightInfo;
 
+pub mod migrations;
 mod mock;
 mod tests;
 pub mod weights;

@@ -51,28 +51,28 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Honzon Authorization (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn authorize() -> Weight {
-		(29_522_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(29_522_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Honzon Authorization (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn unauthorize() -> Weight {
-		(31_091_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(31_091_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:0)
 	// Storage: Honzon Authorization (r:0 w:1)
 	fn unauthorize_all(c: u32, ) -> Weight {
-		(22_533_000 as Weight)
+		Weight::from_ref_time(22_533_000)
 			// Standard Error: 425_000
-			.saturating_add((4_607_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(4_607_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
@@ -89,9 +89,9 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: AcalaOracle Values (r:1 w:0)
 	// Storage: AssetRegistry AssetMetadatas (r:2 w:0)
 	fn adjust_loan() -> Weight {
-		(103_846_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(16 as Weight))
-			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+		Weight::from_ref_time(103_846_000)
+			.saturating_add(T::DbWeight::get().reads(16 as u64))
+			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
@@ -107,9 +107,9 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	// Storage: Loans TotalPositions (r:1 w:1)
 	fn transfer_loan_from() -> Weight {
-		(86_538_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(17 as Weight))
-			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+		Weight::from_ref_time(86_538_000)
+			.saturating_add(T::DbWeight::get().reads(17 as u64))
+			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
@@ -136,9 +136,9 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Tokens TotalIssuance (r:2 w:1)
 	// Storage: Homa TotalVoidLiquid (r:1 w:0)
 	fn close_loan_has_debit_by_dex() -> Weight {
-		(484_807_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(47 as Weight))
-			.saturating_add(T::DbWeight::get().writes(21 as Weight))
+		Weight::from_ref_time(484_807_000)
+			.saturating_add(T::DbWeight::get().reads(47 as u64))
+			.saturating_add(T::DbWeight::get().writes(21 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: CdpEngine CollateralParams (r:1 w:0)
@@ -158,9 +158,9 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: AcalaOracle Values (r:1 w:0)
 	// Storage: AssetRegistry AssetMetadatas (r:2 w:0)
 	fn expand_position_collateral() -> Weight {
-		(228_794_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(32 as Weight))
-			.saturating_add(T::DbWeight::get().writes(13 as Weight))
+		Weight::from_ref_time(228_794_000)
+			.saturating_add(T::DbWeight::get().reads(32 as u64))
+			.saturating_add(T::DbWeight::get().writes(13 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: CdpEngine CollateralParams (r:1 w:0)
@@ -181,9 +181,9 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Rewards PoolInfos (r:1 w:1)
 	// Storage: Loans TotalPositions (r:1 w:1)
 	fn shrink_position_debit() -> Weight {
-		(365_948_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(39 as Weight))
-			.saturating_add(T::DbWeight::get().writes(19 as Weight))
+		Weight::from_ref_time(365_948_000)
+			.saturating_add(T::DbWeight::get().reads(39 as u64))
+			.saturating_add(T::DbWeight::get().writes(19 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Tokens Accounts (r:1 w:1)
@@ -199,9 +199,9 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Homa ToBondPool (r:1 w:0)
 	// Storage: Homa TotalVoidLiquid (r:1 w:0)
 	fn transfer_debit() -> Weight {
-		(136_858_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(21 as Weight))
-			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+		Weight::from_ref_time(136_858_000)
+			.saturating_add(T::DbWeight::get().reads(21 as u64))
+			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
 	// Storage: Loans Positions (r:1 w:0)
 	// Storage: Prices LockedPrice (r:2 w:0)
@@ -213,7 +213,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Homa TotalVoidLiquid (r:1 w:0)
 	// Storage: CdpEngine DebitExchangeRate (r:1 w:0)
 	fn precompile_get_current_collateral_ratio() -> Weight {
-		(32_503_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(11 as Weight))
+		Weight::from_ref_time(32_503_000)
+			.saturating_add(T::DbWeight::get().reads(11 as u64))
 	}
 }

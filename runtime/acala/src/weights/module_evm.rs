@@ -57,9 +57,9 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create() -> Weight {
-		(130_468_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(13 as Weight))
-			.saturating_add(T::DbWeight::get().writes(10 as Weight))
+		Weight::from_ref_time(130_468_000)
+			.saturating_add(T::DbWeight::get().reads(13 as u64))
+			.saturating_add(T::DbWeight::get().writes(10 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
@@ -71,9 +71,9 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create2() -> Weight {
-		(127_533_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(13 as Weight))
-			.saturating_add(T::DbWeight::get().writes(10 as Weight))
+		Weight::from_ref_time(127_533_000)
+			.saturating_add(T::DbWeight::get().reads(13 as u64))
+			.saturating_add(T::DbWeight::get().writes(10 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EvmAccounts Accounts (r:2 w:0)
@@ -85,9 +85,9 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create_nft_contract() -> Weight {
-		(143_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(14 as Weight))
-			.saturating_add(T::DbWeight::get().writes(12 as Weight))
+		Weight::from_ref_time(143_000_000)
+			.saturating_add(T::DbWeight::get().reads(14 as u64))
+			.saturating_add(T::DbWeight::get().writes(12 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EVM Accounts (r:2 w:2)
@@ -98,9 +98,9 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create_predeploy_contract() -> Weight {
-		(144_406_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(13 as Weight))
-			.saturating_add(T::DbWeight::get().writes(11 as Weight))
+		Weight::from_ref_time(144_406_000)
+			.saturating_add(T::DbWeight::get().reads(13 as u64))
+			.saturating_add(T::DbWeight::get().writes(11 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
@@ -111,47 +111,47 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM Codes (r:1 w:0)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn call() -> Weight {
-		(129_822_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(12 as Weight))
-			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+		Weight::from_ref_time(129_822_000)
+			.saturating_add(T::DbWeight::get().reads(12 as u64))
+			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EVM Accounts (r:1 w:1)
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn transfer_maintainer() -> Weight {
-		(89_824_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(89_824_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	// Storage: System Account (r:1 w:1)
 	// Storage: EVM Accounts (r:1 w:1)
 	fn publish_contract() -> Weight {
-		(194_883_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(194_883_000)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EVM Accounts (r:1 w:1)
 	fn publish_free() -> Weight {
-		(21_314_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(21_314_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn enable_contract_development() -> Weight {
-		(94_091_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(94_091_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn disable_contract_development() -> Weight {
-		(94_747_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(94_747_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EVM Accounts (r:1 w:1)
@@ -163,11 +163,11 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	// Storage: EVM Codes (r:0 w:2)
 	fn set_code(c: u32, ) -> Weight {
-		(154_288_000 as Weight)
+		Weight::from_ref_time(154_288_000)
 			// Standard Error: 0
-			.saturating_add((6_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(11 as Weight))
-			.saturating_add(T::DbWeight::get().writes(10 as Weight))
+			.saturating_add(Weight::from_ref_time(6_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(11 as u64))
+			.saturating_add(T::DbWeight::get().writes(10 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
@@ -180,8 +180,8 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: IdleScheduler Tasks (r:0 w:1)
 	// Storage: EVM Codes (r:0 w:1)
 	fn selfdestruct() -> Weight {
-		(114_781_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+		Weight::from_ref_time(114_781_000)
+			.saturating_add(T::DbWeight::get().reads(8 as u64))
+			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
 }

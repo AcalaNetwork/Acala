@@ -33,7 +33,7 @@ impl<T: Config> OnRuntimeUpgrade for ClearDexSavingRewardRates<T> {
 		// clear storage DexSavingRewardRates,
 		let _ = DexSavingRewardRates::<T>::clear(u32::max_value(), None);
 
-		0
+		Weight::zero()
 	}
 
 	#[cfg(feature = "try-runtime")]
@@ -65,7 +65,7 @@ impl<T: Config, GetPoolId: Get<PoolId>> OnRuntimeUpgrade for ClearPendingMultiRe
 		// clear all PendingMultiRewards for specific pool
 		let _ = PendingMultiRewards::<T>::clear_prefix(pool_id, u32::max_value(), None);
 
-		0
+		Weight::zero()
 	}
 
 	#[cfg(feature = "try-runtime")]
@@ -113,7 +113,7 @@ impl<T: Config, GetPoolId: Get<PoolId>> OnRuntimeUpgrade for ResetRewardsRecord<
 		};
 		orml_rewards::PoolInfos::<T>::insert(&pool_id, pool_info);
 
-		0
+		Weight::zero()
 	}
 
 	#[cfg(feature = "try-runtime")]

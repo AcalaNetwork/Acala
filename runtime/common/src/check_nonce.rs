@@ -202,12 +202,12 @@ where
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::mock::{new_test_ext, AccountId32, Call, TestRuntime};
+	use crate::mock::{new_test_ext, AccountId32, RuntimeCall, TestRuntime};
 	use frame_support::{assert_noop, assert_ok};
 
 	/// A simple call, which one doesn't matter.
-	pub const CALL: &<TestRuntime as frame_system::Config>::Call =
-		&Call::System(frame_system::Call::set_heap_pages { pages: 0u64 });
+	pub const CALL: &<TestRuntime as frame_system::Config>::RuntimeCall =
+		&RuntimeCall::System(frame_system::Call::set_heap_pages { pages: 0u64 });
 
 	#[test]
 	fn check_nonce_works() {

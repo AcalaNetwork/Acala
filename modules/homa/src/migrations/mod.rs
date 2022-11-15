@@ -16,33 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Prices, Runtime, RuntimeOrigin};
-
-use super::utils::{dollar, feed_price, STAKING};
-use frame_system::RawOrigin;
-use orml_benchmarking::runtime_benchmarks;
-use sp_std::vec;
-
-runtime_benchmarks! {
-	{ Runtime, module_prices }
-
-	lock_price {
-		// feed price
-		feed_price(vec![(STAKING, dollar(STAKING).into())])?;
-	}: _(RawOrigin::Root, STAKING)
-
-	unlock_price {
-		// feed price
-		feed_price(vec![(STAKING, dollar(STAKING).into())])?;
-		Prices::lock_price(RuntimeOrigin::root(), STAKING)?;
-	}: _(RawOrigin::Root, STAKING)
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use crate::benchmarking::utils::tests::new_test_ext;
-	use orml_benchmarking::impl_benchmark_test_suite;
-
-	impl_benchmark_test_suite!(new_test_ext(),);
-}
+/// Version 1
+///
+/// Adds TotalStakingBonded to homa storage
+pub mod v1;

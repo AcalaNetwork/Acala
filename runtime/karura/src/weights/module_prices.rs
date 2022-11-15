@@ -52,15 +52,15 @@ impl<T: frame_system::Config> module_prices::WeightInfo for WeightInfo<T> {
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:0)
 	// Storage: Prices LockedPrice (r:0 w:1)
 	fn lock_price() -> Weight {
-		(22_053_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(22_053_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Prices LockedPrice (r:1 w:1)
 	fn unlock_price() -> Weight {
-		(17_139_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(17_139_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 }

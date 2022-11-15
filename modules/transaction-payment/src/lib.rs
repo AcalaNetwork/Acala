@@ -70,7 +70,7 @@ pub use weights::WeightInfo;
 type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
-type RuntimeCallOf<T> = <T as Config>::RuntimeCall;
+type CallOf<T> = <T as Config>::RuntimeCall;
 
 /// A struct to update the weight multiplier per block. It implements
 /// `Convert<Multiplier, Multiplier>`, meaning that it can convert the
@@ -617,7 +617,7 @@ pub mod module {
 		pub fn with_fee_path(
 			origin: OriginFor<T>,
 			_fee_swap_path: Vec<CurrencyId>,
-			call: Box<RuntimeCallOf<T>>,
+			call: Box<CallOf<T>>,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin.clone())?;
 			call.dispatch(origin)
@@ -632,7 +632,7 @@ pub mod module {
 		pub fn with_fee_currency(
 			origin: OriginFor<T>,
 			_currency_id: CurrencyId,
-			call: Box<RuntimeCallOf<T>>,
+			call: Box<CallOf<T>>,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin.clone())?;
 			call.dispatch(origin)
@@ -645,7 +645,7 @@ pub mod module {
 		})]
 		pub fn with_fee_paid_by(
 			origin: OriginFor<T>,
-			call: Box<RuntimeCallOf<T>>,
+			call: Box<CallOf<T>>,
 			_payer_addr: T::AccountId,
 			_payer_sig: MultiSignature,
 		) -> DispatchResultWithPostInfo {
@@ -662,7 +662,7 @@ pub mod module {
 		pub fn with_fee_aggregated_path(
 			origin: OriginFor<T>,
 			_fee_aggregated_path: Vec<AggregatedSwapPath<CurrencyId>>,
-			call: Box<RuntimeCallOf<T>>,
+			call: Box<CallOf<T>>,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin.clone())?;
 			call.dispatch(origin)
@@ -721,7 +721,7 @@ where
 	/// Compute the fee details for a particular transaction.
 	pub fn compute_fee_details(
 		len: u32,
-		info: &DispatchInfoOf<RuntimeCallOf<T>>,
+		info: &DispatchInfoOf<CallOf<T>>,
 		tip: PalletBalanceOf<T>,
 	) -> FeeDetails<PalletBalanceOf<T>> {
 		Self::compute_fee_raw(len, info.weight, tip, info.pays_fee, info.class)
@@ -749,11 +749,7 @@ where
 	/// inclusion_fee = base_fee + len_fee + [targeted_fee_adjustment * weight_fee];
 	/// final_fee = inclusion_fee + tip;
 	/// ```
-	pub fn compute_fee(
-		len: u32,
-		info: &DispatchInfoOf<RuntimeCallOf<T>>,
-		tip: PalletBalanceOf<T>,
-	) -> PalletBalanceOf<T> {
+	pub fn compute_fee(len: u32, info: &DispatchInfoOf<CallOf<T>>, tip: PalletBalanceOf<T>) -> PalletBalanceOf<T> {
 		Self::compute_fee_details(len, info, tip).final_fee()
 	}
 
@@ -761,8 +757,8 @@ where
 	/// transaction.
 	pub fn compute_actual_fee_details(
 		len: u32,
-		info: &DispatchInfoOf<RuntimeCallOf<T>>,
-		post_info: &PostDispatchInfoOf<RuntimeCallOf<T>>,
+		info: &DispatchInfoOf<CallOf<T>>,
+		post_info: &PostDispatchInfoOf<CallOf<T>>,
 		tip: PalletBalanceOf<T>,
 	) -> FeeDetails<PalletBalanceOf<T>> {
 		Self::compute_fee_raw(
@@ -780,8 +776,8 @@ where
 	/// dispatch corrected weight is used for the weight fee calculation.
 	pub fn compute_actual_fee(
 		len: u32,
-		info: &DispatchInfoOf<RuntimeCallOf<T>>,
-		post_info: &PostDispatchInfoOf<RuntimeCallOf<T>>,
+		info: &DispatchInfoOf<CallOf<T>>,
+		post_info: &PostDispatchInfoOf<CallOf<T>>,
 		tip: PalletBalanceOf<T>,
 	) -> PalletBalanceOf<T> {
 		Self::compute_actual_fee_details(len, info, post_info, tip).final_fee()
@@ -861,7 +857,7 @@ where
 	fn ensure_can_charge_fee_with_call(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
-		call: &RuntimeCallOf<T>,
+		call: &CallOf<T>,
 		reason: WithdrawReasons,
 	) -> Result<(T::AccountId, Balance), DispatchError> {
 		match call.is_sub_type() {
@@ -1221,8 +1217,8 @@ where
 	fn withdraw_fee(
 		&self,
 		who: &T::AccountId,
-		call: &RuntimeCallOf<T>,
-		info: &DispatchInfoOf<RuntimeCallOf<T>>,
+		call: &CallOf<T>,
+		info: &DispatchInfoOf<CallOf<T>>,
 		len: usize,
 	) -> Result<
 		(
@@ -1271,7 +1267,7 @@ where
 	/// state of-the-art blockchains, number of per-block transactions is expected to be in a
 	/// range reasonable enough to not saturate the `Balance` type while multiplying by the tip.
 	fn get_priority(
-		info: &DispatchInfoOf<RuntimeCallOf<T>>,
+		info: &DispatchInfoOf<CallOf<T>>,
 		len: usize,
 		tip: PalletBalanceOf<T>,
 		final_fee: PalletBalanceOf<T>,
@@ -1347,7 +1343,7 @@ where
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;
-	type Call = RuntimeCallOf<T>;
+	type Call = CallOf<T>;
 	type AdditionalSigned = ();
 	type Pre = (
 		PalletBalanceOf<T>,

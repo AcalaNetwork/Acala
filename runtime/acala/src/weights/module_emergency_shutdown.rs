@@ -51,20 +51,20 @@ impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightIn
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:1)
 	// Storage: CdpEngine CollateralParams (r:1 w:0)
 	fn emergency_shutdown(c: u32, ) -> Weight {
-		(19_160_000 as Weight)
+		Weight::from_ref_time(19_160_000)
 			// Standard Error: 44_000
-			.saturating_add((722_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+			.saturating_add(Weight::from_ref_time(722_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EmergencyShutdown IsShutdown (r:1 w:0)
 	// Storage: CdpEngine CollateralParams (r:1 w:0)
 	// Storage: EmergencyShutdown CanRefund (r:0 w:1)
 	fn open_collateral_refund() -> Weight {
-		(16_968_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(16_968_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: EmergencyShutdown CanRefund (r:1 w:0)
@@ -73,10 +73,10 @@ impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightIn
 	// Storage: Tokens Accounts (r:1 w:1)
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn refund_collaterals(c: u32, ) -> Weight {
-		(46_075_000 as Weight)
+		Weight::from_ref_time(46_075_000)
 			// Standard Error: 39_000
-			.saturating_add((891_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+			.saturating_add(Weight::from_ref_time(891_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(6 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 }

@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, AssetRegistry, CurrencyId, Origin, Runtime, EVM};
+use crate::{AccountId, AssetRegistry, CurrencyId, Runtime, RuntimeOrigin, EVM};
 
 use super::utils::{dollar, set_balance, NATIVE};
 use frame_support::assert_ok;
@@ -48,14 +48,14 @@ pub fn deploy_contract() {
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
 
 	assert_ok!(EVM::create(
-		Origin::signed(alice()),
+		RuntimeOrigin::signed(alice()),
 		code,
 		0,
 		2_100_000,
 		1_000_000,
 		vec![]
 	));
-	assert_ok!(EVM::publish_free(Origin::root(), erc20_address()));
+	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address()));
 }
 
 runtime_benchmarks! {

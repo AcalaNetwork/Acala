@@ -53,13 +53,13 @@ impl<T: frame_system::Config> module_aggregated_dex::WeightInfo for WeightInfo<T
 	// Storage: System Account (r:1 w:1)
 	// Storage: Tokens Accounts (r:2 w:2)
 	fn swap_with_exact_supply(u: u32, ) -> Weight {
-		(70_917_000 as Weight)
+		Weight::from_ref_time(70_917_000)
 			// Standard Error: 1_041_000
-			.saturating_add((8_550_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(Weight::from_ref_time(8_550_000).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(u as u64)))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Dex TradingPairStatuses (r:1 w:0)
@@ -67,21 +67,21 @@ impl<T: frame_system::Config> module_aggregated_dex::WeightInfo for WeightInfo<T
 	// Storage: System Account (r:1 w:1)
 	// Storage: Tokens Accounts (r:2 w:2)
 	fn swap_with_exact_target(u: u32, ) -> Weight {
-		(58_717_000 as Weight)
+		Weight::from_ref_time(58_717_000)
 			// Standard Error: 147_000
-			.saturating_add((15_650_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(Weight::from_ref_time(15_650_000).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(u as u64)))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: AggregatedDex AggregatedSwapPaths (r:0 w:1)
 	fn update_aggregated_swap_paths(n: u32, ) -> Weight {
-		(4_558_000 as Weight)
+		Weight::from_ref_time(4_558_000)
 			// Standard Error: 25_000
-			.saturating_add((1_533_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
+			.saturating_add(Weight::from_ref_time(1_533_000).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(n as u64)))
 	}
 }

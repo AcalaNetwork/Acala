@@ -52,6 +52,7 @@ use support::{
 	CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate,
 };
 
+pub mod migration;
 mod mock;
 mod tests;
 pub mod weights;

@@ -69,8 +69,7 @@ impl Get<frame_system::limits::BlockWeights> for BlockWeights {
 				weights.base_extrinsic = ExtrinsicBaseWeight::get().into();
 			})
 			.for_class(DispatchClass::non_mandatory(), |weights| {
-				//weights.max_total = Weight::from_ref_time(1024).set_proof_size(u64::MAX).into();
-				weights.max_total = Weight::from_ref_time(1024).into();
+				weights.max_total = Weight::from_ref_time(1024).set_proof_size(u64::MAX).into();
 			})
 			.build_or_panic()
 	}
@@ -387,6 +386,7 @@ impl ExtBuilder {
 		ExtrinsicBaseWeight::mutate(|v| *v = self.base_weight);
 		TRANSACTION_BYTE_FEE.with(|v| *v.borrow_mut() = self.byte_fee);
 		WEIGHT_TO_FEE.with(|v| *v.borrow_mut() = self.weight_to_fee);
+		TIP_PER_WEIGHT_STEP.with(|v| *v.borrow_mut() = self.tip_per_weight_step);
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
 		self.set_constants();

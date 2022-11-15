@@ -19,7 +19,7 @@
 use crate::{
 	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Balance, Currencies, CurrencyId, Dex, ExistentialDeposits,
 	GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumCount,
-	NativeTokenExistentialDeposit, OperatorMembershipAcala, Origin, Price, Runtime, StableAsset,
+	NativeTokenExistentialDeposit, OperatorMembershipAcala, Price, Runtime, RuntimeOrigin, StableAsset,
 };
 
 use frame_benchmarking::account;
@@ -32,7 +32,7 @@ use primitives::currency::AssetMetadata;
 use runtime_common::{TokenInfo, LCDOT};
 use sp_runtime::{
 	traits::{SaturatedConversion, StaticLookup, UniqueSaturatedInto},
-	DispatchResult,
+	DispatchResult, MultiAddress,
 };
 use sp_std::prelude::*;
 
@@ -56,7 +56,7 @@ pub fn register_native_asset(assets: Vec<CurrencyId>) {
 			ExistentialDeposits::get(&asset)
 		};
 		assert_ok!(AssetRegistry::register_native_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			*asset,
 			Box::new(AssetMetadata {
 				name: asset.name().unwrap().as_bytes().to_vec(),
@@ -80,7 +80,7 @@ pub fn feed_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	for i in 0..MinimumCount::get() {
 		let oracle: AccountId = account("oracle", 0, i);
 		if !OperatorMembershipAcala::contains(&oracle) {
-			OperatorMembershipAcala::add_member(RawOrigin::Root.into(), oracle.clone())?;
+			OperatorMembershipAcala::add_member(RawOrigin::Root.into(), MultiAddress::Id(oracle.clone()))?;
 		}
 		AcalaOracle::feed_values(RawOrigin::Signed(oracle).into(), prices.to_vec())
 			.map_or_else(|e| Err(e.error), |_| Ok(()))?;

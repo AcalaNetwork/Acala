@@ -51,8 +51,8 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: Homa LastEraBumpedBlock (r:1 w:0)
 	// Storage: Homa BumpEraFrequency (r:1 w:0)
 	fn on_initialize() -> Weight {
-		(4_673_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
+		Weight::from_ref_time(4_673_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
 	}
 	// Storage: ParachainSystem ValidationData (r:1 w:0)
 	// Storage: Homa LastEraBumpedBlock (r:1 w:1)
@@ -81,9 +81,9 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: Homa Unbondings (r:1 w:1)
 	// Storage: Homa TotalVoidLiquid (r:0 w:1)
 	fn on_initialize_with_bump_era() -> Weight {
-		(260_782_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(36 as Weight))
-			.saturating_add(T::DbWeight::get().writes(20 as Weight))
+		Weight::from_ref_time(260_782_000)
+			.saturating_add(T::DbWeight::get().reads(36 as u64))
+			.saturating_add(T::DbWeight::get().writes(20 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Homa TotalStakingBonded (r:1 w:0)
@@ -95,18 +95,18 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: Homa TotalVoidLiquid (r:1 w:1)
 	// Storage: Homa EstimatedRewardRatePerEra (r:1 w:0)
 	fn mint() -> Weight {
-		(76_800_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(11 as Weight))
-			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+		Weight::from_ref_time(76_800_000)
+			.saturating_add(T::DbWeight::get().reads(11 as u64))
+			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Homa RedeemRequests (r:1 w:1)
 	// Storage: Tokens Accounts (r:2 w:2)
 	// Storage: System Account (r:1 w:1)
 	fn request_redeem() -> Weight {
-		(45_973_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(45_973_000)
+			.saturating_add(T::DbWeight::get().reads(5 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Homa RedeemRequests (r:1 w:1)
@@ -118,13 +118,13 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: Tokens Accounts (r:3 w:3)
 	// Storage: System Account (r:2 w:2)
 	fn fast_match_redeems(n: u32, ) -> Weight {
-		(7_678_000 as Weight)
+		Weight::from_ref_time(7_678_000)
 			// Standard Error: 189_000
-			.saturating_add((53_393_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(9 as Weight))
-			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(n as Weight)))
+			.saturating_add(Weight::from_ref_time(53_393_000).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(9 as u64))
+			.saturating_add(T::DbWeight::get().reads((3 as u64).saturating_mul(n as u64)))
+			.saturating_add(T::DbWeight::get().writes(6 as u64))
+			.saturating_add(T::DbWeight::get().writes((3 as u64).saturating_mul(n as u64)))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Homa RelayChainCurrentEra (r:1 w:0)
@@ -134,9 +134,9 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:2 w:2)
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn claim_redemption() -> Weight {
-		(122_687_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(10 as Weight))
-			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+		Weight::from_ref_time(122_687_000)
+			.saturating_add(T::DbWeight::get().reads(10 as u64))
+			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Homa SoftBondedCapPerSubAccount (r:0 w:1)
@@ -144,35 +144,35 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: Homa CommissionRate (r:0 w:1)
 	// Storage: Homa EstimatedRewardRatePerEra (r:0 w:1)
 	fn update_homa_params() -> Weight {
-		(23_170_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(23_170_000)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Homa LastEraBumpedBlock (r:0 w:1)
 	// Storage: Homa BumpEraFrequency (r:0 w:1)
 	fn update_bump_era_params() -> Weight {
-		(24_867_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(24_867_000)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Homa StakingLedgers (r:1 w:1)
 	// Storage: Homa TotalStakingBonded (r:1 w:1)
 	fn reset_ledgers(n: u32, ) -> Weight {
-		(6_452_000 as Weight)
+		Weight::from_ref_time(6_452_000)
 			// Standard Error: 530_000
-			.saturating_add((14_986_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
+			.saturating_add(Weight::from_ref_time(14_986_000).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(n as u64)))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Homa RelayChainCurrentEra (r:1 w:1)
 	fn reset_current_era() -> Weight {
-		(27_198_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(27_198_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 }

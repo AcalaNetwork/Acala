@@ -370,6 +370,31 @@ fn can_set_mint_cap() {
 	});
 }
 
+#[allow(deprecated)]
+#[test]
+fn can_set_xcm_dest_old_weight() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Requires Root privilege.
+		assert_noop!(
+			HomaLite::set_xcm_dest_old_weight(RuntimeOrigin::signed(ALICE), OldWeight(1_000_000)),
+			BadOrigin
+		);
+
+		// Set the cap.
+		assert_ok!(HomaLite::set_xcm_dest_weight(
+			RuntimeOrigin::root(),
+			Weight::from_ref_time(1_000_000)
+		));
+
+		// Cap should be set now.
+		assert_eq!(XcmDestWeight::<Runtime>::get(), 1_000_000);
+
+		System::assert_last_event(RuntimeEvent::HomaLite(crate::Event::XcmDestWeightSet {
+			new_weight: Weight::from_ref_time(1_000_000),
+		}));
+	});
+}
+
 #[test]
 fn can_set_xcm_dest_weight() {
 	ExtBuilder::default().build().execute_with(|| {

@@ -53,9 +53,9 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	// Storage: Proxy Proxies (r:1 w:1)
 	// Storage: OrmlNFT Classes (r:0 w:1)
 	fn create_class() -> Weight {
-		(72_840_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(72_840_000)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	// Storage: OrmlNFT Classes (r:1 w:1)
 	// Storage: System Account (r:2 w:2)
@@ -64,12 +64,12 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	// Storage: OrmlNFT Tokens (r:0 w:1)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
 	fn mint(i: u32, ) -> Weight {
-		(0 as Weight)
+		Weight::from_ref_time(0)
 			// Standard Error: 26_000
-			.saturating_add((20_098_000 as Weight).saturating_mul(i as Weight))
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(i as Weight)))
+			.saturating_add(Weight::from_ref_time(20_098_000).saturating_mul(i as u64))
+			.saturating_add(T::DbWeight::get().reads(5 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
+			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(i as u64)))
 	}
 	// Storage: OrmlNFT Classes (r:1 w:0)
 	// Storage: OrmlNFT Tokens (r:1 w:1)
@@ -78,9 +78,9 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:2)
 	fn transfer() -> Weight {
-		(95_396_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+		Weight::from_ref_time(95_396_000)
+			.saturating_add(T::DbWeight::get().reads(6 as u64))
+			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
 	// Storage: OrmlNFT Classes (r:1 w:1)
 	// Storage: OrmlNFT Tokens (r:1 w:1)
@@ -88,9 +88,9 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
 	fn burn() -> Weight {
-		(70_352_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(70_352_000)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	// Storage: OrmlNFT Classes (r:1 w:1)
 	// Storage: OrmlNFT Tokens (r:1 w:1)
@@ -98,11 +98,11 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
 	fn burn_with_remark(b: u32, ) -> Weight {
-		(78_857_000 as Weight)
+		Weight::from_ref_time(78_857_000)
 			// Standard Error: 0
-			.saturating_add((2_000 as Weight).saturating_mul(b as Weight))
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+			.saturating_add(Weight::from_ref_time(2_000).saturating_mul(b as u64))
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	// Storage: OrmlNFT Classes (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
@@ -111,14 +111,14 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	// Storage: OrmlNFT NextTokenId (r:0 w:1)
 	fn destroy_class() -> Weight {
-		(79_659_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(79_659_000)
+			.saturating_add(T::DbWeight::get().reads(5 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	// Storage: OrmlNFT Classes (r:1 w:1)
 	fn update_class_properties() -> Weight {
-		(18_077_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(18_077_000)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 }
