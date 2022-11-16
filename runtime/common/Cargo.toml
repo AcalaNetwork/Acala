@@ -16,9 +16,7 @@ log = { version = "0.4.17", default-features = false }
 num_enum = { version = "0.5.1", default-features = false }
 serde_json = { version = "1.0.85", default-features = false, features = ["alloc"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
-# TODO: https://github.com/rust-ethereum/ethabi/pull/285
-#ethabi = { version = "18.0.0", default-features = false }
-ethabi = { git = "https://github.com/zjb0807/ethabi", branch = "bump-18.0.0", default-features = false }
+ethabi = { version = "18.0.0", default-features = false }
 scale-info = { version = "2.2.0", default-features = false, features = ["derive"] }
 
 # substrate

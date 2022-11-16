@@ -2727,10 +2727,12 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "18.0.0"
-source = "git+https://github.com/zjb0807/ethabi?branch=bump-18.0.0#58d0695e26a1b057bad070c7e26b0388203d9757"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7413c5f74cc903ea37386a8965a936cbeb334bd270862fdece542c1b2dcbc898"
 dependencies = [
  "ethereum-types",
  "hex",
+ "serde",
  "sha3 0.10.6",
  "thiserror",
  "uint",
