@@ -42,9 +42,8 @@ pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Zero},
-	DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress, Perbill, Permill,
+	Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress, Perbill, Permill,
 };
-use sp_runtime::{Digest, DigestItem};
 
 pub use xcm::latest::prelude::*;
 
