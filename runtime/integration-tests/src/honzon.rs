@@ -616,7 +616,7 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 			run_to_block(2);
 
 			// Empty treasury recieves stablecoins into surplus pool from loan
-			assert_eq!(CdpTreasury::get_surplus_pool(), 160248248179);
+			assert_eq!(CdpTreasury::get_surplus_pool(), 270716741782);
 			assert_eq!(CdpTreasury::get_debit_pool(), 0);
 			// Honzon generated cdp treasury surplus can be transfered
 			assert_eq!(Currencies::free_balance(USD_CURRENCY, &AccountId::from(BOB)), 0);
@@ -624,7 +624,7 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
 				// about 1/10
 				Some(Ratio::saturating_from_rational(
-					100320496496359801 as i64,
+					100541433483565674 as i64,
 					1000000000000000000 as i64
 				))
 			);
@@ -637,7 +637,7 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 			));
 			assert_eq!(
 				Currencies::free_balance(USD_CURRENCY, &AccountId::from(BOB)),
-				160248248178
+				270716741781
 			);
 			assert_eq!(Currencies::free_balance(USD_CURRENCY, &CdpTreasury::account_id()), 1);
 			run_to_block(3);
@@ -646,7 +646,7 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
 				// Around 1/10, increasing from last check
 				Some(Ratio::saturating_from_rational(
-					100330528546009436 as i64,
+					100662149583216144 as i64,
 					1000000000000000000 as i64
 				))
 			);
@@ -658,14 +658,14 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 				5 * dollar(RELAY_CHAIN_CURRENCY),
 			));
 			// Just over 50 dollar(USD_CURRENCY), due to interest on loan
-			assert_eq!(CdpTreasury::get_debit_pool(), 50165264273004);
+			assert_eq!(CdpTreasury::get_debit_pool(), 50331074791608);
 			assert_eq!(Loans::total_positions(RELAY_CHAIN_CURRENCY).debit, 0);
 			run_to_block(4);
 			// Debt exchange rate doesn't update due to no debit positions
 			assert_eq!(
 				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
 				Some(Ratio::saturating_from_rational(
-					100330528546009436 as i64,
+					100662149583216144 as i64,
 					1000000000000000000 as i64
 				))
 			)
