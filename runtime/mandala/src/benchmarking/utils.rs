@@ -146,17 +146,16 @@ pub fn register_stable_asset() -> DispatchResult {
 		name: b"Token Name".to_vec(),
 		symbol: b"TN".to_vec(),
 		decimals: 12,
-		minimal_balance: 1_000_000_000,
+		minimal_balance: 1,
 	};
 	AssetRegistry::register_stable_asset(RawOrigin::Root.into(), Box::new(asset_metadata.clone()))
 }
 
-pub fn create_stable_pools(assets: Vec<CurrencyId>, precisions: Vec<u128>) -> DispatchResult {
+pub fn create_stable_pools(assets: Vec<CurrencyId>, precisions: Vec<u128>, initial_a: u128) -> DispatchResult {
 	let pool_asset = CurrencyId::StableAssetPoolToken(0);
-	let mint_fee = 10000000u128;
-	let swap_fee = 20000000u128;
-	let redeem_fee = 50000000u128;
-	let intial_a = 10000u128;
+	let mint_fee = 2u128;
+	let swap_fee = 3u128;
+	let redeem_fee = 5u128;
 	let fee_recipient: AccountId = account("fee", 0, SEED);
 	let yield_recipient: AccountId = account("yield", 1, SEED);
 
@@ -169,7 +168,7 @@ pub fn create_stable_pools(assets: Vec<CurrencyId>, precisions: Vec<u128>) -> Di
 		mint_fee,
 		swap_fee,
 		redeem_fee,
-		intial_a,
+		initial_a,
 		fee_recipient,
 		yield_recipient,
 		1000000000000000000u128,
@@ -220,7 +219,7 @@ pub fn initialize_swap_pools(maker: AccountId) -> Result<(), &'static str> {
 
 	// Add and initialize stable pools, is manually added with changes to runtime
 	let assets_1 = vec![STAKING, LIQUID];
-	create_stable_pools(assets_1.clone(), vec![1, 1])?;
+	create_stable_pools(assets_1.clone(), vec![1, 1], 10000u128)?;
 	for asset in assets_1 {
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(asset, &maker, 1_000_000_000_000_000)?;
 	}

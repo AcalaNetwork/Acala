@@ -48,11 +48,8 @@ use sp_runtime::{
 	DispatchResult, FixedPointNumber, Permill,
 };
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
-use support::{
-	CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate,
-};
+use support::{DEXIncentives, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate};
 
-pub mod migration;
 mod mock;
 mod tests;
 pub mod weights;
@@ -79,10 +76,6 @@ pub mod module {
 		#[pallet::constant]
 		type NativeCurrencyId: Get<CurrencyId>;
 
-		/// The reward type for dex saving.
-		#[pallet::constant]
-		type StableCurrencyId: Get<CurrencyId>;
-
 		/// The source account for native token rewards.
 		#[pallet::constant]
 		type RewardsSource: Get<Self::AccountId>;
@@ -94,14 +87,8 @@ pub mod module {
 		/// The origin which may update incentive related params
 		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-		/// CDP treasury to issue rewards in stable token
-		type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
-
 		/// Currency for transfer assets
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
-
-		/// DEX to supply liquidity info
-		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
 		/// Emergency shutdown.
 		type EmergencyShutdown: EmergencyShutdown;
@@ -166,14 +153,6 @@ pub mod module {
 	#[pallet::getter(fn incentive_reward_amounts)]
 	pub type IncentiveRewardAmounts<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, PoolId, Twox64Concat, CurrencyId, Balance, ValueQuery>;
-
-	/// NOTE: already deprecated, need remove it after next runtime upgrade
-	/// Mapping from pool to its fixed reward rate per period.
-	///
-	/// DexSavingRewardRates: map Pool => SavingRatePerPeriod
-	#[pallet::storage]
-	#[pallet::getter(fn dex_saving_reward_rates)]
-	pub type DexSavingRewardRates<T: Config> = StorageMap<_, Twox64Concat, PoolId, Rate, ValueQuery>;
 
 	/// Mapping from pool to its claim reward deduction rate.
 	///

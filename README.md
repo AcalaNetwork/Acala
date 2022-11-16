@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://acala.subdao.com/logo/acala-logo-horizontal-gradient.png" width="460">
+  <img src="https://acala.polkawallet-cloud.com/logo/acala-logo-horizontal-gradient.png" width="460">
 </p>
 
 <div align="center">

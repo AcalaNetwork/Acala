@@ -1335,14 +1335,11 @@ parameter_types! {
 impl module_incentives::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
-	type StableCurrencyId = GetStableCurrencyId;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type EarnShareBooster = EarnShareBooster;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
-	type CDPTreasury = CdpTreasury;
 	type Currency = Currencies;
-	type DEX = Dex;
 	type EmergencyShutdown = EmergencyShutdown;
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
