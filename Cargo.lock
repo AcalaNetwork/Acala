@@ -6819,7 +6819,6 @@ name = "orml-build-script-utils"
 version = "0.4.1-dev"
 dependencies = [
  "platforms 1.1.0",
- "walkdir",
 ]
 
 [[package]]
