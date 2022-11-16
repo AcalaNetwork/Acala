@@ -17,22 +17,27 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Balance, Currencies, CurrencyId, Dex, ExistentialDeposits,
-	GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumCount,
-	NativeTokenExistentialDeposit, OperatorMembershipAcala, Origin, Price, Runtime, StableAsset,
+	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Aura, Balance, Currencies, CurrencyId, Dex,
+	ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId,
+	MinimumCount, NativeTokenExistentialDeposit, OperatorMembershipAcala, Origin, Price, Runtime, StableAsset, System,
+	Timestamp,
 };
 
+pub use codec::Encode;
 use frame_benchmarking::account;
-use frame_support::traits::tokens::fungibles;
-use frame_support::{assert_ok, traits::Contains};
+use frame_support::{
+	assert_ok,
+	traits::{tokens::fungibles, Contains, OnInitialize},
+};
 use frame_system::RawOrigin;
 use module_support::{AggregatedSwapPath, Erc20InfoMapping};
 use orml_traits::{GetByKey, MultiCurrencyExtended};
 use primitives::currency::AssetMetadata;
 use runtime_common::{TokenInfo, LCDOT};
+use sp_consensus_aura::AURA_ENGINE_ID;
 use sp_runtime::{
 	traits::{SaturatedConversion, StaticLookup, UniqueSaturatedInto},
-	DispatchResult,
+	Digest, DigestItem, DispatchResult,
 };
 use sp_std::prelude::*;
 
@@ -87,6 +92,16 @@ pub fn feed_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	}
 
 	Ok(())
+}
+
+pub fn set_block_number_timestamp(block_number: u32, timestamp: u64) {
+	let slot = timestamp / Aura::slot_duration();
+	let digest = Digest {
+		logs: vec![DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode())],
+	};
+	System::initialize(&block_number, &Default::default(), &digest);
+	Aura::on_initialize(block_number);
+	Timestamp::set_timestamp(timestamp);
 }
 
 #[allow(dead_code)]
