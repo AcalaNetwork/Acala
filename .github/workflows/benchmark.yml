@@ -1,0 +1,24 @@
+name: Benchmark
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  benchmark:
+    name: Benchmark
+    if: ${{ github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            console.log(github.event)
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `echo command: ${github.event.comment.body}`
+            })
