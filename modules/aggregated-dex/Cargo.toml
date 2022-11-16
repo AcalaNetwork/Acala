@@ -1,6 +1,6 @@
 [package]
 name = "module-aggregated-dex"
-version = "2.10.0"
+version = "2.10.1"
 authors = ["Acala Developers"]
 edition = "2021"
 

@@ -1,6 +1,6 @@
 [package]
 name = "module-support"
-version = "2.10.0"
+version = "2.10.1"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -20,6 +20,9 @@ xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.2
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+
+[dev-dependencies]
+serde_json = { version = "1.0.85" }
 
 [features]
 default = ["std"]

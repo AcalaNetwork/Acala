@@ -86,7 +86,7 @@ pub use sp_runtime::BuildStorage;
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
-use module_support::ExchangeRateProvider;
+use module_support::{ExchangeRateProvider, FractionalRate};
 use primitives::currency::AssetIds;
 pub use primitives::{
 	define_combined_task,
@@ -124,7 +124,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2100,
+	spec_version: 2101,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1037,7 +1037,8 @@ where
 parameter_types! {
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
+	pub DefaultLiquidationPenalty: FractionalRate = FractionalRate::try_from(Rate::saturating_from_rational(8, 100))
+		.expect("Rate is in range; qed");
 	pub MinimumDebitValue: Balance = 50 * dollar(AUSD);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(10, 100);
 	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);
@@ -1255,14 +1256,11 @@ parameter_types! {
 impl module_incentives::Config for Runtime {
 	type Event = Event;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
-	type StableCurrencyId = GetStableCurrencyId;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type EarnShareBooster = EarnShareBooster;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
-	type CDPTreasury = CdpTreasury;
 	type Currency = Currencies;
-	type DEX = Dex;
 	type EmergencyShutdown = EmergencyShutdown;
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
@@ -1772,17 +1770,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	(
-		module_incentives::migration::ResetRewardsRecord<Runtime, GetAusdIbtcPoolId>,
-		module_incentives::migration::ClearPendingMultiRewards<Runtime, GetAusdIbtcPoolId>,
-	),
->;
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -1814,6 +1803,7 @@ mod benches {
 		[orml_auction, benchmarking::auction]
 		[orml_authority, benchmarking::authority]
 		[orml_oracle, benchmarking::oracle]
+		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 		[module_idle_scheduler, benchmarking::idle_scheduler]
 		[module_aggregated_dex, benchmarking::aggregated_dex]
 	);

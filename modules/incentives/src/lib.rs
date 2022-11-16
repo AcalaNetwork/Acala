@@ -44,13 +44,12 @@ use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
-	traits::{AccountIdConversion, One, UniqueSaturatedInto, Zero},
+	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},
 	DispatchResult, FixedPointNumber, Permill,
 };
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
-use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, IncentivesManager, PoolId, Rate};
+use support::{DEXIncentives, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate};
 
-pub mod migration;
 mod mock;
 mod tests;
 pub mod weights;
@@ -77,10 +76,6 @@ pub mod module {
 		#[pallet::constant]
 		type NativeCurrencyId: Get<CurrencyId>;
 
-		/// The reward type for dex saving.
-		#[pallet::constant]
-		type StableCurrencyId: Get<CurrencyId>;
-
 		/// The source account for native token rewards.
 		#[pallet::constant]
 		type RewardsSource: Get<Self::AccountId>;
@@ -92,14 +87,8 @@ pub mod module {
 		/// The origin which may update incentive related params
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
-		/// CDP treasury to issue rewards in stable token
-		type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
-
 		/// Currency for transfer assets
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
-
-		/// DEX to supply liquidity info
-		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
 		/// Emergency shutdown.
 		type EmergencyShutdown: EmergencyShutdown;
@@ -165,20 +154,11 @@ pub mod module {
 	pub type IncentiveRewardAmounts<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, PoolId, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
-	/// NOTE: already deprecated, need remove it after next runtime upgrade
-	/// Mapping from pool to its fixed reward rate per period.
-	///
-	/// DexSavingRewardRates: map Pool => SavingRatePerPeriod
-	#[pallet::storage]
-	#[pallet::getter(fn dex_saving_reward_rates)]
-	pub type DexSavingRewardRates<T: Config> = StorageMap<_, Twox64Concat, PoolId, Rate, ValueQuery>;
-
 	/// Mapping from pool to its claim reward deduction rate.
 	///
 	/// ClaimRewardDeductionRates: map Pool => DeductionRate
 	#[pallet::storage]
-	#[pallet::getter(fn claim_reward_deduction_rates)]
-	pub type ClaimRewardDeductionRates<T: Config> = StorageMap<_, Twox64Concat, PoolId, Rate, ValueQuery>;
+	pub type ClaimRewardDeductionRates<T: Config> = StorageMap<_, Twox64Concat, PoolId, FractionalRate, ValueQuery>;
 
 	/// The pending rewards amount, actual available rewards amount may be deducted
 	///
@@ -340,23 +320,23 @@ pub mod module {
 				if let PoolId::Dex(currency_id) = pool_id {
 					ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidPoolId);
 				}
-				ensure!(deduction_rate <= Rate::one(), Error::<T>::InvalidRate);
-				ClaimRewardDeductionRates::<T>::mutate_exists(&pool_id, |maybe_rate| {
+				ClaimRewardDeductionRates::<T>::mutate_exists(&pool_id, |maybe_rate| -> DispatchResult {
 					let mut v = maybe_rate.unwrap_or_default();
-					if deduction_rate != v {
-						v = deduction_rate;
+					if deduction_rate != *v.inner() {
+						v.try_set(deduction_rate).map_err(|_| Error::<T>::InvalidRate)?;
 						Self::deposit_event(Event::ClaimRewardDeductionRateUpdated {
 							pool: pool_id,
 							deduction_rate,
 						});
 					}
 
-					if v.is_zero() {
+					if v.inner().is_zero() {
 						*maybe_rate = None;
 					} else {
 						*maybe_rate = Some(v);
 					}
-				});
+					Ok(())
+				})?;
 			}
 			Ok(())
 		}
@@ -366,6 +346,10 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	pub fn account_id() -> T::AccountId {
 		T::PalletId::get().into_account_truncating()
+	}
+
+	pub(crate) fn claim_reward_deduction_rates(pool_id: &PoolId) -> Rate {
+		ClaimRewardDeductionRates::<T>::get(pool_id).into_inner()
 	}
 
 	// accumulate incentive rewards of multi currencies
@@ -514,7 +498,7 @@ impl<T: Config> IncentivesManager<T::AccountId, Balance, CurrencyId, PoolId> for
 	}
 
 	fn get_claim_reward_deduction_rate(pool_id: PoolId) -> Rate {
-		ClaimRewardDeductionRates::<T>::get(pool_id)
+		Self::claim_reward_deduction_rates(&pool_id)
 	}
 
 	fn get_pending_rewards(pool_id: PoolId, who: T::AccountId, reward_currencies: Vec<CurrencyId>) -> Vec<Balance> {
