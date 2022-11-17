@@ -121,6 +121,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run benchmarks
         run: cargo run ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
       - name: Commit
