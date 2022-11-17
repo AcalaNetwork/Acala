@@ -178,7 +178,7 @@ async fn evm_fill_block_test() {
 	"};
 
 	let functions = std::iter::repeat_with(|| {
-		node_runtime::Call::EVM(module_evm::Call::call {
+		node_runtime::RuntimeCall::EVM(module_evm::Call::call {
 			target,
 			input: input.to_vec(),
 			value: 0,
@@ -234,7 +234,7 @@ async fn evm_create_fill_block_test() {
 	node.wait_for_blocks(1).await;
 
 	let functions = std::iter::repeat_with(|| {
-		node_runtime::Call::EVM(module_evm::Call::create {
+		node_runtime::RuntimeCall::EVM(module_evm::Call::create {
 			input: contract.clone(),
 			value: 0,
 			gas_limit: 2_000_000,
@@ -251,7 +251,7 @@ async fn evm_create_fill_block_test() {
 	node.wait_for_blocks(5).await;
 	println!(
 		"{:#?}",
-		ensure_event!(node, node_runtime::Event::EVM(module_evm::Event::Created { .. }))
+		ensure_event!(node, node_runtime::RuntimeEvent::EVM(module_evm::Event::Created { .. }))
 	);
 }
 
@@ -325,7 +325,7 @@ async fn evm_gas_limit_test() {
 
 	type EVM = module_evm::Pallet<node_runtime::Runtime>;
 
-	let function = node_runtime::Call::EVM(module_evm::Call::create {
+	let function = node_runtime::RuntimeCall::EVM(module_evm::Call::create {
 		input: contract,
 		value: 0,
 		gas_limit: 2_000_000,
@@ -345,7 +345,7 @@ async fn evm_gas_limit_test() {
 
 	frame_support::assert_ok!(
 		node.submit_extrinsic(
-			node_runtime::Call::EVM(module_evm::Call::publish_contract {
+			node_runtime::RuntimeCall::EVM(module_evm::Call::publish_contract {
 				contract: contract_address
 			}),
 			Some(Alice),
@@ -358,7 +358,7 @@ async fn evm_gas_limit_test() {
 
 	println!(
 		"{:#?}",
-		ensure_event!(node, node_runtime::Event::EVM(module_evm::Event::Created { .. }))
+		ensure_event!(node, node_runtime::RuntimeEvent::EVM(module_evm::Event::Created { .. }))
 	);
 
 	// make sure contract is deployed
@@ -373,7 +373,7 @@ async fn evm_gas_limit_test() {
 	"}
 	.to_vec();
 
-	let function = node_runtime::Call::EVM(module_evm::Call::call {
+	let function = node_runtime::RuntimeCall::EVM(module_evm::Call::call {
 		target: contract_address,
 		input: input.clone(),
 		value: 0,
@@ -387,7 +387,10 @@ async fn evm_gas_limit_test() {
 	node.wait_for_blocks(1).await;
 	println!(
 		"{:#?}",
-		ensure_event!(node, node_runtime::Event::EVM(module_evm::Event::Executed { .. }))
+		ensure_event!(
+			node,
+			node_runtime::RuntimeEvent::EVM(module_evm::Event::Executed { .. })
+		)
 	);
 
 	node.wait_for_blocks(1).await;
@@ -399,7 +402,7 @@ async fn evm_gas_limit_test() {
 	"}
 	.to_vec();
 
-	let function = node_runtime::Call::EVM(module_evm::Call::call {
+	let function = node_runtime::RuntimeCall::EVM(module_evm::Call::call {
 		target: contract_address,
 		input: input.clone(),
 		value: 0,
@@ -413,7 +416,10 @@ async fn evm_gas_limit_test() {
 	node.wait_for_blocks(1).await;
 	println!(
 		"{:#?}",
-		ensure_event!(node, node_runtime::Event::EVM(module_evm::Event::Executed { .. }))
+		ensure_event!(
+			node,
+			node_runtime::RuntimeEvent::EVM(module_evm::Event::Executed { .. })
+		)
 	);
 
 	node.wait_for_blocks(1).await;

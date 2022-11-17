@@ -99,6 +99,22 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: Homa ToBondPool (r:1 w:0)
 	// Storage: Homa TotalVoidLiquid (r:1 w:0)
 	fn swap(u: u32, ) -> Weight {
+		Weight::from_ref_time(100_710_000)
+			// Standard Error: 168_000
+			.saturating_add(Weight::from_ref_time(21_082_000).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().reads((3 as u64).saturating_mul(u as u64)))
+			.saturating_add(T::DbWeight::get().writes(6 as u64))
+	}
+	// Storage: StableAsset Pools (r:1 w:1)
+	// Storage: System Account (r:1 w:1)
+	// Storage: Tokens Accounts (r:4 w:4)
+	// Storage: AssetRegistry AssetMetadatas (r:1 w:0)
+	// Storage: Tokens TotalIssuance (r:1 w:1)
+	// Storage: Homa TotalStakingBonded (r:1 w:0)
+	// Storage: Homa ToBondPool (r:1 w:0)
+	// Storage: Homa TotalVoidLiquid (r:1 w:0)
+	fn redeem_proportion(u: u32, ) -> Weight {
 		Weight::from_ref_time(94_272_000)
 			// Standard Error: 379_000
 			.saturating_add(Weight::from_ref_time(38_413_000).saturating_mul(u as u64))

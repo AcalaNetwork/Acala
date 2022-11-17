@@ -37,8 +37,9 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_inprocess_interface::RelayChainInProcessInterface;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
-use cumulus_relay_chain_rpc_interface::{create_client_and_start_worker, RelayChainRpcInterface};
+use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node;
 
+use crate::runtime::Weight;
 use frame_system_rpc_runtime_api::AccountNonceApi;
 use futures::{channel::mpsc::Sender, SinkExt};
 use jsonrpsee::RpcModule;
@@ -51,8 +52,8 @@ use sc_consensus_manual_seal::{
 	EngineCommand,
 };
 use sc_executor::{NativeElseWasmExecutor, WasmExecutionMethod, WasmtimeInstantiationStrategy};
-use sc_network::{config::TransportConfig, multiaddr, NetworkService};
-use sc_network_common::service::{NetworkBlock, NetworkStateInfo};
+use sc_network::{multiaddr, NetworkBlock, NetworkService};
+use sc_network_common::{config::TransportConfig, service::NetworkStateInfo};
 pub use sc_rpc::SubscriptionTaskExecutor;
 use sc_service::{
 	config::{
@@ -165,7 +166,7 @@ pub fn fetch_nonce(client: &Client, account: sp_core::sr25519::Public) -> u32 {
 /// Construct an extrinsic that can be applied to the test runtime.
 pub fn construct_extrinsic(
 	client: &Client,
-	function: impl Into<runtime::Call>,
+	function: impl Into<runtime::RuntimeCall>,
 	caller: sp_core::sr25519::Pair,
 	nonce: Option<u32>,
 ) -> runtime::UncheckedExtrinsic {

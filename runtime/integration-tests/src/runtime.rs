@@ -380,7 +380,7 @@ mod mandala_only_tests {
 	#[test]
 	fn check_transaction_fee_for_empty_remark() {
 		ExtBuilder::default().build().execute_with(|| {
-			let call = Call::System(frame_system::Call::remark { remark: vec![] });
+			let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 			let ext = UncheckedExtrinsic::new(call.into(), None).expect("This should not fail");
 			let bytes = ext.encode();
 
@@ -411,7 +411,7 @@ mod mandala_only_tests {
 		.build().execute_with(|| {
 			// Ensure tx priority order:
 			// Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
-			let call = Call::System(frame_system::Call::remark { remark: vec![] });
+			let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 			let bytes = UncheckedExtrinsic::new(call.clone().into(), None).expect("This should not fail").encode();
 
 			// tips = 0
@@ -509,7 +509,7 @@ mod mandala_only_tests {
 
 			// tips = 0
 			// operational extrinsic
-			let call = Call::Sudo(pallet_sudo::Call::sudo { call: Box::new(module_emergency_shutdown::Call::open_collateral_refund { }.into()) });
+			let call = RuntimeCall::Sudo(pallet_sudo::Call::sudo { call: Box::new(module_emergency_shutdown::Call::open_collateral_refund { }.into()) });
 			let bytes = UncheckedExtrinsic::new(call.clone().into(), None).expect("This should not fail").encode();
 
 			assert_eq!(
@@ -520,7 +520,7 @@ mod mandala_only_tests {
 					bytes.len()
 				),
 				Ok(ValidTransaction {
-					priority: 80816889610600000,
+					priority: 80_815_232_569_500_000,
 					requires: vec![],
 					provides: vec![],
 					longevity: 18_446_744_073_709_551_615,

@@ -42,14 +42,16 @@ fn init_statemine_xcm_interface() {
 	let xcm_operation =
 		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
 	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
-		Origin::root(),
+		RuntimeOrigin::root(),
 		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(20_000_000),)],
 	));
-	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmDestWeightUpdated {
-		xcm_operation: xcm_operation.clone(),
-		new_xcm_dest_weight: 4_000_000_000,
-	}));
-	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
+	System::assert_has_event(RuntimeEvent::XcmInterface(
+		module_xcm_interface::Event::XcmDestWeightUpdated {
+			xcm_operation: xcm_operation.clone(),
+			new_xcm_dest_weight: 4_000_000_000,
+		},
+	));
+	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
 		xcm_operation,
 		new_xcm_dest_weight: 20_000_000,
 	}));
@@ -63,7 +65,7 @@ fn statemine_min_xcm_fee_matched() {
 		init_statemine_xcm_interface();
 		let weight = FEE_WEIGHT as u64;
 
-		let fee: Balance = IdentityFee::weight_to_fee(&weight);
+		let fee: Balance = IdentityFee::weight_to_fee(&Weight::from_ref_time(weight));
 		let statemine: MultiLocation = (1, Parachain(parachains::statemine::ID)).into();
 		let bifrost: MultiLocation = (1, Parachain(parachains::bifrost::ID)).into();
 
@@ -95,7 +97,7 @@ fn statemine_reserve_transfer_ksm_to_karura_should_not_allowed() {
 		Balances::make_free_balance_be(&sibling_2000, 2 * UNIT);
 
 		assert_ok!(statemine_runtime::PolkadotXcm::reserve_transfer_assets(
-			statemine_runtime::Origin::signed(ALICE.into()),
+			statemine_runtime::RuntimeOrigin::signed(ALICE.into()),
 			// Unlike Statemine reserve transfer to relaychain is not allowed,
 			// Here Statemine reserve transfer to parachain. let's see what happened.
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
@@ -143,7 +145,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 	// Karura transfer KSM to Statemine, it's `NonRerserve` scene(A->[B]->C).
 	Karura::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			KSM,
 			UNIT,
 			Box::new(
@@ -170,7 +172,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 		// source parachain sovereign account withrawn.
 		assert_eq!(UNIT, kusama_runtime::Balances::free_balance(&child_2000));
 		// destination parachain sovereign account deposited.
-		assert_eq!(999_970_357_090, kusama_runtime::Balances::free_balance(&child_1000));
+		assert_eq!(999_973_231_812, kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	// In receiver, xm execution error: UntrustedReserveLocation.
@@ -263,7 +265,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 		if ksm_fee_amount == 0 {
 			// use custom asset(USDT on Statemine) as fee
 			assert_ok!(XTokens::transfer(
-				Origin::signed(BOB.into()),
+				RuntimeOrigin::signed(BOB.into()),
 				CurrencyId::ForeignAsset(0),
 				UNIT,
 				Box::new(
@@ -284,7 +286,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 		} else {
 			// use KSM as fee
 			assert_ok!(XTokens::transfer_multicurrencies(
-				Origin::signed(BOB.into()),
+				RuntimeOrigin::signed(BOB.into()),
 				vec![(CurrencyId::ForeignAsset(0), UNIT), (KSM, ksm_fee_amount)],
 				1,
 				Box::new(
@@ -323,14 +325,14 @@ fn statemine_transfer_asset_to_karura() {
 	Statemine::execute_with(|| {
 		use statemine_runtime::*;
 
-		let origin = Origin::signed(ALICE.into());
+		let origin = RuntimeOrigin::signed(ALICE.into());
 		Balances::make_free_balance_be(&ALICE.into(), TEN);
 		Balances::make_free_balance_be(&BOB.into(), UNIT);
 
 		// If using non root, create custom asset cost 0.1 KSM
 		// We're using force_create here to make sure asset is sufficient.
 		assert_ok!(Assets::force_create(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			ASSET_ID,
 			MultiAddress::Id(ALICE.into()),
 			true,
@@ -378,7 +380,7 @@ fn register_asset() {
 	Karura::execute_with(|| {
 		// register foreign asset
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Box::new(
 				MultiLocation::new(
 					1,

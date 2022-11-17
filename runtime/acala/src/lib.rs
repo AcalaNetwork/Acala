@@ -80,7 +80,6 @@ pub use frame_support::{
 };
 
 pub use pallet_collective::MemberCount;
-pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
@@ -917,7 +916,7 @@ impl orml_vesting::Config for Runtime {
 }
 
 parameter_types! {
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * RuntimeBlockWeights::get().max_block;
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -2233,9 +2232,11 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(), InvalidTransaction>> for Pay
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::dispatch::DispatchClass;
+	use frame_support::{dispatch::DispatchClass, traits::WhitelistedStorageKeys};
 	use frame_system::offchain::CreateSignedTransaction;
+	use sp_core::hexdisplay::HexDisplay;
 	use sp_runtime::traits::Convert;
+	use std::collections::HashSet;
 
 	fn run_with_system_weight<F>(w: Weight, mut assertions: F)
 	where

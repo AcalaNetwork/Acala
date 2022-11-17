@@ -24,15 +24,19 @@ mod erc20;
 mod kusama_cross_chain_transfer;
 #[cfg(feature = "with-karura-runtime")]
 pub mod kusama_test_net;
-#[cfg(feature = "with-karura-runtime")]
-mod statemine;
+// NOTE: Unsupport now
+// https://github.com/paritytech/cumulus/blob/26e17fea7ef95d91b94db92079034d4355ad3658/parachains/runtimes/assets/statemine/src/weights/xcm/mod.rs#L58-L61
+//#[cfg(feature = "with-karura-runtime")]
+//mod statemine;
 
 #[cfg(feature = "with-acala-runtime")]
 mod polkadot_cross_chain_transfer;
 #[cfg(feature = "with-acala-runtime")]
 pub mod polkadot_test_net;
-#[cfg(feature = "with-acala-runtime")]
-mod statemint;
+// NOTE: Unsupport now
+// https://github.com/paritytech/cumulus/blob/26e17fea7ef95d91b94db92079034d4355ad3658/parachains/runtimes/assets/statemint/src/weights/xcm/mod.rs#L58-L61
+//#[cfg(feature = "with-acala-runtime")]
+//mod statemint;
 
 pub use fee_test::{relay_per_second_as_fee, token_per_second_as_fee};
 use frame_support::weights::{constants::WEIGHT_PER_SECOND, Weight};
@@ -41,7 +45,7 @@ use sp_runtime::{FixedPointNumber, FixedU128};
 // N * unit_weight * (weight/10^12) * token_per_second
 fn weight_calculation(instruction_count: u32, unit_weight: Weight, per_second: u128) -> u128 {
 	let weight = unit_weight.saturating_mul(instruction_count as u64);
-	let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
+	let weight_ratio = FixedU128::saturating_from_rational(weight.ref_time(), WEIGHT_PER_SECOND.ref_time());
 	weight_ratio.saturating_mul_int(per_second)
 }
 
@@ -66,17 +70,17 @@ mod fee_test {
 
 	fn native_unit_cost(instruction_count: u32, per_second: u128) -> u128 {
 		#[cfg(feature = "with-karura-runtime")]
-		let unit_weight: Weight = karura_runtime::xcm_config::UnitWeightCost::get();
+		let unit_weight: Weight = Weight::from_ref_time(karura_runtime::xcm_config::UnitWeightCost::get());
 		#[cfg(feature = "with-karura-runtime")]
-		assert_eq!(unit_weight, 200_000_000);
+		assert_eq!(unit_weight, Weight::from_ref_time(200_000_000));
 		#[cfg(feature = "with-acala-runtime")]
-		let unit_weight: Weight = acala_runtime::xcm_config::UnitWeightCost::get();
+		let unit_weight: Weight = Weight::from_ref_time(acala_runtime::xcm_config::UnitWeightCost::get());
 		#[cfg(feature = "with-acala-runtime")]
-		assert_eq!(unit_weight, 200_000_000);
+		assert_eq!(unit_weight, Weight::from_ref_time(200_000_000));
 		#[cfg(feature = "with-mandala-runtime")]
-		let unit_weight: Weight = mandala_runtime::xcm_config::UnitWeightCost::get();
+		let unit_weight: Weight = Weight::from_ref_time(mandala_runtime::xcm_config::UnitWeightCost::get());
 		#[cfg(feature = "with-mandala-runtime")]
-		assert_eq!(unit_weight, 1_000_000);
+		assert_eq!(unit_weight, Weight::from_ref_time(1_000_000));
 
 		weight_calculation(instruction_count, unit_weight, per_second)
 	}
@@ -194,17 +198,17 @@ fn weight_to_fee_works() {
 	{
 		use kusama_runtime_constants::fee::WeightToFee;
 
-		let base_weight: Weight = kusama_runtime::xcm_config::BaseXcmWeight::get();
-		assert_eq!(base_weight, 1_000_000_000);
+		let base_weight: Weight = Weight::from_ref_time(kusama_runtime::xcm_config::BaseXcmWeight::get());
+		assert_eq!(base_weight, Weight::from_ref_time(1_000_000_000));
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(154_483_692, fee);
+		assert_eq!(1_39_502_112, fee);
 
 		// transfer_to_relay_chain weight in KusamaNet
-		let weight: Weight = 298_368_000;
+		let weight: Weight = Weight::from_ref_time(298_368_000);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(11_523_248, fee);
+		assert_eq!(10_405_742, fee);
 	}
 
 	// Polkadot
@@ -212,17 +216,17 @@ fn weight_to_fee_works() {
 	{
 		use polkadot_runtime_constants::fee::WeightToFee;
 
-		let base_weight: Weight = polkadot_runtime::xcm_config::BaseXcmWeight::get();
-		assert_eq!(base_weight, 1_000_000_000);
+		let base_weight: Weight = Weight::from_ref_time(polkadot_runtime::xcm_config::BaseXcmWeight::get());
+		assert_eq!(base_weight, Weight::from_ref_time(1_000_000_000));
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(469_417_452, fee);
+		assert_eq!(426_530_176, fee);
 
 		// transfer_to_relay_chain weight in KusamaNet
-		let weight: Weight = 298_368_000;
+		let weight: Weight = Weight::from_ref_time(298_368_000);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(35_014_787, fee);
+		assert_eq!(31_815_739, fee);
 	}
 
 	// Statemine
@@ -230,8 +234,7 @@ fn weight_to_fee_works() {
 	{
 		use statemine_runtime::constants::fee::WeightToFee;
 
-		let base_weight: Weight = statemine_runtime::xcm_config::UnitWeightCost::get();
-		assert_eq!(base_weight, 1_000_000_000);
+		let base_weight: Weight = Weight::from_ref_time(1_000_000_000);
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
@@ -243,8 +246,7 @@ fn weight_to_fee_works() {
 	{
 		use statemint_runtime::constants::fee::WeightToFee;
 
-		let base_weight: Weight = statemint_runtime::xcm_config::UnitWeightCost::get();
-		assert_eq!(base_weight, 1_000_000_000);
+		let base_weight: Weight = Weight::from_ref_time(1_000_000_000);
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
@@ -256,11 +258,11 @@ fn weight_to_fee_works() {
 	{
 		use karura_runtime::constants::fee::WeightToFee;
 
-		let base_weight: Weight = karura_runtime::xcm_config::BaseXcmWeight::get();
-		assert_eq!(base_weight, 100_000_000);
+		let base_weight: Weight = Weight::from_ref_time(karura_runtime::xcm_config::BaseXcmWeight::get());
+		assert_eq!(base_weight, Weight::from_ref_time(100_000_000));
 
-		let unit_weight: Weight = karura_runtime::xcm_config::UnitWeightCost::get();
-		assert_eq!(unit_weight, 200_000_000);
+		let unit_weight: Weight = Weight::from_ref_time(karura_runtime::xcm_config::UnitWeightCost::get());
+		assert_eq!(unit_weight, Weight::from_ref_time(200_000_000));
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
@@ -276,11 +278,11 @@ fn weight_to_fee_works() {
 	{
 		use acala_runtime::constants::fee::WeightToFee;
 
-		let base_weight: Weight = acala_runtime::xcm_config::BaseXcmWeight::get();
-		assert_eq!(base_weight, 100_000_000);
+		let base_weight: Weight = Weight::from_ref_time(acala_runtime::xcm_config::BaseXcmWeight::get());
+		assert_eq!(base_weight, Weight::from_ref_time(100_000_000));
 
-		let unit_weight: Weight = acala_runtime::xcm_config::UnitWeightCost::get();
-		assert_eq!(unit_weight, 200_000_000);
+		let unit_weight: Weight = Weight::from_ref_time(acala_runtime::xcm_config::UnitWeightCost::get());
+		assert_eq!(unit_weight, Weight::from_ref_time(200_000_000));
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);

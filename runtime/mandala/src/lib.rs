@@ -90,7 +90,6 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
-pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
@@ -967,7 +966,7 @@ impl orml_vesting::Config for Runtime {
 }
 
 parameter_types! {
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * RuntimeBlockWeights::get().max_block;
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -2405,10 +2404,12 @@ cumulus_pallet_parachain_system::register_validate_block!(
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::dispatch::DispatchInfo;
+	use frame_support::{dispatch::DispatchInfo, traits::WhitelistedStorageKeys};
 	use frame_system::offchain::CreateSignedTransaction;
 	use module_support::AddressMapping;
+	use sp_core::hexdisplay::HexDisplay;
 	use sp_runtime::traits::SignedExtension;
+	use std::collections::HashSet;
 
 	#[test]
 	fn check_whitelist() {

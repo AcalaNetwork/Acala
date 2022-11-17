@@ -99,7 +99,7 @@ mod tests {
 	#[test]
 	fn check_weight() {
 		let p = base_tx_in_aca();
-		let q = Balance::from(ExtrinsicBaseWeight::get());
+		let q = Balance::from(ExtrinsicBaseWeight::get().ref_time());
 
 		assert_eq!(p, 1_000_000_000);
 		assert_eq!(q, 86_298_000);

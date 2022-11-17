@@ -79,7 +79,7 @@ pub fn new_partial(
 			let client_for_cidp = client.clone();
 
 			(
-				sc_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(
+				sc_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _>(
 					ImportQueueParams {
 						block_import: client.clone(),
 						justification_import: None,
@@ -104,6 +104,8 @@ pub fn new_partial(
 									current_para_block,
 									relay_offset: 1000,
 									relay_blocks_per_para_block: 2,
+									para_blocks_per_relay_epoch: 0,
+									relay_randomness_config: (),
 									xcm_config: MockXcmConfig::new(
 										&*client_for_xcm,
 										block,
@@ -114,12 +116,11 @@ pub fn new_partial(
 									raw_horizontal_messages: vec![],
 								};
 
-								Ok((timestamp, slot, mocked_parachain))
+								Ok((slot, timestamp, mocked_parachain))
 							}
 						},
 						spawner: &task_manager.spawn_essential_handle(),
 						registry,
-						can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 						check_for_equivocation: Default::default(),
 						telemetry: None,
 					},
@@ -137,27 +138,20 @@ pub fn new_partial(
 					slot_duration,
 				);
 
-				Ok((timestamp, slot))
+				Ok((slot, timestamp))
 			});
 
 			(
-				cumulus_client_consensus_aura::import_queue::<
-					sp_consensus_aura::sr25519::AuthorityPair,
-					_,
-					_,
-					_,
-					_,
-					_,
-					_,
-				>(cumulus_client_consensus_aura::ImportQueueParams {
-					block_import: client.clone(),
-					client: client.clone(),
-					create_inherent_data_providers,
-					registry,
-					can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
-					spawner: &task_manager.spawn_essential_handle(),
-					telemetry: None,
-				})?,
+				cumulus_client_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _>(
+					cumulus_client_consensus_aura::ImportQueueParams {
+						block_import: client.clone(),
+						client: client.clone(),
+						create_inherent_data_providers,
+						registry,
+						spawner: &task_manager.spawn_essential_handle(),
+						telemetry: None,
+					},
+				)?,
 				None,
 			)
 		}
@@ -200,15 +194,16 @@ pub async fn start_dev_node(
 		other: (),
 	} = new_partial(&config, SealMode::DevInstantSeal)?;
 
-	let (network, system_rpc_tx, network_starter) = sc_service::build_network(sc_service::BuildNetworkParams {
-		config: &config,
-		client: client.clone(),
-		transaction_pool: transaction_pool.clone(),
-		spawn_handle: task_manager.spawn_handle(),
-		import_queue,
-		block_announce_validator_builder: None,
-		warp_sync: None,
-	})?;
+	let (network, system_rpc_tx, tx_handler_controller, network_starter) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue,
+			block_announce_validator_builder: None,
+			warp_sync: None,
+		})?;
 
 	// offchain workers
 	sc_service::build_offchain_workers(&config, task_manager.spawn_handle(), client.clone(), network.clone());
@@ -263,13 +258,11 @@ pub async fn start_dev_node(
 		}
 		SealMode::DevAuraSeal => {
 			// aura
-			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 			let client_for_cidp = client.clone();
 
 			let aura = sc_consensus_aura::start_aura::<
 				sp_consensus_aura::sr25519::AuthorityPair,
-				_,
 				_,
 				_,
 				_,
@@ -306,6 +299,8 @@ pub async fn start_dev_node(
 							current_para_block,
 							relay_offset: 1000,
 							relay_blocks_per_para_block: 2,
+							para_blocks_per_relay_epoch: 0,
+							relay_randomness_config: (),
 							xcm_config: MockXcmConfig::new(
 								&*client_for_xcm,
 								block,
@@ -316,13 +311,12 @@ pub async fn start_dev_node(
 							raw_horizontal_messages: vec![],
 						};
 
-						Ok((timestamp, slot, mocked_parachain))
+						Ok((slot, timestamp, mocked_parachain))
 					}
 				},
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
-				can_author_with,
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
 				// We got around 500ms for proposing
@@ -365,6 +359,7 @@ pub async fn start_dev_node(
 		rpc_builder: Box::new(rpc_builder),
 		network: network.clone(),
 		system_rpc_tx,
+		tx_handler_controller,
 		telemetry: None,
 	})?;
 
@@ -388,8 +383,9 @@ async fn build_relay_chain_interface(
 	task_manager: &mut TaskManager,
 ) -> RelayChainResult<Arc<dyn RelayChainInterface + 'static>> {
 	if let Some(relay_chain_url) = collator_options.relay_chain_rpc_url {
-		let client = create_client_and_start_worker(relay_chain_url, task_manager).await?;
-		return Ok(Arc::new(RelayChainRpcInterface::new(client)) as Arc<_>);
+		return build_minimal_relay_chain_node(relay_chain_config, task_manager, relay_chain_url)
+			.await
+			.map(|r| r.0);
 	}
 
 	let relay_chain_full_node = polkadot_test_service::new_full(
@@ -407,8 +403,10 @@ async fn build_relay_chain_interface(
 		relay_chain_full_node.client.clone(),
 		relay_chain_full_node.backend.clone(),
 		Arc::new(relay_chain_full_node.network.clone()),
-		relay_chain_full_node.overseer_handle,
-	)) as Arc<_>)
+		relay_chain_full_node
+			.overseer_handle
+			.ok_or_else(|| RelayChainError::GenericError("Overseer should be running in full node.".to_string()))?,
+	)))
 }
 
 /// Start a node with the given parachain `Configuration` and relay chain `Configuration`.
@@ -468,15 +466,16 @@ where
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 
 	let import_queue = cumulus_client_service::SharedImportQueue::new(params.import_queue);
-	let (network, system_rpc_tx, start_network) = sc_service::build_network(sc_service::BuildNetworkParams {
-		config: &parachain_config,
-		client: client.clone(),
-		transaction_pool: transaction_pool.clone(),
-		spawn_handle: task_manager.spawn_handle(),
-		import_queue: import_queue.clone(),
-		block_announce_validator_builder: Some(Box::new(block_announce_validator_builder)),
-		warp_sync: None,
-	})?;
+	let (network, system_rpc_tx, tx_handler_controller, start_network) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &parachain_config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue: import_queue.clone(),
+			block_announce_validator_builder: Some(Box::new(block_announce_validator_builder)),
+			warp_sync: None,
+		})?;
 
 	let rpc_builder = {
 		let client = client.clone();
@@ -494,6 +493,7 @@ where
 		backend,
 		network: network.clone(),
 		system_rpc_tx,
+		tx_handler_controller,
 		telemetry: None,
 	})?;
 
@@ -534,12 +534,12 @@ where
 								)
 								.await;
 
-							let time = sp_timestamp::InherentDataProvider::from_system_time();
+							let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 							let parachain_inherent = parachain_inherent.ok_or_else(|| {
 								Box::<dyn std::error::Error + Send + Sync>::from(String::from("error"))
 							})?;
-							Ok((time, parachain_inherent))
+							Ok((timestamp, parachain_inherent))
 						}
 					},
 					client.clone(),
@@ -573,11 +573,11 @@ where
 									)
 									.await;
 
-								let time = sp_timestamp::InherentDataProvider::from_system_time();
+								let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 								let slot =
 									sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-										*time,
+										*timestamp,
 										slot_duration,
 									);
 
@@ -586,7 +586,7 @@ where
 										"Failed to create parachain inherent",
 									)
 								})?;
-								Ok((time, slot, parachain_inherent))
+								Ok((slot, timestamp, parachain_inherent))
 							}
 						},
 						block_import: client.clone(),
@@ -633,7 +633,6 @@ where
 			// the recovery delay of pov-recovery. We don't want to wait for too
 			// long on the full node to recover, so we reduce this time here.
 			relay_chain_slot_duration: Duration::from_millis(6),
-			collator_options,
 		};
 
 		start_full_node(params)?;
