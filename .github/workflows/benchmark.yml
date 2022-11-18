@@ -1,0 +1,158 @@
+name: Benchmark
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  benchmark:
+    name: Benchmark
+    if: ${{ github.event.issue.pull_request && contains(fromJson('["MEMBER", "OWNER"]'), github.event.comment.author_association) && startsWith(github.event.comment.body, '/bench ') }}
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/github-script@v6
+        name: Get PR branch
+        id: issue
+        with:
+          result-encoding: string
+          script: |
+            const pr = context.payload.issue.number
+            const data = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr
+            })
+            return data.data.head.ref
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          ref: ${{ steps.issue.outputs.result }}
+      - uses: actions/github-script@v6
+        name: Prepare command
+        id: command
+        with:
+          result-encoding: string
+          script: |
+            const [, , cmd, ...args] = context.payload.comment.body.split(/\W+/)
+            switch (cmd) {
+              case 'runtime': {
+                const [runtime, pallet] = args
+                const options = {
+                  acala: {
+                    chain: 'acala-dev'
+                  },
+                  karura: {
+                    chain: 'karura-dev'
+                  },
+                  mandala: {
+                    chain: 'dev'
+                  }
+                }
+                const option = options[runtime]
+                if (!option) {
+                  throw new Error('Invalid runtime')
+                }
+                return [
+                  '--quiet',
+                  '--profile=production',
+                  '--color=never',
+                  '--bin=acala',
+                  '--features=runtime-benchmarks',
+                  `--features=with-${runtime}-runtime`,
+                  '--features=on-chain-release-build',
+                  '--',
+                  'benchmark',
+                  'pallet',
+                  `--chain=${option.chain}`,
+                  '--steps=50',
+                  '--repeat=20',
+                  `--pallet=${pallet ?? '"*"'}`,
+                  '--extrinsic="*"',
+                  '--execution=wasm',
+                  '--wasm-execution=compiled',
+                  '--heap-pages=4096',
+                  '--template=./templates/runtime-weight-template.hbs',
+                  `--output=./runtime/${runtime}/src/weights/`
+                ].join(' ')
+              }
+              case 'module':
+                const [pallet] = args
+                // pallet folder should be just the name of the pallet, without the leading
+                // "pallet_" or "frame_", then separated with "-"
+                const palletFolder = pallet.split('_').slice(1).join('-').trim()
+                return [
+                  '--release --color=never',
+                  '--bin=acala',
+                  '--features=runtime-benchmarks',
+                  '--features=with-mandala-runtime',
+                  '--',
+                  'benchmark',
+                  'pallet',
+                  '--chain=dev',
+                  '--steps=50',
+                  '--repeat=20',
+                  `--pallet=${pallet}`,
+                  '--extrinsic="*"',
+                  '--execution=wasm',
+                  '--wasm-execution=compiled',
+                  '--heap-pages=4096',
+                  `--output=./modules/${palletFolder}/src/weights.rs`,
+                  '--template=./templates/module-weight-template.hbs'
+                ].join(' ')
+              default:
+                throw new Error('Invalid command')
+            }
+      - uses: actions/github-script@v6
+        name: Post comment
+        id: comment
+        with:
+          script: |
+            const data = await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `Command: ${context.payload.comment.body}\n\n\nRunning...`
+            })
+            return data.data.id
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2022-08-05
+          components: rustfmt
+          target: wasm32-unknown-unknown
+          default: true
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
+      - name: Run benchmarks
+        run: cargo run ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
+      - name: Commit
+        run: |
+          git config user.email "hello@acala.network"
+          git config user.name "Acala Github Action Bot"
+          git add .
+          git commit -m '${{github.event.comment.body}}' --allow-empty
+          git push
+      - uses: actions/github-script@v6
+        name: Update comment
+        with:
+          script: |
+            const fs = require('fs')
+            const id = `${{steps.comment.outputs.result}}`
+            const body = fs.readFileSync('${{runner.temp}}/out.txt').toString()
+            github.rest.issues.updateComment({
+              comment_id: id,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+              **Request**: \`${context.payload.comment.body}\`
+              **Command**: \`cargo run ${{steps.command.outputs.result}}\`
+
+              <details>
+              <summary>Results</summary>
+
+              \`\`\`
+              ${body.trim()}
+              \`\`\`
+              </details>
+              `
+            })

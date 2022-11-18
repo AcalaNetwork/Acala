@@ -37,11 +37,12 @@ pub use primitives::{
 		CHAIN_ID_MANDALA,
 	},
 };
+use sp_consensus_aura::AURA_ENGINE_ID;
 pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Zero},
-	DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress, Perbill, Permill,
+	Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress, Perbill, Permill,
 };
 
 pub use xcm::latest::prelude::*;
@@ -54,7 +55,7 @@ mod mandala_imports {
 	use mandala_runtime::AlternativeFeeSurplus;
 	pub use mandala_runtime::{
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AcalaSwap, AccountId, AggregatedDex,
-		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber,
+		AssetRegistry, AuctionManager, Aura, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber,
 		CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CollatorSelection, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DealWithFees, DefaultDebitExchangeRate,
 		DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil, Get,
@@ -107,8 +108,8 @@ mod karura_imports {
 	use karura_runtime::AlternativeFeeSurplus;
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AcalaSwap,
-		AccountId, AggregatedDex, AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances,
-		BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CreateClassDeposit,
+		AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, Authority, AuthoritysOriginId, Balance,
+		Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DefaultDebitExchangeRate, DefaultExchangeRate,
 		Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa,
 		Honzon, IdleScheduler, KaruraFoundationAccounts, Loans, MaxTipsOfPriority, MinimumDebitValue, MultiLocation,
@@ -159,16 +160,16 @@ mod acala_imports {
 	use acala_runtime::AlternativeFeeSurplus;
 	pub use acala_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts,
-		AcalaOracle, AcalaSwap, AccountId, AggregatedDex, AssetRegistry, AuctionManager, Authority, AuthoritysOriginId,
-		Balance, Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury,
-		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DefaultDebitExchangeRate,
-		DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil, Get,
-		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinimumDebitValue, MultiLocation,
-		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, OriginCaller, ParachainAccount, ParachainInfo,
-		ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
-		Scheduler, Session, SessionManager, SevenDays, StableAsset, StableAssetPalletId, System, Timestamp,
-		TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId,
-		Utility, Vesting, XTokens, XcmInterface, EVM, LCDOT, NFT,
+		AcalaOracle, AcalaSwap, AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, Authority,
+		AuthoritysOriginId, Balance, Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine,
+		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte,
+		DefaultDebitExchangeRate, DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits,
+		FinancialCouncil, Get, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MaxTipsOfPriority,
+		MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, OriginCaller,
+		ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio, Runtime, RuntimeCall,
+		RuntimeEvent, RuntimeOrigin, Scheduler, Session, SessionManager, SevenDays, StableAsset, StableAssetPalletId,
+		System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId,
+		TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM, LCDOT, NFT,
 	};
 	pub use frame_support::parameter_types;
 	use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
@@ -219,19 +220,27 @@ pub const CHARLIE: [u8; 32] = [6u8; 32];
 pub const DAVE: [u8; 32] = [7u8; 32];
 
 pub const INIT_TIMESTAMP: u64 = 30_000;
-pub const BLOCK_TIME: u64 = 1000;
+pub const BLOCK_TIME: u64 = 12000;
 
 pub fn run_to_block(n: u32) {
 	while System::block_number() < n {
 		Scheduler::on_finalize(System::block_number());
-		System::set_block_number(System::block_number() + 1);
-		Timestamp::set_timestamp((System::block_number() as u64 * BLOCK_TIME) + INIT_TIMESTAMP);
-		CdpEngine::on_initialize(System::block_number());
-		Scheduler::on_initialize(System::block_number());
-		Scheduler::on_initialize(System::block_number());
-		Session::on_initialize(System::block_number());
-		SessionManager::on_initialize(System::block_number());
-		IdleScheduler::on_idle(System::block_number(), Weight::MAX);
+
+		let block_number = System::block_number() + 1;
+		let timestamp = (block_number as u64 * BLOCK_TIME) + INIT_TIMESTAMP;
+		let slot = timestamp / Aura::slot_duration();
+		let digest = Digest {
+			logs: vec![DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode())],
+		};
+		System::initialize(&block_number, &Default::default(), &digest);
+		Aura::on_initialize(block_number);
+		Timestamp::set_timestamp(timestamp);
+		CdpEngine::on_initialize(block_number);
+		Scheduler::on_initialize(block_number);
+		Scheduler::on_initialize(block_number);
+		Session::on_initialize(block_number);
+		SessionManager::on_initialize(block_number);
+		IdleScheduler::on_idle(block_number, Weight::MAX);
 	}
 }
 
