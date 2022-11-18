@@ -93,7 +93,7 @@ curl https://sh.rustup.rs -sSf | sh
 You may need additional dependencies, checkout [substrate.io](https://docs.substrate.io/v3/getting-started/installation) for more info
 
 ```bash
-sudo apt-get install -y git clang curl libssl-dev llvm libudev-dev
+sudo apt-get install -y git clang curl libssl-dev llvm libudev-dev protobuf-compiler
 ```
 
 Make sure you have `submodule.recurse` set to true to make life with submodule easier.

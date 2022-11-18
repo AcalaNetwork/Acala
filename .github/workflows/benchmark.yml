@@ -123,6 +123,8 @@ jobs:
           default: true
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
       - name: Run benchmarks
         run: cargo run ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
       - name: Commit

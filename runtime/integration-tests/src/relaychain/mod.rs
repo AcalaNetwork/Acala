@@ -199,7 +199,7 @@ fn weight_to_fee_works() {
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(1_39_502_112, fee);
+		assert_eq!(139_502_112, fee);
 
 		// transfer_to_relay_chain weight in KusamaNet
 		let weight: Weight = Weight::from_ref_time(298_368_000);
