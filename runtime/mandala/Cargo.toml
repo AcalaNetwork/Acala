@@ -27,6 +27,7 @@ pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = 
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 pallet-bounties = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+pallet-conviction-voting = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false, optional = true }
 pallet-democracy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features =false }
 pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 pallet-indices = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
@@ -34,7 +35,9 @@ pallet-membership = { git = "https://github.com/paritytech/substrate", branch = 
 pallet-multisig = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 pallet-offences = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+pallet-ranked-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false, optional = true }
 pallet-recovery = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+pallet-referenda = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false, optional = true }
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false, features = ["historical"] }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 pallet-sudo = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
@@ -152,9 +155,6 @@ acala-service = { path = "../../node/service", features = ["with-mandala-runtime
 default = ["std"]
 no_std = []
 std = [
-	"frame-try-runtime?/std",
-	"frame-system-benchmarking?/std",
-	"frame-benchmarking?/std",
 	"codec/std",
 	"hex/std",
 	"serde_json/std",
@@ -275,12 +275,16 @@ runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
-	"pallet-collective/runtime-benchmarks",
+	"frame-system-benchmarking/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"orml-authority/runtime-benchmarks",
 	"orml-vesting/runtime-benchmarks",
 	"orml-tokens/runtime-benchmarks",
+	"pallet-collective/runtime-benchmarks",
+	"pallet-conviction-voting/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
+	"pallet-ranked-collective/runtime-benchmarks",
+	"pallet-referenda/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"cumulus-pallet-parachain-system/runtime-benchmarks",
@@ -312,6 +316,7 @@ try-runtime = [
 	"frame-try-runtime",
 	"frame-executive/try-runtime",
 	"frame-system/try-runtime",
+	"frame-support/try-runtime",
 
 	"pallet-aura/try-runtime",
 	"pallet-authorship/try-runtime",

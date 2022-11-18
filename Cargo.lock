@@ -209,6 +209,7 @@ dependencies = [
  "polkadot-parachain",
  "runtime-common",
  "scale-info",
+ "serde_json",
  "smallvec",
  "sp-api",
  "sp-application-crypto",
@@ -4277,6 +4278,7 @@ dependencies = [
  "polkadot-primitives",
  "runtime-common",
  "scale-info",
+ "serde_json",
  "smallvec",
  "sp-api",
  "sp-application-crypto",
@@ -5092,6 +5094,7 @@ dependencies = [
  "pallet-balances",
  "pallet-bounties",
  "pallet-collective",
+ "pallet-conviction-voting",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-indices",
@@ -5100,7 +5103,9 @@ dependencies = [
  "pallet-offences",
  "pallet-preimage",
  "pallet-proxy",
+ "pallet-ranked-collective",
  "pallet-recovery",
+ "pallet-referenda",
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
@@ -7223,7 +7228,7 @@ dependencies = [
 [[package]]
 name = "pallet-conviction-voting"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.31#7a4e5163091384c4c10b6d76f5cb80dac0834f38"
+source = "git+https://github.com/paritytech//substrate?rev=7a4e5163091384c4c10b6d76f5cb80dac0834f38#7a4e5163091384c4c10b6d76f5cb80dac0834f38"
 dependencies = [
  "assert_matches",
  "frame-benchmarking",
@@ -7623,7 +7628,7 @@ dependencies = [
 [[package]]
 name = "pallet-ranked-collective"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.31#7a4e5163091384c4c10b6d76f5cb80dac0834f38"
+source = "git+https://github.com/paritytech//substrate?rev=7a4e5163091384c4c10b6d76f5cb80dac0834f38#7a4e5163091384c4c10b6d76f5cb80dac0834f38"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -7656,7 +7661,7 @@ dependencies = [
 [[package]]
 name = "pallet-referenda"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.31#7a4e5163091384c4c10b6d76f5cb80dac0834f38"
+source = "git+https://github.com/paritytech//substrate?rev=7a4e5163091384c4c10b6d76f5cb80dac0834f38#7a4e5163091384c4c10b6d76f5cb80dac0834f38"
 dependencies = [
  "assert_matches",
  "frame-benchmarking",

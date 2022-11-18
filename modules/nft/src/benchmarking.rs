@@ -171,16 +171,16 @@ mod mock {
 
 	impl frame_system::Config for Runtime {
 		type BaseCallFilter = BaseFilter;
-		type Origin = Origin;
+		type RuntimeOrigin = RuntimeOrigin;
 		type Index = u64;
 		type BlockNumber = u64;
 		type Hash = H256;
-		type Call = Call;
+		type RuntimeCall = RuntimeCall;
 		type Hashing = BlakeTwo256;
 		type AccountId = AccountId;
 		type Lookup = IdentityLookup<Self::AccountId>;
 		type Header = Header;
-		type Event = ();
+		type RuntimeEvent = ();
 		type BlockHashCount = ConstU64<250>;
 		type BlockWeights = ();
 		type BlockLength = ();
@@ -197,7 +197,7 @@ mod mock {
 	}
 	impl pallet_balances::Config for Runtime {
 		type Balance = Balance;
-		type Event = ();
+		type RuntimeEvent = ();
 		type DustRemoval = ();
 		type ExistentialDeposit = ConstU128<1>;
 		type AccountStore = frame_system::Pallet<Runtime>;
@@ -207,8 +207,8 @@ mod mock {
 		type WeightInfo = ();
 	}
 	impl pallet_utility::Config for Runtime {
-		type Event = ();
-		type Call = Call;
+		type RuntimeEvent = ();
+		type RuntimeCall = RuntimeCall;
 		type PalletsOrigin = OriginCaller;
 		type WeightInfo = ();
 	}
@@ -223,12 +223,12 @@ mod mock {
 			Self::Any
 		}
 	}
-	impl InstanceFilter<Call> for ProxyType {
-		fn filter(&self, c: &Call) -> bool {
+	impl InstanceFilter<RuntimeCall> for ProxyType {
+		fn filter(&self, c: &RuntimeCall) -> bool {
 			match self {
 				ProxyType::Any => true,
-				ProxyType::JustTransfer => matches!(c, Call::Balances(pallet_balances::Call::transfer { .. })),
-				ProxyType::JustUtility => matches!(c, Call::Utility(..)),
+				ProxyType::JustTransfer => matches!(c, RuntimeCall::Balances(pallet_balances::Call::transfer { .. })),
+				ProxyType::JustUtility => matches!(c, RuntimeCall::Utility(..)),
 			}
 		}
 		fn is_superset(&self, o: &Self) -> bool {
@@ -236,19 +236,19 @@ mod mock {
 		}
 	}
 	pub struct BaseFilter;
-	impl Contains<Call> for BaseFilter {
-		fn contains(c: &Call) -> bool {
+	impl Contains<RuntimeCall> for BaseFilter {
+		fn contains(c: &RuntimeCall) -> bool {
 			match *c {
 				// Remark is used as a no-op call in the benchmarking
-				Call::System(SystemCall::remark { .. }) => true,
-				Call::System(_) => false,
+				RuntimeCall::System(SystemCall::remark { .. }) => true,
+				RuntimeCall::System(_) => false,
 				_ => true,
 			}
 		}
 	}
 	impl pallet_proxy::Config for Runtime {
-		type Event = ();
-		type Call = Call;
+		type RuntimeEvent = ();
+		type RuntimeCall = RuntimeCall;
 		type Currency = Balances;
 		type ProxyType = ProxyType;
 		type ProxyDepositBase = ConstU128<1>;
@@ -266,7 +266,7 @@ mod mock {
 	}
 
 	impl crate::Config for Runtime {
-		type Event = ();
+		type RuntimeEvent = ();
 		type Currency = Balances;
 		type CreateClassDeposit = ConstU128<200>;
 		type CreateTokenDeposit = ConstU128<100>;

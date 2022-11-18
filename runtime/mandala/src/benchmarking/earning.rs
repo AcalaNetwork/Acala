@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::utils::{dollar, set_balance, NATIVE};
-use crate::{AccountId, DispatchResult, Earning, Get, NativeTokenExistentialDeposit, Origin, Runtime, System};
+use crate::{AccountId, DispatchResult, Earning, Get, NativeTokenExistentialDeposit, Runtime, RuntimeOrigin, System};
 use frame_benchmarking::whitelisted_caller;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
@@ -26,10 +26,10 @@ fn make_max_unbonding_chunk(who: AccountId) -> DispatchResult {
 	System::set_block_number(0);
 	set_balance(NATIVE, &who, 100 * dollar(NATIVE));
 	let max_unlock_chunk: u32 = <Runtime as module_earning::Config>::MaxUnbondingChunks::get();
-	Earning::bond(Origin::signed(who.clone()), 10 * dollar(NATIVE))?;
+	Earning::bond(RuntimeOrigin::signed(who.clone()), 10 * dollar(NATIVE))?;
 	for _ in 0..(max_unlock_chunk) {
 		System::set_block_number(System::block_number() + 1);
-		Earning::unbond(Origin::signed(who.clone()), NativeTokenExistentialDeposit::get())?;
+		Earning::unbond(RuntimeOrigin::signed(who.clone()), NativeTokenExistentialDeposit::get())?;
 	}
 
 	Ok(())
@@ -46,13 +46,13 @@ runtime_benchmarks! {
 	unbond_instant {
 		let caller: AccountId = whitelisted_caller();
 		set_balance(NATIVE, &caller, dollar(NATIVE));
-		Earning::bond(Origin::signed(caller.clone()), 2 * NativeTokenExistentialDeposit::get())?;
+		Earning::bond(RuntimeOrigin::signed(caller.clone()), 2 * NativeTokenExistentialDeposit::get())?;
 	}: _(RawOrigin::Signed(caller), NativeTokenExistentialDeposit::get())
 
 	unbond {
 		let caller: AccountId = whitelisted_caller();
 		set_balance(NATIVE, &caller, dollar(NATIVE));
-		Earning::bond(Origin::signed(caller.clone()), dollar(NATIVE))?;
+		Earning::bond(RuntimeOrigin::signed(caller.clone()), dollar(NATIVE))?;
 	}: _(RawOrigin::Signed(caller), NativeTokenExistentialDeposit::get())
 
 	rebond {

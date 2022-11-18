@@ -34,7 +34,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE: Balance = 20_000_000;
-pub const FEE_STATEMINE: Balance = 15_450_332;
+pub const FEE_STATEMINE: Balance = 5_159_159;
 pub const FEE_KUSAMA: Balance = 11_492_737;
 const ASSET_ID: u32 = 100;
 
@@ -96,7 +96,7 @@ fn statemine_reserve_transfer_ksm_to_karura_should_not_allowed() {
 		// source chain(Statemine).
 		Balances::make_free_balance_be(&sibling_2000, 2 * UNIT);
 
-		assert_ok!(statemine_runtime::PolkadotXcm::reserve_transfer_assets(
+		assert_ok!(statemine_runtime::PolkadotXcm::limited_reserve_transfer_assets(
 			statemine_runtime::RuntimeOrigin::signed(ALICE.into()),
 			// Unlike Statemine reserve transfer to relaychain is not allowed,
 			// Here Statemine reserve transfer to parachain. let's see what happened.
@@ -110,7 +110,8 @@ fn statemine_reserve_transfer_ksm_to_karura_should_not_allowed() {
 				.into()
 			),
 			Box::new((Parent, UNIT).into()),
-			0
+			0,
+			WeightLimit::Unlimited
 		));
 
 		// In sender xcm execution is successed, sender account is withdrawn.
@@ -202,7 +203,7 @@ fn karura_transfer_asset_to_statemine_works() {
 
 		// https://github.com/paritytech/cumulus/pull/1278 support using self sufficient asset
 		// for paying xcm execution fee on Statemine.
-		assert_eq!(953_648_999_365, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
+		assert_eq!(986_380_211_639, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
 	});
 }
 
@@ -244,7 +245,7 @@ fn karura_statemine_transfer_use_ksm_as_fee() {
 			UNIT + FEE - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(1_003_977_888_486, Balances::free_balance(&para_2000));
+		assert_eq!(1_003_992_265_552, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -349,7 +350,7 @@ fn statemine_transfer_asset_to_karura() {
 		// need to have some KSM to be able to receive user assets
 		Balances::make_free_balance_be(&para_2000, UNIT);
 
-		assert_ok!(PolkadotXcm::reserve_transfer_assets(
+		assert_ok!(PolkadotXcm::limited_reserve_transfer_assets(
 			origin.clone(),
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
 			Box::new(
@@ -361,7 +362,8 @@ fn statemine_transfer_asset_to_karura() {
 				.into()
 			),
 			Box::new((X2(PalletInstance(50), GeneralIndex(ASSET_ID as u128)), TEN).into()),
-			0
+			0,
+			WeightLimit::Unlimited
 		));
 
 		assert_eq!(990 * UNIT, Assets::balance(ASSET_ID, &AccountId::from(ALICE)));

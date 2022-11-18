@@ -24,19 +24,15 @@ mod erc20;
 mod kusama_cross_chain_transfer;
 #[cfg(feature = "with-karura-runtime")]
 pub mod kusama_test_net;
-// NOTE: Unsupport now
-// https://github.com/paritytech/cumulus/blob/26e17fea7ef95d91b94db92079034d4355ad3658/parachains/runtimes/assets/statemine/src/weights/xcm/mod.rs#L58-L61
-//#[cfg(feature = "with-karura-runtime")]
-//mod statemine;
+#[cfg(feature = "with-karura-runtime")]
+mod statemine;
 
 #[cfg(feature = "with-acala-runtime")]
 mod polkadot_cross_chain_transfer;
 #[cfg(feature = "with-acala-runtime")]
 pub mod polkadot_test_net;
-// NOTE: Unsupport now
-// https://github.com/paritytech/cumulus/blob/26e17fea7ef95d91b94db92079034d4355ad3658/parachains/runtimes/assets/statemint/src/weights/xcm/mod.rs#L58-L61
-//#[cfg(feature = "with-acala-runtime")]
-//mod statemint;
+#[cfg(feature = "with-acala-runtime")]
+mod statemint;
 
 pub use fee_test::{relay_per_second_as_fee, token_per_second_as_fee};
 use frame_support::weights::{constants::WEIGHT_PER_SECOND, Weight};

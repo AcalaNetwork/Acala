@@ -149,6 +149,7 @@ pallet-balances = { git = "https://github.com/paritytech//substrate", rev = "7a4
 pallet-bounties = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
 pallet-child-bounties = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
 pallet-collective = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
+pallet-conviction-voting = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
 pallet-democracy = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
 pallet-election-provider-multi-phase = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
 pallet-elections-phragmen = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
@@ -165,7 +166,9 @@ pallet-nomination-pools-runtime-api = { git = "https://github.com/paritytech//su
 pallet-offences = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
 pallet-offences-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
 pallet-proxy = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
+pallet-ranked-collective = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
 pallet-recovery = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
+pallet-referenda = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
 pallet-scheduler = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
 pallet-session = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
 pallet-session-benchmarking  = { git = "https://github.com/paritytech//substrate", rev = "7a4e5163091384c4c10b6d76f5cb80dac0834f38" }
