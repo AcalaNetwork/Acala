@@ -4,18 +4,6 @@ on:
     types: [created]
 
 jobs:
-  debug:
-    name: debug
-    runs-on: ubuntu-latest
-    if: ${{ startsWith(github.event.comment.body, '/bench ') }}
-    steps:
-      - uses: actions/github-script@v6
-        with:
-          script: |
-            console.log(`${{ toJson(github.event.issue.pull_request) }}`)
-            console.log(`${{ contains(fromJson('["MEMBER", "OWNER"]'), github.event.comment.author_association) }}`)
-            console.log(`${{ github.event.comment.author_association }}`)
-
   benchmark:
     name: Benchmark
     if: ${{ github.event.issue.pull_request && contains(fromJson('["MEMBER", "OWNER"]'), github.event.comment.author_association) && startsWith(github.event.comment.body, '/bench ') }}
