@@ -4,6 +4,18 @@ on:
     types: [created]
 
 jobs:
+  debug:
+    name: debug
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.comment.body, '/bench ') }}
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            console.log(`${{ github.event.issue.pull_request }}``)
+            console.log(`${{ contains(fromJson('["MEMBER", "OWNER"]'), github.event.comment.author_association) }}`)
+            console.log(`${{ github.event.comment.author_association }}`)
+
   benchmark:
     name: Benchmark
     if: ${{ github.event.issue.pull_request && contains(fromJson('["MEMBER", "OWNER"]'), github.event.comment.author_association) && startsWith(github.event.comment.body, '/bench ') }}
@@ -52,6 +64,7 @@ jobs:
                   throw new Error('Invalid runtime')
                 }
                 return [
+                  'cargo run',
                   '--quiet',
                   '--profile=production',
                   '--color=never',
@@ -80,6 +93,7 @@ jobs:
                 // "pallet_" or "frame_", then separated with "-"
                 const palletFolder = pallet.split('_').slice(1).join('-').trim()
                 return [
+                  'cargo run',
                   '--release --color=never',
                   '--bin=acala',
                   '--features=runtime-benchmarks',
@@ -98,6 +112,8 @@ jobs:
                   `--output=./modules/${palletFolder}/src/weights.rs`,
                   '--template=./templates/module-weight-template.hbs'
                 ].join(' ')
+              case 'evm':
+                return 'make bench-evm'
               default:
                 throw new Error('Invalid command')
             }
@@ -110,7 +126,12 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `Command: ${context.payload.comment.body}\n\n\nRunning...`
+              body: `
+              **Request**: \`${context.payload.comment.body}\`
+              **Command**: \`${{steps.command.outputs.result}}\`
+
+              Running...
+              `
             })
             return data.data.id
       - name: Install toolchain
@@ -124,7 +145,7 @@ jobs:
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run benchmarks
-        run: cargo run ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
+        run: ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
       - name: Commit
         run: |
           git config user.email "hello@acala.network"
@@ -145,7 +166,7 @@ jobs:
               repo: context.repo.repo,
               body: `
               **Request**: \`${context.payload.comment.body}\`
-              **Command**: \`cargo run ${{steps.command.outputs.result}}\`
+              **Command**: \`${{steps.command.outputs.result}}\`
 
               <details>
               <summary>Results</summary>
