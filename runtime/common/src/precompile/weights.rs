@@ -19,7 +19,6 @@
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
-#![allow(clippy::unnecessary_cast)]
 
 use frame_support::{traits::Get, weights::Weight};
 use sp_std::marker::PhantomData;
@@ -29,30 +28,30 @@ impl<T: frame_system::Config> PrecompileWeights<T> {
 	// AssetRegistry::AssetMetadatas (r: 1, w: 0)
 	// Oracle::Values (r: 1, w: 0)
 	pub fn oracle_get_price() -> Weight {
-		Weight::from_ref_time(19_623_000)
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
+		Weight::from_ref_time(12_555_000)
+			.saturating_add(T::DbWeight::get().reads(2))
 	}
 	pub fn evm_query_new_contract_extra_bytes() -> Weight {
-		Weight::from_ref_time(1_696_000)
+		Weight::from_ref_time(594_000)
 	}
 	pub fn evm_query_storage_deposit_per_byte() -> Weight {
-		Weight::from_ref_time(1_761_000)
+		Weight::from_ref_time(578_000)
 	}
 	// EVMModule::Accounts (r: 1, w: 0)
 	pub fn evm_query_maintainer() -> Weight {
-		Weight::from_ref_time(7_088_000)
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
+		Weight::from_ref_time(3_967_000)
+			.saturating_add(T::DbWeight::get().reads(1))
 	}
 	pub fn evm_query_developer_deposit() -> Weight {
-		Weight::from_ref_time(1_716_000)
+		Weight::from_ref_time(579_000)
 	}
 	pub fn evm_query_publication_fee() -> Weight {
-		Weight::from_ref_time(1_744_000)
+		Weight::from_ref_time(562_000)
 	}
 	// Balances::Reserves (r: 1, w: 0)
 	// EvmAccounts::Accounts (r: 1, w: 0)
 	pub fn evm_query_developer_status() -> Weight {
-		Weight::from_ref_time(8_506_000)
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
+		Weight::from_ref_time(4_920_000)
+			.saturating_add(T::DbWeight::get().reads(2))
 	}
 }
