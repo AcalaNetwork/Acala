@@ -36,6 +36,7 @@ jobs:
             switch (cmd) {
               case 'runtime': {
                 const [runtime, pallet] = args
+                if (!['acala', 'karura', 'mandala'].includes(runtime)) throw new Error('Invalid runtime')
                 return `make benchmark-${runtime} options="--quiet --color=never" pallet=${pallet ?? "*"}`
               }
               case 'module':
