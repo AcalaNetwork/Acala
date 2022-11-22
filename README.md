@@ -160,9 +160,9 @@ Bench bot can take care of syncing branch with `master` and generating WeightInf
 
 ## Generate module weights
 
-Comment on a PR `/bench runtime module <module_name>` i.e.: `module_currencies`
+Comment on a PR `/bench module <module_name>` i.e.: `module_currencies`
 
-Bench bot will do the benchmarking, generate `weights.rs` file push changes into your branch.
+Bench bot will do the benchmarking, generate `weights.rs` file and push changes into your branch.
 
 ## Generate runtime weights
 
@@ -170,7 +170,7 @@ Comment on a PR `/bench runtime <runtime> <module_name>` i.e.: `/bench runtime m
 
 To generate weights for all modules just pass `*` as `module_name` i.e: `/bench runtime mandala *`
 
-Bench bot will do the benchmarking, generate weights file push changes into your branch.
+Bench bot will do the benchmarking, generate weights file and push changes into your branch.
 
 ## Bench Acala EVM+
 
