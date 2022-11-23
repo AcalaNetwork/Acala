@@ -22,6 +22,7 @@ use super::utils::{
 	create_stable_pools, dollar, register_stable_asset, set_balance, LIQUID, NATIVE, STABLECOIN, STAKING,
 };
 use frame_benchmarking::{account, whitelisted_caller};
+use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
@@ -100,19 +101,24 @@ runtime_benchmarks! {
 		let u in 2u32 .. <Runtime as nutsfinance_stable_asset::Config>::PoolAssetLimit::get();
 		let mut assets = vec![];
 		let mut precisions = vec![];
-		let mut mint_args = vec![];
 		for i in 0 .. u {
 			let i_idx: usize = usize::try_from(i).unwrap();
 			let currency_id = currency_list()[i_idx];
 			assets.push(currency_id);
 			precisions.push(1u128);
-			mint_args.push(u128::MAX / 1000);
-			set_balance(currency_id, &tester, u128::MAX / 10);
+			set_balance(currency_id, &tester, u128::MAX / 2);
 		}
-		create_stable_pools(assets, precisions, u128::MAX)?;
+		let mint_args = match u {
+			2 => vec![u128::MAX / 10, 1],
+			3 => vec![u128::MAX / 10, 1, 1],
+			4 => vec![u128::MAX / 100000, 10000, 10000, 10000],
+			5 => vec![u128::MAX / 100000000, 100000000, 100000000, 100000000, 100000000],
+			_ => vec![]
+		};
+		create_stable_pools(assets, precisions, 10000)?;
 		let pool_id = StableAsset::pool_count() - 1;
-		StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, mint_args, 0u128)?;
-	}: _(RawOrigin::Signed(tester), pool_id, 0, 1, dollar(currency_list()[0]), 0u128, u)
+		StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, mint_args.clone(), 0u128)?;
+	}: _(RawOrigin::Signed(tester), pool_id, 1, 0, 100000u128, 0u128, u)
 
 	redeem_proportion {
 		let tester: AccountId = whitelisted_caller();
@@ -142,19 +148,27 @@ runtime_benchmarks! {
 		let u in 2u32 .. <Runtime as nutsfinance_stable_asset::Config>::PoolAssetLimit::get();
 		let mut assets = vec![];
 		let mut precisions = vec![];
-		let mut mint_args = vec![];
 		for i in 0 .. u {
 			let i_idx: usize = usize::try_from(i).unwrap();
 			let currency_id = currency_list()[i_idx];
 			assets.push(currency_id);
 			precisions.push(1u128);
-			mint_args.push(u128::MAX / 1000);
-			set_balance(currency_id, &tester, u128::MAX / 10);
+			set_balance(currency_id, &tester, u128::MAX / 2);
 		}
-		create_stable_pools(assets, precisions, u128::MAX)?;
+		let mint_args = match u {
+			2 => vec![u128::MAX / 10, 1],
+			3 => vec![u128::MAX / 10, 1, 1],
+			4 => vec![u128::MAX / 100000, 10000, 10000, 10000],
+			5 => vec![u128::MAX / 100000000, 100000000, 100000000, 100000000, 100000000],
+			_ => vec![]
+		};
+		create_stable_pools(assets, precisions, 10000)?;
 		let pool_id = StableAsset::pool_count() - 1;
 		StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, mint_args, 0u128)?;
-	}: _(RawOrigin::Signed(tester), pool_id, 1_000_000_000_000u128, 0u32, 0u128, u)
+	}: {
+		StableAsset::redeem_single(RawOrigin::Signed(tester).into(), pool_id, 10_000u128, 0u32, 0u128, u);
+		Ok(()) as DispatchResult
+	}
 
 	redeem_multi {
 		let tester: AccountId = whitelisted_caller();

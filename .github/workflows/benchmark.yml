@@ -36,68 +36,17 @@ jobs:
             switch (cmd) {
               case 'runtime': {
                 const [runtime, pallet] = args
-                const options = {
-                  acala: {
-                    chain: 'acala-dev'
-                  },
-                  karura: {
-                    chain: 'karura-dev'
-                  },
-                  mandala: {
-                    chain: 'dev'
-                  }
-                }
-                const option = options[runtime]
-                if (!option) {
-                  throw new Error('Invalid runtime')
-                }
-                return [
-                  '--quiet',
-                  '--profile=production',
-                  '--color=never',
-                  '--bin=acala',
-                  '--features=runtime-benchmarks',
-                  `--features=with-${runtime}-runtime`,
-                  '--features=on-chain-release-build',
-                  '--',
-                  'benchmark',
-                  'pallet',
-                  `--chain=${option.chain}`,
-                  '--steps=50',
-                  '--repeat=20',
-                  `--pallet=${pallet ?? '"*"'}`,
-                  '--extrinsic="*"',
-                  '--execution=wasm',
-                  '--wasm-execution=compiled',
-                  '--heap-pages=4096',
-                  '--template=./templates/runtime-weight-template.hbs',
-                  `--output=./runtime/${runtime}/src/weights/`
-                ].join(' ')
+                if (!['acala', 'karura', 'mandala'].includes(runtime)) throw new Error('Invalid runtime')
+                return `make benchmark-${runtime} options="--quiet --color=never" pallet=${pallet ?? "*"}`
               }
               case 'module':
                 const [pallet] = args
                 // pallet folder should be just the name of the pallet, without the leading
                 // "pallet_" or "frame_", then separated with "-"
                 const palletFolder = pallet.split('_').slice(1).join('-').trim()
-                return [
-                  '--release --color=never',
-                  '--bin=acala',
-                  '--features=runtime-benchmarks',
-                  '--features=with-mandala-runtime',
-                  '--',
-                  'benchmark',
-                  'pallet',
-                  '--chain=dev',
-                  '--steps=50',
-                  '--repeat=20',
-                  `--pallet=${pallet}`,
-                  '--extrinsic="*"',
-                  '--execution=wasm',
-                  '--wasm-execution=compiled',
-                  '--heap-pages=4096',
-                  `--output=./modules/${palletFolder}/src/weights.rs`,
-                  '--template=./templates/module-weight-template.hbs'
-                ].join(' ')
+                return `make benchmark-module options="--quiet --color=never" pallet=${pallet} pallet_folder=${palletFolder}`
+              case 'evm':
+                return 'make bench-evm'
               default:
                 throw new Error('Invalid command')
             }
@@ -110,7 +59,12 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `Command: ${context.payload.comment.body}\n\n\nRunning...`
+              body: `
+              **Request**: \`${context.payload.comment.body}\`
+              **Command**: \`${{steps.command.outputs.result}}\`
+
+              Running...
+              `
             })
             return data.data.id
       - name: Install toolchain
@@ -126,7 +80,7 @@ jobs:
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
       - name: Run benchmarks
-        run: cargo run ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
+        run: ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
       - name: Commit
         run: |
           git config user.email "hello@acala.network"
@@ -147,7 +101,7 @@ jobs:
               repo: context.repo.repo,
               body: `
               **Request**: \`${context.payload.comment.body}\`
-              **Command**: \`cargo run ${{steps.command.outputs.result}}\`
+              **Command**: \`${{steps.command.outputs.result}}\`
 
               <details>
               <summary>Results</summary>
