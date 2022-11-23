@@ -21,12 +21,16 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 [features]
 default = ["std"]
 std = [
+	"acala-primitives/std",
 	"codec/std",
-	"sp-runtime/std",
-	"sp-std/std",
 	"frame-support/std",
 	"frame-system/std",
-	"acala-primitives/std",
 	"module-support/std",
+	"scale-info/std",
+	"sp-runtime/std",
+	"sp-std/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+]

@@ -33,12 +33,15 @@ orml-tokens = { path = "../../orml/tokens" }
 default = ["std"]
 std = [
 	"codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"orml-traits/std",
+	"primitives/std",
 	"scale-info/std",
 	"sp-runtime/std",
 	"sp-std/std",
-	"frame-support/std",
-	"frame-system/std",
-	"primitives/std",
-	"orml-traits/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+]

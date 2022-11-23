@@ -79,7 +79,6 @@ pub use frame_support::{
 };
 
 pub use pallet_collective::MemberCount;
-pub use pallet_staking::StakerStatus;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 

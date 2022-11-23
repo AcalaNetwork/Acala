@@ -44,4 +44,7 @@ std = [
 	"xcm/std",
 	"module-support/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+]

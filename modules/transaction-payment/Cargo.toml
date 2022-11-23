@@ -33,17 +33,21 @@ smallvec = "1.4.1"
 default = ["std"]
 std = [
 	"codec/std",
-	"scale-info/std",
-	"sp-runtime/std",
 	"frame-support/std",
 	"frame-system/std",
-	"sp-io/std",
-	"sp-std/std",
-	"pallet-transaction-payment/std",
-	"pallet-transaction-payment-rpc-runtime-api/std",
-	"primitives/std",
-	"support/std",
 	"orml-traits/std",
+	"pallet-transaction-payment-rpc-runtime-api/std",
+	"pallet-transaction-payment/std",
+	"primitives/std",
+	"scale-info/std",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"support/std",
 	"xcm/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"pallet-transaction-payment/try-runtime",
+]

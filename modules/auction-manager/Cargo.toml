@@ -33,11 +33,14 @@ std = [
 	"frame-system/std",
 	"orml-traits/std",
 	"orml-utilities/std",
+	"primitives/std",
 	"scale-info/std",
 	"sp-io/std",
 	"sp-runtime/std",
 	"sp-std/std",
 	"support/std",
-	"primitives/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+]

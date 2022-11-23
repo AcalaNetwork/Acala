@@ -909,7 +909,7 @@ pub mod module {
 					staking_currency,
 					staking_remaining,
 					T::SovereignSubAccountLocation::get(),
-					Self::xcm_dest_weight(),
+					WeightLimit::Limited(Self::xcm_dest_weight()),
 				)?;
 				T::Currency::deposit(T::LiquidCurrencyId::get(), minter, liquid_to_mint)?;
 

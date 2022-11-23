@@ -166,7 +166,7 @@ fn acala_side(fee_amount: u128) {
 				)
 				.into()
 			),
-			FEE_WEIGHT as u64
+			WeightLimit::Limited(FEE_WEIGHT as u64)
 		));
 
 		assert_eq!(

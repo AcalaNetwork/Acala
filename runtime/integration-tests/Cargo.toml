@@ -20,14 +20,11 @@ pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = 
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 pallet-bounties = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-pallet-democracy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features =false }
-pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
+pallet-democracy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 pallet-indices = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 pallet-membership = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 pallet-multisig = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-pallet-offences = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-pallet-recovery = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", features = ["historical"] }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 pallet-sudo = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
@@ -102,7 +99,7 @@ module-emergency-shutdown = { path = "../../modules/emergency-shutdown" }
 module-evm = { path = "../../modules/evm" }
 module-evm-accounts = { path = "../../modules/evm-accounts" }
 module-evm-bridge = { path = "../../modules/evm-bridge" }
-module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
+module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api" }
 module-honzon = { path = "../../modules/honzon" }
 module-loans = { path = "../../modules/loans" }
 module-nft = { path = "../../modules/nft" }

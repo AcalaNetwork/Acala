@@ -39,19 +39,25 @@ runtime-benchmarks = [
 	'frame-benchmarking',
 	'frame-support/runtime-benchmarks',
 	'frame-system/runtime-benchmarks',
+	'sp-staking/runtime-benchmarks',
 ]
 std = [
-	'codec/std',
-	'log/std',
+	"primitives/std",
 	"scale-info/std",
+	'codec/std',
 	'frame-benchmarking/std',
 	'frame-support/std',
 	'frame-system/std',
+	'log/std',
 	'pallet-authorship/std',
 	'pallet-session/std',
 	'sp-runtime/std',
 	'sp-staking/std',
 	'sp-std/std',
-	"primitives/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"pallet-authorship/try-runtime",
+	"pallet-session/try-runtime",
+]

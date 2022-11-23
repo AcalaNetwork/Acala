@@ -174,7 +174,7 @@ pub mod module {
 				T::StakingCurrencyId::get(),
 				amount,
 				T::SovereignSubAccountLocationConvert::convert(sub_account_index),
-				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0,
+				WeightLimit::Limited(Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0),
 			)
 		}
 

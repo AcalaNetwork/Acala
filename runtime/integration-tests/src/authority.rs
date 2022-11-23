@@ -108,10 +108,10 @@ fn test_authority_module() {
 				Box::new(call.clone())
 			));
 			System::assert_last_event(RuntimeEvent::Authority(orml_authority::Event::Scheduled {
-				origin: OriginCaller::Authority(DelayedOrigin {
-					delay: one_day_later - 1,
-					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
-				}),
+				origin: OriginCaller::Authority(DelayedOrigin::new(
+					one_day_later - 1,
+					Box::new(OriginCaller::system(RawOrigin::Root)),
+				)),
 				index: 1,
 			}));
 
@@ -259,22 +259,17 @@ fn test_authority_module() {
 				Box::new(call.clone())
 			));
 			System::assert_last_event(RuntimeEvent::Authority(orml_authority::Event::Scheduled {
-				origin: OriginCaller::Authority(DelayedOrigin {
-					delay: 1,
-					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
-				}),
+				origin: OriginCaller::Authority(DelayedOrigin::new(1, Box::new(OriginCaller::system(RawOrigin::Root)))),
 				index: 5,
 			}));
 
 			let schedule_origin = {
 				let origin: <Runtime as orml_authority::Config>::RuntimeOrigin = From::from(RuntimeOrigin::root());
-				let origin: <Runtime as orml_authority::Config>::RuntimeOrigin = From::from(DelayedOrigin::<
-					BlockNumber,
-					<Runtime as orml_authority::Config>::PalletsOrigin,
-				> {
-					delay: 1,
-					origin: Box::new(origin.caller().clone()),
-				});
+				let origin: <Runtime as orml_authority::Config>::RuntimeOrigin =
+					From::from(DelayedOrigin::<
+						BlockNumber,
+						<Runtime as orml_authority::Config>::PalletsOrigin,
+					>::new(1, Box::new(origin.caller().clone())));
 				origin
 			};
 
@@ -285,10 +280,7 @@ fn test_authority_module() {
 				5
 			));
 			System::assert_last_event(RuntimeEvent::Authority(orml_authority::Event::Cancelled {
-				origin: OriginCaller::Authority(DelayedOrigin {
-					delay: 1,
-					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
-				}),
+				origin: OriginCaller::Authority(DelayedOrigin::new(1, Box::new(OriginCaller::system(RawOrigin::Root)))),
 				index: 5,
 			}));
 

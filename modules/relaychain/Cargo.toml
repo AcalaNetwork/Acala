@@ -25,13 +25,12 @@ kusama = []
 polkadot = []
 std = [
 	"codec/std",
-	"sp-runtime/std",
-	"sp-std/std",
+	"cumulus-primitives-core/std",
 	"frame-support/std",
 	"frame-system/std",
 	"module-support/std",
 	"primitives/std",
+	"sp-runtime/std",
+	"sp-std/std",
 	"xcm/std",
-	"cumulus-primitives-core/std",
 ]
-try-runtime = ["frame-support/try-runtime"]

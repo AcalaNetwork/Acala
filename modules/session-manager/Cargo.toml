@@ -22,13 +22,17 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 default = ["std"]
 std = [
 	"codec/std",
-	"log/std",
-	"scale-info/std",
-	"sp-staking/std",
-	"sp-std/std",
-	"sp-runtime/std",
 	"frame-support/std",
 	"frame-system/std",
+	"log/std",
 	"pallet-session/std",
+	"scale-info/std",
+	"sp-runtime/std",
+	"sp-staking/std",
+	"sp-std/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"pallet-session/try-runtime",
+]

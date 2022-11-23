@@ -28,13 +28,17 @@ cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury" }
 default = ["std"]
 std = [
 	"codec/std",
-	"scale-info/std",
 	"frame-support/std",
 	"frame-system/std",
+	"loans/std",
+	"primitives/std",
+	"scale-info/std",
 	"sp-runtime/std",
 	"sp-std/std",
 	"support/std",
-	"loans/std",
-	"primitives/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"loans/try-runtime",
+]

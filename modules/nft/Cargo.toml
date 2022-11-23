@@ -34,20 +34,29 @@ support = { package = "module-support", path = "../../modules/support" }
 default = ["std"]
 std = [
 	"serde",
+
 	"codec/std",
-	"scale-info/std",
-	"sp-std/std",
-	"sp-runtime/std",
+	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
+	"orml-nft/std",
+	"orml-traits/std",
 	"pallet-proxy/std",
 	"primitives/std",
-	"orml-traits/std",
-	"orml-nft/std",
+	"scale-info/std",
+	"sp-runtime/std",
+	"sp-std/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
+	"pallet-proxy/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"orml-nft/try-runtime",
+	"pallet-proxy/try-runtime",
+]

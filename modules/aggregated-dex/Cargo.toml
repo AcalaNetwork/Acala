@@ -29,16 +29,20 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "p
 default = ["std"]
 std = [
 	"codec/std",
-	"scale-info/std",
-	"sp-runtime/std",
 	"frame-support/std",
 	"frame-system/std",
-	"sp-std/std",
-	"orml-traits/std",
-	"orml-tokens/std",
-	"support/std",
-	"primitives/std",
-	"nutsfinance-stable-asset/std",
 	"module-dex/std",
+	"nutsfinance-stable-asset/std",
+	"orml-tokens/std",
+	"orml-traits/std",
+	"primitives/std",
+	"scale-info/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"support/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"module-dex/try-runtime",
+]

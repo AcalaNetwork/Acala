@@ -84,7 +84,7 @@ fn transfer_to_relay_chain() {
 				)
 				.into()
 			),
-			4_000_000_000
+			WeightLimit::Limited(4_000_000_000)
 		));
 	});
 
@@ -160,7 +160,7 @@ fn liquid_crowdloan_xtokens_works() {
 				)
 				.into()
 			),
-			8_000_000_000,
+			WeightLimit::Limited(8_000_000_000),
 		));
 
 		assert_eq!(Tokens::free_balance(LCDOT, &AccountId::from(BOB)), 5 * dollar);
@@ -190,7 +190,7 @@ fn liquid_crowdloan_xtokens_works() {
 				)
 				.into()
 			),
-			8_000_000_000,
+			WeightLimit::Limited(8_000_000_000),
 		));
 	});
 

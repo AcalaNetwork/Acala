@@ -20,7 +20,7 @@
 
 use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
-use frame_support::{assert_ok, traits::Get, weights::Weight, BoundedVec};
+use frame_support::{assert_ok, traits::Get, BoundedVec};
 use module_homa::UnlockChunk;
 use module_support::HomaSubAccountXcm;
 use module_xcm_interface::XcmInterfaceOperation;

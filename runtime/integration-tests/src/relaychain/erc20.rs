@@ -191,7 +191,7 @@ fn erc20_transfer_between_sibling() {
 				)
 				.into(),
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		// using native token to charge storage fee
@@ -241,7 +241,7 @@ fn erc20_transfer_between_sibling() {
 				)
 				.into(),
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		assert_eq!(
@@ -388,7 +388,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 				)
 				.into(),
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		assert_eq!(

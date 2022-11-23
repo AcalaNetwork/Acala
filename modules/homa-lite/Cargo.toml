@@ -37,22 +37,27 @@ std = [
 	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
+	"module-support/std",
+	"orml-traits/std",
+	"pallet-xcm/std",
+	"primitives/std",
 	"scale-info/std",
 	"sp-arithmetic/std",
+	"sp-core/std",
 	"sp-io/std",
 	"sp-runtime/std",
-	"sp-core/std",
 	"sp-std/std",
-	"pallet-xcm/std",
 	"xcm/std",
-	"primitives/std",
-	"orml-traits/std",
-	"module-support/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"pallet-xcm/try-runtime",
+]

@@ -81,10 +81,6 @@ polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "relea
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31" }
 polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31" }
 
-ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
-module-collator-selection = { path = "../../modules/collator-selection" }
-module-evm = { path = "../../modules/evm" }
-module-nft = { path = "../../modules/nft" }
 orml-oracle-rpc = { path = "../../orml/oracle/rpc" }
 orml-tokens-rpc = { path = "../../orml/tokens/rpc" }
 acala-primitives = { path = "../../primitives" }
@@ -100,15 +96,23 @@ acala-runtime = { path = "../../runtime/acala", optional = true }
 default = [ "std" ]
 std = []
 runtime-benchmarks = [
-	"mandala-runtime/runtime-benchmarks",
-	"karura-runtime/runtime-benchmarks",
 	"acala-runtime/runtime-benchmarks",
+	"cumulus-pallet-parachain-system/runtime-benchmarks",
+	"frame-benchmarking/runtime-benchmarks",
+	"karura-runtime/runtime-benchmarks",
+	"mandala-runtime/runtime-benchmarks",
+	"polkadot-cli/runtime-benchmarks",
+	"polkadot-primitives/runtime-benchmarks",
 	"polkadot-service/runtime-benchmarks",
+	"sc-service/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
-	"mandala-runtime/try-runtime",
-	"karura-runtime/try-runtime",
 	"acala-runtime/try-runtime",
+	"cumulus-pallet-parachain-system/try-runtime",
+	"karura-runtime/try-runtime",
+	"mandala-runtime/try-runtime",
+	"polkadot-cli/try-runtime",
 	"polkadot-service/try-runtime",
 ]
 with-mandala-runtime = [

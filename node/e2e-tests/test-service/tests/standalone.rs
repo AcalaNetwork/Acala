@@ -28,7 +28,7 @@ use sp_runtime::{traits::IdentifyAccount, MultiAddress, MultiSigner};
 use test_service::{ensure_event, SealMode};
 
 #[substrate_test_utils::test(flavor = "multi_thread")]
-#[ignore] // TODO: Wasm binary must be built for testing, polkadot/node/test/service/src/chain_spec.rs:117:40
+#[ignore] // TODO: Wasm binary must be built for testing, https://github.com/paritytech/polkadot/blob/3cf644abad63c4a177f0697683b72a64c4706852/node/test/service/src/chain_spec.rs#L119
 async fn simple_balances_dev_test() {
 	let mut builder = sc_cli::LoggerBuilder::new("");
 	builder.with_colors(true);

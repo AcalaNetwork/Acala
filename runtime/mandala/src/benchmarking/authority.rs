@@ -73,10 +73,10 @@ runtime_benchmarks! {
 		let schedule_origin = {
 			let origin: <Runtime as frame_system::Config>::RuntimeOrigin = From::from(RuntimeOrigin::root());
 			let origin: <Runtime as frame_system::Config>::RuntimeOrigin =
-				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin> {
-					delay: 1,
-					origin: Box::new(origin.caller().clone()),
-				});
+				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin>::new(
+					1,
+					Box::new(origin.caller().clone()),
+				));
 			origin
 		};
 
@@ -101,10 +101,10 @@ runtime_benchmarks! {
 		let schedule_origin = {
 			let origin: <Runtime as frame_system::Config>::RuntimeOrigin = From::from(RuntimeOrigin::root());
 			let origin: <Runtime as frame_system::Config>::RuntimeOrigin =
-				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin> {
-					delay: 1,
-					origin: Box::new(origin.caller().clone()),
-				});
+				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin>::new(
+					1,
+					Box::new(origin.caller().clone()),
+				));
 			origin
 		};
 
@@ -129,10 +129,10 @@ runtime_benchmarks! {
 		let schedule_origin = {
 			let origin: <Runtime as frame_system::Config>::RuntimeOrigin = From::from(RuntimeOrigin::root());
 			let origin: <Runtime as frame_system::Config>::RuntimeOrigin =
-				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin> {
-					delay: 1,
-					origin: Box::new(origin.caller().clone()),
-				});
+				From::from(orml_authority::DelayedOrigin::<BlockNumber, <Runtime as orml_authority::Config>::PalletsOrigin>::new(
+					1,
+					Box::new(origin.caller().clone()),
+				));
 			origin
 		};
 

@@ -100,7 +100,7 @@ fn transfer_to_relay_chain() {
 				)
 				.into()
 			),
-			weight
+			WeightLimit::Limited(weight)
 		));
 	});
 
@@ -157,7 +157,7 @@ fn transfer_native_chain_asset() {
 				)
 				.into()
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
@@ -184,7 +184,7 @@ fn transfer_native_chain_asset() {
 				)
 				.into()
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 5 * dollar - bnc_fee);
@@ -252,7 +252,7 @@ fn transfer_sibling_chain_asset() {
 				)
 				.into()
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
@@ -298,7 +298,7 @@ fn transfer_sibling_chain_asset() {
 				)
 				.into()
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		assert_eq!(
@@ -420,7 +420,7 @@ fn asset_registry_module_works() {
 				)
 				.into()
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		assert_eq!(
@@ -465,7 +465,7 @@ fn asset_registry_module_works() {
 				)
 				.into()
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		assert_eq!(
@@ -554,7 +554,7 @@ fn stable_asset_xtokens_works() {
 				)
 				.into()
 			),
-			8_000_000_000,
+			WeightLimit::Limited(8_000_000_000),
 		));
 
 		assert_eq!(Tokens::free_balance(stable_asset, &AccountId::from(BOB)), 5 * dollar);
@@ -587,7 +587,7 @@ fn stable_asset_xtokens_works() {
 				)
 				.into()
 			),
-			8_000_000_000,
+			WeightLimit::Limited(8_000_000_000),
 		));
 	});
 

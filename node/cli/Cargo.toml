@@ -37,17 +37,28 @@ substrate-build-script-utils = { git = "https://github.com/paritytech/substrate"
 default = [ "wasmtime", "cli" ]
 wasmtime = [ "sc-cli/wasmtime" ]
 cli = [
-	"service",
-	"sp-core",
+	"frame-benchmarking-cli",
 	"sc-cli",
 	"sc-service",
-	"frame-benchmarking-cli",
+	"service",
+	"sp-core",
 	"try-runtime-cli",
 ]
-runtime-benchmarks = [ "service/runtime-benchmarks" ]
+runtime-benchmarks = [
+	"frame-benchmarking-cli/runtime-benchmarks",
+	"polkadot-cli/runtime-benchmarks",
+	"polkadot-parachain/runtime-benchmarks",
+	"polkadot-primitives/runtime-benchmarks",
+	"polkadot-service/runtime-benchmarks",
+	"sc-service/runtime-benchmarks",
+	"service/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+]
 try-runtime = [
-	"try-runtime-cli",
+	"polkadot-cli/try-runtime",
+	"polkadot-service/try-runtime",
 	"service/try-runtime",
+	"try-runtime-cli",
 ]
 with-mandala-runtime = [
 	"service/with-mandala-runtime",
@@ -59,10 +70,10 @@ with-acala-runtime = [
 	"service/with-acala-runtime",
 ]
 with-all-runtime = [
-	"with-mandala-runtime",
-	"with-karura-runtime",
-	"with-acala-runtime",
 	"service/with-all-runtime",
+	"with-acala-runtime",
+	"with-karura-runtime",
+	"with-mandala-runtime",
 ]
 rococo-native = [
 	"polkadot-cli/rococo-native"

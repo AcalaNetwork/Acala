@@ -85,7 +85,7 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 		_currency_id: CurrencyId,
 		amount: Balance,
 		_dest: MultiLocation,
-		_dest_weight: XcmWeight,
+		_dest_weight: WeightLimit,
 	) -> DispatchResult {
 		Currencies::slash(KSM, &who, amount);
 		match who {
@@ -99,7 +99,7 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 		_who: AccountId,
 		_asset: MultiAsset,
 		_dest: MultiLocation,
-		_dest_weight: XcmWeight,
+		_dest_weight: WeightLimit,
 	) -> DispatchResult {
 		Ok(())
 	}

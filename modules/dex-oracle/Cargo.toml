@@ -26,13 +26,17 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "
 default = ["std"]
 std = [
 	"codec/std",
-	"scale-info/std",
-	"sp-runtime/std",
+	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
-	"sp-std/std",
 	"orml-traits/std",
-	"support/std",
 	"primitives/std",
+	"scale-info/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"support/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+]

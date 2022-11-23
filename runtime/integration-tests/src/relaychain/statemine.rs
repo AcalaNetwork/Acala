@@ -162,7 +162,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 				)
 				.into()
 			),
-			4_000_000_000
+			WeightLimit::Limited(4_000_000_000)
 		));
 
 		assert_eq!(9 * UNIT, Tokens::free_balance(KSM, &AccountId::from(ALICE)));
@@ -282,7 +282,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 					)
 					.into()
 				),
-				FEE_WEIGHT as u64
+				WeightLimit::Limited(FEE_WEIGHT as u64)
 			));
 		} else {
 			// use KSM as fee
@@ -303,7 +303,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 					)
 					.into()
 				),
-				FEE_WEIGHT as u64
+				WeightLimit::Limited(FEE_WEIGHT as u64)
 			));
 		}
 
