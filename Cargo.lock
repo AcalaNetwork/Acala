@@ -5873,6 +5873,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-extrinsic-restrict"
+version = "2.10.1"
+dependencies = [
+ "acala-primitives",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "orml-xtokens",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
 name = "module-homa"
 version = "2.10.1"
 dependencies = [
