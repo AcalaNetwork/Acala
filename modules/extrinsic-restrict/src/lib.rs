@@ -83,23 +83,15 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		///	The mint amount is below the threshold.
-		BelowMintThreshold,
+		Dummy,
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// The redeemer withdraw expired redemption.
-		WithdrawRedemption {
-			redeemer: T::AccountId,
-			redemption_amount: Balance,
-		},
+		Dummy { who: T::AccountId, amount: Balance },
 	}
 
-	/// Requests to redeem staked currencies.
-	///
-	/// RedeemRequests: Map: AccountId => Option<(liquid_amount: Balance, allow_fast_match: bool)>
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_requests)]
 	pub type XtokensTransferLimits<T: Config> =
