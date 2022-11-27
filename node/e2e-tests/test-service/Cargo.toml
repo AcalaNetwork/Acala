@@ -1,6 +1,6 @@
 [package]
 name = "test-service"
-version = "2.2.1"
+version = "2.10.1"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -14,6 +14,7 @@ criterion = { version = "0.3.6", features = [ "async_tokio" ] }
 jsonrpsee = { version = "0.15.1", features = ["server", "macros"] }
 log = "0.4.17"
 futures = { package = "futures", version = "0.3", features = ["compat"] }
+tempfile = "3.1.0"
 hex-literal = "0.3.1"
 url = "2.2.2"
 rlp = "0.5.2"
@@ -90,6 +91,7 @@ module-emergency-shutdown = { path = "../../../modules/emergency-shutdown" }
 ecosystem-renvm-bridge = { path = "../../../ecosystem-modules/ren/renvm-bridge" }
 
 [dev-dependencies]
+portpicker = "0.1.1"
 
 # Substrate dependencies
 sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }

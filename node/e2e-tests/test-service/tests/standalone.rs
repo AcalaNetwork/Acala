@@ -366,10 +366,10 @@ async fn evm_gas_limit_test() {
 	assert_eq!(contract_account.nonce, 1);
 	assert_eq!(contract_account.contract_info.unwrap().published, true);
 
-	// createContractLoop(uint256) 460 times
+	// createContractLoop(uint256) 410 times
 	let input = hex! {"
 		659aaab3
-		00000000000000000000000000000000 000000000000000000000000000001cc
+		00000000000000000000000000000000 0000000000000000000000000000019a
 	"}
 	.to_vec();
 
@@ -377,7 +377,7 @@ async fn evm_gas_limit_test() {
 		target: contract_address,
 		input: input.clone(),
 		value: 0,
-		gas_limit: 33_000_000,
+		gas_limit: 29_000_000,
 		storage_limit: 5_000_000,
 		access_list: vec![],
 	});
@@ -395,10 +395,10 @@ async fn evm_gas_limit_test() {
 
 	node.wait_for_blocks(1).await;
 
-	// incrementLoop(uint256) 9500 times
+	// incrementLoop(uint256) 8480 times
 	let input = hex! {"
 		3f8308e6
-		00000000000000000000000000000000 0000000000000000000000000000251c
+		00000000000000000000000000000000 00000000000000000000000000002120
 	"}
 	.to_vec();
 
@@ -406,7 +406,7 @@ async fn evm_gas_limit_test() {
 		target: contract_address,
 		input: input.clone(),
 		value: 0,
-		gas_limit: 33_000_000,
+		gas_limit: 29_000_000,
 		storage_limit: 5_000_000,
 		access_list: vec![],
 	});

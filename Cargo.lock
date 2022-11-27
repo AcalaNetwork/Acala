@@ -9731,6 +9731,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "portpicker"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be97d76faf1bfab666e1375477b23fde79eccf0276e9b63b92a39d676a889ba9"
+dependencies = [
+ "rand 0.8.5",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -13558,7 +13567,7 @@ dependencies = [
 
 [[package]]
 name = "test-service"
-version = "2.2.1"
+version = "2.10.1"
 dependencies = [
  "acala-cli",
  "acala-primitives",
@@ -13597,6 +13606,7 @@ dependencies = [
  "polkadot-primitives",
  "polkadot-service",
  "polkadot-test-service",
+ "portpicker",
  "rand 0.8.5",
  "rlp",
  "runtime-common",
@@ -13634,6 +13644,7 @@ dependencies = [
  "sp-trie",
  "substrate-test-client",
  "substrate-test-utils",
+ "tempfile",
  "tokio",
  "url",
 ]

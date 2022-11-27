@@ -235,8 +235,7 @@ pub async fn start_dev_node(
 					slot_duration,
 				);
 
-				Ok((timestamp, slot))
-				// Ok(timestamp)
+				Ok((slot, timestamp))
 			});
 			let authorship_future =
 				sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
@@ -417,11 +416,11 @@ pub async fn start_node_impl<RB>(
 	parachain_config: Configuration,
 	collator_key: Option<CollatorPair>,
 	relay_chain_config: Configuration,
-	collator_options: CollatorOptions,
 	para_id: ParaId,
 	wrap_announce_block: Option<Box<dyn FnOnce(AnnounceBlockFn) -> AnnounceBlockFn>>,
 	rpc_ext_builder: RB,
 	consensus: Consensus,
+	collator_options: CollatorOptions,
 	seal_mode: SealMode,
 ) -> sc_service::error::Result<(
 	TaskManager,

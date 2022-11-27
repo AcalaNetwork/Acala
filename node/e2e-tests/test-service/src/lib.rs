@@ -25,7 +25,13 @@ mod rpc;
 mod service;
 
 use futures::channel::{mpsc, oneshot};
-use std::{future::Future, sync::Arc, time::Duration};
+use std::{
+	future::Future,
+	net::{IpAddr, Ipv4Addr, SocketAddr},
+	path::PathBuf,
+	sync::Arc,
+	time::Duration,
+};
 
 use cumulus_client_cli::{generate_genesis_block, CollatorOptions};
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
@@ -223,8 +229,13 @@ pub fn run_relay_chain_validator_node(
 	key: Sr25519Keyring,
 	storage_update_func: impl Fn(),
 	boot_nodes: Vec<MultiaddrWithPeerId>,
+	websocket_port: Option<u16>,
 ) -> polkadot_test_service::PolkadotTestNode {
-	let config = polkadot_test_service::node_config(storage_update_func, tokio_handle, key, boot_nodes, true);
+	let mut config = polkadot_test_service::node_config(storage_update_func, tokio_handle, key, boot_nodes, true);
+
+	if let Some(port) = websocket_port {
+		config.rpc_ws = Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port));
+	}
 
 	polkadot_test_service::run_validator_node(
 		config,
