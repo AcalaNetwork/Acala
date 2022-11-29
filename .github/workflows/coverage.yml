@@ -39,7 +39,10 @@ jobs:
           submodules: recursive
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
-      - run: make init
+      - name: Setup toolchain
+        run: |
+          curl https://sh.rustup.rs -sSf | sh
+          make init
       # - name: Install additional dependencies
       #   run: |
       #       sudo apt update -y &&
