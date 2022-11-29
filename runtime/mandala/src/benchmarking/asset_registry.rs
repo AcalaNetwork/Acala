@@ -24,7 +24,7 @@ use frame_system::RawOrigin;
 use module_evm::EvmAddress;
 use module_support::AddressMapping;
 use orml_benchmarking::runtime_benchmarks;
-use primitives::{currency::AssetMetadata, TokenSymbol};
+use primitives::currency::AssetMetadata;
 use sp_std::{boxed::Box, str::FromStr, vec};
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
@@ -132,10 +132,10 @@ runtime_benchmarks! {
 			decimals: 12,
 			minimal_balance: 1,
 		};
-	}: _(RawOrigin::Root, CurrencyId::Token(TokenSymbol::DOT), Box::new(asset_metadata))
+	}: _(RawOrigin::Root, CurrencyId::LiquidCrowdloan(0), Box::new(asset_metadata))
 
 	update_native_asset {
-		let currency_id = CurrencyId::Token(TokenSymbol::DOT);
+		let currency_id = CurrencyId::LiquidCrowdloan(0);
 		let asset_metadata = AssetMetadata {
 			name: b"Token Name".to_vec(),
 			symbol: b"TN".to_vec(),
