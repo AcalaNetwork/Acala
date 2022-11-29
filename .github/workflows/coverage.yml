@@ -40,7 +40,7 @@ jobs:
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
       - name: Setup toolchain
-        uses: ./.github/actions/setup-toolchain
+        run: .github/scripts/setup-toolchain.sh
       # - name: Install additional dependencies
       #   run: |
       #       sudo apt update -y &&
