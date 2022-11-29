@@ -38,13 +38,7 @@ jobs:
         with:
           submodules: recursive
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly-2022-08-05
-          components: rustfmt
-          target: wasm32-unknown-unknown
-          default: true
+        run: make init
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
       # - name: Install additional dependencies
