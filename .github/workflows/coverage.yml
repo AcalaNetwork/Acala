@@ -41,9 +41,8 @@ jobs:
         uses: jwlawson/actions-setup-cmake@v1.12
       - name: Setup toolchain
         run: |
-          curl https://sh.rustup.rs -sSf | sh -s -- -y
-          source "$HOME/.cargo/env"
           make toolchain
+          cargo -v
       # - name: Install additional dependencies
       #   run: |
       #       sudo apt update -y &&
