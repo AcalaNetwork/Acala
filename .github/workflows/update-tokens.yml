@@ -17,10 +17,8 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
-
       - name: Setup toolchain
         run: .github/scripts/setup-toolchain.sh
-
       - name: update tokens
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}

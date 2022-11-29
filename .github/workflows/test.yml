@@ -34,10 +34,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Setup toolchain
         run: .github/scripts/setup-toolchain.sh
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build
@@ -62,10 +62,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Setup toolchain
         run: .github/scripts/setup-toolchain.sh
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
@@ -78,10 +78,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Setup toolchain
         run: .github/scripts/setup-toolchain.sh
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run runtime tests
         run: make test-runtimes
       - name: Run eth tests
@@ -102,11 +102,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
-
       - name: Setup toolchain
         run: .github/scripts/setup-toolchain.sh
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
 
       - name: Run e2e tests
         run: make test-e2e

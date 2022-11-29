@@ -71,10 +71,10 @@ jobs:
               `
             })
             return data.data.id
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Setup toolchain
         run: .github/scripts/setup-toolchain.sh
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
