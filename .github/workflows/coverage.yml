@@ -37,12 +37,8 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: nightly-2022-08-05
-          components: rustfmt
-          target: wasm32-unknown-unknown
+      - name: Setup toolchain
+        run: .github/scripts/setup_toolchain.sh
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
       # - name: Install additional dependencies
