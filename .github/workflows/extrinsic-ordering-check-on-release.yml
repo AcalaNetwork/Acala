@@ -49,7 +49,7 @@ jobs:
         if: ${{ env.CHAIN == '' || env.VERSION == '' || env.PREVIOUS_VERSION == '' }}
         run: python .github/scripts/extrinsic_check_setup_env.py
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: '14.x'
           registry-url: 'https://registry.npmjs.org'

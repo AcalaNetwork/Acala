@@ -38,15 +38,13 @@ jobs:
         with:
           submodules: recursive
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
           toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       # - name: Install additional dependencies
       #   run: |
       #       sudo apt update -y &&
@@ -64,7 +62,7 @@ jobs:
             test-service \
             --exclude-files **/mock.rs **/weights.rs **/weights/*
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true # optional (default = false)
