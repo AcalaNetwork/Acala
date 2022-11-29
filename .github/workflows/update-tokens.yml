@@ -17,14 +17,10 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly-2022-08-05
-          components: rustfmt
-          target: wasm32-unknown-unknown
-          default: true
+
+      - name: Setup toolchain
+        run: .github/scripts/setup-toolchain.sh
+
       - name: update tokens
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
