@@ -51,7 +51,7 @@ jobs:
       #       sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
       - name: Run cargo-tarpaulin
         run: |
-          cargo install cargo-tarpaulin@{{ env.TARPAULIN_VERSION }}
+          cargo install cargo-tarpaulin@${{ env.TARPAULIN_VERSION }}
           cargo tarpaulin -v --no-fail-fast --workspace \
             -e acala-inspect \
             acala acala-cli e2e-tests acala-service \
