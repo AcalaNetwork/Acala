@@ -41,7 +41,7 @@ jobs:
         uses: jwlawson/actions-setup-cmake@v1.12
       - name: Setup toolchain
         run: |
-          curl https://sh.rustup.rs -sSf | sh
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
           make init
       # - name: Install additional dependencies
       #   run: |
