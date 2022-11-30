@@ -38,7 +38,9 @@ jobs:
         with:
           submodules: recursive
       - name: Setup toolchain
-        run: .github/scripts/setup-toolchain.sh
+        env:
+          PROFILE: minimal
+        run: .github/scripts/sutup-rust.sh
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
       - name: Run cargo-tarpaulin
