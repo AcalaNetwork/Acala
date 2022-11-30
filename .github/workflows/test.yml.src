@@ -39,13 +39,11 @@ jobs:
           submodules: recursive
       - &toolchain
         name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
           toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build
@@ -85,7 +83,7 @@ jobs:
       - *checkout
       - *toolchain
       - name: Use Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: 16.x
       - name: Run ts tests

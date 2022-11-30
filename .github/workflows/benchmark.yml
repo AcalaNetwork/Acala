@@ -2,7 +2,9 @@ name: Benchmark
 on:
   issue_comment:
     types: [created]
-
+permissions:
+  pull-requests: write
+  contents: write
 jobs:
   benchmark:
     name: Benchmark
@@ -13,7 +15,6 @@ jobs:
         name: Get PR branch
         id: issue
         with:
-          result-encoding: string
           script: |
             const pr = context.payload.issue.number
             const data = await github.rest.pulls.get({
@@ -21,11 +22,14 @@ jobs:
               repo: context.repo.repo,
               pull_number: pr
             })
-            return data.data.head.ref
+            return {
+              ref: data.data.head.ref,
+              sha: data.data.head.sha,
+            }
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-          ref: ${{ steps.issue.outputs.result }}
+          ref: ${{ fromJson(steps.issue.outputs.result).sha }}
       - uses: actions/github-script@v6
         name: Prepare command
         id: command
@@ -77,6 +81,10 @@ jobs:
           default: true
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16.x
       - name: Run benchmarks
         run: ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
       - name: Commit
@@ -85,7 +93,7 @@ jobs:
           git config user.name "Acala Github Action Bot"
           git add .
           git commit -m '${{github.event.comment.body}}' --allow-empty
-          git push
+          git push origin HEAD:${{ fromJson(steps.issue.outputs.result).ref }}
       - uses: actions/github-script@v6
         name: Update comment
         with:
