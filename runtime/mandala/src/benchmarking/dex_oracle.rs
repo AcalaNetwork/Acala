@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::utils::{dollar, inject_liquidity, set_block_number_timestamp, NATIVE, STABLECOIN, STAKING};
-use crate::{AccountId, DexOracle, Runtime, Timestamp};
+use crate::{AccountId, DexOracle, Runtime};
 use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;

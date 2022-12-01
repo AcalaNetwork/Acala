@@ -55,7 +55,7 @@ pub mod v1 {
 				"Attempted to apply migration to v1 but failed because storage version is {:?}",
 				on_chain_storage_version,
 			);
-			0
+			Weight::zero()
 		}
 	}
 }

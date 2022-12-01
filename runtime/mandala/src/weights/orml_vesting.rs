@@ -49,27 +49,27 @@ impl<T: frame_system::Config> orml_vesting::WeightInfo for WeightInfo<T> {
 	// Storage: ParachainSystem ValidationData (r:1 w:0)
 	// Storage: Vesting VestingSchedules (r:1 w:1)
 	fn vested_transfer() -> Weight {
-		(15_872_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(15_872_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: ParachainSystem ValidationData (r:1 w:0)
 	// Storage: Vesting VestingSchedules (r:1 w:1)
 	// Storage: Balances Locks (r:1 w:1)
 	fn claim(i: u32, ) -> Weight {
-		(24_847_000 as Weight)
+		Weight::from_ref_time(24_847_000)
 			// Standard Error: 2_000
-			.saturating_add((17_000 as Weight).saturating_mul(i as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+			.saturating_add(Weight::from_ref_time(17_000).saturating_mul(i as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: System Account (r:1 w:0)
 	// Storage: Vesting VestingSchedules (r:0 w:1)
 	fn update_vesting_schedules(i: u32, ) -> Weight {
-		(12_694_000 as Weight)
+		Weight::from_ref_time(12_694_000)
 			// Standard Error: 1_000
-			.saturating_add((72_000 as Weight).saturating_mul(i as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+			.saturating_add(Weight::from_ref_time(72_000).saturating_mul(i as u64))
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 }

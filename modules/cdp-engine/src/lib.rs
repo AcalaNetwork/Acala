@@ -126,11 +126,11 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + loans::Config + SendTransactionTypes<Call<Self>> {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The origin which may update risk management parameters. Root can
 		/// always do this.
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The default liquidation ratio for all collateral types of CDP
 		#[pallet::constant]
@@ -191,7 +191,7 @@ pub mod module {
 		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
 
 		/// The origin for liquidation contracts registering and deregistering.
-		type LiquidationContractsUpdateOrigin: EnsureOrigin<Self::Origin>;
+		type LiquidationContractsUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// When settle collateral with smart contracts, the acceptable max slippage for the price
 		/// from oracle.

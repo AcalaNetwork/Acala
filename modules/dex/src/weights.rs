@@ -67,173 +67,173 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn enable_trading_pair() -> Weight {
-		(24_728_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(24_728_000)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn disable_trading_pair() -> Weight {
-		(24_891_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(24_891_000)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn list_provisioning() -> Weight {
-		(37_619_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(37_619_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn update_provisioning_parameters() -> Weight {
-		(11_808_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(11_808_000)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn end_provisioning() -> Weight {
-		(78_617_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+		Weight::from_ref_time(78_617_000)
+			.saturating_add(T::DbWeight::get().reads(5 as u64))
+			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
 	fn add_provision() -> Weight {
-		(127_543_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(127_543_000)
+			.saturating_add(T::DbWeight::get().reads(5 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	fn claim_dex_share() -> Weight {
-		(105_716_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(105_716_000)
+			.saturating_add(T::DbWeight::get().reads(7 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	fn add_liquidity() -> Weight {
-		(184_975_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(9 as Weight))
-			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+		Weight::from_ref_time(184_975_000)
+			.saturating_add(T::DbWeight::get().reads(9 as u64))
+			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
 	fn add_liquidity_and_stake() -> Weight {
-		(258_276_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(12 as Weight))
-			.saturating_add(T::DbWeight::get().writes(10 as Weight))
+		Weight::from_ref_time(258_276_000)
+			.saturating_add(T::DbWeight::get().reads(12 as u64))
+			.saturating_add(T::DbWeight::get().writes(10 as u64))
 	}
 	fn remove_liquidity() -> Weight {
-		(158_440_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+		Weight::from_ref_time(158_440_000)
+			.saturating_add(T::DbWeight::get().reads(6 as u64))
+			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
 	fn remove_liquidity_by_unstake() -> Weight {
-		(277_297_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(12 as Weight))
-			.saturating_add(T::DbWeight::get().writes(10 as Weight))
+		Weight::from_ref_time(277_297_000)
+			.saturating_add(T::DbWeight::get().reads(12 as u64))
+			.saturating_add(T::DbWeight::get().writes(10 as u64))
 	}
 	fn swap_with_exact_supply(u: u32, ) -> Weight {
-		(93_799_000 as Weight)
+		Weight::from_ref_time(93_799_000)
 			// Standard Error: 117_000
-			.saturating_add((16_008_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(Weight::from_ref_time(16_008_000).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(u as u64)))
 	}
 	fn swap_with_exact_target(u: u32, ) -> Weight {
-		(93_966_000 as Weight)
+		Weight::from_ref_time(93_966_000)
 			// Standard Error: 226_000
-			.saturating_add((16_058_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(Weight::from_ref_time(16_058_000).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(u as u64)))
 	}
 	fn refund_provision() -> Weight {
-		(105_716_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(105_716_000)
+			.saturating_add(T::DbWeight::get().reads(7 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	fn abort_provisioning() -> Weight {
-		(78_617_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+		Weight::from_ref_time(78_617_000)
+			.saturating_add(T::DbWeight::get().reads(5 as u64))
+			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn enable_trading_pair() -> Weight {
-		(24_728_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(24_728_000)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn disable_trading_pair() -> Weight {
-		(24_891_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(24_891_000)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn list_provisioning() -> Weight {
-		(37_619_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(37_619_000)
+			.saturating_add(RocksDbWeight::get().reads(3 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn update_provisioning_parameters() -> Weight {
-		(11_808_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(11_808_000)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn end_provisioning() -> Weight {
-		(78_617_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
+		Weight::from_ref_time(78_617_000)
+			.saturating_add(RocksDbWeight::get().reads(5 as u64))
+			.saturating_add(RocksDbWeight::get().writes(6 as u64))
 	}
 	fn add_provision() -> Weight {
-		(127_543_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(127_543_000)
+			.saturating_add(RocksDbWeight::get().reads(5 as u64))
+			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	fn claim_dex_share() -> Weight {
-		(105_716_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(105_716_000)
+			.saturating_add(RocksDbWeight::get().reads(7 as u64))
+			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	fn add_liquidity() -> Weight {
-		(184_975_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(9 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
+		Weight::from_ref_time(184_975_000)
+			.saturating_add(RocksDbWeight::get().reads(9 as u64))
+			.saturating_add(RocksDbWeight::get().writes(7 as u64))
 	}
 	fn add_liquidity_and_stake() -> Weight {
-		(258_276_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(10 as Weight))
+		Weight::from_ref_time(258_276_000)
+			.saturating_add(RocksDbWeight::get().reads(12 as u64))
+			.saturating_add(RocksDbWeight::get().writes(10 as u64))
 	}
 	fn remove_liquidity() -> Weight {
-		(158_440_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
+		Weight::from_ref_time(158_440_000)
+			.saturating_add(RocksDbWeight::get().reads(6 as u64))
+			.saturating_add(RocksDbWeight::get().writes(6 as u64))
 	}
 	fn remove_liquidity_by_unstake() -> Weight {
-		(277_297_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(10 as Weight))
+		Weight::from_ref_time(277_297_000)
+			.saturating_add(RocksDbWeight::get().reads(12 as u64))
+			.saturating_add(RocksDbWeight::get().writes(10 as u64))
 	}
 	fn swap_with_exact_supply(u: u32, ) -> Weight {
-		(93_799_000 as Weight)
+		Weight::from_ref_time(93_799_000)
 			// Standard Error: 117_000
-			.saturating_add((16_008_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(Weight::from_ref_time(16_008_000).saturating_mul(u as u64))
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(u as u64)))
 	}
 	fn swap_with_exact_target(u: u32, ) -> Weight {
-		(93_966_000 as Weight)
+		Weight::from_ref_time(93_966_000)
 			// Standard Error: 226_000
-			.saturating_add((16_058_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(Weight::from_ref_time(16_058_000).saturating_mul(u as u64))
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(u as u64)))
 	}
 	fn refund_provision() -> Weight {
-		(105_716_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(105_716_000)
+			.saturating_add(RocksDbWeight::get().reads(7 as u64))
+			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	fn abort_provisioning() -> Weight {
-		(78_617_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
+		Weight::from_ref_time(78_617_000)
+			.saturating_add(RocksDbWeight::get().reads(5 as u64))
+			.saturating_add(RocksDbWeight::get().writes(6 as u64))
 	}
 }

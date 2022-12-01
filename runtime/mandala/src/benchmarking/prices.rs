@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Origin, Prices, Runtime};
+use crate::{Prices, Runtime, RuntimeOrigin};
 
 use super::utils::{dollar, feed_price, STAKING};
 use frame_system::RawOrigin;
@@ -34,7 +34,7 @@ runtime_benchmarks! {
 	unlock_price {
 		// feed price
 		feed_price(vec![(STAKING, dollar(STAKING).into())])?;
-		Prices::lock_price(Origin::root(), STAKING)?;
+		Prices::lock_price(RuntimeOrigin::root(), STAKING)?;
 	}: _(RawOrigin::Root, STAKING)
 }
 

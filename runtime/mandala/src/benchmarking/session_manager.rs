@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Event, Runtime, SessionManager, System};
+use crate::{Runtime, RuntimeEvent, SessionManager, System};
 
 use frame_support::{
 	assert_ok,
@@ -25,7 +25,7 @@ use frame_support::{
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 
-fn assert_last_event(generic_event: Event) {
+fn assert_last_event(generic_event: RuntimeEvent) {
 	System::assert_last_event(generic_event.into());
 }
 

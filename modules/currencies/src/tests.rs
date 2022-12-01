@@ -22,11 +22,11 @@
 
 use super::*;
 use crate::mock::Erc20HoldingAccount;
-use frame_support::{assert_noop, assert_ok, traits::WithdrawReasons, weights::GetDispatchInfo};
+use frame_support::{assert_noop, assert_ok, dispatch::GetDispatchInfo, traits::WithdrawReasons};
 use mock::{
 	alice, bob, deploy_contracts, erc20_address, eva, AccountId, AdaptedBasicCurrency, CouncilAccount, Currencies,
-	DustAccount, Event, ExtBuilder, NativeCurrency, Origin, PalletBalances, Runtime, System, Tokens, ALICE_BALANCE,
-	DOT, EVM, ID_1, NATIVE_CURRENCY_ID, X_TOKEN_ID,
+	DustAccount, ExtBuilder, NativeCurrency, PalletBalances, Runtime, RuntimeEvent, RuntimeOrigin, System, Tokens,
+	ALICE_BALANCE, DOT, EVM, ID_1, NATIVE_CURRENCY_ID, X_TOKEN_ID,
 };
 use sp_core::H160;
 use sp_runtime::{
@@ -50,9 +50,15 @@ fn force_set_lock_and_force_remove_lock_should_work() {
 			assert_eq!(Tokens::locks(&alice(), DOT).len(), 0);
 			assert_eq!(PalletBalances::locks(&alice()).len(), 0);
 
-			assert_ok!(Currencies::force_set_lock(Origin::root(), alice(), DOT, 100, ID_1,));
 			assert_ok!(Currencies::force_set_lock(
-				Origin::root(),
+				RuntimeOrigin::root(),
+				alice(),
+				DOT,
+				100,
+				ID_1,
+			));
+			assert_ok!(Currencies::force_set_lock(
+				RuntimeOrigin::root(),
 				alice(),
 				NATIVE_CURRENCY_ID,
 				1000,
@@ -72,9 +78,15 @@ fn force_set_lock_and_force_remove_lock_should_work() {
 				}
 			);
 
-			assert_ok!(Currencies::force_set_lock(Origin::root(), alice(), DOT, 10, ID_1,));
 			assert_ok!(Currencies::force_set_lock(
-				Origin::root(),
+				RuntimeOrigin::root(),
+				alice(),
+				DOT,
+				10,
+				ID_1,
+			));
+			assert_ok!(Currencies::force_set_lock(
+				RuntimeOrigin::root(),
 				alice(),
 				NATIVE_CURRENCY_ID,
 				100,
@@ -94,9 +106,9 @@ fn force_set_lock_and_force_remove_lock_should_work() {
 			);
 
 			// do nothing
-			assert_ok!(Currencies::force_set_lock(Origin::root(), alice(), DOT, 0, ID_1,));
+			assert_ok!(Currencies::force_set_lock(RuntimeOrigin::root(), alice(), DOT, 0, ID_1,));
 			assert_ok!(Currencies::force_set_lock(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				alice(),
 				NATIVE_CURRENCY_ID,
 				0,
@@ -121,9 +133,9 @@ fn force_set_lock_and_force_remove_lock_should_work() {
 				BadOrigin
 			);
 
-			assert_ok!(Currencies::force_remove_lock(Origin::root(), alice(), DOT, ID_1,));
+			assert_ok!(Currencies::force_remove_lock(RuntimeOrigin::root(), alice(), DOT, ID_1,));
 			assert_ok!(Currencies::force_remove_lock(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				alice(),
 				NATIVE_CURRENCY_ID,
 				ID_1,
@@ -370,14 +382,19 @@ fn update_balance_call_should_work() {
 		.build()
 		.execute_with(|| {
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				alice(),
 				NATIVE_CURRENCY_ID,
 				-10
 			));
 			assert_eq!(NativeCurrency::free_balance(&alice()), 90);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 100);
-			assert_ok!(Currencies::update_balance(Origin::root(), alice(), X_TOKEN_ID, 10));
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
+				alice(),
+				X_TOKEN_ID,
+				10
+			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 110);
 		});
 }
@@ -401,13 +418,13 @@ fn call_event_should_work() {
 			assert_ok!(Currencies::transfer(Some(alice()).into(), bob(), X_TOKEN_ID, 50));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 50);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 150);
-			System::assert_has_event(Event::Tokens(tokens::Event::Transfer {
+			System::assert_has_event(RuntimeEvent::Tokens(tokens::Event::Transfer {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
 				amount: 50,
 			}));
-			System::assert_has_event(Event::Currencies(crate::Event::Transferred {
+			System::assert_has_event(RuntimeEvent::Currencies(crate::Event::Transferred {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
@@ -423,13 +440,13 @@ fn call_event_should_work() {
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 40);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 160);
-			System::assert_has_event(Event::Tokens(tokens::Event::Transfer {
+			System::assert_has_event(RuntimeEvent::Tokens(tokens::Event::Transfer {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
 				amount: 10,
 			}));
-			System::assert_has_event(Event::Currencies(crate::Event::Transferred {
+			System::assert_has_event(RuntimeEvent::Currencies(crate::Event::Transferred {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
@@ -442,7 +459,7 @@ fn call_event_should_work() {
 				100
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 140);
-			System::assert_last_event(Event::Tokens(tokens::Event::Deposited {
+			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Deposited {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 100,
@@ -454,7 +471,7 @@ fn call_event_should_work() {
 				20
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 120);
-			System::assert_last_event(Event::Tokens(tokens::Event::Withdrawn {
+			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Withdrawn {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 20,
@@ -538,7 +555,7 @@ fn erc20_ensure_withdraw_should_work() {
 				Error::<Runtime>::BalanceTooLow,
 			);
 			assert_ok!(Currencies::transfer(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				bob(),
 				CurrencyId::Erc20(erc20_address()),
 				100
@@ -569,7 +586,7 @@ fn erc20_transfer_should_work() {
 			<EVM as EVMTrait<AccountId>>::set_origin(eva());
 
 			assert_ok!(Currencies::transfer(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				bob(),
 				CurrencyId::Erc20(erc20_address()),
 				100
@@ -594,7 +611,7 @@ fn erc20_transfer_should_work() {
 			);
 
 			assert_ok!(Currencies::transfer(
-				Origin::signed(bob()),
+				RuntimeOrigin::signed(bob()),
 				alice(),
 				CurrencyId::Erc20(erc20_address()),
 				10
@@ -630,7 +647,12 @@ fn erc20_transfer_should_fail() {
 
 			// Real origin not found
 			assert_noop!(
-				Currencies::transfer(Origin::signed(alice()), bob(), CurrencyId::Erc20(erc20_address()), 100),
+				Currencies::transfer(
+					RuntimeOrigin::signed(alice()),
+					bob(),
+					CurrencyId::Erc20(erc20_address()),
+					100
+				),
 				Error::<Runtime>::RealOriginNotFound
 			);
 
@@ -638,14 +660,22 @@ fn erc20_transfer_should_fail() {
 			<EVM as EVMTrait<AccountId>>::set_origin(bob());
 
 			// empty address
-			assert!(
-				Currencies::transfer(Origin::signed(alice()), bob(), CurrencyId::Erc20(H160::default()), 100).is_err()
-			);
+			assert!(Currencies::transfer(
+				RuntimeOrigin::signed(alice()),
+				bob(),
+				CurrencyId::Erc20(H160::default()),
+				100
+			)
+			.is_err());
 
 			// bob can't transfer. bob balance 0
-			assert!(
-				Currencies::transfer(Origin::signed(bob()), alice(), CurrencyId::Erc20(erc20_address()), 1).is_err()
-			);
+			assert!(Currencies::transfer(
+				RuntimeOrigin::signed(bob()),
+				alice(),
+				CurrencyId::Erc20(erc20_address()),
+				1
+			)
+			.is_err());
 		});
 }
 
@@ -815,7 +845,7 @@ fn erc20_repatriate_reserved_should_work() {
 			let bob_balance = 100;
 			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 			assert_ok!(Currencies::transfer(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				bob(),
 				CurrencyId::Erc20(erc20_address()),
 				bob_balance
@@ -948,7 +978,7 @@ fn erc20_invalid_operation() {
 			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 
 			assert_noop!(
-				Currencies::update_balance(Origin::root(), alice(), CurrencyId::Erc20(erc20_address()), 1),
+				Currencies::update_balance(RuntimeOrigin::root(), alice(), CurrencyId::Erc20(erc20_address()), 1),
 				Error::<Runtime>::Erc20InvalidOperation,
 			);
 		});
@@ -971,7 +1001,7 @@ fn erc20_withdraw_deposit_works() {
 			// transfer to all-zero account failed.
 			assert_noop!(
 				Currencies::transfer(
-					Origin::signed(alice()),
+					RuntimeOrigin::signed(alice()),
 					MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
 					CurrencyId::Erc20(erc20_address()),
 					100
@@ -980,7 +1010,7 @@ fn erc20_withdraw_deposit_works() {
 			);
 			// transfer to non-all-zero account ok.
 			assert_ok!(Currencies::transfer(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				erc20_holding_account.clone(),
 				CurrencyId::Erc20(erc20_address()),
 				100
@@ -1382,7 +1412,7 @@ fn fungible_mutate_trait_should_work() {
 				&alice(),
 				1000
 			));
-			System::assert_last_event(Event::Balances(pallet_balances::Event::Deposit {
+			System::assert_last_event(RuntimeEvent::Balances(pallet_balances::Event::Deposit {
 				who: alice(),
 				amount: 1000,
 			}));
@@ -1408,7 +1438,7 @@ fn fungible_mutate_trait_should_work() {
 				&alice(),
 				1000
 			));
-			System::assert_last_event(Event::Tokens(tokens::Event::Deposited {
+			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Deposited {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 1000,
@@ -1459,7 +1489,7 @@ fn fungible_mutate_trait_should_work() {
 				&alice(),
 				1000
 			));
-			System::assert_last_event(Event::Balances(pallet_balances::Event::Withdraw {
+			System::assert_last_event(RuntimeEvent::Balances(pallet_balances::Event::Withdraw {
 				who: alice(),
 				amount: 1000,
 			}));
@@ -1485,7 +1515,7 @@ fn fungible_mutate_trait_should_work() {
 				&alice(),
 				1000
 			));
-			System::assert_last_event(Event::Tokens(tokens::Event::Withdrawn {
+			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Withdrawn {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 1000,
@@ -1556,12 +1586,12 @@ fn fungible_transfer_trait_should_work() {
 				10000,
 				true
 			));
-			System::assert_has_event(Event::Balances(pallet_balances::Event::Transfer {
+			System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Transfer {
 				from: alice(),
 				to: bob(),
 				amount: 10000,
 			}));
-			System::assert_has_event(Event::Currencies(crate::Event::Transferred {
+			System::assert_has_event(RuntimeEvent::Currencies(crate::Event::Transferred {
 				currency_id: NATIVE_CURRENCY_ID,
 				from: alice(),
 				to: bob(),
@@ -1599,13 +1629,13 @@ fn fungible_transfer_trait_should_work() {
 				10000,
 				true
 			));
-			System::assert_has_event(Event::Tokens(tokens::Event::Transfer {
+			System::assert_has_event(RuntimeEvent::Tokens(tokens::Event::Transfer {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
 				amount: 10000,
 			}));
-			System::assert_has_event(Event::Currencies(crate::Event::Transferred {
+			System::assert_has_event(RuntimeEvent::Currencies(crate::Event::Transferred {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
@@ -1654,7 +1684,7 @@ fn fungible_transfer_trait_should_work() {
 				2000,
 				true
 			));
-			System::assert_last_event(Event::Currencies(crate::Event::Transferred {
+			System::assert_last_event(RuntimeEvent::Currencies(crate::Event::Transferred {
 				currency_id: CurrencyId::Erc20(erc20_address()),
 				from: alice(),
 				to: bob(),
@@ -1693,7 +1723,7 @@ fn fungible_unbalanced_trait_should_work() {
 				&alice(),
 				80000
 			));
-			System::assert_last_event(Event::Balances(pallet_balances::Event::BalanceSet {
+			System::assert_last_event(RuntimeEvent::Balances(pallet_balances::Event::BalanceSet {
 				who: alice(),
 				free: 80000,
 				reserved: 0,
@@ -1720,7 +1750,7 @@ fn fungible_unbalanced_trait_should_work() {
 				&alice(),
 				80000
 			));
-			System::assert_last_event(Event::Tokens(tokens::Event::BalanceSet {
+			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::BalanceSet {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				free: 80000,
@@ -1766,7 +1796,7 @@ fn fungible_unbalanced_trait_should_work() {
 			);
 			<Currencies as fungibles::Unbalanced<_>>::set_total_issuance(X_TOKEN_ID, 80000);
 			assert_eq!(<Currencies as fungibles::Inspect<_>>::total_issuance(X_TOKEN_ID), 80000);
-			System::assert_last_event(Event::Tokens(tokens::Event::TotalIssuanceSet {
+			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::TotalIssuanceSet {
 				currency_id: X_TOKEN_ID,
 				amount: 80000,
 			}));
@@ -1857,7 +1887,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				&alice(),
 				20000
 			));
-			System::assert_last_event(Event::Tokens(tokens::Event::Reserved {
+			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Reserved {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 20000,
@@ -1956,7 +1986,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				<Currencies as fungibles::MutateHold<_>>::release(X_TOKEN_ID, &alice(), 10000, true),
 				Ok(10000)
 			);
-			System::assert_last_event(Event::Tokens(tokens::Event::Unreserved {
+			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Unreserved {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 10000,
@@ -2095,7 +2125,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				),
 				Ok(2000)
 			);
-			System::assert_last_event(Event::Tokens(tokens::Event::ReserveRepatriated {
+			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::ReserveRepatriated {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
@@ -2396,16 +2426,16 @@ fn sweep_dust_tokens_works() {
 		let accounts = vec![bob(), eva(), alice()];
 
 		assert_noop!(
-			Currencies::sweep_dust(Origin::signed(bob()), DOT, accounts.clone()),
+			Currencies::sweep_dust(RuntimeOrigin::signed(bob()), DOT, accounts.clone()),
 			DispatchError::BadOrigin
 		);
 
 		assert_ok!(Currencies::sweep_dust(
-			Origin::signed(CouncilAccount::get()),
+			RuntimeOrigin::signed(CouncilAccount::get()),
 			DOT,
 			accounts
 		));
-		System::assert_last_event(Event::Currencies(crate::Event::DustSwept {
+		System::assert_last_event(RuntimeEvent::Currencies(crate::Event::DustSwept {
 			currency_id: DOT,
 			who: bob(),
 			amount: 1,
@@ -2475,16 +2505,16 @@ fn sweep_dust_native_currency_works() {
 		let accounts = vec![bob(), eva(), alice()];
 
 		assert_noop!(
-			Currencies::sweep_dust(Origin::signed(bob()), NATIVE_CURRENCY_ID, accounts.clone()),
+			Currencies::sweep_dust(RuntimeOrigin::signed(bob()), NATIVE_CURRENCY_ID, accounts.clone()),
 			DispatchError::BadOrigin
 		);
 
 		assert_ok!(Currencies::sweep_dust(
-			Origin::signed(CouncilAccount::get()),
+			RuntimeOrigin::signed(CouncilAccount::get()),
 			NATIVE_CURRENCY_ID,
 			accounts
 		));
-		System::assert_last_event(Event::Currencies(crate::Event::DustSwept {
+		System::assert_last_event(RuntimeEvent::Currencies(crate::Event::DustSwept {
 			currency_id: NATIVE_CURRENCY_ID,
 			who: bob(),
 			amount: 1,
@@ -2509,7 +2539,7 @@ fn sweep_dust_erc20_not_allowed() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			Currencies::sweep_dust(
-				Origin::signed(CouncilAccount::get()),
+				RuntimeOrigin::signed(CouncilAccount::get()),
 				CurrencyId::Erc20(erc20_address()),
 				vec![]
 			),
@@ -2530,7 +2560,7 @@ fn transfer_erc20_will_charge_gas() {
 		assert_eq!(
 			dispatch_info.weight,
 			<Runtime as module::Config>::WeightInfo::transfer_non_native_currency()
-				+ support::evm::limits::erc20::TRANSFER.gas // mock GasToWeight is 1:1
+				+ Weight::from_ref_time(support::evm::limits::erc20::TRANSFER.gas) // mock GasToWeight is 1:1
 		);
 
 		let dispatch_info = module::Call::<Runtime>::transfer {

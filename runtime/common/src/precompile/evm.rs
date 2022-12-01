@@ -310,7 +310,8 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{
-		alice_evm_addr, bob, bob_evm_addr, new_test_ext, EVMModule, Event as TestEvent, Origin, System, Test,
+		alice_evm_addr, bob, bob_evm_addr, new_test_ext, EVMModule, RuntimeEvent as TestEvent, RuntimeOrigin, System,
+		Test,
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
@@ -455,7 +456,7 @@ mod tests {
 			// The error is shown in the last event.
 			// The call extrinsic still succeeds, the evm emits a executed failed event
 			assert_ok!(EVMModule::call(
-				Origin::signed(bob()),
+				RuntimeOrigin::signed(bob()),
 				contract_address,
 				multiply.to_vec(),
 				0,
@@ -497,7 +498,7 @@ mod tests {
 
 			// Same call as above now works as contract is now published
 			assert_ok!(EVMModule::call(
-				Origin::signed(bob()),
+				RuntimeOrigin::signed(bob()),
 				contract_address,
 				multiply.to_vec(),
 				0,

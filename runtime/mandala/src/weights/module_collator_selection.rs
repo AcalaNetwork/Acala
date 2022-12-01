@@ -48,20 +48,20 @@ pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightInfo<T> {
 	// Storage: CollatorSelection Invulnerables (r:0 w:1)
 	fn set_invulnerables(b: u32, ) -> Weight {
-		(8_895_000 as Weight)
+		Weight::from_ref_time(8_895_000)
 			// Standard Error: 5_000
-			.saturating_add((101_000 as Weight).saturating_mul(b as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+			.saturating_add(Weight::from_ref_time(101_000).saturating_mul(b as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: CollatorSelection DesiredCandidates (r:0 w:1)
 	fn set_desired_candidates() -> Weight {
-		(8_212_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(8_212_000)
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: CollatorSelection CandidacyBond (r:0 w:1)
 	fn set_candidacy_bond() -> Weight {
-		(8_382_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(8_382_000)
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: CollatorSelection NonCandidates (r:1 w:1)
 	// Storage: CollatorSelection CandidacyBond (r:1 w:0)
@@ -71,11 +71,11 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 	// Storage: Session NextKeys (r:1 w:0)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn register_as_candidate(c: u32, ) -> Weight {
-		(46_623_000 as Weight)
+		Weight::from_ref_time(46_623_000)
 			// Standard Error: 1_000
-			.saturating_add((244_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+			.saturating_add(Weight::from_ref_time(244_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(7 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	// Storage: CollatorSelection Candidates (r:1 w:1)
 	// Storage: CollatorSelection DesiredCandidates (r:1 w:0)
@@ -83,57 +83,57 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 	// Storage: Session NextKeys (r:1 w:0)
 	// Storage: Balances Reserves (r:1 w:0)
 	fn register_candidate(c: u32, ) -> Weight {
-		(30_847_000 as Weight)
+		Weight::from_ref_time(30_847_000)
 			// Standard Error: 1_000
-			.saturating_add((232_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+			.saturating_add(Weight::from_ref_time(232_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(5 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: CollatorSelection Candidates (r:1 w:1)
 	// Storage: Session CurrentIndex (r:1 w:0)
 	// Storage: CollatorSelection NonCandidates (r:0 w:1)
 	fn leave_intent(c: u32, ) -> Weight {
-		(21_058_000 as Weight)
+		Weight::from_ref_time(21_058_000)
 			// Standard Error: 1_000
-			.saturating_add((210_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+			.saturating_add(Weight::from_ref_time(210_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: CollatorSelection NonCandidates (r:1 w:1)
 	// Storage: Session CurrentIndex (r:1 w:0)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn withdraw_bond() -> Weight {
-		(38_217_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(38_217_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: System Account (r:1 w:0)
 	// Storage: CollatorSelection SessionPoints (r:1 w:0)
 	// Storage: System BlockWeight (r:1 w:1)
 	fn note_author() -> Weight {
-		(17_082_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(17_082_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: CollatorSelection Candidates (r:1 w:0)
 	// Storage: CollatorSelection Invulnerables (r:1 w:0)
 	// Storage: System BlockWeight (r:1 w:1)
 	fn new_session() -> Weight {
-		(47_920_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(47_920_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: Session Validators (r:1 w:0)
 	// Storage: CollatorSelection Candidates (r:1 w:0)
 	// Storage: System BlockWeight (r:1 w:1)
 	// Storage: CollatorSelection SessionPoints (r:0 w:200)
 	fn start_session(_r: u32, c: u32, ) -> Weight {
-		(5_722_000 as Weight)
+		Weight::from_ref_time(5_722_000)
 			// Standard Error: 5_000
-			.saturating_add((1_339_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(1_339_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	// Storage: CollatorSelection SessionPoints (r:201 w:200)
 	// Storage: CollatorSelection Candidates (r:1 w:1)
@@ -141,12 +141,12 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 	// Storage: System BlockWeight (r:1 w:1)
 	// Storage: CollatorSelection NonCandidates (r:0 w:190)
 	fn end_session(_r: u32, c: u32, ) -> Weight {
-		(4_955_648_000 as Weight)
+		Weight::from_ref_time(4_955_648_000)
 			// Standard Error: 128_000
-			.saturating_add((7_307_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(T::DbWeight::get().writes(199 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(7_307_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(T::DbWeight::get().writes(199 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 }

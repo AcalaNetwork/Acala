@@ -6,47 +6,59 @@ edition = "2021"
 
 [dependencies]
 log = "0.4.17"
-clap = { version = "3.2.15", features = ["derive"] }
+clap = { version = "4.0.9", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.0.0" }
 
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
-sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
-sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
-sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
-sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28" }
-frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
-try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", optional = true }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", optional = true }
+sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", optional = true }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", optional = true }
+sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
+sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
+frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", optional = true }
+try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", optional = true }
 
-cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.28" }
-cumulus-client-cli = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.28" }
-cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.28" }
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
-polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
-polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
-polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28" }
+cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.31" }
+cumulus-client-cli = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.31" }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.31" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31" }
+polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31" }
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31" }
+polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31" }
 
 inspect = { package = "acala-inspect", path = "../../inspect" }
 service = { package = "acala-service", path = "../service", default-features = false, optional = true }
 
 [build-dependencies]
 orml-build-script-utils = { path = "../../orml/build-script-utils"}
+substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 
 [features]
 default = [ "wasmtime", "cli" ]
 wasmtime = [ "sc-cli/wasmtime" ]
 cli = [
-	"service",
-	"sp-core",
+	"frame-benchmarking-cli",
 	"sc-cli",
 	"sc-service",
-	"frame-benchmarking-cli",
+	"service",
+	"sp-core",
 	"try-runtime-cli",
 ]
-runtime-benchmarks = [ "service/runtime-benchmarks" ]
+runtime-benchmarks = [
+	"frame-benchmarking-cli/runtime-benchmarks",
+	"polkadot-cli/runtime-benchmarks",
+	"polkadot-parachain/runtime-benchmarks",
+	"polkadot-primitives/runtime-benchmarks",
+	"polkadot-service/runtime-benchmarks",
+	"sc-service/runtime-benchmarks",
+	"service/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+]
 try-runtime = [
-	"try-runtime-cli",
+	"polkadot-cli/try-runtime",
+	"polkadot-service/try-runtime",
 	"service/try-runtime",
+	"try-runtime-cli",
 ]
 with-mandala-runtime = [
 	"service/with-mandala-runtime",
@@ -58,10 +70,10 @@ with-acala-runtime = [
 	"service/with-acala-runtime",
 ]
 with-all-runtime = [
-	"with-mandala-runtime",
-	"with-karura-runtime",
-	"with-acala-runtime",
 	"service/with-all-runtime",
+	"with-acala-runtime",
+	"with-karura-runtime",
+	"with-mandala-runtime",
 ]
 rococo-native = [
 	"polkadot-cli/rococo-native"

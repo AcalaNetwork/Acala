@@ -56,8 +56,8 @@ impl<T: frame_system::Config> module_auction_manager::WeightInfo for WeightInfo<
 	// Storage: AuctionManager TotalTargetInAuction (r:1 w:1)
 	// Storage: Auction AuctionEndTime (r:0 w:1)
 	fn cancel_collateral_auction() -> Weight {
-		(68_766_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(11 as Weight))
-			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+		Weight::from_ref_time(68_766_000)
+			.saturating_add(T::DbWeight::get().reads(11 as u64))
+			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
 }

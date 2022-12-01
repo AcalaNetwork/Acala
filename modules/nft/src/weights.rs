@@ -60,87 +60,87 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn create_class() -> Weight {
-		(177_661_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(177_661_000)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	fn mint(i: u32, ) -> Weight {
-		(44_387_000 as Weight)
+		Weight::from_ref_time(44_387_000)
 			// Standard Error: 46_000
-			.saturating_add((72_699_000 as Weight).saturating_mul(i as Weight))
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(i as Weight)))
+			.saturating_add(Weight::from_ref_time(72_699_000).saturating_mul(i as u64))
+			.saturating_add(T::DbWeight::get().reads(5 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
+			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(i as u64)))
 	}
 	fn transfer() -> Weight {
-		(266_936_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+		Weight::from_ref_time(266_936_000)
+			.saturating_add(T::DbWeight::get().reads(7 as u64))
+			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
 	fn burn() -> Weight {
-		(189_094_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(189_094_000)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	fn burn_with_remark(b: u32, ) -> Weight {
-		(196_036_000 as Weight)
+		Weight::from_ref_time(196_036_000)
 			// Standard Error: 0
-			.saturating_add((2_000 as Weight).saturating_mul(b as Weight))
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+			.saturating_add(Weight::from_ref_time(2_000).saturating_mul(b as u64))
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	fn destroy_class() -> Weight {
-		(217_091_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+		Weight::from_ref_time(217_091_000)
+			.saturating_add(T::DbWeight::get().reads(6 as u64))
+			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
 	fn update_class_properties() -> Weight {
-		(52_914_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(52_914_000)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn create_class() -> Weight {
-		(177_661_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(177_661_000)
+			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	fn mint(i: u32, ) -> Weight {
-		(44_387_000 as Weight)
+		Weight::from_ref_time(44_387_000)
 			// Standard Error: 46_000
-			.saturating_add((72_699_000 as Weight).saturating_mul(i as Weight))
-			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((2 as Weight).saturating_mul(i as Weight)))
+			.saturating_add(Weight::from_ref_time(72_699_000).saturating_mul(i as u64))
+			.saturating_add(RocksDbWeight::get().reads(5 as u64))
+			.saturating_add(RocksDbWeight::get().writes(5 as u64))
+			.saturating_add(RocksDbWeight::get().writes((2 as u64).saturating_mul(i as u64)))
 	}
 	fn transfer() -> Weight {
-		(266_936_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
+		Weight::from_ref_time(266_936_000)
+			.saturating_add(RocksDbWeight::get().reads(7 as u64))
+			.saturating_add(RocksDbWeight::get().writes(7 as u64))
 	}
 	fn burn() -> Weight {
-		(189_094_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(189_094_000)
+			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	fn burn_with_remark(b: u32, ) -> Weight {
-		(196_036_000 as Weight)
+		Weight::from_ref_time(196_036_000)
 			// Standard Error: 0
-			.saturating_add((2_000 as Weight).saturating_mul(b as Weight))
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+			.saturating_add(Weight::from_ref_time(2_000).saturating_mul(b as u64))
+			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	fn destroy_class() -> Weight {
-		(217_091_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
+		Weight::from_ref_time(217_091_000)
+			.saturating_add(RocksDbWeight::get().reads(6 as u64))
+			.saturating_add(RocksDbWeight::get().writes(6 as u64))
 	}
 	fn update_class_properties() -> Weight {
-		(52_914_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(52_914_000)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 }

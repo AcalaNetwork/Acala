@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode};
-use frame_support::weights::DispatchInfo;
+use frame_support::dispatch::DispatchInfo;
 use module_support::AddressMapping;
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -91,11 +91,11 @@ impl<T: frame_system::Config + module_evm::Config> sp_std::fmt::Debug for CheckN
 
 impl<T: frame_system::Config + module_evm::Config> SignedExtension for CheckNonce<T>
 where
-	T::Call: Dispatchable<Info = DispatchInfo>,
+	T::RuntimeCall: Dispatchable<Info = DispatchInfo>,
 	T::AddressMapping: AddressMapping<T::AccountId>,
 {
 	type AccountId = T::AccountId;
-	type Call = T::Call;
+	type Call = T::RuntimeCall;
 	type AdditionalSigned = ();
 	type Pre = ();
 	const IDENTIFIER: &'static str = "CheckNonce";
@@ -202,12 +202,12 @@ where
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::mock::{new_test_ext, AccountId32, Call, TestRuntime};
+	use crate::mock::{new_test_ext, AccountId32, RuntimeCall, TestRuntime};
 	use frame_support::{assert_noop, assert_ok};
 
 	/// A simple call, which one doesn't matter.
-	pub const CALL: &<TestRuntime as frame_system::Config>::Call =
-		&Call::System(frame_system::Call::set_heap_pages { pages: 0u64 });
+	pub const CALL: &<TestRuntime as frame_system::Config>::RuntimeCall =
+		&RuntimeCall::System(frame_system::Call::set_heap_pages { pages: 0u64 });
 
 	#[test]
 	fn check_nonce_works() {

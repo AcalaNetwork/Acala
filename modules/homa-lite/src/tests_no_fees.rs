@@ -24,27 +24,27 @@
 use super::*;
 use frame_support::assert_ok;
 use mock_no_fees::{
-	dollar, AccountId, Currencies, Event, ExtBuilder, HomaLite, NoFeeRuntime, Origin, System, ALICE, BOB, DAVE, KSM,
-	LKSM,
+	dollar, AccountId, Currencies, ExtBuilder, HomaLite, NoFeeRuntime, RuntimeEvent, RuntimeOrigin, System, ALICE, BOB,
+	DAVE, KSM, LKSM,
 };
 
 #[test]
 fn no_fee_runtime_has_no_fees() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Currencies::total_issuance(LKSM) / 10
 		));
-		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+		assert_ok!(HomaLite::set_minting_cap(RuntimeOrigin::root(), dollar(1_000_000)));
 		System::reset_events();
 
 		// Mint costs no fees
-		assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(1_000)));
+		assert_ok!(HomaLite::mint(RuntimeOrigin::signed(ALICE), dollar(1_000)));
 		assert_eq!(
 			HomaLite::get_exchange_rate(),
 			ExchangeRate::saturating_from_rational(1, 10)
 		);
-		System::assert_last_event(Event::HomaLite(crate::Event::Minted {
+		System::assert_last_event(RuntimeEvent::HomaLite(crate::Event::Minted {
 			who: ALICE,
 			amount_staked: dollar(1_000),
 			amount_minted: dollar(10_000),
@@ -52,8 +52,8 @@ fn no_fee_runtime_has_no_fees() {
 		assert_eq!(Currencies::free_balance(KSM, &ALICE), dollar(999_000));
 		assert_eq!(Currencies::free_balance(LKSM, &ALICE), dollar(10_000));
 
-		assert_ok!(HomaLite::mint(Origin::signed(BOB), dollar(5_000)));
-		System::assert_last_event(Event::HomaLite(crate::Event::Minted {
+		assert_ok!(HomaLite::mint(RuntimeOrigin::signed(BOB), dollar(5_000)));
+		System::assert_last_event(RuntimeEvent::HomaLite(crate::Event::Minted {
 			who: BOB,
 			amount_staked: dollar(5_000),
 			amount_minted: dollar(50_000),
@@ -63,17 +63,17 @@ fn no_fee_runtime_has_no_fees() {
 
 		//Redeem costs no fees
 		assert_ok!(HomaLite::request_redeem(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			dollar(50_000),
 			Permill::zero()
 		));
-		System::assert_last_event(Event::HomaLite(crate::Event::RedeemRequested {
+		System::assert_last_event(RuntimeEvent::HomaLite(crate::Event::RedeemRequested {
 			who: BOB,
 			liquid_amount: dollar(50_000),
 			extra_fee: Permill::zero(),
 			withdraw_fee_paid: 0,
 		}));
-		assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(5_000)));
+		assert_ok!(HomaLite::mint(RuntimeOrigin::signed(ALICE), dollar(5_000)));
 
 		assert_eq!(Currencies::free_balance(KSM, &ALICE), dollar(994_000));
 		assert_eq!(Currencies::free_balance(LKSM, &ALICE), dollar(60_000));
@@ -81,11 +81,11 @@ fn no_fee_runtime_has_no_fees() {
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), 0);
 
 		// Redeem from AvailableStakingBalance costs no fees
-		assert_ok!(HomaLite::schedule_unbond(Origin::root(), dollar(50_000), 0));
-		let _ = HomaLite::on_idle(0, 5_000_000_000);
+		assert_ok!(HomaLite::schedule_unbond(RuntimeOrigin::root(), dollar(50_000), 0));
+		let _ = HomaLite::on_idle(0, Weight::from_ref_time(5_000_000_000));
 
 		assert_ok!(HomaLite::request_redeem(
-			Origin::signed(DAVE),
+			RuntimeOrigin::signed(DAVE),
 			dollar(100_000),
 			Permill::zero()
 		));
@@ -98,7 +98,7 @@ fn no_fee_runtime_has_no_fees() {
 		let events = System::events()
 			.into_iter()
 			.filter_map(|e| match e.event {
-				Event::HomaLite(x) => Some(x),
+				RuntimeEvent::HomaLite(x) => Some(x),
 				_ => None,
 			})
 			.collect::<Vec<_>>();
@@ -168,15 +168,15 @@ fn no_fee_runtime_has_no_fees() {
 fn mint_with_xcm_does_not_change_exchange_rate() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Currencies::total_issuance(LKSM) / 10
 		));
-		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+		assert_ok!(HomaLite::set_minting_cap(RuntimeOrigin::root(), dollar(1_000_000)));
 
 		let exchange_rate = HomaLite::get_exchange_rate();
 
 		for _ in 0..100 {
-			assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(500)));
+			assert_ok!(HomaLite::mint(RuntimeOrigin::signed(ALICE), dollar(500)));
 			assert_eq!(exchange_rate, HomaLite::get_exchange_rate());
 		}
 
@@ -189,19 +189,19 @@ fn mint_with_xcm_does_not_change_exchange_rate() {
 fn mint_with_redeem_does_not_change_exchange_rate() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Currencies::total_issuance(LKSM) / 10
 		));
-		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+		assert_ok!(HomaLite::set_minting_cap(RuntimeOrigin::root(), dollar(1_000_000)));
 		assert_ok!(HomaLite::request_redeem(
-			Origin::signed(DAVE),
+			RuntimeOrigin::signed(DAVE),
 			dollar(1_000_000),
 			Permill::zero()
 		));
 		let exchange_rate = HomaLite::get_exchange_rate();
 
 		for _ in 0..100 {
-			assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(500)));
+			assert_ok!(HomaLite::mint(RuntimeOrigin::signed(ALICE), dollar(500)));
 			assert_eq!(exchange_rate, HomaLite::get_exchange_rate());
 		}
 
@@ -214,13 +214,13 @@ fn mint_with_redeem_does_not_change_exchange_rate() {
 
 		// Add redeem with 50% extra reward.
 		assert_ok!(HomaLite::request_redeem(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			dollar(500_000),
 			Permill::from_percent(50)
 		));
 
 		for _ in 0..100 {
-			assert_ok!(HomaLite::mint(Origin::signed(BOB), dollar(1_000)));
+			assert_ok!(HomaLite::mint(RuntimeOrigin::signed(BOB), dollar(1_000)));
 			assert_eq!(exchange_rate, HomaLite::get_exchange_rate());
 		}
 
@@ -242,13 +242,13 @@ fn mint_with_redeem_does_not_change_exchange_rate() {
 fn redeem_with_available_staking_does_not_change_exchange_rate() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Currencies::total_issuance(LKSM) / 10
 		));
-		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+		assert_ok!(HomaLite::set_minting_cap(RuntimeOrigin::root(), dollar(1_000_000)));
 
 		assert_ok!(HomaLite::adjust_available_staking_balance(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			dollar(100) as i128,
 			100
 		));
@@ -258,7 +258,7 @@ fn redeem_with_available_staking_does_not_change_exchange_rate() {
 		// test repeated redeem using available staking
 		for _ in 0..100 {
 			assert_ok!(HomaLite::request_redeem(
-				Origin::signed(DAVE),
+				RuntimeOrigin::signed(DAVE),
 				dollar(10),
 				Permill::zero()
 			));
@@ -272,13 +272,13 @@ fn redeem_with_available_staking_does_not_change_exchange_rate() {
 
 		// Test repeated adjust_available_staking_balance with a queued redeem request.
 		assert_ok!(HomaLite::request_redeem(
-			Origin::signed(DAVE),
+			RuntimeOrigin::signed(DAVE),
 			dollar(10_000),
 			Permill::zero()
 		));
 		for _ in 0..100 {
 			assert_ok!(HomaLite::adjust_available_staking_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				dollar(10) as i128,
 				100
 			));
@@ -296,12 +296,12 @@ fn redeem_with_available_staking_does_not_change_exchange_rate() {
 fn mint_and_redeem_at_the_same_time_does_not_change_exchange_rate() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Currencies::total_issuance(LKSM) / 10
 		));
-		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+		assert_ok!(HomaLite::set_minting_cap(RuntimeOrigin::root(), dollar(1_000_000)));
 		assert_ok!(HomaLite::adjust_available_staking_balance(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			dollar(5_000) as i128,
 			0
 		));
@@ -312,11 +312,11 @@ fn mint_and_redeem_at_the_same_time_does_not_change_exchange_rate() {
 		// The next 50 redeems are matched with mint.
 		for _ in 0..100 {
 			assert_ok!(HomaLite::request_redeem(
-				Origin::signed(DAVE),
+				RuntimeOrigin::signed(DAVE),
 				dollar(1000),
 				Permill::zero()
 			));
-			assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(100)));
+			assert_ok!(HomaLite::mint(RuntimeOrigin::signed(ALICE), dollar(100)));
 			assert_eq!(exchange_rate, HomaLite::get_exchange_rate());
 		}
 
@@ -332,16 +332,16 @@ fn mint_and_redeem_at_the_same_time_does_not_change_exchange_rate() {
 fn updating_and_cancelling_redeem_requests_does_not_change_exchange_rate() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Currencies::total_issuance(LKSM) / 10
 		));
-		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+		assert_ok!(HomaLite::set_minting_cap(RuntimeOrigin::root(), dollar(1_000_000)));
 
 		let exchange_rate = HomaLite::get_exchange_rate();
 
 		for i in 1..101 {
 			assert_ok!(HomaLite::request_redeem(
-				Origin::signed(DAVE),
+				RuntimeOrigin::signed(DAVE),
 				dollar(i * 100u128),
 				Permill::from_percent(i as u32)
 			));
@@ -351,7 +351,7 @@ fn updating_and_cancelling_redeem_requests_does_not_change_exchange_rate() {
 
 		for i in 1..101 {
 			assert_ok!(HomaLite::request_redeem(
-				Origin::signed(DAVE),
+				RuntimeOrigin::signed(DAVE),
 				dollar((100 - i) * 100u128),
 				Permill::from_percent(100 - i as u32)
 			));
@@ -367,25 +367,25 @@ fn updating_and_cancelling_redeem_requests_does_not_change_exchange_rate() {
 #[test]
 fn mint_match_from_previous_redeem_requests() {
 	ExtBuilder::empty().build().execute_with(|| {
-		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+		assert_ok!(HomaLite::set_minting_cap(RuntimeOrigin::root(), dollar(1_000_000)));
 
 		for i in 0..10 {
 			let account = AccountId::from([i as u8; 32]);
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				account.clone(),
 				LKSM,
 				dollar(1000_u128) as i128
 			));
 			assert_ok!(HomaLite::request_redeem(
-				Origin::signed(account),
+				RuntimeOrigin::signed(account),
 				dollar(1000),
 				Permill::zero()
 			));
 		}
 
 		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Currencies::total_issuance(LKSM) / 10
 		));
 
@@ -412,7 +412,7 @@ fn mint_match_from_previous_redeem_requests() {
 
 		let minter = AccountId::from([255u8; 32]);
 		assert_ok!(Currencies::update_balance(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			minter.clone(),
 			KSM,
 			dollar(100_u128) as i128
@@ -423,7 +423,7 @@ fn mint_match_from_previous_redeem_requests() {
 
 		// Minting once for each item in redeem request should be iterated once
 		for i in 0..10 {
-			assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(10)));
+			assert_ok!(HomaLite::mint(RuntimeOrigin::signed(minter.clone()), dollar(10)));
 			// Each item should be iterated once
 			assert_eq!(
 				HomaLite::redeem_requests(default_order[i].clone()),
@@ -443,7 +443,7 @@ fn mint_match_from_previous_redeem_requests() {
 
 		// Test iterate only wrap around once without double-redeem.
 		assert_ok!(Currencies::update_balance(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			minter.clone(),
 			KSM,
 			dollar(1000_u128) as i128
@@ -452,7 +452,7 @@ fn mint_match_from_previous_redeem_requests() {
 		assert_eq!(HomaLite::total_staking_currency(), dollar(1000));
 
 		// 900 should be minted from redeem requests, 100 from XCM.
-		assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(1000)));
+		assert_ok!(HomaLite::mint(RuntimeOrigin::signed(minter.clone()), dollar(1000)));
 
 		// All redeem requests should be fulfilled, and only once.
 		for i in 0..10 {
@@ -473,13 +473,13 @@ fn mint_match_from_previous_redeem_requests() {
 #[test]
 fn unbonded_staking_match_from_previous_redeem_requests() {
 	let mut unbond = |amount: Balance| -> DispatchResult {
-		assert_ok!(HomaLite::schedule_unbond(Origin::root(), amount, 0));
-		HomaLite::on_idle(0, 5_000_000_000);
+		assert_ok!(HomaLite::schedule_unbond(RuntimeOrigin::root(), amount, 0));
+		HomaLite::on_idle(0, Weight::from_ref_time(5_000_000_000));
 		Ok(())
 	};
 
 	let mut adjust_available_staking_balance = |amount: Balance| -> DispatchResult {
-		HomaLite::adjust_available_staking_balance(Origin::root(), amount as i128, 1_000)
+		HomaLite::adjust_available_staking_balance(RuntimeOrigin::root(), amount as i128, 1_000)
 	};
 
 	// Test unbonding can iterate from `LastRedeemRequestKeyIterated`
@@ -496,11 +496,11 @@ fn test_increase_staking_match_from_previous_redeem_requests(
 	mut increase_staking: impl FnMut(Balance) -> DispatchResult,
 ) {
 	ExtBuilder::empty().build().execute_with(|| {
-		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+		assert_ok!(HomaLite::set_minting_cap(RuntimeOrigin::root(), dollar(1_000_000)));
 
 		// Give someone extra fund so total staking does not reduce to zero.
 		assert_ok!(Currencies::update_balance(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			AccountId::from([255u8; 32]),
 			LKSM,
 			dollar(10_u128) as i128
@@ -509,20 +509,20 @@ fn test_increase_staking_match_from_previous_redeem_requests(
 		for i in 0..10 {
 			let account = AccountId::from([i as u8; 32]);
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				account.clone(),
 				LKSM,
 				dollar(1000_u128) as i128
 			));
 			assert_ok!(HomaLite::request_redeem(
-				Origin::signed(account),
+				RuntimeOrigin::signed(account),
 				dollar(1000),
 				Permill::zero()
 			));
 		}
 
 		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Currencies::total_issuance(LKSM) / 10
 		));
 
@@ -597,25 +597,25 @@ fn test_increase_staking_match_from_previous_redeem_requests(
 #[test]
 fn redeem_does_not_restart_if_previous_key_is_removed() {
 	ExtBuilder::empty().build().execute_with(|| {
-		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+		assert_ok!(HomaLite::set_minting_cap(RuntimeOrigin::root(), dollar(1_000_000)));
 
 		for i in 0..5 {
 			let account = AccountId::from([i as u8; 32]);
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				account.clone(),
 				LKSM,
 				dollar(1000_u128) as i128
 			));
 			assert_ok!(HomaLite::request_redeem(
-				Origin::signed(account),
+				RuntimeOrigin::signed(account),
 				dollar(1000),
 				Permill::zero()
 			));
 		}
 
 		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Currencies::total_issuance(LKSM) / 10
 		));
 
@@ -637,14 +637,14 @@ fn redeem_does_not_restart_if_previous_key_is_removed() {
 
 		let minter = AccountId::from([255u8; 32]);
 		assert_ok!(Currencies::update_balance(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			minter.clone(),
 			KSM,
 			dollar(100_u128) as i128
 		));
 
 		// Mint from the first element in the iterator
-		assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(10)));
+		assert_ok!(HomaLite::mint(RuntimeOrigin::signed(minter.clone()), dollar(10)));
 		assert_eq!(
 			HomaLite::redeem_requests(AccountId::from([1u8; 32])),
 			Some((dollar(900), Permill::zero()))
@@ -661,7 +661,7 @@ fn redeem_does_not_restart_if_previous_key_is_removed() {
 		assert_eq!(HomaLite::redeem_requests(AccountId::from([2u8; 32])), None);
 
 		// Next mint should continue without restarting
-		assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(10)));
+		assert_ok!(HomaLite::mint(RuntimeOrigin::signed(minter.clone()), dollar(10)));
 		assert_eq!(
 			HomaLite::redeem_requests(AccountId::from([3u8; 32])),
 			Some((dollar(900), Permill::zero()))
@@ -678,7 +678,7 @@ fn redeem_does_not_restart_if_previous_key_is_removed() {
 		RedeemRequests::<NoFeeRuntime>::remove(AccountId::from([0u8; 32]));
 
 		// Next mint should start from the beginning
-		assert_ok!(HomaLite::mint(Origin::signed(minter), dollar(10)));
+		assert_ok!(HomaLite::mint(RuntimeOrigin::signed(minter), dollar(10)));
 		assert_eq!(
 			HomaLite::redeem_requests(AccountId::from([1u8; 32])),
 			Some((dollar(800), Permill::zero()))

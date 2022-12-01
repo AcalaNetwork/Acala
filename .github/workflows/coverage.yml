@@ -45,10 +45,6 @@ jobs:
           target: wasm32-unknown-unknown
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
-      # - name: Install additional dependencies
-      #   run: |
-      #       sudo apt update -y &&
-      #       sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
       - name: Run cargo-tarpaulin
         run: |
           wget https://github.com/xd009642/tarpaulin/releases/download/${{ env.TARPAULIN_VERSION }}/cargo-tarpaulin-${{ env.TARPAULIN_VERSION }}-travis.tar.gz
