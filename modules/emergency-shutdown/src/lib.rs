@@ -52,7 +52,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + loans::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The list of valid collateral currency types
 		type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
@@ -69,7 +69,7 @@ pub mod module {
 
 		/// The origin which may trigger emergency shutdown. Root can always do
 		/// this.
-		type ShutdownOrigin: EnsureOrigin<Self::Origin>;
+		type ShutdownOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;

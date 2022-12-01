@@ -57,51 +57,51 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn emergency_shutdown(c: u32, ) -> Weight {
-		(232_768_000 as Weight)
+		Weight::from_ref_time(232_768_000)
 			// Standard Error: 565_000
-			.saturating_add((20_539_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(60 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(20_539_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(60 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
+			.saturating_add(T::DbWeight::get().writes((3 as u64).saturating_mul(c as u64)))
 	}
 	fn open_collateral_refund() -> Weight {
-		(62_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(17 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(62_000_000)
+			.saturating_add(T::DbWeight::get().reads(17 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn refund_collaterals(c: u32, ) -> Weight {
-		(122_271_000 as Weight)
+		Weight::from_ref_time(122_271_000)
 			// Standard Error: 215_000
-			.saturating_add((34_100_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(12 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(34_100_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(12 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(T::DbWeight::get().writes(4 as u64))
+			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(c as u64)))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn emergency_shutdown(c: u32, ) -> Weight {
-		(232_768_000 as Weight)
+		Weight::from_ref_time(232_768_000)
 			// Standard Error: 565_000
-			.saturating_add((20_539_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().reads(60 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((3 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(20_539_000).saturating_mul(c as u64))
+			.saturating_add(RocksDbWeight::get().reads(60 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes((3 as u64).saturating_mul(c as u64)))
 	}
 	fn open_collateral_refund() -> Weight {
-		(62_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(17 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(62_000_000)
+			.saturating_add(RocksDbWeight::get().reads(17 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn refund_collaterals(c: u32, ) -> Weight {
-		(122_271_000 as Weight)
+		Weight::from_ref_time(122_271_000)
 			// Standard Error: 215_000
-			.saturating_add((34_100_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((2 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(34_100_000).saturating_mul(c as u64))
+			.saturating_add(RocksDbWeight::get().reads(12 as u64))
+			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(RocksDbWeight::get().writes(4 as u64))
+			.saturating_add(RocksDbWeight::get().writes((2 as u64).saturating_mul(c as u64)))
 	}
 }

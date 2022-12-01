@@ -236,7 +236,7 @@ where
 mod tests {
 	use super::*;
 	use crate::precompile::mock::{
-		alice, alice_evm_addr, new_test_ext, Currencies, Homa, HomaAdmin, Origin, StakingCurrencyId, Test, ACA,
+		alice, alice_evm_addr, new_test_ext, Currencies, Homa, HomaAdmin, RuntimeOrigin, StakingCurrencyId, Test, ACA,
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
@@ -254,16 +254,21 @@ mod tests {
 			};
 
 			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
+				RuntimeOrigin::signed(HomaAdmin::get()),
 				Some(1_000_000_000_000),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 			));
 
-			assert_ok!(Currencies::update_balance(Origin::root(), alice(), ACA, 1_000_000_000));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
+				alice(),
+				ACA,
+				1_000_000_000
+			));
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
 				alice(),
 				StakingCurrencyId::get(),
 				1_000_000_000_000
@@ -288,22 +293,27 @@ mod tests {
 	fn request_redeem_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
+				RuntimeOrigin::signed(HomaAdmin::get()),
 				Some(1_000_000_000_000),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 			));
 
-			assert_ok!(Currencies::update_balance(Origin::root(), alice(), ACA, 1_000_000_000));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
+				alice(),
+				ACA,
+				1_000_000_000
+			));
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
 				alice(),
 				StakingCurrencyId::get(),
 				1_000_000_000_000
 			));
 
-			assert_ok!(Homa::mint(Origin::signed(alice()), 1_000_000_000));
+			assert_ok!(Homa::mint(RuntimeOrigin::signed(alice()), 1_000_000_000));
 
 			let context = Context {
 				address: Default::default(),
@@ -361,7 +371,7 @@ mod tests {
 			};
 
 			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
+				RuntimeOrigin::signed(HomaAdmin::get()),
 				None,
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				None,
@@ -392,7 +402,7 @@ mod tests {
 			};
 
 			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
+				RuntimeOrigin::signed(HomaAdmin::get()),
 				None,
 				None,
 				Some(FixedU128::saturating_from_rational(1, 10)),
@@ -421,7 +431,7 @@ mod tests {
 			};
 
 			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
+				RuntimeOrigin::signed(HomaAdmin::get()),
 				None,
 				None,
 				None,

@@ -76,6 +76,13 @@ pub mod weights;
 pub mod pallet {
 	pub use crate::weights::WeightInfo;
 	use frame_support::{
+		dispatch::DispatchClass,
+		sp_runtime::{
+			traits::{AccountIdConversion, CheckedSub, Zero},
+			Permill,
+		},
+	};
+	use frame_support::{
 		inherent::Vec,
 		pallet_prelude::*,
 		storage::bounded_btree_set::BoundedBTreeSet,
@@ -84,13 +91,6 @@ pub mod pallet {
 			ValidatorSet,
 		},
 		BoundedVec, PalletId,
-	};
-	use frame_support::{
-		sp_runtime::{
-			traits::{AccountIdConversion, CheckedSub, Zero},
-			Permill,
-		},
-		weights::DispatchClass,
 	};
 	use frame_system::pallet_prelude::*;
 	use frame_system::Config as SystemConfig;
@@ -118,7 +118,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// Overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The currency mechanism.
 		type Currency: NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
@@ -128,7 +128,7 @@ pub mod pallet {
 			+ ValidatorRegistration<Self::AccountId>;
 
 		/// Origin that can dictate updating parameters of this pallet.
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Account Identifier from which the internal Pot is generated.
 		#[pallet::constant]

@@ -35,15 +35,13 @@ jobs:
         with:
           submodules: recursive
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
           toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build
@@ -69,15 +67,13 @@ jobs:
         with:
           submodules: recursive
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
           toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
@@ -91,15 +87,13 @@ jobs:
         with:
           submodules: recursive
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
           toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run runtime tests
         run: make test-runtimes
       - name: Run eth tests
@@ -121,19 +115,17 @@ jobs:
         with:
           submodules: recursive
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
           toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run e2e tests
         run: make test-e2e
       - name: Use Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: 16.x
       - name: Run ts tests

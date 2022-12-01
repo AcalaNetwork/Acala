@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Event, *};
+use mock::{RuntimeEvent, *};
 use sp_runtime::{
 	traits::{BadOrigin, Bounded},
 	FixedPointNumber,
@@ -283,7 +283,7 @@ fn lock_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 
-		assert_noop!(PricesModule::unlock_price(Origin::signed(5), BTC), BadOrigin);
+		assert_noop!(PricesModule::unlock_price(RuntimeOrigin::signed(5), BTC), BadOrigin);
 
 		// lock the price of BTC
 		assert_eq!(
@@ -291,8 +291,8 @@ fn lock_price_work() {
 			Some(Price::saturating_from_integer(500000000000000u128))
 		);
 		assert_eq!(PricesModule::locked_price(BTC), None);
-		assert_ok!(PricesModule::lock_price(Origin::signed(1), BTC));
-		System::assert_last_event(Event::PricesModule(crate::Event::LockPrice {
+		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), BTC));
+		System::assert_last_event(RuntimeEvent::PricesModule(crate::Event::LockPrice {
 			currency_id: BTC,
 			locked_price: Price::saturating_from_integer(500000000000000u128),
 		}));
@@ -305,7 +305,7 @@ fn lock_price_work() {
 		assert_eq!(PricesModule::access_price(KSM), None);
 		assert_eq!(PricesModule::locked_price(KSM), None);
 		assert_noop!(
-			PricesModule::lock_price(Origin::signed(1), KSM),
+			PricesModule::lock_price(RuntimeOrigin::signed(1), KSM),
 			Error::<Runtime>::AccessPriceFailed
 		);
 		assert_eq!(PricesModule::locked_price(KSM), None);
@@ -318,8 +318,8 @@ fn lock_price_work() {
 			Some(Price::saturating_from_integer(200000000u128))
 		);
 		assert_eq!(PricesModule::locked_price(KSM), None);
-		assert_ok!(PricesModule::lock_price(Origin::signed(1), KSM));
-		System::assert_last_event(Event::PricesModule(crate::Event::LockPrice {
+		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), KSM));
+		System::assert_last_event(RuntimeEvent::PricesModule(crate::Event::LockPrice {
 			currency_id: KSM,
 			locked_price: Price::saturating_from_integer(200000000u128),
 		}));
@@ -335,21 +335,23 @@ fn unlock_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 
-		assert_noop!(PricesModule::unlock_price(Origin::signed(5), BTC), BadOrigin);
+		assert_noop!(PricesModule::unlock_price(RuntimeOrigin::signed(5), BTC), BadOrigin);
 
 		// unlock failed when there's no locked price
 		assert_noop!(
-			PricesModule::unlock_price(Origin::signed(1), BTC),
+			PricesModule::unlock_price(RuntimeOrigin::signed(1), BTC),
 			Error::<Runtime>::NoLockedPrice
 		);
 
-		assert_ok!(PricesModule::lock_price(Origin::signed(1), BTC));
+		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), BTC));
 		assert_eq!(
 			PricesModule::locked_price(BTC),
 			Some(Price::saturating_from_integer(500000000000000u128))
 		);
-		assert_ok!(PricesModule::unlock_price(Origin::signed(1), BTC));
-		System::assert_last_event(Event::PricesModule(crate::Event::UnlockPrice { currency_id: BTC }));
+		assert_ok!(PricesModule::unlock_price(RuntimeOrigin::signed(1), BTC));
+		System::assert_last_event(RuntimeEvent::PricesModule(crate::Event::UnlockPrice {
+			currency_id: BTC,
+		}));
 		assert_eq!(PricesModule::locked_price(BTC), None);
 	});
 }
@@ -414,14 +416,14 @@ fn price_providers_work() {
 		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
 
 		// lock price
-		assert_ok!(PricesModule::lock_price(Origin::signed(1), AUSD));
-		assert_ok!(PricesModule::lock_price(Origin::signed(1), BTC));
-		assert_ok!(PricesModule::lock_price(Origin::signed(1), LDOT));
+		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), AUSD));
+		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), BTC));
+		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), LDOT));
 		assert_noop!(
-			PricesModule::lock_price(Origin::signed(1), KSM),
+			PricesModule::lock_price(RuntimeOrigin::signed(1), KSM),
 			Error::<Runtime>::AccessPriceFailed
 		);
-		assert_ok!(PricesModule::lock_price(Origin::signed(1), LP_AUSD_DOT));
+		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), LP_AUSD_DOT));
 
 		assert_eq!(
 			LockedPriceProvider::<Runtime>::get_price(AUSD),
@@ -513,14 +515,14 @@ fn price_providers_work() {
 		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
 
 		// unlock price
-		assert_ok!(PricesModule::unlock_price(Origin::signed(1), AUSD));
-		assert_ok!(PricesModule::unlock_price(Origin::signed(1), BTC));
-		assert_ok!(PricesModule::unlock_price(Origin::signed(1), LDOT));
+		assert_ok!(PricesModule::unlock_price(RuntimeOrigin::signed(1), AUSD));
+		assert_ok!(PricesModule::unlock_price(RuntimeOrigin::signed(1), BTC));
+		assert_ok!(PricesModule::unlock_price(RuntimeOrigin::signed(1), LDOT));
 		assert_noop!(
-			PricesModule::unlock_price(Origin::signed(1), KSM),
+			PricesModule::unlock_price(RuntimeOrigin::signed(1), KSM),
 			Error::<Runtime>::NoLockedPrice
 		);
-		assert_ok!(PricesModule::unlock_price(Origin::signed(1), LP_AUSD_DOT));
+		assert_ok!(PricesModule::unlock_price(RuntimeOrigin::signed(1), LP_AUSD_DOT));
 
 		assert_eq!(
 			PriorityLockedPriceProvider::<Runtime>::get_price(AUSD),

@@ -480,7 +480,7 @@ where
 mod tests {
 	use super::*;
 
-	use crate::precompile::mock::{alice_evm_addr, new_test_ext, DexModule, Origin, Test, ALICE, AUSD, RENBTC};
+	use crate::precompile::mock::{alice_evm_addr, new_test_ext, DexModule, RuntimeOrigin, Test, ALICE, AUSD, RENBTC};
 	use frame_support::{assert_noop, assert_ok};
 	use hex_literal::hex;
 	use module_evm::ExitRevert;
@@ -491,10 +491,14 @@ mod tests {
 	fn get_liquidity_works() {
 		new_test_ext().execute_with(|| {
 			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+			assert_ok!(DexModule::enable_trading_pair(
+				RuntimeOrigin::signed(ALICE),
+				RENBTC,
+				AUSD,
+			));
 
 			assert_ok!(DexModule::add_liquidity(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				RENBTC,
 				AUSD,
 				1_000,
@@ -535,10 +539,14 @@ mod tests {
 	fn get_liquidity_token_address_works() {
 		new_test_ext().execute_with(|| {
 			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+			assert_ok!(DexModule::enable_trading_pair(
+				RuntimeOrigin::signed(ALICE),
+				RENBTC,
+				AUSD,
+			));
 
 			assert_ok!(DexModule::add_liquidity(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				RENBTC,
 				AUSD,
 				1_000,
@@ -595,10 +603,14 @@ mod tests {
 	fn get_swap_target_amount_works() {
 		new_test_ext().execute_with(|| {
 			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+			assert_ok!(DexModule::enable_trading_pair(
+				RuntimeOrigin::signed(ALICE),
+				RENBTC,
+				AUSD,
+			));
 
 			assert_ok!(DexModule::add_liquidity(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				RENBTC,
 				AUSD,
 				1_000,
@@ -643,10 +655,14 @@ mod tests {
 	fn get_swap_supply_amount_works() {
 		new_test_ext().execute_with(|| {
 			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+			assert_ok!(DexModule::enable_trading_pair(
+				RuntimeOrigin::signed(ALICE),
+				RENBTC,
+				AUSD,
+			));
 
 			assert_ok!(DexModule::add_liquidity(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				RENBTC,
 				AUSD,
 				1_000,
@@ -691,10 +707,14 @@ mod tests {
 	fn swap_with_exact_supply_works() {
 		new_test_ext().execute_with(|| {
 			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+			assert_ok!(DexModule::enable_trading_pair(
+				RuntimeOrigin::signed(ALICE),
+				RENBTC,
+				AUSD,
+			));
 
 			assert_ok!(DexModule::add_liquidity(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				RENBTC,
 				AUSD,
 				1_000,
@@ -743,10 +763,14 @@ mod tests {
 	fn dex_precompile_swap_with_exact_target_should_work() {
 		new_test_ext().execute_with(|| {
 			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+			assert_ok!(DexModule::enable_trading_pair(
+				RuntimeOrigin::signed(ALICE),
+				RENBTC,
+				AUSD,
+			));
 
 			assert_ok!(DexModule::add_liquidity(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				RENBTC,
 				AUSD,
 				1_000,

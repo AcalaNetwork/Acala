@@ -61,7 +61,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type Currency: Currency<Self::AccountId>;
 		type BridgedTokenCurrency: BasicCurrency<Self::AccountId, Balance = Balance>;
 		/// The RenVM Currency identifier
@@ -162,7 +162,7 @@ pub mod module {
 			Self::do_mint(&who, amount, &sig)?;
 
 			// TODO: update by benchmarks.
-			let weight: Weight = 10_000;
+			let weight: Weight = Weight::from_ref_time(10_000);
 
 			// charge mint fee. Ignore the result, if it failed, only lost the fee.
 			let _ = T::ChargeTransactionPayment::charge_fee(

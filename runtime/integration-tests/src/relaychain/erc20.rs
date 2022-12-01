@@ -54,9 +54,16 @@ pub fn deploy_erc20_contracts() {
 		serde_json::from_str(include_str!("../../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
 
-	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2100_000, 100000, vec![]));
+	assert_ok!(EVM::create(
+		RuntimeOrigin::signed(alice()),
+		code,
+		0,
+		2100_000,
+		100000,
+		vec![]
+	));
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+	System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::Created {
 		from: EvmAddress::from_str("0xbf0b5a4099f0bf6c8bc4252ebec548bae95602ea").unwrap(),
 		contract: erc20_address_0(),
 		logs: vec![module_evm::Log {
@@ -76,9 +83,9 @@ pub fn deploy_erc20_contracts() {
 		used_storage: 15461,
 	}));
 
-	assert_ok!(EVM::publish_free(Origin::root(), erc20_address_0()));
+	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address_0()));
 	assert_ok!(AssetRegistry::register_erc20_asset(
-		Origin::root(),
+		RuntimeOrigin::root(),
 		erc20_address_0(),
 		100_000_000_000
 	));
@@ -92,7 +99,7 @@ fn erc20_transfer_between_sibling() {
 		let erc20_as_foreign_asset = CurrencyId::Erc20(erc20_address_0());
 		// register Karura's erc20 as foreign asset
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Box::new(
 				MultiLocation::new(
 					1,
@@ -168,7 +175,7 @@ fn erc20_transfer_between_sibling() {
 
 		// transfer erc20 token to Sibling
 		assert_ok!(XTokens::transfer(
-			Origin::signed(alith.clone()),
+			RuntimeOrigin::signed(alith.clone()),
 			CurrencyId::Erc20(erc20_address_0()),
 			transfer_amount,
 			Box::new(
@@ -184,7 +191,7 @@ fn erc20_transfer_between_sibling() {
 				)
 				.into(),
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		// using native token to charge storage fee
@@ -218,7 +225,7 @@ fn erc20_transfer_between_sibling() {
 
 		// transfer erc20 token back to Karura
 		assert_ok!(XTokens::transfer(
-			Origin::signed(BOB.into()),
+			RuntimeOrigin::signed(BOB.into()),
 			CurrencyId::ForeignAsset(0),
 			5_000_000_000_000,
 			Box::new(
@@ -234,7 +241,7 @@ fn erc20_transfer_between_sibling() {
 				)
 				.into(),
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		assert_eq!(
@@ -244,7 +251,7 @@ fn erc20_transfer_between_sibling() {
 	});
 
 	Karura::execute_with(|| {
-		use karura_runtime::{Event, System};
+		use karura_runtime::{RuntimeEvent, System};
 		let erc20_holding_account = EvmAddressMapping::<Runtime>::get_account_id(&Erc20HoldingAccount::get());
 		assert_eq!(
 			5_000_000_000_000,
@@ -279,19 +286,19 @@ fn erc20_transfer_between_sibling() {
 		);
 
 		// withdraw operation transfer from sibling parachain account to erc20 holding account
-		System::assert_has_event(Event::Currencies(module_currencies::Event::Withdrawn {
+		System::assert_has_event(RuntimeEvent::Currencies(module_currencies::Event::Withdrawn {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
 			who: sibling_reserve_account(),
 			amount: 5_000_000_000_000,
 		}));
 		// deposit operation transfer from erc20 holding account to recipient
-		System::assert_has_event(Event::Currencies(module_currencies::Event::Deposited {
+		System::assert_has_event(RuntimeEvent::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
 			who: AccountId::from(BOB),
 			amount: 4_990_730_400_000,
 		}));
 		// TakeRevenue deposit from erc20 holding account to treasury account
-		System::assert_has_event(Event::Currencies(module_currencies::Event::Deposited {
+		System::assert_has_event(RuntimeEvent::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
 			who: KaruraTreasuryAccount::get(),
 			amount: 9_269_600_000,
@@ -307,7 +314,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 		let erc20_as_foreign_asset = CurrencyId::Erc20(erc20_address_0());
 		// register Karura's erc20 as foreign asset
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Box::new(
 				MultiLocation::new(
 					1,
@@ -344,7 +351,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 
 		// Erc20 claim account
 		assert_ok!(EvmAccounts::claim_account(
-			Origin::signed(AccountId::from(ALICE)),
+			RuntimeOrigin::signed(AccountId::from(ALICE)),
 			EvmAccounts::eth_address(&alice_key()),
 			EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 		));
@@ -353,7 +360,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 
 		// use Currencies `transfer` dispatch call to transfer erc20 token to bob.
 		assert_ok!(Currencies::transfer(
-			Origin::signed(alith),
+			RuntimeOrigin::signed(alith),
 			MultiAddress::Id(AccountId::from(CHARLIE)),
 			CurrencyId::Erc20(erc20_address_0()),
 			1_000_000_000_000_000
@@ -365,7 +372,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 
 		// transfer erc20 token to Karura
 		assert_ok!(XTokens::transfer(
-			Origin::signed(CHARLIE.into()),
+			RuntimeOrigin::signed(CHARLIE.into()),
 			CurrencyId::Erc20(erc20_address_0()),
 			10_000_000_000_000,
 			Box::new(
@@ -381,7 +388,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 				)
 				.into(),
 			),
-			1_000_000_000,
+			WeightLimit::Limited(1_000_000_000),
 		));
 
 		assert_eq!(

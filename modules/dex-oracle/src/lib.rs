@@ -56,7 +56,7 @@ pub mod module {
 		type Time: Time;
 
 		/// The origin which may manage dex oracle.
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;

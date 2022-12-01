@@ -27,7 +27,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{log, pallet_prelude::*, transactional, weights::Weight};
+use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use module_support::{CallBuilder, HomaSubAccountXcm};
 use orml_traits::XcmTransfer;
@@ -35,7 +35,7 @@ use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
 use sp_runtime::traits::Convert;
 use sp_std::{convert::From, prelude::*, vec, vec::Vec};
-use xcm::latest::prelude::*;
+use xcm::{latest::Weight as XcmWeight, prelude::*};
 
 pub mod migrations;
 pub use module::*;
@@ -58,10 +58,10 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_xcm::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Origin represented Governance
-		type UpdateOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+		type UpdateOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The currency id of the Staking asset
 		#[pallet::constant]
@@ -98,7 +98,7 @@ pub mod module {
 		/// Xcm dest weight has been updated.
 		XcmDestWeightUpdated {
 			xcm_operation: XcmInterfaceOperation,
-			new_xcm_dest_weight: Weight,
+			new_xcm_dest_weight: XcmWeight,
 		},
 		/// Xcm dest weight has been updated.
 		XcmFeeUpdated {
@@ -114,7 +114,7 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn xcm_dest_weight_and_fee)]
 	pub type XcmDestWeightAndFee<T: Config> =
-		StorageMap<_, Twox64Concat, XcmInterfaceOperation, (Weight, Balance), ValueQuery>;
+		StorageMap<_, Twox64Concat, XcmInterfaceOperation, (XcmWeight, Balance), ValueQuery>;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
@@ -133,7 +133,7 @@ pub mod module {
 		#[transactional]
 		pub fn update_xcm_dest_weight_and_fee(
 			origin: OriginFor<T>,
-			updates: Vec<(XcmInterfaceOperation, Option<Weight>, Option<Balance>)>,
+			updates: Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Balance>)>,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
@@ -174,7 +174,7 @@ pub mod module {
 				T::StakingCurrencyId::get(),
 				amount,
 				T::SovereignSubAccountLocationConvert::convert(sub_account_index),
-				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0,
+				WeightLimit::Limited(Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0),
 			)
 		}
 

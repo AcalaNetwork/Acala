@@ -44,14 +44,14 @@ mod karura_tests {
 
 			// Transfer some KSM into the parachain.
 			assert_ok!(kusama_runtime::Balances::transfer(
-				kusama_runtime::Origin::signed(ALICE.into()),
+				kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
 				MultiAddress::Id(homa_lite_sub_account.clone()),
 				1_001_000_000_000_000
 			));
 
 			// bond and unbond some fund for staking
 			assert_ok!(kusama_runtime::Staking::bond(
-				kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+				kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
 				MultiAddress::Id(homa_lite_sub_account.clone()),
 				1_000_000_000_000_000,
 				pallet_staking::RewardDestination::<AccountId>::Staked,
@@ -59,7 +59,7 @@ mod karura_tests {
 
 			kusama_runtime::System::set_block_number(100);
 			assert_ok!(kusama_runtime::Staking::unbond(
-				kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+				kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
 				1_000_000_000_000_000
 			));
 
@@ -78,7 +78,7 @@ mod karura_tests {
 			// Transfer fails because liquidity is locked.
 			assert_noop!(
 				kusama_runtime::Balances::transfer(
-					kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+					kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
 					MultiAddress::Id(ALICE.into()),
 					1_000_000_000_000_000
 				),
@@ -111,7 +111,7 @@ mod karura_tests {
 
 			// Transfer fails because liquidity is locked.
 			assert_ok!(kusama_runtime::Balances::transfer(
-				kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+				kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
 				MultiAddress::Id(ALICE.into()),
 				1_000_000_000_000_000
 			));
@@ -158,7 +158,7 @@ mod karura_tests {
 			// Only leftover XCM fee remains in the account
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				9_601_783_448
+				9_640_401_849
 			);
 		});
 	}
@@ -168,22 +168,22 @@ mod karura_tests {
 	fn relaychain_call_codec_works() {
 		KusamaNet::execute_with(|| {
 			let encoded = KusamaCallBuilder::staking_withdraw_unbonded(5).encode();
-			let withdraw_unbond_call = kusama_runtime::Call::decode(&mut &encoded[..]).unwrap();
+			let withdraw_unbond_call = kusama_runtime::RuntimeCall::decode(&mut &encoded[..]).unwrap();
 			assert_eq!(encoded, hex_literal::hex!["060305000000"]);
 			assert_eq!(
 				withdraw_unbond_call,
-				kusama_runtime::Call::Staking(pallet_staking::Call::withdraw_unbonded { num_slashing_spans: 5 })
+				kusama_runtime::RuntimeCall::Staking(pallet_staking::Call::withdraw_unbonded { num_slashing_spans: 5 })
 			);
 
 			let encoded = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1).encode();
-			let transfer_call = kusama_runtime::Call::decode(&mut &encoded[..]).unwrap();
+			let transfer_call = kusama_runtime::RuntimeCall::decode(&mut &encoded[..]).unwrap();
 			assert_eq!(
 				encoded,
 				hex_literal::hex!["040300040404040404040404040404040404040404040404040404040404040404040404"]
 			);
 			assert_eq!(
 				transfer_call,
-				kusama_runtime::Call::Balances(pallet_balances::Call::transfer_keep_alive {
+				kusama_runtime::RuntimeCall::Balances(pallet_balances::Call::transfer_keep_alive {
 					dest: MultiAddress::Id(AccountId::from([4u8; 32])),
 					value: 1
 				})
@@ -191,29 +191,29 @@ mod karura_tests {
 
 			let encoded =
 				KusamaCallBuilder::utility_batch_call(vec![KusamaCallBuilder::staking_withdraw_unbonded(5)]).encode();
-			let batch_call = kusama_runtime::Call::decode(&mut &encoded[..]).unwrap();
+			let batch_call = kusama_runtime::RuntimeCall::decode(&mut &encoded[..]).unwrap();
 			assert_eq!(encoded, hex_literal::hex!["180204060305000000"]);
 			assert_eq!(
 				batch_call,
-				kusama_runtime::Call::Utility(pallet_utility::Call::batch_all {
-					calls: vec![kusama_runtime::Call::Staking(pallet_staking::Call::withdraw_unbonded {
-						num_slashing_spans: 5
-					})]
+				kusama_runtime::RuntimeCall::Utility(pallet_utility::Call::batch_all {
+					calls: vec![kusama_runtime::RuntimeCall::Staking(
+						pallet_staking::Call::withdraw_unbonded { num_slashing_spans: 5 }
+					)]
 				})
 			);
 
 			let encoded =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 10)
 					.encode();
-			let batch_as_call = kusama_runtime::Call::decode(&mut &encoded[..]).unwrap();
+			let batch_as_call = kusama_runtime::RuntimeCall::decode(&mut &encoded[..]).unwrap();
 			assert_eq!(encoded, hex_literal::hex!["18010a00060305000000"]);
 			assert_eq!(
 				batch_as_call,
-				kusama_runtime::Call::Utility(pallet_utility::Call::as_derivative {
+				kusama_runtime::RuntimeCall::Utility(pallet_utility::Call::as_derivative {
 					index: 10,
-					call: Box::new(kusama_runtime::Call::Staking(pallet_staking::Call::withdraw_unbonded {
-						num_slashing_spans: 5
-					}))
+					call: Box::new(kusama_runtime::RuntimeCall::Staking(
+						pallet_staking::Call::withdraw_unbonded { num_slashing_spans: 5 }
+					))
 				})
 			);
 		});

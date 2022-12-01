@@ -33,7 +33,7 @@ pub fn enable_stable_asset(currencies: Vec<CurrencyId>, amounts: Vec<u128>, mint
 	let pool_asset = CurrencyId::StableAssetPoolToken(0);
 	let precisions = currencies.iter().map(|_| 1u128).collect::<Vec<_>>();
 	assert_ok!(StableAsset::create_pool(
-		Origin::root(),
+		RuntimeOrigin::root(),
 		pool_asset,
 		currencies, // assets
 		precisions,
@@ -58,7 +58,7 @@ pub fn enable_stable_asset(currencies: Vec<CurrencyId>, amounts: Vec<u128>, mint
 	));
 
 	assert_ok!(StableAsset::mint(
-		Origin::signed(minter.unwrap_or(AccountId::from(ALICE))),
+		RuntimeOrigin::signed(minter.unwrap_or(AccountId::from(ALICE))),
 		0,
 		amounts,
 		0u128
@@ -99,7 +99,7 @@ fn stable_asset_mint_works() {
 				vec![ksm_target_amount, lksm_target_amount],
 				None,
 			);
-			System::assert_last_event(Event::StableAsset(nutsfinance_stable_asset::Event::Minted {
+			System::assert_last_event(RuntimeEvent::StableAsset(nutsfinance_stable_asset::Event::Minted {
 				minter: AccountId::from(ALICE),
 				pool_id: 0,
 				a: 1000,
@@ -155,7 +155,7 @@ fn three_usd_pool_works() {
 			let minimal_balance: u128 = Balances::minimum_balance() / 10;
 
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				MultiAddress::Id(treasury_account.clone()),
 				NATIVE_CURRENCY,
 				100 * dollar as i128,
@@ -163,7 +163,7 @@ fn three_usd_pool_works() {
 
 			// USDT is asset on Statemine
 			assert_ok!(AssetRegistry::register_foreign_asset(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				Box::new(
 					MultiLocation::new(
 						1,
@@ -203,31 +203,31 @@ fn three_usd_pool_works() {
 			assert_eq!(Currencies::free_balance(usdc, &alith), total_erc20);
 
 			assert_ok!(EvmAccounts::claim_account(
-				Origin::signed(AccountId::from(ALICE)),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&alice_key()),
 				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 			));
 			assert_ok!(EvmAccounts::claim_account(
-				Origin::signed(AccountId::from(BOB)),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
 				EvmAccounts::eth_address(&bob_key()),
 				EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB))
 			));
 			// transfer USDC erc20 from alith to ALICE/BOB, used for swap
 			<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
 			assert_ok!(Currencies::transfer(
-				Origin::signed(alith.clone()),
+				RuntimeOrigin::signed(alith.clone()),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
 				usdc,
 				10 * dollar,
 			));
 			assert_ok!(Currencies::transfer(
-				Origin::signed(alith.clone()),
+				RuntimeOrigin::signed(alith.clone()),
 				sp_runtime::MultiAddress::Id(AccountId::from(ALICE)),
 				usdc,
 				10 * dollar,
 			));
 			assert_ok!(Currencies::transfer(
-				Origin::signed(alith.clone()),
+				RuntimeOrigin::signed(alith.clone()),
 				sp_runtime::MultiAddress::Id(treasury_account.clone()),
 				usdc,
 				10 * dollar,
@@ -248,7 +248,7 @@ fn three_usd_pool_works() {
 				vec![1000 * dollar, 1000 * dollar, 1000 * dollar],
 				Some(alith.clone()),
 			);
-			System::assert_last_event(Event::StableAsset(nutsfinance_stable_asset::Event::Minted {
+			System::assert_last_event(RuntimeEvent::StableAsset(nutsfinance_stable_asset::Event::Minted {
 				minter: alith,
 				pool_id: 0,
 				a: 1000,
@@ -274,7 +274,7 @@ fn three_usd_pool_works() {
 			);
 			// Taiga(USDT, AUSD), Dex(AUSD, ACA)
 			assert_ok!(AggregatedDex::update_aggregated_swap_paths(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				vec![(
 					(CurrencyId::ForeignAsset(0), NATIVE_CURRENCY),
 					Some(vec![
@@ -285,7 +285,7 @@ fn three_usd_pool_works() {
 			));
 			// Taiga(USDC, AUSD), Dex(AUSD, ACA)
 			assert_ok!(AggregatedDex::update_aggregated_swap_paths(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				vec![(
 					(usdc, NATIVE_CURRENCY),
 					Some(vec![
@@ -374,7 +374,7 @@ fn three_usd_pool_works() {
 			let (amount1, amount2) = (227029695u128, 2250001739u128);
 			#[cfg(feature = "with-mandala-runtime")]
 			let (amount1, amount2) = (906308684u128, 9000001739u128);
-			System::assert_has_event(Event::Dex(module_dex::Event::Swap {
+			System::assert_has_event(RuntimeEvent::Dex(module_dex::Event::Swap {
 				trader: AccountId::from(BOB),
 				path: vec![USD_CURRENCY, NATIVE_CURRENCY],
 				liquidity_changes: vec![amount1, amount2],
@@ -445,13 +445,13 @@ fn three_usd_pool_works() {
 			let fee_surplus = surplus_perc.mul_ceil(fee);
 			let fee = fee + fee_surplus; // 501,000,001,739
 			assert_ok!(TransactionPayment::enable_charge_fee_pool(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				usdt,
 				fee_pool_size,
 				fee_pool_size - fee,
 			));
 			assert_ok!(TransactionPayment::enable_charge_fee_pool(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				usdc,
 				fee_pool_size,
 				fee_pool_size - fee,
@@ -530,7 +530,7 @@ fn three_usd_pool_works() {
 
 fn assert_aggregated_dex_event(
 	_usd_token: CurrencyId,
-	with_fee_call: <Runtime as module_transaction_payment::Config>::Call,
+	with_fee_call: <Runtime as module_transaction_payment::Config>::RuntimeCall,
 	len: Option<usize>,
 ) {
 	System::reset_events();
@@ -544,7 +544,7 @@ fn assert_aggregated_dex_event(
 	);
 	assert!(System::events().iter().any(|r| matches!(
 		r.event,
-		Event::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped {
+		RuntimeEvent::StableAsset(nutsfinance_stable_asset::Event::TokenSwapped {
 			pool_id: 0,
 			a: 1000,
 			input_asset: _usd_token,
@@ -554,7 +554,7 @@ fn assert_aggregated_dex_event(
 	)));
 	assert!(System::events()
 		.iter()
-		.any(|r| matches!(r.event, Event::Dex(module_dex::Event::Swap { .. }))));
+		.any(|r| matches!(r.event, RuntimeEvent::Dex(module_dex::Event::Swap { .. }))));
 }
 
 pub fn deploy_erc20_contracts() {
@@ -562,10 +562,17 @@ pub fn deploy_erc20_contracts() {
 		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
 
-	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2100_000, 100000, vec![]));
-	assert_ok!(EVM::publish_free(Origin::root(), erc20_address_0()));
+	assert_ok!(EVM::create(
+		RuntimeOrigin::signed(alice()),
+		code,
+		0,
+		2100_000,
+		100000,
+		vec![]
+	));
+	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address_0()));
 	assert_ok!(AssetRegistry::register_erc20_asset(
-		Origin::root(),
+		RuntimeOrigin::root(),
 		erc20_address_0(),
 		100_000_000_000
 	));
@@ -582,9 +589,9 @@ fn inject_liquidity(
 	max_amount_b: Balance,
 ) -> Result<(), &'static str> {
 	let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
-	let _ = Dex::enable_trading_pair(Origin::root(), currency_id_a, currency_id_b);
+	let _ = Dex::enable_trading_pair(RuntimeOrigin::root(), currency_id_a, currency_id_b);
 	Dex::add_liquidity(
-		Origin::signed(alith),
+		RuntimeOrigin::signed(alith),
 		currency_id_a,
 		currency_id_b,
 		max_amount_a,

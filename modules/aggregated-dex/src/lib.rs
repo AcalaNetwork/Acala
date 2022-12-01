@@ -58,7 +58,7 @@ pub mod module {
 		>;
 
 		/// Origin represented Governance
-		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The alternative swap path joint list for DEX swap
 		#[pallet::constant]

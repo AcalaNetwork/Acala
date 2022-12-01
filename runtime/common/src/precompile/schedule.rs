@@ -93,15 +93,15 @@ where
 		+ pallet_scheduler::Config
 		+ Send
 		+ Sync,
-	<Runtime as pallet_scheduler::Config>::Call: Dispatchable + Debug + From<module_evm::Call<Runtime>>,
-	<<Runtime as pallet_scheduler::Config>::Call as Dispatchable>::Origin: IsType<<Runtime as frame_system::Config>::Origin>
+	<Runtime as pallet_scheduler::Config>::RuntimeCall: Dispatchable + Debug + From<module_evm::Call<Runtime>>,
+	<<Runtime as pallet_scheduler::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin: IsType<<Runtime as frame_system::Config>::RuntimeOrigin>
 		+ OriginTrait<
 			AccountId = Runtime::AccountId,
 			PalletsOrigin = <Runtime as pallet_scheduler::Config>::PalletsOrigin,
 		>,
 	pallet_scheduler::Pallet<Runtime>: ScheduleNamed<
 		BlockNumber,
-		<Runtime as pallet_scheduler::Config>::Call,
+		<Runtime as pallet_scheduler::Config>::RuntimeCall,
 		<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 		Address = TaskAddress<BlockNumber>,
 	>,
@@ -207,14 +207,14 @@ where
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
 					BlockNumber,
-					<Runtime as pallet_scheduler::Config>::Call,
+					<Runtime as pallet_scheduler::Config>::RuntimeCall,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::schedule_named(
 					task_id.clone(),
 					DispatchTime::After(min_delay),
 					None,
 					0,
-					<<<Runtime as pallet_scheduler::Config>::Call as Dispatchable>::Origin>::root()
+					<<<Runtime as pallet_scheduler::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin>::root()
 						.caller()
 						.clone(),
 					call,
@@ -261,7 +261,7 @@ where
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
 					BlockNumber,
-					<Runtime as pallet_scheduler::Config>::Call,
+					<Runtime as pallet_scheduler::Config>::RuntimeCall,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::cancel_named(task_id)
 				.map_err(|_| PrecompileFailure::Revert {
@@ -319,7 +319,7 @@ where
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
 					BlockNumber,
-					<Runtime as pallet_scheduler::Config>::Call,
+					<Runtime as pallet_scheduler::Config>::RuntimeCall,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::reschedule_named(task_id, DispatchTime::After(min_delay))
 				.map_err(|e| PrecompileFailure::Revert {
@@ -361,7 +361,7 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{
-		alice_evm_addr, bob_evm_addr, new_test_ext, run_to_block, Balances, Event as TestEvent, System, Test,
+		alice_evm_addr, bob_evm_addr, new_test_ext, run_to_block, Balances, RuntimeEvent as TestEvent, System, Test,
 	};
 	use hex_literal::hex;
 	use sp_core::H160;
@@ -487,7 +487,7 @@ mod tests {
 			run_to_block(5);
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			{
-				assert_eq!(Balances::free_balance(from_account.clone()), 999999931325);
+				assert_eq!(Balances::free_balance(from_account.clone()), 999999935591);
 				assert_eq!(Balances::reserved_balance(from_account), 0);
 				assert_eq!(Balances::free_balance(to_account), 1000000001000);
 			}

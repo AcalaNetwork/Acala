@@ -66,7 +66,7 @@ pub mod module {
 		frame_system::Config
 		+ orml_rewards::Config<Share = Balance, Balance = Balance, PoolId = PoolId, CurrencyId = CurrencyId>
 	{
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The period to accumulate rewards
 		#[pallet::constant]
@@ -85,7 +85,7 @@ pub mod module {
 		type EarnShareBooster: Get<Permill>;
 
 		/// The origin which may update incentive related params
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Currency for transfer assets
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -206,7 +206,7 @@ pub mod module {
 
 				T::WeightInfo::on_initialize(count)
 			} else {
-				0
+				Weight::zero()
 			}
 		}
 	}
