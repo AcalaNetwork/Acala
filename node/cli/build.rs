@@ -18,4 +18,16 @@
 
 fn main() {
 	substrate_build_script_utils::generate_cargo_keys();
+	orml_build_script_utils::check_file_licenses(
+		"../..",
+		include_bytes!("../../HEADER-GPL3"),
+		&[
+			"../../evm-tests",
+			"../../ecosystem-modules/stable-asset",
+			"../../launch",
+			"../../orml",
+			"../../predeploy-contracts",
+			"../../ts-tests",
+		],
+	);
 }
