@@ -10,11 +10,7 @@ name: Publish Release
 # - Publish the WASM to Pinata via ipfs
 
 on:
-  push:
-    branches:
-      - release-**
-    paths-ignore:
-      - '**/README.md'
+  create:
   workflow_dispatch:
     inputs:
       # Get name of the chain
@@ -51,6 +47,8 @@ jobs:
   build-release:
     name: Build and publish ${{ github.event.inputs.chain || github.ref }}
     runs-on: ubuntu-latest
+    # Skip non-release branches
+    if: startsWith(github.ref_name, 'release-')
     steps:
       # Checkout the Acala codebase
       - name: Checkout Codebase

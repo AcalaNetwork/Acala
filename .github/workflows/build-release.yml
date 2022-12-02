@@ -1,6 +1,7 @@
 # Runs when `release-*` branch is created or push changes into `release-*` branch.
 name: Build Release
 on:
+  create:
   push:
     branches:
       - release-**
@@ -17,7 +18,7 @@ jobs:
   clean-up-actions:
     runs-on: ubuntu-latest
     # Skip non-release branches
-    if: startsWith(github.ref, 'release-')
+    if: startsWith(github.ref_name, 'release-')
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.11.0
@@ -95,7 +96,7 @@ jobs:
 
   trigger:
     needs: build-image
-    if: ${{ contains(github.ref, 'release') }}
+    if: ${{ startsWith(github.ref_name, 'release-') }}
     uses: ./.github/workflows/extrinsic-ordering-check-on-release.yml
     secrets: inherit
     with:
