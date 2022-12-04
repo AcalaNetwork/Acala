@@ -47,7 +47,8 @@ jobs:
   build-release:
     name: Build and publish ${{ github.event.inputs.chain || github.ref }}
     runs-on: ubuntu-latest
-    if: contains(github.ref, 'release-')
+    # Skip non-release branches
+    if: startsWith(github.ref_name, 'release-')
     steps:
       # Checkout the Acala codebase
       - name: Checkout Codebase

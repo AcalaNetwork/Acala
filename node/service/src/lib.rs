@@ -33,7 +33,7 @@ use cumulus_primitives_core::ParaId;
 use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
-use cumulus_relay_chain_rpc_interface::{create_client_and_start_worker, RelayChainRpcInterface};
+use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node;
 pub use futures::stream::StreamExt;
 use jsonrpsee::RpcModule;
 use sc_consensus::LongestChain;
@@ -261,7 +261,7 @@ where
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 			let client_for_cidp = client.clone();
 
-			sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _, _>(ImportQueueParams {
+			sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(ImportQueueParams {
 				block_import: client.clone(),
 				justification_import: None,
 				client: client.clone(),
@@ -284,6 +284,8 @@ where
 							current_para_block,
 							relay_offset: 1000,
 							relay_blocks_per_para_block: 2,
+							para_blocks_per_relay_epoch: 0,
+							relay_randomness_config: (),
 							xcm_config: MockXcmConfig::new(
 								&*client_for_xcm,
 								block,
@@ -294,12 +296,11 @@ where
 							raw_horizontal_messages: vec![],
 						};
 
-						Ok((timestamp, slot, mocked_parachain))
+						Ok((slot, timestamp, mocked_parachain))
 					}
 				},
 				spawner: &task_manager.spawn_essential_handle(),
 				registry,
-				can_author_with: sp_consensus::AlwaysCanAuthor,
 				check_for_equivocation: Default::default(),
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
 			})?
@@ -307,22 +308,21 @@ where
 	} else {
 		let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 
-		cumulus_client_consensus_aura::import_queue::<AuraPair, _, _, _, _, _, _>(
+		cumulus_client_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(
 			cumulus_client_consensus_aura::ImportQueueParams {
 				block_import: client.clone(),
 				client: client.clone(),
 				create_inherent_data_providers: move |_, _| async move {
-					let time = sp_timestamp::InherentDataProvider::from_system_time();
+					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-						*time,
+						*timestamp,
 						slot_duration,
 					);
 
-					Ok((time, slot))
+					Ok((slot, timestamp))
 				},
 				registry,
-				can_author_with: sp_consensus::AlwaysCanAuthor,
 				spawner: &task_manager.spawn_essential_handle(),
 				telemetry: telemetry.as_ref().map(|telemetry| telemetry.handle()),
 			},
@@ -349,10 +349,7 @@ async fn build_relay_chain_interface(
 	collator_options: CollatorOptions,
 ) -> RelayChainResult<(Arc<(dyn RelayChainInterface + 'static)>, Option<CollatorPair>)> {
 	match collator_options.relay_chain_rpc_url {
-		Some(relay_chain_url) => {
-			let client = create_client_and_start_worker(relay_chain_url, task_manager).await?;
-			Ok((Arc::new(RelayChainRpcInterface::new(client)) as Arc<_>, None))
-		}
+		Some(relay_chain_url) => build_minimal_relay_chain_node(polkadot_config, task_manager, relay_chain_url).await,
 		None => build_inprocess_relay_chain(
 			polkadot_config,
 			parachain_config,
@@ -422,15 +419,16 @@ where
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
 	let import_queue = cumulus_client_service::SharedImportQueue::new(params.import_queue);
-	let (network, system_rpc_tx, start_network) = sc_service::build_network(sc_service::BuildNetworkParams {
-		config: &parachain_config,
-		client: client.clone(),
-		transaction_pool: transaction_pool.clone(),
-		spawn_handle: task_manager.spawn_handle(),
-		import_queue: import_queue.clone(),
-		block_announce_validator_builder: Some(Box::new(|_| Box::new(block_announce_validator))),
-		warp_sync: None,
-	})?;
+	let (network, system_rpc_tx, tx_handler_controller, start_network) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &parachain_config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue: import_queue.clone(),
+			block_announce_validator_builder: Some(Box::new(|_| Box::new(block_announce_validator))),
+			warp_sync: None,
+		})?;
 
 	let rpc_builder = {
 		let client = client.clone();
@@ -458,15 +456,16 @@ where
 	};
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
-		rpc_builder: Box::new(rpc_builder),
-		client: client.clone(),
-		transaction_pool: transaction_pool.clone(),
-		task_manager: &mut task_manager,
-		config: parachain_config,
-		keystore: params.keystore_container.sync_keystore(),
-		backend: backend.clone(),
 		network: network.clone(),
+		client: client.clone(),
+		keystore: params.keystore_container.sync_keystore(),
+		task_manager: &mut task_manager,
+		transaction_pool: transaction_pool.clone(),
+		rpc_builder: Box::new(rpc_builder),
+		backend: backend.clone(),
 		system_rpc_tx,
+		tx_handler_controller,
+		config: parachain_config,
 		telemetry: telemetry.as_mut(),
 	})?;
 
@@ -514,9 +513,8 @@ where
 			task_manager: &mut task_manager,
 			para_id: id,
 			relay_chain_interface,
-			import_queue,
 			relay_chain_slot_duration,
-			collator_options,
+			import_queue,
 		};
 
 		start_full_node(params)?;
@@ -586,17 +584,17 @@ where
 							)
 							.await;
 
-						let time = sp_timestamp::InherentDataProvider::from_system_time();
+						let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-							*time,
+							*timestamp,
 							slot_duration,
 						);
 
 						let parachain_inherent = parachain_inherent.ok_or_else(|| {
 							Box::<dyn std::error::Error + Send + Sync>::from("Failed to create parachain inherent")
 						})?;
-						Ok((time, slot, parachain_inherent))
+						Ok((slot, timestamp, parachain_inherent))
 					}
 				},
 				block_import: client.clone(),
@@ -699,15 +697,16 @@ where
 		other: (_, _),
 	} = new_partial::<RuntimeApi>(&config, true, instant_sealing)?;
 
-	let (network, system_rpc_tx, network_starter) = sc_service::build_network(sc_service::BuildNetworkParams {
-		config: &config,
-		client: client.clone(),
-		transaction_pool: transaction_pool.clone(),
-		spawn_handle: task_manager.spawn_handle(),
-		import_queue,
-		block_announce_validator_builder: None,
-		warp_sync: None,
-	})?;
+	let (network, system_rpc_tx, tx_handler_controller, start_network) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue,
+			block_announce_validator_builder: None,
+			warp_sync: None,
+		})?;
 
 	if config.offchain_worker.enabled {
 		let offchain_workers = Arc::new(sc_offchain::OffchainWorkers::new_with_options(
@@ -782,6 +781,8 @@ where
 								current_para_block,
 								relay_offset: 1000,
 								relay_blocks_per_para_block: 2,
+								para_blocks_per_relay_epoch: 0,
+								relay_randomness_config: (),
 								xcm_config: MockXcmConfig::new(
 									&*client_for_xcm,
 									block,
@@ -807,7 +808,7 @@ where
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 			let client_for_cidp = client.clone();
 
-			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
+			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
 				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
 				client: client.clone(),
 				select_chain,
@@ -832,6 +833,8 @@ where
 							current_para_block,
 							relay_offset: 1000,
 							relay_blocks_per_para_block: 2,
+							para_blocks_per_relay_epoch: 0,
+							relay_randomness_config: (),
 							xcm_config: MockXcmConfig::new(
 								&*client_for_xcm,
 								block,
@@ -842,13 +845,12 @@ where
 							raw_horizontal_messages: vec![],
 						};
 
-						Ok((timestamp, slot, mocked_parachain))
+						Ok((slot, timestamp, mocked_parachain))
 					}
 				},
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
-				can_author_with: sp_consensus::AlwaysCanAuthor,
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
 				// We got around 500ms for proposing
@@ -896,10 +898,11 @@ where
 		backend,
 		network,
 		system_rpc_tx,
+		tx_handler_controller,
 		telemetry: None,
 	})?;
 
-	network_starter.start_network();
+	start_network.start_network();
 
 	Ok(task_manager)
 }

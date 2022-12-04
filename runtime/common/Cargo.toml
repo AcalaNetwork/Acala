@@ -1,6 +1,6 @@
 [package]
 name = "runtime-common"
-version = "2.10.1"
+version = "2.11.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -14,36 +14,36 @@ hex-literal = "0.3.1"
 static_assertions = "1.1.0"
 log = { version = "0.4.17", default-features = false }
 num_enum = { version = "0.5.1", default-features = false }
-serde = { version = "1.0.136", optional = true, default-features = false }
-serde_json = { version = "1.0.68", default-features = false, features = ["alloc"] }
+serde_json = { version = "1.0.85", default-features = false, features = ["alloc"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
-ethabi = { version = "17.0.0", default-features = false }
-scale-info = { version = "2.1", default-features = false, features = ["derive"] }
+ethabi = { version = "18.0.0", default-features = false }
+scale-info = { version = "2.2.0", default-features = false, features = ["derive"] }
 
 # substrate
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
-pallet-scheduler  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
-pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
-pallet-membership = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false, optional = true }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false, optional = true }
-pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false, optional = true }
-pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false, optional = true }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false, features = ["tuples-96"] }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+pallet-scheduler  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+pallet-membership = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false, optional = true }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false, optional = true }
+pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false, optional = true }
+pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false, optional = true }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 
 # cumulus
-cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.28", default-features = false }
+cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.31", default-features = false }
 
 # polkadot
-pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28", default-features = false, optional = true }
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28", default-features = false }
-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28", default-features = false }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28", default-features = false }
-xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.28", default-features = false }
+pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31", default-features = false, optional = true }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31", default-features = false }
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31", default-features = false }
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31", default-features = false }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31", default-features = false }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.31", default-features = false }
 
 # modules
 module-currencies = { path = "../../modules/currencies", default-features = false }
@@ -80,62 +80,65 @@ orml-rewards = { path = "../../orml/rewards", default-features = false, optional
 [features]
 default = ["std"]
 std = [
-	"num_enum/std",
-	"log/std",
-	"serde",
-	"serde_json/std",
 	"codec/std",
-	"scale-info/std",
 	"ethabi/std",
+	"log/std",
+	"num_enum/std",
+	"scale-info/std",
+	"serde_json/std",
 
 	"frame-support/std",
 	"frame-system/std",
-	"pallet-scheduler/std",
+	"pallet-balances/std",
 	"pallet-collective/std",
 	"pallet-membership/std",
-	"pallet-balances/std",
-	"pallet-timestamp/std",
 	"pallet-proxy/std",
+	"pallet-scheduler/std",
+	"pallet-timestamp/std",
 	"pallet-utility/std",
 	"sp-core/std",
+	"sp-io/std",
 	"sp-runtime/std",
 	"sp-std/std",
-	"sp-io/std",
 
 	"cumulus-pallet-parachain-system/std",
 
-	"orml-oracle/std",
-	"orml-traits/std",
-	"orml-bencher/std",
-	"orml-tokens/std",
-	"orml-nft/std",
-	"orml-currencies/std",
-	"orml-rewards/std",
-
-	"module-evm/std",
-	"module-idle-scheduler/std",
-	"module-support/std",
-	"primitives/std",
-	"module-prices/std",
-	"module-transaction-payment/std",
-	"module-nft/std",
-	"module-dex/std",
-	"module-homa/std",
-	"module-currencies/std",
-	"module-evm-accounts/std",
-	"module-asset-registry/std",
-	"module-evm-bridge/std",
-	"module-loans/std",
-	"module-cdp-engine/std",
-	"module-honzon/std",
-	"module-cdp-treasury/std",
-	"module-incentives/std",
-	"module-transaction-pause/std",
-
 	"polkadot-parachain/std",
+	"polkadot-primitives/std",
+	"pallet-xcm/std",
 	"xcm/std",
 	"xcm-executor/std",
 	"xcm-builder/std",
+
+	"orml-bencher/std",
+	"orml-currencies/std",
+	"orml-nft/std",
+	"orml-oracle/std",
+	"orml-rewards/std",
+	"orml-tokens/std",
+	"orml-traits/std",
+
+	"module-asset-registry/std",
+	"module-cdp-engine/std",
+	"module-cdp-treasury/std",
+	"module-currencies/std",
+	"module-dex/std",
+	"module-evm-accounts/std",
+	"module-evm-bridge/std",
+	"module-evm/std",
+	"module-homa/std",
+	"module-honzon/std",
+	"module-idle-scheduler/std",
+	"module-incentives/std",
+	"module-loans/std",
+	"module-nft/std",
+	"module-prices/std",
+	"module-support/std",
+	"module-transaction-pause/std",
+	"module-transaction-payment/std",
+	"primitives/std",
+
+	"nutsfinance-stable-asset/std",
 ]
 with-ethereum-compatibility = [
 	"module-evm/with-ethereum-compatibility",
@@ -143,23 +146,22 @@ with-ethereum-compatibility = [
 bench = [
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
-	"pallet-collective/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
-	"pallet-timestamp/runtime-benchmarks",
+	"pallet-collective/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
 	"pallet-utility/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
-
 	"sp-runtime/runtime-benchmarks",
 
-	"orml-bencher/bench",
-	"orml-tokens/runtime-benchmarks",
-	"orml-nft",
-	"orml-currencies",
-
 	"module-asset-registry",
-	"module-evm-bridge",
 	"module-cdp-treasury",
+	"module-evm-bridge",
+	"orml-bencher/bench",
+	"orml-currencies",
+	"orml-nft",
+	"orml-rewards",
+	"orml-tokens/runtime-benchmarks",
 
 	"xcm/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",

@@ -48,7 +48,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -169,7 +169,7 @@ impl<T: Config> Pallet<T> {
 	/// Keep dispatching tasks in Storage, until insufficient weight remains.
 	pub fn do_dispatch_tasks(total_weight: Weight) -> Weight {
 		let mut weight_remaining = total_weight.saturating_sub(T::WeightInfo::on_idle_base());
-		if weight_remaining <= T::MinimumWeightRemainInBlock::get() {
+		if weight_remaining.ref_time() <= T::MinimumWeightRemainInBlock::get().ref_time() {
 			// return total weight so no `on_idle` hook will execute after IdleScheduler
 			return total_weight;
 		}
@@ -185,7 +185,7 @@ impl<T: Config> Pallet<T> {
 			}
 
 			// If remaining weight falls below the minimmum, break from the loop.
-			if weight_remaining <= T::MinimumWeightRemainInBlock::get() {
+			if weight_remaining.ref_time() <= T::MinimumWeightRemainInBlock::get().ref_time() {
 				break;
 			}
 		}

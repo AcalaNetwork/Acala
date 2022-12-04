@@ -91,7 +91,7 @@ fn test_update_liquid_currency_price() {
 			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, relaychain_price)]);
 
 			assert_ok!(Homa::reset_ledgers(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				vec![(0, Some(100 * dollar(RELAY_CHAIN_CURRENCY)), None)]
 			));
 
@@ -101,7 +101,7 @@ fn test_update_liquid_currency_price() {
 			);
 
 			assert_ok!(Homa::reset_ledgers(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				vec![(0, Some(110 * dollar(RELAY_CHAIN_CURRENCY)), None)]
 			));
 

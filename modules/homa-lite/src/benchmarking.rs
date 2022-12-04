@@ -81,7 +81,7 @@ benchmarks! {
 	}: _(RawOrigin::Root, 1_000_000_000_000_000_000)
 
 	set_xcm_dest_weight {
-	}: _(RawOrigin::Root, 1_000_000_000)
+	}: _(RawOrigin::Root, Weight::from_ref_time(1_000_000_000))
 
 	request_redeem {
 		let amount = 1_000_000_000_000_000;

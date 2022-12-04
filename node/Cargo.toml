@@ -1,6 +1,6 @@
 [package]
 name = "acala"
-version = "2.10.1"
+version = "2.11.0"
 authors = ["Acala Developers"]
 edition = "2021"
 default-run = "acala"
@@ -10,8 +10,8 @@ name = "acala"
 path = "src/main.rs"
 
 [dependencies]
-futures = "0.3.21"
-parity-util-mem = { version = "0.11", default-features = false, features = ["jemalloc-global"] }
+futures = "0.3.24"
+parity-util-mem = { version = "0.12.0", default-features = false, features = ["jemalloc-global"] }
 acala-cli = { path = "cli" }
 acala-service = { path = "service" }
 
@@ -19,6 +19,7 @@ acala-service = { path = "service" }
 default = []
 runtime-benchmarks = [
 	"acala-cli/runtime-benchmarks",
+	"acala-service/runtime-benchmarks",
 ]
 with-mandala-runtime = [
 	"acala-service/with-mandala-runtime",

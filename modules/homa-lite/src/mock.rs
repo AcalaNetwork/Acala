@@ -85,7 +85,7 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 		_currency_id: CurrencyId,
 		amount: Balance,
 		_dest: MultiLocation,
-		_dest_weight: Weight,
+		_dest_weight: WeightLimit,
 	) -> DispatchResult {
 		Currencies::slash(KSM, &who, amount);
 		match who {
@@ -99,7 +99,7 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 		_who: AccountId,
 		_asset: MultiAsset,
 		_dest: MultiLocation,
-		_dest_weight: Weight,
+		_dest_weight: WeightLimit,
 	) -> DispatchResult {
 		Ok(())
 	}
@@ -127,44 +127,44 @@ impl SendXcm for MockXcm {
 	}
 }
 
-impl ExecuteXcm<Call> for MockXcm {
+impl ExecuteXcm<RuntimeCall> for MockXcm {
 	fn execute_xcm_in_credit(
 		_origin: impl Into<MultiLocation>,
-		mut _message: Xcm<Call>,
-		_weight_limit: Weight,
-		_weight_credit: Weight,
+		mut _message: Xcm<RuntimeCall>,
+		_weight_limit: XcmWeight,
+		_weight_credit: XcmWeight,
 	) -> Outcome {
 		Outcome::Complete(0)
 	}
 }
 
 pub struct MockEnsureXcmOrigin;
-impl EnsureOrigin<Origin> for MockEnsureXcmOrigin {
+impl EnsureOrigin<RuntimeOrigin> for MockEnsureXcmOrigin {
 	type Success = MultiLocation;
-	fn try_origin(_o: Origin) -> Result<Self::Success, Origin> {
+	fn try_origin(_o: RuntimeOrigin) -> Result<Self::Success, RuntimeOrigin> {
 		Ok(MultiLocation::here())
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin() -> Origin {
+	fn successful_origin() -> RuntimeOrigin {
 		let zero_account_id = AccountId::decode(&mut sp_runtime::traits::TrailingZeroInput::zeroes())
 			.expect("infinite length input; no invalid inputs for type; qed");
-		Origin::from(RawOrigin::Signed(zero_account_id))
+		RuntimeOrigin::from(RawOrigin::Signed(zero_account_id))
 	}
 }
 pub struct MockWeigher;
-impl WeightBounds<Call> for MockWeigher {
-	fn weight(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
+impl WeightBounds<RuntimeCall> for MockWeigher {
+	fn weight(_message: &mut Xcm<RuntimeCall>) -> Result<XcmWeight, ()> {
 		Ok(0)
 	}
 
-	fn instr_weight(_message: &Instruction<Call>) -> Result<Weight, ()> {
+	fn instr_weight(_message: &Instruction<RuntimeCall>) -> Result<XcmWeight, ()> {
 		Ok(0)
 	}
 }
 
 impl pallet_xcm::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type SendXcmOrigin = MockEnsureXcmOrigin;
 	type XcmRouter = MockXcm;
 	type ExecuteXcmOrigin = MockEnsureXcmOrigin;
@@ -174,8 +174,8 @@ impl pallet_xcm::Config for Runtime {
 	type XcmReserveTransferFilter = Everything;
 	type Weigher = MockWeigher;
 	type LocationInverter = MockXcm;
-	type Origin = Origin;
-	type Call = Call;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 }
@@ -184,8 +184,8 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
 	type Hash = H256;
@@ -193,7 +193,7 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
 	type Version = ();
@@ -214,13 +214,16 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
+	type OnSlash = ();
+	type OnDeposit = ();
+	type OnTransfer = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
@@ -232,7 +235,7 @@ impl orml_tokens::Config for Runtime {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<0>;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
@@ -249,7 +252,7 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -291,7 +294,7 @@ impl BlockNumberProvider for MockRelayBlockNumberProvider {
 }
 
 impl Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Currency = Currencies;
 	type StakingCurrencyId = StakingCurrencyId;

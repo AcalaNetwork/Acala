@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{new_test_ext, Event, Origin, Runtime, Session, SessionManager, System};
+use mock::{new_test_ext, Runtime, RuntimeEvent, RuntimeOrigin, Session, SessionManager, System};
 
 #[test]
 fn schedule_session_duration_work() {
@@ -32,22 +32,22 @@ fn schedule_session_duration_work() {
 		assert_eq!(SessionManager::session_duration(), 10);
 
 		assert_noop!(
-			SessionManager::schedule_session_duration(Origin::root(), 0, 0),
+			SessionManager::schedule_session_duration(RuntimeOrigin::root(), 0, 0),
 			Error::<Runtime>::InvalidSession
 		);
 		assert_noop!(
-			SessionManager::schedule_session_duration(Origin::root(), 1, 0),
+			SessionManager::schedule_session_duration(RuntimeOrigin::root(), 1, 0),
 			Error::<Runtime>::InvalidDuration
 		);
 
-		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 10));
-		System::assert_last_event(Event::SessionManager(crate::Event::ScheduledSessionDuration {
+		assert_ok!(SessionManager::schedule_session_duration(RuntimeOrigin::root(), 1, 10));
+		System::assert_last_event(RuntimeEvent::SessionManager(crate::Event::ScheduledSessionDuration {
 			block_number: 1,
 			session_index: 1,
 			session_duration: 10,
 		}));
-		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
-		System::assert_last_event(Event::SessionManager(crate::Event::ScheduledSessionDuration {
+		assert_ok!(SessionManager::schedule_session_duration(RuntimeOrigin::root(), 1, 11));
+		System::assert_last_event(RuntimeEvent::SessionManager(crate::Event::ScheduledSessionDuration {
 			block_number: 10,
 			session_index: 1,
 			session_duration: 11,
@@ -55,7 +55,7 @@ fn schedule_session_duration_work() {
 
 		SessionDuration::<Runtime>::put(0);
 		assert_noop!(
-			SessionManager::schedule_session_duration(Origin::root(), 1, 12),
+			SessionManager::schedule_session_duration(RuntimeOrigin::root(), 1, 12),
 			Error::<Runtime>::EstimateNextSessionFailed
 		);
 	});
@@ -68,8 +68,8 @@ fn on_initialize_work() {
 		assert_eq!(SessionManager::session_duration(), 10);
 		assert_eq!(SessionManager::duration_offset(), 0);
 
-		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
-		System::assert_last_event(Event::SessionManager(crate::Event::ScheduledSessionDuration {
+		assert_ok!(SessionManager::schedule_session_duration(RuntimeOrigin::root(), 1, 11));
+		System::assert_last_event(RuntimeEvent::SessionManager(crate::Event::ScheduledSessionDuration {
 			block_number: 10,
 			session_index: 1,
 			session_duration: 11,
@@ -97,7 +97,7 @@ fn should_end_session_work() {
 		assert!(!SessionManager::should_end_session(9));
 		assert!(SessionManager::should_end_session(10));
 
-		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
+		assert_ok!(SessionManager::schedule_session_duration(RuntimeOrigin::root(), 1, 11));
 		SessionManager::on_initialize(10);
 		assert_eq!(SessionManager::session_duration(), 11);
 		assert_eq!(SessionManager::duration_offset(), 10);
@@ -119,7 +119,7 @@ fn average_session_length_work() {
 
 		assert_eq!(SessionManager::average_session_length(), 10);
 
-		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
+		assert_ok!(SessionManager::schedule_session_duration(RuntimeOrigin::root(), 1, 11));
 		SessionManager::on_initialize(10);
 		assert_eq!(SessionManager::average_session_length(), 11);
 	});
@@ -149,7 +149,7 @@ fn estimate_current_session_progress_work() {
 			Some(Permill::from_rational(1u32, 10u32))
 		);
 
-		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
+		assert_ok!(SessionManager::schedule_session_duration(RuntimeOrigin::root(), 1, 11));
 		SessionManager::on_initialize(10);
 		assert_eq!(SessionManager::session_duration(), 11);
 		assert_eq!(SessionManager::duration_offset(), 10);
@@ -191,7 +191,7 @@ fn estimate_next_session_rotation_work() {
 		assert_eq!(SessionManager::estimate_next_session_rotation(9).0, Some(10));
 		assert_eq!(SessionManager::estimate_next_session_rotation(10).0, Some(20));
 
-		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
+		assert_ok!(SessionManager::schedule_session_duration(RuntimeOrigin::root(), 1, 11));
 		SessionManager::on_initialize(10);
 		assert_eq!(SessionManager::session_duration(), 11);
 		assert_eq!(SessionManager::duration_offset(), 10);

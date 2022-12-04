@@ -58,57 +58,57 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn on_initialize_with_update_average_prices(n: u32, u: u32,) -> Weight {
-		(0 as Weight)
+		Weight::from_ref_time(0)
 			// Standard Error: 162_000
-			.saturating_add((32_749_000 as Weight).saturating_mul(n as Weight))
+			.saturating_add(Weight::from_ref_time(32_749_000).saturating_mul(n as u64))
 			// Standard Error: 162_000
-			.saturating_add((22_671_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(Weight::from_ref_time(22_671_000).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(n as u64)))
+			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
+			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(u as u64)))
 	}
 	fn enable_average_price() -> Weight {
-		(27_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(27_000_000)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	fn disable_average_price() -> Weight {
-		(11_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(11_000_000)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	fn update_average_price_interval() -> Weight {
-		(12_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(12_000_000)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_initialize_with_update_average_prices(n: u32, u: u32,) -> Weight {
-		(0 as Weight)
+		Weight::from_ref_time(0)
 			// Standard Error: 162_000
-			.saturating_add((32_749_000 as Weight).saturating_mul(n as Weight))
+			.saturating_add(Weight::from_ref_time(32_749_000).saturating_mul(n as u64))
 			// Standard Error: 162_000
-			.saturating_add((22_671_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(RocksDbWeight::get().writes((2 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(Weight::from_ref_time(22_671_000).saturating_mul(u as u64))
+			.saturating_add(RocksDbWeight::get().reads((2 as u64).saturating_mul(n as u64)))
+			.saturating_add(RocksDbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
+			.saturating_add(RocksDbWeight::get().writes((2 as u64).saturating_mul(u as u64)))
 	}
 	fn enable_average_price() -> Weight {
-		(27_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(27_000_000)
+			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn disable_average_price() -> Weight {
-		(11_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(11_000_000)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn update_average_price_interval() -> Weight {
-		(12_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(12_000_000)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 }

@@ -47,7 +47,7 @@ fn token_per_second_works() {
 fn transfer_from_relay_chain() {
 	PolkadotNet::execute_with(|| {
 		assert_ok!(polkadot_runtime::XcmPallet::reserve_transfer_assets(
-			polkadot_runtime::Origin::signed(ALICE.into()),
+			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
 			Box::new(Parachain(ACALA_ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
@@ -71,7 +71,7 @@ fn transfer_from_relay_chain() {
 fn transfer_to_relay_chain() {
 	Acala::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			DOT,
 			5 * dollar(DOT),
 			Box::new(
@@ -84,7 +84,7 @@ fn transfer_to_relay_chain() {
 				)
 				.into()
 			),
-			4_000_000_000
+			WeightLimit::Limited(4_000_000_000)
 		));
 	});
 
@@ -92,7 +92,8 @@ fn transfer_to_relay_chain() {
 		assert_eq!(
 			// v0.9.19: 49_517_228_896
 			// v0.9.22: 49_530_582_548
-			49_530_582_548,
+			// v0.9.31: 49_573_469_824
+			49_573_469_824,
 			polkadot_runtime::Balances::free_balance(&AccountId::from(BOB))
 		);
 		assert_eq!(
@@ -112,7 +113,7 @@ fn liquid_crowdloan_xtokens_works() {
 
 	MockBifrost::execute_with(|| {
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Box::new(
 				MultiLocation::new(
 					1,
@@ -131,7 +132,7 @@ fn liquid_crowdloan_xtokens_works() {
 
 	Acala::execute_with(|| {
 		assert_ok!(AssetRegistry::register_native_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			LCDOT,
 			Box::new(AssetMetadata {
 				name: b"Liquid Crowdloan Token".to_vec(),
@@ -143,7 +144,7 @@ fn liquid_crowdloan_xtokens_works() {
 		assert_ok!(Tokens::deposit(LCDOT, &AccountId::from(BOB), 10 * dollar));
 
 		assert_ok!(XTokens::transfer(
-			Origin::signed(BOB.into()),
+			RuntimeOrigin::signed(BOB.into()),
 			LCDOT,
 			5 * dollar,
 			Box::new(
@@ -159,7 +160,7 @@ fn liquid_crowdloan_xtokens_works() {
 				)
 				.into()
 			),
-			8_000_000_000,
+			WeightLimit::Limited(8_000_000_000),
 		));
 
 		assert_eq!(Tokens::free_balance(LCDOT, &AccountId::from(BOB)), 5 * dollar);
@@ -173,7 +174,7 @@ fn liquid_crowdloan_xtokens_works() {
 		);
 
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			foreign_asset,
 			dollar,
 			Box::new(
@@ -189,7 +190,7 @@ fn liquid_crowdloan_xtokens_works() {
 				)
 				.into()
 			),
-			8_000_000_000,
+			WeightLimit::Limited(8_000_000_000),
 		));
 	});
 
@@ -209,7 +210,7 @@ fn send_arbitrary_xcm_fails() {
 	Acala::execute_with(|| {
 		assert_noop!(
 			PolkadotXcm::send(
-				acala_runtime::Origin::signed(ALICE.into()),
+				acala_runtime::RuntimeOrigin::signed(ALICE.into()),
 				Box::new(MultiLocation::new(1, Here).into()),
 				Box::new(VersionedXcm::from(Xcm(vec![WithdrawAsset((Here, 1).into())]))),
 			),

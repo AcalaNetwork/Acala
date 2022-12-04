@@ -93,7 +93,7 @@ curl https://sh.rustup.rs -sSf | sh
 You may need additional dependencies, checkout [substrate.io](https://docs.substrate.io/v3/getting-started/installation) for more info
 
 ```bash
-sudo apt-get install -y git clang curl libssl-dev llvm libudev-dev
+sudo apt-get install -y git clang curl libssl-dev llvm libudev-dev protobuf-compiler
 ```
 
 Make sure you have `submodule.recurse` set to true to make life with submodule easier.
@@ -160,9 +160,9 @@ Bench bot can take care of syncing branch with `master` and generating WeightInf
 
 ## Generate module weights
 
-Comment on a PR `/bench runtime module <module_name>` i.e.: `module_currencies`
+Comment on a PR `/bench module <module_name>` i.e.: `module_currencies`
 
-Bench bot will do the benchmarking, generate `weights.rs` file push changes into your branch.
+Bench bot will do the benchmarking, generate `weights.rs` file and push changes into your branch.
 
 ## Generate runtime weights
 
@@ -170,7 +170,7 @@ Comment on a PR `/bench runtime <runtime> <module_name>` i.e.: `/bench runtime m
 
 To generate weights for all modules just pass `*` as `module_name` i.e: `/bench runtime mandala *`
 
-Bench bot will do the benchmarking, generate weights file push changes into your branch.
+Bench bot will do the benchmarking, generate weights file and push changes into your branch.
 
 ## Bench Acala EVM+
 
@@ -187,7 +187,7 @@ try-runtime on karura
 ```bash
 # Use a live chain to run the migration test and save state snapshot to file `snapshot.bin`.
 # Add `-m module_name` can specify the module.
-cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws --at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 -s /tmp/snapshot.bin
+cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled --no-spec-check-panic on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
 
  # Use a state snapshot to run the migration test.
 cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade snap -s /tmp/snapshot.bin
@@ -196,9 +196,9 @@ cargo run --features with-karura-runtime --features try-runtime -- try-runtime -
 try-runtime on acala
 
 ```bash
-cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev --wasm-execution=compiled --no-spec-check-panic on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
 
-cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev on-runtime-upgrade snap -s /tmp/snapshot.bin
+cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev --wasm-execution=compiled on-runtime-upgrade snap -s /tmp/snapshot.bin
 ```
 
 # 9. Run local testnet with [parachain-launch](https://github.com/open-web3-stack/parachain-launch)

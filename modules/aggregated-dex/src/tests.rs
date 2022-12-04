@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2022 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -40,9 +40,9 @@ fn inject_liquidity(
 	Tokens::deposit(currency_id_a, &BOB, max_amount_a)?;
 	Tokens::deposit(currency_id_b, &BOB, max_amount_b)?;
 
-	let _ = Dex::enable_trading_pair(Origin::signed(BOB.clone()), currency_id_a, currency_id_b);
+	let _ = Dex::enable_trading_pair(RuntimeOrigin::signed(BOB.clone()), currency_id_a, currency_id_b);
 	Dex::add_liquidity(
-		Origin::signed(BOB),
+		RuntimeOrigin::signed(BOB),
 		currency_id_a,
 		currency_id_b,
 		max_amount_a,
@@ -999,13 +999,13 @@ fn do_aggregated_swap_work() {
 fn update_aggregated_swap_paths_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			AggregatedDex::update_aggregated_swap_paths(Origin::signed(ALICE), vec![]),
+			AggregatedDex::update_aggregated_swap_paths(RuntimeOrigin::signed(ALICE), vec![]),
 			BadOrigin
 		);
 
 		assert_noop!(
 			AggregatedDex::update_aggregated_swap_paths(
-				Origin::signed(BOB),
+				RuntimeOrigin::signed(BOB),
 				vec![
 					(
 						(DOT, AUSD),
@@ -1024,7 +1024,7 @@ fn update_aggregated_swap_paths_work() {
 
 		assert_noop!(
 			AggregatedDex::update_aggregated_swap_paths(
-				Origin::signed(BOB),
+				RuntimeOrigin::signed(BOB),
 				vec![
 					(
 						(DOT, AUSD),
@@ -1042,7 +1042,7 @@ fn update_aggregated_swap_paths_work() {
 		assert_eq!(AggregatedDex::aggregated_swap_paths((DOT, AUSD)), None);
 		assert_eq!(AggregatedDex::aggregated_swap_paths((AUSD, DOT)), None);
 		assert_ok!(AggregatedDex::update_aggregated_swap_paths(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			vec![
 				(
 					(DOT, AUSD),
@@ -1065,7 +1065,7 @@ fn update_aggregated_swap_paths_work() {
 
 		assert_noop!(
 			AggregatedDex::update_aggregated_swap_paths(
-				Origin::signed(BOB),
+				RuntimeOrigin::signed(BOB),
 				vec![(
 					(DOT, AUSD),
 					Some(vec![
@@ -1080,7 +1080,7 @@ fn update_aggregated_swap_paths_work() {
 		);
 
 		assert_ok!(AggregatedDex::update_aggregated_swap_paths(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			vec![((DOT, AUSD), None), ((AUSD, DOT), None)]
 		));
 		assert_eq!(AggregatedDex::aggregated_swap_paths((DOT, AUSD)), None);
@@ -1124,7 +1124,7 @@ fn aggregated_swap_get_swap_amount_work() {
 		);
 
 		assert_ok!(AggregatedDex::update_aggregated_swap_paths(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			vec![(
 				(DOT, AUSD),
 				Some(vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])])
@@ -1140,7 +1140,7 @@ fn aggregated_swap_get_swap_amount_work() {
 		);
 
 		assert_ok!(AggregatedDex::update_aggregated_swap_paths(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			vec![(
 				(AUSD, DOT),
 				Some(vec![SwapPath::Dex(vec![AUSD, LDOT]), SwapPath::Taiga(0, 1, 0)])
@@ -1233,7 +1233,7 @@ fn aggregated_swap_swap_work() {
 		);
 
 		assert_ok!(AggregatedDex::update_aggregated_swap_paths(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			vec![(
 				(DOT, AUSD),
 				Some(vec![SwapPath::Taiga(0, 0, 1), SwapPath::Dex(vec![LDOT, AUSD])])

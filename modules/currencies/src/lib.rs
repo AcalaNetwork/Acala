@@ -65,7 +65,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type MultiCurrency: TransferAll<Self::AccountId>
 			+ MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId>
 			+ MultiLockableCurrency<Self::AccountId, CurrencyId = CurrencyId>
@@ -105,7 +105,7 @@ pub mod module {
 		type GasToWeight: Convert<u64, Weight>;
 
 		/// The AccountId that can perform a sweep dust.
-		type SweepOrigin: EnsureOrigin<Self::Origin>;
+		type SweepOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Handler to burn or transfer account's dust
 		type OnDust: OnDust<Self::AccountId, CurrencyId, BalanceOf<Self>>;
@@ -170,7 +170,7 @@ pub mod module {
 		/// The dispatch origin for this call must be `Signed` by the
 		/// transactor.
 		#[pallet::weight(T::WeightInfo::transfer_non_native_currency()
-			.saturating_add(if currency_id.is_erc20_currency_id() { T::GasToWeight::convert(erc20::TRANSFER.gas) } else { 0 })
+			.saturating_add(if currency_id.is_erc20_currency_id() { T::GasToWeight::convert(erc20::TRANSFER.gas) } else { Weight::zero() })
 		)]
 		pub fn transfer(
 			origin: OriginFor<T>,

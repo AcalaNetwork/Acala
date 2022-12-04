@@ -488,7 +488,9 @@ where
 						}
 						previous_highest = highest;
 					}
-					ExitReason::Revert(_) | ExitReason::Error(ExitError::OutOfGas) => {
+					ExitReason::Revert(_)
+					| ExitReason::Error(ExitError::OutOfGas)
+					| ExitReason::Error(ExitError::InvalidCode(_)) => {
 						lowest = mid;
 					}
 					other => error_on_execution_failure(&other, &data)?,

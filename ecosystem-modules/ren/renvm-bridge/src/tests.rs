@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok, unsigned::ValidateUnsigned};
 use hex_literal::hex;
-use mock::{AccountId, Balances, ExtBuilder, Origin, RenVmBridge, Runtime, System};
+use mock::{AccountId, Balances, ExtBuilder, RenVmBridge, Runtime, RuntimeOrigin, System};
 use sp_core::H256;
 use sp_runtime::transaction_validity::TransactionValidityError;
 
@@ -45,7 +45,14 @@ fn mint_ren_btc(
 		},
 	)?;
 
-	Ok(RenVmBridge::mint(Origin::none(), who, p_hash, amount, n_hash, sig))
+	Ok(RenVmBridge::mint(
+		RuntimeOrigin::none(),
+		who,
+		p_hash,
+		amount,
+		n_hash,
+		sig,
+	))
 }
 
 fn rotate_key(new_key: PublicKey, sig: EcdsaSignature) -> Result<DispatchResult, TransactionValidityError> {
@@ -57,7 +64,7 @@ fn rotate_key(new_key: PublicKey, sig: EcdsaSignature) -> Result<DispatchResult,
 		},
 	)?;
 
-	Ok(RenVmBridge::rotate_key(Origin::none(), new_key, sig))
+	Ok(RenVmBridge::rotate_key(RuntimeOrigin::none(), new_key, sig))
 }
 
 #[test]
@@ -77,14 +84,14 @@ fn burn_works() {
 
 		let to: Vec<u8> = vec![2, 3, 4];
 		assert_eq!(RenVmBridge::burn_events(0), None);
-		assert_ok!(RenVmBridge::burn(Origin::signed(issuer), to.clone(), 1000));
+		assert_ok!(RenVmBridge::burn(RuntimeOrigin::signed(issuer), to.clone(), 1000));
 		assert_eq!(Balances::free_balance(&issuer), 92802);
 		assert_eq!(RenVmBridge::burn_events(0), Some((0, to.clone(), 1000)));
 		assert_eq!(RenVmBridge::next_burn_event_id(), 1);
 
 		System::set_block_number(15);
 
-		assert_ok!(RenVmBridge::burn(Origin::signed(issuer), to.clone(), 2000));
+		assert_ok!(RenVmBridge::burn(RuntimeOrigin::signed(issuer), to.clone(), 2000));
 		assert_eq!(Balances::free_balance(&issuer), 90802);
 		assert_eq!(RenVmBridge::burn_events(1), Some((15, to, 2000)));
 		assert_eq!(RenVmBridge::next_burn_event_id(), 2);

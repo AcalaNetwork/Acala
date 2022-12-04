@@ -51,9 +51,9 @@ impl<T: frame_system::Config> module_nominees_election::WeightInfo for WeightInf
 	// Storage: NomineesElection Nominations (r:1 w:0)
 	// Storage: Tokens Locks (r:1 w:1)
 	fn bond() -> Weight {
-		(22_433_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(22_433_000)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	// Storage: NomineesElection Ledger (r:1 w:1)
 	// Storage: NomineesElection CurrentEra (r:1 w:0)
@@ -61,52 +61,52 @@ impl<T: frame_system::Config> module_nominees_election::WeightInfo for WeightInf
 	// Storage: Tokens Locks (r:1 w:1)
 	// Storage: Tokens Accounts (r:1 w:1)
 	fn unbond() -> Weight {
-		(19_916_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(19_916_000)
+			.saturating_add(T::DbWeight::get().reads(5 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	// Storage: NomineesElection Ledger (r:1 w:1)
 	// Storage: NomineesElection Nominations (r:1 w:0)
 	// Storage: Tokens Locks (r:1 w:1)
 	// Storage: Tokens Accounts (r:1 w:1)
 	fn rebond(c: u32, ) -> Weight {
-		(26_507_000 as Weight)
+		Weight::from_ref_time(26_507_000)
 			// Standard Error: 19_000
-			.saturating_add((114_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+			.saturating_add(Weight::from_ref_time(114_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	// Storage: NomineesElection Ledger (r:1 w:1)
 	// Storage: NomineesElection CurrentEra (r:1 w:0)
 	// Storage: Tokens Locks (r:1 w:1)
 	// Storage: Tokens Accounts (r:1 w:1)
 	fn withdraw_unbonded(_c: u32, ) -> Weight {
-		(23_750_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(23_750_000)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	// Storage: NomineesElection Ledger (r:1 w:0)
 	// Storage: NomineesElection Nominations (r:1 w:1)
 	// Storage: NomineesElection Votes (r:1 w:1)
 	fn nominate(c: u32, ) -> Weight {
-		(3_493_000 as Weight)
+		Weight::from_ref_time(3_493_000)
 			// Standard Error: 269_000
-			.saturating_add((5_074_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(5_074_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	// Storage: NomineesElection Nominations (r:1 w:1)
 	// Storage: NomineesElection Ledger (r:1 w:0)
 	// Storage: NomineesElection Votes (r:1 w:1)
 	fn chill(c: u32, ) -> Weight {
-		(9_980_000 as Weight)
+		Weight::from_ref_time(9_980_000)
 			// Standard Error: 112_000
-			.saturating_add((3_142_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_ref_time(3_142_000).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 }

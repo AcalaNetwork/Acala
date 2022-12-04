@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -63,14 +63,28 @@ fn whitelist_keys(b: &mut Bencher, caller: Option<H160>) {
 
 fn setup_liquidity() {
 	// faucet alice
-	assert_ok!(Currencies::update_balance(Origin::root(), ALICE, RENBTC, 1_000_000));
-	assert_ok!(Currencies::update_balance(Origin::root(), ALICE, AUSD, 1_000_000_000));
+	assert_ok!(Currencies::update_balance(
+		RuntimeOrigin::root(),
+		ALICE,
+		RENBTC,
+		1_000_000
+	));
+	assert_ok!(Currencies::update_balance(
+		RuntimeOrigin::root(),
+		ALICE,
+		AUSD,
+		1_000_000_000
+	));
 
 	// enable RENBTC/AUSD
-	assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+	assert_ok!(DexModule::enable_trading_pair(
+		RuntimeOrigin::signed(ALICE),
+		RENBTC,
+		AUSD,
+	));
 
 	assert_ok!(DexModule::add_liquidity(
-		Origin::signed(ALICE),
+		RuntimeOrigin::signed(ALICE),
 		RENBTC,
 		AUSD,
 		1_000,
@@ -94,7 +108,7 @@ fn oracle_get_price(b: &mut Bencher) {
 	assert_ok!(Oracle::feed_value(ALICE, RENBTC, price));
 
 	assert_ok!(AssetRegistry::register_native_asset(
-		Origin::signed(CouncilAccount::get()),
+		RuntimeOrigin::signed(CouncilAccount::get()),
 		RENBTC,
 		sp_std::boxed::Box::new(AssetMetadata {
 			name: RENBTC.name().unwrap().into(),

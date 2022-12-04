@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Event, *};
+use mock::{RuntimeEvent, *};
 use sp_runtime::traits::BadOrigin;
 use support::SwapError;
 
@@ -211,7 +211,7 @@ fn swap_collateral_to_stable_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(DOT), 1000);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			DOT,
 			AUSD,
 			1000,
@@ -234,7 +234,7 @@ fn swap_collateral_to_stable_work() {
 			SwapError::CannotSwap
 		);
 		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			DOT,
 			100,
@@ -276,7 +276,7 @@ fn swap_collateral_to_stable_stable_asset_exact_target() {
 		);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			DOT,
 			AUSD,
 			1000,
@@ -285,7 +285,7 @@ fn swap_collateral_to_stable_stable_asset_exact_target() {
 			false
 		));
 		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			AUSD,
 			1000,
@@ -313,7 +313,7 @@ fn swap_collateral_to_stable_stable_asset_exact_supply() {
 		);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			DOT,
 			AUSD,
 			1000,
@@ -322,7 +322,7 @@ fn swap_collateral_to_stable_stable_asset_exact_supply() {
 			false
 		));
 		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			AUSD,
 			1000,
@@ -350,7 +350,7 @@ fn swap_collateral_to_stable_stable_asset_failures() {
 		);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			DOT,
 			AUSD,
 			1000,
@@ -359,7 +359,7 @@ fn swap_collateral_to_stable_stable_asset_failures() {
 			false
 		));
 		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			AUSD,
 			1000,
@@ -397,7 +397,7 @@ fn create_collateral_auctions_work() {
 
 		// set collateral auction maximum size
 		assert_ok!(CDPTreasuryModule::set_expected_collateral_auction_size(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			BTC,
 			300
 		));
@@ -432,7 +432,7 @@ fn create_collateral_auctions_work() {
 fn remove_liquidity_for_lp_collateral_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			AUSD,
 			DOT,
 			1000,
@@ -476,15 +476,15 @@ fn set_expected_collateral_auction_size_work() {
 		System::set_block_number(1);
 		assert_eq!(CDPTreasuryModule::expected_collateral_auction_size(BTC), 0);
 		assert_noop!(
-			CDPTreasuryModule::set_expected_collateral_auction_size(Origin::signed(5), BTC, 200),
+			CDPTreasuryModule::set_expected_collateral_auction_size(RuntimeOrigin::signed(5), BTC, 200),
 			BadOrigin
 		);
 		assert_ok!(CDPTreasuryModule::set_expected_collateral_auction_size(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			BTC,
 			200
 		));
-		System::assert_last_event(Event::CDPTreasuryModule(
+		System::assert_last_event(RuntimeEvent::CDPTreasuryModule(
 			crate::Event::ExpectedCollateralAuctionSizeUpdated {
 				collateral_type: BTC,
 				new_size: 200,
@@ -502,10 +502,13 @@ fn extract_surplus_to_treasury_work() {
 		assert_eq!(Currencies::free_balance(AUSD, &TreasuryAccount::get()), 0);
 
 		assert_noop!(
-			CDPTreasuryModule::extract_surplus_to_treasury(Origin::signed(5), 200),
+			CDPTreasuryModule::extract_surplus_to_treasury(RuntimeOrigin::signed(5), 200),
 			BadOrigin
 		);
-		assert_ok!(CDPTreasuryModule::extract_surplus_to_treasury(Origin::signed(1), 200));
+		assert_ok!(CDPTreasuryModule::extract_surplus_to_treasury(
+			RuntimeOrigin::signed(1),
+			200
+		));
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 800);
 		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 800);
 		assert_eq!(Currencies::free_balance(AUSD, &TreasuryAccount::get()), 200);
@@ -520,16 +523,16 @@ fn auction_collateral_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 10000);
 		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 10000);
 		assert_noop!(
-			CDPTreasuryModule::auction_collateral(Origin::signed(5), BTC, 10000, 1000, false),
+			CDPTreasuryModule::auction_collateral(RuntimeOrigin::signed(5), BTC, 10000, 1000, false),
 			BadOrigin,
 		);
 		assert_noop!(
-			CDPTreasuryModule::auction_collateral(Origin::signed(1), BTC, 10001, 1000, false),
+			CDPTreasuryModule::auction_collateral(RuntimeOrigin::signed(1), BTC, 10001, 1000, false),
 			Error::<Runtime>::CollateralNotEnough,
 		);
 
 		assert_ok!(CDPTreasuryModule::auction_collateral(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			BTC,
 			1000,
 			1000,
@@ -541,7 +544,7 @@ fn auction_collateral_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 10000);
 		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 9000);
 		assert_noop!(
-			CDPTreasuryModule::auction_collateral(Origin::signed(1), BTC, 9001, 1000, false),
+			CDPTreasuryModule::auction_collateral(RuntimeOrigin::signed(1), BTC, 9001, 1000, false),
 			Error::<Runtime>::CollateralNotEnough,
 		);
 	});
@@ -551,7 +554,7 @@ fn auction_collateral_work() {
 fn exchange_collateral_to_stable_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			BTC,
 			AUSD,
 			200,
@@ -562,7 +565,7 @@ fn exchange_collateral_to_stable_work() {
 
 		assert_ok!(Currencies::deposit(BTC, &CDPTreasuryModule::account_id(), 1000));
 		assert_ok!(CDPTreasuryModule::auction_collateral(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			BTC,
 			800,
 			1000,
@@ -573,24 +576,40 @@ fn exchange_collateral_to_stable_work() {
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 
 		assert_noop!(
-			CDPTreasuryModule::exchange_collateral_to_stable(Origin::signed(5), BTC, SwapLimit::ExactTarget(200, 200)),
+			CDPTreasuryModule::exchange_collateral_to_stable(
+				RuntimeOrigin::signed(5),
+				BTC,
+				SwapLimit::ExactTarget(200, 200)
+			),
 			BadOrigin,
 		);
 		assert_noop!(
-			CDPTreasuryModule::exchange_collateral_to_stable(Origin::signed(1), BTC, SwapLimit::ExactTarget(201, 200)),
+			CDPTreasuryModule::exchange_collateral_to_stable(
+				RuntimeOrigin::signed(1),
+				BTC,
+				SwapLimit::ExactTarget(201, 200)
+			),
 			Error::<Runtime>::CollateralNotEnough,
 		);
 		assert_noop!(
-			CDPTreasuryModule::exchange_collateral_to_stable(Origin::signed(1), BTC, SwapLimit::ExactSupply(201, 0)),
+			CDPTreasuryModule::exchange_collateral_to_stable(
+				RuntimeOrigin::signed(1),
+				BTC,
+				SwapLimit::ExactSupply(201, 0)
+			),
 			Error::<Runtime>::CollateralNotEnough,
 		);
 		assert_noop!(
-			CDPTreasuryModule::exchange_collateral_to_stable(Origin::signed(1), BTC, SwapLimit::ExactTarget(200, 1000)),
+			CDPTreasuryModule::exchange_collateral_to_stable(
+				RuntimeOrigin::signed(1),
+				BTC,
+				SwapLimit::ExactTarget(200, 1000)
+			),
 			SwapError::CannotSwap
 		);
 
 		assert_ok!(CDPTreasuryModule::exchange_collateral_to_stable(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			BTC,
 			SwapLimit::ExactTarget(200, 399)
 		));
@@ -606,13 +625,16 @@ fn set_debit_offset_buffer_work() {
 		System::set_block_number(1);
 		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 0);
 		assert_noop!(
-			CDPTreasuryModule::set_debit_offset_buffer(Origin::signed(5), 200),
+			CDPTreasuryModule::set_debit_offset_buffer(RuntimeOrigin::signed(5), 200),
 			BadOrigin
 		);
-		assert_ok!(CDPTreasuryModule::set_debit_offset_buffer(Origin::signed(1), 200));
-		System::assert_last_event(Event::CDPTreasuryModule(crate::Event::DebitOffsetBufferUpdated {
-			amount: 200,
-		}));
+		assert_ok!(CDPTreasuryModule::set_debit_offset_buffer(
+			RuntimeOrigin::signed(1),
+			200
+		));
+		System::assert_last_event(RuntimeEvent::CDPTreasuryModule(
+			crate::Event::DebitOffsetBufferUpdated { amount: 200 },
+		));
 	});
 }
 
@@ -631,7 +653,10 @@ fn offset_surplus_and_debit_limited_by_debit_offset_buffer() {
 		assert_eq!(CDPTreasuryModule::debit_pool(), 1000);
 		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 0);
 
-		assert_ok!(CDPTreasuryModule::set_debit_offset_buffer(Origin::signed(1), 100));
+		assert_ok!(CDPTreasuryModule::set_debit_offset_buffer(
+			RuntimeOrigin::signed(1),
+			100
+		));
 		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 100);
 		assert_ok!(CDPTreasuryModule::on_system_surplus(2000));
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 2000);
@@ -642,7 +667,10 @@ fn offset_surplus_and_debit_limited_by_debit_offset_buffer() {
 		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
 		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 100);
 
-		assert_ok!(CDPTreasuryModule::set_debit_offset_buffer(Origin::signed(1), 200));
+		assert_ok!(CDPTreasuryModule::set_debit_offset_buffer(
+			RuntimeOrigin::signed(1),
+			200
+		));
 		assert_eq!(CDPTreasuryModule::debit_offset_buffer(), 200);
 		assert_ok!(CDPTreasuryModule::on_system_debit(1400));
 		assert_eq!(CDPTreasuryModule::debit_pool(), 1500);

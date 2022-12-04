@@ -21,7 +21,7 @@ use super::{
 	target_gas_limit,
 	weights::PrecompileWeights,
 };
-use crate::WeightToGas;
+use crate::{Weight, WeightToGas};
 use frame_support::log;
 use module_evm::{
 	precompiles::Precompile,
@@ -131,7 +131,7 @@ where
 				let currency_id = input.currency_id_at(1)?;
 				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
 				let get_price = WeightToGas::convert(PrecompileWeights::<Runtime>::oracle_get_price());
-				WeightToGas::convert(read_currency).saturating_add(get_price)
+				WeightToGas::convert(Weight::from_ref_time(read_currency)).saturating_add(get_price)
 			}
 		};
 		Ok(Self::BASE_COST.saturating_add(cost))

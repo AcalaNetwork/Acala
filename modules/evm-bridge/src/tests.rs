@@ -222,7 +222,7 @@ fn liquidation_works() {
 				100,
 				100,
 			));
-			System::assert_last_event(Event::EVM(module_evm::Event::Executed {
+			System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::Executed {
 				from: Default::default(),
 				contract: erc20_address(),
 				logs: vec![module_evm::Log {
@@ -264,7 +264,7 @@ fn on_collateral_transfer_works() {
 				collateral,
 				100,
 			);
-			System::assert_last_event(Event::EVM(module_evm::Event::Executed {
+			System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::Executed {
 				from: Default::default(),
 				contract: erc20_address(),
 				logs: vec![module_evm::Log {
@@ -304,7 +304,7 @@ fn on_repayment_refund_works() {
 				collateral,
 				100,
 			);
-			System::assert_last_event(Event::EVM(module_evm::Event::Executed {
+			System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::Executed {
 				from: Default::default(),
 				contract: erc20_address(),
 				logs: vec![module_evm::Log {
