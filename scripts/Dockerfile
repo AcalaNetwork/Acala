@@ -6,7 +6,7 @@ RUN rustup default nightly-2022-08-05 && \
 
 RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
-	apt-get install -y cmake pkg-config libssl-dev git clang libclang-dev
+	apt-get install -y cmake pkg-config libssl-dev git clang libclang-dev protobuf-compiler
 
 ARG GIT_COMMIT=
 ENV GIT_COMMIT=$GIT_COMMIT
