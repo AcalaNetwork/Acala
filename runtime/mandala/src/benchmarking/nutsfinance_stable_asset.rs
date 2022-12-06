@@ -166,7 +166,7 @@ runtime_benchmarks! {
 		let pool_id = StableAsset::pool_count() - 1;
 		StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, mint_args, 0u128)?;
 	}: {
-		StableAsset::redeem_single(RawOrigin::Signed(tester).into(), pool_id, 10_000u128, 0u32, 0u128, u);
+		let _ = StableAsset::redeem_single(RawOrigin::Signed(tester).into(), pool_id, 10_000u128, 0u32, 0u128, u);
 		Ok(()) as DispatchResult
 	}
 
