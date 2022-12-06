@@ -1297,7 +1297,7 @@ impl module_earning::Config for Runtime {
 	type InstantUnstakeFee = InstantUnstakeFee;
 	type MaxUnbondingChunks = ConstU32<3>;
 	type LockIdentifier = EarningLockIdentifier;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_earning::WeightInfo<Runtime>;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1771,7 +1771,7 @@ parameter_types!(
 
 impl module_idle_scheduler::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_idle_scheduler::WeightInfo<Runtime>;
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;

@@ -250,7 +250,7 @@ endif
 
 .PHONY: benchmark-mandala
 benchmark-mandala:
-	cargo run $(options) --profile production --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark pallet --chain=mandala-latest --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/mandala/src/weights/
+	cargo run $(options) --profile production --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark pallet --chain=dev --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/mandala/src/weights/
 
 .PHONY: benchmark-karura
 benchmark-karura:
