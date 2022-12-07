@@ -846,6 +846,22 @@ parameter_type_with_key! {
 	};
 }
 
+pub struct CurrencyHooks<T>(sp_std::marker::PhantomData<T>);
+impl<T: orml_tokens::Config> orml_traits::currency::MutationHooks<T::AccountId, T::CurrencyId, T::Balance>
+	for CurrencyHooks<T>
+where
+	<T as frame_system::Config>::AccountId: From<sp_runtime::AccountId32>,
+{
+	type OnDust = orml_tokens::TransferDust<T, TreasuryAccount>;
+	type OnSlash = ();
+	type PreDeposit = ();
+	type PostDeposit = ();
+	type PreTransfer = ();
+	type PostTransfer = ();
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
+}
+
 parameter_types! {
 	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
@@ -857,16 +873,11 @@ impl orml_tokens::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
-	type OnSlash = ();
-	type OnDeposit = ();
-	type OnTransfer = ();
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = DustRemovalWhitelist;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
+	type CurrencyHooks = CurrencyHooks<Runtime>;
 }
 
 parameter_type_with_key! {

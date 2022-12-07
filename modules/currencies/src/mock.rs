@@ -71,6 +71,22 @@ impl frame_system::Config for Runtime {
 
 type Balance = u128;
 
+pub struct CurrencyHooks<T>(sp_std::marker::PhantomData<T>);
+impl<T: tokens::Config> orml_traits::currency::MutationHooks<T::AccountId, T::CurrencyId, T::Balance>
+	for CurrencyHooks<T>
+where
+	T::AccountId: From<AccountId32>,
+{
+	type OnDust = tokens::TransferDust<T, DustAccount>;
+	type OnSlash = ();
+	type PreDeposit = ();
+	type PostDeposit = ();
+	type PreTransfer = ();
+	type PostTransfer = ();
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
+}
+
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		if *currency_id == DOT { return 2; }
@@ -88,17 +104,12 @@ impl tokens::Config for Runtime {
 	type Amount = i64;
 	type CurrencyId = CurrencyId;
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
-	type OnSlash = ();
-	type OnDeposit = ();
-	type OnTransfer = ();
 	type WeightInfo = ();
 	type MaxLocks = ConstU32<100>;
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
+	type CurrencyHooks = CurrencyHooks<Runtime>;
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
