@@ -123,6 +123,7 @@ pub fn new_partial(
 						registry,
 						check_for_equivocation: Default::default(),
 						telemetry: None,
+						compatibility_mode: Default::default(),
 					},
 				)?,
 				None,
@@ -323,6 +324,7 @@ pub async fn start_dev_node(
 				// And a maximum of 750ms if slots are skipped
 				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
 				telemetry: None,
+				compatibility_mode: Default::default(),
 			})?;
 
 			// the AURA authoring task is considered essential, i.e. if it

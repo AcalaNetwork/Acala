@@ -93,6 +93,7 @@ fn transfer_to_relay_chain() {
 			// v0.9.19: 49_517_228_896
 			// v0.9.22: 49_530_582_548
 			// v0.9.31: 49_573_469_824
+			// v0.9.33: 49_573_469_824
 			49_573_469_824,
 			polkadot_runtime::Balances::free_balance(&AccountId::from(BOB))
 		);

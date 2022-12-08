@@ -181,14 +181,17 @@ impl sc_client_api::UsageProvider<Block> for Client {
 }
 
 impl sc_client_api::BlockBackend<Block> for Client {
-	fn block_body(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Vec<<Block as BlockT>::Extrinsic>>> {
+	fn block_body(
+		&self,
+		hash: <Block as BlockT>::Hash,
+	) -> sp_blockchain::Result<Option<Vec<<Block as BlockT>::Extrinsic>>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.block_body(id),
+			Self::Mandala(client) => client.block_body(hash),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.block_body(id),
+			Self::Karura(client) => client.block_body(hash),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.block_body(id),
+			Self::Acala(client) => client.block_body(hash),
 		}
 	}
 
@@ -214,14 +217,14 @@ impl sc_client_api::BlockBackend<Block> for Client {
 		}
 	}
 
-	fn justifications(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Justifications>> {
+	fn justifications(&self, hash: <Block as BlockT>::Hash) -> sp_blockchain::Result<Option<Justifications>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.justifications(id),
+			Self::Mandala(client) => client.justifications(hash),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.justifications(id),
+			Self::Karura(client) => client.justifications(hash),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.justifications(id),
+			Self::Acala(client) => client.justifications(hash),
 		}
 	}
 
@@ -236,7 +239,7 @@ impl sc_client_api::BlockBackend<Block> for Client {
 		}
 	}
 
-	fn indexed_transaction(&self, hash: &<Block as BlockT>::Hash) -> sp_blockchain::Result<Option<Vec<u8>>> {
+	fn indexed_transaction(&self, hash: <Block as BlockT>::Hash) -> sp_blockchain::Result<Option<Vec<u8>>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.indexed_transaction(hash),
@@ -247,7 +250,7 @@ impl sc_client_api::BlockBackend<Block> for Client {
 		}
 	}
 
-	fn has_indexed_transaction(&self, hash: &<Block as BlockT>::Hash) -> sp_blockchain::Result<bool> {
+	fn has_indexed_transaction(&self, hash: <Block as BlockT>::Hash) -> sp_blockchain::Result<bool> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.has_indexed_transaction(hash),
@@ -258,14 +261,14 @@ impl sc_client_api::BlockBackend<Block> for Client {
 		}
 	}
 
-	fn block_indexed_body(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Vec<Vec<u8>>>> {
+	fn block_indexed_body(&self, hash: <Block as BlockT>::Hash) -> sp_blockchain::Result<Option<Vec<Vec<u8>>>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.block_indexed_body(id),
+			Self::Mandala(client) => client.block_indexed_body(hash),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.block_indexed_body(id),
+			Self::Karura(client) => client.block_indexed_body(hash),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.block_indexed_body(id),
+			Self::Acala(client) => client.block_indexed_body(hash),
 		}
 	}
 
@@ -282,7 +285,7 @@ impl sc_client_api::BlockBackend<Block> for Client {
 }
 
 impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
-	fn storage(&self, hash: &<Block as BlockT>::Hash, key: &StorageKey) -> sp_blockchain::Result<Option<StorageData>> {
+	fn storage(&self, hash: <Block as BlockT>::Hash, key: &StorageKey) -> sp_blockchain::Result<Option<StorageData>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.storage(hash, key),
@@ -295,7 +298,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 
 	fn storage_keys(
 		&self,
-		hash: &<Block as BlockT>::Hash,
+		hash: <Block as BlockT>::Hash,
 		key_prefix: &StorageKey,
 	) -> sp_blockchain::Result<Vec<StorageKey>> {
 		match self {
@@ -310,7 +313,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 
 	fn storage_hash(
 		&self,
-		hash: &<Block as BlockT>::Hash,
+		hash: <Block as BlockT>::Hash,
 		key: &StorageKey,
 	) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
 		match self {
@@ -325,7 +328,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 
 	fn storage_pairs(
 		&self,
-		hash: &<Block as BlockT>::Hash,
+		hash: <Block as BlockT>::Hash,
 		key_prefix: &StorageKey,
 	) -> sp_blockchain::Result<Vec<(StorageKey, StorageData)>> {
 		match self {
@@ -340,7 +343,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 
 	fn storage_keys_iter<'a>(
 		&self,
-		hash: &<Block as BlockT>::Hash,
+		hash: <Block as BlockT>::Hash,
 		prefix: Option<&'a StorageKey>,
 		start_key: Option<&StorageKey>,
 	) -> sp_blockchain::Result<KeyIterator<'a, <crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
@@ -356,7 +359,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 
 	fn child_storage_keys_iter<'a>(
 		&self,
-		hash: &<Block as BlockT>::Hash,
+		hash: <Block as BlockT>::Hash,
 		child_info: ChildInfo,
 		prefix: Option<&'a StorageKey>,
 		start_key: Option<&StorageKey>,
@@ -373,7 +376,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 
 	fn child_storage(
 		&self,
-		hash: &<Block as BlockT>::Hash,
+		hash: <Block as BlockT>::Hash,
 		child_info: &ChildInfo,
 		key: &StorageKey,
 	) -> sp_blockchain::Result<Option<StorageData>> {
@@ -389,7 +392,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 
 	fn child_storage_keys(
 		&self,
-		hash: &<Block as BlockT>::Hash,
+		hash: <Block as BlockT>::Hash,
 		child_info: &ChildInfo,
 		key_prefix: &StorageKey,
 	) -> sp_blockchain::Result<Vec<StorageKey>> {
@@ -405,7 +408,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 
 	fn child_storage_hash(
 		&self,
-		hash: &<Block as BlockT>::Hash,
+		hash: <Block as BlockT>::Hash,
 		child_info: &ChildInfo,
 		key: &StorageKey,
 	) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {

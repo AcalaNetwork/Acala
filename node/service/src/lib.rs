@@ -303,6 +303,7 @@ where
 				registry,
 				check_for_equivocation: Default::default(),
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
+				compatibility_mode: Default::default(),
 			})?
 		}
 	} else {
@@ -310,7 +311,7 @@ where
 
 		cumulus_client_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(
 			cumulus_client_consensus_aura::ImportQueueParams {
-				block_import: client.clone(),
+				block_import: cumulus_client_consensus_common::ParachainBlockImport::new(client.clone()),
 				client: client.clone(),
 				create_inherent_data_providers: move |_, _| async move {
 					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
@@ -597,7 +598,7 @@ where
 						Ok((slot, timestamp, parachain_inherent))
 					}
 				},
-				block_import: client.clone(),
+				block_import: cumulus_client_consensus_common::ParachainBlockImport::new(client.clone()),
 				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
@@ -858,6 +859,7 @@ where
 				// And a maximum of 750ms if slots are skipped
 				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
 				telemetry: None,
+				compatibility_mode: Default::default(),
 			})?;
 
 			// the AURA authoring task is considered essential, i.e. if it
