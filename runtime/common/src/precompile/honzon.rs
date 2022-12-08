@@ -54,7 +54,7 @@ pub enum Action {
 	AdjustLoan = "adjustLoan(address,address,int128,int128)",
 	CloseLoanByDex = "closeLoanByDex(address,address,uint256)",
 	GetPosition = "getPosition(address,address)",
-	GetLiquidationRatio = "getLiquidationRatio(address)",
+	GetCollateralParameters = "getCollateralParameters(address)",
 	GetCurrentCollateralRatio = "getCurrentCollateralRatio(address,address)",
 	GetDebitExchangeRate = "getDebitExchangeRate(address)",
 }
@@ -164,20 +164,19 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::GetLiquidationRatio => {
+			Action::GetCollateralParameters => {
 				let currency_id = input.currency_id_at(1)?;
-				let ratio = <module_honzon::Pallet<Runtime> as HonzonManager<
+				let params = <module_honzon::Pallet<Runtime> as HonzonManager<
 					Runtime::AccountId,
 					CurrencyId,
 					Amount,
 					Balance,
-				>>::get_liquidation_ratio(currency_id)
-				.unwrap_or_default();
+				>>::get_collateral_parameters(currency_id);
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: gas_cost,
-					output: Output::encode_uint(ratio.into_inner()),
+					output: Output::encode_uint_array(params),
 					logs: Default::default(),
 				})
 			}
@@ -268,7 +267,7 @@ where
 					.saturating_add(read_currency)
 					.saturating_add(WeightToGas::convert(weight))
 			}
-			Action::GetLiquidationRatio => {
+			Action::GetCollateralParameters => {
 				let currency_id = input.currency_id_at(1)?;
 				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
@@ -307,8 +306,8 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{
-		alice, alice_evm_addr, new_test_ext, CDPEngine, Currencies, DexModule, Honzon, Loans, One, Origin, Test, AUSD,
-		BOB, DOT,
+		alice, alice_evm_addr, new_test_ext, CDPEngine, Currencies, DexModule, Honzon, Loans, One, RuntimeOrigin, Test,
+		AUSD, BOB, DOT,
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
@@ -322,7 +321,7 @@ mod tests {
 	fn adjust_loan_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -331,7 +330,7 @@ mod tests {
 				Change::NewValue(10000)
 			));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				alice(),
 				DOT,
 				1_000_000_000_000
@@ -366,7 +365,7 @@ mod tests {
 	fn close_loan_by_dex_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -375,23 +374,37 @@ mod tests {
 				Change::NewValue(1_000_000_000)
 			));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				alice(),
 				DOT,
 				1_000_000_000_000
 			));
 			assert_ok!(Honzon::adjust_loan(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				DOT,
 				100_000_000_000,
 				1_000_000
 			));
 
-			assert_ok!(DexModule::enable_trading_pair(Origin::signed(One::get()), DOT, AUSD));
-			assert_ok!(Currencies::update_balance(Origin::root(), BOB, AUSD, 1_000_000_000_000));
-			assert_ok!(Currencies::update_balance(Origin::root(), BOB, DOT, 1_000_000_000_000));
+			assert_ok!(DexModule::enable_trading_pair(
+				RuntimeOrigin::signed(One::get()),
+				DOT,
+				AUSD
+			));
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
+				BOB,
+				AUSD,
+				1_000_000_000_000
+			));
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
+				BOB,
+				DOT,
+				1_000_000_000_000
+			));
 			assert_ok!(DexModule::add_liquidity(
-				Origin::signed(BOB),
+				RuntimeOrigin::signed(BOB),
 				DOT,
 				AUSD,
 				1_000_000_000,
@@ -431,7 +444,7 @@ mod tests {
 	fn get_position_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -440,13 +453,13 @@ mod tests {
 				Change::NewValue(1_000_000_000)
 			));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				alice(),
 				DOT,
 				1_000_000_000_000
 			));
 			assert_ok!(Honzon::adjust_loan(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				DOT,
 				100_000_000_000,
 				1_000_000
@@ -479,10 +492,10 @@ mod tests {
 	}
 
 	#[test]
-	fn get_liquidation_ratio_works() {
+	fn get_collateral_parameters_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -496,16 +509,28 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			// getLiquidationRatio(address) => 0xc4ba4c3a
+			// getCollateralParameters(address) => 0xe8b96662
 			// currency_id
 			let input = hex! {"
-				c4ba4c3a
+				e8b96662
 				000000000000000000000000 0000000000000000000100000000000000000002
 			"};
 
-			// Hex value of `FixedU128` for 3/2
+			// offset to where array starts (32 bytes)
+			// Number of elements encoded in array
+			// `maximum_total_debit_value`: 1_000_000_000
+			// `interest_rate_per_sec`: `FixedU128` for 1/10_000
+			// `liquidation_ratio`: `FixedU128` for 3/2
+			// `liquidation_penalty`: `FixedU128` for 2/10
+			// `required_collateral_ratio`: `FixedU128` for 9/5
 			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000020
+				00000000000000000000000000000000 00000000000000000000000000000005
+				00000000000000000000000000000000 0000000000000000000000003b9aca00
+				00000000000000000000000000000000 0000000000000000000009184e72a000
 				00000000000000000000000000000000 000000000000000014d1120d7b160000
+				00000000000000000000000000000000 000000000000000002c68af0bb140000
+				00000000000000000000000000000000 000000000000000018fae27693b40000
 			"};
 
 			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
@@ -518,7 +543,7 @@ mod tests {
 	fn get_current_collateral_ratio_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -527,13 +552,13 @@ mod tests {
 				Change::NewValue(1_000_000_000)
 			));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				alice(),
 				DOT,
 				1_000_000_000_000
 			));
 			assert_ok!(Honzon::adjust_loan(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				DOT,
 				100_000_000_000,
 				1_000_000
@@ -567,7 +592,7 @@ mod tests {
 	fn get_debit_exchange_rate_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),

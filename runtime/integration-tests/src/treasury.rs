@@ -123,7 +123,7 @@ fn treasury_handles_dust_correctly() {
 				0
 			);
 			assert_ok!(Currencies::transfer(
-				Origin::signed(AccountId::from(ALICE)),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
 				RELAY_CHAIN_CURRENCY,
 				1
@@ -146,7 +146,7 @@ fn treasury_handles_dust_correctly() {
 
 			// treasury can send funds when under existential deposit
 			assert_ok!(Currencies::transfer(
-				Origin::signed(TreasuryAccount::get()),
+				RuntimeOrigin::signed(TreasuryAccount::get()),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
 				RELAY_CHAIN_CURRENCY,
 				relay_ed - 2
@@ -157,7 +157,7 @@ fn treasury_handles_dust_correctly() {
 			);
 
 			assert_ok!(Currencies::transfer(
-				Origin::signed(AccountId::from(BOB)),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
 				sp_runtime::MultiAddress::Id(AccountId::from(ALICE)),
 				RELAY_CHAIN_CURRENCY,
 				relay_ed
@@ -172,7 +172,7 @@ fn treasury_handles_dust_correctly() {
 				relay_ed
 			);
 			assert_ok!(Currencies::transfer(
-				Origin::signed(AccountId::from(ALICE)),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				sp_runtime::MultiAddress::Id(TreasuryAccount::get()),
 				RELAY_CHAIN_CURRENCY,
 				relay_ed
@@ -184,7 +184,7 @@ fn treasury_handles_dust_correctly() {
 				2 * relay_ed
 			);
 			assert_ok!(Currencies::transfer(
-				Origin::signed(TreasuryAccount::get()),
+				RuntimeOrigin::signed(TreasuryAccount::get()),
 				sp_runtime::MultiAddress::Id(AccountId::from(ALICE)),
 				RELAY_CHAIN_CURRENCY,
 				relay_ed + 1
@@ -201,7 +201,7 @@ fn treasury_handles_dust_correctly() {
 			// Test empty treasury recieves dust tokens of Liquid Currency
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &TreasuryAccount::get()), 0);
 			assert_ok!(Currencies::transfer(
-				Origin::signed(AccountId::from(ALICE)),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
 				LIQUID_CURRENCY,
 				1
@@ -219,7 +219,7 @@ fn treasury_handles_dust_correctly() {
 			// Test empty treasury recieves dust tokens of USD Currency using Tokens pallet
 			assert_eq!(Tokens::free_balance(USD_CURRENCY, &TreasuryAccount::get()), 0);
 			assert_ok!(Tokens::transfer(
-				Origin::signed(AccountId::from(ALICE)),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
 				USD_CURRENCY,
 				1
@@ -244,9 +244,13 @@ mod mandala_only_tests {
 			.build()
 			.execute_with(|| {
 				let keys: SessionKeys = Decode::decode(&mut &[0u8; 128][..]).unwrap();
-				assert_ok!(Session::set_keys(Origin::signed(AccountId::from(ALICE)), keys, vec![]));
-				assert_ok!(CollatorSelection::set_desired_candidates(Origin::root(), 1));
-				assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(
+				assert_ok!(Session::set_keys(
+					RuntimeOrigin::signed(AccountId::from(ALICE)),
+					keys,
+					vec![]
+				));
+				assert_ok!(CollatorSelection::set_desired_candidates(RuntimeOrigin::root(), 1));
+				assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(
 					AccountId::from(ALICE)
 				)));
 

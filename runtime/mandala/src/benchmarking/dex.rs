@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::utils::{dollar, inject_liquidity, LIQUID, NATIVE, STABLECOIN, STAKING};
-use crate::{AccountId, Currencies, CurrencyId, Dex, Event, ExtendedProvisioningBlocks, Runtime, System};
+use crate::{AccountId, Currencies, CurrencyId, Dex, ExtendedProvisioningBlocks, Runtime, RuntimeEvent, System};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_dex::TradingPairStatus;
@@ -32,7 +32,7 @@ const SEED: u32 = 0;
 
 const CURRENCY_LIST: [CurrencyId; 7] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC, VSKSM, RENBTC];
 
-fn assert_last_event(generic_event: Event) {
+fn assert_last_event(generic_event: RuntimeEvent) {
 	System::assert_last_event(generic_event.into());
 }
 

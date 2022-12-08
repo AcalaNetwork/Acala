@@ -33,18 +33,20 @@ use cumulus_primitives_core::ParaId;
 use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
-use cumulus_relay_chain_rpc_interface::RelayChainRPCInterface;
+use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node;
+pub use futures::stream::StreamExt;
 use jsonrpsee::RpcModule;
 use sc_consensus::LongestChain;
-use sc_consensus_aura::ImportQueueParams;
+use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
 use sc_executor::WasmExecutor;
 use sc_network::NetworkService;
+use sc_network_common::service::NetworkBlock;
 pub use sc_service::{
 	config::{DatabaseSource, PrometheusConfig},
 	ChainSpec,
 };
 use sc_service::{
-	error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager,
+	error::Error as ServiceError, Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 pub use sp_api::ConstructRuntimeApi;
@@ -62,7 +64,6 @@ use polkadot_service::CollatorPair;
 
 pub mod chain_spec;
 mod client;
-#[cfg(feature = "with-mandala-runtime")]
 mod instant_finalize;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
@@ -76,9 +77,7 @@ type HostFunctions = (
 
 #[cfg(feature = "with-mandala-runtime")]
 mod mandala_executor {
-	pub use futures::stream::StreamExt;
 	pub use mandala_runtime;
-	pub use sc_consensus_aura::StartAuraParams;
 
 	pub struct MandalaExecutorDispatch;
 	impl sc_executor::NativeExecutionDispatch for MandalaExecutorDispatch {
@@ -149,9 +148,6 @@ pub trait IdentifyVariant {
 	/// Returns `true` if this is a configuration for the `Mandala` network.
 	fn is_mandala(&self) -> bool;
 
-	/// Returns `true` if this is a configuration for the `Mandala` dev network.
-	fn is_mandala_dev(&self) -> bool;
-
 	/// Returns `true` if this is a configuration for the dev network.
 	fn is_dev(&self) -> bool;
 }
@@ -167,10 +163,6 @@ impl IdentifyVariant for Box<dyn ChainSpec> {
 
 	fn is_mandala(&self) -> bool {
 		self.id().starts_with("mandala")
-	}
-
-	fn is_mandala_dev(&self) -> bool {
-		self.id().starts_with("mandala-dev")
 	}
 
 	fn is_dev(&self) -> bool {
@@ -269,7 +261,7 @@ where
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 			let client_for_cidp = client.clone();
 
-			sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _, _>(ImportQueueParams {
+			sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(ImportQueueParams {
 				block_import: client.clone(),
 				justification_import: None,
 				client: client.clone(),
@@ -292,6 +284,8 @@ where
 							current_para_block,
 							relay_offset: 1000,
 							relay_blocks_per_para_block: 2,
+							para_blocks_per_relay_epoch: 0,
+							relay_randomness_config: (),
 							xcm_config: MockXcmConfig::new(
 								&*client_for_xcm,
 								block,
@@ -302,12 +296,11 @@ where
 							raw_horizontal_messages: vec![],
 						};
 
-						Ok((timestamp, slot, mocked_parachain))
+						Ok((slot, timestamp, mocked_parachain))
 					}
 				},
 				spawner: &task_manager.spawn_essential_handle(),
 				registry,
-				can_author_with: sp_consensus::AlwaysCanAuthor,
 				check_for_equivocation: Default::default(),
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
 			})?
@@ -315,22 +308,21 @@ where
 	} else {
 		let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 
-		cumulus_client_consensus_aura::import_queue::<AuraPair, _, _, _, _, _, _>(
+		cumulus_client_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(
 			cumulus_client_consensus_aura::ImportQueueParams {
 				block_import: client.clone(),
 				client: client.clone(),
 				create_inherent_data_providers: move |_, _| async move {
-					let time = sp_timestamp::InherentDataProvider::from_system_time();
+					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-						*time,
+						*timestamp,
 						slot_duration,
 					);
 
-					Ok((time, slot))
+					Ok((slot, timestamp))
 				},
 				registry,
-				can_author_with: sp_consensus::AlwaysCanAuthor,
 				spawner: &task_manager.spawn_essential_handle(),
 				telemetry: telemetry.as_ref().map(|telemetry| telemetry.handle()),
 			},
@@ -357,10 +349,7 @@ async fn build_relay_chain_interface(
 	collator_options: CollatorOptions,
 ) -> RelayChainResult<(Arc<(dyn RelayChainInterface + 'static)>, Option<CollatorPair>)> {
 	match collator_options.relay_chain_rpc_url {
-		Some(relay_chain_url) => Ok((
-			Arc::new(RelayChainRPCInterface::new(relay_chain_url).await?) as Arc<_>,
-			None,
-		)),
+		Some(relay_chain_url) => build_minimal_relay_chain_node(polkadot_config, task_manager, relay_chain_url).await,
 		None => build_inprocess_relay_chain(
 			polkadot_config,
 			parachain_config,
@@ -402,10 +391,6 @@ where
 		bool,
 	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
 {
-	if matches!(parachain_config.role, Role::Light) {
-		return Err("Light client not supported!".into());
-	}
-
 	let parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial(&parachain_config, false, false)?;
@@ -434,15 +419,16 @@ where
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
 	let import_queue = cumulus_client_service::SharedImportQueue::new(params.import_queue);
-	let (network, system_rpc_tx, start_network) = sc_service::build_network(sc_service::BuildNetworkParams {
-		config: &parachain_config,
-		client: client.clone(),
-		transaction_pool: transaction_pool.clone(),
-		spawn_handle: task_manager.spawn_handle(),
-		import_queue: import_queue.clone(),
-		block_announce_validator_builder: Some(Box::new(|_| Box::new(block_announce_validator))),
-		warp_sync: None,
-	})?;
+	let (network, system_rpc_tx, tx_handler_controller, start_network) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &parachain_config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue: import_queue.clone(),
+			block_announce_validator_builder: Some(Box::new(|_| Box::new(block_announce_validator))),
+			warp_sync: None,
+		})?;
 
 	let rpc_builder = {
 		let client = client.clone();
@@ -470,15 +456,16 @@ where
 	};
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
-		rpc_builder: Box::new(rpc_builder),
-		client: client.clone(),
-		transaction_pool: transaction_pool.clone(),
-		task_manager: &mut task_manager,
-		config: parachain_config,
-		keystore: params.keystore_container.sync_keystore(),
-		backend: backend.clone(),
 		network: network.clone(),
+		client: client.clone(),
+		keystore: params.keystore_container.sync_keystore(),
+		task_manager: &mut task_manager,
+		transaction_pool: transaction_pool.clone(),
+		rpc_builder: Box::new(rpc_builder),
+		backend: backend.clone(),
 		system_rpc_tx,
+		tx_handler_controller,
+		config: parachain_config,
 		telemetry: telemetry.as_mut(),
 	})?;
 
@@ -526,9 +513,8 @@ where
 			task_manager: &mut task_manager,
 			para_id: id,
 			relay_chain_interface,
-			import_queue,
 			relay_chain_slot_duration,
-			collator_options,
+			import_queue,
 		};
 
 		start_full_node(params)?;
@@ -598,17 +584,17 @@ where
 							)
 							.await;
 
-						let time = sp_timestamp::InherentDataProvider::from_system_time();
+						let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-							*time,
+							*timestamp,
 							slot_duration,
 						);
 
 						let parachain_inherent = parachain_inherent.ok_or_else(|| {
 							Box::<dyn std::error::Error + Send + Sync>::from("Failed to create parachain inherent")
 						})?;
-						Ok((time, slot, parachain_inherent))
+						Ok((slot, timestamp, parachain_inherent))
 					}
 				},
 				block_import: client.clone(),
@@ -649,7 +635,7 @@ pub fn new_chain_ops(
 	ServiceError,
 > {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
-	if config.chain_spec.is_mandala_dev() || config.chain_spec.is_mandala() {
+	if config.chain_spec.is_mandala() {
 		#[cfg(feature = "with-mandala-runtime")]
 		{
 			let PartialComponents {
@@ -658,7 +644,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial(config, config.chain_spec.is_mandala_dev(), false)?;
+			} = new_partial(config, config.chain_spec.is_dev(), false)?;
 			Ok((Arc::new(Client::Mandala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-mandala-runtime"))]
@@ -694,8 +680,12 @@ pub fn new_chain_ops(
 	}
 }
 
-#[cfg(feature = "with-mandala-runtime")]
-fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError> {
+pub fn start_dev_node<RuntimeApi>(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
+{
 	let sc_service::PartialComponents {
 		client,
 		backend,
@@ -704,18 +694,19 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		keystore_container,
 		select_chain: maybe_select_chain,
 		transaction_pool,
-		other: (mut telemetry, _),
-	} = new_partial::<mandala_runtime::RuntimeApi>(&config, true, instant_sealing)?;
+		other: (_, _),
+	} = new_partial::<RuntimeApi>(&config, true, instant_sealing)?;
 
-	let (network, system_rpc_tx, network_starter) = sc_service::build_network(sc_service::BuildNetworkParams {
-		config: &config,
-		client: client.clone(),
-		transaction_pool: transaction_pool.clone(),
-		spawn_handle: task_manager.spawn_handle(),
-		import_queue,
-		block_announce_validator_builder: None,
-		warp_sync: None,
-	})?;
+	let (network, system_rpc_tx, tx_handler_controller, start_network) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue,
+			block_announce_validator_builder: None,
+			warp_sync: None,
+		})?;
 
 	if config.offchain_worker.enabled {
 		let offchain_workers = Arc::new(sc_offchain::OffchainWorkers::new_with_options(
@@ -739,22 +730,19 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		);
 	}
 
-	let prometheus_registry = config.prometheus_registry().cloned();
-
 	let role = config.role.clone();
 	let force_authoring = config.force_authoring;
 	let backoff_authoring_blocks: Option<()> = None;
 
-	let select_chain =
-		maybe_select_chain.expect("In mandala dev mode, `new_partial` will return some `select_chain`; qed");
+	let select_chain = maybe_select_chain.expect("In `dev` mode, `new_partial` will return some `select_chain`; qed");
 
 	let command_sink = if role.is_authority() {
 		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
 			task_manager.spawn_handle(),
 			client.clone(),
 			transaction_pool.clone(),
-			prometheus_registry.as_ref(),
-			telemetry.as_ref().map(|x| x.handle()),
+			None,
+			None,
 		);
 
 		if instant_sealing {
@@ -793,6 +781,8 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 								current_para_block,
 								relay_offset: 1000,
 								relay_blocks_per_para_block: 2,
+								para_blocks_per_relay_epoch: 0,
+								relay_randomness_config: (),
 								xcm_config: MockXcmConfig::new(
 									&*client_for_xcm,
 									block,
@@ -818,7 +808,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 			let client_for_cidp = client.clone();
 
-			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
+			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
 				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
 				client: client.clone(),
 				select_chain,
@@ -843,6 +833,8 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 							current_para_block,
 							relay_offset: 1000,
 							relay_blocks_per_para_block: 2,
+							para_blocks_per_relay_epoch: 0,
+							relay_randomness_config: (),
 							xcm_config: MockXcmConfig::new(
 								&*client_for_xcm,
 								block,
@@ -853,20 +845,19 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 							raw_horizontal_messages: vec![],
 						};
 
-						Ok((timestamp, slot, mocked_parachain))
+						Ok((slot, timestamp, mocked_parachain))
 					}
 				},
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
-				can_author_with: sp_consensus::AlwaysCanAuthor,
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
 				// We got around 500ms for proposing
 				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
 				// And a maximum of 750ms if slots are skipped
 				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
-				telemetry: telemetry.as_ref().map(|x| x.handle()),
+				telemetry: None,
 			})?;
 
 			// the AURA authoring task is considered essential, i.e. if it
@@ -907,15 +898,11 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		backend,
 		network,
 		system_rpc_tx,
-		telemetry: telemetry.as_mut(),
+		tx_handler_controller,
+		telemetry: None,
 	})?;
 
-	network_starter.start_network();
+	start_network.start_network();
 
 	Ok(task_manager)
-}
-
-#[cfg(feature = "with-mandala-runtime")]
-pub fn mandala_dev(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError> {
-	inner_mandala_dev(config, instant_sealing)
 }

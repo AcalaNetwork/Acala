@@ -23,7 +23,7 @@
 
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{ExchangeRate, ExchangeRateProvider, HomaManager, HomaSubAccountXcm, Rate, Ratio};
+use module_support::{ExchangeRate, ExchangeRateProvider, FractionalRate, HomaManager, HomaSubAccountXcm, Rate, Ratio};
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
@@ -99,13 +99,13 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Multi-currency support for asset management
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Origin represented Governance
-		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The currency id of the Staking asset
 		#[pallet::constant]
@@ -170,6 +170,10 @@ pub mod module {
 		FastMatchIsNotAllowed,
 		/// The fast match cannot be matched completely.
 		CannotCompletelyFastMatch,
+		// Invalid rate,
+		InvalidRate,
+		/// Invalid last era bumped block config
+		InvalidLastEraBumpedBlock,
 	}
 
 	#[pallet::event]
@@ -312,8 +316,7 @@ pub mod module {
 	///
 	/// EstimatedRewardRatePerEra: value: Rate
 	#[pallet::storage]
-	#[pallet::getter(fn estimated_reward_rate_per_era)]
-	pub type EstimatedRewardRatePerEra<T: Config> = StorageValue<_, Rate, ValueQuery>;
+	pub type EstimatedRewardRatePerEra<T: Config> = StorageValue<_, FractionalRate, ValueQuery>;
 
 	/// The maximum amount of bonded staking currency for a single sub on relaychain to obtain the
 	/// best staking rewards.
@@ -328,15 +331,13 @@ pub mod module {
 	///
 	/// CommissionRate: value: Rate
 	#[pallet::storage]
-	#[pallet::getter(fn commission_rate)]
-	pub type CommissionRate<T: Config> = StorageValue<_, Rate, ValueQuery>;
+	pub type CommissionRate<T: Config> = StorageValue<_, FractionalRate, ValueQuery>;
 
 	/// The fixed fee rate for redeem request is fast matched.
 	///
 	/// FastMatchFeeRate: value: Rate
 	#[pallet::storage]
-	#[pallet::getter(fn fast_match_fee_rate)]
-	pub type FastMatchFeeRate<T: Config> = StorageValue<_, Rate, ValueQuery>;
+	pub type FastMatchFeeRate<T: Config> = StorageValue<_, FractionalRate, ValueQuery>;
 
 	/// The relaychain block number of last era bumped.
 	///
@@ -362,6 +363,12 @@ pub mod module {
 			let bump_era_number = Self::era_amount_should_to_bump(T::RelayChainBlockNumber::current_block_number());
 			if !bump_era_number.is_zero() {
 				let _ = Self::bump_current_era(bump_era_number);
+				debug_assert_eq!(
+					TotalStakingBonded::<T>::get(),
+					StakingLedgers::<T>::iter().fold(Zero::zero(), |total_bonded: Balance, (_, ledger)| {
+						total_bonded.saturating_add(ledger.bonded)
+					})
+				);
 				<T as Config>::WeightInfo::on_initialize_with_bump_era()
 			} else {
 				<T as Config>::WeightInfo::on_initialize()
@@ -491,15 +498,23 @@ pub mod module {
 				Self::deposit_event(Event::<T>::SoftBondedCapPerSubAccountUpdated { cap_amount });
 			}
 			if let Some(reward_rate) = estimated_reward_rate_per_era {
-				EstimatedRewardRatePerEra::<T>::put(reward_rate);
+				EstimatedRewardRatePerEra::<T>::mutate(|rate| -> DispatchResult {
+					rate.try_set(reward_rate).map_err(|_| Error::<T>::InvalidRate.into())
+				})?;
 				Self::deposit_event(Event::<T>::EstimatedRewardRatePerEraUpdated { reward_rate });
 			}
 			if let Some(commission_rate) = commission_rate {
-				CommissionRate::<T>::put(commission_rate);
+				CommissionRate::<T>::mutate(|rate| -> DispatchResult {
+					rate.try_set(commission_rate)
+						.map_err(|_| Error::<T>::InvalidRate.into())
+				})?;
 				Self::deposit_event(Event::<T>::CommissionRateUpdated { commission_rate });
 			}
 			if let Some(fast_match_fee_rate) = fast_match_fee_rate {
-				FastMatchFeeRate::<T>::put(fast_match_fee_rate);
+				FastMatchFeeRate::<T>::mutate(|rate| -> DispatchResult {
+					rate.try_set(fast_match_fee_rate)
+						.map_err(|_| Error::<T>::InvalidRate.into())
+				})?;
 				Self::deposit_event(Event::<T>::FastMatchFeeRateUpdated { fast_match_fee_rate });
 			}
 
@@ -521,15 +536,32 @@ pub mod module {
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			if let Some(change) = last_era_bumped_block {
-				LastEraBumpedBlock::<T>::put(change);
-				Self::deposit_event(Event::<T>::LastEraBumpedBlockUpdated {
-					last_era_bumped_block: change,
-				});
-			}
 			if let Some(change) = frequency {
 				BumpEraFrequency::<T>::put(change);
 				Self::deposit_event(Event::<T>::BumpEraFrequencyUpdated { frequency: change });
+			}
+
+			if let Some(change) = last_era_bumped_block {
+				// config last_era_bumped_block should not cause bump era to occur immediately, because
+				// the last_era_bumped_block after the bump era will not be same with the actual relaychain
+				// era bumped block  again, especially if it leads to multiple bump era.
+				// and it should be config after config no-zero bump_era_frequency.
+				let bump_era_frequency = Self::bump_era_frequency();
+				let current_relay_chain_block = T::RelayChainBlockNumber::current_block_number();
+				if !bump_era_frequency.is_zero() {
+					// ensure change in this range (current_relay_chain_block-bump_era_frequency,
+					// current_relay_chain_block]
+					ensure!(
+						change > current_relay_chain_block.saturating_sub(bump_era_frequency)
+							&& change <= current_relay_chain_block,
+						Error::<T>::InvalidLastEraBumpedBlock
+					);
+
+					LastEraBumpedBlock::<T>::put(change);
+					Self::deposit_event(Event::<T>::LastEraBumpedBlockUpdated {
+						last_era_bumped_block: change,
+					});
+				}
 			}
 
 			Ok(())
@@ -629,6 +661,18 @@ pub mod module {
 			T::PalletId::get().into_account_truncating()
 		}
 
+		pub(crate) fn estimated_reward_rate_per_era() -> Rate {
+			EstimatedRewardRatePerEra::<T>::get().into_inner()
+		}
+
+		pub(crate) fn commission_rate() -> Rate {
+			CommissionRate::<T>::get().into_inner()
+		}
+
+		pub(crate) fn fast_match_fee_rate() -> Rate {
+			FastMatchFeeRate::<T>::get().into_inner()
+		}
+
 		pub fn do_update_ledger<R, E>(
 			sub_account_index: u16,
 			f: impl FnOnce(&mut StakingLedger) -> sp_std::result::Result<R, E>,
@@ -677,7 +721,8 @@ pub mod module {
 				.saturating_mul_int(liquid_amount);
 			let liquid_add_to_void = liquid_amount.saturating_sub(liquid_issue_to_minter);
 
-			T::Currency::deposit(T::LiquidCurrencyId::get(), &minter, liquid_issue_to_minter)?;
+			Self::issue_liquid_currency(&minter, liquid_issue_to_minter)?;
+
 			ToBondPool::<T>::mutate(|pool| *pool = pool.saturating_add(amount));
 			TotalVoidLiquid::<T>::mutate(|total| *total = total.saturating_add(liquid_add_to_void));
 
@@ -827,7 +872,7 @@ pub mod module {
 
 						// burn liquid_to_burn for redeemed_staking and burn fee_in_liquid to reward all holders of
 						// liquid currency.
-						T::Currency::withdraw(T::LiquidCurrencyId::get(), &module_account, actual_liquid_to_redeem)?;
+						Self::burn_liquid_currency(&module_account, actual_liquid_to_redeem)?;
 
 						// transfer redeemed_staking to redeemer.
 						T::Currency::transfer(
@@ -891,7 +936,6 @@ pub mod module {
 
 				let commission_rate = Self::commission_rate();
 				if !total_reward_staking.is_zero() && !commission_rate.is_zero() {
-					let liquid_currency_id = T::LiquidCurrencyId::get();
 					let commission_staking_amount = commission_rate.saturating_mul_int(total_reward_staking);
 					let commission_ratio =
 						Ratio::checked_from_rational(commission_staking_amount, TotalStakingBonded::<T>::get())
@@ -901,7 +945,7 @@ pub mod module {
 						.unwrap_or_else(Ratio::max_value);
 					let inflate_liquid_amount = inflate_rate.saturating_mul_int(Self::get_total_liquid_currency());
 
-					T::Currency::deposit(liquid_currency_id, &T::TreasuryAccount::get(), inflate_liquid_amount)?;
+					Self::issue_liquid_currency(&T::TreasuryAccount::get(), inflate_liquid_amount)?;
 				}
 			}
 
@@ -931,11 +975,7 @@ pub mod module {
 			}
 
 			// issue withdrawn unbonded to module account for redeemer to claim
-			T::Currency::deposit(
-				T::StakingCurrencyId::get(),
-				&Self::account_id(),
-				total_withdrawn_staking,
-			)?;
+			Self::issue_staking_currency(&Self::account_id(), total_withdrawn_staking)?;
 			UnclaimedRedemption::<T>::mutate(|total| *total = total.saturating_add(total_withdrawn_staking));
 
 			Ok(())
@@ -1044,7 +1084,7 @@ pub mod module {
 			}
 
 			// burn total_redeem_amount.
-			T::Currency::withdraw(T::LiquidCurrencyId::get(), &Self::account_id(), total_redeem_amount)
+			Self::burn_liquid_currency(&Self::account_id(), total_redeem_amount)
 		}
 
 		pub fn era_amount_should_to_bump(relaychain_block_number: T::BlockNumber) -> EraIndex {
@@ -1084,6 +1124,22 @@ pub mod module {
 
 			res
 		}
+
+		/// This should be the only function in the system that issues liquid currency
+		fn issue_liquid_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::deposit(T::LiquidCurrencyId::get(), who, amount)
+		}
+
+		/// This should be the only function in the system that burn liquid currency
+		fn burn_liquid_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::withdraw(T::LiquidCurrencyId::get(), who, amount)
+		}
+
+		/// Issue staking currency based on the subaccounts transfer the unbonded staking currency
+		/// to the parachain account
+		fn issue_staking_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
+			T::Currency::deposit(T::StakingCurrencyId::get(), who, amount)
+		}
 	}
 
 	impl<T: Config> ExchangeRateProvider for Pallet<T> {
@@ -1107,15 +1163,15 @@ impl<T: Config> HomaManager<T::AccountId, Balance> for Pallet<T> {
 	}
 
 	fn get_estimated_reward_rate() -> Rate {
-		EstimatedRewardRatePerEra::<T>::get()
+		EstimatedRewardRatePerEra::<T>::get().into_inner()
 	}
 
 	fn get_commission_rate() -> Rate {
-		CommissionRate::<T>::get()
+		CommissionRate::<T>::get().into_inner()
 	}
 
 	fn get_fast_match_fee() -> Rate {
-		FastMatchFeeRate::<T>::get()
+		FastMatchFeeRate::<T>::get().into_inner()
 	}
 }
 

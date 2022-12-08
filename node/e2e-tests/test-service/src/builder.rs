@@ -89,8 +89,8 @@ impl TestNodeBuilder {
 	///
 	/// By default the node will not be connected to any node or will be able to discover any other
 	/// node.
-	pub fn connect_to_parachain_nodes<'a>(mut self, nodes: impl Iterator<Item = &'a TestNode>) -> Self {
-		self.parachain_nodes.extend(nodes.map(|n| n.addr.clone()));
+	pub fn connect_to_parachain_nodes<'a>(mut self, nodes: impl IntoIterator<Item = &'a TestNode>) -> Self {
+		self.parachain_nodes.extend(nodes.into_iter().map(|n| n.addr.clone()));
 		self
 	}
 
@@ -157,6 +157,14 @@ impl TestNodeBuilder {
 		self
 	}
 
+	/// Connect to full node via RPC.
+	pub fn use_external_relay_chain_node_at_port(mut self, port: u16) -> Self {
+		let mut localhost_url = Url::parse("ws://localhost").expect("Should be able to parse localhost Url");
+		localhost_url.set_port(Some(port)).expect("Should be able to set port");
+		self.relay_chain_full_node_url = Some(localhost_url);
+		self
+	}
+
 	/// Build the [`TestNode`].
 	pub async fn build(self) -> TestNode {
 		let parachain_config = node_config(
@@ -178,11 +186,11 @@ impl TestNodeBuilder {
 			false,
 		);
 
-		relay_chain_config.network.node_name = format!("{} (relay chain)", relay_chain_config.network.node_name);
-
 		let collator_options = CollatorOptions {
 			relay_chain_rpc_url: self.relay_chain_full_node_url,
 		};
+
+		relay_chain_config.network.node_name = format!("{} (relay chain)", relay_chain_config.network.node_name);
 
 		let multiaddr = parachain_config.network.listen_addresses[0].clone();
 		let (task_manager, client, network, rpc_handlers, transaction_pool, backend, seal_sink) = match self.seal_mode {
@@ -198,11 +206,11 @@ impl TestNodeBuilder {
 					parachain_config,
 					self.collator_key,
 					relay_chain_config,
-					collator_options,
 					self.para_id,
 					self.wrap_announce_block,
 					|_| Ok(RpcModule::new(())),
 					self.consensus,
+					collator_options,
 					self.seal_mode,
 				)
 				.await
@@ -211,10 +219,7 @@ impl TestNodeBuilder {
 		};
 
 		let peer_id = network.local_peer_id();
-		let addr = MultiaddrWithPeerId {
-			multiaddr,
-			peer_id: *peer_id,
-		};
+		let addr = MultiaddrWithPeerId { multiaddr, peer_id };
 
 		TestNode {
 			task_manager,
@@ -243,8 +248,13 @@ pub fn node_config(
 	nodes_exlusive: bool,
 	is_collator: bool,
 ) -> Result<Configuration, sc_service::Error> {
-	let base_path = BasePath::new_temp_dir()?;
-	let root = base_path.path().to_path_buf();
+	// Always return the same path now.
+	// https://github.com/paritytech/substrate/blob/f465fee723c87b734/client/service/src/config.rs#L280-L290
+	// let base_path = BasePath::new_temp_dir()?;
+	let base_path = BasePath::new(PathBuf::from(
+		tempfile::Builder::new().prefix("substrate").tempdir()?.path(),
+	));
+	let root = base_path.path().join(format!("cumulus_test_service_{}", key));
 	let role = if is_collator { Role::Authority } else { Role::Full };
 	let key_seed = key.to_seed();
 	let mut spec = Box::new(dev_testnet_config(None).unwrap());
@@ -266,7 +276,7 @@ pub fn node_config(
 
 	if nodes_exlusive {
 		network_config.default_peers_set.reserved_nodes = nodes;
-		network_config.default_peers_set.non_reserved_mode = sc_network::config::NonReservedPeerMode::Deny;
+		network_config.default_peers_set.non_reserved_mode = sc_network_common::config::NonReservedPeerMode::Deny;
 	} else {
 		network_config.boot_nodes = nodes;
 	}
@@ -292,10 +302,9 @@ pub fn node_config(
 			path: root.join("db"),
 			cache_size: 128,
 		},
-		state_cache_size: 67108864,
-		state_cache_child_ratio: None,
+		trie_cache_maximum_size: Some(64 * 1024 * 1024),
 		state_pruning: Some(PruningMode::ArchiveAll),
-		keep_blocks: KeepBlocks::All,
+		blocks_pruning: BlocksPruning::KeepAll,
 		chain_spec: spec,
 		wasm_method: WasmExecutionMethod::Compiled {
 			instantiation_strategy: WasmtimeInstantiationStrategy::PoolingCopyOnWrite,

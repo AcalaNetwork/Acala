@@ -17,22 +17,27 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Balance, Currencies, CurrencyId, Dex, ExistentialDeposits,
-	GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumCount,
-	NativeTokenExistentialDeposit, OperatorMembershipAcala, Origin, Price, Runtime, StableAsset,
+	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Aura, Balance, Currencies, CurrencyId, Dex,
+	ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId,
+	MinimumCount, NativeTokenExistentialDeposit, OperatorMembershipAcala, Price, Runtime, RuntimeOrigin, StableAsset,
+	System, Timestamp,
 };
 
+pub use codec::Encode;
 use frame_benchmarking::account;
-use frame_support::traits::tokens::fungibles;
-use frame_support::{assert_ok, traits::Contains};
+use frame_support::{
+	assert_ok,
+	traits::{tokens::fungibles, Contains, OnInitialize},
+};
 use frame_system::RawOrigin;
 use module_support::{AggregatedSwapPath, Erc20InfoMapping};
 use orml_traits::{GetByKey, MultiCurrencyExtended};
 use primitives::currency::AssetMetadata;
 use runtime_common::{TokenInfo, LCDOT};
+use sp_consensus_aura::AURA_ENGINE_ID;
 use sp_runtime::{
 	traits::{SaturatedConversion, StaticLookup, UniqueSaturatedInto},
-	DispatchResult,
+	Digest, DigestItem, DispatchResult, MultiAddress,
 };
 use sp_std::prelude::*;
 
@@ -56,7 +61,7 @@ pub fn register_native_asset(assets: Vec<CurrencyId>) {
 			ExistentialDeposits::get(&asset)
 		};
 		assert_ok!(AssetRegistry::register_native_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			*asset,
 			Box::new(AssetMetadata {
 				name: asset.name().unwrap().as_bytes().to_vec(),
@@ -80,13 +85,23 @@ pub fn feed_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	for i in 0..MinimumCount::get() {
 		let oracle: AccountId = account("oracle", 0, i);
 		if !OperatorMembershipAcala::contains(&oracle) {
-			OperatorMembershipAcala::add_member(RawOrigin::Root.into(), oracle.clone())?;
+			OperatorMembershipAcala::add_member(RawOrigin::Root.into(), MultiAddress::Id(oracle.clone()))?;
 		}
 		AcalaOracle::feed_values(RawOrigin::Signed(oracle).into(), prices.to_vec())
 			.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 	}
 
 	Ok(())
+}
+
+pub fn set_block_number_timestamp(block_number: u32, timestamp: u64) {
+	let slot = timestamp / Aura::slot_duration();
+	let digest = Digest {
+		logs: vec![DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode())],
+	};
+	System::initialize(&block_number, &Default::default(), &digest);
+	Aura::on_initialize(block_number);
+	Timestamp::set_timestamp(timestamp);
 }
 
 #[allow(dead_code)]
@@ -146,17 +161,16 @@ pub fn register_stable_asset() -> DispatchResult {
 		name: b"Token Name".to_vec(),
 		symbol: b"TN".to_vec(),
 		decimals: 12,
-		minimal_balance: 1_000_000_000,
+		minimal_balance: 1,
 	};
 	AssetRegistry::register_stable_asset(RawOrigin::Root.into(), Box::new(asset_metadata.clone()))
 }
 
-pub fn create_stable_pools(assets: Vec<CurrencyId>, precisions: Vec<u128>) -> DispatchResult {
+pub fn create_stable_pools(assets: Vec<CurrencyId>, precisions: Vec<u128>, initial_a: u128) -> DispatchResult {
 	let pool_asset = CurrencyId::StableAssetPoolToken(0);
-	let mint_fee = 10000000u128;
-	let swap_fee = 20000000u128;
-	let redeem_fee = 50000000u128;
-	let intial_a = 10000u128;
+	let mint_fee = 2u128;
+	let swap_fee = 3u128;
+	let redeem_fee = 5u128;
 	let fee_recipient: AccountId = account("fee", 0, SEED);
 	let yield_recipient: AccountId = account("yield", 1, SEED);
 
@@ -169,7 +183,7 @@ pub fn create_stable_pools(assets: Vec<CurrencyId>, precisions: Vec<u128>) -> Di
 		mint_fee,
 		swap_fee,
 		redeem_fee,
-		intial_a,
+		initial_a,
 		fee_recipient,
 		yield_recipient,
 		1000000000000000000u128,
@@ -220,7 +234,7 @@ pub fn initialize_swap_pools(maker: AccountId) -> Result<(), &'static str> {
 
 	// Add and initialize stable pools, is manually added with changes to runtime
 	let assets_1 = vec![STAKING, LIQUID];
-	create_stable_pools(assets_1.clone(), vec![1, 1])?;
+	create_stable_pools(assets_1.clone(), vec![1, 1], 10000u128)?;
 	for asset in assets_1 {
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(asset, &maker, 1_000_000_000_000_000)?;
 	}

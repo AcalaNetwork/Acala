@@ -10,9 +10,7 @@ name: Publish Release
 # - Publish the WASM to Pinata via ipfs
 
 on:
-  push:
-    branches:
-      - "release-(karura|acala)-**"
+  create:
   workflow_dispatch:
     inputs:
       # Get name of the chain
@@ -41,19 +39,22 @@ on:
         required: false
 
 env:
-  SUBWASM_VERSION: 0.17.0
+  SUBWASM_VERSION: 0.18.0
   CHAIN: ${{ github.event.inputs.chain }}
   SCOPE: ${{ github.event.inputs.scope }}
 
 jobs:
   build-release:
-    name: Build and publish ${{ github.event.inputs.chain }}
+    name: Build and publish ${{ github.event.inputs.chain || github.ref }}
     runs-on: ubuntu-latest
+    # Skip non-release branches
+    if: startsWith(github.ref_name, 'release-')
     steps:
       # Checkout the Acala codebase
       - name: Checkout Codebase
         uses: actions/checkout@v3
         with:
+          fetch-depth: 0
           submodules: true
 
       - name: Setup Python
@@ -63,7 +64,7 @@ jobs:
 
       - name: Setup ENV
         if: ${{ env.CHAIN == '' || env.SCOPE == '' }}
-        run: python .github/scripts/setup-env.py
+        run: python .github/scripts/publish_release_setup_env.py
 
       # Build WASM with Substrate Runtime Tool
       - name: Srtool build

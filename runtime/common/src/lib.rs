@@ -22,19 +22,22 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
+use cumulus_pallet_parachain_system::CheckAssociatedRelayNumber;
 use frame_support::{
+	dispatch::{DispatchClass, Weight},
 	parameter_types,
 	traits::{Contains, EitherOfDiverse, Get},
-	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
-		DispatchClass, Weight,
-	},
+	weights::constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_SECOND},
 	RuntimeDebug,
 };
 use frame_system::{limits, EnsureRoot};
 use module_evm::GenesisAccount;
 use orml_traits::GetByKey;
-use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
+use polkadot_parachain::primitives::RelayChainBlockNumber;
+use primitives::{
+	evm::{is_system_contract, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},
+	Balance, CurrencyId, Nonce,
+};
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
 use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
@@ -104,7 +107,7 @@ impl PrecompileCallerFilter for SystemContractsFilter {
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(gas: u64) -> Weight {
-		gas.saturating_mul(gas_to_weight_ratio::RATIO)
+		Weight::from_ref_time(gas.saturating_mul(gas_to_weight_ratio::RATIO))
 	}
 }
 
@@ -128,8 +131,29 @@ pub struct WeightToGas;
 impl Convert<Weight, u64> for WeightToGas {
 	fn convert(weight: Weight) -> u64 {
 		weight
+			.ref_time()
 			.checked_div(gas_to_weight_ratio::RATIO)
 			.expect("Compile-time constant is not zero; qed;")
+	}
+}
+
+pub struct CheckRelayNumber<EvmChainID, RelayNumberStrictlyIncreases>(EvmChainID, RelayNumberStrictlyIncreases);
+impl<EvmChainID: Get<u64>, RelayNumberStrictlyIncreases: CheckAssociatedRelayNumber> CheckAssociatedRelayNumber
+	for CheckRelayNumber<EvmChainID, RelayNumberStrictlyIncreases>
+{
+	fn check_associated_relay_number(current: RelayChainBlockNumber, previous: RelayChainBlockNumber) {
+		match EvmChainID::get() {
+			CHAIN_ID_MANDALA | CHAIN_ID_KARURA_TESTNET | CHAIN_ID_ACALA_TESTNET => {
+				if current <= previous {
+					log::warn!(
+						"Relay chain block number was reset, current: {:?}, previous: {:?}",
+						current,
+						previous
+					);
+				}
+			}
+			_ => RelayNumberStrictlyIncreases::check_associated_relay_number(current, previous),
+		}
 	}
 }
 
@@ -137,8 +161,10 @@ impl Convert<Weight, u64> for WeightToGas {
 pub const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
 /// The ratio that `Normal` extrinsics should occupy. Start from a conservative value.
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(70);
-/// Parachain only have 0.5 second of computation time.
-pub const MAXIMUM_BLOCK_WEIGHT: Weight = 500 * WEIGHT_PER_MILLIS;
+/// We allow for 0.5 seconds of compute with a 12 second average block time.
+pub const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND
+	.saturating_div(2)
+	.set_proof_size(polkadot_primitives::v2::MAX_POV_SIZE as u64);
 
 const_assert!(NORMAL_DISPATCH_RATIO.deconstruct() >= AVERAGE_ON_INITIALIZE_RATIO.deconstruct());
 
@@ -419,6 +445,7 @@ mod tests {
 		let max_normal_priority: TransactionPriority = (MaxTipsOfPriority::get() / TipPerWeightStep::get()
 			* RuntimeBlockWeights::get()
 				.max_block
+				.ref_time()
 				.min(*RuntimeBlockLength::get().max.get(DispatchClass::Normal) as u64) as u128)
 			.try_into()
 			.expect("Check that there is no overflow here");

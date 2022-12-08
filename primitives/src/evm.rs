@@ -37,6 +37,17 @@ use sp_std::vec::Vec;
 /// Evm Address.
 pub type EvmAddress = sp_core::H160;
 
+/// mandala 595
+pub const CHAIN_ID_MANDALA: u64 = 595u64;
+/// karura testnet 596
+pub const CHAIN_ID_KARURA_TESTNET: u64 = 596u64;
+/// acala testnet 597
+pub const CHAIN_ID_ACALA_TESTNET: u64 = 597u64;
+/// karura mainnet 686
+pub const CHAIN_ID_KARURA_MAINNET: u64 = 686u64;
+/// acala mainnet 787
+pub const CHAIN_ID_ACALA_MAINNET: u64 = 787u64;
+
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// External input from the transaction.

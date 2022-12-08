@@ -18,6 +18,7 @@
 
 use codec::FullCodec;
 use primitives::Position;
+use sp_core::U256;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -163,7 +164,7 @@ pub trait HonzonManager<AccountId, CurrencyId, Amount, Balance> {
 	/// Get open CDP corresponding to an account and collateral `CurrencyId`
 	fn get_position(who: &AccountId, currency_id: CurrencyId) -> Position;
 	/// Get liquidation ratio for collateral `CurrencyId`
-	fn get_liquidation_ratio(currency_id: CurrencyId) -> Option<Ratio>;
+	fn get_collateral_parameters(currency_id: CurrencyId) -> Vec<U256>;
 	/// Get current ratio of collateral to debit of open CDP
 	fn get_current_collateral_ratio(who: &AccountId, currency_id: CurrencyId) -> Option<Ratio>;
 	/// Get exchange rate of debit units to debit value for a currency_id

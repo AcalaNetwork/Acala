@@ -71,7 +71,7 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Currency type for withdraw and balance storage.
 		type Currency: Currency<Self::AccountId>;
@@ -84,7 +84,7 @@ pub mod module {
 		type EVMBridge: EVMBridge<Self::AccountId, BalanceOf<Self>>;
 
 		/// Required origin for registering asset.
-		type RegisterOrigin: EnsureOrigin<Self::Origin>;
+		type RegisterOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -579,6 +579,33 @@ where
 			}
 		}
 		None
+	}
+}
+
+pub struct BuyWeightRateOfLiquidCrowdloan<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: Config> BuyWeightRate for BuyWeightRateOfLiquidCrowdloan<T>
+where
+	BalanceOf<T>: Into<u128>,
+{
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio> {
+		let currency = key_to_currency(location);
+		match currency {
+			Some(CurrencyId::LiquidCrowdloan(lease)) => {
+				if let Some(asset_metadata) =
+					Pallet::<T>::asset_metadatas(AssetIds::NativeAssetId(CurrencyId::LiquidCrowdloan(lease)))
+				{
+					let minimum_balance = asset_metadata.minimal_balance.into();
+					let rate =
+						FixedU128::saturating_from_rational(minimum_balance, T::Currency::minimum_balance().into());
+					log::debug!(target: "asset-registry::weight", "LiquidCrowdloan: {}, MinimumBalance: {}, rate:{:?}", lease, minimum_balance, rate);
+					Some(rate)
+				} else {
+					None
+				}
+			}
+			_ => None,
+		}
 	}
 }
 

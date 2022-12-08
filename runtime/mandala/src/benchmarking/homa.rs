@@ -133,7 +133,9 @@ runtime_benchmarks! {
 		Some(Rate::saturating_from_rational(1, 100)),
 		Some(Rate::saturating_from_rational(1, 100)))
 
-	update_bump_era_params {}: _(RawOrigin::Root, Some(3000), Some(7200))
+	update_bump_era_params {
+		RelaychainBlockNumberProvider::<Runtime>::set_block_number(10000);
+	}: _(RawOrigin::Root, Some(3000), Some(7200))
 
 	reset_ledgers {
 		let n in 0 .. 10;

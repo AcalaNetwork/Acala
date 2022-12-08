@@ -21,11 +21,11 @@ jobs:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
         if: ${{ github.ref != 'refs/heads/master' }}
-        uses: styfle/cancel-workflow-action@0.9.0
+        uses: styfle/cancel-workflow-action@0.11.0
         with:
           access_token: ${{ github.token }}
   build:
-    runs-on: custom-runner-AWS-Acala
+    runs-on: [self-hosted, linux]
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -35,15 +35,13 @@ jobs:
         with:
           submodules: recursive
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
-          toolchain: nightly-2022-05-15
+          toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build
@@ -59,7 +57,7 @@ jobs:
       - name: Run build benches
         run: make build-benches
   benchmarking:
-    runs-on: custom-runner-AWS-Acala
+    runs-on: [self-hosted, linux]
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -69,19 +67,17 @@ jobs:
         with:
           submodules: recursive
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
-          toolchain: nightly-2022-05-15
+          toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
-    runs-on: custom-runner-AWS-Acala
+    runs-on: [self-hosted, linux]
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -91,15 +87,13 @@ jobs:
         with:
           submodules: recursive
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
-          toolchain: nightly-2022-05-15
+          toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run runtime tests
         run: make test-runtimes
       - name: Run eth tests
@@ -111,7 +105,7 @@ jobs:
       - name: Check runtimes
         run: make check-runtimes
   e2e-tests:
-    runs-on: custom-runner-AWS-Acala
+    runs-on: [self-hosted, linux]
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
@@ -121,19 +115,17 @@ jobs:
         with:
           submodules: recursive
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
-          toolchain: nightly-2022-05-15
+          toolchain: nightly-2022-08-05
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run e2e tests
         run: make test-e2e
       - name: Use Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: 16.x
       - name: Run ts tests

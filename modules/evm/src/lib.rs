@@ -30,7 +30,10 @@ pub use crate::runner::{
 };
 use codec::{Decode, Encode, FullCodec, MaxEncodedLen};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
+	dispatch::{
+		DispatchError, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, Pays, PostDispatchInfo,
+		Weight,
+	},
 	ensure,
 	error::BadOrigin,
 	log,
@@ -40,9 +43,7 @@ use frame_support::{
 		BalanceStatus, Currency, EitherOfDiverse, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
 		NamedReservableCurrency, OnKilledAccount,
 	},
-	transactional,
-	weights::{Pays, PostDispatchInfo, Weight},
-	BoundedVec, RuntimeDebug,
+	transactional, BoundedVec, RuntimeDebug,
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureRoot, EnsureSigned};
 use hex_literal::hex;
@@ -56,7 +57,6 @@ pub use module_support::{
 	EVM as EVMTrait,
 };
 pub use orml_traits::{currency::TransferAll, MultiCurrency};
-use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	evm::{
 		convert_decimals_from_evm, convert_decimals_to_evm, CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity,
@@ -69,6 +69,7 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
+use sp_core::{H160, H256, U256};
 use sp_runtime::{
 	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto, Zero},
 	transaction_validity::TransactionValidityError,
@@ -192,7 +193,7 @@ pub mod module {
 		type TxFeePerGas: Get<BalanceOf<Self>>;
 
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Precompiles associated with this EVM engine.
 		type PrecompilesType: PrecompileSet;
@@ -210,7 +211,7 @@ pub mod module {
 		}
 
 		/// Required origin for creating system contract.
-		type NetworkContractOrigin: EnsureOrigin<Self::Origin>;
+		type NetworkContractOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The EVM address for creating system contract.
 		#[pallet::constant]
@@ -227,7 +228,7 @@ pub mod module {
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
-		type FreePublicationOrigin: EnsureOrigin<Self::Origin>;
+		type FreePublicationOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// EVM execution runner.
 		type Runner: Runner<Self>;
@@ -523,6 +524,8 @@ pub mod module {
 		ChargeStorageFailed,
 		/// Invalid decimals
 		InvalidDecimals,
+		/// Strict call failed
+		StrictCallFailed,
 	}
 
 	#[pallet::pallet]
@@ -1174,6 +1177,79 @@ pub mod module {
 
 			Ok(().into())
 		}
+
+		/// Issue an EVM call operation in `Utility::batch_all`. This is same as the evm.call but
+		/// returns error when it failed. The current evm.call always success and emit event to
+		/// indicate it failed.
+		///
+		/// - `target`: the contract address to call
+		/// - `input`: the data supplied for the call
+		/// - `value`: the amount sent for payable calls
+		/// - `gas_limit`: the maximum gas the call can use
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::weight(call_weight::<T>(*gas_limit))]
+		#[transactional]
+		pub fn strict_call(
+			origin: OriginFor<T>,
+			target: EvmAddress,
+			input: Vec<u8>,
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] gas_limit: u64,
+			#[pallet::compact] storage_limit: u32,
+			access_list: Vec<AccessListItem>,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+			let source = T::AddressMapping::get_or_create_evm_address(&who);
+
+			match T::Runner::call(
+				source,
+				source,
+				target,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				T::config(),
+			) {
+				Err(e) => Err(DispatchErrorWithPostInfo {
+					post_info: ().into(),
+					error: e,
+				}),
+				Ok(info) => {
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Executed {
+							from: source,
+							contract: target,
+							logs: info.logs,
+							used_gas,
+							used_storage: info.used_storage,
+						});
+
+						Ok(PostDispatchInfo {
+							actual_weight: Some(call_weight::<T>(used_gas)),
+							pays_fee: Pays::Yes,
+						})
+					} else {
+						log::debug!(
+							target: "evm",
+							"batch_call failed: [from: {:?}, contract: {:?}, exit_reason: {:?}, output: {:?}, logs: {:?}, used_gas: {:?}]",
+							source, target, info.exit_reason, info.value, info.logs, used_gas
+						);
+
+						Err(DispatchErrorWithPostInfo {
+							post_info: PostDispatchInfo {
+								actual_weight: Some(call_weight::<T>(used_gas)),
+								pays_fee: Pays::Yes,
+							},
+							error: Error::<T>::StrictCallFailed.into(),
+						})
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -1574,7 +1650,7 @@ impl<T: Config> Pallet<T> {
 		Self::remove_contract(caller, contract)
 	}
 
-	fn ensure_root_or_signed(o: T::Origin) -> Result<Either<(), T::AccountId>, BadOrigin> {
+	fn ensure_root_or_signed(o: T::RuntimeOrigin) -> Result<Either<(), T::AccountId>, BadOrigin> {
 		EitherOfDiverse::<EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o)
 			.map_or(Err(BadOrigin), Ok)
 	}
@@ -1890,7 +1966,7 @@ impl<T: Config + Send + Sync> Default for SetEvmOrigin<T> {
 impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 	const IDENTIFIER: &'static str = "SetEvmOrigin";
 	type AccountId = T::AccountId;
-	type Call = T::Call;
+	type Call = T::RuntimeCall;
 	type AdditionalSigned = ();
 	type Pre = ();
 
@@ -1958,7 +2034,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 				// check weight and call `scheduled_call`
 				TaskResult {
 					result: Ok(()),
-					used_weight: 0,
+					used_weight: Weight::zero(),
 					finished: false,
 				}
 			}
@@ -1970,6 +2046,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 				// default limit 100
 				let limit = cmp::min(
 					weight
+						.ref_time()
 						.checked_div(<T as frame_system::Config>::DbWeight::get().write)
 						.unwrap_or(100),
 					100,
@@ -1977,9 +2054,11 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 
 				let r = <AccountStorages<T>>::clear_prefix(contract, limit, None);
 				let count = r.unique;
-				let used_weight = <T as frame_system::Config>::DbWeight::get()
-					.write
-					.saturating_mul(count.into());
+				let used_weight = Weight::from_ref_time(
+					<T as frame_system::Config>::DbWeight::get()
+						.write
+						.saturating_mul(count.into()),
+				);
 				log::debug!(
 					target: "evm",
 					"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",

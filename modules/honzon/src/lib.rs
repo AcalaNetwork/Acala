@@ -32,6 +32,7 @@
 use frame_support::{pallet_prelude::*, traits::NamedReservableCurrency, transactional};
 use frame_system::pallet_prelude::*;
 use primitives::{Amount, Balance, CurrencyId, Position, ReserveIdentifier};
+use sp_core::U256;
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	ArithmeticError, DispatchResult,
@@ -54,7 +55,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + cdp_engine::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Currency for authorization reserved.
 		type Currency: NamedReservableCurrency<
@@ -426,8 +427,22 @@ impl<T: Config> HonzonManager<T::AccountId, CurrencyId, Amount, Balance> for Pal
 		<loans::Pallet<T>>::positions(currency_id, who)
 	}
 
-	fn get_liquidation_ratio(currency_id: CurrencyId) -> Option<Ratio> {
-		<cdp_engine::Pallet<T>>::collateral_params(currency_id).and_then(|risk_params| risk_params.liquidation_ratio)
+	fn get_collateral_parameters(currency_id: CurrencyId) -> Vec<U256> {
+		let params = <cdp_engine::Pallet<T>>::collateral_params(currency_id).unwrap_or_default();
+
+		vec![
+			U256::from(params.maximum_total_debit_value),
+			U256::from(
+				params
+					.interest_rate_per_sec
+					.unwrap_or_default()
+					.into_inner()
+					.into_inner(),
+			),
+			U256::from(params.liquidation_ratio.unwrap_or_default().into_inner()),
+			U256::from(params.liquidation_penalty.unwrap_or_default().into_inner().into_inner()),
+			U256::from(params.required_collateral_ratio.unwrap_or_default().into_inner()),
+		]
 	}
 
 	fn get_current_collateral_ratio(who: &T::AccountId, currency_id: CurrencyId) -> Option<Ratio> {

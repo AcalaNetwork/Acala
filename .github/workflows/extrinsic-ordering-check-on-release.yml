@@ -1,0 +1,100 @@
+# This workflow performs the Extrinsic Ordering Check on demand using docker images
+
+name: Extrinsic Ordering Check On Release
+on:
+  workflow_call:
+    inputs:
+      chain:
+        description: Chain Runtime
+        required: true
+        type: string
+
+  workflow_dispatch:
+    inputs:
+      chain:
+        description: Chain Runtime (default = karura)
+        default: karura
+        required: true
+        type: choice
+        options:
+          - mandala
+          - karura
+          - acala
+      version:
+        description: Release version.
+        required: true
+      previous_version:
+        description: Previous release version.
+        required: true
+
+env:
+  CHAIN: ${{ github.event.inputs.chain }}
+  VERSION: ${{ github.event.inputs.version }}
+  PREVIOUS_VERSION: ${{ github.event.inputs.previous_version }}
+
+jobs:
+  check-extrinsic-ordering-on-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Setup ENV
+        if: ${{ env.CHAIN == '' || env.VERSION == '' || env.PREVIOUS_VERSION == '' }}
+        run: python .github/scripts/extrinsic_check_setup_env.py
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '14.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Prepare output
+        run: |
+          echo "METADATA COMPARISON" >> output.txt
+          echo "Date: $(date)" >> output.txt
+          echo "Reference: release-${{ env.CHAIN }}-${{ env.PREVIOUS_VERSION }}" >> output.txt
+          echo "Target version: release-${{ env.CHAIN }}-${{ env.VERSION }}" >> output.txt
+          echo "-------------------------------------------" >> output.txt
+
+      - name: Start local node
+        run: |
+          docker run --name extrinsic-ordering-check-${{ env.CHAIN }}-${{ env.PREVIOUS_VERSION }} -d -p 9944:9944 --rm ghcr.io/acalanetwork/${{ env.CHAIN }}-node:${{ env.PREVIOUS_VERSION }} --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --ws-port=9944 --tmp -- --dev
+          docker run --name extrinsic-ordering-check-${{ env.CHAIN }}-${{ env.VERSION }} -d -p 9955:9955 --rm ghcr.io/acalanetwork/${{ env.CHAIN }}-node:${{ env.VERSION }} --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --ws-port=9955 --tmp -- --dev
+          sleep 120
+
+      - name: Compare the metadata
+        run: |
+          git clone https://github.com/ermalkaleci/tools.git
+          cd tools
+          yarn install --immutable
+          yarn run:metadata ws://localhost:9944 ws://localhost:9955 >> ../output.txt
+          cd ..
+          sed -z -i 's/\n\n/\n/g' output.txt
+
+      - name: Show result
+        run: cat output.txt
+
+      - name: Save output as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.CHAIN }}
+          path: |
+            output.txt
+
+      - name: Stop our local node
+        if: always()
+        run: |
+          docker stop extrinsic-ordering-check-${{ env.CHAIN }}-${{ env.PREVIOUS_VERSION }}
+          docker stop extrinsic-ordering-check-${{ env.CHAIN }}-${{ env.VERSION }}
+
+      - name: Analyze output
+        run: python .github/scripts/extrinsic_check_analyze.py output.txt

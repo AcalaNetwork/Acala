@@ -28,8 +28,9 @@ use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
 use sp_std::{prelude::*, result::Result};
-use xcm::latest::prelude::*;
+use xcm::{latest::Weight as XcmWeight, prelude::*};
 
+pub mod bounded;
 pub mod dex;
 pub mod evm;
 pub mod homa;
@@ -38,6 +39,7 @@ pub mod incentives;
 pub mod mocks;
 pub mod stable_asset;
 
+pub use crate::bounded::*;
 pub use crate::dex::*;
 pub use crate::evm::*;
 pub use crate::homa::*;
@@ -142,7 +144,11 @@ pub trait CallBuilder {
 	/// - extra_fee: Extra fee (in staking currency) used for buy the `weight` and `debt`.
 	/// - weight: the weight limit used for XCM.
 	/// - debt: the weight limit used to process the `call`.
-	fn finalize_call_into_xcm_message(call: Self::RelayChainCall, extra_fee: Self::Balance, weight: Weight) -> Xcm<()>;
+	fn finalize_call_into_xcm_message(
+		call: Self::RelayChainCall,
+		extra_fee: Self::Balance,
+		weight: XcmWeight,
+	) -> Xcm<()>;
 }
 
 /// Dispatchable tasks

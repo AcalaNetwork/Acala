@@ -341,6 +341,28 @@ fn parachain_subaccounts_are_unique() {
 	});
 }
 
+#[test]
+#[should_panic(expected = "Relay chain block number needs to strictly increase between Parachain blocks!")]
+fn cumulus_check_relay_chain_block_number() {
+	ExtBuilder::default().build().execute_with(|| {
+		set_relaychain_block_number(10);
+		assert_eq!(ParachainSystem::validation_data().unwrap().relay_parent_number, 10);
+
+		// testnet skip checking relay chain block number
+		set_relaychain_block_number(9);
+		assert_eq!(ParachainSystem::validation_data().unwrap().relay_parent_number, 9);
+
+		// set mainnet ChainId
+		// only karura-mainnet and acala-mainnet check relay chain block number, use karura mainnet ChainId
+		// with mandala runtime
+		#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
+		module_evm::ChainId::<Runtime>::set(CHAIN_ID_KARURA_MAINNET);
+		#[cfg(feature = "with-acala-runtime")]
+		module_evm::ChainId::<Runtime>::set(CHAIN_ID_ACALA_MAINNET);
+		set_relaychain_block_number(8);
+	});
+}
+
 #[cfg(feature = "with-mandala-runtime")]
 mod mandala_only_tests {
 	use super::*;
@@ -358,7 +380,7 @@ mod mandala_only_tests {
 	#[test]
 	fn check_transaction_fee_for_empty_remark() {
 		ExtBuilder::default().build().execute_with(|| {
-			let call = Call::System(frame_system::Call::remark { remark: vec![] });
+			let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 			let ext = UncheckedExtrinsic::new(call.into(), None).expect("This should not fail");
 			let bytes = ext.encode();
 
@@ -389,7 +411,7 @@ mod mandala_only_tests {
 		.build().execute_with(|| {
 			// Ensure tx priority order:
 			// Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
-			let call = Call::System(frame_system::Call::remark { remark: vec![] });
+			let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 			let bytes = UncheckedExtrinsic::new(call.clone().into(), None).expect("This should not fail").encode();
 
 			// tips = 0
@@ -487,7 +509,7 @@ mod mandala_only_tests {
 
 			// tips = 0
 			// operational extrinsic
-			let call = Call::Sudo(pallet_sudo::Call::sudo { call: Box::new(module_emergency_shutdown::Call::open_collateral_refund { }.into()) });
+			let call = RuntimeCall::Sudo(pallet_sudo::Call::sudo { call: Box::new(module_emergency_shutdown::Call::open_collateral_refund { }.into()) });
 			let bytes = UncheckedExtrinsic::new(call.clone().into(), None).expect("This should not fail").encode();
 
 			assert_eq!(
@@ -498,7 +520,7 @@ mod mandala_only_tests {
 					bytes.len()
 				),
 				Ok(ValidTransaction {
-					priority: 80816889610600000,
+					priority: 77_242_572_620_070_000,
 					requires: vec![],
 					provides: vec![],
 					longevity: 18_446_744_073_709_551_615,

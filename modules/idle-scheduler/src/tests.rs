@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate::mock::{Event, IdleScheduler, *};
+use crate::mock::{IdleScheduler, RuntimeEvent, *};
 use frame_support::assert_ok;
 
 // Can schedule tasks
@@ -31,20 +31,20 @@ fn can_schedule_tasks() {
 		assert_eq!(Tasks::<Runtime>::get(0), None);
 
 		assert_ok!(IdleScheduler::schedule_task(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			ScheduledTasks::BalancesTask(BalancesTask::OnIdle)
 		));
 		assert_eq!(
 			Tasks::<Runtime>::get(0),
 			Some(ScheduledTasks::BalancesTask(BalancesTask::OnIdle))
 		);
-		System::assert_has_event(Event::IdleScheduler(crate::Event::TaskAdded {
+		System::assert_has_event(RuntimeEvent::IdleScheduler(crate::Event::TaskAdded {
 			task_id: 0,
 			task: ScheduledTasks::BalancesTask(BalancesTask::OnIdle),
 		}));
 
 		assert_ok!(IdleScheduler::schedule_task(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			ScheduledTasks::HomaLiteTask(HomaLiteTask::OnIdle)
 		));
 		assert_eq!(
@@ -61,21 +61,24 @@ fn can_schedule_tasks() {
 fn can_process_tasks_up_to_weight_limit() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(IdleScheduler::schedule_task(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			ScheduledTasks::BalancesTask(BalancesTask::OnIdle)
 		));
 		assert_ok!(IdleScheduler::schedule_task(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			ScheduledTasks::BalancesTask(BalancesTask::OnIdle)
 		));
 		assert_ok!(IdleScheduler::schedule_task(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			ScheduledTasks::HomaLiteTask(HomaLiteTask::OnIdle)
 		));
 
 		// Given enough weights for only 2 tasks: MinimumWeightRemainInBlock::get() + BASE_WEIGHT*2 +
 		// on_idle_base()
-		IdleScheduler::on_idle(0, 100_002_000_000 + <()>::on_idle_base() + (<()>::clear_tasks() * 2));
+		IdleScheduler::on_idle(
+			0,
+			Weight::from_ref_time(100_002_000_000) + <()>::on_idle_base() + (<()>::clear_tasks() * 2),
+		);
 
 		// Due to hashing, excution is not guaranteed to be in order.
 		assert_eq!(
@@ -85,13 +88,13 @@ fn can_process_tasks_up_to_weight_limit() {
 		assert_eq!(Tasks::<Runtime>::get(1), None);
 		assert_eq!(Tasks::<Runtime>::get(2), None);
 
-		IdleScheduler::on_idle(0, 100_000_000_000 + <()>::on_idle_base());
+		IdleScheduler::on_idle(0, Weight::from_ref_time(100_000_000_000) + <()>::on_idle_base());
 		assert_eq!(
 			Tasks::<Runtime>::get(0),
 			Some(ScheduledTasks::BalancesTask(BalancesTask::OnIdle))
 		);
 
-		IdleScheduler::on_idle(0, 100_001_000_000 + <()>::on_idle_base());
+		IdleScheduler::on_idle(0, Weight::from_ref_time(100_001_000_000) + <()>::on_idle_base());
 		assert_eq!(Tasks::<Runtime>::get(0), None);
 	});
 }
@@ -102,7 +105,7 @@ fn can_increment_next_task_id() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(NextTaskId::<Runtime>::get(), 0);
 		assert_ok!(IdleScheduler::schedule_task(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			ScheduledTasks::BalancesTask(BalancesTask::OnIdle)
 		));
 
@@ -115,18 +118,18 @@ fn on_idle_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		IdleScheduler::on_initialize(0);
 		assert_ok!(IdleScheduler::schedule_task(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			ScheduledTasks::BalancesTask(BalancesTask::OnIdle)
 		));
 		// simulate relay block number jumping 10 blocks
 		sp_io::storage::set(&RELAY_BLOCK_KEY, &10_u32.encode());
-		assert_eq!(IdleScheduler::on_idle(System::block_number(), u64::MAX), u64::MAX);
+		assert_eq!(IdleScheduler::on_idle(System::block_number(), Weight::MAX), Weight::MAX);
 
 		System::set_block_number(1);
 		IdleScheduler::on_initialize(1);
 		// On_initialize is called it will execute, as now relay block number is the same
 		assert_eq!(
-			IdleScheduler::on_idle(System::block_number(), u64::MAX),
+			IdleScheduler::on_idle(System::block_number(), Weight::MAX),
 			BASE_WEIGHT + <()>::on_idle_base() + <()>::clear_tasks()
 		);
 		assert!(!PreviousRelayBlockNumber::<Runtime>::exists());

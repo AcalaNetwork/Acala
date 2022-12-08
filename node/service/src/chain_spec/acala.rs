@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::AccountId;
+use acala_primitives::{evm::CHAIN_ID_ACALA_TESTNET, AccountId};
 use sc_chain_spec::{ChainType, Properties};
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -36,7 +36,7 @@ use runtime_common::TokenInfo;
 
 pub type ChainSpec = sc_service::GenericChainSpec<acala_runtime::GenesisConfig, Extensions>;
 
-pub const PARA_ID: u32 = 2000; // TODO: need confirm
+pub const PARA_ID: u32 = 2000;
 
 pub fn acala_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/acala-dist.json")[..])
@@ -67,6 +67,45 @@ pub fn acala_dev_config() -> Result<ChainSpec, String> {
 	Ok(ChainSpec::from_genesis(
 		"Acala Dev",
 		"acala-dev",
+		ChainType::Development,
+		move || {
+			acala_dev_genesis(
+				wasm_binary,
+				// Initial PoA authorities
+				vec![get_parachain_authority_keys_from_seed("Alice")],
+				// Sudo account
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					(get_account_id_from_seed::<sr25519::Public>("Alice"), 1000 * dollar(ACA)),
+					(get_account_id_from_seed::<sr25519::Public>("Bob"), 1000 * dollar(ACA)),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						1000 * dollar(ACA),
+					),
+				],
+				vec![],
+				vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Some(acala_properties()),
+		Extensions {
+			relay_chain: "dev".into(),
+			para_id: PARA_ID,
+			bad_blocks: None,
+		},
+	))
+}
+
+pub fn acala_local_config() -> Result<ChainSpec, String> {
+	let wasm_binary = acala_runtime::WASM_BINARY.unwrap_or_default();
+
+	Ok(ChainSpec::from_genesis(
+		"Acala Local",
+		"acala-local",
 		ChainType::Development,
 		move || {
 			acala_dev_genesis(
@@ -153,7 +192,7 @@ fn acala_dev_genesis(
 		},
 		asset_registry: Default::default(),
 		evm: EVMConfig {
-			chain_id: 597u64,
+			chain_id: CHAIN_ID_ACALA_TESTNET,
 			accounts: Default::default(),
 		},
 		dex: DexConfig {

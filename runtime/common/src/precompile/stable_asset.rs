@@ -454,7 +454,9 @@ where
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::precompile::mock::{alice_evm_addr, new_test_ext, Origin, StableAsset, Test, ALICE, AUSD, RENBTC};
+	use crate::precompile::mock::{
+		alice_evm_addr, new_test_ext, RuntimeOrigin, StableAsset, Test, ALICE, AUSD, RENBTC,
+	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
 
@@ -464,7 +466,7 @@ mod tests {
 	fn get_stable_asset_pool_tokens_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
 				vec![AUSD, RENBTC],
 				vec![1, 1],
@@ -515,7 +517,7 @@ mod tests {
 	fn get_stable_asset_total_supply_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
 				vec![AUSD, RENBTC],
 				vec![1, 1],
@@ -528,7 +530,7 @@ mod tests {
 				1u128
 			));
 			assert_ok!(StableAsset::mint(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				0,
 				vec![1_000_000u128, 1_000_000u128],
 				0u128
@@ -569,7 +571,7 @@ mod tests {
 	fn get_stable_asset_precision_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
 				vec![AUSD, RENBTC],
 				vec![1, 1],
@@ -617,7 +619,7 @@ mod tests {
 	fn get_stable_asset_mint_fee_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
 				vec![AUSD, RENBTC],
 				vec![1, 1],
@@ -665,7 +667,7 @@ mod tests {
 	fn get_stable_asset_swap_fee_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
 				vec![AUSD, RENBTC],
 				vec![1, 1],
@@ -713,7 +715,7 @@ mod tests {
 	fn get_stable_asset_redeem_fee_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
 				vec![AUSD, RENBTC],
 				vec![1, 1],
@@ -761,7 +763,7 @@ mod tests {
 	fn stable_asset_mint_and_redeem_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
 				vec![AUSD, RENBTC],
 				vec![1, 1],
@@ -868,7 +870,7 @@ mod tests {
 	fn stable_asset_swap_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
 				vec![AUSD, RENBTC],
 				vec![1, 1],
@@ -881,7 +883,7 @@ mod tests {
 				1u128
 			));
 			assert_ok!(StableAsset::mint(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				0,
 				vec![1_000_000u128, 1_000_000u128],
 				0u128
