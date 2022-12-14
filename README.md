@@ -243,40 +243,7 @@ docker volume rm [volume_name]
 docker volume prune
 ```
 
-# 10. Run local testnet with [polkadot-launch](https://github.com/paritytech/polkadot-launch)
-
-copy acala related launch json to polkadot-launch:
-
-```bash
-# $polkadot-launch is the home of polkadot-launch
-cp scripts/polkadot-launch/*.json $polkadot-launch/
-```
-
-build polkadot:
-
-```bash
-git clone -n https://github.com/paritytech/polkadot.git
-cargo build --release
-cp target/release/polkadot /tmp/polkadot
-```
-
-build karura:
-
-```bash
-make build-karura-release
-```
-
-launch polkadot and parachain with json config file in polkadot-launch:
-
-```bash
-polkadot-launch acala-launch.json
-```
-
-there're other json file that will run both karura and other parachain.
-- scripts/polkadot-launch/acala-statemine.json: run karura and statemine
-- scripts/polkadot-launch/acala-bifrost.json: run karura and bifrost
-
-# 11. Build For Release
+# 10. Build For Release
 
 For release artifacts, a more optimized build config is used.
 This config takes around 2x to 3x longer to build, but produces an more optimized binary to run.
@@ -285,7 +252,7 @@ This config takes around 2x to 3x longer to build, but produces an more optimize
 make build-release
 ```
 
-# 12. Setup Local EVM+ Test Enviroment
+# 11. Setup Local EVM+ Test Enviroment
 
 To set up a basic local network you need two things running locally, a node and the eth-rpc-adapter. Setup each service in their respective terminals and then you are free to use your favorite EVM tools locally! (ex: hardhat)
 
