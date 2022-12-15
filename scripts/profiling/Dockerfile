@@ -43,8 +43,9 @@ RUN echo '\
 echo -1 > /proc/sys/kernel/perf_event_paranoid \n\
 echo 0 > /proc/sys/kernel/kptr_restrict \n\
 DURATION="${DURATION:-30}" \n\
-echo Run acala profiling for $DURATION seconds ... \n\
-timelimit -t$DURATION /usr/local/bin/acala --chain=acala --tmp -- --dev &> /acala/data/log.txt & \n\
+ACALA_ARGS="${ACALA_ARGS:-'--chain=acala --tmp -- --dev'}" \n\
+echo Run acala profiling for $DURATION seconds with args $ACALA_ARGS \n\
+timelimit -t$DURATION /usr/local/bin/acala $ACALA_ARGS &> /acala/data/log.txt & \n\
 /usr/local/bin/flamegraph --no-inline -o /acala/data/flamegraph.svg --pid `pidof acala` &> /dev/null \n\
 echo Done. File saved at /acala/data/flamegraph.svg \n\
 ' >> /entrypoint.sh
