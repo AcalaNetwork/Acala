@@ -254,7 +254,7 @@ make build-release
 
 # 11. Setup Local EVM+ Test Enviroment
 
-To set up a basic local network you need two things running locally, a node and the eth-rpc-adapter. Setup each service in their respective terminals and then you are free to use your favorite EVM tools locally! (ex: hardhat)
+To set up a basic local network you need two things running locally, a node and the eth-rpc-adapter. Setup each service in their respective terminals and thedfdfn you are free to use your favorite EVM tools locally! (ex: hardhat)
 
 ## Setting up local node
 
