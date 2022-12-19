@@ -307,24 +307,6 @@ impl<T: Config> LiquidationEvmBridgeT for LiquidationEvmBridge<T> {
 			ExecutionMode::Execute,
 		);
 	}
-
-	fn on_repayment_refund(context: InvokeContext, collateral: EvmAddress, repayment: Balance) {
-		// liquidation contract method hash
-		let mut input = Into::<u32>::into(Action::OnRepaymentRefund).to_be_bytes().to_vec();
-		// append collateral ERC20 address
-		input.extend_from_slice(H256::from(collateral).as_bytes());
-		// append repayment amount
-		input.extend_from_slice(H256::from_uint(&U256::from(repayment)).as_bytes());
-
-		let _ = T::EVM::execute(
-			context,
-			input,
-			Default::default(),
-			liquidation::ON_REPAYMENT_REFUND.gas,
-			liquidation::ON_REPAYMENT_REFUND.storage,
-			ExecutionMode::Execute,
-		);
-	}
 }
 
 impl<T: Config> Pallet<T> {

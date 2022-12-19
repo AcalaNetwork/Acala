@@ -288,46 +288,6 @@ fn on_collateral_transfer_works() {
 }
 
 #[test]
-fn on_repayment_refund_works() {
-	ExtBuilder::default()
-		.balances(vec![(alice(), 1_000_000_000_000)])
-		.build()
-		.execute_with(|| {
-			deploy_liquidation_ok_contracts();
-			let collateral = EvmAddress::from_str("1000000000000000000000000000000000000111").unwrap();
-			LiquidationEvmBridge::<Runtime>::on_repayment_refund(
-				InvokeContext {
-					contract: erc20_address(),
-					sender: Default::default(),
-					origin: alice_evm_addr(),
-				},
-				collateral,
-				100,
-			);
-			System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::Executed {
-				from: Default::default(),
-				contract: erc20_address(),
-				logs: vec![module_evm::Log {
-					address: erc20_address(),
-					topics: vec![
-						H256::from_str("0x003d5a25faf4a774379f05de4f94d8967080f7e731902eb8f542b957a0712e18").unwrap(),
-					],
-					data: {
-						let mut buf = [0u8; 64];
-						buf[12..32].copy_from_slice(collateral.as_bytes());
-						let mut amount_data = [0u8; 32];
-						U256::from(100).to_big_endian(&mut amount_data);
-						buf[32..64].copy_from_slice(&amount_data);
-						buf.to_vec()
-					},
-				}],
-				used_gas: 23595,
-				used_storage: 0,
-			}));
-		});
-}
-
-#[test]
 fn liquidation_err_fails_as_expected() {
 	ExtBuilder::default()
 		.balances(vec![(alice(), 1_000_000_000_000)])

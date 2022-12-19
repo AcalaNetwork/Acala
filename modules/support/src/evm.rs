@@ -139,8 +139,6 @@ pub trait LiquidationEvmBridge {
 	) -> DispatchResult;
 	/// Called on sufficient repayment received and collateral transferred to liquidation contract.
 	fn on_collateral_transfer(context: InvokeContext, collateral: EvmAddress, amount: Balance);
-	/// Called on insufficient repayment received and repayment refunded to liquidation contract.
-	fn on_repayment_refund(context: InvokeContext, collateral: EvmAddress, repayment: Balance);
 }
 impl LiquidationEvmBridge for () {
 	fn liquidate(
@@ -153,7 +151,6 @@ impl LiquidationEvmBridge for () {
 		Err(DispatchError::Other("unimplemented evm bridge"))
 	}
 	fn on_collateral_transfer(_context: InvokeContext, _collateral: EvmAddress, _amount: Balance) {}
-	fn on_repayment_refund(_context: InvokeContext, _collateral: EvmAddress, _repayment: Balance) {}
 }
 
 /// An abstraction of EVMManager

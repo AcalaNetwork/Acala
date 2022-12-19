@@ -359,9 +359,6 @@ impl LiquidationEvmBridge for MockLiquidationEvmBridge {
 	fn on_collateral_transfer(_context: InvokeContext, collateral: EvmAddress, amount: Balance) {
 		TRANSFERRED.with(|v| *v.borrow_mut() = (collateral, amount));
 	}
-	fn on_repayment_refund(_context: InvokeContext, collateral: EvmAddress, repayment: Balance) {
-		REFUNDED.with(|v| *v.borrow_mut() = (collateral, repayment));
-	}
 }
 
 ord_parameter_types! {
