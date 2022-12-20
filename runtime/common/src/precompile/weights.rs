@@ -28,30 +28,30 @@ impl<T: frame_system::Config> PrecompileWeights<T> {
 	// AssetRegistry::AssetMetadatas (r: 1, w: 0)
 	// Oracle::Values (r: 1, w: 0)
 	pub fn oracle_get_price() -> Weight {
-		Weight::from_ref_time(17_771_000)
+		Weight::from_ref_time(13_364_000)
 			.saturating_add(T::DbWeight::get().reads(2))
 	}
 	pub fn evm_query_new_contract_extra_bytes() -> Weight {
-		Weight::from_ref_time(795_000)
+		Weight::from_ref_time(564_000)
 	}
 	pub fn evm_query_storage_deposit_per_byte() -> Weight {
-		Weight::from_ref_time(816_000)
+		Weight::from_ref_time(544_000)
 	}
 	// EVMModule::Accounts (r: 1, w: 0)
 	pub fn evm_query_maintainer() -> Weight {
-		Weight::from_ref_time(5_900_000)
+		Weight::from_ref_time(4_331_000)
 			.saturating_add(T::DbWeight::get().reads(1))
 	}
 	pub fn evm_query_developer_deposit() -> Weight {
-		Weight::from_ref_time(790_000)
+		Weight::from_ref_time(551_000)
 	}
 	pub fn evm_query_publication_fee() -> Weight {
-		Weight::from_ref_time(768_000)
+		Weight::from_ref_time(547_000)
 	}
 	// Balances::Reserves (r: 1, w: 0)
 	// EvmAccounts::Accounts (r: 1, w: 0)
 	pub fn evm_query_developer_status() -> Weight {
-		Weight::from_ref_time(7_113_000)
+		Weight::from_ref_time(4_884_000)
 			.saturating_add(T::DbWeight::get().reads(2))
 	}
 }
