@@ -32,7 +32,7 @@ use xcm_emulator::TestExt;
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
 const XCM_WEIGHT: XcmWeight = 20_000_000_000;
 const XCM_FEE: Balance = 10_000_000_000;
-const ACTUAL_XCM_FEE: Balance = 708_353_431;
+const ACTUAL_XCM_FEE: Balance = 713_496_883;
 
 fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Balance>)> {
 	vec![
@@ -146,7 +146,7 @@ fn xcm_interface_transfer_staking_to_sub_account_works() {
 		// 1000 dollars (minus fee) are transferred into the Kusama chain
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-			999_999_989_594_258
+			999_999_989_518_701
 		);
 		// XCM fee is paid by the parachain account.
 		assert_eq!(
@@ -165,7 +165,7 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		parachain_account = ParachainAccount::get();
 	});
 	KusamaNet::execute_with(|| {
-		kusama_runtime::Staking::trigger_new_era(0, vec![]);
+		kusama_runtime::Staking::trigger_new_era(0, BoundedVec::default());
 
 		// Transfer some KSM into the parachain.
 		assert_ok!(kusama_runtime::Balances::transfer(
@@ -196,7 +196,7 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		// Kusama's unbonding period is 27 days = 100_800 blocks
 		kusama_runtime::System::set_block_number(101_000);
 		for _i in 0..29 {
-			kusama_runtime::Staking::trigger_new_era(0, vec![]);
+			kusama_runtime::Staking::trigger_new_era(0, BoundedVec::default());
 		}
 
 		// Endowed from kusama_ext()
@@ -599,7 +599,7 @@ fn homa_mint_and_redeem_works() {
 		// Fast forward the era until unlocking period ends.
 		kusama_runtime::System::set_block_number(101_000);
 		for _i in 0..29 {
-			kusama_runtime::Staking::trigger_new_era(0, vec![]);
+			kusama_runtime::Staking::trigger_new_era(0, BoundedVec::default());
 		}
 	});
 

@@ -134,7 +134,7 @@ impl TestNode {
 			.extensions(&BlockId::Hash(hash), ExecutionContext::BlockConstruction);
 		let state_backend = self
 			.backend
-			.state_at(&hash)
+			.state_at(hash)
 			.unwrap_or_else(|_| panic!("State at block {} not found", hash));
 
 		let mut ext = Ext::new(&mut overlay, &mut cache, &state_backend, Some(&mut extensions));

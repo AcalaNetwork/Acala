@@ -36,7 +36,7 @@ pub fn new_partial(
 		MaybeFullSelectChain,
 		sc_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
 		sc_transaction_pool::FullPool<Block, Client>,
-		(),
+		ParachainBlockImport,
 	>,
 	sc_service::Error,
 > {
@@ -50,6 +50,8 @@ pub fn new_partial(
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(config, None, executor)?;
 	let client = Arc::new(client);
+
+	let block_import = ParachainBlockImport::new(client.clone());
 
 	let registry = config.prometheus_registry();
 
@@ -81,7 +83,7 @@ pub fn new_partial(
 			(
 				sc_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _>(
 					ImportQueueParams {
-						block_import: client.clone(),
+						block_import: block_import.clone(),
 						justification_import: None,
 						client: client.clone(),
 						create_inherent_data_providers: move |block: Hash, ()| {
@@ -123,6 +125,7 @@ pub fn new_partial(
 						registry,
 						check_for_equivocation: Default::default(),
 						telemetry: None,
+						compatibility_mode: Default::default(),
 					},
 				)?,
 				None,
@@ -144,7 +147,7 @@ pub fn new_partial(
 			(
 				cumulus_client_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _>(
 					cumulus_client_consensus_aura::ImportQueueParams {
-						block_import: client.clone(),
+						block_import: block_import.clone(),
 						client: client.clone(),
 						create_inherent_data_providers,
 						registry,
@@ -165,7 +168,7 @@ pub fn new_partial(
 		task_manager,
 		transaction_pool,
 		select_chain,
-		other: (),
+		other: block_import,
 	};
 
 	Ok(params)
@@ -191,7 +194,7 @@ pub async fn start_dev_node(
 		keystore_container,
 		select_chain: maybe_select_chain,
 		transaction_pool,
-		other: (),
+		other: block_import,
 	} = new_partial(&config, SealMode::DevInstantSeal)?;
 
 	let (network, system_rpc_tx, tx_handler_controller, network_starter) =
@@ -239,7 +242,7 @@ pub async fn start_dev_node(
 			});
 			let authorship_future =
 				sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
-					block_import: client.clone(),
+					block_import,
 					env: proposer_factory,
 					client: client.clone(),
 					pool: transaction_pool.clone(),
@@ -277,7 +280,7 @@ pub async fn start_dev_node(
 				client: client.clone(),
 				select_chain,
 				// block_import: instant_finalize::InstantFinalizeBlockImport::new(client.clone()),
-				block_import: client.clone(),
+				block_import,
 				proposer_factory,
 				create_inherent_data_providers: move |block: Hash, ()| {
 					let current_para_block = client_for_cidp
@@ -323,6 +326,7 @@ pub async fn start_dev_node(
 				// And a maximum of 750ms if slots are skipped
 				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
 				telemetry: None,
+				compatibility_mode: Default::default(),
 			})?;
 
 			// the AURA authoring task is considered essential, i.e. if it
@@ -447,6 +451,8 @@ where
 	let backend = params.backend.clone();
 	let backend_for_node = backend.clone();
 
+	let block_import = params.other;
+
 	let relay_chain_interface = build_relay_chain_interface(
 		relay_chain_config,
 		collator_key.clone(),
@@ -541,7 +547,7 @@ where
 							Ok((timestamp, parachain_inherent))
 						}
 					},
-					client.clone(),
+					block_import.clone(),
 					relay_chain_interface2,
 				))
 			}
@@ -588,7 +594,7 @@ where
 								Ok((slot, timestamp, parachain_inherent))
 							}
 						},
-						block_import: client.clone(),
+						block_import,
 						para_client: client.clone(),
 						backoff_authoring_blocks: Option::<()>::None,
 						sync_oracle: network.clone(),

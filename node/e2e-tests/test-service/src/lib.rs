@@ -35,7 +35,9 @@ use std::{
 
 use cumulus_client_cli::{generate_genesis_block, CollatorOptions};
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
-use cumulus_client_consensus_common::{ParachainCandidate, ParachainConsensus};
+use cumulus_client_consensus_common::{
+	ParachainBlockImport as TParachainBlockImport, ParachainCandidate, ParachainConsensus,
+};
 use cumulus_client_network::BlockAnnounceValidator;
 use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
@@ -137,6 +139,8 @@ pub type Client = TFullClient<runtime::Block, runtime::RuntimeApi, NativeElseWas
 
 /// Transaction pool type used by the test service
 pub type TxPool = Arc<sc_transaction_pool::FullPool<Block, Client>>;
+
+type ParachainBlockImport = TParachainBlockImport<Arc<Client>>;
 
 /// Maybe Mandala Dev full select chain.
 type MaybeFullSelectChain = Option<LongestChain<TFullBackend<Block>, Block>>;

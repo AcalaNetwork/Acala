@@ -35,9 +35,9 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use orml_traits::{
 	arithmetic::{Signed, SimpleArithmetic},
-	currency::TransferAll,
+	currency::{OnDust, TransferAll},
 	BalanceStatus, BasicCurrency, BasicCurrencyExtended, BasicLockableCurrency, BasicReservableCurrency,
-	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency, OnDust,
+	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
 use primitives::{evm::EvmAddress, CurrencyId};
 use sp_io::hashing::blake2_256;

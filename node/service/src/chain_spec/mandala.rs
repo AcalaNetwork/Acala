@@ -18,10 +18,10 @@
 
 use acala_primitives::{evm::CHAIN_ID_MANDALA, orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
 use coins_bip39::{English, Mnemonic, Wordlist};
-use elliptic_curve::sec1::ToEncodedPoint;
 use hex_literal::hex;
 use k256::{
 	ecdsa::{SigningKey, VerifyingKey},
+	elliptic_curve::sec1::ToEncodedPoint,
 	EncodedPoint as K256PublicKey,
 };
 use mandala_runtime::{

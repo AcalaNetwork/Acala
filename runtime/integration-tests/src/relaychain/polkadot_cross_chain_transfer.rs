@@ -37,10 +37,10 @@ fn bifrost_reserve_account() -> AccountId {
 #[test]
 fn token_per_second_works() {
 	let aca_per_second = acala_runtime::aca_per_second();
-	assert_eq!(11_587_000_000_000, aca_per_second);
+	assert_eq!(10_103_000_000_000, aca_per_second);
 
 	let dot_per_second = acala_runtime::dot_per_second();
-	assert_eq!(2_317_400_000, dot_per_second);
+	assert_eq!(2_020_600_000, dot_per_second);
 }
 
 #[test]
@@ -63,7 +63,7 @@ fn transfer_from_relay_chain() {
 	});
 
 	Acala::execute_with(|| {
-		assert_eq!(9_998_146_080, Tokens::free_balance(DOT, &AccountId::from(BOB)));
+		assert_eq!(9_998_383_520, Tokens::free_balance(DOT, &AccountId::from(BOB)));
 	});
 }
 
@@ -93,7 +93,8 @@ fn transfer_to_relay_chain() {
 			// v0.9.19: 49_517_228_896
 			// v0.9.22: 49_530_582_548
 			// v0.9.31: 49_573_469_824
-			49_573_469_824,
+			// v0.9.33: 49_581_059_712
+			49_581_059_712,
 			polkadot_runtime::Balances::free_balance(&AccountId::from(BOB))
 		);
 		assert_eq!(

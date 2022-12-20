@@ -219,7 +219,7 @@ fn erc20_transfer_between_sibling() {
 	Sibling::execute_with(|| {
 		// Sibling will take (1, 2000, GeneralKey(Erc20(address))) as foreign asset
 		assert_eq!(
-			9_999_073_040_000,
+			9_999_191_760_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 
@@ -245,7 +245,7 @@ fn erc20_transfer_between_sibling() {
 		));
 
 		assert_eq!(
-			4_999_073_040_000,
+			4_999_191_760_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});
@@ -258,11 +258,11 @@ fn erc20_transfer_between_sibling() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
 		);
 		assert_eq!(
-			4_990_730_400_000,
+			4_991_917_600_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
 		assert_eq!(
-			9_269_600_000,
+			8_082_400_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &KaruraTreasuryAccount::get())
 		);
 		assert_eq!(
@@ -295,13 +295,13 @@ fn erc20_transfer_between_sibling() {
 		System::assert_has_event(RuntimeEvent::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
 			who: AccountId::from(BOB),
-			amount: 4_990_730_400_000,
+			amount: 4_991_917_600_000,
 		}));
 		// TakeRevenue deposit from erc20 holding account to treasury account
 		System::assert_has_event(RuntimeEvent::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
 			who: KaruraTreasuryAccount::get(),
-			amount: 9_269_600_000,
+			amount: 8_082_400_000,
 		}));
 	});
 }
@@ -403,7 +403,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 
 	Karura::execute_with(|| {
 		assert_eq!(
-			9_999_073_040_000,
+			9_999_191_760_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});
