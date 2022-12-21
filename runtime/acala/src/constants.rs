@@ -109,7 +109,9 @@ mod tests {
 		let q = Balance::from(ExtrinsicBaseWeight::get().ref_time());
 
 		assert_eq!(p, 1_000_000_000);
-		assert_eq!(q, 86_298_000);
-		assert_eq!(p / q, 11)
+		// polkadot-v0.9.26: 86_298_000
+		// polkadot-v0.9.33: 98_974_000
+		assert_eq!(q, 98_974_000);
+		assert_eq!(p / q, 10)
 	}
 }

@@ -40,7 +40,7 @@ sc-executor = { git = "https://github.com/paritytech/substrate", branch = "polka
 sc-network = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 sc-network-common = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
-sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33", features = [ "wasmtime" ] }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 sc-rpc-server = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 sc-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }

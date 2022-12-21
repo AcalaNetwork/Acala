@@ -34,8 +34,7 @@ orml-build-script-utils = { path = "../../orml/build-script-utils"}
 substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 
 [features]
-default = [ "wasmtime", "cli" ]
-wasmtime = [ "sc-cli/wasmtime" ]
+default = [ "cli" ]
 cli = [
 	"frame-benchmarking-cli",
 	"sc-cli",
