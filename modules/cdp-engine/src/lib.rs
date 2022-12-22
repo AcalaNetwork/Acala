@@ -1519,7 +1519,6 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 		check_required_ratio: bool,
 	) -> DispatchResult {
 		if !debit_balance.is_zero() {
-			let debit_value = Self::get_debit_value(currency_id, debit_balance);
 			let feed_price = <T as Config>::PriceSource::get_relative_price(currency_id, T::GetStableCurrencyId::get())
 				.ok_or(Error::<T>::InvalidFeedPrice)?;
 			let collateral_ratio =
@@ -1539,9 +1538,11 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 			let liquidation_ratio = Self::get_liquidation_ratio(currency_id)?;
 			ensure!(collateral_ratio >= liquidation_ratio, Error::<T>::BelowLiquidationRatio);
 
-			// check the minimum_debit_value
+			// check the minimum debit value
+			let minimum_debit_balance = Self::try_convert_to_debit_balance(currency_id, T::MinimumDebitValue::get())
+				.ok_or(Error::<T>::ConvertDebitBalanceFailed)?;
 			ensure!(
-				debit_value >= T::MinimumDebitValue::get(),
+				debit_balance >= minimum_debit_balance,
 				Error::<T>::RemainDebitValueTooSmall,
 			);
 		} else if !collateral_balance.is_zero() {
