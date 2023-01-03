@@ -175,6 +175,7 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::extract_surplus_to_treasury())]
 		#[transactional]
 		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -196,6 +197,7 @@ pub mod module {
 		/// - `amount`: collateral amount
 		/// - `target`: target amount
 		/// - `splited`: split collateral to multiple auction according to the config size
+		#[pallet::call_index(1)]
 		#[pallet::weight(
 			if *splited {
 				T::WeightInfo::auction_collateral(T::MaxAuctionsCount::get())
@@ -228,6 +230,7 @@ pub mod module {
 		///
 		/// - `currency_id`: collateral type
 		/// - `swap_limit`: target amount
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::exchange_collateral_to_stable())]
 		#[transactional]
 		pub fn exchange_collateral_to_stable(
@@ -248,6 +251,7 @@ pub mod module {
 		///
 		/// - `currency_id`: collateral type
 		/// - `amount`: expected size of per lot collateral auction
+		#[pallet::call_index(3)]
 		#[pallet::weight((T::WeightInfo::set_expected_collateral_auction_size(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn set_expected_collateral_auction_size(

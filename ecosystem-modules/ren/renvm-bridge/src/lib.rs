@@ -149,6 +149,7 @@ pub mod module {
 		/// The dispatch origin of this call must be _None_.
 		///
 		/// Verify input by `validate_unsigned`
+		#[pallet::call_index(0)]
 		#[pallet::weight(10_000)]
 		pub fn mint(
 			origin: OriginFor<T>,
@@ -179,6 +180,7 @@ pub mod module {
 		}
 
 		/// Allow a user to burn assets.
+		#[pallet::call_index(1)]
 		#[pallet::weight(10_000)]
 		pub fn burn(origin: OriginFor<T>, to: DestAddress, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -206,6 +208,7 @@ pub mod module {
 		/// The dispatch origin of this call must be _None_.
 		///
 		/// Verify input by `validate_unsigned`
+		#[pallet::call_index(2)]
 		#[pallet::weight(10_000)]
 		pub fn rotate_key(origin: OriginFor<T>, new_key: PublicKey, sig: EcdsaSignature) -> DispatchResult {
 			ensure_none(origin)?;

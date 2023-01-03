@@ -381,6 +381,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of Staking currency to be exchanged.
+		#[pallet::call_index(0)]
 		#[pallet::weight(< T as Config >::WeightInfo::mint())]
 		#[transactional]
 		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -395,6 +396,7 @@ pub mod module {
 		/// Parameters:
 		/// - `staking_total`: The current amount of the Staking currency. Used to calculate
 		///   conversion rate.
+		#[pallet::call_index(1)]
 		#[pallet::weight(< T as Config >::WeightInfo::set_total_staking_currency())]
 		#[transactional]
 		pub fn set_total_staking_currency(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
@@ -408,6 +410,7 @@ pub mod module {
 		/// Parameters:
 		/// - `adjustment`: The difference in amount the total_staking_currency should be adjusted
 		///   by.
+		#[pallet::call_index(2)]
 		#[pallet::weight(< T as Config >::WeightInfo::adjust_total_staking_currency())]
 		#[transactional]
 		pub fn adjust_total_staking_currency(origin: OriginFor<T>, by_amount: AmountOf<T>) -> DispatchResult {
@@ -443,6 +446,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `new_cap`: The new cap for staking currency.
+		#[pallet::call_index(3)]
 		#[pallet::weight(< T as Config >::WeightInfo::set_minting_cap())]
 		#[transactional]
 		pub fn set_minting_cap(origin: OriginFor<T>, #[pallet::compact] new_cap: Balance) -> DispatchResult {
@@ -458,6 +462,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `xcm_dest_weight`: The new weight for XCM transfers.
+		#[pallet::call_index(4)]
 		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_dest_weight())]
 		#[allow(deprecated)]
 		#[deprecated(note = "1D weight is used in this extrinsic, please migrate to `set_xcm_dest_weight`")]
@@ -480,6 +485,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `xcm_dest_weight`: The new weight for XCM transfers.
+		#[pallet::call_index(5)]
 		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_dest_weight())]
 		#[transactional]
 		pub fn set_xcm_dest_weight(origin: OriginFor<T>, xcm_dest_weight: Weight) -> DispatchResult {
@@ -499,6 +505,7 @@ pub mod module {
 		/// Parameters:
 		/// - `amount`: The amount of Staking currency to be exchanged.
 		/// - `requests`: The redeem requests that are prioritized to match.
+		#[pallet::call_index(6)]
 		#[pallet::weight(< T as Config >::WeightInfo::mint_for_requests())]
 		#[transactional]
 		pub fn mint_for_requests(
@@ -517,6 +524,7 @@ pub mod module {
 		/// Parameters:
 		/// - `liquid_amount`: The amount of liquid currency to be redeemed into Staking currency.
 		/// - `additional_fee`: Percentage of the fee to be awarded to the minter.
+		#[pallet::call_index(7)]
 		#[pallet::weight(< T as Config >::WeightInfo::request_redeem())]
 		#[transactional]
 		pub fn request_redeem(
@@ -609,6 +617,7 @@ pub mod module {
 		/// Parameters:
 		/// - `staking_amount`: The amount of staking currency to be unbonded.
 		/// - `unbond_block`: The relaychain block number to unbond.
+		#[pallet::call_index(8)]
 		#[pallet::weight(< T as Config >::WeightInfo::schedule_unbond())]
 		#[transactional]
 		pub fn schedule_unbond(
@@ -640,6 +649,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `new_unbonds`: The new ScheduledUnbond storage to replace the current storage.
+		#[pallet::call_index(9)]
 		#[pallet::weight(< T as Config >::WeightInfo::replace_schedule_unbond())]
 		#[transactional]
 		pub fn replace_schedule_unbond(
@@ -670,6 +680,7 @@ pub mod module {
 		///
 		/// Weight: Weight(xcm unbond) + n * Weight(match redeem requests), where n is number of
 		/// redeem requests matched.
+		#[pallet::call_index(10)]
 		#[pallet::weight(
 			< T as Config >::WeightInfo::adjust_available_staking_balance_with_no_matches().saturating_add(
 			< T as Config >::WeightInfo::redeem_with_available_staking_balance().saturating_mul((*max_num_matches).into())
@@ -716,6 +727,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `interest_rate`: the new interest rate for TotalStakingCurrency.
+		#[pallet::call_index(11)]
 		#[pallet::weight(< T as Config >::WeightInfo::set_staking_interest_rate_per_update())]
 		#[transactional]
 		pub fn set_staking_interest_rate_per_update(origin: OriginFor<T>, interest_rate: Permill) -> DispatchResult {

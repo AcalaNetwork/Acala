@@ -104,6 +104,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `address`: The address of the Bridge's stable coin currency id.
+		#[pallet::call_index(0)]
 		#[pallet::weight(< T as Config >::WeightInfo::set_bridged_stable_coin_address())]
 		#[transactional]
 		pub fn set_bridged_stable_coin_address(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
@@ -123,6 +124,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of stable coin to exchange.
+		#[pallet::call_index(1)]
 		#[pallet::weight(< T as Config >::WeightInfo::to_bridged())]
 		#[transactional]
 		pub fn to_bridged(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -146,6 +148,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of stable coin to exchange.
+		#[pallet::call_index(2)]
 		#[pallet::weight(< T as Config >::WeightInfo::from_bridged())]
 		#[transactional]
 		pub fn from_bridged(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {

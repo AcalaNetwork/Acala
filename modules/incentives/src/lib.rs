@@ -219,6 +219,7 @@ pub mod module {
 		///
 		/// - `lp_currency_id`: LP token type
 		/// - `amount`: amount to stake
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::deposit_dex_share())]
 		#[transactional]
 		pub fn deposit_dex_share(
@@ -237,6 +238,7 @@ pub mod module {
 		///
 		/// - `lp_currency_id`: LP token type
 		/// - `amount`: amount to unstake
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::withdraw_dex_share())]
 		#[transactional]
 		pub fn withdraw_dex_share(
@@ -254,6 +256,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `Signed` by the transactor.
 		///
 		/// - `pool_id`: pool type
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::claim_rewards())]
 		#[transactional]
 		pub fn claim_rewards(origin: OriginFor<T>, pool_id: PoolId) -> DispatchResult {
@@ -267,6 +270,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `updates`: Vec<(PoolId, Vec<(RewardCurrencyId, FixedAmountPerPeriod)>)>
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_incentive_rewards(
 			updates.iter().fold(0, |count, x| count + x.1.len()) as u32
 		))]
@@ -309,6 +313,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `updates`: Vec<(PoolId, DecutionRate>)>
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_claim_reward_deduction_rates(updates.len() as u32))]
 		#[transactional]
 		pub fn update_claim_reward_deduction_rates(

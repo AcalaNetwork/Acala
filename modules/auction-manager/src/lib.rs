@@ -285,6 +285,7 @@ pub mod module {
 		/// Cancel active auction after system shutdown
 		///
 		/// The dispatch origin of this call must be _None_.
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::cancel_collateral_auction())]
 		#[transactional]
 		pub fn cancel(origin: OriginFor<T>, id: AuctionId) -> DispatchResult {

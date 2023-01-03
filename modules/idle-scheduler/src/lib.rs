@@ -140,6 +140,7 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
 		#[pallet::weight(< T as Config >::WeightInfo::schedule_task())]
 		pub fn schedule_task(origin: OriginFor<T>, task: T::Task) -> DispatchResult {
 			ensure_root(origin)?;

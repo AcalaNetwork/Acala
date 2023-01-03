@@ -208,6 +208,7 @@ pub mod module {
 		///
 		/// - `metadata`: external metadata
 		/// - `properties`: class property, include `Transferable` `Burnable`
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::create_class())]
 		#[transactional]
 		pub fn create_class(
@@ -254,6 +255,7 @@ pub mod module {
 		/// - `class_id`: token belong to the class id
 		/// - `metadata`: external metadata
 		/// - `quantity`: token quantity
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::mint(*quantity))]
 		#[transactional]
 		pub fn mint(
@@ -274,6 +276,7 @@ pub mod module {
 		///
 		/// - `to`: the token owner's account
 		/// - `token`: (class_id, token_id)
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::transfer())]
 		#[transactional]
 		pub fn transfer(
@@ -289,6 +292,7 @@ pub mod module {
 		/// Burn NFT token
 		///
 		/// - `token`: (class_id, token_id)
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::burn())]
 		#[transactional]
 		pub fn burn(origin: OriginFor<T>, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
@@ -300,6 +304,7 @@ pub mod module {
 		///
 		/// - `token`: (class_id, token_id)
 		/// - `remark`: Vec<u8>
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::burn_with_remark(remark.len() as u32))]
 		#[transactional]
 		pub fn burn_with_remark(
@@ -316,6 +321,7 @@ pub mod module {
 		///
 		/// - `class_id`: The class ID to destroy
 		/// - `dest`: The proxy account that will receive free balance
+		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::destroy_class())]
 		#[transactional]
 		pub fn destroy_class(
@@ -357,6 +363,7 @@ pub mod module {
 		///
 		/// - `class_id`: The class ID to update
 		/// - `properties`: The new properties
+		#[pallet::call_index(6)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_class_properties())]
 		#[transactional]
 		pub fn update_class_properties(

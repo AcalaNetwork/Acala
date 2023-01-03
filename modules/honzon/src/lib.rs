@@ -145,6 +145,7 @@ pub mod module {
 		/// - `debit_adjustment`: signed amount, positive means to issue some amount of stablecoin
 		///   to caller according to the debit adjustment, negative means caller will payback some
 		///   amount of stablecoin to CDP according to to the debit adjustment.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
 		#[transactional]
 		pub fn adjust_loan(
@@ -163,6 +164,7 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `max_collateral_amount`: the max collateral amount which is used to swap enough
 		/// 	stable token to clear debit.
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex())]
 		#[transactional]
 		pub fn close_loan_has_debit_by_dex(
@@ -180,6 +182,7 @@ pub mod module {
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `from`: authorizer account
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_loan_from())]
 		#[transactional]
 		pub fn transfer_loan_from(
@@ -199,6 +202,7 @@ pub mod module {
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `to`: authorizee account
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::authorize())]
 		#[transactional]
 		pub fn authorize(
@@ -232,6 +236,7 @@ pub mod module {
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `to`: authorizee account
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::unauthorize())]
 		#[transactional]
 		pub fn unauthorize(
@@ -253,6 +258,7 @@ pub mod module {
 		}
 
 		/// Cancel all authorization of caller
+		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::unauthorize_all(T::CollateralCurrencyIds::get().len() as u32))]
 		#[transactional]
 		pub fn unauthorize_all(origin: OriginFor<T>) -> DispatchResult {
@@ -268,6 +274,7 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `increase_debit_value`: the specific increased debit value for CDP
 		/// - `min_increase_collateral`: the minimal increased collateral amount for CDP
+		#[pallet::call_index(6)]
 		#[pallet::weight(<T as Config>::WeightInfo::expand_position_collateral())]
 		#[transactional]
 		pub fn expand_position_collateral(
@@ -291,6 +298,7 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `decrease_collateral`: the specific decreased collateral amount for CDP
 		/// - `min_decrease_debit_value`: the minimal decreased debit value for CDP
+		#[pallet::call_index(7)]
 		#[pallet::weight(<T as Config>::WeightInfo::shrink_position_debit())]
 		#[transactional]
 		pub fn shrink_position_debit(
@@ -317,6 +325,7 @@ pub mod module {
 		///   into CDP, negative means withdraw collateral currency from CDP.
 		/// - `debit_value_adjustment`: signed amount, positive means to issue some amount of
 		///   stablecoin, negative means caller will payback some amount of stablecoin to CDP.
+		#[pallet::call_index(8)]
 		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
 		#[transactional]
 		pub fn adjust_loan_by_debit_value(
@@ -345,6 +354,7 @@ pub mod module {
 		/// - `from_currency`: Currency id that debit is transfered from
 		/// - `to_currency`: Currency id that debit is transfered to
 		/// - `debit_transfer`: Debit transfered across two CDPs
+		#[pallet::call_index(9)]
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_debit())]
 		#[transactional]
 		pub fn transfer_debit(

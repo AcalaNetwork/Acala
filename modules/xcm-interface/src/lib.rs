@@ -129,6 +129,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `updates`: vec of tuple: (XcmInterfaceOperation, WeightChange, FeeChange).
+		#[pallet::call_index(0)]
 		#[pallet::weight(10_000_000)]
 		#[transactional]
 		pub fn update_xcm_dest_weight_and_fee(
