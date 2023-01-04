@@ -7,16 +7,16 @@ edition = "2021"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0" }
 rand = "0.8.5"
-serde = { version = "1.0.143", features = ["derive"] }
+serde = { version = "1.0.145", features = ["derive"] }
 async-trait = "0.1.59"
-tokio = { version = "1.19.2", features = ["macros"] }
+tokio = { version = "1.21.2", features = ["macros"] }
 criterion = { version = "0.3.6", features = [ "async_tokio" ] }
 jsonrpsee = { version = "0.15.1", features = ["server", "macros"] }
 log = "0.4.17"
 futures = { package = "futures", version = "0.3", features = ["compat"] }
 tempfile = "3.1.0"
 hex-literal = "0.3.1"
-url = "2.2.2"
+url = "2.3.1"
 rlp = "0.5.2"
 sha3 = "0.10"
 
