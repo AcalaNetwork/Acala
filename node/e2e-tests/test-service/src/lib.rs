@@ -161,6 +161,8 @@ pub enum SealMode {
 	/// Dev aura seal
 	DevAuraSeal,
 	/// Parachain aura seal
+	/// https://github.com/paritytech/cumulus/blob/27721d794ee63aae42317a7eeda21595dd3200d9/client/consensus/common/src/lib.rs#L93-L120
+	/// NOTE: ParaSeal doesn't work with `ParachainBlockImport` anymore
 	ParaSeal,
 }
 

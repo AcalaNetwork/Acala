@@ -279,8 +279,7 @@ pub async fn start_dev_node(
 				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
 				client: client.clone(),
 				select_chain,
-				// block_import: instant_finalize::InstantFinalizeBlockImport::new(client.clone()),
-				block_import,
+				block_import: node_service::instant_finalize::InstantFinalizeBlockImport::new(client.clone()),
 				proposer_factory,
 				create_inherent_data_providers: move |block: Hash, ()| {
 					let current_para_block = client_for_cidp

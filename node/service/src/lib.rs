@@ -64,7 +64,7 @@ use polkadot_service::CollatorPair;
 
 pub mod chain_spec;
 mod client;
-mod instant_finalize;
+pub mod instant_finalize;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
 type HostFunctions = sp_io::SubstrateHostFunctions;

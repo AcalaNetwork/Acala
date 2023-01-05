@@ -55,7 +55,7 @@ impl TestNodeBuilder {
 			storage_update_func_parachain: None,
 			storage_update_func_relay_chain: None,
 			consensus: Consensus::Aura,
-			seal_mode: SealMode::ParaSeal,
+			seal_mode: SealMode::DevAuraSeal,
 			relay_chain_full_node_url: None,
 		}
 	}
