@@ -37,6 +37,8 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 		`--ws-external`,
 		`--rpc-cors=all`,
 		`--rpc-methods=unsafe`,
+		`--pruning=archive`,
+		`--keep-blocks=archive`,
 		`--tmp`,
 	];
 	const binary = spawn(cmd, args);
