@@ -541,6 +541,7 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
 		#[pallet::weight(match *action {
 			TransactionAction::Call(_) => call_weight::<T>(*gas_limit),
 			TransactionAction::Create => create_weight::<T>(*gas_limit)
@@ -572,6 +573,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::call_index(1)]
 		#[pallet::weight(call_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn call(
@@ -650,6 +652,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
 		// TODO: create benchmark
@@ -754,6 +757,7 @@ pub mod module {
 		/// - `value`: the amount sent to the contract upon creation
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::call_index(3)]
 		#[pallet::weight(create_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create(
@@ -826,6 +830,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::call_index(4)]
 		#[pallet::weight(create2_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create2(
@@ -899,6 +904,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::call_index(5)]
 		#[pallet::weight(create_nft_contract::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create_nft_contract(
@@ -988,6 +994,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::call_index(6)]
 		#[pallet::weight(create_predeploy_contract::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create_predeploy_contract(
@@ -1079,6 +1086,7 @@ pub mod module {
 		/// - `contract`: the contract whose maintainership is being transferred, the caller must be
 		///   the contract's maintainer
 		/// - `new_maintainer`: the address of the new maintainer
+		#[pallet::call_index(7)]
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_maintainer())]
 		#[transactional]
 		pub fn transfer_maintainer(
@@ -1101,6 +1109,7 @@ pub mod module {
 		///
 		/// - `contract`: The contract to mark as published, the caller must the contract's
 		///   maintainer
+		#[pallet::call_index(8)]
 		#[pallet::weight(<T as Config>::WeightInfo::publish_contract())]
 		#[transactional]
 		pub fn publish_contract(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -1115,6 +1124,7 @@ pub mod module {
 		///
 		/// - `contract`: The contract to mark as published, the caller must be the contract's
 		///   maintainer.
+		#[pallet::call_index(9)]
 		#[pallet::weight(<T as Config>::WeightInfo::publish_free())]
 		#[transactional]
 		pub fn publish_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -1126,6 +1136,7 @@ pub mod module {
 
 		/// Mark the caller's address to allow contract development.
 		/// This allows the address to interact with non-published contracts.
+		#[pallet::call_index(10)]
 		#[pallet::weight(<T as Config>::WeightInfo::enable_contract_development())]
 		#[transactional]
 		pub fn enable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -1138,6 +1149,7 @@ pub mod module {
 
 		/// Mark the caller's address to disable contract development.
 		/// This disallows the address to interact with non-published contracts.
+		#[pallet::call_index(11)]
 		#[pallet::weight(<T as Config>::WeightInfo::disable_contract_development())]
 		#[transactional]
 		pub fn disable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -1152,6 +1164,7 @@ pub mod module {
 		///
 		/// - `contract`: The contract whose code is being set, must not be marked as published
 		/// - `code`: The new ABI bundle for the contract
+		#[pallet::call_index(12)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_code(code.len() as u32))]
 		#[transactional]
 		pub fn set_code(origin: OriginFor<T>, contract: EvmAddress, code: Vec<u8>) -> DispatchResultWithPostInfo {
@@ -1166,6 +1179,7 @@ pub mod module {
 		/// Remove a contract at a given address.
 		///
 		/// - `contract`: The contract to remove, must not be marked as published
+		#[pallet::call_index(13)]
 		#[pallet::weight(<T as Config>::WeightInfo::selfdestruct())]
 		#[transactional]
 		pub fn selfdestruct(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -1187,6 +1201,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::call_index(14)]
 		#[pallet::weight(call_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn strict_call(

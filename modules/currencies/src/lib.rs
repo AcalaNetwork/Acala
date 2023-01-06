@@ -169,6 +169,7 @@ pub mod module {
 		///
 		/// The dispatch origin for this call must be `Signed` by the
 		/// transactor.
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::transfer_non_native_currency()
 			.saturating_add(if currency_id.is_erc20_currency_id() { T::GasToWeight::convert(erc20::TRANSFER.gas) } else { Weight::zero() })
 		)]
@@ -187,6 +188,7 @@ pub mod module {
 		///
 		/// The dispatch origin for this call must be `Signed` by the
 		/// transactor.
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::transfer_native_currency())]
 		pub fn transfer_native_currency(
 			origin: OriginFor<T>,
@@ -201,6 +203,7 @@ pub mod module {
 		/// Update amount of account `who` under `currency_id`.
 		///
 		/// The dispatch origin of this call must be _Root_.
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::update_balance_non_native_currency())]
 		pub fn update_balance(
 			origin: OriginFor<T>,
@@ -213,6 +216,7 @@ pub mod module {
 			<Self as MultiCurrencyExtended<T::AccountId>>::update_balance(currency_id, &dest, amount)
 		}
 
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::sweep_dust(accounts.len() as u32))]
 		pub fn sweep_dust(
 			origin: OriginFor<T>,
@@ -247,6 +251,7 @@ pub mod module {
 		/// Set lock by lock_id
 		///
 		/// The dispatch origin of this call must be _Root_.
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::force_set_lock())]
 		pub fn force_set_lock(
 			origin: OriginFor<T>,
@@ -263,6 +268,7 @@ pub mod module {
 		/// Remove lock by lock_id
 		///
 		/// The dispatch origin of this call must be _Root_.
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::force_remove_lock())]
 		pub fn force_remove_lock(
 			origin: OriginFor<T>,

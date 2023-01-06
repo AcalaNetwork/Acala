@@ -358,6 +358,7 @@ pub mod module {
 		/// - `path`: trading path.
 		/// - `supply_amount`: exact supply amount.
 		/// - `min_target_amount`: acceptable minimum target amount.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(path.len() as u32))]
 		#[transactional]
 		pub fn swap_with_exact_supply(
@@ -376,6 +377,7 @@ pub mod module {
 		/// - `path`: trading path.
 		/// - `target_amount`: exact target amount.
 		/// - `max_supply_amount`: acceptable maximum supply amount.
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target(path.len() as u32))]
 		#[transactional]
 		pub fn swap_with_exact_target(
@@ -402,6 +404,7 @@ pub mod module {
 		/// - `min_share_increment`: minimum acceptable share amount.
 		/// - `stake_increment_share`: indicates whether to stake increased dex share to earn
 		///   incentives
+		#[pallet::call_index(2)]
 		#[pallet::weight(if *stake_increment_share {
 			<T as Config>::WeightInfo::add_liquidity_and_stake()
 		} else {
@@ -438,6 +441,7 @@ pub mod module {
 		/// - `currency_id_b`: currency id B.
 		/// - `amount_a`: provision amount for currency_id_a.
 		/// - `amount_b`: provision amount for currency_id_b.
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::add_provision())]
 		#[transactional]
 		pub fn add_provision(
@@ -457,6 +461,7 @@ pub mod module {
 		/// - `owner`: founder account.
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::claim_dex_share())]
 		#[transactional]
 		pub fn claim_dex_share(
@@ -480,6 +485,7 @@ pub mod module {
 		/// - `min_withdrawn_a`: minimum acceptable withrawn for currency_id_a.
 		/// - `min_withdrawn_b`: minimum acceptable withrawn for currency_id_b.
 		/// - `by_unstake`: this flag indicates whether to withdraw share which is on incentives.
+		#[pallet::call_index(5)]
 		#[pallet::weight(if *by_unstake {
 			<T as Config>::WeightInfo::remove_liquidity_by_unstake()
 		} else {
@@ -509,6 +515,7 @@ pub mod module {
 		}
 
 		/// List a new provisioning trading pair.
+		#[pallet::call_index(6)]
 		#[pallet::weight((<T as Config>::WeightInfo::list_provisioning(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn list_provisioning(
@@ -576,6 +583,7 @@ pub mod module {
 
 		/// List a new trading pair, trading pair will become Enabled status
 		/// after provision process.
+		#[pallet::call_index(7)]
 		#[pallet::weight((<T as Config>::WeightInfo::update_provisioning_parameters(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn update_provisioning_parameters(
@@ -622,6 +630,7 @@ pub mod module {
 		}
 
 		/// Enable a Provisioning trading pair if meet the condition.
+		#[pallet::call_index(8)]
 		#[pallet::weight((<T as Config>::WeightInfo::end_provisioning(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn end_provisioning(
@@ -701,6 +710,7 @@ pub mod module {
 		/// Enable a trading pair
 		/// if the status of trading pair is `Disabled`, or `Provisioning` without any accumulated
 		/// provision, enable it directly.
+		#[pallet::call_index(9)]
 		#[pallet::weight((<T as Config>::WeightInfo::enable_trading_pair(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn enable_trading_pair(
@@ -729,6 +739,7 @@ pub mod module {
 		}
 
 		/// Disable a `Enabled` trading pair.
+		#[pallet::call_index(10)]
 		#[pallet::weight((<T as Config>::WeightInfo::disable_trading_pair(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn disable_trading_pair(
@@ -757,6 +768,7 @@ pub mod module {
 		/// - `owner`: founder account.
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
+		#[pallet::call_index(11)]
 		#[pallet::weight(<T as Config>::WeightInfo::refund_provision())]
 		#[transactional]
 		pub fn refund_provision(
@@ -803,6 +815,7 @@ pub mod module {
 		}
 
 		/// Abort provision when it's don't meet the target and expired.
+		#[pallet::call_index(12)]
 		#[pallet::weight((<T as Config>::WeightInfo::abort_provisioning(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn abort_provisioning(

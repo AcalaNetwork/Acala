@@ -151,6 +151,7 @@ pub mod module {
 		///
 		/// - `start_session`: the session index that the new change become effective.
 		/// - `duration`:  new session duration.
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::schedule_session_duration())]
 		pub fn schedule_session_duration(
 			origin: OriginFor<T>,

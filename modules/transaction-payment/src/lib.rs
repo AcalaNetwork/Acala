@@ -561,6 +561,7 @@ pub mod module {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Set fee swap path
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_alternative_fee_swap_path())]
 		#[transactional]
 		pub fn set_alternative_fee_swap_path(
@@ -588,6 +589,7 @@ pub mod module {
 		}
 
 		/// Enable and initialize charge fee pool.
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::enable_charge_fee_pool())]
 		#[transactional]
 		pub fn enable_charge_fee_pool(
@@ -601,6 +603,7 @@ pub mod module {
 		}
 
 		/// Disable charge fee pool.
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::disable_charge_fee_pool())]
 		#[transactional]
 		pub fn disable_charge_fee_pool(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
@@ -610,6 +613,7 @@ pub mod module {
 
 		/// Dapp wrap call, and user pay tx fee as provided dex swap path. this dispatch call should
 		/// make sure the trading path is valid.
+		#[pallet::call_index(3)]
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
 			(T::WeightInfo::with_fee_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
@@ -625,6 +629,7 @@ pub mod module {
 
 		/// Dapp wrap call, and user pay tx fee as provided currency, this dispatch call should make
 		/// sure the currency is exist in tx fee pool.
+		#[pallet::call_index(4)]
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
 			(T::WeightInfo::with_fee_currency().saturating_add(dispatch_info.weight), dispatch_info.class,)
@@ -639,6 +644,7 @@ pub mod module {
 		}
 
 		/// Wrap call with fee paid by other account
+		#[pallet::call_index(5)]
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
 			(T::WeightInfo::with_fee_paid_by().saturating_add(dispatch_info.weight), dispatch_info.class,)
@@ -655,6 +661,7 @@ pub mod module {
 
 		/// Dapp wrap call, and user pay tx fee as provided aggregated swap path. this dispatch call
 		/// should make sure the trading path is valid.
+		#[pallet::call_index(6)]
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
 			(T::WeightInfo::with_fee_aggregated_path().saturating_add(dispatch_info.weight), dispatch_info.class,)

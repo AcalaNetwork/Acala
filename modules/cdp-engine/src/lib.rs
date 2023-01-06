@@ -431,6 +431,7 @@ pub mod module {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::liquidate_by_auction(<T as Config>::CDPTreasury::max_auction()))]
 		#[transactional]
 		pub fn liquidate(
@@ -451,6 +452,7 @@ pub mod module {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::settle())]
 		#[transactional]
 		pub fn settle(
@@ -479,6 +481,7 @@ pub mod module {
 		/// - `required_collateral_ratio`: required collateral ratio, `None` means do not update,
 		///   `Some(None)` means update it to `None`.
 		/// - `maximum_total_debit_value`: maximum total debit value.
+		#[pallet::call_index(2)]
 		#[pallet::weight((<T as Config>::WeightInfo::set_collateral_params(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn set_collateral_params(
@@ -546,6 +549,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::register_liquidation_contract())]
 		#[transactional]
 		pub fn register_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
@@ -555,6 +559,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::deregister_liquidation_contract())]
 		#[transactional]
 		pub fn deregister_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
