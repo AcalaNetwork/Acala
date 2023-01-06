@@ -11,8 +11,8 @@ describeWithAcala("Acala RPC (Balance)", (context) => {
 	});
 
 	step("genesis balance is setup correctly", async function () {
-		expect((await context.provider.getBalance(alice.getAddress())).toString()).to.equal("8999999985475786229000000");
-		expect((await context.provider.getBalance(alice.getAddress(), "latest")).toString()).to.equal("8999999985475786229000000");
+		expect((await context.provider.getBalance(alice.getAddress())).toString()).to.equal("8999999985837494696000000");
+		expect((await context.provider.getBalance(alice.getAddress(), "latest")).toString()).to.equal("8999999985837494696000000");
 
 		expect((await context.provider.getBalance(alice.getAddress(), "latest")).toString())
 			.to.equal((await context.provider.api.query.system.account(await alice.getSubstrateAddress())).data.free.toString() + "000000");
@@ -21,13 +21,13 @@ describeWithAcala("Acala RPC (Balance)", (context) => {
 	step("balance to be updated after transfer", async function () {
 		this.timeout(15000);
 
-		expect((await context.provider.getBalance(alice.getAddress())).toString()).to.equal("8999999985475786229000000");
-		expect((await context.provider.getBalance(alice_stash.getAddress())).toString()).to.equal("10100000985475793263000000");
+		expect((await context.provider.getBalance(alice.getAddress())).toString()).to.equal("8999999985837494696000000");
+		expect((await context.provider.getBalance(alice_stash.getAddress())).toString()).to.equal("10100000985837500829000000");
 
 		await transfer(context, await alice.getSubstrateAddress(), await alice_stash.getSubstrateAddress(), 1000);
-		expect((await context.provider.getBalance(alice.getAddress())).toString()).to.equal("8999999968342271849000000");
-		expect((await context.provider.getBalance(alice_stash.getAddress())).toString()).to.equal("10100000985475794263000000");
-		expect((await context.provider.getBalance(alice.getAddress(), "latest")).toString()).to.equal("8999999968342271849000000");
+		expect((await context.provider.getBalance(alice.getAddress())).toString()).to.equal("8999999968881383317000000");
+		expect((await context.provider.getBalance(alice_stash.getAddress())).toString()).to.equal("10100000985837501829000000");
+		expect((await context.provider.getBalance(alice.getAddress(), "latest")).toString()).to.equal("8999999968881383317000000");
 		expect((await context.provider.getBalance(alice_stash.getAddress(), "earliest")).toString()).to.equal("0");
 	});
 });

@@ -35,7 +35,9 @@ use std::{
 
 use cumulus_client_cli::{generate_genesis_block, CollatorOptions};
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
-use cumulus_client_consensus_common::{ParachainCandidate, ParachainConsensus};
+use cumulus_client_consensus_common::{
+	ParachainBlockImport as TParachainBlockImport, ParachainCandidate, ParachainConsensus,
+};
 use cumulus_client_network::BlockAnnounceValidator;
 use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
@@ -138,6 +140,8 @@ pub type Client = TFullClient<runtime::Block, runtime::RuntimeApi, NativeElseWas
 /// Transaction pool type used by the test service
 pub type TxPool = Arc<sc_transaction_pool::FullPool<Block, Client>>;
 
+type ParachainBlockImport = TParachainBlockImport<Arc<Client>>;
+
 /// Maybe Mandala Dev full select chain.
 type MaybeFullSelectChain = Option<LongestChain<TFullBackend<Block>, Block>>;
 
@@ -157,6 +161,8 @@ pub enum SealMode {
 	/// Dev aura seal
 	DevAuraSeal,
 	/// Parachain aura seal
+	/// https://github.com/paritytech/cumulus/blob/27721d794ee63aae42317a7eeda21595dd3200d9/client/consensus/common/src/lib.rs#L93-L120
+	/// NOTE: ParaSeal doesn't work with `ParachainBlockImport` anymore
 	ParaSeal,
 }
 

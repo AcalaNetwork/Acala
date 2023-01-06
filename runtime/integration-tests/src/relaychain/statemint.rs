@@ -33,7 +33,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE: Balance = 50_000_000;
-pub const FEE_STATEMINT: Balance = 11_838_454;
+pub const FEE_STATEMINT: Balance = 10_339_270;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
@@ -132,8 +132,8 @@ fn acala_statemint_transfer_works() {
 		// and withdraw sibling parachain sovereign account
 		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
 
-		assert_eq!(1_000_034_555_785, Balances::free_balance(&AccountId::from(BOB)));
-		assert_eq!(1_003_524_607_614, Balances::free_balance(&para_2000));
+		assert_eq!(1_000_036_465_466, Balances::free_balance(&AccountId::from(BOB)));
+		assert_eq!(1_003_533_696_686, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -143,7 +143,7 @@ fn acala_side(fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			TEN - 92696000,
+			TEN - 80824000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough DOT balance to be charged as fee
@@ -170,7 +170,7 @@ fn acala_side(fee_amount: u128) {
 		));
 
 		assert_eq!(
-			TEN - UNIT - 92696000,
+			TEN - UNIT - 80824000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - fee_amount, Tokens::free_balance(DOT, &AccountId::from(BOB)));

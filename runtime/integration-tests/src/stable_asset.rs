@@ -371,9 +371,9 @@ fn three_usd_pool_works() {
 				)
 			);
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
-			let (amount1, amount2) = (227029695u128, 2250001739u128);
+			let (amount1, amount2) = (227029667u128, 2250002487u128);
 			#[cfg(feature = "with-mandala-runtime")]
-			let (amount1, amount2) = (906308684u128, 9000001739u128);
+			let (amount1, amount2) = (906308662u128, 9000001515u128);
 			System::assert_has_event(RuntimeEvent::Dex(module_dex::Event::Swap {
 				trader: AccountId::from(BOB),
 				path: vec![USD_CURRENCY, NATIVE_CURRENCY],

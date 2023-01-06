@@ -29,7 +29,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
-use orml_traits::parameter_type_with_key;
+use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use primitives::{evm::convert_decimals_to_evm, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
 use sp_core::{H160, U256};
@@ -82,23 +82,33 @@ parameter_types! {
 	pub DustAccount: AccountId = PalletId(*b"orml/dst").into_account_truncating();
 }
 
+pub struct CurrencyHooks<T>(marker::PhantomData<T>);
+impl<T: tokens::Config> MutationHooks<T::AccountId, T::CurrencyId, T::Balance> for CurrencyHooks<T>
+where
+	T::AccountId: From<AccountId>,
+{
+	type OnDust = tokens::TransferDust<T, DustAccount>;
+	type OnSlash = ();
+	type PreDeposit = ();
+	type PostDeposit = ();
+	type PreTransfer = ();
+	type PostTransfer = ();
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
+}
+
 impl tokens::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = i64;
 	type CurrencyId = CurrencyId;
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
-	type OnSlash = ();
-	type OnDeposit = ();
-	type OnTransfer = ();
+	type CurrencyHooks = CurrencyHooks<Runtime>;
 	type WeightInfo = ();
 	type MaxLocks = ConstU32<100>;
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -284,8 +294,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1306611,
-		used_storage: 5462,
+		used_gas: 1237365,
+		used_storage: 5140,
 	}));
 
 	assert_ok!(EVM::publish_free(

@@ -552,11 +552,11 @@ fn with_fee_call_works(
 				)
 			);
 			#[cfg(feature = "with-karura-runtime")]
-			let amount = 12726949872;
+			let amount = 12726949853;
 			#[cfg(feature = "with-acala-runtime")]
-			let amount = 12726949872;
+			let amount = 12726949853;
 			#[cfg(feature = "with-mandala-runtime")]
-			let amount = 13264589868;
+			let amount = 13264589849;
 			System::assert_has_event(RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
 				currency_id: USD_CURRENCY,
 				from: AccountId::from(CHARLIE),
