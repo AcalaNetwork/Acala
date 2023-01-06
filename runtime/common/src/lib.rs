@@ -32,7 +32,7 @@ use frame_support::{
 };
 use frame_system::{limits, EnsureRoot};
 use module_evm::GenesisAccount;
-use orml_traits::GetByKey;
+use orml_traits::{currency::MutationHooks, GetByKey};
 use polkadot_parachain::primitives::RelayChainBlockNumber;
 use primitives::{
 	evm::{is_system_contract, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},
@@ -366,6 +366,22 @@ impl Default for ProxyType {
 	fn default() -> Self {
 		Self::Any
 	}
+}
+
+pub struct CurrencyHooks<T, DustAccount>(PhantomData<T>, DustAccount);
+impl<T, DustAccount> MutationHooks<T::AccountId, T::CurrencyId, T::Balance> for CurrencyHooks<T, DustAccount>
+where
+	T: orml_tokens::Config,
+	DustAccount: Get<<T as frame_system::Config>::AccountId>,
+{
+	type OnDust = orml_tokens::TransferDust<T, DustAccount>;
+	type OnSlash = ();
+	type PreDeposit = ();
+	type PostDeposit = ();
+	type PreTransfer = ();
+	type PostTransfer = ();
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 pub struct EvmLimits<T>(PhantomData<T>);

@@ -34,7 +34,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE: Balance = 20_000_000;
-pub const FEE_STATEMINE: Balance = 5_159_159;
+pub const FEE_STATEMINE: Balance = 4_521_058;
 pub const FEE_KUSAMA: Balance = 11_492_737;
 const ASSET_ID: u32 = 100;
 
@@ -173,7 +173,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 		// source parachain sovereign account withrawn.
 		assert_eq!(UNIT, kusama_runtime::Balances::free_balance(&child_2000));
 		// destination parachain sovereign account deposited.
-		assert_eq!(999_973_231_812, kusama_runtime::Balances::free_balance(&child_1000));
+		assert_eq!(999_973_037_444, kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	// In receiver, xm execution error: UntrustedReserveLocation.
@@ -203,7 +203,7 @@ fn karura_transfer_asset_to_statemine_works() {
 
 		// https://github.com/paritytech/cumulus/pull/1278 support using self sufficient asset
 		// for paying xcm execution fee on Statemine.
-		assert_eq!(986_380_211_639, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
+		assert_eq!(988_088_276_809, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
 	});
 }
 
@@ -245,7 +245,7 @@ fn karura_statemine_transfer_use_ksm_as_fee() {
 			UNIT + FEE - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(1_003_992_265_552, Balances::free_balance(&para_2000));
+		assert_eq!(1_003_992_573_678, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -257,7 +257,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			9_999_907_304_000,
+			9_999_919_176_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough KSM balance to be charged as fee
@@ -308,7 +308,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 		}
 
 		assert_eq!(
-			8_999_907_304_000,
+			8_999_919_176_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - ksm_fee_amount, Tokens::free_balance(KSM, &AccountId::from(BOB)));

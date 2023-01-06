@@ -18,10 +18,10 @@
 
 use acala_primitives::{evm::CHAIN_ID_MANDALA, orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
 use coins_bip39::{English, Mnemonic, Wordlist};
-use elliptic_curve::sec1::ToEncodedPoint;
 use hex_literal::hex;
 use k256::{
 	ecdsa::{SigningKey, VerifyingKey},
+	elliptic_curve::sec1::ToEncodedPoint,
 	EncodedPoint as K256PublicKey,
 };
 use mandala_runtime::{
@@ -322,7 +322,7 @@ fn testnet_genesis(
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
 	let evm_genesis_accounts = evm_genesis(evm_accounts);
-	let balances = initial_authorities
+	let _balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
 		.chain(endowed_accounts.iter().cloned().map(|k| (k, initial_balance)))
@@ -355,7 +355,12 @@ fn testnet_genesis(
 			code: wasm_binary.to_vec(),
 		},
 		indices: IndicesConfig { indices: vec![] },
-		balances: BalancesConfig { balances },
+		balances: BalancesConfig {
+			#[cfg(feature = "runtime-benchmarks")]
+			balances: vec![],
+			#[cfg(not(feature = "runtime-benchmarks"))]
+			balances: _balances,
+		},
 		sudo: SudoConfig { key: Some(root_key) },
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
@@ -425,6 +430,9 @@ fn testnet_genesis(
 			],
 		},
 		asset_registry: AssetRegistryConfig {
+			#[cfg(feature = "runtime-benchmarks")]
+			assets: vec![],
+			#[cfg(not(feature = "runtime-benchmarks"))]
 			assets: vec![
 				(ACA, NativeTokenExistentialDeposit::get()),
 				(AUSD, ExistentialDeposits::get(&AUSD)),

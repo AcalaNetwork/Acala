@@ -1,0 +1,51 @@
+name: Docker build profiling image
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to build docker image (optional).
+        required: false
+        type: string
+
+jobs:
+  build-image:
+    name: "Build docker profiling image for acala"
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+          submodules: recursive
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          # list of Docker images to use as base name for tags
+          images: |
+            ghcr.io/acalanetwork/acala-node-profiling
+          # generate Docker tags based on the following events/attributes
+          tags: |
+            type=raw,value=${{ github.ref_name }}
+            type=ref,event=pr
+            type=sha
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          file: scripts/profiling/Dockerfile
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

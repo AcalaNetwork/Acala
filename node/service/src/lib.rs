@@ -24,7 +24,7 @@
 use acala_primitives::{Block, Hash};
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
-use cumulus_client_consensus_common::ParachainConsensus;
+use cumulus_client_consensus_common::{ParachainBlockImport as TParachainBlockImport, ParachainConsensus};
 use cumulus_client_network::BlockAnnounceValidator;
 use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
@@ -64,7 +64,7 @@ use polkadot_service::CollatorPair;
 
 pub mod chain_spec;
 mod client;
-mod instant_finalize;
+pub mod instant_finalize;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
 type HostFunctions = sp_io::SubstrateHostFunctions;
@@ -176,6 +176,8 @@ type FullBackend = TFullBackend<Block>;
 /// Acala's full client.
 type FullClient<RuntimeApi> = TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 
+type ParachainBlockImport<RuntimeApi> = TParachainBlockImport<Arc<FullClient<RuntimeApi>>>;
+
 /// Maybe Mandala Dev full select chain.
 type MaybeFullSelectChain = Option<LongestChain<FullBackend, Block>>;
 
@@ -190,7 +192,11 @@ pub fn new_partial<RuntimeApi>(
 		MaybeFullSelectChain,
 		sc_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
 		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>,
-		(Option<Telemetry>, Option<TelemetryWorkerHandle>),
+		(
+			ParachainBlockImport<RuntimeApi>,
+			Option<Telemetry>,
+			Option<TelemetryWorkerHandle>,
+		),
 	>,
 	sc_service::Error,
 >
@@ -242,6 +248,8 @@ where
 		client.clone(),
 	);
 
+	let block_import = ParachainBlockImport::new(client.clone());
+
 	let select_chain = if dev {
 		Some(LongestChain::new(backend.clone()))
 	} else {
@@ -262,7 +270,7 @@ where
 			let client_for_cidp = client.clone();
 
 			sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(ImportQueueParams {
-				block_import: client.clone(),
+				block_import: block_import.clone(),
 				justification_import: None,
 				client: client.clone(),
 				create_inherent_data_providers: move |block: Hash, ()| {
@@ -303,6 +311,7 @@ where
 				registry,
 				check_for_equivocation: Default::default(),
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
+				compatibility_mode: Default::default(),
 			})?
 		}
 	} else {
@@ -310,7 +319,7 @@ where
 
 		cumulus_client_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(
 			cumulus_client_consensus_aura::ImportQueueParams {
-				block_import: client.clone(),
+				block_import: block_import.clone(),
 				client: client.clone(),
 				create_inherent_data_providers: move |_, _| async move {
 					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
@@ -337,7 +346,7 @@ where
 		task_manager,
 		transaction_pool,
 		select_chain,
-		other: (telemetry, telemetry_worker_handle),
+		other: (block_import, telemetry, telemetry_worker_handle),
 	})
 }
 
@@ -370,7 +379,7 @@ async fn start_node_impl<RB, RuntimeApi, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	collator_options: CollatorOptions,
-	id: ParaId,
+	para_id: ParaId,
 	_rpc_ext_builder: RB,
 	build_consensus: BIC,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
@@ -381,6 +390,7 @@ where
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
 	BIC: FnOnce(
 		Arc<FullClient<RuntimeApi>>,
+		ParachainBlockImport<RuntimeApi>,
 		Option<&Registry>,
 		Option<TelemetryHandle>,
 		&TaskManager,
@@ -394,7 +404,7 @@ where
 	let parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial(&parachain_config, false, false)?;
-	let (mut telemetry, telemetry_worker_handle) = params.other;
+	let (block_import, mut telemetry, telemetry_worker_handle) = params.other;
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
@@ -412,7 +422,7 @@ where
 		RelayChainError::ServiceError(polkadot_service::Error::Sub(x)) => x,
 		s => s.to_string().into(),
 	})?;
-	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), id);
+	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), para_id);
 
 	let force_authoring = parachain_config.force_authoring;
 	let validator = parachain_config.role.is_authority();
@@ -479,6 +489,7 @@ where
 	if validator {
 		let parachain_consensus = build_consensus(
 			client.clone(),
+			block_import,
 			prometheus_registry.as_ref(),
 			telemetry.as_ref().map(|t| t.handle()),
 			&task_manager,
@@ -492,7 +503,7 @@ where
 		let spawner = task_manager.spawn_handle();
 
 		let params = StartCollatorParams {
-			para_id: id,
+			para_id,
 			block_status: client.clone(),
 			announce_block,
 			client: client.clone(),
@@ -511,7 +522,7 @@ where
 			client: client.clone(),
 			announce_block,
 			task_manager: &mut task_manager,
-			para_id: id,
+			para_id,
 			relay_chain_interface,
 			relay_chain_slot_duration,
 			import_queue,
@@ -530,7 +541,7 @@ pub async fn start_node<RuntimeApi>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	collator_options: CollatorOptions,
-	id: ParaId,
+	para_id: ParaId,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
@@ -541,9 +552,10 @@ where
 		parachain_config,
 		polkadot_config,
 		collator_options,
-		id,
+		para_id,
 		|_| Ok(RpcModule::new(())),
 		|client,
+		 block_import,
 		 prometheus_registry,
 		 telemetry,
 		 task_manager,
@@ -580,7 +592,7 @@ where
 								relay_parent,
 								&relay_chain_interface,
 								&validation_data,
-								id,
+								para_id,
 							)
 							.await;
 
@@ -597,7 +609,7 @@ where
 						Ok((slot, timestamp, parachain_inherent))
 					}
 				},
-				block_import: client.clone(),
+				block_import,
 				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
@@ -694,7 +706,7 @@ where
 		keystore_container,
 		select_chain: maybe_select_chain,
 		transaction_pool,
-		other: (_, _),
+		other: (_, _, _),
 	} = new_partial::<RuntimeApi>(&config, true, instant_sealing)?;
 
 	let (network, system_rpc_tx, tx_handler_controller, start_network) =
@@ -858,6 +870,7 @@ where
 				// And a maximum of 750ms if slots are skipped
 				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
 				telemetry: None,
+				compatibility_mode: Default::default(),
 			})?;
 
 			// the AURA authoring task is considered essential, i.e. if it

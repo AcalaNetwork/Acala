@@ -24,7 +24,7 @@ mod karura_tests {
 	use crate::relaychain::kusama_test_net::*;
 	use crate::setup::*;
 
-	use frame_support::{assert_noop, assert_ok};
+	use frame_support::{assert_noop, assert_ok, BoundedVec};
 
 	use codec::Decode;
 	use module_relaychain::RelayChainCallBuilder;
@@ -40,7 +40,7 @@ mod karura_tests {
 		let homa_lite_sub_account: AccountId =
 			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 		KusamaNet::execute_with(|| {
-			kusama_runtime::Staking::trigger_new_era(0, vec![]);
+			kusama_runtime::Staking::trigger_new_era(0, BoundedVec::default());
 
 			// Transfer some KSM into the parachain.
 			assert_ok!(kusama_runtime::Balances::transfer(
@@ -67,7 +67,7 @@ mod karura_tests {
 			kusama_runtime::System::set_block_number(101_000);
 			// Kusama: 6 hours per era. 7 days = 4 * 7 = 28 eras.
 			for _i in 0..29 {
-				kusama_runtime::Staking::trigger_new_era(0, vec![]);
+				kusama_runtime::Staking::trigger_new_era(0, BoundedVec::default());
 			}
 
 			assert_eq!(
@@ -158,7 +158,7 @@ mod karura_tests {
 			// Only leftover XCM fee remains in the account
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				9_640_401_849
+				9_637_790_757
 			);
 		});
 	}
