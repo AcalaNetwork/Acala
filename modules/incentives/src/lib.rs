@@ -325,7 +325,7 @@ pub mod module {
 				if let PoolId::Dex(currency_id) = pool_id {
 					ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidPoolId);
 				}
-				ClaimRewardDeductionRates::<T>::mutate_exists(&pool_id, |maybe_rate| -> DispatchResult {
+				ClaimRewardDeductionRates::<T>::mutate_exists(pool_id, |maybe_rate| -> DispatchResult {
 					let mut v = maybe_rate.unwrap_or_default();
 					if deduction_rate != *v.inner() {
 						v.try_set(deduction_rate).map_err(|_| Error::<T>::InvalidRate)?;
@@ -402,7 +402,7 @@ impl<T: Config> Pallet<T> {
 		// orml_rewards will claim rewards for all currencies rewards
 		<orml_rewards::Pallet<T>>::claim_rewards(&who, &pool_id);
 
-		let pending_multi_rewards: BTreeMap<CurrencyId, Balance> = PendingMultiRewards::<T>::take(&pool_id, &who);
+		let pending_multi_rewards: BTreeMap<CurrencyId, Balance> = PendingMultiRewards::<T>::take(pool_id, &who);
 		let deduction_rate = Self::claim_reward_deduction_rates(&pool_id);
 
 		for (currency_id, pending_reward) in pending_multi_rewards {

@@ -150,7 +150,7 @@ pub mod module {
 		#[transactional]
 		pub fn pause_evm_precompile(origin: OriginFor<T>, address: H160) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			PausedEvmPrecompiles::<T>::mutate_exists(&address, |maybe_paused| {
+			PausedEvmPrecompiles::<T>::mutate_exists(address, |maybe_paused| {
 				if maybe_paused.is_none() {
 					*maybe_paused = Some(());
 					Self::deposit_event(Event::EvmPrecompilePaused { address });
@@ -164,7 +164,7 @@ pub mod module {
 		#[transactional]
 		pub fn unpause_evm_precompile(origin: OriginFor<T>, address: H160) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			if PausedEvmPrecompiles::<T>::take(&address).is_some() {
+			if PausedEvmPrecompiles::<T>::take(address).is_some() {
 				Self::deposit_event(Event::EvmPrecompileUnpaused { address });
 			};
 			Ok(())
@@ -189,6 +189,6 @@ where
 pub struct PausedPrecompileFilter<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> module_support::PrecompilePauseFilter for PausedPrecompileFilter<T> {
 	fn is_paused(address: H160) -> bool {
-		PausedEvmPrecompiles::<T>::contains_key(&address)
+		PausedEvmPrecompiles::<T>::contains_key(address)
 	}
 }

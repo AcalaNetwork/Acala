@@ -251,8 +251,8 @@ pub mod pallet {
 				"genesis desired_candidates are more than T::MaxCandidates",
 			);
 
-			<DesiredCandidates<T>>::put(&self.desired_candidates);
-			<CandidacyBond<T>>::put(&self.candidacy_bond);
+			<DesiredCandidates<T>>::put(self.desired_candidates);
+			<CandidacyBond<T>>::put(self.candidacy_bond);
 			<Invulnerables<T>>::put(&bounded_invulnerables);
 		}
 	}
@@ -315,7 +315,7 @@ pub mod pallet {
 			if max > T::MaxCandidates::get() {
 				Err(Error::<T>::MaxCandidatesExceeded)?;
 			}
-			<DesiredCandidates<T>>::put(&max);
+			<DesiredCandidates<T>>::put(max);
 			Self::deposit_event(Event::NewDesiredCandidates {
 				new_desired_candidates: max,
 			});
@@ -326,7 +326,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::set_candidacy_bond())]
 		pub fn set_candidacy_bond(origin: OriginFor<T>, #[pallet::compact] bond: BalanceOf<T>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			<CandidacyBond<T>>::put(&bond);
+			<CandidacyBond<T>>::put(bond);
 			Self::deposit_event(Event::NewCandidacyBond {
 				new_candidacy_bond: bond,
 			});
@@ -515,7 +515,7 @@ pub mod pallet {
 			candidates.iter().for_each(|candidate| {
 				if validators.contains(candidate) {
 					collators.push(candidate);
-					<SessionPoints<T>>::insert(&candidate, 0);
+					<SessionPoints<T>>::insert(candidate, 0);
 				}
 			});
 

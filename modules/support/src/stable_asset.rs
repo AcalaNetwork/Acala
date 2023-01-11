@@ -110,7 +110,7 @@ where
 			.iter()
 			.enumerate()
 			.map(|(index, amount)| {
-				if let Some(currency_id) = pool_info.assets.get(index as usize) {
+				if let Some(currency_id) = pool_info.assets.get(index) {
 					RebaseTokenAmountConvertor::convert_balance(*amount, *currency_id)
 				} else {
 					*amount
@@ -170,7 +170,7 @@ where
 			.iter()
 			.enumerate()
 			.map(|(index, redeem_amount)| {
-				if let Some(currency_id) = pool_info.assets.get(index as usize) {
+				if let Some(currency_id) = pool_info.assets.get(index) {
 					RebaseTokenAmountConvertor::convert_balance(*redeem_amount, *currency_id)
 				} else {
 					*redeem_amount
@@ -212,7 +212,7 @@ where
 			.iter()
 			.enumerate()
 			.map(|(index, amount)| {
-				if let Some(currency_id) = pool_info.assets.get(index as usize) {
+				if let Some(currency_id) = pool_info.assets.get(index) {
 					RebaseTokenAmountConvertor::convert_balance(*amount, *currency_id)
 				} else {
 					*amount
@@ -326,7 +326,7 @@ where
 				.iter()
 				.enumerate()
 				.map(|(index, amount)| {
-					if let Some(currency_id) = pool_info.assets.get(index as usize) {
+					if let Some(currency_id) = pool_info.assets.get(index) {
 						RebaseTokenAmountConvertor::convert_balance_back(*amount, *currency_id)
 					} else {
 						*amount

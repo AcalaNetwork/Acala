@@ -783,7 +783,7 @@ pub mod module {
 			redeemer: &T::AccountId,
 			liquid_amount_to_redeem: Balance,
 		) -> Result<Balance, DispatchError> {
-			RedeemRequests::<T>::mutate_exists(&redeemer, |request| {
+			RedeemRequests::<T>::mutate_exists(redeemer, |request| {
 				let (request_amount, extra_fee) = request.unwrap_or_default();
 				// If the redeem request doesn't exist, return.
 				if request_amount.is_zero() {
@@ -981,7 +981,7 @@ pub mod module {
 				return Ok(0);
 			}
 
-			RedeemRequests::<T>::mutate_exists(&redeemer, |request| {
+			RedeemRequests::<T>::mutate_exists(redeemer, |request| {
 				let (request_amount, extra_fee) = request.unwrap_or_default();
 				// If the redeem request doesn't exist, return.
 				if request_amount.is_zero() {

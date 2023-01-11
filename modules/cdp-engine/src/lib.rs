@@ -899,7 +899,7 @@ impl<T: Config> Pallet<T> {
 		debit_adjustment: Amount,
 	) -> DispatchResult {
 		ensure!(
-			CollateralParams::<T>::contains_key(&currency_id),
+			CollateralParams::<T>::contains_key(currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 		<LoansOf<T>>::adjust_position(who, currency_id, collateral_adjustment, debit_adjustment)?;
@@ -978,7 +978,7 @@ impl<T: Config> Pallet<T> {
 		min_increase_collateral: Balance,
 	) -> DispatchResult {
 		ensure!(
-			CollateralParams::<T>::contains_key(&currency_id),
+			CollateralParams::<T>::contains_key(currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 		let loans_module_account = <LoansOf<T>>::account_id();
@@ -1037,7 +1037,7 @@ impl<T: Config> Pallet<T> {
 		let debit_adjustment = <LoansOf<T>>::amount_try_from_balance(increase_debit_balance)?;
 		<LoansOf<T>>::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
-		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
+		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, who);
 		// check the CDP if is still at valid risk
 		Self::check_position_valid(currency_id, collateral, debit, false)?;
 		// debit cap check due to new issued stable coin
@@ -1059,13 +1059,13 @@ impl<T: Config> Pallet<T> {
 		min_decrease_debit_value: Balance,
 	) -> DispatchResult {
 		ensure!(
-			CollateralParams::<T>::contains_key(&currency_id),
+			CollateralParams::<T>::contains_key(currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 
 		let loans_module_account = <LoansOf<T>>::account_id();
 		let stable_currency_id = T::GetStableCurrencyId::get();
-		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
+		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, who);
 
 		// ensure collateral of CDP is enough
 		ensure!(decrease_collateral <= collateral, Error::<T>::CollateralNotEnough);

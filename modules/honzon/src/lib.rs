@@ -456,7 +456,7 @@ impl<T: Config> HonzonManager<T::AccountId, CurrencyId, Amount, Balance> for Pal
 	}
 
 	fn get_current_collateral_ratio(who: &T::AccountId, currency_id: CurrencyId) -> Option<Ratio> {
-		let Position { collateral, debit } = <loans::Pallet<T>>::positions(currency_id, &who);
+		let Position { collateral, debit } = <loans::Pallet<T>>::positions(currency_id, who);
 		let stable_currency_id = T::GetStableCurrencyId::get();
 
 		T::PriceSource::get_relative_price(currency_id, stable_currency_id)

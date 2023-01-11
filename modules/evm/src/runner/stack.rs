@@ -674,7 +674,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
-		AccountStorages::<T>::get(&address, index)
+		AccountStorages::<T>::get(address, index)
 	}
 
 	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
@@ -724,7 +724,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn inc_nonce(&mut self, address: H160) {
-		Accounts::<T>::mutate(&address, |maybe_account| {
+		Accounts::<T>::mutate(address, |maybe_account| {
 			if let Some(account) = maybe_account.as_mut() {
 				account.nonce += One::one()
 			} else {

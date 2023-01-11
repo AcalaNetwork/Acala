@@ -233,7 +233,7 @@ pub mod module {
 					sig,
 				} => {
 					// check if already exists
-					if Signatures::<T>::contains_key(&sig) {
+					if Signatures::<T>::contains_key(sig) {
 						return InvalidTransaction::Stale.into();
 					}
 
@@ -255,7 +255,7 @@ pub mod module {
 				}
 				Call::rotate_key { new_key, sig } => {
 					// check if already exists
-					if Signatures::<T>::contains_key(&sig) {
+					if Signatures::<T>::contains_key(sig) {
 						return InvalidTransaction::Stale.into();
 					}
 
@@ -287,7 +287,7 @@ impl<T: Config> Pallet<T> {
 
 	fn do_rotate_key(new_key: PublicKey, sig: EcdsaSignature) {
 		RenVmPublicKey::<T>::set(Some(new_key));
-		Signatures::<T>::insert(&sig, ());
+		Signatures::<T>::insert(sig, ());
 	}
 
 	// ABI-encode the values for creating the signature hash.

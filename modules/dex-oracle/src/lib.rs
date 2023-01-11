@@ -119,7 +119,7 @@ pub mod module {
 					let (pool_0, pool_1) = T::DEX::get_liquidity_pool(trading_pair.first(), trading_pair.second());
 					Self::try_update_cumulative(&trading_pair, pool_0, pool_1);
 
-					let (cumulative_0, cumulative_1, _) = Self::cumulatives(&trading_pair);
+					let (cumulative_0, cumulative_1, _) = Self::cumulatives(trading_pair);
 					let u256_elapsed_time: U256 = elapsed_time.saturated_into::<u128>().into();
 					let average_price_0 = ExchangeRate::from_inner(
 						cumulative_0
@@ -137,7 +137,7 @@ pub mod module {
 					);
 
 					AveragePrices::<T>::insert(
-						&trading_pair,
+						trading_pair,
 						(
 							average_price_0,
 							average_price_1,
@@ -179,7 +179,7 @@ pub mod module {
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
-				Self::average_prices(&trading_pair).is_none(),
+				Self::average_prices(trading_pair).is_none(),
 				Error::<T>::AveragePriceAlreadyEnabled
 			);
 			ensure!(!interval.is_zero(), Error::<T>::IntervalIsZero,);
@@ -191,7 +191,7 @@ pub mod module {
 			let initial_cumulative_1 = U256::zero();
 
 			AveragePrices::<T>::insert(
-				&trading_pair,
+				trading_pair,
 				(
 					initial_price_0,
 					initial_price_1,
@@ -201,7 +201,7 @@ pub mod module {
 					interval,
 				),
 			);
-			Cumulatives::<T>::insert(&trading_pair, (initial_cumulative_0, initial_cumulative_1, now));
+			Cumulatives::<T>::insert(trading_pair, (initial_cumulative_0, initial_cumulative_1, now));
 
 			Ok(())
 		}
@@ -224,8 +224,8 @@ pub mod module {
 
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
-			AveragePrices::<T>::take(&trading_pair).ok_or(Error::<T>::AveragePriceMustBeEnabled)?;
-			Cumulatives::<T>::remove(&trading_pair);
+			AveragePrices::<T>::take(trading_pair).ok_or(Error::<T>::AveragePriceMustBeEnabled)?;
+			Cumulatives::<T>::remove(trading_pair);
 
 			Ok(())
 		}
@@ -250,7 +250,7 @@ pub mod module {
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 
-			AveragePrices::<T>::try_mutate_exists(&trading_pair, |maybe| -> DispatchResult {
+			AveragePrices::<T>::try_mutate_exists(trading_pair, |maybe| -> DispatchResult {
 				let (_, _, _, _, _, update_interval) = maybe.as_mut().ok_or(Error::<T>::AveragePriceMustBeEnabled)?;
 				ensure!(!new_interval.is_zero(), Error::<T>::IntervalIsZero);
 				*update_interval = new_interval;
