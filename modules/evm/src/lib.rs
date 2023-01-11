@@ -1308,11 +1308,11 @@ impl<T: Config> Pallet<T> {
 			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info.contract_info.take().ok_or(Error::<T>::ContractNotFound)?;
 
-			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
+			CodeInfos::<T>::mutate_exists(contract_info.code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
 					code_info.ref_count = code_info.ref_count.saturating_sub(1);
 					if code_info.ref_count == 0 {
-						Codes::<T>::remove(&contract_info.code_hash);
+						Codes::<T>::remove(contract_info.code_hash);
 						*maybe_code_info = None;
 					}
 				} else {
@@ -1344,14 +1344,14 @@ impl<T: Config> Pallet<T> {
 	/// Only used in `remove_account_if_empty`
 	fn remove_account(address: &EvmAddress) -> DispatchResult {
 		// Deref code, and remove it if ref count is zero.
-		Accounts::<T>::mutate_exists(&address, |maybe_account| {
+		Accounts::<T>::mutate_exists(address, |maybe_account| {
 			if let Some(account) = maybe_account {
 				if let Some(ContractInfo { code_hash, .. }) = account.contract_info {
-					CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
+					CodeInfos::<T>::mutate_exists(code_hash, |maybe_code_info| {
 						if let Some(code_info) = maybe_code_info {
 							code_info.ref_count = code_info.ref_count.saturating_sub(1);
 							if code_info.ref_count == 0 {
-								Codes::<T>::remove(&code_hash);
+								Codes::<T>::remove(code_hash);
 								*maybe_code_info = None;
 							}
 						}
@@ -1403,7 +1403,7 @@ impl<T: Config> Pallet<T> {
 			published: publish,
 		};
 
-		CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
+		CodeInfos::<T>::mutate_exists(code_hash, |maybe_code_info| {
 			if let Some(code_info) = maybe_code_info.as_mut() {
 				code_info.ref_count = code_info.ref_count.saturating_add(1);
 			} else {
@@ -1413,7 +1413,7 @@ impl<T: Config> Pallet<T> {
 				};
 				*maybe_code_info = Some(new);
 
-				Codes::<T>::insert(&code_hash, bounded_code);
+				Codes::<T>::insert(code_hash, bounded_code);
 			}
 		});
 
@@ -1474,7 +1474,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Get code at given address.
 	pub fn code_at_address(address: &EvmAddress) -> BoundedVec<u8, MaxCodeSize> {
-		Self::codes(&Self::code_hash_at_address(address))
+		Self::codes(Self::code_hash_at_address(address))
 	}
 
 	pub fn is_contract(address: &EvmAddress) -> bool {
@@ -1598,7 +1598,7 @@ impl<T: Config> Pallet<T> {
 				T::NetworkContractSource::get()
 			};
 
-			let old_code_info = Self::code_infos(&contract_info.code_hash).ok_or(Error::<T>::ContractNotFound)?;
+			let old_code_info = Self::code_infos(contract_info.code_hash).ok_or(Error::<T>::ContractNotFound)?;
 
 			let bounded_code: BoundedVec<u8, MaxCodeSize> =
 				code.try_into().map_err(|_| Error::<T>::ContractExceedsMaxCodeSize)?;
@@ -1621,17 +1621,17 @@ impl<T: Config> Pallet<T> {
 			Self::update_contract_storage_size(&contract, storage_size_changed);
 
 			// try remove old codes
-			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| -> DispatchResult {
+			CodeInfos::<T>::mutate_exists(contract_info.code_hash, |maybe_code_info| -> DispatchResult {
 				let code_info = maybe_code_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 				code_info.ref_count = code_info.ref_count.saturating_sub(1);
 				if code_info.ref_count == 0 {
-					Codes::<T>::remove(&contract_info.code_hash);
+					Codes::<T>::remove(contract_info.code_hash);
 					*maybe_code_info = None;
 				}
 				Ok(())
 			})?;
 
-			CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
+			CodeInfos::<T>::mutate_exists(code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
 					code_info.ref_count = code_info.ref_count.saturating_add(1);
 				} else {
@@ -1641,7 +1641,7 @@ impl<T: Config> Pallet<T> {
 					};
 					*maybe_code_info = Some(new);
 
-					Codes::<T>::insert(&code_hash, bounded_code);
+					Codes::<T>::insert(code_hash, bounded_code);
 				}
 			});
 			// update code_hash

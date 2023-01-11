@@ -315,8 +315,8 @@ where
 			let addr = account_to_default_evm_address(account_id);
 
 			// create reverse mapping
-			Accounts::<T>::insert(&addr, &account_id);
-			EvmAddresses::<T>::insert(&account_id, &addr);
+			Accounts::<T>::insert(addr, account_id);
+			EvmAddresses::<T>::insert(account_id, addr);
 
 			Pallet::<T>::deposit_event(Event::ClaimAccount {
 				account_id: account_id.clone(),

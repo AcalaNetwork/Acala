@@ -951,7 +951,7 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::InvalidContributionIncrement
 		);
 
-		ProvisioningPool::<T>::try_mutate_exists(trading_pair, &who, |maybe_pool| -> DispatchResult {
+		ProvisioningPool::<T>::try_mutate_exists(trading_pair, who, |maybe_pool| -> DispatchResult {
 			let existed = maybe_pool.is_some();
 			let mut pool = maybe_pool.unwrap_or_default();
 			pool.0 = pool.0.checked_add(contribution_0).ok_or(ArithmeticError::Overflow)?;
