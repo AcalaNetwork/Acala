@@ -131,6 +131,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = ();
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
+	type PaymentTransfer = ();
+	type StorageDepositFee = ConstU128<0>;
 	type GasToWeight = ();
 	type SweepOrigin = EnsureRoot<AccountId>;
 	type OnDust = ();

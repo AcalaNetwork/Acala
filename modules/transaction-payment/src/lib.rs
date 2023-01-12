@@ -1563,6 +1563,6 @@ where
 {
 	fn payment_transfer(from: &T::AccountId, to: &T::AccountId, amount: PalletBalanceOf<T>) -> DispatchResult {
 		Pallet::<T>::native_then_alternative_or_default(from, amount, WithdrawReasons::TRANSFER)?;
-		T::Currency::transfer(&from, to, amount, ExistenceRequirement::KeepAlive)
+		T::Currency::transfer(from, to, amount, ExistenceRequirement::KeepAlive)
 	}
 }

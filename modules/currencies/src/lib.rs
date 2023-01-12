@@ -436,7 +436,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 				if is_new {
 					T::NativeCurrency::transfer(
 						&from,
-						&who,
+						who,
 						T::StorageDepositFee::get() + Self::minimum_balance(T::GetNativeCurrencyId::get()),
 					)?;
 				}
@@ -452,7 +452,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 				// recycle leftover money
 				if is_new {
-					T::NativeCurrency::transfer(&who, &from, Self::free_balance(T::GetNativeCurrencyId::get(), who))?;
+					T::NativeCurrency::transfer(who, &from, Self::free_balance(T::GetNativeCurrencyId::get(), who))?;
 				}
 
 				Self::deposit_event(Event::Withdrawn {

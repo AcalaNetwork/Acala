@@ -205,6 +205,8 @@ impl Config for Runtime {
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
+	type PaymentTransfer = ();
+	type StorageDepositFee = ConstU128<0>;
 	type GasToWeight = GasToWeight;
 	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type OnDust = crate::TransferDust<Runtime, DustAccount>;
