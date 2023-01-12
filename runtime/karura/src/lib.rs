@@ -57,7 +57,7 @@ use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
+use module_support::{limits::erc20, AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 
 use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
@@ -853,6 +853,8 @@ parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = LKSM;
 	pub const GetStakingCurrencyId: CurrencyId = KSM;
 	pub Erc20HoldingAccount: H160 = primitives::evm::ERC20_HOLDING_ACCOUNT;
+		// StorageDepositPerByte is 18 decimals, convert to 12 decimals.
+		pub StorageDepositFee: Balance = <StorageDepositPerByte as Get<Balance>>::get().saturating_div(1000000).saturating_mul(erc20::TRANSFER.storage.into());
 }
 
 impl module_currencies::Config for Runtime {
@@ -864,6 +866,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
+	type PaymentTransfer = module_transaction_payment::ChargeTransactionPayment<Runtime>;
+	type StorageDepositFee = StorageDepositFee;
 	type GasToWeight = GasToWeight;
 	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type OnDust = module_currencies::TransferDust<Runtime, KaruraTreasuryAccount>;

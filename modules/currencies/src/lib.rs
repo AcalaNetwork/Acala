@@ -46,7 +46,7 @@ use sp_runtime::{
 	DispatchError, DispatchResult,
 };
 use sp_std::{fmt::Debug, marker, result, vec::Vec};
-use support::{evm::limits::erc20, AddressMapping, EVMBridge, InvokeContext};
+use support::{evm::limits::erc20, AddressMapping, EVMBridge, InvokeContext, PaymentTransfer};
 
 mod mock;
 mod tests;
@@ -100,6 +100,12 @@ pub mod module {
 		/// Mapping from address to account id.
 		type AddressMapping: AddressMapping<Self::AccountId>;
 		type EVMBridge: EVMBridge<Self::AccountId, BalanceOf<Self>>;
+
+		/// PaymentTransfer pay for the storage fee.
+		type PaymentTransfer: PaymentTransfer<Self::AccountId, BalanceOf<Self>>;
+
+		/// Storage deposit fee.
+		type StorageDepositFee: Get<BalanceOf<Self>>;
 
 		/// Convert gas to weight.
 		type GasToWeight: Convert<u64, Weight>;
@@ -424,15 +430,31 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					Error::<T>::DepositFailed
 				);
 				let receiver = T::AddressMapping::get_or_create_evm_address(who);
+
+				// Deposit an additional balance to cover storage fees.
+				let is_new = Self::free_balance(T::GetNativeCurrencyId::get(), who).is_zero();
+				if is_new {
+					T::NativeCurrency::transfer(
+						&from,
+						&who,
+						T::StorageDepositFee::get() + Self::minimum_balance(T::GetNativeCurrencyId::get()),
+					)?;
+				}
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
 						sender,
-						origin: receiver,
+						origin: receiver, // pay for the storage fee
 					},
 					receiver,
 					amount,
 				)?;
+
+				// recycle leftover money
+				if is_new {
+					T::NativeCurrency::transfer(&who, &from, Self::free_balance(T::GetNativeCurrencyId::get(), who))?;
+				}
+
 				Self::deposit_event(Event::Withdrawn {
 					currency_id,
 					who: from,
@@ -463,6 +485,14 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 				// charge storage fee.
 				let receiver = T::Erc20HoldingAccount::get();
 				let sender = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
+
+				// Withdraw an additional `StorageDepositFee` to cover storage fees.
+				T::PaymentTransfer::payment_transfer(
+					who,
+					&T::AddressMapping::get_account_id(&receiver),
+					T::StorageDepositFee::get(),
+				)?;
+
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,

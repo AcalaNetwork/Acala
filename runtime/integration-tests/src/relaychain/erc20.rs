@@ -123,7 +123,9 @@ fn erc20_transfer_between_sibling() {
 	let storage_fee = 6_400_000_000u128;
 
 	Karura::execute_with(|| {
+		env_logger::try_init();
 		let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
+		let erc20_holding_account = EvmAddressMapping::<Runtime>::get_account_id(&Erc20HoldingAccount::get());
 		let total_erc20 = 100_000_000_000_000_000_000_000u128;
 		let transfer_amount = 10 * dollar(NATIVE_CURRENCY);
 
@@ -139,17 +141,17 @@ fn erc20_transfer_between_sibling() {
 			&alith.clone(),
 			initial_native_amount
 		));
+		// when deposit storage fee, the `erc20_holding_account` needs exist.
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&erc20_holding_account,
+			Balances::minimum_balance()
+		));
 		// when withdraw sibling parachain account, the origin `sibling_reserve_account` is used to charge
 		// storage
 		assert_ok!(Currencies::deposit(
 			NATIVE_CURRENCY,
 			&sibling_reserve_account(),
-			initial_native_amount
-		));
-		// when deposit to recipient, the origin is recipient `BOB`, and is used to charge storage.
-		assert_ok!(Currencies::deposit(
-			NATIVE_CURRENCY,
-			&AccountId::from(BOB),
 			initial_native_amount
 		));
 		// when xcm finished, deposit to treasury account, the origin is `treasury account`, and is used to
@@ -209,7 +211,7 @@ fn erc20_transfer_between_sibling() {
 		);
 		// initial_native_amount + ed
 		assert_eq!(
-			1_100_000_000_000,
+			initial_native_amount + Balances::minimum_balance(),
 			Currencies::free_balance(NATIVE_CURRENCY, &KaruraTreasuryAccount::get())
 		);
 
@@ -217,6 +219,7 @@ fn erc20_transfer_between_sibling() {
 	});
 
 	Sibling::execute_with(|| {
+		env_logger::try_init();
 		// Sibling will take (1, 2000, GeneralKey(Erc20(address))) as foreign asset
 		assert_eq!(
 			9_999_191_760_000,
@@ -251,6 +254,7 @@ fn erc20_transfer_between_sibling() {
 	});
 
 	Karura::execute_with(|| {
+		env_logger::try_init();
 		use karura_runtime::{RuntimeEvent, System};
 		let erc20_holding_account = EvmAddressMapping::<Runtime>::get_account_id(&Erc20HoldingAccount::get());
 		assert_eq!(
@@ -258,7 +262,7 @@ fn erc20_transfer_between_sibling() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
 		);
 		assert_eq!(
-			4_991_917_600_000,
+			0,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
 		assert_eq!(
@@ -269,16 +273,17 @@ fn erc20_transfer_between_sibling() {
 			0,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &erc20_holding_account)
 		);
+		assert_eq!(
+			Balances::minimum_balance() + StorageDepositFee::get() - storage_fee,
+			Currencies::free_balance(NATIVE_CURRENCY, &erc20_holding_account)
+		);
 		// withdraw erc20 need charge storage fee
 		assert_eq!(
-			initial_native_amount - storage_fee,
+			initial_native_amount - StorageDepositFee::get() - storage_fee,
 			Currencies::free_balance(NATIVE_CURRENCY, &sibling_reserve_account())
 		);
-		// deposit erc20 need charge storage fee
-		assert_eq!(
-			initial_native_amount - storage_fee,
-			Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB))
-		);
+		// balance is 0 after paying the storage fee
+		assert_eq!(0, Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)));
 		// deposit reserve and unreserve storage fee, so the native token not changed.
 		assert_eq!(
 			1_100_000_000_000,
@@ -304,6 +309,11 @@ fn erc20_transfer_between_sibling() {
 			amount: 8_082_400_000,
 		}));
 	});
+}
+
+#[test]
+fn erc20_transfer_between_sibling_pay_with_non_native_token() {
+	// TODO
 }
 
 #[test]

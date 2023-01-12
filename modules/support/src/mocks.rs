@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::type_complexity)]
-use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, TransactionPayment};
+use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, PaymentTransfer, TransactionPayment};
 use codec::Encode;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use nutsfinance_stable_asset::{
@@ -150,6 +150,13 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 
 	fn apply_multiplier_to_fee(_fee: Balance, _multiplier: Option<Multiplier>) -> Balance {
 		Default::default()
+	}
+}
+
+#[cfg(feature = "std")]
+impl<AccountId, Balance: Default + Copy> PaymentTransfer<AccountId, Balance> for () {
+	fn payment_transfer(_from: &AccountId, _to: &AccountId, _amount: Balance) -> DispatchResult {
+		Ok(())
 	}
 }
 

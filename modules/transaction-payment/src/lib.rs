@@ -57,7 +57,9 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, MultiSignature, Percent, Perquintill,
 };
 use sp_std::prelude::*;
-use support::{AggregatedSwapPath, BuyWeightRate, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment};
+use support::{
+	AggregatedSwapPath, BuyWeightRate, PaymentTransfer, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment,
+};
 use xcm::opaque::latest::MultiLocation;
 
 mod mock;
@@ -1552,5 +1554,15 @@ where
 	fn apply_multiplier_to_fee(fee: PalletBalanceOf<T>, multiplier: Option<Multiplier>) -> PalletBalanceOf<T> {
 		let multiplier = multiplier.unwrap_or_else(|| Pallet::<T>::next_fee_multiplier());
 		multiplier.saturating_mul_int(fee)
+	}
+}
+
+impl<T: Config + Send + Sync> PaymentTransfer<T::AccountId, PalletBalanceOf<T>> for ChargeTransactionPayment<T>
+where
+	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
+{
+	fn payment_transfer(from: &T::AccountId, to: &T::AccountId, amount: PalletBalanceOf<T>) -> DispatchResult {
+		Pallet::<T>::native_then_alternative_or_default(from, amount, WithdrawReasons::TRANSFER)?;
+		T::Currency::transfer(&from, to, amount, ExistenceRequirement::KeepAlive)
 	}
 }

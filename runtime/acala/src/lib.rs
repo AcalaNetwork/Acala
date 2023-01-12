@@ -85,7 +85,7 @@ pub use sp_runtime::BuildStorage;
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
-use module_support::{ExchangeRateProvider, FractionalRate};
+use module_support::{limits::erc20, ExchangeRateProvider, FractionalRate};
 use primitives::currency::AssetIds;
 pub use primitives::{
 	define_combined_task,
@@ -849,6 +849,8 @@ parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub Erc20HoldingAccount: H160 = primitives::evm::ERC20_HOLDING_ACCOUNT;
+			// StorageDepositPerByte is 18 decimals, convert to 12 decimals.
+			pub StorageDepositFee: Balance = <StorageDepositPerByte as Get<Balance>>::get().saturating_div(1000000).saturating_mul(erc20::TRANSFER.storage.into());
 }
 
 impl module_currencies::Config for Runtime {
@@ -860,6 +862,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
+	type PaymentTransfer = module_transaction_payment::ChargeTransactionPayment<Runtime>;
+	type StorageDepositFee = StorageDepositFee;
 	type GasToWeight = GasToWeight;
 	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type OnDust = module_currencies::TransferDust<Runtime, AcalaTreasuryAccount>;
