@@ -123,7 +123,6 @@ fn erc20_transfer_between_sibling() {
 	let storage_fee = 6_400_000_000u128;
 
 	Karura::execute_with(|| {
-		env_logger::try_init();
 		let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
 		let erc20_holding_account = EvmAddressMapping::<Runtime>::get_account_id(&Erc20HoldingAccount::get());
 		let total_erc20 = 100_000_000_000_000_000_000_000u128;
@@ -141,18 +140,18 @@ fn erc20_transfer_between_sibling() {
 			&alith.clone(),
 			initial_native_amount
 		));
-		// when deposit storage fee, the `erc20_holding_account` needs exist.
-		assert_ok!(Currencies::deposit(
-			NATIVE_CURRENCY,
-			&erc20_holding_account,
-			Balances::minimum_balance()
-		));
 		// when withdraw sibling parachain account, the origin `sibling_reserve_account` is used to charge
 		// storage
 		assert_ok!(Currencies::deposit(
 			NATIVE_CURRENCY,
 			&sibling_reserve_account(),
 			initial_native_amount
+		));
+		// when deposit storage fee, the `erc20_holding_account` needs exist.
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&erc20_holding_account,
+			Balances::minimum_balance()
 		));
 		// when xcm finished, deposit to treasury account, the origin is `treasury account`, and is used to
 		// charge storage.
@@ -219,7 +218,6 @@ fn erc20_transfer_between_sibling() {
 	});
 
 	Sibling::execute_with(|| {
-		env_logger::try_init();
 		// Sibling will take (1, 2000, GeneralKey(Erc20(address))) as foreign asset
 		assert_eq!(
 			9_999_191_760_000,
@@ -254,7 +252,6 @@ fn erc20_transfer_between_sibling() {
 	});
 
 	Karura::execute_with(|| {
-		env_logger::try_init();
 		use karura_runtime::{RuntimeEvent, System};
 		let erc20_holding_account = EvmAddressMapping::<Runtime>::get_account_id(&Erc20HoldingAccount::get());
 		assert_eq!(

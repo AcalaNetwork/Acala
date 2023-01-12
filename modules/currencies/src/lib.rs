@@ -450,7 +450,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					amount,
 				)?;
 
-				// recycle leftover money
+				// recycle leftover balance
 				if is_new {
 					T::NativeCurrency::transfer(who, &from, Self::free_balance(T::GetNativeCurrencyId::get(), who))?;
 				}
