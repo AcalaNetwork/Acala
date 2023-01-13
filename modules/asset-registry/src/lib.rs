@@ -24,7 +24,6 @@
 #![allow(clippy::unused_unit)]
 
 use frame_support::{
-	assert_ok,
 	dispatch::DispatchResult,
 	ensure,
 	pallet_prelude::*,
@@ -195,7 +194,7 @@ pub mod module {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			self.assets.iter().for_each(|(asset, ed)| {
-				assert_ok!(Pallet::<T>::do_register_native_asset(
+				frame_support::assert_ok!(Pallet::<T>::do_register_native_asset(
 					*asset,
 					&AssetMetadata {
 						name: asset.name().unwrap().as_bytes().to_vec(),

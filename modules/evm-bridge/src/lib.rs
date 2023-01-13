@@ -251,8 +251,12 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		T::EVM::get_origin()
 	}
 
-	fn set_origin(origin: AccountIdOf<T>) {
-		T::EVM::set_origin(origin);
+	fn push_origin(origin: AccountIdOf<T>) {
+		T::EVM::push_origin(origin);
+	}
+
+	fn pop_origin() {
+		T::EVM::pop_origin();
 	}
 }
 

@@ -23,6 +23,7 @@ use frame_support::{traits::Get, weights::constants::WEIGHT_PER_SECOND};
 use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
 use primitives::{Balance, CurrencyId};
+use sp_core::defer;
 use sp_runtime::{
 	traits::{ConstU32, Convert, Zero},
 	FixedPointNumber, FixedU128, WeakBoundedVec,
@@ -232,6 +233,34 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateO
 					.into(),
 			);
 		}
+	}
+}
+
+pub struct XcmExecutor<Config: xcm_executor::Config, AccountId, Balance, AccountIdConvert, EVMBridge>(
+	PhantomData<(Config, AccountId, Balance, AccountIdConvert, EVMBridge)>,
+);
+
+impl<
+		Config: xcm_executor::Config,
+		AccountId: Clone,
+		Balance,
+		AccountIdConvert: xcm_executor::traits::Convert<MultiLocation, AccountId>,
+		EVMBridge: module_support::EVMBridge<AccountId, Balance>,
+	> ExecuteXcm<Config::RuntimeCall> for XcmExecutor<Config, AccountId, Balance, AccountIdConvert, EVMBridge>
+{
+	fn execute_xcm_in_credit(
+		origin: impl Into<MultiLocation>,
+		message: Xcm<Config::RuntimeCall>,
+		weight_limit: XcmWeight,
+		weight_credit: XcmWeight,
+	) -> Outcome {
+		let origin = origin.into();
+		let account = AccountIdConvert::convert(origin.clone());
+		if let Ok(account) = account {
+			EVMBridge::push_origin(account);
+			defer!(EVMBridge::pop_origin());
+		}
+		xcm_executor::XcmExecutor::<Config>::execute_xcm_in_credit(origin, message, weight_limit, weight_credit)
 	}
 }
 
