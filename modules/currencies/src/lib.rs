@@ -437,7 +437,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					T::NativeCurrency::transfer(
 						&from,
 						who,
-						T::StorageDepositFee::get() + Self::minimum_balance(T::GetNativeCurrencyId::get()),
+						T::StorageDepositFee::get()
+							.saturating_add(Self::minimum_balance(T::GetNativeCurrencyId::get())),
 					)?;
 				}
 				T::EVMBridge::transfer(

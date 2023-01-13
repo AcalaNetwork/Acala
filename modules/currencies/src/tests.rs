@@ -1021,10 +1021,15 @@ fn erc20_withdraw_deposit_works() {
 			);
 
 			// withdraw: sender to erc20 holding account
+			assert_eq!(0, Currencies::free_balance(NATIVE_CURRENCY_ID, &erc20_holding_account));
 			assert_ok!(Currencies::withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 100));
 			assert_eq!(
 				200,
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account)
+			);
+			assert_eq!(
+				9600,
+				Currencies::free_balance(NATIVE_CURRENCY_ID, &erc20_holding_account)
 			);
 
 			// deposit: erc20 holding account to receiver
@@ -1037,10 +1042,31 @@ fn erc20_withdraw_deposit_works() {
 				100,
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &bob())
 			);
+			assert_eq!(
+				9600,
+				Currencies::free_balance(NATIVE_CURRENCY_ID, &erc20_holding_account)
+			);
+
+			// deposit: erc20 holding account to non-exist receiver
+			assert_noop!(
+				Currencies::deposit(CurrencyId::Erc20(erc20_address()), &eva(), 50),
+				pallet_balances::Error::<Runtime>::InsufficientBalance
+			);
+			assert_ok!(NativeCurrency::transfer(&alice(), &erc20_holding_account, 2));
+			assert_ok!(Currencies::deposit(CurrencyId::Erc20(erc20_address()), &eva(), 50));
+			assert_eq!(
+				50,
+				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account)
+			);
+			assert_eq!(50, Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &eva()));
+			assert_eq!(
+				8962,
+				Currencies::free_balance(NATIVE_CURRENCY_ID, &erc20_holding_account)
+			);
 
 			// deposit failed, because erc20 holding account balance not enough
 			assert_noop!(
-				Currencies::deposit(CurrencyId::Erc20(erc20_address()), &bob(), 101),
+				Currencies::deposit(CurrencyId::Erc20(erc20_address()), &bob(), 51),
 				module_evm_bridge::Error::<Runtime>::ExecutionRevert
 			);
 		});

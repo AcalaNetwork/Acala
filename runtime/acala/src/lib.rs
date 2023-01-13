@@ -849,8 +849,8 @@ parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub Erc20HoldingAccount: H160 = primitives::evm::ERC20_HOLDING_ACCOUNT;
-			// StorageDepositPerByte is 18 decimals, convert to 12 decimals.
-			pub StorageDepositFee: Balance = <StorageDepositPerByte as Get<Balance>>::get().saturating_div(1000000).saturating_mul(erc20::TRANSFER.storage.into());
+	// StorageDepositPerByte is 18 decimals, convert to 12 decimals.
+	pub StorageDepositFee: Balance = <StorageDepositPerByte as Get<Balance>>::get().saturating_div(1_000_000).saturating_mul(erc20::TRANSFER.storage.into());
 }
 
 impl module_currencies::Config for Runtime {
@@ -2322,9 +2322,9 @@ mod tests {
 		// Otherwise, the creation of the contract account will fail because it is less than
 		// ExistentialDeposit.
 		assert!(
-			Balance::from(NewContractExtraBytes::get()).saturating_mul(
-				<StorageDepositPerByte as frame_support::traits::Get<Balance>>::get() / 10u128.saturating_pow(6)
-			) >= NativeTokenExistentialDeposit::get()
+			Balance::from(NewContractExtraBytes::get())
+				.saturating_mul(<StorageDepositPerByte as Get<Balance>>::get() / 10u128.saturating_pow(6))
+				>= NativeTokenExistentialDeposit::get()
 		);
 	}
 

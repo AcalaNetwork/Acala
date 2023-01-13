@@ -196,6 +196,13 @@ parameter_types! {
 	pub Erc20HoldingAccount: H160 = primitives::evm::ERC20_HOLDING_ACCOUNT;
 }
 
+pub struct MockPaymentTransfer;
+impl PaymentTransfer<AccountId, Balance> for MockPaymentTransfer {
+	fn payment_transfer(from: &AccountId, to: &AccountId, amount: Balance) -> DispatchResult {
+		NativeCurrency::transfer(from, to, amount)
+	}
+}
+
 impl Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
@@ -205,8 +212,8 @@ impl Config for Runtime {
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
-	type PaymentTransfer = ();
-	type StorageDepositFee = ConstU128<0>;
+	type PaymentTransfer = MockPaymentTransfer;
+	type StorageDepositFee = ConstU128<{ 10u128 * erc20::TRANSFER.storage as u128 }>;
 	type GasToWeight = GasToWeight;
 	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type OnDust = crate::TransferDust<Runtime, DustAccount>;
