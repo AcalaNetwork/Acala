@@ -428,7 +428,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					InvokeContext {
 						contract,
 						sender,
-						origin: receiver,
+						origin: T::EVMBridge::get_origin().unwrap_or(receiver),
 					},
 					receiver,
 					amount,
@@ -467,7 +467,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					InvokeContext {
 						contract,
 						sender,
-						origin: sender,
+						origin: T::EVMBridge::get_origin().unwrap_or(sender),
 					},
 					receiver,
 					amount,
