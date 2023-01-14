@@ -23,7 +23,6 @@ use frame_support::{traits::Get, weights::constants::WEIGHT_PER_SECOND};
 use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
 use primitives::{Balance, CurrencyId};
-use sp_core::defer;
 use sp_runtime::{
 	traits::{ConstU32, Convert, Zero},
 	FixedPointNumber, FixedU128, WeakBoundedVec,
@@ -256,11 +255,18 @@ impl<
 	) -> Outcome {
 		let origin = origin.into();
 		let account = AccountIdConvert::convert(origin.clone());
-		if let Ok(account) = account {
+		let clear = if let Ok(account) = account {
 			EVMBridge::push_origin(account);
-			defer!(EVMBridge::pop_origin());
+			true
+		} else {
+			false
+		};
+		let res =
+			xcm_executor::XcmExecutor::<Config>::execute_xcm_in_credit(origin, message, weight_limit, weight_credit);
+		if clear {
+			EVMBridge::pop_origin();
 		}
-		xcm_executor::XcmExecutor::<Config>::execute_xcm_in_credit(origin, message, weight_limit, weight_credit)
+		res
 	}
 }
 

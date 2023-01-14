@@ -147,7 +147,7 @@ module-aggregated-dex = { path = "../../modules/aggregated-dex" }
 nutsfinance-stable-asset = { version = "0.1.0", path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 
 [features]
-default = ["std"]
+default = ["std", "with-karura-runtime"]
 no_std = []
 with-mandala-runtime = [
 	"mandala-runtime",

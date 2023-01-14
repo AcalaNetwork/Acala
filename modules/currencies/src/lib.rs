@@ -283,6 +283,13 @@ pub mod module {
 	}
 }
 
+impl<T: Config> Pallet<T> {
+	fn get_evm_origin() -> Result<EvmAddress, DispatchError> {
+		let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
+		Ok(T::AddressMapping::get_or_create_evm_address(&origin))
+	}
+}
+
 impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 	type CurrencyId = CurrencyId;
 	type Balance = BalanceOf<T>;
@@ -382,14 +389,12 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
 				let sender = T::AddressMapping::get_evm_address(from).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
-				let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
 				let address = T::AddressMapping::get_or_create_evm_address(to);
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
 						sender,
-						origin: origin_address,
+						origin: Self::get_evm_origin()?,
 					},
 					address,
 					amount,
@@ -428,7 +433,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					InvokeContext {
 						contract,
 						sender,
-						origin: T::EVMBridge::get_origin().unwrap_or(receiver),
+						origin: Self::get_evm_origin().unwrap_or(receiver),
 					},
 					receiver,
 					amount,
@@ -467,7 +472,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					InvokeContext {
 						contract,
 						sender,
-						origin: T::EVMBridge::get_origin().unwrap_or(sender),
+						origin: Self::get_evm_origin().unwrap_or(sender),
 					},
 					receiver,
 					amount,
@@ -611,7 +616,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 					InvokeContext {
 						contract,
 						sender: address,
-						origin: address,
+						origin: Self::get_evm_origin().unwrap_or(address),
 					},
 					reserve_address(address),
 					value,
@@ -644,7 +649,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 						InvokeContext {
 							contract,
 							sender,
-							origin: address,
+							origin: Self::get_evm_origin().unwrap_or(address),
 						},
 						address,
 						actual,
@@ -704,7 +709,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 						InvokeContext {
 							contract,
 							sender: slashed_reserve_address,
-							origin: slashed_address,
+							origin: Self::get_evm_origin().unwrap_or(slashed_address),
 						},
 						beneficiary_address,
 						actual,
@@ -713,7 +718,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 						InvokeContext {
 							contract,
 							sender: slashed_reserve_address,
-							origin: slashed_address,
+							origin: Self::get_evm_origin().unwrap_or(slashed_address),
 						},
 						beneficiary_reserve_address,
 						actual,
