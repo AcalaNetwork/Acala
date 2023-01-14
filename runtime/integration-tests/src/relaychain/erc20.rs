@@ -370,8 +370,13 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 		));
 		assert_ok!(Currencies::deposit(
 			NATIVE_CURRENCY,
-			&alith.clone(),
+			&alith,
 			1_000_000 * dollar(NATIVE_CURRENCY)
+		));
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&CHARLIE.into(),
+			10 * dollar(NATIVE_CURRENCY)
 		));
 
 		deploy_erc20_contracts();
@@ -421,6 +426,11 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 		assert_eq!(
 			990_000_000_000_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE))
+		);
+		// charge storage fee from CHARLIE
+		assert_eq!(
+			10 * dollar(NATIVE_CURRENCY) - 6_400_000_000u128,
+			Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(CHARLIE))
 		);
 		assert_eq!(
 			10_000_000_000_000,
