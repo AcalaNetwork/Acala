@@ -6,6 +6,17 @@ relaychain:
       config:
         validation_upgrade_cooldown: 10
         validation_upgrade_delay: 10
+    hrmp:
+      preopenHrmpChannels:
+        - sender: 2000
+          recipient: 3000
+          maxCapacity: 8
+          maxMessageSize: 102400
+        - sender: 3000
+          recipient: 2000
+          maxCapacity: 8
+          maxMessageSize: 102400
+
   env:
     RUST_LOG: parachain::candidate-backing=trace,parachain::candidate-selection=trace,parachain::pvf=trace,parachain::collator-protocol=trace,parachain::provisioner=trace
   flags:
