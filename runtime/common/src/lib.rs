@@ -56,7 +56,7 @@ pub use primitives::{
 	},
 	AccountId,
 };
-pub use xcm_impl::{local_currency_location, native_currency_location, AcalaDropAssets, FixedRateOfAsset};
+pub use xcm_impl::{local_currency_location, native_currency_location, AcalaDropAssets, FixedRateOfAsset, XcmExecutor};
 
 #[cfg(feature = "std")]
 use sp_core::bytes::from_hex;

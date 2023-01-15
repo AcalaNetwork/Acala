@@ -163,10 +163,10 @@ fn erc20_transfer_between_sibling() {
 		deploy_erc20_contracts();
 
 		// `transfer` invoked by `TransferReserveAsset` xcm instruction need to passing origin check.
-		// In frontend/js, when issue xtokens extrinsic, it have `EvmSetOrigin` SignedExtra to `set_origin`.
-		// In testcase, we're manual invoke `set_origin` here. because in erc20 xtokens transfer,
-		// the `from` or `to` is not erc20 holding account. so we need make sure origin exists.
-		<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
+		// In frontend/js, when issue xtokens extrinsic, it have `EvmSetOrigin` SignedExtra to
+		// `push_origin`. In testcase, we're manual invoke `push_origin` here. because in erc20 xtokens
+		// transfer, the `from` or `to` is not erc20 holding account. so we need make sure origin exists.
+		<EVM as EVMTrait<AccountId>>::push_origin(alith.clone());
 
 		assert_eq!(
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith),
@@ -244,8 +244,29 @@ fn erc20_transfer_between_sibling() {
 			WeightLimit::Limited(1_000_000_000),
 		));
 
+		// transfer erc20 token to new account on Karura
+		assert_ok!(XTokens::transfer(
+			RuntimeOrigin::signed(BOB.into()),
+			CurrencyId::ForeignAsset(0),
+			1_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2000),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: CHARLIE.into(),
+						},
+					),
+				)
+				.into(),
+			),
+			WeightLimit::Limited(1_000_000_000),
+		));
+
 		assert_eq!(
-			4_999_191_760_000,
+			3_999_191_760_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});
@@ -254,7 +275,7 @@ fn erc20_transfer_between_sibling() {
 		use karura_runtime::{RuntimeEvent, System};
 		let erc20_holding_account = EvmAddressMapping::<Runtime>::get_account_id(&Erc20HoldingAccount::get());
 		assert_eq!(
-			5_000_000_000_000,
+			4_000_000_000_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
 		);
 		assert_eq!(
@@ -262,23 +283,29 @@ fn erc20_transfer_between_sibling() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
 		assert_eq!(
-			8_082_400_000,
+			8_082_400_000 * 2,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &KaruraTreasuryAccount::get())
+		);
+		assert_eq!(
+			991_917_600_000,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE))
 		);
 		assert_eq!(
 			0,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &erc20_holding_account)
 		);
-		// withdraw erc20 need charge storage fee
+		// withdraw erc20 need charge storage fee for both sibling, BOB and CHARLIE
 		assert_eq!(
-			initial_native_amount - storage_fee,
+			initial_native_amount - storage_fee * 3,
 			Currencies::free_balance(NATIVE_CURRENCY, &sibling_reserve_account())
 		);
-		// deposit erc20 need charge storage fee
+		// no storage fee for BOB
 		assert_eq!(
-			initial_native_amount - storage_fee,
+			initial_native_amount,
 			Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB))
 		);
+		// CHARLIE doesn't need native token
+		assert_eq!(0, Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(CHARLIE)));
 		// deposit reserve and unreserve storage fee, so the native token not changed.
 		assert_eq!(
 			1_100_000_000_000,
@@ -343,8 +370,13 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 		));
 		assert_ok!(Currencies::deposit(
 			NATIVE_CURRENCY,
-			&alith.clone(),
+			&alith,
 			1_000_000 * dollar(NATIVE_CURRENCY)
+		));
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&CHARLIE.into(),
+			10 * dollar(NATIVE_CURRENCY)
 		));
 
 		deploy_erc20_contracts();
@@ -356,7 +388,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 			EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 		));
 
-		<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
+		<EVM as EVMTrait<AccountId>>::push_origin(alith.clone());
 
 		// use Currencies `transfer` dispatch call to transfer erc20 token to bob.
 		assert_ok!(Currencies::transfer(
@@ -394,6 +426,11 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 		assert_eq!(
 			990_000_000_000_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE))
+		);
+		// charge storage fee from CHARLIE
+		assert_eq!(
+			10 * dollar(NATIVE_CURRENCY) - 6_400_000_000u128,
+			Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(CHARLIE))
 		);
 		assert_eq!(
 			10_000_000_000_000,

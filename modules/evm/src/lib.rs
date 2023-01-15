@@ -345,7 +345,7 @@ pub mod module {
 	/// ExtrinsicOrigin: Option<AccountId>
 	#[pallet::storage]
 	#[pallet::getter(fn extrinsic_origin)]
-	pub type ExtrinsicOrigin<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+	pub type ExtrinsicOrigin<T: Config> = StorageValue<_, Vec<T::AccountId>, OptionQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -1863,12 +1863,30 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 
 	/// Get the real origin account and charge storage rent from the origin.
 	fn get_origin() -> Option<T::AccountId> {
-		ExtrinsicOrigin::<T>::get()
+		ExtrinsicOrigin::<T>::get().and_then(|o| o.last().cloned())
 	}
 
-	/// Provide a method to set origin for `on_initialize`
-	fn set_origin(origin: T::AccountId) {
-		ExtrinsicOrigin::<T>::set(Some(origin));
+	// Set the EVM origin
+	fn push_origin(origin: T::AccountId) {
+		ExtrinsicOrigin::<T>::mutate(|o| {
+			if let Some(o) = o {
+				o.push(origin);
+			} else {
+				*o = Some(vec![origin]);
+			}
+		});
+	}
+
+	// Pop the EVM origin
+	fn pop_origin() {
+		ExtrinsicOrigin::<T>::mutate(|o| {
+			if let Some(arr) = o {
+				arr.pop();
+				if arr.is_empty() {
+					*o = None;
+				}
+			}
+		});
 	}
 }
 
@@ -1996,7 +2014,7 @@ impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 		_info: &DispatchInfoOf<Self::Call>,
 		_len: usize,
 	) -> TransactionValidity {
-		ExtrinsicOrigin::<T>::set(Some(who.clone()));
+		ExtrinsicOrigin::<T>::set(Some(vec![who.clone()]));
 		Ok(ValidTransaction::default())
 	}
 
@@ -2007,7 +2025,7 @@ impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 		_info: &DispatchInfoOf<Self::Call>,
 		_len: usize,
 	) -> Result<(), TransactionValidityError> {
-		ExtrinsicOrigin::<T>::set(Some(who.clone()));
+		ExtrinsicOrigin::<T>::set(Some(vec![who.clone()]));
 		Ok(())
 	}
 

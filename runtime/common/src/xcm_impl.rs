@@ -235,6 +235,41 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateO
 	}
 }
 
+pub struct XcmExecutor<Config: xcm_executor::Config, AccountId, Balance, AccountIdConvert, EVMBridge>(
+	PhantomData<(Config, AccountId, Balance, AccountIdConvert, EVMBridge)>,
+);
+
+impl<
+		Config: xcm_executor::Config,
+		AccountId: Clone,
+		Balance,
+		AccountIdConvert: xcm_executor::traits::Convert<MultiLocation, AccountId>,
+		EVMBridge: module_support::EVMBridge<AccountId, Balance>,
+	> ExecuteXcm<Config::RuntimeCall> for XcmExecutor<Config, AccountId, Balance, AccountIdConvert, EVMBridge>
+{
+	fn execute_xcm_in_credit(
+		origin: impl Into<MultiLocation>,
+		message: Xcm<Config::RuntimeCall>,
+		weight_limit: XcmWeight,
+		weight_credit: XcmWeight,
+	) -> Outcome {
+		let origin = origin.into();
+		let account = AccountIdConvert::convert(origin.clone());
+		let clear = if let Ok(account) = account {
+			EVMBridge::push_origin(account);
+			true
+		} else {
+			false
+		};
+		let res =
+			xcm_executor::XcmExecutor::<Config>::execute_xcm_in_credit(origin, message, weight_limit, weight_credit);
+		if clear {
+			EVMBridge::pop_origin();
+		}
+		res
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

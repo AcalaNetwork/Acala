@@ -230,7 +230,7 @@ fn multi_currency_should_work() {
 		.one_hundred_for_alice_n_bob()
 		.build()
 		.execute_with(|| {
-			<EVM as EVMTrait<AccountId>>::set_origin(alice());
+			<EVM as EVMTrait<AccountId>>::push_origin(alice());
 			assert_ok!(Currencies::transfer(Some(alice()).into(), bob(), X_TOKEN_ID, 50));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 50);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 150);
@@ -544,7 +544,7 @@ fn erc20_ensure_withdraw_should_work() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			<EVM as EVMTrait<AccountId>>::set_origin(alice());
+			<EVM as EVMTrait<AccountId>>::push_origin(alice());
 			assert_ok!(Currencies::ensure_can_withdraw(
 				CurrencyId::Erc20(erc20_address()),
 				&alice(),
@@ -583,7 +583,7 @@ fn erc20_transfer_should_work() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			<EVM as EVMTrait<AccountId>>::set_origin(eva());
+			<EVM as EVMTrait<AccountId>>::push_origin(eva());
 
 			assert_ok!(Currencies::transfer(
 				RuntimeOrigin::signed(alice()),
@@ -656,8 +656,8 @@ fn erc20_transfer_should_fail() {
 				Error::<Runtime>::RealOriginNotFound
 			);
 
-			<EVM as EVMTrait<AccountId>>::set_origin(alice());
-			<EVM as EVMTrait<AccountId>>::set_origin(bob());
+			<EVM as EVMTrait<AccountId>>::push_origin(alice());
+			<EVM as EVMTrait<AccountId>>::push_origin(bob());
 
 			// empty address
 			assert!(Currencies::transfer(
@@ -843,7 +843,7 @@ fn erc20_repatriate_reserved_should_work() {
 		.execute_with(|| {
 			deploy_contracts();
 			let bob_balance = 100;
-			<EVM as EVMTrait<AccountId>>::set_origin(alice());
+			<EVM as EVMTrait<AccountId>>::push_origin(alice());
 			assert_ok!(Currencies::transfer(
 				RuntimeOrigin::signed(alice()),
 				bob(),
@@ -975,7 +975,7 @@ fn erc20_invalid_operation() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			<EVM as EVMTrait<AccountId>>::set_origin(alice());
+			<EVM as EVMTrait<AccountId>>::push_origin(alice());
 
 			assert_noop!(
 				Currencies::update_balance(RuntimeOrigin::root(), alice(), CurrencyId::Erc20(erc20_address()), 1),
@@ -994,7 +994,7 @@ fn erc20_withdraw_deposit_works() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			<EVM as EVMTrait<AccountId>>::set_origin(alice());
+			<EVM as EVMTrait<AccountId>>::push_origin(alice());
 
 			let erc20_holding_account = MockAddressMapping::get_account_id(&Erc20HoldingAccount::get());
 
@@ -1668,7 +1668,7 @@ fn fungible_transfer_trait_should_work() {
 			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&bob()), 20000);
 
 			deploy_contracts();
-			<EVM as EVMTrait<AccountId>>::set_origin(alice());
+			<EVM as EVMTrait<AccountId>>::push_origin(alice());
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE
