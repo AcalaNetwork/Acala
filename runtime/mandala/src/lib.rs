@@ -44,7 +44,7 @@ pub use frame_support::{
 		U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
-		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND},
+		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
 		IdentityFee, Weight,
 	},
 	PalletId, RuntimeDebug, StorageValue,

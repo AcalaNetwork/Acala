@@ -161,8 +161,8 @@ impl SubstrateCli for RelayChainCli {
 		format!(
 			"{} parachain collator\n\nThe command-line arguments provided first will be \
 		passed to the parachain node, while the arguments provided after -- will be passed \
-		to the relaychain node.\n\n\
-		rococo-collator [parachain-args] -- [relaychain-args]",
+		to the relay chain node.\n\n\
+		rococo-collator [parachain-args] -- [relay-chain-args]",
 			chain_name()
 		)
 	}
@@ -386,7 +386,7 @@ pub fn run() -> sc_cli::Result<()> {
 					&config,
 					[RelayChainCli::executable_name()]
 						.iter()
-						.chain(cli.relaychain_args.iter()),
+						.chain(cli.relay_chain_args.iter()),
 				);
 
 				let polkadot_config =
@@ -476,7 +476,7 @@ pub fn run() -> sc_cli::Result<()> {
 					&config,
 					[RelayChainCli::executable_name()]
 						.iter()
-						.chain(cli.relaychain_args.iter()),
+						.chain(cli.relay_chain_args.iter()),
 				);
 
 				let id = ParaId::from(para_id);

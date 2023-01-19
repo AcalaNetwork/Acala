@@ -2575,3 +2575,8 @@ fn transfer_erc20_will_charge_gas() {
 		);
 	});
 }
+
+#[test]
+fn asset_exists_works() {
+	//TODO
+}

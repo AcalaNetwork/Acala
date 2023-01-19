@@ -110,14 +110,17 @@ mod karura_tests {
 			);
 
 			// Transfer fails because liquidity is locked.
-			assert_ok!(kusama_runtime::Balances::transfer(
-				kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
-				MultiAddress::Id(ALICE.into()),
-				1_000_000_000_000_000
-			));
+			assert_noop!(
+				kusama_runtime::Balances::transfer(
+					kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
+					MultiAddress::Id(ALICE.into()),
+					1_000_000_000_000_000
+				),
+				pallet_balances::Error::<kusama_runtime::Runtime>::LiquidityRestrictions
+			);
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
-				1_000_000_000_000
+				1_001_000_000_000_000
 			);
 		});
 	}
@@ -153,12 +156,12 @@ mod karura_tests {
 		KusamaNet::execute_with(|| {
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(AccountId::from(ALICE)),
-				2_003_990_000_000_000
+				2_002_000_000_000_000
 			);
 			// Only leftover XCM fee remains in the account
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				9_637_790_757
+				1_998_000_000_000
 			);
 		});
 	}

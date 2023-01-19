@@ -53,7 +53,7 @@ use futures::{channel::mpsc::Sender, SinkExt};
 use jsonrpsee::RpcModule;
 use polkadot_primitives::v2::{CollatorPair, Hash as PHash, HeadData, PersistedValidationData};
 use sc_client_api::{execution_extensions::ExecutionStrategies, Backend, CallExecutor, ExecutorProvider};
-use sc_consensus::LongestChain;
+use sc_consensus::{ImportQueue, LongestChain};
 use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
 use sc_consensus_manual_seal::{
 	rpc::{ManualSeal, ManualSealApiServer},
@@ -137,13 +137,16 @@ impl sc_executor::NativeExecutionDispatch for RuntimeExecutor {
 /// The client type being used by the test service.
 pub type Client = TFullClient<runtime::Block, runtime::RuntimeApi, NativeElseWasmExecutor<RuntimeExecutor>>;
 
+/// The backend type being used by the test service.
+pub type ParachainBackend = TFullBackend<Block>;
+
 /// Transaction pool type used by the test service
 pub type TxPool = Arc<sc_transaction_pool::FullPool<Block, Client>>;
 
-type ParachainBlockImport = TParachainBlockImport<Arc<Client>>;
+type ParachainBlockImport = TParachainBlockImport<Block, Arc<Client>, ParachainBackend>;
 
 /// Maybe Mandala Dev full select chain.
-type MaybeFullSelectChain = Option<LongestChain<TFullBackend<Block>, Block>>;
+type MaybeFullSelectChain = Option<LongestChain<ParachainBackend, Block>>;
 
 pub enum Consensus {
 	/// Use the relay-chain provided consensus.
