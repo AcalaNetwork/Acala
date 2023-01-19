@@ -53,3 +53,4 @@ std = [
 	"nutsfinance-stable-asset/std",
 ]
 evm-tests = []
+try-runtime = []

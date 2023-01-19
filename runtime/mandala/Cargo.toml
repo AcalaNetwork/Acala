@@ -418,6 +418,8 @@ try-runtime = [
 	"module-transaction-payment/try-runtime",
 	"module-xcm-interface/try-runtime",
 
+	"primitives/try-runtime",
+
 	"ecosystem-renvm-bridge/try-runtime",
 	"nutsfinance-stable-asset/try-runtime",
 ]

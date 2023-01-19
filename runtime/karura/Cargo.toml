@@ -381,6 +381,8 @@ try-runtime = [
 	"module-transaction-payment/try-runtime",
 	"module-xcm-interface/try-runtime",
 
+	"primitives/try-runtime",
+
 	"nutsfinance-stable-asset/try-runtime",
 ]
 # By default some types have documentation, `no-metadata-docs` allows to reduce the documentation
