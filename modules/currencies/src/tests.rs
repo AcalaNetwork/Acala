@@ -24,9 +24,9 @@ use super::*;
 use crate::mock::Erc20HoldingAccount;
 use frame_support::{assert_noop, assert_ok, dispatch::GetDispatchInfo, traits::WithdrawReasons};
 use mock::{
-	alice, bob, deploy_contracts, erc20_address, eva, AccountId, AdaptedBasicCurrency, CouncilAccount, Currencies,
-	DustAccount, ExtBuilder, NativeCurrency, PalletBalances, Runtime, RuntimeEvent, RuntimeOrigin, System, Tokens,
-	ALICE_BALANCE, DOT, EVM, ID_1, NATIVE_CURRENCY_ID, X_TOKEN_ID,
+	alice, bob, deploy_contracts, erc20_address, erc20_address_not_exist, eva, AccountId, AdaptedBasicCurrency,
+	CouncilAccount, Currencies, DustAccount, ExtBuilder, NativeCurrency, PalletBalances, Runtime, RuntimeEvent,
+	RuntimeOrigin, System, Tokens, ALICE_BALANCE, DOT, EVM, ID_1, NATIVE_CURRENCY_ID, X_TOKEN_ID,
 };
 use sp_core::H160;
 use sp_runtime::{
@@ -1303,7 +1303,6 @@ fn fungible_inspect_trait_should_work() {
 				DepositConsequence::Success
 			);
 
-			// TODO: update test code to assert_eq! for this: https://github.com/AcalaNetwork/Acala/issues/2038
 			// Test Inspect::can_withdraw
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), Bounded::max_value()),
@@ -1386,6 +1385,22 @@ fn fungible_inspect_trait_should_work() {
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::can_withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 0),
 				WithdrawConsequence::Success
+			);
+
+			// Test Inspect::asset_exists
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::asset_exists(NATIVE_CURRENCY_ID),
+				true
+			);
+			assert_eq!(<Currencies as fungibles::Inspect<_>>::asset_exists(X_TOKEN_ID), true);
+			assert_eq!(<Currencies as fungibles::Inspect<_>>::asset_exists(DOT), false);
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::asset_exists(CurrencyId::Erc20(erc20_address())),
+				true
+			);
+			assert_eq!(
+				<Currencies as fungibles::Inspect<_>>::asset_exists(CurrencyId::Erc20(erc20_address_not_exist())),
+				false
 			);
 		});
 }
@@ -2574,9 +2589,4 @@ fn transfer_erc20_will_charge_gas() {
 			<Runtime as module::Config>::WeightInfo::transfer_non_native_currency()
 		);
 	});
-}
-
-#[test]
-fn asset_exists_works() {
-	//TODO
 }
