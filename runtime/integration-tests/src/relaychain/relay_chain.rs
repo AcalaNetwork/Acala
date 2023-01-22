@@ -97,7 +97,7 @@ mod karura_tests {
 			// Call withdraw_unbonded as the homa-lite subaccount
 			let xcm_message =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 0);
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 2_000_000_000, 10_000_000_000);
+			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 20_000_000_000, 10_000_000_000);
 
 			// Withdraw unbonded
 			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
@@ -109,18 +109,14 @@ mod karura_tests {
 				1_001_000_000_000_000
 			);
 
-			// Transfer fails because liquidity is locked.
-			assert_noop!(
-				kusama_runtime::Balances::transfer(
-					kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
-					MultiAddress::Id(ALICE.into()),
-					1_000_000_000_000_000
-				),
-				pallet_balances::Error::<kusama_runtime::Runtime>::LiquidityRestrictions
-			);
+			assert_ok!(kusama_runtime::Balances::transfer(
+				kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
+				MultiAddress::Id(ALICE.into()),
+				1_000_000_000_000_000
+			));
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
-				1_001_000_000_000_000
+				1_000_000_000_000
 			);
 		});
 	}
@@ -145,9 +141,9 @@ mod karura_tests {
 
 		Karura::execute_with(|| {
 			// Transfer all remaining, but leave enough fund to pay for the XCM transaction.
-			let xcm_message = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1_990_000_000_000);
+			let xcm_message = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1_970_000_000_000);
 
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 2_000_000_000, 10_000_000_000);
+			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 20_000_000_000, 10_000_000_000);
 
 			// Withdraw unbonded
 			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
@@ -156,12 +152,12 @@ mod karura_tests {
 		KusamaNet::execute_with(|| {
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(AccountId::from(ALICE)),
-				2_002_000_000_000_000
+				2_003_970_000_000_000
 			);
 			// Only leftover XCM fee remains in the account
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				1_998_000_000_000
+				26_429_013_556
 			);
 		});
 	}
