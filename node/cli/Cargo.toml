@@ -11,6 +11,8 @@ codec = { package = "parity-scale-codec", version = "3.0.0" }
 
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", optional = true }
 sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", optional = true }
+sc-executor = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", optional = true }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", optional = true }
 sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", optional = true }
 sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36" }
@@ -38,9 +40,11 @@ default = [ "cli" ]
 cli = [
 	"frame-benchmarking-cli",
 	"sc-cli",
+	"sp-core",
+	"sc-executor",
 	"sc-service",
 	"service",
-	"sp-core",
+	"sp-io",
 	"try-runtime-cli",
 ]
 runtime-benchmarks = [
