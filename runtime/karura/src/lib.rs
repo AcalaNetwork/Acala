@@ -1802,7 +1802,8 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	pallet_balances::migration::MigrateToTrackInactive<Runtime, xcm_config::CheckingAccount>,
+	(), /* TODO: polkadot-0.9.37
+	     * pallet_balances::migration::MigrateToTrackInactive<Runtime, xcm_config::CheckingAccount>, */
 >;
 
 #[cfg(feature = "runtime-benchmarks")]
