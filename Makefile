@@ -122,15 +122,18 @@ check-try-runtime:
 
 .PHONY: try-runtime-karura
 try-runtime-karura:
-	SKIP_WASM_BUILD= cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+	cargo build --release --locked --features with-karura-runtime --features try-runtime --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	./target/release/acala try-runtime --runtime ./target/release/wbuild/karura-runtime/karura_runtime.compact.compressed.wasm --chain=karura-dev on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws
 
 .PHONY: try-runtime-mandala
 try-runtime-mandala:
-	SKIP_WASM_BUILD= cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --chain=dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://mandala.polkawallet.io:443 -s /tmp/snapshot.bin
+	cargo build --release --locked --features with-mandala-runtime --features try-runtime --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	./target/release/acala try-runtime --runtime ./target/release/wbuild/mandala-runtime/mandala_runtime.compact.compressed.wasm --chain=dev on-runtime-upgrade live --uri wss://mandala.polkawallet.io:443
 
 .PHONY: try-runtime-acala
 try-runtime-acala:
-	SKIP_WASM_BUILD= cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+	cargo build --release --locked --features with-acala-runtime --features try-runtime --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	./target/release/acala try-runtime --runtime ./target/release/wbuild/acala-runtime/acala_runtime.compact.compressed.wasm --chain=acala-dev on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws
 
 .PHONY: test
 test: githooks
