@@ -1,6 +1,6 @@
 [package]
 name = "runtime-common"
-version = "2.12.0"
+version = "2.13.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
