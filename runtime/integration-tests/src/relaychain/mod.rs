@@ -199,12 +199,12 @@ fn weight_to_fee_works() {
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(1_385_324_560, fee);
+		assert_eq!(1_401_915_012, fee);
 
 		// transfer_to_relay_chain weight in KusamaNet
 		let weight: Weight = Weight::from_ref_time(298_368_000);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(103_334_130, fee);
+		assert_eq!(104_571_645, fee);
 	}
 
 	// Polkadot
@@ -217,12 +217,12 @@ fn weight_to_fee_works() {
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(408_646_968, fee);
+		assert_eq!(421_434_140, fee);
 
 		// transfer_to_relay_chain weight in KusamaNet
 		let weight: Weight = Weight::from_ref_time(298_368_000);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(30_481_795, fee);
+		assert_eq!(31_435_615, fee);
 	}
 
 	// Statemine
