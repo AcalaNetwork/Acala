@@ -116,7 +116,7 @@ where
 			// should check evm nonce
 			let address = <T as module_evm::Config>::AddressMapping::get_evm_address(who)
 				.unwrap_or_else(|| <T as module_evm::Config>::AddressMapping::get_default_evm_address(who));
-			let evm_nonce = module_evm::Accounts::<T>::get(&address)
+			let evm_nonce = module_evm::Accounts::<T>::get(address)
 				.map(|x| x.nonce)
 				.unwrap_or_default();
 			if self.nonce != evm_nonce {
@@ -151,7 +151,7 @@ where
 			// should check evm nonce
 			let address = <T as module_evm::Config>::AddressMapping::get_evm_address(who)
 				.unwrap_or_else(|| <T as module_evm::Config>::AddressMapping::get_default_evm_address(who));
-			let evm_nonce = module_evm::Accounts::<T>::get(&address)
+			let evm_nonce = module_evm::Accounts::<T>::get(address)
 				.map(|x| x.nonce)
 				.unwrap_or_default();
 			if self.nonce < evm_nonce {

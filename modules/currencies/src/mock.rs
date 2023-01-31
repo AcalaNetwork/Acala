@@ -263,6 +263,10 @@ pub fn erc20_address() -> EvmAddress {
 	EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap()
 }
 
+pub fn erc20_address_not_exist() -> EvmAddress {
+	EvmAddress::from_str("0x00ddfce53ee040d9eb21afbc0ae1bb4dbb0ba600").unwrap()
+}
+
 pub const ALICE_BALANCE: u128 = 100_000_000_000_000_000_000_000u128;
 
 pub fn deploy_contracts() {

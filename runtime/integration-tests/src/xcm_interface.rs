@@ -32,26 +32,28 @@ use xcm_emulator::TestExt;
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
 const XCM_WEIGHT: XcmWeight = 20_000_000_000;
 const XCM_FEE: Balance = 10_000_000_000;
-const ACTUAL_XCM_FEE: Balance = 713_496_883;
+const XCM_BOND_FEE: Balance = 7_118_539_605;
+const XCM_UNBOND_FEE: Balance = 5_423_483_202;
+const XCM_TRANSFER_FEE: Balance = 104_571_645;
 
 fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Balance>)> {
 	vec![
-		// Xcm weight = 400_000_000, fee = ACTUAL_XCM_FEE
+		// Xcm weight = 400_000_000, fee = XCM_BOND_FEE
 		(XcmInterfaceOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)),
 		(
 			XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into())),
 			Some(XCM_WEIGHT),
 			Some(XCM_FEE),
 		),
-		// Xcm weight = 14_000_000_000, fee = ACTUAL_XCM_FEE
+		// Xcm weight = 14_000_000_000, fee = XCM_BOND_FEE
 		(
 			XcmInterfaceOperation::HomaWithdrawUnbonded,
 			Some(XCM_WEIGHT),
 			Some(XCM_FEE),
 		),
-		// Xcm weight = 14_000_000_000, fee = ACTUAL_XCM_FEE
+		// Xcm weight = 14_000_000_000, fee = XCM_BOND_FEE
 		(XcmInterfaceOperation::HomaBondExtra, Some(XCM_WEIGHT), Some(XCM_FEE)),
-		// Xcm weight = 14_000_000_000, fee = ACTUAL_XCM_FEE
+		// Xcm weight = 14_000_000_000, fee = XCM_BOND_FEE
 		(XcmInterfaceOperation::HomaUnbond, Some(XCM_WEIGHT), Some(XCM_FEE)),
 	]
 }
@@ -146,12 +148,12 @@ fn xcm_interface_transfer_staking_to_sub_account_works() {
 		// 1000 dollars (minus fee) are transferred into the Kusama chain
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-			999_999_989_518_701
+			999_999_895_428_355
 		);
 		// XCM fee is paid by the parachain account.
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account),
-			1003 * dollar(RELAY_CHAIN_CURRENCY) - ACTUAL_XCM_FEE
+			1003 * dollar(RELAY_CHAIN_CURRENCY) - XCM_BOND_FEE
 		);
 	});
 }
@@ -247,7 +249,7 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1002 * dollar(RELAY_CHAIN_CURRENCY) - ACTUAL_XCM_FEE
+			1002 * dollar(RELAY_CHAIN_CURRENCY) - XCM_BOND_FEE
 		);
 	});
 }
@@ -265,6 +267,22 @@ fn xcm_interface_bond_extra_on_sub_account_works() {
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
 			MultiAddress::Id(homa_lite_sub_account.clone()),
 			1_001 * dollar(RELAY_CHAIN_CURRENCY)
+		));
+
+		// Transfer some KSM into the parachain.
+		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
+			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
+			Box::new(Parachain(2000).into().into()),
+			Box::new(
+				Junction::AccountId32 {
+					id: alice().into(),
+					network: NetworkId::Any
+				}
+				.into()
+				.into()
+			),
+			Box::new((Here, 1_000 * dollar(RELAY_CHAIN_CURRENCY)).into()),
+			0
 		));
 
 		// Bond some money
@@ -292,7 +310,7 @@ fn xcm_interface_bond_extra_on_sub_account_works() {
 		);
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account),
-			2 * dollar(RELAY_CHAIN_CURRENCY)
+			1002 * dollar(RELAY_CHAIN_CURRENCY)
 		);
 	});
 
@@ -328,12 +346,12 @@ fn xcm_interface_bond_extra_on_sub_account_works() {
 		);
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-			1001 * dollar(RELAY_CHAIN_CURRENCY)
+			1501 * dollar(RELAY_CHAIN_CURRENCY) - XCM_TRANSFER_FEE
 		);
 		// XCM fee is paid by the sovereign account.
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account),
-			2 * dollar(RELAY_CHAIN_CURRENCY) - ACTUAL_XCM_FEE
+			502 * dollar(RELAY_CHAIN_CURRENCY) - XCM_BOND_FEE
 		);
 	});
 }
@@ -351,6 +369,22 @@ fn xcm_interface_unbond_on_sub_account_works() {
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
 			MultiAddress::Id(homa_lite_sub_account.clone()),
 			1_001 * dollar(RELAY_CHAIN_CURRENCY)
+		));
+
+		// Transfer some KSM into the parachain.
+		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
+			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
+			Box::new(Parachain(2000).into().into()),
+			Box::new(
+				Junction::AccountId32 {
+					id: alice().into(),
+					network: NetworkId::Any
+				}
+				.into()
+				.into()
+			),
+			Box::new((Here, 1_000 * dollar(RELAY_CHAIN_CURRENCY)).into()),
+			0
 		));
 
 		// Bond some tokens.
@@ -378,7 +412,7 @@ fn xcm_interface_unbond_on_sub_account_works() {
 		);
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account),
-			2 * dollar(RELAY_CHAIN_CURRENCY)
+			1_002 * dollar(RELAY_CHAIN_CURRENCY)
 		);
 	});
 
@@ -399,6 +433,7 @@ fn xcm_interface_unbond_on_sub_account_works() {
 			RuntimeOrigin::signed(bob()),
 			1_000 * dollar(RELAY_CHAIN_CURRENCY),
 		));
+
 		// Update internal storage in Homa
 		assert_ok!(Homa::bump_current_era(1));
 
@@ -415,18 +450,18 @@ fn xcm_interface_unbond_on_sub_account_works() {
 	KusamaNet::execute_with(|| {
 		// Ensure the correct amount of fund is unbonded
 		let ledger = kusama_runtime::Staking::ledger(&homa_lite_sub_account).expect("record should exist");
-		assert_eq!(ledger.total, 1001 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE);
-		assert_eq!(ledger.active, dollar(RELAY_CHAIN_CURRENCY));
+		assert_eq!(ledger.total, 1_001 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE);
+		assert_eq!(ledger.active, 1 * dollar(RELAY_CHAIN_CURRENCY));
 
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-			1_001 * dollar(RELAY_CHAIN_CURRENCY)
+			2_001 * dollar(RELAY_CHAIN_CURRENCY) - XCM_TRANSFER_FEE
 		);
 
 		// 2 x XCM fee is paid: for Mint and Redeem
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account),
-			2 * dollar(RELAY_CHAIN_CURRENCY) - ACTUAL_XCM_FEE * 2
+			2 * dollar(RELAY_CHAIN_CURRENCY) - XCM_BOND_FEE - XCM_UNBOND_FEE
 		);
 	});
 }
@@ -541,10 +576,10 @@ fn homa_mint_and_redeem_works() {
 		assert_eq!(ledger.total, 2001 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE);
 		assert_eq!(ledger.active, 2001 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE);
 
-		// 2 x XCM fee is paid: for Mint and Redeem
+		// XCM fee is paid: for Mint
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account),
-			3 * dollar(RELAY_CHAIN_CURRENCY) - ACTUAL_XCM_FEE
+			3 * dollar(RELAY_CHAIN_CURRENCY) - XCM_BOND_FEE
 		);
 	});
 

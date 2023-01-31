@@ -25,7 +25,7 @@ use sp_api::{CallApiAt, NumberFor, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
 use sp_consensus::BlockStatus;
 use sp_runtime::{
-	generic::{BlockId, SignedBlock},
+	generic::SignedBlock,
 	traits::{BlakeTwo256, Block as BlockT},
 	Justifications,
 };
@@ -206,25 +206,25 @@ impl sc_client_api::BlockBackend<Block> for Client {
 		}
 	}
 
-	fn block(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<SignedBlock<Block>>> {
+	fn block(&self, hash: <Block as BlockT>::Hash) -> sp_blockchain::Result<Option<SignedBlock<Block>>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.block(id),
+			Self::Mandala(client) => client.block(hash),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.block(id),
+			Self::Karura(client) => client.block(hash),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.block(id),
+			Self::Acala(client) => client.block(hash),
 		}
 	}
 
-	fn block_status(&self, id: &BlockId<Block>) -> sp_blockchain::Result<BlockStatus> {
+	fn block_status(&self, hash: <Block as BlockT>::Hash) -> sp_blockchain::Result<BlockStatus> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.block_status(id),
+			Self::Mandala(client) => client.block_status(hash),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.block_status(id),
+			Self::Karura(client) => client.block_status(hash),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.block_status(id),
+			Self::Acala(client) => client.block_status(hash),
 		}
 	}
 
@@ -424,14 +424,14 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 }
 
 impl sp_blockchain::HeaderBackend<Block> for Client {
-	fn header(&self, id: BlockId<Block>) -> sp_blockchain::Result<Option<Header>> {
+	fn header(&self, hash: <Block as BlockT>::Hash) -> sp_blockchain::Result<Option<Header>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.header(&id),
+			Self::Mandala(client) => client.header(hash),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.header(&id),
+			Self::Karura(client) => client.header(hash),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.header(&id),
+			Self::Acala(client) => client.header(hash),
 		}
 	}
 
@@ -446,14 +446,14 @@ impl sp_blockchain::HeaderBackend<Block> for Client {
 		}
 	}
 
-	fn status(&self, id: BlockId<Block>) -> sp_blockchain::Result<sp_blockchain::BlockStatus> {
+	fn status(&self, hash: <Block as BlockT>::Hash) -> sp_blockchain::Result<sp_blockchain::BlockStatus> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.status(id),
+			Self::Mandala(client) => client.status(hash),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.status(id),
+			Self::Karura(client) => client.status(hash),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.status(id),
+			Self::Acala(client) => client.status(hash),
 		}
 	}
 

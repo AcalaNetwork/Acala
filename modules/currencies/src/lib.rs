@@ -815,6 +815,19 @@ impl<T: Config> fungibles::Inspect<T::AccountId> for Pallet<T> {
 			_ => <T::MultiCurrency as fungibles::Inspect<_>>::can_withdraw(asset_id, who, amount),
 		}
 	}
+
+	fn asset_exists(asset_id: Self::AssetId) -> bool {
+		match asset_id {
+			CurrencyId::Erc20(contract) => T::EVMBridge::symbol(InvokeContext {
+				contract,
+				sender: Default::default(),
+				origin: Default::default(),
+			})
+			.is_ok(),
+			id if id == T::GetNativeCurrencyId::get() => true,
+			_ => <T::MultiCurrency as fungibles::Inspect<_>>::asset_exists(asset_id),
+		}
+	}
 }
 
 impl<T: Config> fungibles::Mutate<T::AccountId> for Pallet<T> {

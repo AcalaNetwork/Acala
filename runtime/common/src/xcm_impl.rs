@@ -19,7 +19,7 @@
 //! Common xcm implementation
 
 use codec::Encode;
-use frame_support::{traits::Get, weights::constants::WEIGHT_PER_SECOND};
+use frame_support::{traits::Get, weights::constants::WEIGHT_REF_TIME_PER_SECOND};
 use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
 use primitives::{Balance, CurrencyId};
@@ -161,9 +161,9 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 			log::debug!(target: "xcm::weight", "buy_weight multi_location: {:?}", multi_location);
 
 			if let Some(ratio) = M::calculate_rate(multi_location.clone()) {
-				// The WEIGHT_PER_SECOND is non-zero.
+				// The WEIGHT_REF_TIME_PER_SECOND is non-zero.
 				let weight_ratio =
-					FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND.ref_time() as u128);
+					FixedU128::saturating_from_rational(weight as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
 				let amount = ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
 
 				let required = MultiAsset {
@@ -197,7 +197,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 			weight, self.weight, self.amount, self.ratio, self.multi_location
 		);
 		let weight = weight.min(self.weight);
-		let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND.ref_time() as u128);
+		let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
 		let amount = self
 			.ratio
 			.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
@@ -355,11 +355,11 @@ mod tests {
 			let asset: MultiAsset = (Parent, 100).into();
 			let assets: Assets = asset.into();
 			let mut trader = <FixedRateOfAsset<(), (), MockNoneBuyWeightRate>>::new();
-			let buy_weight = trader.buy_weight(WEIGHT_PER_SECOND.ref_time(), assets.clone());
+			let buy_weight = trader.buy_weight(WEIGHT_REF_TIME_PER_SECOND, assets.clone());
 			assert_noop!(buy_weight, XcmError::TooExpensive);
 
 			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockFixedBuyWeightRate<FixedRate>>>::new();
-			let buy_weight = trader.buy_weight(WEIGHT_PER_SECOND.ref_time(), assets.clone());
+			let buy_weight = trader.buy_weight(WEIGHT_REF_TIME_PER_SECOND, assets.clone());
 			let asset: MultiAsset = (Parent, 90).into();
 			let assets: Assets = asset.into();
 			assert_ok!(buy_weight, assets.clone());

@@ -101,9 +101,9 @@ pub struct Cli {
 	#[clap(flatten)]
 	pub run: cumulus_client_cli::RunCmd,
 
-	/// Relaychain arguments
+	/// Relay chain arguments
 	#[clap(raw = true)]
-	pub relaychain_args: Vec<String>,
+	pub relay_chain_args: Vec<String>,
 
 	/// Instant block sealing
 	///

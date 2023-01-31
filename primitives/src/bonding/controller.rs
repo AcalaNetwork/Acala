@@ -73,7 +73,7 @@ where
 
 		let ledger = ledger.bond(bond_amount).map_err(Self::convert_error)?;
 
-		Self::Ledger::insert(&who, &ledger);
+		Self::Ledger::insert(who, &ledger);
 		Self::apply_ledger(who, &ledger)?;
 
 		Ok(Some(BondChange {
@@ -93,7 +93,7 @@ where
 			return Ok(None);
 		}
 
-		Self::Ledger::insert(&who, &ledger);
+		Self::Ledger::insert(who, &ledger);
 		Self::apply_ledger(who, &ledger)?;
 
 		Ok(Some(BondChange {
@@ -113,7 +113,7 @@ where
 			return Ok(None);
 		}
 
-		Self::Ledger::insert(&who, &ledger);
+		Self::Ledger::insert(who, &ledger);
 		Self::apply_ledger(who, &ledger)?;
 
 		Ok(Some(BondChange {
@@ -133,7 +133,7 @@ where
 			return Ok(None);
 		}
 
-		Self::Ledger::insert(&who, &ledger);
+		Self::Ledger::insert(who, &ledger);
 		Self::apply_ledger(who, &ledger)?;
 
 		Ok(Some(BondChange {
@@ -158,9 +158,9 @@ where
 		}
 
 		if new_total == 0 {
-			Self::Ledger::remove(&who);
+			Self::Ledger::remove(who);
 		} else {
-			Self::Ledger::insert(&who, &ledger);
+			Self::Ledger::insert(who, &ledger);
 		}
 
 		Self::apply_ledger(who, &ledger)?;

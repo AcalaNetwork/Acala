@@ -44,9 +44,7 @@ fn test_authority_module() {
 		])
 		.build()
 		.execute_with(|| {
-			let ensure_root_call = RuntimeCall::System(frame_system::Call::fill_block {
-				ratio: Perbill::from_percent(50),
-			});
+			let ensure_root_call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 			let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 				as_origin: AuthoritysOriginId::Root,
 				call: Box::new(ensure_root_call.clone()),

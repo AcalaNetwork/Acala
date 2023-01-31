@@ -50,18 +50,6 @@ pub struct AcalaUncheckedExtrinsic<
 	PhantomData<(ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx)>,
 );
 
-#[cfg(feature = "std")]
-impl<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> parity_util_mem::MallocSizeOf
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
-where
-	Extra: SignedExtension,
-{
-	fn size_of(&self, _ops: &mut parity_util_mem::MallocSizeOfOps) -> usize {
-		// Instantiated only in runtime.
-		0
-	}
-}
-
 impl<Call, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> Extrinsic
 	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
@@ -236,6 +224,14 @@ where
 			}
 			_ => self.0.check(lookup),
 		}
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn unchecked_into_checked_i_know_what_i_am_doing(
+		self,
+		_lookup: &Lookup,
+	) -> Result<Self::Checked, TransactionValidityError> {
+		unreachable!();
 	}
 }
 

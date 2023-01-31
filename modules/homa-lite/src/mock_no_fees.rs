@@ -51,6 +51,16 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 	) -> DispatchResult {
 		Ok(())
 	}
+
+	fn transfer_multiasset_with_fee(
+		_who: AccountId,
+		_asset: MultiAsset,
+		_fee: MultiAsset,
+		_dest: MultiLocation,
+		_dest_weight: WeightLimit,
+	) -> DispatchResult {
+		Ok(())
+	}
 }
 impl InvertLocation for MockXcm {
 	fn ancestry() -> MultiLocation {

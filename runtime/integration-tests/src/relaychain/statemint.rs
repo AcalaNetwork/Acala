@@ -33,7 +33,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE: Balance = 50_000_000;
-pub const FEE_STATEMINT: Balance = 10_339_270;
+pub const FEE_STATEMINT: Balance = 10_312_677;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
@@ -132,8 +132,8 @@ fn acala_statemint_transfer_works() {
 		// and withdraw sibling parachain sovereign account
 		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
 
-		assert_eq!(1_000_036_465_466, Balances::free_balance(&AccountId::from(BOB)));
-		assert_eq!(1_003_533_696_686, Balances::free_balance(&para_2000));
+		assert_eq!(10_000_36_577_567, Balances::free_balance(&AccountId::from(BOB)));
+		assert_eq!(1_003_531_229_427, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -193,7 +193,7 @@ fn statemint_side(para_2000_init_amount: u128) {
 		// create custom asset cost 1 DOT
 		assert_ok!(Assets::create(
 			origin.clone(),
-			0,
+			0.into(),
 			MultiAddress::Id(ALICE.into()),
 			UNIT / 100
 		));
@@ -201,7 +201,7 @@ fn statemint_side(para_2000_init_amount: u128) {
 
 		assert_ok!(Assets::mint(
 			origin.clone(),
-			0,
+			0.into(),
 			MultiAddress::Id(ALICE.into()),
 			1000 * UNIT
 		));

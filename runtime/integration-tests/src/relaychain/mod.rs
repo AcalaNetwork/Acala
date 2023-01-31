@@ -35,13 +35,13 @@ pub mod polkadot_test_net;
 mod statemint;
 
 pub use fee_test::{relay_per_second_as_fee, token_per_second_as_fee};
-use frame_support::weights::{constants::WEIGHT_PER_SECOND, Weight};
+use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight};
 use sp_runtime::{FixedPointNumber, FixedU128};
 
 // N * unit_weight * (weight/10^12) * token_per_second
 fn weight_calculation(instruction_count: u32, unit_weight: Weight, per_second: u128) -> u128 {
 	let weight = unit_weight.saturating_mul(instruction_count as u64);
-	let weight_ratio = FixedU128::saturating_from_rational(weight.ref_time(), WEIGHT_PER_SECOND.ref_time());
+	let weight_ratio = FixedU128::saturating_from_rational(weight.ref_time(), WEIGHT_REF_TIME_PER_SECOND);
 	weight_ratio.saturating_mul_int(per_second)
 }
 
@@ -199,12 +199,12 @@ fn weight_to_fee_works() {
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(140_515_056, fee);
+		assert_eq!(1_401_915_012, fee);
 
 		// transfer_to_relay_chain weight in KusamaNet
 		let weight: Weight = Weight::from_ref_time(298_368_000);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(10_481_299, fee);
+		assert_eq!(104_571_645, fee);
 	}
 
 	// Polkadot
@@ -217,12 +217,12 @@ fn weight_to_fee_works() {
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(418_940_288, fee);
+		assert_eq!(421_434_140, fee);
 
 		// transfer_to_relay_chain weight in KusamaNet
 		let weight: Weight = Weight::from_ref_time(298_368_000);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(31_249_594, fee);
+		assert_eq!(31_435_615, fee);
 	}
 
 	// Statemine
@@ -234,7 +234,7 @@ fn weight_to_fee_works() {
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(13_471_548, fee);
+		assert_eq!(134_715_512, fee);
 	}
 
 	// Statemint

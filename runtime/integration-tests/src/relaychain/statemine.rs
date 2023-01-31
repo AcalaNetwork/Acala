@@ -32,9 +32,9 @@ use xcm_emulator::TestExt;
 
 pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
-pub const FEE_WEIGHT: Balance = 4_000_000_000;
-pub const FEE: Balance = 20_000_000;
-pub const FEE_STATEMINE: Balance = 4_521_058;
+pub const FEE_WEIGHT: Balance = 40_000_000_000;
+pub const FEE: Balance = 200_000_000;
+pub const FEE_STATEMINE: Balance = 44_754_547;
 pub const FEE_KUSAMA: Balance = 11_492_737;
 const ASSET_ID: u32 = 100;
 
@@ -43,7 +43,7 @@ fn init_statemine_xcm_interface() {
 		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
 	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
 		RuntimeOrigin::root(),
-		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(20_000_000),)],
+		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(200_000_000),)],
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(
 		module_xcm_interface::Event::XcmDestWeightUpdated {
@@ -53,7 +53,7 @@ fn init_statemine_xcm_interface() {
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
 		xcm_operation,
-		new_xcm_dest_weight: 20_000_000,
+		new_xcm_dest_weight: 200_000_000,
 	}));
 }
 
@@ -173,7 +173,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 		// source parachain sovereign account withrawn.
 		assert_eq!(UNIT, kusama_runtime::Balances::free_balance(&child_2000));
 		// destination parachain sovereign account deposited.
-		assert_eq!(999_973_037_444, kusama_runtime::Balances::free_balance(&child_1000));
+		assert_eq!(999_730_995_290, kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	// In receiver, xm execution error: UntrustedReserveLocation.
@@ -203,7 +203,7 @@ fn karura_transfer_asset_to_statemine_works() {
 
 		// https://github.com/paritytech/cumulus/pull/1278 support using self sufficient asset
 		// for paying xcm execution fee on Statemine.
-		assert_eq!(988_088_276_809, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
+		assert_eq!(988_163_901_882, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
 	});
 }
 
@@ -245,7 +245,7 @@ fn karura_statemine_transfer_use_ksm_as_fee() {
 			UNIT + FEE - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(1_003_992_573_678, Balances::free_balance(&para_2000));
+		assert_eq!(1_039_359_656_150, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -334,7 +334,7 @@ fn statemine_transfer_asset_to_karura() {
 		// We're using force_create here to make sure asset is sufficient.
 		assert_ok!(Assets::force_create(
 			RuntimeOrigin::root(),
-			ASSET_ID,
+			ASSET_ID.into(),
 			MultiAddress::Id(ALICE.into()),
 			true,
 			UNIT / 100
@@ -342,7 +342,7 @@ fn statemine_transfer_asset_to_karura() {
 
 		assert_ok!(Assets::mint(
 			origin.clone(),
-			ASSET_ID,
+			ASSET_ID.into(),
 			MultiAddress::Id(ALICE.into()),
 			1000 * UNIT
 		));
