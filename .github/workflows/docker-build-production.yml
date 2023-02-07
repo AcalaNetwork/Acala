@@ -1,5 +1,5 @@
 # Runs when `release-*` branch is created or push changes into `release-*` branch.
-name: Build Release
+name: Docker Build Production Release
 on:
   create:
   push:
