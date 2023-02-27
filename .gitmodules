@@ -1,6 +1,7 @@
 [submodule "orml"]
 	path = orml
-	url = https://github.com/open-web3-stack/open-runtime-module-library.git
+	#url = https://github.com/open-web3-stack/open-runtime-module-library.git
+	url = https://github.com/PureStake/open-runtime-module-library.git
 [submodule "predeploy-contracts"]
 	path = predeploy-contracts
 	url = https://github.com/AcalaNetwork/predeploy-contracts.git

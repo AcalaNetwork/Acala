@@ -163,6 +163,5 @@ bench = [
 	"orml-rewards",
 	"orml-tokens/runtime-benchmarks",
 
-	"xcm/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 ]

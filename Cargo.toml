@@ -235,7 +235,6 @@ sp-api = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b
 sp-application-crypto = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 sp-arithmetic = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 sp-authority-discovery = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
-sp-authorship = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 sp-beefy = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 sp-block-builder = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 sp-blockchain = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
@@ -281,6 +280,7 @@ substrate-test-client = { git = "https://github.com/paritytech//substrate", rev 
 substrate-test-utils = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 substrate-test-utils-derive = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 try-runtime-cli = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
+sc-peerset = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 
 [patch."https://github.com/paritytech/polkadot"]
 kusama-runtime = { git = "https://github.com/paritytech//polkadot", rev = "72309a2b2e68413305a56dce1097041309bd29c6" }
