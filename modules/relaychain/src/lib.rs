@@ -163,7 +163,7 @@ where
 			RefundSurplus,
 			DepositAsset {
 				assets: All.into(),
-				max_assets: u32::max_value(),
+				max_assets: 1, // there is only 1 asset on relaychain
 				beneficiary: MultiLocation {
 					parents: 0,
 					interior: X1(Parachain(ParachainId::get().into())),
