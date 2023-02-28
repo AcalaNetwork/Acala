@@ -48,11 +48,9 @@ use scale_info::prelude::format;
 use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedU128};
 use sp_std::{boxed::Box, vec::Vec};
 
-use xcm::{
-	v1::{Junction, Junctions::*, MultiLocation},
-	VersionedMultiLocation,
-};
+use xcm::{v3::prelude::*, VersionedMultiLocation};
 
+pub mod migrations;
 mod mock;
 mod tests;
 mod weights;
@@ -564,8 +562,8 @@ fn key_to_currency(location: MultiLocation) -> Option<CurrencyId> {
 	match location {
 		MultiLocation {
 			parents: 0,
-			interior: X1(Junction::GeneralKey(key)),
-		} => CurrencyId::decode(&mut &*key.into_inner()).ok(),
+			interior: X1(Junction::GeneralKey { data, .. }),
+		} => CurrencyId::decode(&mut &*data.to_vec()).ok(),
 		_ => None,
 	}
 }
