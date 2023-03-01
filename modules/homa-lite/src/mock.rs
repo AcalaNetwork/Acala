@@ -35,7 +35,7 @@ pub use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
 pub use cumulus_primitives_core::ParaId;
 pub use xcm::v3::prelude::*;
-pub use xcm_executor::traits::{InvertLocation, WeightBounds};
+pub use xcm_executor::traits::WeightBounds;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -114,13 +114,10 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 		Ok(())
 	}
 }
-impl InvertLocation for MockXcm {
-	fn ancestry() -> MultiLocation {
-		Parachain(2000).into()
-	}
 
-	fn invert_location(l: &MultiLocation) -> Result<MultiLocation, ()> {
-		Ok(l.clone())
+impl Get<InteriorMultiLocation> for MockXcm {
+	fn get() -> InteriorMultiLocation {
+		X1(Parachain(2000))
 	}
 }
 
@@ -132,7 +129,7 @@ impl SendXcm for MockXcm {
 				parents: 1,
 				interior: Junctions::Here,
 			} => Ok(()),
-			_ => Err(SendError::CannotReachDestination(dest, msg)),
+			_ => Err(SendError::Unroutable),
 		}
 	}
 }
@@ -141,6 +138,7 @@ impl ExecuteXcm<RuntimeCall> for MockXcm {
 	fn execute_xcm_in_credit(
 		_origin: impl Into<MultiLocation>,
 		mut _message: Xcm<RuntimeCall>,
+		_hash: XcmHash,
 		_weight_limit: XcmWeight,
 		_weight_credit: XcmWeight,
 	) -> Outcome {
@@ -183,7 +181,7 @@ impl pallet_xcm::Config for Runtime {
 	type XcmTeleportFilter = Everything;
 	type XcmReserveTransferFilter = Everything;
 	type Weigher = MockWeigher;
-	type LocationInverter = MockXcm;
+	type UniversalLocation = MockXcm;
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;

@@ -25,8 +25,8 @@ use orml_traits::GetByKey;
 use primitives::{Balance, CurrencyId};
 use sp_core::bounded::BoundedVec;
 use sp_runtime::{
-	traits::{ConstU32, Convert, Zero},
-	FixedPointNumber, FixedU128, WeakBoundedVec,
+	traits::{Convert, Zero},
+	FixedPointNumber, FixedU128,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::{latest::Weight as XcmWeight, prelude::*};
@@ -89,7 +89,7 @@ where
 	NB: Get<Balance>,
 	GK: GetByKey<CurrencyId, Balance>,
 {
-	fn drop_assets(origin: &MultiLocation, assets: Assets) -> XcmWeight {
+	fn drop_assets(origin: &MultiLocation, assets: Assets, context: &XcmContext) -> XcmWeight {
 		let multi_assets: Vec<MultiAsset> = assets.into();
 		let mut asset_traps: Vec<MultiAsset> = vec![];
 		for asset in multi_assets {
@@ -111,9 +111,9 @@ where
 			}
 		}
 		if !asset_traps.is_empty() {
-			X::drop_assets(origin, asset_traps.into());
+			X::drop_assets(origin, asset_traps.into(), context);
 		}
-		0
+		0.into()
 	}
 }
 
@@ -158,7 +158,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 			if let Some(ratio) = M::calculate_rate(multi_location.clone()) {
 				// The WEIGHT_REF_TIME_PER_SECOND is non-zero.
 				let weight_ratio =
-					FixedU128::saturating_from_rational(weight as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
+					FixedU128::saturating_from_rational(weight.ref_time() as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
 				let amount = ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
 
 				let required = MultiAsset {
@@ -192,7 +192,8 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 			weight, self.weight, self.amount, self.ratio, self.multi_location
 		);
 		let weight = weight.min(self.weight);
-		let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
+		let weight_ratio =
+			FixedU128::saturating_from_rational(weight.ref_time() as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
 		let amount = self
 			.ratio
 			.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
@@ -245,6 +246,7 @@ impl<
 	fn execute_xcm_in_credit(
 		origin: impl Into<MultiLocation>,
 		message: Xcm<Config::RuntimeCall>,
+		hash: XcmHash,
 		weight_limit: XcmWeight,
 		weight_credit: XcmWeight,
 	) -> Outcome {
@@ -256,8 +258,13 @@ impl<
 		} else {
 			false
 		};
-		let res =
-			xcm_executor::XcmExecutor::<Config>::execute_xcm_in_credit(origin, message, weight_limit, weight_credit);
+		let res = xcm_executor::XcmExecutor::<Config>::execute_xcm_in_credit(
+			origin,
+			message,
+			hash,
+			weight_limit,
+			weight_credit,
+		);
 		if clear {
 			EVMBridge::pop_origin();
 		}

@@ -62,25 +62,22 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 		Ok(())
 	}
 }
-impl InvertLocation for MockXcm {
-	fn ancestry() -> MultiLocation {
-		Parachain(2000).into()
-	}
 
-	fn invert_location(l: &MultiLocation) -> Result<MultiLocation, ()> {
-		Ok(l.clone())
+impl Get<InteriorMultiLocation> for MockXcm {
+	fn get() -> InteriorMultiLocation {
+		X1(Parachain(2000))
 	}
 }
 
 impl SendXcm for MockXcm {
-	fn send_xcm(dest: impl Into<MultiLocation>, msg: Xcm<()>) -> SendResult {
+	fn send_xcm(dest: impl Into<MultiLocation>, _msg: Xcm<()>) -> SendResult {
 		let dest = dest.into();
 		match dest {
 			MultiLocation {
 				parents: 1,
 				interior: Junctions::Here,
 			} => Ok(()),
-			_ => Err(SendError::CannotReachDestination(dest, msg)),
+			_ => Err(SendError::Unroutable),
 		}
 	}
 }
@@ -89,6 +86,7 @@ impl ExecuteXcm<RuntimeCall> for MockXcm {
 	fn execute_xcm_in_credit(
 		_origin: impl Into<MultiLocation>,
 		mut _message: Xcm<RuntimeCall>,
+		_hash: XcmHash,
 		_weight_limit: XcmWeight,
 		_weight_credit: XcmWeight,
 	) -> Outcome {
@@ -131,7 +129,7 @@ impl pallet_xcm::Config for NoFeeRuntime {
 	type XcmTeleportFilter = Everything;
 	type XcmReserveTransferFilter = Everything;
 	type Weigher = MockWeigher;
-	type LocationInverter = MockXcm;
+	type UniversalLocation = MockXcm;
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
