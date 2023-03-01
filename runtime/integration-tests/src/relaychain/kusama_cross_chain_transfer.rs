@@ -124,7 +124,7 @@ fn transfer_native_chain_asset() {
 		// Register native BNC's incoming address as a foreign asset so it can receive BNC
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			RuntimeOrigin::root(),
-			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec().try_into().unwrap()))).into()),
+			Box::new(MultiLocation::new(0, X1(Junction::from(BoundedVec::try_from(BNC_KEY.to_vec()).unwrap()))).into()),
 			Box::new(AssetMetadata {
 				name: b"Native BNC".to_vec(),
 				symbol: b"BNC".to_vec(),
@@ -219,7 +219,7 @@ fn transfer_sibling_chain_asset() {
 		// Register native BNC's incoming address as a foreign asset so it can handle reserve transfers
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			RuntimeOrigin::root(),
-			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec().try_into().unwrap()))).into()),
+			Box::new(MultiLocation::new(0, X1(Junction::from(BoundedVec::try_from(BNC_KEY.to_vec()).unwrap()))).into()),
 			Box::new(AssetMetadata {
 				name: b"Native BNC".to_vec(),
 				symbol: b"BNC".to_vec(),
@@ -343,7 +343,7 @@ fn asset_registry_module_works() {
 		// Register native BNC's incoming address as a foreign asset so it can handle reserve transfers
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			RuntimeOrigin::root(),
-			Box::new(MultiLocation::new(0, X1(GeneralKey(BNC_KEY.to_vec().try_into().unwrap()))).into()),
+			Box::new(MultiLocation::new(0, X1(Junction::from(BoundedVec::try_from(BNC_KEY.to_vec()).unwrap()))).into()),
 			Box::new(AssetMetadata {
 				name: b"Native BNC".to_vec(),
 				symbol: b"BNC".to_vec(),
@@ -365,7 +365,10 @@ fn asset_registry_module_works() {
 			Box::new(
 				MultiLocation::new(
 					1,
-					X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec().try_into().unwrap()))
+					X2(
+						Parachain(BIFROST_ID),
+						Junction::from(BoundedVec::try_from(BNC_KEY.to_vec()).unwrap())
+					)
 				)
 				.into()
 			),
@@ -385,7 +388,10 @@ fn asset_registry_module_works() {
 			Box::new(
 				MultiLocation::new(
 					1,
-					X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec().try_into().unwrap()))
+					X2(
+						Parachain(BIFROST_ID),
+						Junction::from(BoundedVec::try_from(BNC_KEY.to_vec()).unwrap())
+					)
 				)
 				.into()
 			),
@@ -511,7 +517,7 @@ fn stable_asset_xtokens_works() {
 					1,
 					X2(
 						Parachain(KARURA_ID),
-						GeneralKey(stable_asset.encode().try_into().unwrap())
+						Junction::from(BoundedVec::try_from(stable_asset.encode()).unwrap())
 					)
 				)
 				.into()
@@ -1005,7 +1011,7 @@ fn trapped_asset() -> MultiAsset {
 			r.event,
 			kusama_runtime::RuntimeEvent::Ump(polkadot_runtime_parachains::ump::Event::ExecutedUpward(
 				_,
-				xcm::latest::Outcome::Incomplete(160892100, _)
+				xcm::v3::Outcome::Incomplete(160892100, _)
 			))
 		)));
 
@@ -1062,7 +1068,7 @@ fn claim_trapped_asset_works() {
 			r.event,
 			kusama_runtime::RuntimeEvent::Ump(polkadot_runtime_parachains::ump::Event::ExecutedUpward(
 				_,
-				xcm::latest::Outcome::Complete(282016000)
+				xcm::v3::Outcome::Complete(282016000)
 			))
 		)));
 	});
@@ -1113,7 +1119,13 @@ fn trap_assets_larger_than_ed_works() {
 				fees: assets,
 				weight_limit: Limited(dollar(KSM) as u64),
 			},
-			WithdrawAsset(((0, GeneralKey(KAR.encode().try_into().unwrap())), kar_asset_amount).into()),
+			WithdrawAsset(
+				(
+					(0, Junction::from(BoundedVec::try_from(KAR.encode()).unwrap())),
+					kar_asset_amount,
+				)
+					.into(),
+			),
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
@@ -1162,7 +1174,13 @@ fn trap_assets_lower_than_ed_works() {
 				fees: assets,
 				weight_limit: Limited(dollar(KSM) as u64),
 			},
-			WithdrawAsset(((0, X1(GeneralKey(KAR.encode().try_into().unwrap()))), kar_asset_amount).into()),
+			WithdrawAsset(
+				(
+					(0, X1(Junction::from(BoundedVec::try_from(KAR.encode()).unwrap()))),
+					kar_asset_amount,
+				)
+					.into(),
+			),
 			// two asset left in holding register, they both lower than ED, so goes to treasury.
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
@@ -1206,7 +1224,11 @@ fn sibling_trap_assets_works() {
 	});
 
 	Sibling::execute_with(|| {
-		let assets: MultiAsset = ((0, X1(GeneralKey(KAR.encode().try_into().unwrap()))), kar_asset_amount).into();
+		let assets: MultiAsset = (
+			(0, X1(Junction::from(BoundedVec::try_from(KAR.encode()).unwrap()))),
+			kar_asset_amount,
+		)
+			.into();
 		let xcm = vec![
 			WithdrawAsset(assets.clone().into()),
 			BuyExecution {
@@ -1217,7 +1239,10 @@ fn sibling_trap_assets_works() {
 				(
 					(
 						Parent,
-						X2(Parachain(BIFROST_ID), GeneralKey(BNC_KEY.to_vec().try_into().unwrap())),
+						X2(
+							Parachain(BIFROST_ID),
+							Junction::from(BoundedVec::try_from(BNC_KEY.encode()).unwrap()),
+						),
 					),
 					bnc_asset_amount,
 				)

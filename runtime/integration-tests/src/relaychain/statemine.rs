@@ -27,7 +27,7 @@ pub use orml_traits::GetByKey;
 use polkadot_parachain::primitives::Sibling;
 use primitives::currency::AssetMetadata;
 use sp_runtime::traits::AccountIdConversion;
-use xcm::v2::{Junction, MultiLocation};
+use xcm::v3::{Junction, MultiLocation};
 use xcm_emulator::TestExt;
 
 pub const UNIT: Balance = 1_000_000_000_000;

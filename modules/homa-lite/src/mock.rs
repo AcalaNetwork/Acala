@@ -34,7 +34,7 @@ pub use sp_core::{H160, H256};
 pub use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
 pub use cumulus_primitives_core::ParaId;
-pub use xcm::latest::prelude::*;
+pub use xcm::v3::prelude::*;
 pub use xcm_executor::traits::{InvertLocation, WeightBounds};
 
 pub type AccountId = AccountId32;

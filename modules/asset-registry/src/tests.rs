@@ -36,6 +36,22 @@ use sp_core::H160;
 use std::str::{from_utf8, FromStr};
 
 #[test]
+fn key_to_currency_work() {
+	let erc20 = CurrencyId::Erc20(EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba644").unwrap());
+	let v2_location = xcm::v2::MultiLocation::new(
+		0,
+		xcm::v2::Junctions::X1(xcm::v2::Junction::GeneralKey(erc20.encode().try_into().unwrap())),
+	);
+	let v3_location_from_v2 = MultiLocation::try_from(v2_location.clone()).unwrap();
+	let v3_location = MultiLocation::new(
+		0,
+		Junctions::X1(Junction::from(BoundedVec::try_from(erc20.encode()).unwrap())),
+	);
+	assert_eq!(v3_location_from_v2, v3_location);
+	assert_eq!(crate::key_to_currency(v3_location), Some(erc20));
+}
+
+#[test]
 fn test_v2_to_v3_incompatible_multilocation() {
 	let v2_location = xcm::v2::MultiLocation::new(
 		0,

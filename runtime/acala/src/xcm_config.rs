@@ -288,9 +288,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		match location {
 			MultiLocation {
 				parents,
-				interior: X2(Parachain(para_id), GeneralKey(key)),
+				interior: X2(Parachain(para_id), GeneralKey { data, length }),
 			} if parents == 1 => {
-				match (para_id, &key.into_inner()[..]) {
+				match (para_id, &data[..length as usize]) {
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Acala
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
@@ -313,9 +313,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
 			MultiLocation {
 				parents: 0,
-				interior: X1(GeneralKey(key)),
+				interior: X1(GeneralKey { data: key, length }),
 			} => {
-				let key = &key.into_inner()[..];
+				let key = &data[..length as usize];
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
 					Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => Some(currency_id),

@@ -45,7 +45,7 @@ pub use sp_runtime::{
 	Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress, Perbill, Permill,
 };
 
-pub use xcm::latest::prelude::*;
+pub use xcm::v3::prelude::*;
 
 #[cfg(feature = "with-mandala-runtime")]
 pub use mandala_imports::*;
@@ -71,7 +71,7 @@ mod mandala_imports {
 	pub use runtime_common::{cent, dollar, millicent, FixedRateOfAsset, ACA, AUSD, DOT, LDOT};
 	pub use sp_runtime::traits::AccountIdConversion;
 	use sp_runtime::Percent;
-	pub use xcm::latest::Weight as XcmWeight;
+	pub use xcm::v3::Weight as XcmWeight;
 	pub use xcm_executor::XcmExecutor;
 
 	parameter_types! {
@@ -124,7 +124,7 @@ mod karura_imports {
 	pub use runtime_common::{cent, dollar, millicent, FixedRateOfAsset, KAR, KSM, KUSD, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
 	use sp_runtime::Percent;
-	pub use xcm::latest::Weight as XcmWeight;
+	pub use xcm::v3::Weight as XcmWeight;
 	pub use xcm_executor::XcmExecutor;
 
 	parameter_types! {
@@ -177,7 +177,7 @@ mod acala_imports {
 	pub use runtime_common::{cent, dollar, millicent, FixedRateOfAsset, ACA, AUSD, DOT, LDOT};
 	pub use sp_runtime::traits::AccountIdConversion;
 	use sp_runtime::Percent;
-	pub use xcm::latest::Weight as XcmWeight;
+	pub use xcm::v3::Weight as XcmWeight;
 	pub use xcm_executor::XcmExecutor;
 
 	parameter_types! {

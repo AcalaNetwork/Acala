@@ -23,6 +23,7 @@ use frame_support::{traits::Get, weights::constants::WEIGHT_REF_TIME_PER_SECOND}
 use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
 use primitives::{Balance, CurrencyId};
+use sp_core::bounded::BoundedVec;
 use sp_runtime::{
 	traits::{ConstU32, Convert, Zero},
 	FixedPointNumber, FixedU128, WeakBoundedVec,
@@ -36,13 +37,7 @@ use xcm_executor::{
 };
 
 pub fn local_currency_location(key: CurrencyId) -> MultiLocation {
-	MultiLocation::new(
-		0,
-		X1(GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(
-			key.encode(),
-			None,
-		))),
-	)
+	MultiLocation::new(0, X1(Junction::from(BoundedVec::try_from(key.encode()).expect("xxx"))))
 }
 
 pub fn native_currency_location(para_id: u32, key: Vec<u8>) -> MultiLocation {
@@ -50,7 +45,7 @@ pub fn native_currency_location(para_id: u32, key: Vec<u8>) -> MultiLocation {
 		1,
 		X2(
 			Parachain(para_id),
-			GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(key, None)),
+			Junction::from(BoundedVec::try_from(key.encode()).expect("xxx")),
 		),
 	)
 }

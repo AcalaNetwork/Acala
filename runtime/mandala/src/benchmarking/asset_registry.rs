@@ -64,7 +64,7 @@ runtime_benchmarks! {
 	register_foreign_asset {
 		let location = VersionedMultiLocation::V1(MultiLocation {
 			parents: 0,
-			interior: xcm::v2::Junctions::X1(xcm::v2::Junction::Parachain(1000)),
+			interior: xcm::v3::Junctions::X1(xcm::v3::Junction::Parachain(1000)),
 		});
 		let asset_metadata = AssetMetadata {
 			name: b"Token Name".to_vec(),
@@ -77,7 +77,7 @@ runtime_benchmarks! {
 	update_foreign_asset {
 		let location = VersionedMultiLocation::V1(MultiLocation {
 			parents: 0,
-			interior: xcm::v2::Junctions::X1(xcm::v2::Junction::Parachain(1000)),
+			interior: xcm::v3::Junctions::X1(xcm::v3::Junction::Parachain(1000)),
 		});
 		let asset_metadata = AssetMetadata {
 			name: b"Token Name".to_vec(),

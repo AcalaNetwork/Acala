@@ -562,8 +562,11 @@ fn key_to_currency(location: MultiLocation) -> Option<CurrencyId> {
 	match location {
 		MultiLocation {
 			parents: 0,
-			interior: X1(Junction::GeneralKey { data, .. }),
-		} => CurrencyId::decode(&mut &*data.to_vec()).ok(),
+			interior: X1(Junction::GeneralKey { data, length }),
+		} => {
+			let key = &data[..length as usize];
+			CurrencyId::decode(&mut &*key).ok()
+		}
 		_ => None,
 	}
 }

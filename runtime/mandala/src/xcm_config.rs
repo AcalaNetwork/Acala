@@ -270,10 +270,10 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		match location {
 			MultiLocation {
 				parents,
-				interior: X2(Parachain(para_id), GeneralKey(key)),
+				interior: X2(Parachain(para_id), GeneralKey { data, length }),
 			} if parents == 1 && ParaId::from(para_id) == ParachainInfo::get() => {
 				// decode the general key
-				let key = &key.into_inner()[..];
+				let key = &data[..length as usize];
 				if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 					// check if `currency_id` is cross-chain asset
 					match currency_id {
@@ -289,9 +289,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
 			MultiLocation {
 				parents: 0,
-				interior: X1(GeneralKey(key)),
+				interior: X1(GeneralKey { data, length }),
 			} => {
-				let key = &key.into_inner()[..];
+				let key = &data[..length as usize];
 				if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 					match currency_id {
 						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) | Token(TAI) => Some(currency_id),

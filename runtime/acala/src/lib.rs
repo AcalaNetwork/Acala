@@ -108,7 +108,7 @@ pub use runtime_common::{
 	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, RENBTC, TAP,
 };
-pub use xcm::latest::prelude::*;
+pub use xcm::v3::prelude::*;
 
 mod authority;
 mod benchmarking;

@@ -105,7 +105,7 @@ fn erc20_transfer_between_sibling() {
 					1,
 					X2(
 						Parachain(2000),
-						GeneralKey(erc20_as_foreign_asset.encode().try_into().unwrap())
+						Junction::from(BoundedVec::try_from(erc20_as_foreign_asset.encode()).unwrap())
 					)
 				)
 				.into()
@@ -217,7 +217,7 @@ fn erc20_transfer_between_sibling() {
 	});
 
 	Sibling::execute_with(|| {
-		// Sibling will take (1, 2000, GeneralKey(Erc20(address))) as foreign asset
+		// Sibling will take (1, 2000, GeneralKey{ data:Erc20(address), ..} as foreign asset
 		assert_eq!(
 			9_999_191_760_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
@@ -347,7 +347,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 					1,
 					X2(
 						Parachain(2002),
-						GeneralKey(erc20_as_foreign_asset.encode().try_into().unwrap())
+						Junction::from(BoundedVec::try_from(erc20_as_foreign_asset.encode()).unwrap())
 					)
 				)
 				.into()

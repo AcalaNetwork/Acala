@@ -169,7 +169,7 @@ fn three_usd_pool_works() {
 						1,
 						X2(
 							Parachain(1000),
-							GeneralKey("USDT".as_bytes().to_vec().try_into().unwrap())
+							Junction::from(BoundedVec::try_from("USDT".as_bytes().to_vec()).unwrap())
 						)
 					)
 					.into()

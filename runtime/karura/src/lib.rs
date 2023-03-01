@@ -107,7 +107,7 @@ pub use runtime_common::{
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
 	PHA, RENBTC, TAI, VSKSM,
 };
-pub use xcm::latest::prelude::*;
+pub use xcm::v3::prelude::*;
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;

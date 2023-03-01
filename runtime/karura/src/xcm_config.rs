@@ -393,9 +393,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		match location {
 			MultiLocation {
 				parents: 1,
-				interior: X2(Parachain(para_id), GeneralKey(key)),
+				interior: X2(Parachain(para_id), GeneralKey { data, length }),
 			} => {
-				match (para_id, &key.into_inner()[..]) {
+				match (para_id, &data[..length as usize]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
 					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
 					(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY) => Some(Token(KINT)),
@@ -426,9 +426,10 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
 			MultiLocation {
 				parents: 0,
-				interior: X1(GeneralKey(key)),
+				interior: X1(GeneralKey { data, length }),
 			} => {
-				let currency_id = CurrencyId::decode(&mut &*key.into_inner()).ok()?;
+				let key = &data[..length as usize];
+				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
 					Token(KAR) | Token(KUSD) | Token(LKSM) | Token(TAI) => Some(currency_id),
 					Erc20(address) if !is_system_contract(address) => Some(currency_id),

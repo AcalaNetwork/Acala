@@ -120,7 +120,10 @@ fn liquid_crowdloan_xtokens_works() {
 			Box::new(
 				MultiLocation::new(
 					1,
-					X2(Parachain(ACALA_ID), GeneralKey(LCDOT.encode().try_into().unwrap()))
+					X2(
+						Parachain(ACALA_ID),
+						Junction::from(BoundedVec::try_from(LCDOT.encode()).unwrap())
+					)
 				)
 				.into()
 			),
