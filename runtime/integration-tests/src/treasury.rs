@@ -46,8 +46,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 				weight_limit: Limited(shallow_weight),
 			},
 			DepositAsset {
-				assets: All.into(),
-				max_assets: u32::max_value(),
+				assets: AllCounted(u32::max_value()).into(),
 				beneficiary: X1(Junction::AccountId32 {
 					network: NetworkId::Any,
 					id: ALICE,

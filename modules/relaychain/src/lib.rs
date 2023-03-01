@@ -156,14 +156,13 @@ where
 				weight_limit: Unlimited,
 			},
 			Transact {
-				origin_type: OriginKind::SovereignAccount,
+				origin_kind: OriginKind::SovereignAccount,
 				require_weight_at_most: weight,
 				call: call.encode().into(),
 			},
 			RefundSurplus,
 			DepositAsset {
-				assets: All.into(),
-				max_assets: 1, // there is only 1 asset on relaychain
+				assets: AllCounted(1).into(), // there is only 1 asset on relaychain
 				beneficiary: MultiLocation {
 					parents: 0,
 					interior: X1(Parachain(ParachainId::get().into())),

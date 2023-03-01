@@ -692,8 +692,7 @@ fn xcm_transfer_execution_barrier_trader_works() {
 			weight_limit: Unlimited,
 		},
 		DepositAsset {
-			assets: All.into(),
-			max_assets: 1,
+			assets: AllCounted(1).into(),
 			beneficiary: Here.into(),
 		},
 	]);
@@ -728,8 +727,7 @@ fn xcm_transfer_execution_barrier_trader_works() {
 			weight_limit: Limited(weight_limit_too_low),
 		},
 		DepositAsset {
-			assets: All.into(),
-			max_assets: 1,
+			assets: AllCounted(1).into(),
 			beneficiary: Here.into(),
 		},
 	]);
@@ -747,8 +745,7 @@ fn xcm_transfer_execution_barrier_trader_works() {
 			weight_limit: Limited(expect_weight_limit),
 		},
 		DepositAsset {
-			assets: All.into(),
-			max_assets: 1,
+			assets: AllCounted(1).into(),
 			beneficiary: Here.into(),
 		},
 	]);
@@ -768,8 +765,7 @@ fn xcm_transfer_execution_barrier_trader_works() {
 			weight_limit: Limited(expect_weight_limit),
 		},
 		DepositAsset {
-			assets: All.into(),
-			max_assets: 1,
+			assets: AllCounted(1).into(),
 			beneficiary: Here.into(),
 		},
 	]);
@@ -904,7 +900,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 				weight_limit: Unlimited,
 			},
 			Transact {
-				origin_type: OriginKind::SovereignAccount,
+				origin_kind: OriginKind::SovereignAccount,
 				require_weight_at_most: weight,
 				call: batch_call.encode().into(),
 			},
@@ -980,7 +976,7 @@ fn trapped_asset() -> MultiAsset {
 				weight_limit: Unlimited,
 			},
 			Transact {
-				origin_type: OriginKind::SovereignAccount,
+				origin_kind: OriginKind::SovereignAccount,
 				require_weight_at_most: weight,
 				call: transfer_call.encode().into(),
 			},
@@ -1040,8 +1036,7 @@ fn claim_asset(asset: MultiAsset, recipient: [u8; 32]) {
 				weight_limit: Unlimited,
 			},
 			DepositAsset {
-				assets: All.into(),
-				max_assets: 1,
+				assets: AllCounted(1).into(),
 				beneficiary: recipient,
 			},
 		]);

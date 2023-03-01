@@ -230,8 +230,7 @@ fn trader_works() {
 			weight_limit: Limited(100),
 		},
 		DepositAsset {
-			assets: All.into(),
-			max_assets: 1,
+			assets: AllCounted(1).into(),
 			beneficiary: Here.into(),
 		},
 	]);
