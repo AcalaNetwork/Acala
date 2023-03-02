@@ -106,7 +106,6 @@ module-nft = { path = "../../modules/nft" }
 module-prices = { path = "../../modules/prices" }
 module-incentives = { path = "../../modules/incentives" }
 module-support = { path = "../../modules/support" }
-module-homa-lite = { path = "../../modules/homa-lite" }
 module-xcm-interface = {path = "../../modules/xcm-interface" }
 module-homa = {path = "../../modules/homa" }
 module-session-manager = { path = "../../modules/session-manager" }

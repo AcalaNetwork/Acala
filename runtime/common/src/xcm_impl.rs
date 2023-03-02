@@ -24,10 +24,7 @@ use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
 use primitives::{Balance, CurrencyId};
 use sp_core::bounded::BoundedVec;
-use sp_runtime::{
-	traits::{Convert, Zero},
-	FixedPointNumber, FixedU128,
-};
+use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::{latest::Weight as XcmWeight, prelude::*};
 use xcm_builder::TakeRevenue;
@@ -36,18 +33,18 @@ use xcm_executor::{
 	Assets,
 };
 
-pub fn local_currency_location(key: CurrencyId) -> MultiLocation {
-	MultiLocation::new(0, X1(Junction::from(BoundedVec::try_from(key.encode()).expect("xxx"))))
+pub fn local_currency_location(key: CurrencyId) -> Option<MultiLocation> {
+	Some(MultiLocation::new(
+		0,
+		X1(Junction::from(BoundedVec::try_from(key.encode()).ok()?)),
+	))
 }
 
-pub fn native_currency_location(para_id: u32, key: Vec<u8>) -> MultiLocation {
-	MultiLocation::new(
+pub fn native_currency_location(para_id: u32, key: Vec<u8>) -> Option<MultiLocation> {
+	Some(MultiLocation::new(
 		1,
-		X2(
-			Parachain(para_id),
-			Junction::from(BoundedVec::try_from(key.encode()).expect("xxx")),
-		),
-	)
+		X2(Parachain(para_id), Junction::from(BoundedVec::try_from(key).ok()?)),
+	))
 }
 
 /// `ExistentialDeposit` for tokens, give priority to match native token, then handled by
@@ -113,7 +110,7 @@ where
 		if !asset_traps.is_empty() {
 			X::drop_assets(origin, asset_traps.into(), context);
 		}
-		0.into()
+		XcmWeight::from_ref_time(0)
 	}
 }
 
@@ -243,6 +240,21 @@ impl<
 		EVMBridge: module_support::EVMBridge<AccountId, Balance>,
 	> ExecuteXcm<Config::RuntimeCall> for XcmExecutor<Config, AccountId, Balance, AccountIdConvert, EVMBridge>
 {
+	type Prepared = <xcm_executor::XcmExecutor<Config> as ExecuteXcm<Config::RuntimeCall>>::Prepared;
+
+	fn prepare(message: Xcm<Config::RuntimeCall>) -> Result<Self::Prepared, Xcm<Config::RuntimeCall>> {
+		xcm_executor::XcmExecutor::<Config>::prepare(message)
+	}
+
+	fn execute(
+		origin: impl Into<MultiLocation>,
+		weighed_message: Self::Prepared,
+		message_hash: XcmHash,
+		weight_credit: XcmWeight,
+	) -> Outcome {
+		xcm_executor::XcmExecutor::<Config>::execute(origin, weighed_message, message_hash, weight_credit)
+	}
+
 	fn execute_xcm_in_credit(
 		origin: impl Into<MultiLocation>,
 		message: Xcm<Config::RuntimeCall>,
@@ -269,6 +281,10 @@ impl<
 			EVMBridge::pop_origin();
 		}
 		res
+	}
+
+	fn charge_fees(origin: impl Into<MultiLocation>, fees: MultiAssets) -> XcmResult {
+		xcm_executor::XcmExecutor::<Config>::charge_fees(origin, fees)
 	}
 }
 
@@ -305,21 +321,34 @@ mod tests {
 		use primitives::TokenSymbol::ACA;
 		let evm_addr = sp_core::H160(hex_literal::hex!("0000000000000000000000000000000000000400"));
 
-		assert_eq!(native_currency_location(0, CurrencyId::Token(ACA).encode()).parents, 1);
 		assert_eq!(
-			native_currency_location(0, CurrencyId::Erc20(evm_addr).encode()).parents,
+			native_currency_location(0, CurrencyId::Token(ACA).encode())
+				.unwrap()
+				.parents,
 			1
 		);
 		assert_eq!(
-			native_currency_location(0, CurrencyId::StableAssetPoolToken(0).encode()).parents,
+			native_currency_location(0, CurrencyId::Erc20(evm_addr).encode())
+				.unwrap()
+				.parents,
 			1
 		);
 		assert_eq!(
-			native_currency_location(0, CurrencyId::ForeignAsset(0).encode()).parents,
+			native_currency_location(0, CurrencyId::StableAssetPoolToken(0).encode())
+				.unwrap()
+				.parents,
 			1
 		);
 		assert_eq!(
-			native_currency_location(0, CurrencyId::LiquidCrowdloan(0).encode()).parents,
+			native_currency_location(0, CurrencyId::ForeignAsset(0).encode())
+				.unwrap()
+				.parents,
+			1
+		);
+		assert_eq!(
+			native_currency_location(0, CurrencyId::LiquidCrowdloan(0).encode())
+				.unwrap()
+				.parents,
 			1
 		);
 
@@ -328,6 +357,7 @@ mod tests {
 				0,
 				CurrencyId::DexShare(DexShare::Token(ACA), DexShare::ForeignAsset(0)).encode()
 			)
+			.unwrap()
 			.parents,
 			1
 		);
@@ -336,18 +366,18 @@ mod tests {
 				0,
 				CurrencyId::DexShare(DexShare::Token(ACA), DexShare::Erc20(evm_addr)).encode()
 			)
+			.unwrap()
 			.parents,
 			1
 		);
 
-		// DexShare of two Erc20 limit to 32 length.
+		// DexShare of two Erc20 exceed 32 length
 		assert_eq!(
 			native_currency_location(
 				0,
 				CurrencyId::DexShare(DexShare::Erc20(evm_addr), DexShare::Erc20(evm_addr)).encode()
-			)
-			.parents,
-			1
+			),
+			None
 		);
 	}
 
@@ -357,11 +387,11 @@ mod tests {
 			let asset: MultiAsset = (Parent, 100).into();
 			let assets: Assets = asset.into();
 			let mut trader = <FixedRateOfAsset<(), (), MockNoneBuyWeightRate>>::new();
-			let buy_weight = trader.buy_weight(WEIGHT_REF_TIME_PER_SECOND, assets.clone());
+			let buy_weight = trader.buy_weight(XcmWeight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND), assets.clone());
 			assert_noop!(buy_weight, XcmError::TooExpensive);
 
 			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockFixedBuyWeightRate<FixedRate>>>::new();
-			let buy_weight = trader.buy_weight(WEIGHT_REF_TIME_PER_SECOND, assets.clone());
+			let buy_weight = trader.buy_weight(XcmWeight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND), assets.clone());
 			let asset: MultiAsset = (Parent, 90).into();
 			let assets: Assets = asset.into();
 			assert_ok!(buy_weight, assets.clone());

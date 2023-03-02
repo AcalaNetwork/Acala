@@ -43,12 +43,12 @@ fn treasury_should_take_xcm_execution_revenue() {
 			ReserveAssetDeposited(asset.clone().into()),
 			BuyExecution {
 				fees: asset,
-				weight_limit: Limited(shallow_weight),
+				weight_limit: Limited(Weight::from_ref_time(shallow_weight)),
 			},
 			DepositAsset {
 				assets: AllCounted(u32::max_value()).into(),
 				beneficiary: X1(Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None,
 					id: ALICE,
 				})
 				.into(),
@@ -56,15 +56,16 @@ fn treasury_should_take_xcm_execution_revenue() {
 		]);
 		use xcm_executor::traits::WeightBounds;
 		let debt = <XcmConfig as xcm_executor::Config>::Weigher::weight(&mut msg).unwrap_or_default();
-		assert_eq!(debt, shallow_weight);
+		assert_eq!(debt, Weight::from_ref_time(shallow_weight));
 
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), 0);
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()), 0);
 
 		let weight_limit = debt;
+		let hash = msg.using_encoded(sp_io::hashing::blake2_256);
 		assert_eq!(
-			XcmExecutor::<XcmConfig>::execute_xcm(origin, msg, weight_limit),
-			Outcome::Complete(shallow_weight)
+			XcmExecutor::<XcmConfig>::execute_xcm(origin, msg, hash, weight_limit),
+			Outcome::Complete(Weight::from_ref_time(shallow_weight))
 		);
 
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), actual_amount);

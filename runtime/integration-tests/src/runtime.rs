@@ -323,7 +323,7 @@ fn parachain_subaccounts_are_unique() {
 			MultiLocation::new(
 				1,
 				X1(Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None,
 					id: hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into(),
 				})
 			),
@@ -333,7 +333,7 @@ fn parachain_subaccounts_are_unique() {
 			MultiLocation::new(
 				1,
 				X1(Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None,
 					id: hex_literal::hex!["74d37d762e06c6841a5dad64463a9afe0684f7e45245f6a7296ca613cca74669"].into(),
 				})
 			),

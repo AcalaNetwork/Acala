@@ -77,14 +77,7 @@ fn teleport_from_relay_chain() {
 		assert_ok!(polkadot_runtime::XcmPallet::teleport_assets(
 			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
 			Box::new(Parachain(1000).into().into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
 			Box::new((Here, dollar(DOT)).into()),
 			0
 		));
@@ -159,7 +152,7 @@ fn acala_side(fee_amount: u128) {
 					X2(
 						Parachain(1000),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
@@ -212,14 +205,7 @@ fn statemint_side(para_2000_init_amount: u128) {
 		assert_ok!(PolkadotXcm::limited_reserve_transfer_assets(
 			origin.clone(),
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
 			Box::new((X2(PalletInstance(50), GeneralIndex(0)), TEN).into()),
 			0,
 			WeightLimit::Unlimited

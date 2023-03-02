@@ -109,7 +109,7 @@ fn xcm_interface_transfer_staking_to_sub_account_works() {
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
-					network: NetworkId::Any
+					network: None
 				}
 				.into()
 				.into()
@@ -276,7 +276,7 @@ fn xcm_interface_bond_extra_on_sub_account_works() {
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
-					network: NetworkId::Any
+					network: None
 				}
 				.into()
 				.into()
@@ -378,7 +378,7 @@ fn xcm_interface_unbond_on_sub_account_works() {
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
-					network: NetworkId::Any
+					network: None
 				}
 				.into()
 				.into()
@@ -485,7 +485,7 @@ fn homa_mint_and_redeem_works() {
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
-					network: NetworkId::Any
+					network: None
 				}
 				.into()
 				.into()

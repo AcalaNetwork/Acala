@@ -101,14 +101,7 @@ fn statemine_reserve_transfer_ksm_to_karura_should_not_allowed() {
 			// Unlike Statemine reserve transfer to relaychain is not allowed,
 			// Here Statemine reserve transfer to parachain. let's see what happened.
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
 			Box::new((Parent, UNIT).into()),
 			0,
 			WeightLimit::Unlimited
@@ -155,7 +148,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 					X2(
 						Parachain(1000),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
@@ -275,7 +268,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 						X2(
 							Parachain(1000),
 							Junction::AccountId32 {
-								network: NetworkId::Any,
+								network: None,
 								id: BOB.into(),
 							}
 						)
@@ -296,7 +289,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 						X2(
 							Parachain(1000),
 							Junction::AccountId32 {
-								network: NetworkId::Any,
+								network: None,
 								id: BOB.into(),
 							}
 						)
@@ -353,14 +346,7 @@ fn statemine_transfer_asset_to_karura() {
 		assert_ok!(PolkadotXcm::limited_reserve_transfer_assets(
 			origin.clone(),
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
 			Box::new((X2(PalletInstance(50), GeneralIndex(ASSET_ID as u128)), TEN).into()),
 			0,
 			WeightLimit::Unlimited

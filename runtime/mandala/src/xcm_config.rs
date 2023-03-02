@@ -17,15 +17,16 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{
-	constants::fee::*, AccountId, AssetIdMapping, AssetIdMaps, Balance, Convert, Currencies, CurrencyId,
-	ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, TreasuryAccount, UnknownTokens, XcmpQueue, ACA,
+	constants::fee::*, AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert,
+	Currencies, CurrencyId, ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit, ParachainInfo,
+	ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, TreasuryAccount, UnknownTokens,
+	XcmpQueue, ACA,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
 pub use frame_support::{
 	parameter_types,
-	traits::{Everything, Get, Nothing},
+	traits::{ConstU32, Everything, Get, Nothing},
 	weights::Weight,
 };
 use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfStableAsset};
@@ -117,12 +118,17 @@ impl TakeRevenue for ToTreasury {
 
 parameter_types! {
 	// One XCM operation is 1_000_000 weight - almost certainly a conservative estimate.
-	pub UnitWeightCost: XcmWeight = 1_000_000;
+	pub UnitWeightCost: XcmWeight = XcmWeight::from_ref_time(1_000_000);
 	pub const MaxInstructions: u32 = 100;
-	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
-	pub AcaPerSecond: (AssetId, u128) = (
-		local_currency_location(ACA).into(),
-		aca_per_second()
+	pub DotPerSecond: (AssetId, u128, u128) = (
+		MultiLocation::parent().into(),
+		dot_per_second(),
+		0	// TODO: config proof size fee for per MB
+	);
+	pub AcaPerSecond: (AssetId, u128, u128) = (
+		local_currency_location(ACA).unwrap().into(),
+		aca_per_second(),
+		0	// TODO: config proof size fee for per MB
 	);
 	pub BaseRate: u128 = aca_per_second();
 }
@@ -160,8 +166,17 @@ impl xcm_executor::Config for XcmConfig {
 		NativeTokenExistentialDeposit,
 		ExistentialDeposits,
 	>;
+	type AssetLocker = ();
+	type AssetExchanger = ();
 	type AssetClaims = ();
 	type SubscriptionService = PolkadotXcm;
+	type PalletInstancesInfo = AllPalletsWithSystem;
+	type MaxAssetsIntoHolding = ConstU32<64>;
+	type FeeManager = ();
+	type MessageExporter = ();
+	type UniversalAliases = Nothing;
+	type CallDispatcher = RuntimeCall;
+	type SafeCallFilter = Everything;
 }
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
@@ -171,7 +186,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, R
 /// queues.
 pub type XcmRouter = (
 	// Two routers - use UMP to communicate with the relay chain:
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, ()>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, (), ()>,
 	// ..and XCMP to communicate with the sibling chains.
 	XcmpQueue,
 );
@@ -183,6 +198,11 @@ pub type XcmExecutor = runtime_common::XcmExecutor<
 	LocationToAccountId,
 	module_evm_bridge::EVMBridge<Runtime>,
 >;
+
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+	pub ReachableDest: Option<MultiLocation> = Some(Parent.into());
+}
 
 impl pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -199,6 +219,14 @@ impl pallet_xcm::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+	type Currency = Balances;
+	type CurrencyMatcher = ();
+	type TrustedLockers = ();
+	type SovereignAccountOf = ();
+	type MaxLockers = ConstU32<8>;
+	type WeightInfo = pallet_xcm::TestWeightInfo; // TODO: config correct weight
+	#[cfg(feature = "runtime-benchmarks")]
+	type ReachableDest = ReachableDest;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
@@ -215,6 +243,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ControllerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ControllerOriginConverter = XcmOriginToCallOrigin;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
+	type PriceForSiblingDelivery = ();
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -242,12 +271,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) | Token(TAI) => {
-				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
+				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
 			Erc20(address) if !is_system_contract(address) => {
-				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
+				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
-			StableAssetPoolToken(_pool_id) => Some(native_currency_location(ParachainInfo::get().into(), id.encode())),
+			StableAssetPoolToken(_pool_id) => native_currency_location(ParachainInfo::get().into(), id.encode()),
 			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
@@ -327,7 +356,7 @@ pub struct AccountIdToMultiLocation;
 impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 	fn convert(account: AccountId) -> MultiLocation {
 		X1(AccountId32 {
-			network: NetworkId::Any,
+			network: None,
 			id: account.into(),
 		})
 		.into()
@@ -335,7 +364,7 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 }
 
 parameter_types! {
-	pub const BaseXcmWeight: XcmWeight = 100_000_000;
+	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_ref_time(100_000_000);
 	pub const MaxAssetsForTransfer: usize = 2;
 }
 

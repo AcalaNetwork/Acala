@@ -66,15 +66,15 @@ mod fee_test {
 
 	fn native_unit_cost(instruction_count: u32, per_second: u128) -> u128 {
 		#[cfg(feature = "with-karura-runtime")]
-		let unit_weight: Weight = Weight::from_ref_time(karura_runtime::xcm_config::UnitWeightCost::get());
+		let unit_weight: Weight = karura_runtime::xcm_config::UnitWeightCost::get();
 		#[cfg(feature = "with-karura-runtime")]
 		assert_eq!(unit_weight, Weight::from_ref_time(200_000_000));
 		#[cfg(feature = "with-acala-runtime")]
-		let unit_weight: Weight = Weight::from_ref_time(acala_runtime::xcm_config::UnitWeightCost::get());
+		let unit_weight: Weight = acala_runtime::xcm_config::UnitWeightCost::get();
 		#[cfg(feature = "with-acala-runtime")]
 		assert_eq!(unit_weight, Weight::from_ref_time(200_000_000));
 		#[cfg(feature = "with-mandala-runtime")]
-		let unit_weight: Weight = Weight::from_ref_time(mandala_runtime::xcm_config::UnitWeightCost::get());
+		let unit_weight: Weight = mandala_runtime::xcm_config::UnitWeightCost::get();
 		#[cfg(feature = "with-mandala-runtime")]
 		assert_eq!(unit_weight, Weight::from_ref_time(1_000_000));
 

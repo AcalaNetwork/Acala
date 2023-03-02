@@ -32,6 +32,7 @@ use karura_runtime::{AssetRegistry, KaruraTreasuryAccount};
 use module_relaychain::RelayChainCallBuilder;
 use module_support::CallBuilder;
 use primitives::currency::{AssetMetadata, BNC};
+use sp_core::bounded::BoundedVec;
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert;
 
@@ -55,14 +56,7 @@ fn transfer_from_relay_chain() {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
 			Box::new(Parachain(KARURA_ID).into().into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
 			Box::new((Here, dollar(KSM)).into()),
 			0
 		));
@@ -90,16 +84,7 @@ fn transfer_to_relay_chain() {
 			RuntimeOrigin::signed(ALICE.into()),
 			KSM,
 			dollar(KSM),
-			Box::new(
-				MultiLocation::new(
-					1,
-					X1(Junction::AccountId32 {
-						id: BOB,
-						network: NetworkId::Any,
-					})
-				)
-				.into()
-			),
+			Box::new(MultiLocation::new(1, X1(Junction::AccountId32 { id: BOB, network: None })).into()),
 			WeightLimit::Limited(weight)
 		));
 	});
@@ -150,7 +135,7 @@ fn transfer_native_chain_asset() {
 					X2(
 						Parachain(KARURA_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
@@ -177,7 +162,7 @@ fn transfer_native_chain_asset() {
 					X2(
 						Parachain(MOCK_BIFROST_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: ALICE.into(),
 						}
 					)
@@ -245,7 +230,7 @@ fn transfer_sibling_chain_asset() {
 					X2(
 						Parachain(SIBLING_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
@@ -291,7 +276,7 @@ fn transfer_sibling_chain_asset() {
 					X2(
 						Parachain(KARURA_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: ALICE.into(),
 						}
 					)
@@ -419,7 +404,7 @@ fn asset_registry_module_works() {
 					X2(
 						Parachain(SIBLING_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
@@ -464,7 +449,7 @@ fn asset_registry_module_works() {
 					X2(
 						Parachain(KARURA_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: ALICE.into(),
 						}
 					)
@@ -553,7 +538,7 @@ fn stable_asset_xtokens_works() {
 					X2(
 						Parachain(MOCK_BIFROST_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: ALICE.into(),
 						}
 					)
@@ -586,7 +571,7 @@ fn stable_asset_xtokens_works() {
 					X2(
 						Parachain(KARURA_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
@@ -621,14 +606,7 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 			assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 				kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
 				Box::new(Parachain(KARURA_ID).into().into()),
-				Box::new(
-					Junction::AccountId32 {
-						id: BOB,
-						network: NetworkId::Any
-					}
-					.into()
-					.into()
-				),
+				Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
 				Box::new((Here, amount).into()),
 				0
 			));
@@ -650,14 +628,7 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 			assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 				kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
 				Box::new(Parachain(KARURA_ID).into().into()),
-				Box::new(
-					Junction::AccountId32 {
-						id: BOB,
-						network: NetworkId::Any
-					}
-					.into()
-					.into()
-				),
+				Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
 				Box::new((Here, amount).into()),
 				0
 			));
@@ -699,7 +670,7 @@ fn xcm_transfer_execution_barrier_trader_works() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			X1(Junction::AccountId32 {
-				network: NetworkId::Any,
+				network: None,
 				id: ALICE.into(),
 			}),
 			Parachain(KARURA_ID).into(),
@@ -1022,7 +993,7 @@ fn claim_asset(asset: MultiAsset, recipient: [u8; 32]) {
 		let recipient = MultiLocation::new(
 			0,
 			X1(Junction::AccountId32 {
-				network: NetworkId::Any,
+				network: None,
 				id: recipient,
 			}),
 		);

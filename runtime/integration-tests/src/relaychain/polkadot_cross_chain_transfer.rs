@@ -49,14 +49,7 @@ fn transfer_from_relay_chain() {
 		assert_ok!(polkadot_runtime::XcmPallet::reserve_transfer_assets(
 			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
 			Box::new(Parachain(ACALA_ID).into().into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
 			Box::new((Here, dollar(DOT)).into()),
 			0
 		));
@@ -74,16 +67,7 @@ fn transfer_to_relay_chain() {
 			RuntimeOrigin::signed(ALICE.into()),
 			DOT,
 			5 * dollar(DOT),
-			Box::new(
-				MultiLocation::new(
-					1,
-					X1(Junction::AccountId32 {
-						id: BOB,
-						network: NetworkId::Any,
-					})
-				)
-				.into()
-			),
+			Box::new(MultiLocation::new(1, X1(Junction::AccountId32 { id: BOB, network: None })).into()),
 			WeightLimit::Limited(4_000_000_000)
 		));
 	});
@@ -159,7 +143,7 @@ fn liquid_crowdloan_xtokens_works() {
 					X2(
 						Parachain(MOCK_BIFROST_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: ALICE.into(),
 						}
 					)
@@ -189,7 +173,7 @@ fn liquid_crowdloan_xtokens_works() {
 					X2(
 						Parachain(ACALA_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)

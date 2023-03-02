@@ -18,16 +18,16 @@
 
 use super::{
 	constants::{fee::*, parachains},
-	AccountId, AssetIdMapping, AssetIdMaps, Balance, Convert, Currencies, CurrencyId, ExistentialDeposits,
-	FixedRateOfAsset, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, ParachainInfo,
-	ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, UnknownTokens, XcmInterface,
-	XcmpQueue, KAR, KUSD, LKSM, TAI,
+	AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert, Currencies, CurrencyId,
+	ExistentialDeposits, FixedRateOfAsset, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit,
+	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, UnknownTokens,
+	XcmInterface, XcmpQueue, KAR, KUSD, LKSM, TAI,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
 pub use frame_support::{
 	parameter_types,
-	traits::{Everything, Get, Nothing},
+	traits::{ConstU32, Everything, Get, Nothing},
 	weights::Weight,
 };
 pub use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfStableAsset};
@@ -119,55 +119,68 @@ impl TakeRevenue for ToTreasury {
 
 parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
-	pub const UnitWeightCost: XcmWeight = 200_000_000;
+	pub const UnitWeightCost: XcmWeight = XcmWeight::from_ref_time(200_000_000);
 	pub const MaxInstructions: u32 = 100;
-	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
-	pub KusdPerSecond: (AssetId, u128) = (
-		local_currency_location(KUSD).into(),
+	pub KsmPerSecond: (AssetId, u128, u128) = (
+		MultiLocation::parent().into(),
+		ksm_per_second(),
+		0	// TODO: config proof size fee for per MB
+	);
+	pub KusdPerSecond: (AssetId, u128, u128) = (
+		local_currency_location(KUSD).unwrap().into(),
 		// kUSD:KSM = 400:1
-		ksm_per_second() * 400
+		ksm_per_second() * 400,
+		0	// TODO: config proof size fee for per MB
 	);
-	pub KarPerSecond: (AssetId, u128) = (
-		local_currency_location(KAR).into(),
-		kar_per_second()
+	pub KarPerSecond: (AssetId, u128, u128) = (
+		local_currency_location(KAR).unwrap().into(),
+		kar_per_second(),
+		0	// TODO: config proof size fee for per MB
 	);
-	pub LksmPerSecond: (AssetId, u128) = (
-		local_currency_location(LKSM).into(),
+	pub LksmPerSecond: (AssetId, u128, u128) = (
+		local_currency_location(LKSM).unwrap().into(),
 		// LKSM:KSM = 10:1
-		ksm_per_second() * 10
+		ksm_per_second() * 10,
+		0	// TODO: config proof size fee for per MB
 	);
-	pub TaiPerSecond: (AssetId, u128) = (
-		local_currency_location(TAI).into(),
+	pub TaiPerSecond: (AssetId, u128, u128) = (
+		local_currency_location(TAI).unwrap().into(),
 		// TAI:taiKSM = 4340:1
-		ksm_per_second() * 4340
+		ksm_per_second() * 4340,
+		0	// TODO: config proof size fee for per MB
 	);
-	pub PHAPerSecond: (AssetId, u128) = (
+	pub PHAPerSecond: (AssetId, u128, u128) = (
 		MultiLocation::new(
 			1,
 			X1(Parachain(parachains::phala::ID)),
 		).into(),
 		// PHA:KSM = 400:1
-		ksm_per_second() * 400
+		ksm_per_second() * 400,
+		0	// TODO: config proof size fee for per MB
 	);
-	pub BncPerSecond: (AssetId, u128) = (
-		native_currency_location(parachains::bifrost::ID, parachains::bifrost::BNC_KEY.to_vec()).into(),
+	pub BncPerSecond: (AssetId, u128, u128) = (
+		native_currency_location(parachains::bifrost::ID, parachains::bifrost::BNC_KEY.to_vec()).unwrap().into(),
 		// BNC:KSM = 80:1
-		ksm_per_second() * 80
+		ksm_per_second() * 80,
+		0	// TODO: config proof size fee for per MB
 	);
-	pub VsksmPerSecond: (AssetId, u128) = (
-		native_currency_location(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY.to_vec()).into(),
+	pub VsksmPerSecond: (AssetId, u128, u128) = (
+		native_currency_location(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY.to_vec()).unwrap().into(),
 		// VSKSM:KSM = 1:1
-		ksm_per_second()
+		ksm_per_second(),
+		0	// TODO: config proof size fee for per MB
 	);
-	pub KbtcPerSecond: (AssetId, u128) = (
-		native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY.to_vec()).into(),
+	pub KbtcPerSecond: (AssetId, u128, u128) = (
+		native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY.to_vec()).unwrap().into(),
 		// KBTC:KSM = 1:150 & Satoshi:Planck = 1:10_000
-		ksm_per_second() / 1_500_000
+		ksm_per_second() / 1_500_000,
+		0	// TODO: config proof size fee for per MB
 	);
-	pub KintPerSecond: (AssetId, u128) = (
-		native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY.to_vec()).into(),
+	pub KintPerSecond: (AssetId, u128, u128) = (
+		native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY.to_vec()).unwrap().into(),
 		// KINT:KSM = 4:3
-		(ksm_per_second() * 4) / 3
+		(ksm_per_second() * 4) / 3,
+		0	// TODO: config proof size fee for per MB
 	);
 
 	pub BaseRate: u128 = kar_per_second();
@@ -213,8 +226,17 @@ impl xcm_executor::Config for XcmConfig {
 		NativeTokenExistentialDeposit,
 		ExistentialDeposits,
 	>;
+	type AssetLocker = ();
+	type AssetExchanger = ();
 	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
+	type PalletInstancesInfo = AllPalletsWithSystem;
+	type MaxAssetsIntoHolding = ConstU32<64>;
+	type FeeManager = ();
+	type MessageExporter = ();
+	type UniversalAliases = Nothing;
+	type CallDispatcher = RuntimeCall;
+	type SafeCallFilter = Everything;
 }
 
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
@@ -223,7 +245,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, R
 /// queues.
 pub type XcmRouter = (
 	// Two routers - use UMP to communicate with the relay chain:
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm, ()>,
 	// ..and XCMP to communicate with the sibling chains.
 	XcmpQueue,
 );
@@ -235,6 +257,11 @@ pub type XcmExecutor = runtime_common::XcmExecutor<
 	LocationToAccountId,
 	module_evm_bridge::EVMBridge<Runtime>,
 >;
+
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+	pub ReachableDest: Option<MultiLocation> = Some(Parent.into());
+}
 
 impl pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -251,6 +278,14 @@ impl pallet_xcm::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+	type Currency = Balances;
+	type CurrencyMatcher = ();
+	type TrustedLockers = ();
+	type SovereignAccountOf = ();
+	type MaxLockers = ConstU32<8>;
+	type WeightInfo = pallet_xcm::TestWeightInfo; // TODO: config correct weight
+	#[cfg(feature = "runtime-benchmarks")]
+	type ReachableDest = ReachableDest;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
@@ -267,6 +302,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ControllerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ControllerOriginConverter = XcmOriginToCallOrigin;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
+	type PriceForSiblingDelivery = ();
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -283,7 +319,7 @@ pub struct AccountIdToMultiLocation;
 impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 	fn convert(account: AccountId) -> MultiLocation {
 		X1(AccountId32 {
-			network: NetworkId::Any,
+			network: None,
 			id: account.into(),
 		})
 		.into()
@@ -291,7 +327,7 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 }
 
 parameter_types! {
-	pub const BaseXcmWeight: XcmWeight = 100_000_000;
+	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_ref_time(100_000_000);
 	pub const MaxAssetsForTransfer: usize = 2;
 }
 
@@ -342,34 +378,22 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(KSM) => Some(MultiLocation::parent()),
 			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(TAI) => {
-				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
+				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
 			Erc20(address) if !is_system_contract(address) => {
-				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
+				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
-			StableAssetPoolToken(_pool_id) => Some(native_currency_location(ParachainInfo::get().into(), id.encode())),
+			StableAssetPoolToken(_pool_id) => native_currency_location(ParachainInfo::get().into(), id.encode()),
 			// Bifrost native token
-			Token(BNC) => Some(native_currency_location(
-				parachains::bifrost::ID,
-				parachains::bifrost::BNC_KEY.to_vec(),
-			)),
+			Token(BNC) => native_currency_location(parachains::bifrost::ID, parachains::bifrost::BNC_KEY.to_vec()),
 			// Bifrost Voucher Slot KSM
-			Token(VSKSM) => Some(native_currency_location(
-				parachains::bifrost::ID,
-				parachains::bifrost::VSKSM_KEY.to_vec(),
-			)),
+			Token(VSKSM) => native_currency_location(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY.to_vec()),
 			// Phala Native token
 			Token(PHA) => Some(MultiLocation::new(1, X1(Parachain(parachains::phala::ID)))),
 			// Kintsugi Native token
-			Token(KINT) => Some(native_currency_location(
-				parachains::kintsugi::ID,
-				parachains::kintsugi::KINT_KEY.to_vec(),
-			)),
+			Token(KINT) => native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY.to_vec()),
 			// Kintsugi wrapped BTC
-			Token(KBTC) => Some(native_currency_location(
-				parachains::kintsugi::ID,
-				parachains::kintsugi::KBTC_KEY.to_vec(),
-			)),
+			Token(KBTC) => native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY.to_vec()),
 			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}

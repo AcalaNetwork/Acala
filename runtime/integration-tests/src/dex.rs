@@ -18,6 +18,7 @@
 
 use crate::setup::*;
 use primitives::currency::AssetMetadata;
+use sp_core::bounded::BoundedVec;
 
 #[test]
 fn test_dex_module() {

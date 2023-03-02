@@ -346,7 +346,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		hash: <Block as BlockT>::Hash,
 		prefix: Option<&'a StorageKey>,
 		start_key: Option<&StorageKey>,
-	) -> sp_blockchain::Result<KeyIterator<'a, <crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
+	) -> sp_blockchain::Result<KeyIterator<<crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.storage_keys_iter(hash, prefix, start_key),
@@ -363,7 +363,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		child_info: ChildInfo,
 		prefix: Option<&'a StorageKey>,
 		start_key: Option<&StorageKey>,
-	) -> sp_blockchain::Result<KeyIterator<'a, <crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
+	) -> sp_blockchain::Result<KeyIterator<<crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
 			Self::Mandala(client) => client.child_storage_keys_iter(hash, child_info, prefix, start_key),

@@ -184,7 +184,7 @@ fn erc20_transfer_between_sibling() {
 					X2(
 						Parachain(SIBLING_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						},
 					),
@@ -234,7 +234,7 @@ fn erc20_transfer_between_sibling() {
 					X2(
 						Parachain(2000),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						},
 					),
@@ -255,7 +255,7 @@ fn erc20_transfer_between_sibling() {
 					X2(
 						Parachain(2000),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: CHARLIE.into(),
 						},
 					),
@@ -413,7 +413,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 					X2(
 						Parachain(2000),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						},
 					),

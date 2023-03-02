@@ -227,7 +227,7 @@ fn trader_works() {
 		ClearOrigin,
 		BuyExecution {
 			fees: (Parent, 100).into(),
-			weight_limit: Limited(100),
+			weight_limit: Limited(Weight::from_ref_time(100)),
 		},
 		DepositAsset {
 			assets: AllCounted(1).into(),

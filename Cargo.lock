@@ -207,6 +207,7 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec",
  "polkadot-parachain",
+ "polkadot-runtime",
  "runtime-common",
  "scale-info",
  "serde_json",
@@ -4725,6 +4726,7 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec",
  "polkadot-parachain",
+ "polkadot-runtime",
  "runtime-common",
  "scale-info",
  "serde_json",
@@ -6295,33 +6297,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
-]
-
-[[package]]
-name = "module-homa-lite"
-version = "2.14.0"
-dependencies = [
- "acala-primitives",
- "cumulus-primitives-core",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "module-currencies",
- "module-relaychain",
- "module-support",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "pallet-xcm",
- "parity-scale-codec",
- "scale-info",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "xcm",
- "xcm-executor",
 ]
 
 [[package]]
@@ -11301,7 +11276,6 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
- "module-homa-lite",
  "module-honzon",
  "module-incentives",
  "module-loans",

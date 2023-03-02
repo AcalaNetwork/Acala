@@ -18,16 +18,16 @@
 
 use super::{
 	constants::{fee::*, parachains},
-	AcalaTreasuryAccount, AccountId, AssetIdMapping, AssetIdMaps, Balance, Convert, Currencies, CurrencyId,
-	ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, UnknownTokens, XcmInterface, XcmpQueue, ACA, AUSD,
-	TAP,
+	AcalaTreasuryAccount, AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert,
+	Currencies, CurrencyId, ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit, ParachainInfo,
+	ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, UnknownTokens, XcmInterface,
+	XcmpQueue, ACA, AUSD, TAP,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
 pub use frame_support::{
 	parameter_types,
-	traits::{Everything, Get, Nothing},
+	traits::{ConstU32, Everything, Get, Nothing},
 	weights::Weight,
 };
 use module_asset_registry::{
@@ -122,23 +122,26 @@ impl TakeRevenue for ToTreasury {
 
 parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
-	pub const UnitWeightCost: XcmWeight = 200_000_000;
+	pub const UnitWeightCost: XcmWeight = XcmWeight::from_ref_time(200_000_000);
 	pub const MaxInstructions: u32 = 100;
-	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
-	pub AusdPerSecond: (AssetId, u128) = (
-		local_currency_location(AUSD).into(),
+	pub DotPerSecond: (AssetId, u128, u128) = (MultiLocation::parent().into(), dot_per_second(), 0);	// TODO: config proof size fee for per MB
+	pub AusdPerSecond: (AssetId, u128, u128) = (
+		local_currency_location(AUSD).unwrap().into(),
 		// aUSD:DOT = 40:1
-		dot_per_second() * 40
+		dot_per_second() * 40,
+		0	// TODO: config proof size fee for per MB
 	);
-	pub AcaPerSecond: (AssetId, u128) = (
-		local_currency_location(ACA).into(),
-		aca_per_second()
+	pub AcaPerSecond: (AssetId, u128, u128) = (
+		local_currency_location(ACA).unwrap().into(),
+		aca_per_second(),
+		0	// TODO: config proof size fee for per MB
 	);
-	pub TapPerSecond: (AssetId, u128) = (
-		local_currency_location(TAP).into(),
+	pub TapPerSecond: (AssetId, u128, u128) = (
+		local_currency_location(TAP).unwrap().into(),
 		// TODO: No price yet, assumed set at 4340
 		// TAP:tDOT = 4340:1
-		dot_per_second() * 4340
+		dot_per_second() * 4340,
+		0	// TODO: config proof size fee for per MB
 	);
 	pub BaseRate: u128 = aca_per_second();
 }
@@ -178,8 +181,17 @@ impl xcm_executor::Config for XcmConfig {
 		NativeTokenExistentialDeposit,
 		ExistentialDeposits,
 	>;
+	type AssetLocker = ();
+	type AssetExchanger = ();
 	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
+	type PalletInstancesInfo = AllPalletsWithSystem;
+	type MaxAssetsIntoHolding = ConstU32<64>;
+	type FeeManager = ();
+	type MessageExporter = ();
+	type UniversalAliases = Nothing;
+	type CallDispatcher = RuntimeCall;
+	type SafeCallFilter = Everything;
 }
 
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
@@ -188,7 +200,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, R
 /// queues.
 pub type XcmRouter = (
 	// Two routers - use UMP to communicate with the relay chain:
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm, ()>,
 	// ..and XCMP to communicate with the sibling chains.
 	XcmpQueue,
 );
@@ -200,6 +212,11 @@ pub type XcmExecutor = runtime_common::XcmExecutor<
 	LocationToAccountId,
 	module_evm_bridge::EVMBridge<Runtime>,
 >;
+
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+	pub ReachableDest: Option<MultiLocation> = Some(Parent.into());
+}
 
 impl pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -216,6 +233,14 @@ impl pallet_xcm::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+	type Currency = Balances;
+	type CurrencyMatcher = ();
+	type TrustedLockers = ();
+	type SovereignAccountOf = ();
+	type MaxLockers = ConstU32<8>;
+	type WeightInfo = pallet_xcm::TestWeightInfo; // TODO: config correct weight
+	#[cfg(feature = "runtime-benchmarks")]
+	type ReachableDest = ReachableDest;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
@@ -232,6 +257,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ControllerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ControllerOriginConverter = XcmOriginToCallOrigin;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
+	type PriceForSiblingDelivery = ();
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -259,13 +285,13 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => {
-				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
+				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
 			Erc20(address) if !is_system_contract(address) => {
-				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
+				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
-			LiquidCrowdloan(_lease) => Some(native_currency_location(ParachainInfo::get().into(), id.encode())),
-			StableAssetPoolToken(_pool_id) => Some(native_currency_location(ParachainInfo::get().into(), id.encode())),
+			LiquidCrowdloan(_lease) => native_currency_location(ParachainInfo::get().into(), id.encode()),
+			StableAssetPoolToken(_pool_id) => native_currency_location(ParachainInfo::get().into(), id.encode()),
 			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
@@ -312,7 +338,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
 			MultiLocation {
 				parents: 0,
-				interior: X1(GeneralKey { data: key, length }),
+				interior: X1(GeneralKey { data, length }),
 			} => {
 				let key = &data[..length as usize];
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
@@ -349,7 +375,7 @@ pub struct AccountIdToMultiLocation;
 impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 	fn convert(account: AccountId) -> MultiLocation {
 		X1(AccountId32 {
-			network: NetworkId::Any,
+			network: None,
 			id: account.into(),
 		})
 		.into()
@@ -357,7 +383,7 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 }
 
 parameter_types! {
-	pub const BaseXcmWeight: XcmWeight = 100_000_000; // TODO: recheck this
+	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_ref_time(100_000_000); // TODO: recheck this
 	pub const MaxAssetsForTransfer: usize = 2;
 }
 

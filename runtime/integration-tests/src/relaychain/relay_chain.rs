@@ -94,7 +94,7 @@ mod karura_tests {
 		});
 
 		Karura::execute_with(|| {
-			// Call withdraw_unbonded as the homa-lite subaccount
+			// Call withdraw_unbonded as the homa subaccount
 			let xcm_message =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 0);
 			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 20_000_000_000, 10_000_000_000);

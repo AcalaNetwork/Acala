@@ -22,6 +22,7 @@ use crate::setup::*;
 use module_aggregated_dex::SwapPath;
 use module_support::{AggregatedSwapPath, ExchangeRate, Swap, SwapLimit, EVM as EVMTrait};
 use primitives::{currency::AssetMetadata, evm::EvmAddress};
+use sp_core::bounded::BoundedVec;
 use sp_runtime::{
 	traits::{SignedExtension, UniqueSaturatedInto},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},

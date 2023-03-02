@@ -28,13 +28,13 @@
 // --chain=karura-dev
 // --steps=50
 // --repeat=20
-// --pallet=module-homa-lite
+// --pallet=module-honzon-bridge
 // --extrinsic=*
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --template=./templates/module-weight-template.hbs
-// --output=./modules/homa-lite/src/weights.rs
+// --output=./modules/honzon-bridge/src/weights.rs
 
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
@@ -45,14 +45,14 @@
 use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use sp_std::marker::PhantomData;
 
-/// Weight functions needed for module_homa_lite.
+/// Weight functions needed for module_honzon_bridge.
 pub trait WeightInfo {
 	fn set_bridged_stable_coin_address() -> Weight;
 	fn to_bridged() -> Weight;
 	fn from_bridged() -> Weight;
 }
 
-/// Weights for module_homa_lite using the Acala node and recommended hardware.
+/// Weights for module_honzon_bridge using the Acala node and recommended hardware.
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn set_bridged_stable_coin_address() -> Weight {

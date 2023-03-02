@@ -45,7 +45,7 @@ pub use frame_support::{
 	},
 	weights::{
 		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
-		IdentityFee, Weight,
+		ConstantMultiplier, IdentityFee, Weight,
 	},
 	PalletId, RuntimeDebug, StorageValue,
 };
@@ -255,8 +255,6 @@ impl pallet_aura::Config for Runtime {
 
 impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-	type UncleGenerations = ConstU32<0>;
-	type FilterUncle = ();
 	type EventHandler = CollatorSelection;
 }
 
@@ -943,10 +941,10 @@ impl EnsureOrigin<RuntimeOrigin> for EnsureRootOrTreasury {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin() -> RuntimeOrigin {
+	fn try_successful_origin() -> Result<RuntimeOrigin, ()> {
 		let zero_account_id = AccountId::decode(&mut sp_runtime::traits::TrailingZeroInput::zeroes())
 			.expect("infinite length input; no invalid inputs for type; qed");
-		RuntimeOrigin::from(RawOrigin::Signed(zero_account_id))
+		Ok(RuntimeOrigin::from(RawOrigin::Signed(zero_account_id)))
 	}
 }
 
@@ -1261,7 +1259,7 @@ impl module_transaction_payment::Config for Runtime {
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = MaxTipsOfPriority;
 	type WeightToFee = WeightToFee;
-	type TransactionByteFee = TransactionByteFee;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate =
 		TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier, MaximumMultiplier>;
 	type Swap = AcalaSwap;
@@ -1349,7 +1347,7 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 	MultiLocation::new(
 		1,
 		X1(AccountId32 {
-			network: NetworkId::Any,
+			network: None,
 			id: Utility::derivative_account_id(ParachainInfo::get().into_account_truncating(), index).into(),
 		}),
 	)
@@ -2170,6 +2168,12 @@ impl_runtime_apis! {
 		}
 		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
+		}
+		fn query_weight_to_fee(weight: Weight) -> Balance {
+			TransactionPayment::weight_to_fee(weight)
+		}
+		fn query_length_to_fee(length: u32) -> Balance {
+			TransactionPayment::length_to_fee(length)
 		}
 	}
 
