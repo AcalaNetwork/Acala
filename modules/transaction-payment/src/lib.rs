@@ -58,7 +58,7 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 use support::{AggregatedSwapPath, BuyWeightRate, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment};
-use xcm::opaque::latest::MultiLocation;
+use xcm::v3::prelude::MultiLocation;
 
 mod mock;
 mod tests;
