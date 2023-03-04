@@ -115,7 +115,7 @@ pub use runtime_common::{
 	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT, RENBTC,
 };
-pub use xcm::{latest::Weight as XcmWeight, prelude::*};
+use xcm::{prelude::*, v3::Weight as XcmWeight};
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;

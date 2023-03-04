@@ -11220,6 +11220,7 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain",
  "polkadot-primitives",
+ "polkadot-runtime",
  "scale-info",
  "serde_json",
  "sp-core",

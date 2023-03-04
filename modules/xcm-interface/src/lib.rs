@@ -35,7 +35,7 @@ use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
 use sp_runtime::traits::Convert;
 use sp_std::{convert::From, prelude::*, vec, vec::Vec};
-use xcm::{latest::Weight as XcmWeight, prelude::*};
+use xcm::{prelude::*, v3::Weight as XcmWeight};
 
 pub mod migrations;
 pub use module::*;

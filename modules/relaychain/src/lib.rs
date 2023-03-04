@@ -32,7 +32,7 @@ use primitives::Balance;
 use sp_std::{boxed::Box, marker::PhantomData, prelude::*};
 
 pub use cumulus_primitives_core::ParaId;
-use xcm::{latest::Weight as XcmWeight, prelude::*};
+use xcm::{prelude::*, v3::Weight as XcmWeight};
 
 use frame_system::Config;
 

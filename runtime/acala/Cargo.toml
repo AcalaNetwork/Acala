@@ -70,7 +70,6 @@ xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.3
 xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38", default-features = false }
 xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38", default-features = false }
 pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38", default-features = false }
-polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38", default-features = false }
 
 # orml
 orml-auction = { path = "../../orml/auction", default-features = false }
@@ -135,6 +134,7 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
 
 [features]
 default = ["std"]
@@ -278,10 +278,10 @@ runtime-benchmarks = [
 	"cumulus-pallet-parachain-system/runtime-benchmarks",
 	"cumulus-pallet-xcmp-queue/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
-	"polkadot-runtime/runtime-benchmarks",
 	"polkadot-parachain/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
+	"polkadot-runtime/runtime-benchmarks",
 
 	"orml-authority/runtime-benchmarks",
 	"orml-tokens/runtime-benchmarks",

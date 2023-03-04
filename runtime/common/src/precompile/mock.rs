@@ -53,7 +53,7 @@ use sp_runtime::{
 	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill,
 };
 use sp_std::prelude::*;
-use xcm::latest::prelude::*;
+use xcm::v3::prelude::*;
 
 pub type AccountId = AccountId32;
 type Key = CurrencyId;

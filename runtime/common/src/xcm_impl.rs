@@ -26,7 +26,7 @@ use primitives::{Balance, CurrencyId};
 use sp_core::bounded::BoundedVec;
 use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
 use sp_std::{marker::PhantomData, prelude::*};
-use xcm::{latest::Weight as XcmWeight, prelude::*};
+use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::TakeRevenue;
 use xcm_executor::{
 	traits::{DropAssets, WeightTrader},

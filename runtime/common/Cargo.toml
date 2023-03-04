@@ -77,6 +77,9 @@ orml-nft = { path = "../../orml/nft", default-features = false, optional = true 
 orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }
 orml-rewards = { path = "../../orml/rewards", default-features = false, optional = true }
 
+[dev-dependencies]
+polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
+
 [features]
 default = ["std"]
 std = [
@@ -164,4 +167,5 @@ bench = [
 	"orml-tokens/runtime-benchmarks",
 
 	"xcm-builder/runtime-benchmarks",
+	"polkadot-runtime/runtime-benchmarks",
 ]
