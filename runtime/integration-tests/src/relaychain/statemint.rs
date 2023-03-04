@@ -37,15 +37,19 @@ pub const FEE_STATEMINT: Balance = 10_312_677;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
-		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
+		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((Parent, Parachain(1000)).into()));
 	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
 		RuntimeOrigin::root(),
-		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(50_000_000),)],
+		vec![(
+			xcm_operation.clone(),
+			Some(XcmWeight::from_ref_time(4_000_000_000)),
+			Some(50_000_000),
+		)],
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(
 		module_xcm_interface::Event::XcmDestWeightUpdated {
 			xcm_operation: xcm_operation.clone(),
-			new_xcm_dest_weight: 4_000_000_000,
+			new_xcm_dest_weight: XcmWeight::from_ref_time(4_000_000_000),
 		},
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
@@ -63,7 +67,7 @@ fn statemint_min_xcm_fee_matched() {
 		let weight = Weight::from_ref_time(FEE_WEIGHT as u64);
 
 		let fee: Balance = IdentityFee::weight_to_fee(&weight);
-		let statemine: MultiLocation = (1, Parachain(parachains::statemint::ID)).into();
+		let statemine: MultiLocation = (Parent, Parachain(parachains::statemint::ID)).into();
 		assert_eq!(fee, 4_000_000_000);
 
 		let statemine_fee: u128 = ParachainMinFee::get(&statemine).unwrap();
@@ -76,8 +80,8 @@ fn teleport_from_relay_chain() {
 	PolkadotNet::execute_with(|| {
 		assert_ok!(polkadot_runtime::XcmPallet::teleport_assets(
 			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(1000).into().into()),
-			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
+			Box::new(Parachain(1000).into_versioned()),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((Here, dollar(DOT)).into()),
 			0
 		));
@@ -159,7 +163,7 @@ fn acala_side(fee_amount: u128) {
 				)
 				.into()
 			),
-			WeightLimit::Limited(FEE_WEIGHT as u64)
+			WeightLimit::Limited(XcmWeight::from_ref_time(FEE_WEIGHT as u64))
 		));
 
 		assert_eq!(
@@ -205,7 +209,7 @@ fn statemint_side(para_2000_init_amount: u128) {
 		assert_ok!(PolkadotXcm::limited_reserve_transfer_assets(
 			origin.clone(),
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
-			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((X2(PalletInstance(50), GeneralIndex(0)), TEN).into()),
 			0,
 			WeightLimit::Unlimited

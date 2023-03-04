@@ -40,15 +40,19 @@ const ASSET_ID: u32 = 100;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
-		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
+		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((Parent, Parachain(1000)).into()));
 	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
 		RuntimeOrigin::root(),
-		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(200_000_000),)],
+		vec![(
+			xcm_operation.clone(),
+			Some(XcmWeight::from_ref_time(4_000_000_000)),
+			Some(200_000_000),
+		)],
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(
 		module_xcm_interface::Event::XcmDestWeightUpdated {
 			xcm_operation: xcm_operation.clone(),
-			new_xcm_dest_weight: 4_000_000_000,
+			new_xcm_dest_weight: XcmWeight::from_ref_time(4_000_000_000),
 		},
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
@@ -66,8 +70,8 @@ fn statemine_min_xcm_fee_matched() {
 		let weight = FEE_WEIGHT as u64;
 
 		let fee: Balance = IdentityFee::weight_to_fee(&Weight::from_ref_time(weight));
-		let statemine: MultiLocation = (1, Parachain(parachains::statemine::ID)).into();
-		let bifrost: MultiLocation = (1, Parachain(parachains::bifrost::ID)).into();
+		let statemine: MultiLocation = (Parent, Parachain(parachains::statemine::ID)).into();
+		let bifrost: MultiLocation = (Parent, Parachain(parachains::bifrost::ID)).into();
 
 		let statemine_fee: u128 = ParachainMinFee::get(&statemine).unwrap();
 		assert_eq!(statemine_fee, FEE);
@@ -101,7 +105,7 @@ fn statemine_reserve_transfer_ksm_to_karura_should_not_allowed() {
 			// Unlike Statemine reserve transfer to relaychain is not allowed,
 			// Here Statemine reserve transfer to parachain. let's see what happened.
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
-			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((Parent, UNIT).into()),
 			0,
 			WeightLimit::Unlimited
@@ -155,7 +159,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(4_000_000_000)
+			WeightLimit::Limited(XcmWeight::from_ref_time(4_000_000_000))
 		));
 
 		assert_eq!(9 * UNIT, Tokens::free_balance(KSM, &AccountId::from(ALICE)));
@@ -275,7 +279,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 					)
 					.into()
 				),
-				WeightLimit::Limited(FEE_WEIGHT as u64)
+				WeightLimit::Limited(XcmWeight::from_ref_time(FEE_WEIGHT as u64))
 			));
 		} else {
 			// use KSM as fee
@@ -296,7 +300,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 					)
 					.into()
 				),
-				WeightLimit::Limited(FEE_WEIGHT as u64)
+				WeightLimit::Limited(XcmWeight::from_ref_time(FEE_WEIGHT as u64))
 			));
 		}
 
@@ -346,7 +350,7 @@ fn statemine_transfer_asset_to_karura() {
 		assert_ok!(PolkadotXcm::limited_reserve_transfer_assets(
 			origin.clone(),
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
-			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((X2(PalletInstance(50), GeneralIndex(ASSET_ID as u128)), TEN).into()),
 			0,
 			WeightLimit::Unlimited

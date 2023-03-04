@@ -27,7 +27,7 @@ use module_evm_accounts::EvmAddressMapping;
 use module_support::EVM as EVMTrait;
 use orml_traits::MultiCurrency;
 use primitives::evm::EvmAddress;
-use sp_core::{H256, U256};
+use sp_core::{bounded::BoundedVec, H256, U256};
 use std::str::FromStr;
 use xcm_emulator::TestExt;
 
@@ -191,7 +191,7 @@ fn erc20_transfer_between_sibling() {
 				)
 				.into(),
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		// using native token to charge storage fee
@@ -241,7 +241,7 @@ fn erc20_transfer_between_sibling() {
 				)
 				.into(),
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		// transfer erc20 token to new account on Karura
@@ -262,7 +262,7 @@ fn erc20_transfer_between_sibling() {
 				)
 				.into(),
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(
@@ -420,7 +420,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 				)
 				.into(),
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(

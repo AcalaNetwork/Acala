@@ -30,7 +30,7 @@ use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
 
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
-const XCM_WEIGHT: XcmWeight = 20_000_000_000;
+const XCM_WEIGHT: XcmWeight = XcmWeight::from_ref_time(20_000_000_000);
 const XCM_FEE: Balance = 10_000_000_000;
 const XCM_BOND_FEE: Balance = 7_118_539_605;
 const XCM_UNBOND_FEE: Balance = 5_423_483_202;
@@ -41,7 +41,7 @@ fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Bal
 		// Xcm weight = 400_000_000, fee = XCM_BOND_FEE
 		(XcmInterfaceOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)),
 		(
-			XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into())),
+			XcmInterfaceOperation::ParachainFee(Box::new((Parent, Parachain(1000)).into())),
 			Some(XCM_WEIGHT),
 			Some(XCM_FEE),
 		),
@@ -90,7 +90,10 @@ fn configure_homa_and_xcm_interface() {
 		param.commission_rate,
 		param.fast_match_fee_rate,
 	));
-	assert_eq!(XcmInterface::get_parachain_fee((1, Parachain(1000)).into()), XCM_FEE);
+	assert_eq!(
+		XcmInterface::get_parachain_fee(MultiLocation::new(1, Parachain(1000))),
+		XCM_FEE
+	);
 }
 
 #[test]
@@ -105,14 +108,13 @@ fn xcm_interface_transfer_staking_to_sub_account_works() {
 		// Transfer some KSM into the parachain.
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(2000).into_versioned()),
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
 					network: None
 				}
-				.into()
-				.into()
+				.into_versioned()
 			),
 			Box::new((Here, 2001 * dollar(RELAY_CHAIN_CURRENCY)).into()),
 			0
@@ -272,14 +274,13 @@ fn xcm_interface_bond_extra_on_sub_account_works() {
 		// Transfer some KSM into the parachain.
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(2000).into_versioned()),
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
 					network: None
 				}
-				.into()
-				.into()
+				.into_versioned()
 			),
 			Box::new((Here, 1_000 * dollar(RELAY_CHAIN_CURRENCY)).into()),
 			0
@@ -374,14 +375,13 @@ fn xcm_interface_unbond_on_sub_account_works() {
 		// Transfer some KSM into the parachain.
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(2000).into_versioned()),
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
 					network: None
 				}
-				.into()
-				.into()
+				.into_versioned()
 			),
 			Box::new((Here, 1_000 * dollar(RELAY_CHAIN_CURRENCY)).into()),
 			0
@@ -481,14 +481,13 @@ fn homa_mint_and_redeem_works() {
 		// Transfer some KSM into the parachain.
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(2000).into_versioned()),
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
 					network: None
 				}
-				.into()
-				.into()
+				.into_versioned()
 			),
 			Box::new((Here, 2001 * dollar(RELAY_CHAIN_CURRENCY)).into()),
 			0

@@ -24,6 +24,7 @@ use crate::setup::*;
 
 use frame_support::{assert_noop, assert_ok};
 use orml_traits::MultiCurrency;
+use sp_core::bounded::BoundedVec;
 use xcm::VersionedXcm;
 use xcm_emulator::TestExt;
 
@@ -48,8 +49,8 @@ fn transfer_from_relay_chain() {
 	PolkadotNet::execute_with(|| {
 		assert_ok!(polkadot_runtime::XcmPallet::reserve_transfer_assets(
 			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(ACALA_ID).into().into()),
-			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
+			Box::new(Parachain(ACALA_ID).into_versioned()),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((Here, dollar(DOT)).into()),
 			0
 		));
@@ -68,7 +69,7 @@ fn transfer_to_relay_chain() {
 			DOT,
 			5 * dollar(DOT),
 			Box::new(MultiLocation::new(1, X1(Junction::AccountId32 { id: BOB, network: None })).into()),
-			WeightLimit::Limited(4_000_000_000)
+			WeightLimit::Limited(XcmWeight::from_ref_time(4_000_000_000))
 		));
 	});
 
@@ -150,7 +151,7 @@ fn liquid_crowdloan_xtokens_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
 		));
 
 		assert_eq!(Tokens::free_balance(LCDOT, &AccountId::from(BOB)), 5 * dollar);
@@ -180,7 +181,7 @@ fn liquid_crowdloan_xtokens_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
 		));
 	});
 

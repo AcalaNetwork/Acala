@@ -975,7 +975,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			};
 			let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(len, &info, 0);
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(fee, 16_000_001_010);
+			assert_eq!(fee, 16_000_001_002);
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(fee, 2_500_001_010);
 			#[cfg(feature = "with-acala-runtime")]
@@ -985,7 +985,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			let fee_surplus = surplus_perc.mul_ceil(fee);
 			let fee = fee + fee_surplus;
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(fee, 24_000_001_515);
+			assert_eq!(fee, 24_000_001_503);
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(fee, 3_750_001_515);
 			#[cfg(feature = "with-acala-runtime")]
@@ -1003,7 +1003,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			);
 			let erc20_fee = Currencies::free_balance(erc20_token, &sub_account);
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(erc20_fee, 12_413_541_068);
+			assert_eq!(erc20_fee, 12_413_541_067);
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(erc20_fee, 10_407_164_914);
 			#[cfg(feature = "with-acala-runtime")]
@@ -1058,7 +1058,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-acala-runtime")]
 			let (erc20_with_fee, native_with_fee) = (376162733, 3750001515);
 			#[cfg(feature = "with-mandala-runtime")]
-			let (erc20_with_fee, native_with_fee) = (2402620974, 24000001515);
+			let (erc20_with_fee, native_with_fee) = (2402620973, 24000001503);
 			assert_eq!(
 				Currencies::free_balance(erc20_token, &sub_account),
 				erc20_fee * 2 + erc20_with_fee
@@ -1067,7 +1067,6 @@ fn transaction_payment_module_works_with_evm_contract() {
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
 				5 * dollar - (fee + ed) * 2 - native_with_fee
 			);
-
 			// empty_address use payment `with_fee_currency` call to charge fee by erc20 fee pool.
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
@@ -1160,7 +1159,7 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 #[test]
 fn evm_limits() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 29_990_102);
+		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 29_990_016);
 		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_storage_limit(), 3_670_016);
 	});
 }

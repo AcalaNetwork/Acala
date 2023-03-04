@@ -55,8 +55,8 @@ fn transfer_from_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(KARURA_ID).into().into()),
-			Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
+			Box::new(Parachain(KARURA_ID).into_versioned()),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((Here, dollar(KSM)).into()),
 			0
 		));
@@ -72,11 +72,11 @@ fn transfer_from_relay_chain() {
 
 #[test]
 fn transfer_to_relay_chain() {
-	use frame_support::weights::{Weight, WeightToFee as WeightToFeeT};
+	use frame_support::weights::WeightToFee as WeightToFeeT;
 	use kusama_runtime_constants::fee::WeightToFee;
 
-	let weight: XcmWeight = 298_368_000;
-	let fee = WeightToFee::weight_to_fee(&Weight::from_ref_time(weight));
+	let weight: XcmWeight = XcmWeight::from_ref_time(298_368_000);
+	let fee = WeightToFee::weight_to_fee(&weight);
 	assert_eq!(104_571_645, fee);
 
 	Karura::execute_with(|| {
@@ -142,7 +142,7 @@ fn transfer_native_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
@@ -169,7 +169,7 @@ fn transfer_native_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 5 * dollar - bnc_fee);
@@ -237,7 +237,7 @@ fn transfer_sibling_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
@@ -283,7 +283,7 @@ fn transfer_sibling_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(
@@ -411,7 +411,7 @@ fn asset_registry_module_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(
@@ -456,7 +456,7 @@ fn asset_registry_module_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(
@@ -545,7 +545,7 @@ fn stable_asset_xtokens_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
 		));
 
 		assert_eq!(Tokens::free_balance(stable_asset, &AccountId::from(BOB)), 5 * dollar);
@@ -578,7 +578,7 @@ fn stable_asset_xtokens_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
 		));
 	});
 
@@ -605,8 +605,8 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 		KusamaNet::execute_with(|| {
 			assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 				kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-				Box::new(Parachain(KARURA_ID).into().into()),
-				Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
+				Box::new(Parachain(KARURA_ID).into_versioned()),
+				Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 				Box::new((Here, amount).into()),
 				0
 			));
@@ -627,8 +627,8 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 		KusamaNet::execute_with(|| {
 			assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 				kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-				Box::new(Parachain(KARURA_ID).into().into()),
-				Box::new(Junction::AccountId32 { id: BOB, network: None }.into().into()),
+				Box::new(Parachain(KARURA_ID).into_versioned()),
+				Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 				Box::new((Here, amount).into()),
 				0
 			));
@@ -652,7 +652,7 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 fn xcm_transfer_execution_barrier_trader_works() {
 	let unit_instruction_weight: XcmWeight = karura_runtime::xcm_config::UnitWeightCost::get();
 	let expect_weight_limit = unit_instruction_weight.saturating_mul(3);
-	let weight_limit_too_low = expect_weight_limit - 1;
+	let weight_limit_too_low = expect_weight_limit.saturating_sub(XcmWeight::from_ref_time(1));
 	let trap_asset_limit: Balance = relay_per_second_as_fee(3);
 
 	// relay-chain use normal account to send xcm, destination para-chain can't pass Barrier check
@@ -673,7 +673,7 @@ fn xcm_transfer_execution_barrier_trader_works() {
 				network: None,
 				id: ALICE.into(),
 			}),
-			Parachain(KARURA_ID).into(),
+			Parachain(KARURA_ID).into_location(),
 			message
 		));
 	});
@@ -703,7 +703,8 @@ fn xcm_transfer_execution_barrier_trader_works() {
 		},
 	]);
 	Karura::execute_with(|| {
-		let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, expect_weight_limit);
+		let hash = message.using_encoded(sp_io::hashing::blake2_256);
+		let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, hash, expect_weight_limit);
 		assert_eq!(r, Outcome::Error(XcmError::Barrier));
 	});
 
@@ -721,7 +722,8 @@ fn xcm_transfer_execution_barrier_trader_works() {
 		},
 	]);
 	Karura::execute_with(|| {
-		let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, expect_weight_limit);
+		let hash = message.using_encoded(sp_io::hashing::blake2_256);
+		let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, hash, expect_weight_limit);
 		assert_eq!(
 			r,
 			Outcome::Incomplete(expect_weight_limit - unit_instruction_weight, XcmError::TooExpensive)
@@ -741,7 +743,8 @@ fn xcm_transfer_execution_barrier_trader_works() {
 		},
 	]);
 	Karura::execute_with(|| {
-		let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, expect_weight_limit);
+		let hash = message.using_encoded(sp_io::hashing::blake2_256);
+		let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, hash, expect_weight_limit);
 		assert_eq!(r, Outcome::Complete(expect_weight_limit));
 	});
 }
@@ -752,7 +755,7 @@ fn subscribe_version_notify_works() {
 	KusamaNet::execute_with(|| {
 		let r = pallet_xcm::Pallet::<kusama_runtime::Runtime>::force_subscribe_version_notify(
 			kusama_runtime::RuntimeOrigin::root(),
-			Box::new(Parachain(KARURA_ID).into().into()),
+			Box::new(Parachain(KARURA_ID).into_versioned()),
 		);
 		assert_ok!(r);
 	});
@@ -858,7 +861,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 			dollar_n,
 		);
 		let batch_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::utility_as_derivative_call(transfer_call, 0);
-		let weight = 10_000_000_000;
+		let weight = XcmWeight::from_ref_time(10_000_000_000);
 		// Fee to transfer into the hold register
 		let asset = MultiAsset {
 			id: Concrete(MultiLocation::here()),
@@ -904,7 +907,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 		let finalized_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::finalize_call_into_xcm_message(
 			batch_call,
 			dollar_n,
-			10_000_000_000,
+			XcmWeight::from_ref_time(10_000_000_000),
 		);
 
 		assert_ok!(PolkadotXcm::send_xcm(Here, Parent, finalized_call));
@@ -939,7 +942,7 @@ fn trapped_asset() -> MultiAsset {
 			AccountId::from(BOB),
 			dollar(NATIVE_CURRENCY),
 		);
-		let weight = 100;
+		let weight = XcmWeight::from_ref_time(100);
 		let xcm_msg = Xcm(vec![
 			WithdrawAsset(asset.clone().into()),
 			BuyExecution {
@@ -974,11 +977,12 @@ fn trapped_asset() -> MultiAsset {
 			pallet_xcm::Event::AssetsTrapped(hash, location, versioned),
 		));
 
+		let weight = XcmWeight::from_ref_time(160892100);
 		assert!(kusama_runtime::System::events().iter().any(|r| matches!(
 			r.event,
 			kusama_runtime::RuntimeEvent::Ump(polkadot_runtime_parachains::ump::Event::ExecutedUpward(
 				_,
-				xcm::v3::Outcome::Incomplete(160892100, _)
+				xcm::v3::Outcome::Incomplete(weight, _)
 			))
 		)));
 
@@ -1030,11 +1034,12 @@ fn claim_trapped_asset_works() {
 			claimed_amount,
 			kusama_runtime::Balances::free_balance(&AccountId::from(BOB))
 		);
+		let weight = XcmWeight::from_ref_time(282016000);
 		assert!(kusama_runtime::System::events().iter().any(|r| matches!(
 			r.event,
 			kusama_runtime::RuntimeEvent::Ump(polkadot_runtime_parachains::ump::Event::ExecutedUpward(
 				_,
-				xcm::v3::Outcome::Complete(282016000)
+				xcm::v3::Outcome::Complete(weight)
 			))
 		)));
 	});
@@ -1083,11 +1088,11 @@ fn trap_assets_larger_than_ed_works() {
 			WithdrawAsset(assets.clone().into()),
 			BuyExecution {
 				fees: assets,
-				weight_limit: Limited(dollar(KSM) as u64),
+				weight_limit: Limited(XcmWeight::from_ref_time(dollar(KSM) as u64)),
 			},
 			WithdrawAsset(
 				(
-					(0, Junction::from(BoundedVec::try_from(KAR.encode()).unwrap())),
+					MultiLocation::new(0, Junction::from(BoundedVec::try_from(KAR.encode()).unwrap())),
 					kar_asset_amount,
 				)
 					.into(),
@@ -1095,7 +1100,7 @@ fn trap_assets_larger_than_ed_works() {
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
-			Parachain(KARURA_ID).into(),
+			Parachain(KARURA_ID),
 			Xcm(xcm),
 		));
 	});
@@ -1138,11 +1143,11 @@ fn trap_assets_lower_than_ed_works() {
 			WithdrawAsset(assets.clone().into()),
 			BuyExecution {
 				fees: assets,
-				weight_limit: Limited(dollar(KSM) as u64),
+				weight_limit: Limited(XcmWeight::from_ref_time(dollar(KSM) as u64)),
 			},
 			WithdrawAsset(
 				(
-					(0, X1(Junction::from(BoundedVec::try_from(KAR.encode()).unwrap()))),
+					MultiLocation::new(0, X1(Junction::from(BoundedVec::try_from(KAR.encode()).unwrap()))),
 					kar_asset_amount,
 				)
 					.into(),
@@ -1151,7 +1156,7 @@ fn trap_assets_lower_than_ed_works() {
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
-			Parachain(KARURA_ID).into(),
+			Parachain(KARURA_ID),
 			Xcm(xcm),
 		));
 	});
@@ -1191,7 +1196,7 @@ fn sibling_trap_assets_works() {
 
 	Sibling::execute_with(|| {
 		let assets: MultiAsset = (
-			(0, X1(Junction::from(BoundedVec::try_from(KAR.encode()).unwrap()))),
+			MultiLocation::new(0, X1(Junction::from(BoundedVec::try_from(KAR.encode()).unwrap()))),
 			kar_asset_amount,
 		)
 			.into();

@@ -555,7 +555,8 @@ fn with_fee_call_works(
 			#[cfg(feature = "with-acala-runtime")]
 			let amount = 12726949853;
 			#[cfg(feature = "with-mandala-runtime")]
-			let amount = 13264589849;
+			let amount = 13_264_589_848u128;
+
 			System::assert_has_event(RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
 				currency_id: USD_CURRENCY,
 				from: AccountId::from(CHARLIE),

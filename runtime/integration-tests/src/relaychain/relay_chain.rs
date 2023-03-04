@@ -97,7 +97,11 @@ mod karura_tests {
 			// Call withdraw_unbonded as the homa subaccount
 			let xcm_message =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 0);
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 20_000_000_000, 10_000_000_000);
+			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
+				xcm_message,
+				20_000_000_000,
+				XcmWeight::from_ref_time(10_000_000_000),
+			);
 
 			// Withdraw unbonded
 			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
@@ -143,7 +147,11 @@ mod karura_tests {
 			// Transfer all remaining, but leave enough fund to pay for the XCM transaction.
 			let xcm_message = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1_970_000_000_000);
 
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 20_000_000_000, 10_000_000_000);
+			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
+				xcm_message,
+				20_000_000_000,
+				XcmWeight::from_ref_time(10_000_000_000),
+			);
 
 			// Withdraw unbonded
 			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
