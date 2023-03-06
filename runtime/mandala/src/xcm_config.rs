@@ -123,12 +123,12 @@ parameter_types! {
 	pub DotPerSecond: (AssetId, u128, u128) = (
 		MultiLocation::parent().into(),
 		dot_per_second(),
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub AcaPerSecond: (AssetId, u128, u128) = (
 		local_currency_location(ACA).unwrap().into(),
 		aca_per_second(),
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub BaseRate: u128 = aca_per_second();
 }

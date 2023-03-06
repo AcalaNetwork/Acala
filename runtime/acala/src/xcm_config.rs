@@ -129,19 +129,19 @@ parameter_types! {
 		local_currency_location(AUSD).unwrap().into(),
 		// aUSD:DOT = 40:1
 		dot_per_second() * 40,
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub AcaPerSecond: (AssetId, u128, u128) = (
 		local_currency_location(ACA).unwrap().into(),
 		aca_per_second(),
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub TapPerSecond: (AssetId, u128, u128) = (
 		local_currency_location(TAP).unwrap().into(),
 		// TODO: No price yet, assumed set at 4340
 		// TAP:tDOT = 4340:1
 		dot_per_second() * 4340,
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub BaseRate: u128 = aca_per_second();
 }

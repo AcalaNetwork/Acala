@@ -16,46 +16,68 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// This file is used for initial migration from HomaXcm into XcmInterface, due to name change.
-use frame_support::{
-	traits::{Get, GetStorageVersion, PalletInfoAccess, StorageVersion},
-	weights::Weight,
-};
+// This file is used for migration MultiLocation and XcmWeight storage
+use crate::*;
+use frame_support::{log, migration::storage_key_iter, traits::OnRuntimeUpgrade, StoragePrefixedMap};
+use sp_std::marker::PhantomData;
+pub use xcm::v2::{MultiLocation as OldMultiLocation, Weight as OldXcmWeight};
 
-pub mod v1 {
-	use super::*;
-	use crate::*;
+#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, TypeInfo)]
+pub enum OldXcmInterfaceOperation {
+	// XTokens
+	XtokensTransfer,
+	// Homa
+	HomaWithdrawUnbonded,
+	HomaBondExtra,
+	HomaUnbond,
+	// Parachain fee with location info
+	ParachainFee(Box<OldMultiLocation>),
+}
 
-	/// Migrate the entire storage of previously named "module-homa-xcm" pallet to here.
-	pub fn migrate<T: frame_system::Config, P: GetStorageVersion + PalletInfoAccess>() -> Weight {
-		let old_prefix = "HomaXcm";
-		let new_prefix = "XcmInterface";
+impl TryInto<XcmInterfaceOperation> for OldXcmInterfaceOperation {
+	type Error = ();
+	fn try_into(self) -> sp_std::result::Result<XcmInterfaceOperation, Self::Error> {
+		let data = match self {
+			OldXcmInterfaceOperation::XtokensTransfer => XcmInterfaceOperation::XtokensTransfer,
+			OldXcmInterfaceOperation::HomaWithdrawUnbonded => XcmInterfaceOperation::HomaWithdrawUnbonded,
+			OldXcmInterfaceOperation::HomaBondExtra => XcmInterfaceOperation::HomaBondExtra,
+			OldXcmInterfaceOperation::HomaUnbond => XcmInterfaceOperation::HomaUnbond,
+			OldXcmInterfaceOperation::ParachainFee(old_multilocation) => {
+				let v3_multilocation: MultiLocation =
+					(*old_multilocation).try_into().expect("Stored xcm::v2::MultiLocation");
+				XcmInterfaceOperation::ParachainFee(Box::new(v3_multilocation))
+			}
+		};
+		Ok(data)
+	}
+}
 
-		let on_chain_storage_version = <P as GetStorageVersion>::on_chain_storage_version();
-
+/// Migrate both key type and value type of XcmDestWeightAndFee.
+pub struct MigrateXcmDestWeightAndFee<T>(PhantomData<T>);
+impl<T: Config> OnRuntimeUpgrade for MigrateXcmDestWeightAndFee<T> {
+	fn on_runtime_upgrade() -> Weight {
 		log::info!(
-			target: "runtime::xcm-interface",
-			"Running migration from HomaXcm to XcmInterface. \n
-			Old prefix: {:?}, New prefix: {:?} \n
-			Current version: {:?}, New version: 1",
-			old_prefix, new_prefix, on_chain_storage_version,
+			target: "xcm-interface",
+			"MigrateXcmDestWeightAndFee::on_runtime_upgrade execute, will migrate the OldMultiLocation to v3 MultiLocation in
+			XcmInterfaceOperation::ParachainFee(Box<OldMultiLocation>) key type, and migrate OldXcmWeight to v3 XcmWeight in the value tuple.",
 		);
 
-		if on_chain_storage_version < 1 {
-			frame_support::storage::migration::move_pallet(old_prefix.as_bytes(), new_prefix.as_bytes());
-			StorageVersion::new(1).put::<P>();
-			log::info!(
-				target: "runtime::xcm-interface",
-				"Storage migrated from HomaXcm to XcmInterface.",
-			);
-			<T as frame_system::Config>::BlockWeights::get().max_block
-		} else {
-			log::warn!(
-				target: "runtime::xcm-interface",
-				"Attempted to apply migration to v1 but failed because storage version is {:?}",
-				on_chain_storage_version,
-			);
-			Weight::zero()
+		let mut weight: Weight = Weight::zero();
+
+		let module_prefix = XcmDestWeightAndFee::<T>::module_prefix();
+		let storage_prefix = XcmDestWeightAndFee::<T>::storage_prefix();
+		let old_data = storage_key_iter::<OldXcmInterfaceOperation, (OldXcmWeight, Balance), Twox64Concat>(
+			module_prefix,
+			storage_prefix,
+		)
+		.drain();
+		for (old_key, old_value) in old_data {
+			weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
+			let new_key: XcmInterfaceOperation = old_key.try_into().expect("Stored xcm::v2::MultiLocation");
+			let new_value: (XcmWeight, Balance) = (XcmWeight::from_ref_time(old_value.0), old_value.1);
+			XcmDestWeightAndFee::<T>::insert(new_key, new_value);
 		}
+
+		weight
 	}
 }

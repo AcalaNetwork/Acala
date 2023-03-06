@@ -124,30 +124,30 @@ parameter_types! {
 	pub KsmPerSecond: (AssetId, u128, u128) = (
 		MultiLocation::parent().into(),
 		ksm_per_second(),
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub KusdPerSecond: (AssetId, u128, u128) = (
 		local_currency_location(KUSD).unwrap().into(),
 		// kUSD:KSM = 400:1
 		ksm_per_second() * 400,
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub KarPerSecond: (AssetId, u128, u128) = (
 		local_currency_location(KAR).unwrap().into(),
 		kar_per_second(),
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub LksmPerSecond: (AssetId, u128, u128) = (
 		local_currency_location(LKSM).unwrap().into(),
 		// LKSM:KSM = 10:1
 		ksm_per_second() * 10,
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub TaiPerSecond: (AssetId, u128, u128) = (
 		local_currency_location(TAI).unwrap().into(),
 		// TAI:taiKSM = 4340:1
 		ksm_per_second() * 4340,
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub PHAPerSecond: (AssetId, u128, u128) = (
 		MultiLocation::new(
@@ -156,31 +156,31 @@ parameter_types! {
 		).into(),
 		// PHA:KSM = 400:1
 		ksm_per_second() * 400,
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub BncPerSecond: (AssetId, u128, u128) = (
 		native_currency_location(parachains::bifrost::ID, parachains::bifrost::BNC_KEY.to_vec()).unwrap().into(),
 		// BNC:KSM = 80:1
 		ksm_per_second() * 80,
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub VsksmPerSecond: (AssetId, u128, u128) = (
 		native_currency_location(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY.to_vec()).unwrap().into(),
 		// VSKSM:KSM = 1:1
 		ksm_per_second(),
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub KbtcPerSecond: (AssetId, u128, u128) = (
 		native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY.to_vec()).unwrap().into(),
 		// KBTC:KSM = 1:150 & Satoshi:Planck = 1:10_000
 		ksm_per_second() / 1_500_000,
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 	pub KintPerSecond: (AssetId, u128, u128) = (
 		native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY.to_vec()).unwrap().into(),
 		// KINT:KSM = 4:3
 		(ksm_per_second() * 4) / 3,
-		0	// TODO: config proof size fee for per MB
+		0
 	);
 
 	pub BaseRate: u128 = kar_per_second();

@@ -1792,6 +1792,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
+	// TODO: reset Migrations
 	(
 		pallet_balances::migration::MigrateToTrackInactive<Runtime, xcm_config::CheckingAccount>,
 		pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,

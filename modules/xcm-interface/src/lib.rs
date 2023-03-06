@@ -37,6 +37,9 @@ use sp_runtime::traits::Convert;
 use sp_std::{convert::From, prelude::*, vec, vec::Vec};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 
+mod mock;
+mod tests;
+
 pub mod migrations;
 pub use module::*;
 
@@ -108,7 +111,6 @@ pub mod module {
 	}
 
 	// TODO: migrate XcmWeight
-
 	/// The dest weight limit and fee for execution XCM msg sended by XcmInterface. Must be
 	/// sufficient, otherwise the execution of XCM msg on relaychain will fail.
 	///
