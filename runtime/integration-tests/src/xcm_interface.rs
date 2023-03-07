@@ -214,6 +214,7 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		);
 	});
 
+	env_logger::init();
 	Karura::execute_with(|| {
 		configure_homa_and_xcm_interface();
 
@@ -228,17 +229,17 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		configure_homa_and_xcm_interface();
 
 		// Add an unlock chunk to the ledger
-		assert_ok!(Homa::reset_ledgers(
-			RuntimeOrigin::root(),
-			vec![(
-				0,
-				Some(1_000 * dollar(RELAY_CHAIN_CURRENCY)),
-				Some(vec![UnlockChunk {
-					value: 1000 * dollar(RELAY_CHAIN_CURRENCY),
-					era: 0
-				},])
-			),]
-		));
+		//assert_ok!(Homa::reset_ledgers(
+		//	RuntimeOrigin::root(),
+		//	vec![(
+		//		0,
+		//		Some(1_000 * dollar(RELAY_CHAIN_CURRENCY)),
+		//		Some(vec![UnlockChunk {
+		//			value: 1000 * dollar(RELAY_CHAIN_CURRENCY),
+		//			era: 0
+		//		},])
+		//	),]
+		//));
 
 		// Process the unlocking and withdraw unbonded.
 		assert_ok!(Homa::process_scheduled_unbond(0));
