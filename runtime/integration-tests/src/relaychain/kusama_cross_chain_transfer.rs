@@ -63,10 +63,9 @@ fn transfer_from_relay_chain() {
 	});
 
 	Karura::execute_with(|| {
-		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 		assert_eq!(
 			Tokens::free_balance(KSM, &AccountId::from(BOB)),
-			dollar(KSM) - relay_per_second_as_fee(20)
+			dollar(KSM) - relay_per_second_as_fee(4)
 		);
 	});
 }
@@ -103,6 +102,8 @@ fn transfer_native_chain_asset() {
 	TestNet::reset();
 	let dollar = dollar(BNC);
 	let minimal_balance = Balances::minimum_balance() / 10; // 10%
+	let foreign_fee = foreign_per_second_as_fee(4, minimal_balance);
+	let bnc_fee = bnc_per_second_as_fee(4);
 
 	MockBifrost::execute_with(|| {
 		// Register native BNC's incoming address as a foreign asset so it can receive BNC
@@ -149,11 +150,7 @@ fn transfer_native_chain_asset() {
 	});
 
 	Karura::execute_with(|| {
-		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
-		assert_eq!(
-			Tokens::free_balance(BNC, &AccountId::from(BOB)),
-			10 * dollar - bnc_per_second_as_fee(5)
-		);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 10 * dollar - bnc_fee);
 
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(BOB.into()),
@@ -175,10 +172,7 @@ fn transfer_native_chain_asset() {
 			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
-		assert_eq!(
-			Tokens::free_balance(BNC, &AccountId::from(BOB)),
-			5 * dollar - bnc_per_second_as_fee(5)
-		);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 5 * dollar - bnc_fee);
 	});
 
 	MockBifrost::execute_with(|| {
@@ -186,10 +180,9 @@ fn transfer_native_chain_asset() {
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
 		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 10 * dollar);
 
-		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			5 * dollar - foreign_per_second_as_fee(5, minimal_balance)
+			5 * dollar - foreign_fee
 		);
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
 	});
@@ -200,6 +193,8 @@ fn transfer_sibling_chain_asset() {
 	TestNet::reset();
 	let dollar = dollar(BNC);
 	let minimal_balance = Balances::minimum_balance() / 10; // 10%
+	let foreign_fee = foreign_per_second_as_fee(4, minimal_balance);
+	let bnc_fee = bnc_per_second_as_fee(4);
 
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100 * dollar));
@@ -261,15 +256,14 @@ fn transfer_sibling_chain_asset() {
 		);
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &sibling_reserve_account()),
-			10 * dollar - foreign_per_second_as_fee(5, minimal_balance)
+			10 * dollar - foreign_fee
 		);
 	});
 
 	Sibling::execute_with(|| {
-		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 		assert_eq!(
 			Tokens::free_balance(BNC, &AccountId::from(BOB)),
-			10 * dollar - foreign_per_second_as_fee(5, minimal_balance) - bnc_per_second_as_fee(5)
+			10 * dollar - foreign_fee - bnc_fee
 		);
 
 		assert_ok!(XTokens::transfer(
@@ -292,10 +286,9 @@ fn transfer_sibling_chain_asset() {
 			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
-		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 		assert_eq!(
 			Tokens::free_balance(BNC, &AccountId::from(BOB)),
-			5 * dollar - foreign_per_second_as_fee(5, minimal_balance) - bnc_per_second_as_fee(5)
+			5 * dollar - foreign_fee - bnc_fee
 		);
 	});
 
@@ -303,18 +296,18 @@ fn transfer_sibling_chain_asset() {
 		// Sibling -->(transfer 5_000_000_000_000)--> Karura
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &karura_reserve_account()),
-			95 * dollar - foreign_per_second_as_fee(5, minimal_balance)
+			95 * dollar - foreign_fee
 		);
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &sibling_reserve_account()),
-			5 * dollar - foreign_per_second_as_fee(5, minimal_balance)
+			5 * dollar - foreign_fee
 		);
 	});
 
 	Karura::execute_with(|| {
 		assert_eq!(
 			Tokens::free_balance(BNC, &AccountId::from(ALICE)),
-			95 * dollar - foreign_per_second_as_fee(5, minimal_balance) - bnc_per_second_as_fee(5)
+			95 * dollar - foreign_fee - bnc_fee
 		);
 	});
 }
@@ -324,8 +317,7 @@ fn asset_registry_module_works() {
 	TestNet::reset();
 	let dollar = dollar(BNC);
 	let minimal_balance = Balances::minimum_balance() / 10; // 10%
-														// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
-	let foreign_fee = foreign_per_second_as_fee(5, minimal_balance);
+	let foreign_fee = foreign_per_second_as_fee(4, minimal_balance);
 	let bnc_fee = foreign_fee; // BuyWeightRateOfForeignAsset in prior to BncPerSecond
 
 	Karura::execute_with(|| {
@@ -500,6 +492,7 @@ fn stable_asset_xtokens_works() {
 	let foreign_asset = CurrencyId::ForeignAsset(0);
 	let dollar = dollar(KAR);
 	let minimal_balance = Balances::minimum_balance() / 10; // 10%
+	let foreign_fee = foreign_per_second_as_fee(4, minimal_balance);
 
 	MockBifrost::execute_with(|| {
 		assert_ok!(AssetRegistry::register_foreign_asset(
@@ -563,10 +556,9 @@ fn stable_asset_xtokens_works() {
 	});
 
 	MockBifrost::execute_with(|| {
-		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 		assert_eq!(
 			Tokens::free_balance(foreign_asset, &AccountId::from(ALICE)),
-			5 * dollar - foreign_per_second_as_fee(40, minimal_balance)
+			5 * dollar - foreign_fee
 		);
 
 		assert_ok!(XTokens::transfer(
@@ -593,7 +585,7 @@ fn stable_asset_xtokens_works() {
 	Karura::execute_with(|| {
 		assert_eq!(
 			Tokens::free_balance(stable_asset, &AccountId::from(BOB)),
-			6 * dollar - foreign_per_second_as_fee(40, minimal_balance)
+			6 * dollar - foreign_fee
 		);
 		assert_eq!(
 			Tokens::free_balance(stable_asset, &bifrost_reserve_account()),
@@ -604,8 +596,7 @@ fn stable_asset_xtokens_works() {
 
 #[test]
 fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
-	// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
-	let minimum = relay_per_second_as_fee(20);
+	let minimum = relay_per_second_as_fee(4);
 	let ksm_minimum = Tokens::minimum_balance(KSM);
 	assert_eq!(ksm_minimum, 100_000_000);
 
@@ -630,7 +621,7 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 	}
 
 	fn upper_ed_case(amount: Balance) {
-		let minimum = relay_per_second_as_fee(20);
+		let minimum = relay_per_second_as_fee(4);
 
 		TestNet::reset();
 		KusamaNet::execute_with(|| {
@@ -986,12 +977,11 @@ fn trapped_asset() -> MultiAsset {
 			pallet_xcm::Event::AssetsTrapped(hash, location, versioned),
 		));
 
-		let weight = XcmWeight::from_ref_time(160892100);
 		assert!(kusama_runtime::System::events().iter().any(|r| matches!(
 			r.event,
 			kusama_runtime::RuntimeEvent::Ump(polkadot_runtime_parachains::ump::Event::ExecutedUpward(
 				_,
-				xcm::v3::Outcome::Incomplete(weight, _)
+				xcm::v3::Outcome::Incomplete(_, _)
 			))
 		)));
 
@@ -1043,12 +1033,11 @@ fn claim_trapped_asset_works() {
 			claimed_amount,
 			kusama_runtime::Balances::free_balance(&AccountId::from(BOB))
 		);
-		let weight = XcmWeight::from_ref_time(282016000);
 		assert!(kusama_runtime::System::events().iter().any(|r| matches!(
 			r.event,
 			kusama_runtime::RuntimeEvent::Ump(polkadot_runtime_parachains::ump::Event::ExecutedUpward(
 				_,
-				xcm::v3::Outcome::Complete(weight)
+				xcm::v3::Outcome::Complete(_)
 			))
 		)));
 	});
@@ -1080,8 +1069,7 @@ fn trap_assets_larger_than_ed_works() {
 
 	let mut kar_treasury_amount = 0;
 	let (ksm_asset_amount, kar_asset_amount) = (dollar(KSM), dollar(KAR));
-	// actually consume 3 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
-	let trader_weight_to_treasury: u128 = relay_per_second_as_fee(4);
+	let trader_weight_to_treasury: u128 = relay_per_second_as_fee(3);
 
 	let parent_account: AccountId = ParentIsPreset::<AccountId>::convert(Parent.into()).unwrap();
 

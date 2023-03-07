@@ -170,7 +170,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 		// source parachain sovereign account withrawn.
 		assert_eq!(UNIT, kusama_runtime::Balances::free_balance(&child_2000));
 		// destination parachain sovereign account deposited.
-		assert_eq!(998_794_181_936, kusama_runtime::Balances::free_balance(&child_1000));
+		assert_eq!(999_768_280_053, kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	// In receiver, xm execution error: UntrustedReserveLocation.
@@ -200,7 +200,7 @@ fn karura_transfer_asset_to_statemine_works() {
 
 		// https://github.com/paritytech/cumulus/pull/1278 support using self sufficient asset
 		// for paying xcm execution fee on Statemine.
-		assert_eq!(599_358_983_994, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
+		assert_eq!(990_000_000_000, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
 	});
 }
 

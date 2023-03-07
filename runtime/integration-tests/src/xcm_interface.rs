@@ -22,8 +22,6 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 use frame_support::{assert_ok, traits::Get, BoundedVec};
 use module_homa::UnlockChunk;
-use module_relaychain::RelayChainCallBuilder;
-use module_support::CallBuilder;
 use module_support::HomaSubAccountXcm;
 use module_xcm_interface::XcmInterfaceOperation;
 use pallet_staking::StakingLedger;
@@ -32,11 +30,11 @@ use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
 
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
-const XCM_WEIGHT: XcmWeight = XcmWeight::from_ref_time(25_000_000_000);
-const XCM_FEE: Balance = 20_000_000_000;
-const XCM_BOND_FEE: Balance = 7_118_539_605;
-const XCM_UNBOND_FEE: Balance = 5_423_483_202;
-const XCM_TRANSFER_FEE: Balance = 104_571_645;
+const XCM_WEIGHT: XcmWeight = XcmWeight::from_ref_time(20_000_000_000);
+const XCM_FEE: Balance = 10_000_000_000;
+const XCM_BOND_FEE: Balance = 6_123_530_292;
+const XCM_UNBOND_FEE: Balance = 4_661_427_850;
+const XCM_TRANSFER_FEE: Balance = 90_287_436;
 
 fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Balance>)> {
 	vec![
@@ -152,7 +150,7 @@ fn xcm_interface_transfer_staking_to_sub_account_works() {
 		// 1000 dollars (minus fee) are transferred into the Kusama chain
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-			999_999_895_428_355
+			999_999_909_712_564
 		);
 		// XCM fee is paid by the parachain account.
 		assert_eq!(

@@ -33,7 +33,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE: Balance = 50_000_000;
-pub const FEE_STATEMINT: Balance = 10_312_677;
+pub const FEE_STATEMINT: Balance = 1_609_084;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
@@ -75,64 +75,65 @@ fn statemint_min_xcm_fee_matched() {
 	});
 }
 
-// #[test]
-// fn teleport_from_relay_chain() {
-// 	PolkadotNet::execute_with(|| {
-// 		assert_ok!(polkadot_runtime::XcmPallet::teleport_assets(
-// 			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
-// 			Box::new(Parachain(1000).into_versioned()),
-// 			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
-// 			Box::new((Here, dollar(DOT)).into()),
-// 			0
-// 		));
-// 	});
+#[test]
+fn teleport_from_relay_chain() {
+	PolkadotNet::execute_with(|| {
+		assert_ok!(polkadot_runtime::XcmPallet::teleport_assets(
+			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
+			Box::new(Parachain(1000).into_versioned()),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
+			Box::new((Here, dollar(DOT)).into()),
+			0
+		));
+	});
 
-// 	Statemint::execute_with(|| {
-// 		assert_eq!(
-// 			dollar(DOT) - FEE_STATEMINT,
-// 			Balances::free_balance(&AccountId::from(BOB))
-// 		);
-// 	});
-// }
+	Statemint::execute_with(|| {
+		assert_eq!(
+			dollar(DOT) - FEE_STATEMINT,
+			Balances::free_balance(&AccountId::from(BOB))
+		);
+	});
+}
 
-// #[test]
-// fn acala_statemint_transfer_works() {
-// 	TestNet::reset();
-// 	let para_2000: AccountId = Sibling::from(2000).into_account_truncating();
-// 	let child_2000: AccountId = ParaId::from(2000).into_account_truncating();
-// 	let child_1000: AccountId = ParaId::from(1000).into_account_truncating();
+#[test]
+fn acala_statemint_transfer_works() {
+	TestNet::reset();
+	let para_2000: AccountId = Sibling::from(2000).into_account_truncating();
+	let child_2000: AccountId = ParaId::from(2000).into_account_truncating();
+	let child_1000: AccountId = ParaId::from(1000).into_account_truncating();
 
-// 	// minimum asset should be: FEE_WEIGHT+FEE_KUSAMA+max(KUSAMA_ED,STATEMINE_ED+FEE_STATEMINE).
-// 	// but due to current half fee, sender asset should at lease: FEE_WEIGHT + 2 * FEE_KUSAMA
-// 	let asset = FEE_WEIGHT + 2 * 31_488_122;
+	// minimum asset should be: FEE_WEIGHT+FEE_KUSAMA+max(KUSAMA_ED,STATEMINE_ED+FEE_STATEMINE).
+	// but due to current half fee, sender asset should at lease: FEE_WEIGHT + 2 * FEE_KUSAMA
+	// let asset = FEE_WEIGHT + 2 * 31_488_122;
+	let asset = FEE_WEIGHT + 2 * 31_488_122; // 4_062_976_244
 
-// 	statemint_side(UNIT);
+	statemint_side(UNIT);
 
-// 	PolkadotNet::execute_with(|| {
-// 		let _ = polkadot_runtime::Balances::make_free_balance_be(&child_2000, TEN);
-// 		assert_eq!(0, polkadot_runtime::Balances::free_balance(&child_1000));
-// 	});
+	PolkadotNet::execute_with(|| {
+		let _ = polkadot_runtime::Balances::make_free_balance_be(&child_2000, TEN);
+		assert_eq!(0, polkadot_runtime::Balances::free_balance(&child_1000));
+	});
 
-// 	acala_side(asset);
+	acala_side(asset);
 
-// 	PolkadotNet::execute_with(|| {
-// 		assert_eq!(
-// 			TEN - (asset - FEE),
-// 			polkadot_runtime::Balances::free_balance(&child_2000)
-// 		);
-// 	});
+	PolkadotNet::execute_with(|| {
+		assert_eq!(
+			TEN - (asset - FEE),
+			polkadot_runtime::Balances::free_balance(&child_2000)
+		);
+	});
 
-// 	Statemint::execute_with(|| {
-// 		use statemint_runtime::*;
-// 		// Karura send back custom asset to Statemint, ensure recipient got custom asset
-// 		assert_eq!(UNIT, Assets::balance(0, &AccountId::from(BOB)));
-// 		// and withdraw sibling parachain sovereign account
-// 		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
+	Statemint::execute_with(|| {
+		use statemint_runtime::*;
+		// Karura send back custom asset to Statemint, ensure recipient got custom asset
+		assert_eq!(UNIT, Assets::balance(0, &AccountId::from(BOB)));
+		// and withdraw sibling parachain sovereign account
+		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
 
-// 		assert_eq!(10_000_36_577_567, Balances::free_balance(&AccountId::from(BOB)));
-// 		assert_eq!(1_003_531_229_427, Balances::free_balance(&para_2000));
-// 	});
-// }
+		assert_eq!(1_000_044_010_367, Balances::free_balance(&AccountId::from(BOB)));
+		assert_eq!(1_003_598_838_160, Balances::free_balance(&para_2000));
+	});
+}
 
 // transfer custom asset from Karura to Statemint
 fn acala_side(fee_amount: u128) {
@@ -140,7 +141,7 @@ fn acala_side(fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			TEN - 80824000,
+			TEN - 80_128_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough DOT balance to be charged as fee
@@ -163,11 +164,11 @@ fn acala_side(fee_amount: u128) {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(FEE_WEIGHT as u64))
+			WeightLimit::Unlimited
 		));
 
 		assert_eq!(
-			TEN - UNIT - 80824000,
+			TEN - UNIT - 80_128_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - fee_amount, Tokens::free_balance(DOT, &AccountId::from(BOB)));
