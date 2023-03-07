@@ -551,9 +551,9 @@ fn with_fee_call_works(
 				)
 			);
 			#[cfg(feature = "with-karura-runtime")]
-			let amount = 12726949853;
+			let amount = 12_726_949_852u128;
 			#[cfg(feature = "with-acala-runtime")]
-			let amount = 12726949853;
+			let amount = 12_726_949_852u128;
 			#[cfg(feature = "with-mandala-runtime")]
 			let amount = 13_264_589_848u128;
 

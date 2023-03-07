@@ -69,10 +69,12 @@ mod fee_test {
 		let unit_weight: Weight = karura_runtime::xcm_config::UnitWeightCost::get();
 		#[cfg(feature = "with-karura-runtime")]
 		assert_eq!(unit_weight, Weight::from_ref_time(200_000_000));
+
 		#[cfg(feature = "with-acala-runtime")]
 		let unit_weight: Weight = acala_runtime::xcm_config::UnitWeightCost::get();
 		#[cfg(feature = "with-acala-runtime")]
 		assert_eq!(unit_weight, Weight::from_ref_time(200_000_000));
+
 		#[cfg(feature = "with-mandala-runtime")]
 		let unit_weight: Weight = mandala_runtime::xcm_config::UnitWeightCost::get();
 		#[cfg(feature = "with-mandala-runtime")]
@@ -85,12 +87,12 @@ mod fee_test {
 		#[cfg(feature = "with-karura-runtime")]
 		let relay_per_second = karura_runtime::ksm_per_second();
 		#[cfg(feature = "with-karura-runtime")]
-		assert_eq!(202_060_000_000, relay_per_second);
+		assert_eq!(200_320_000_000, relay_per_second);
 
 		#[cfg(feature = "with-acala-runtime")]
 		let relay_per_second = acala_runtime::dot_per_second();
 		#[cfg(feature = "with-acala-runtime")]
-		assert_eq!(2_020_600_000, relay_per_second);
+		assert_eq!(2_003_200_000, relay_per_second);
 
 		#[cfg(feature = "with-mandala-runtime")]
 		let relay_per_second = mandala_runtime::dot_per_second();
@@ -104,15 +106,15 @@ mod fee_test {
 		#[cfg(feature = "with-karura-runtime")]
 		let native_per_second = karura_runtime::kar_per_second();
 		#[cfg(feature = "with-karura-runtime")]
-		assert_eq!(10_103_000_000_000, native_per_second);
+		assert_eq!(10_016_000_000_000, native_per_second);
 		#[cfg(feature = "with-acala-runtime")]
 		let native_per_second = acala_runtime::aca_per_second();
-		#[cfg(feature = "with-karura-runtime")]
-		assert_eq!(10_103_000_000_000, native_per_second);
+		#[cfg(feature = "with-acala-runtime")]
+		assert_eq!(10_016_000_000_000, native_per_second);
 		#[cfg(feature = "with-mandala-runtime")]
 		let native_per_second = mandala_runtime::aca_per_second();
-		#[cfg(feature = "with-karura-runtime")]
-		assert_eq!(10_103_000_000_000, native_per_second);
+		#[cfg(feature = "with-mandala-runtime")]
+		assert_eq!(10_016_000_000_000, native_per_second);
 
 		native_unit_cost(instruction_count, native_per_second)
 	}
@@ -143,14 +145,14 @@ mod fee_test {
 	#[cfg(feature = "with-karura-runtime")]
 	#[test]
 	fn karura_per_second_works() {
-		assert_eq!(161_648_000, relay_per_second_as_fee(4));
-		assert_eq!(121_236_000, relay_per_second_as_fee(3));
-		assert_eq!(8_082_400_000, native_per_second_as_fee(4));
-		assert_eq!(12_931_840_000, bnc_per_second_as_fee(4));
+		assert_eq!(160_256_000, relay_per_second_as_fee(4));
+		assert_eq!(120_192_000, relay_per_second_as_fee(3));
+		assert_eq!(8_012_800_000, native_per_second_as_fee(4));
+		assert_eq!(12_820_480_000, bnc_per_second_as_fee(4));
 
-		assert_eq!(8_082_400_000, foreign_per_second_as_fee(4, Balances::minimum_balance()));
+		assert_eq!(8_012_800_000, foreign_per_second_as_fee(4, Balances::minimum_balance()));
 		assert_eq!(
-			808_240_000,
+			801_280_000,
 			foreign_per_second_as_fee(4, Balances::minimum_balance() / 10)
 		);
 	}
@@ -158,13 +160,13 @@ mod fee_test {
 	#[cfg(feature = "with-acala-runtime")]
 	#[test]
 	fn acala_per_second_works() {
-		assert_eq!(1_616_480, relay_per_second_as_fee(4));
-		assert_eq!(1_212_360, relay_per_second_as_fee(3));
-		assert_eq!(8_082_400_000, native_per_second_as_fee(4));
+		assert_eq!(1_602_560, relay_per_second_as_fee(4));
+		assert_eq!(1_201_920, relay_per_second_as_fee(3));
+		assert_eq!(8_012_800_000, native_per_second_as_fee(4));
 
-		assert_eq!(8_082_400_000, foreign_per_second_as_fee(4, Balances::minimum_balance()));
+		assert_eq!(8_012_800_000, foreign_per_second_as_fee(4, Balances::minimum_balance()));
 		assert_eq!(
-			808_240_000,
+			801_280_000,
 			foreign_per_second_as_fee(4, Balances::minimum_balance() / 10)
 		);
 	}
@@ -195,16 +197,16 @@ fn weight_to_fee_works() {
 		use kusama_runtime_constants::fee::WeightToFee;
 
 		let base_weight: Weight = kusama_runtime::xcm_config::BaseXcmWeight::get();
-		assert_eq!(base_weight, Weight::from_ref_time(1_000_000_000));
+		assert_eq!(base_weight, Weight::from_parts(1_000_000_000, 65536));
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(1_401_915_012, fee);
+		assert_eq!(1_205_818_064, fee);
 
 		// transfer_to_relay_chain weight in KusamaNet
-		let weight: Weight = Weight::from_ref_time(298_368_000);
+		let weight: Weight = Weight::from_ref_time(299_506_000);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(104_571_645, fee);
+		assert_eq!(90_287_436, fee);
 	}
 
 	// Polkadot
@@ -213,16 +215,16 @@ fn weight_to_fee_works() {
 		use polkadot_runtime_constants::fee::WeightToFee;
 
 		let base_weight: Weight = polkadot_runtime::xcm_config::BaseXcmWeight::get();
-		assert_eq!(base_weight, Weight::from_ref_time(1_000_000_000));
+		assert_eq!(base_weight, Weight::from_parts(1_000_000_000, 65536));
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(421_434_140, fee);
+		assert_eq!(362_529_000, fee);
 
-		// transfer_to_relay_chain weight in KusamaNet
-		let weight: Weight = Weight::from_ref_time(298_368_000);
+		// transfer_to_relay_chain weight in PolkadotNet
+		let weight: Weight = Weight::from_ref_time(299_506_000);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(31_435_615, fee);
+		assert_eq!(27_144_903, fee);
 	}
 
 	// Statemine
@@ -234,7 +236,7 @@ fn weight_to_fee_works() {
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(134_715_512, fee);
+		assert_eq!(133_547_004, fee);
 	}
 
 	// Statemint
@@ -246,7 +248,7 @@ fn weight_to_fee_works() {
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(40_414_652, fee);
+		assert_eq!(40_064_100, fee);
 	}
 
 	// Karura
@@ -262,11 +264,11 @@ fn weight_to_fee_works() {
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(4_041_465_435, fee);
+		assert_eq!(4_006_410_256, fee);
 
 		let weight: Weight = unit_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(8_082_930_870, fee);
+		assert_eq!(8_012_820_513, fee);
 	}
 
 	// Acala
@@ -282,10 +284,10 @@ fn weight_to_fee_works() {
 
 		let weight: Weight = base_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(4_041_465_435, fee);
+		assert_eq!(4_006_410_256, fee);
 
 		let weight: Weight = unit_weight.saturating_mul(4);
 		let fee = WeightToFee::weight_to_fee(&weight);
-		assert_eq!(8_082_930_870, fee);
+		assert_eq!(8_012_820_513, fee);
 	}
 }
