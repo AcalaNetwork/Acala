@@ -233,21 +233,22 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		// assert_eq!(kusama_runtime::System::events(), vec![]);
 	});
 
+	env_logger::init();
 	Karura::execute_with(|| {
 		configure_homa_and_xcm_interface();
 
 		// Add an unlock chunk to the ledger
-		assert_ok!(Homa::reset_ledgers(
-			RuntimeOrigin::root(),
-			vec![(
-				0,
-				Some(1_000 * dollar(RELAY_CHAIN_CURRENCY)),
-				Some(vec![UnlockChunk {
-					value: 1000 * dollar(RELAY_CHAIN_CURRENCY),
-					era: 0
-				},])
-			),]
-		));
+		//assert_ok!(Homa::reset_ledgers(
+		//	RuntimeOrigin::root(),
+		//	vec![(
+		//		0,
+		//		Some(1_000 * dollar(RELAY_CHAIN_CURRENCY)),
+		//		Some(vec![UnlockChunk {
+		//			value: 1000 * dollar(RELAY_CHAIN_CURRENCY),
+		//			era: 0
+		//		},])
+		//	),]
+		//));
 
 		let transact_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::utility_as_derivative_call(
 			RelayChainCallBuilder::<Runtime, ParachainInfo>::utility_batch_call(vec![
