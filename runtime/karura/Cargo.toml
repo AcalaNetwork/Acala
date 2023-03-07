@@ -283,7 +283,6 @@ runtime-benchmarks = [
 	"polkadot-parachain/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
-
 	"polkadot-runtime/runtime-benchmarks",
 
 	"orml-authority/runtime-benchmarks",

@@ -61,37 +61,39 @@ fn token_per_second_works() {
 // 	});
 // }
 
-// #[test]
-// fn transfer_to_relay_chain() {
-// 	use frame_support::weights::WeightToFee as WeightToFeeT;
-// 	use polkadot_runtime_constants::fee::WeightToFee;
+#[test]
+fn transfer_to_relay_chain() {
+	use frame_support::weights::WeightToFee as WeightToFeeT;
+	use polkadot_runtime_constants::fee::WeightToFee;
 
-// 	let weight: XcmWeight = XcmWeight::from_ref_time(10);
-// 	let fee = WeightToFee::weight_to_fee(&weight);
-// 	// assert_eq!(27_144_903, fee);
+	let parachain_account: AccountId = polkadot_parachain::primitives::Id::from(ACALA_ID).into_account_truncating();
 
-// 	Acala::execute_with(|| {
-// 		assert_ok!(XTokens::transfer(
-// 			RuntimeOrigin::signed(ALICE.into()),
-// 			DOT,
-// 			5 * dollar(DOT),
-// 			Box::new(MultiLocation::new(1, X1(Junction::AccountId32 { id: BOB, network: None })).into()),
-// 			WeightLimit::Limited(weight)
-// 		));
-// 	});
+	// let weight: XcmWeight = XcmWeight::from_ref_time(10);
+	// let fee = WeightToFee::weight_to_fee(&weight);
+	// assert_eq!(27_144_903, fee);
 
-// 	PolkadotNet::execute_with(|| {
-// 		assert_eq!(polkadot_runtime::System::events(), vec![]);
-// 		assert_eq!(
-// 			polkadot_runtime::Balances::free_balance(&AccountId::from(BOB)),
-// 			5 * dollar(DOT) - fee
-// 		);
-// 		assert_eq!(
-// 			5 * dollar(DOT),
-// 			polkadot_runtime::Balances::free_balance(&ParaId::from(ACALA_ID).into_account_truncating())
-// 		);
-// 	});
-// }
+	Acala::execute_with(|| {
+		assert_ok!(XTokens::transfer(
+			RuntimeOrigin::signed(ALICE.into()),
+			DOT,
+			5 * dollar(DOT),
+			Box::new(MultiLocation::new(1, X1(Junction::AccountId32 { id: BOB, network: None })).into()),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000))
+		));
+	});
+
+	PolkadotNet::execute_with(|| {
+		assert_eq!(polkadot_runtime::System::events(), vec![]);
+		// assert_eq!(
+		// 	polkadot_runtime::Balances::free_balance(&AccountId::from(BOB)),
+		// 	5 * dollar(DOT) - fee
+		// );
+		// assert_eq!(
+		// 	5 * dollar(DOT),
+		// 	polkadot_runtime::Balances::free_balance(&ParaId::from(ACALA_ID).
+		// into_account_truncating()) );
+	});
+}
 
 // #[test]
 // fn liquid_crowdloan_xtokens_works() {

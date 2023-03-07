@@ -124,7 +124,7 @@ parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: XcmWeight = XcmWeight::from_ref_time(200_000_000);
 	pub const MaxInstructions: u32 = 100;
-	pub DotPerSecond: (AssetId, u128, u128) = (MultiLocation::parent().into(), dot_per_second(), 0);	// TODO: config proof size fee for per MB
+	pub DotPerSecond: (AssetId, u128, u128) = (MultiLocation::parent().into(), dot_per_second(), 0);
 	pub AusdPerSecond: (AssetId, u128, u128) = (
 		local_currency_location(AUSD).unwrap().into(),
 		// aUSD:DOT = 40:1
@@ -238,7 +238,7 @@ impl pallet_xcm::Config for Runtime {
 	type TrustedLockers = ();
 	type SovereignAccountOf = ();
 	type MaxLockers = ConstU32<8>;
-	type WeightInfo = pallet_xcm::TestWeightInfo; // TODO: config correct weight
+	type WeightInfo = pallet_xcm::TestWeightInfo; // TODO: config after polkadot impl WeightInfo for ()
 	#[cfg(feature = "runtime-benchmarks")]
 	type ReachableDest = ReachableDest;
 }

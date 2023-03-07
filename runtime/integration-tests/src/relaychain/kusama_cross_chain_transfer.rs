@@ -63,9 +63,10 @@ fn transfer_from_relay_chain() {
 	});
 
 	Karura::execute_with(|| {
+		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 		assert_eq!(
 			Tokens::free_balance(KSM, &AccountId::from(BOB)),
-			dollar(KSM) - relay_per_second_as_fee(20) // TODO: recheck this, similar buy 20 instructions but no refund!
+			dollar(KSM) - relay_per_second_as_fee(20)
 		);
 	});
 }
@@ -140,7 +141,7 @@ fn transfer_native_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)), // can buy 5 instructions
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
@@ -148,10 +149,11 @@ fn transfer_native_chain_asset() {
 	});
 
 	Karura::execute_with(|| {
+		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 		assert_eq!(
 			Tokens::free_balance(BNC, &AccountId::from(BOB)),
 			10 * dollar - bnc_per_second_as_fee(5)
-		); // TODO: recheck it! similar consume weight limit(5 instructions)
+		);
 
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(BOB.into()),
@@ -170,7 +172,7 @@ fn transfer_native_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)), // can buy 5 instructions
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(
@@ -184,10 +186,10 @@ fn transfer_native_chain_asset() {
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
 		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 10 * dollar);
 
+		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			5 * dollar - foreign_per_second_as_fee(5, minimal_balance) /* TODO: recheck it! similar consume weight
-			                                                            * limit(5 instructions) */
+			5 * dollar - foreign_per_second_as_fee(5, minimal_balance)
 		);
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
 	});
@@ -240,7 +242,7 @@ fn transfer_sibling_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)), // can buy 5 instructions
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
@@ -264,12 +266,10 @@ fn transfer_sibling_chain_asset() {
 	});
 
 	Sibling::execute_with(|| {
+		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 		assert_eq!(
 			Tokens::free_balance(BNC, &AccountId::from(BOB)),
-			10 * dollar - foreign_per_second_as_fee(5, minimal_balance) - bnc_per_second_as_fee(5) /* TODO: recheck
-			                                                                                        * it! similar
-			                                                                                        * consume weight
-			                                                                                        * limit(5 instructions) */
+			10 * dollar - foreign_per_second_as_fee(5, minimal_balance) - bnc_per_second_as_fee(5)
 		);
 
 		assert_ok!(XTokens::transfer(
@@ -289,15 +289,13 @@ fn transfer_sibling_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)), // can buy 5 instructions
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
+		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 		assert_eq!(
 			Tokens::free_balance(BNC, &AccountId::from(BOB)),
-			5 * dollar - foreign_per_second_as_fee(5, minimal_balance) - bnc_per_second_as_fee(5) /* TODO: recheck
-			                                                                                       * it! similar
-			                                                                                       * consume weight
-			                                                                                       * limit(5 instructions) */
+			5 * dollar - foreign_per_second_as_fee(5, minimal_balance) - bnc_per_second_as_fee(5)
 		);
 	});
 
@@ -326,6 +324,7 @@ fn asset_registry_module_works() {
 	TestNet::reset();
 	let dollar = dollar(BNC);
 	let minimal_balance = Balances::minimum_balance() / 10; // 10%
+														// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 	let foreign_fee = foreign_per_second_as_fee(5, minimal_balance);
 	let bnc_fee = foreign_fee; // BuyWeightRateOfForeignAsset in prior to BncPerSecond
 
@@ -420,7 +419,7 @@ fn asset_registry_module_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)), // can buy 5 instructions
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(
@@ -438,7 +437,7 @@ fn asset_registry_module_works() {
 		);
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &sibling_reserve_account()),
-			10 * dollar - foreign_fee // TODO: recheck it! similar consume weight limit(5 instructions)
+			10 * dollar - foreign_fee
 		);
 	});
 
@@ -465,12 +464,12 @@ fn asset_registry_module_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)), // can buy 5 instructions
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB)),
-			5 * dollar - foreign_fee - bnc_fee // TODO: recheck it! similar consume weight limit(5 instructions)
+			5 * dollar - foreign_fee - bnc_fee
 		);
 	});
 
@@ -553,7 +552,7 @@ fn stable_asset_xtokens_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)), // can buy 40 instructions
+			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
 		));
 
 		assert_eq!(Tokens::free_balance(stable_asset, &AccountId::from(BOB)), 5 * dollar);
@@ -564,10 +563,10 @@ fn stable_asset_xtokens_works() {
 	});
 
 	MockBifrost::execute_with(|| {
+		// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 		assert_eq!(
 			Tokens::free_balance(foreign_asset, &AccountId::from(ALICE)),
-			5 * dollar - foreign_per_second_as_fee(40, minimal_balance) /* TODO: recheck it! similar consume weight
-			                                                             * limit(40 instructions) */
+			5 * dollar - foreign_per_second_as_fee(40, minimal_balance)
 		);
 
 		assert_ok!(XTokens::transfer(
@@ -605,7 +604,8 @@ fn stable_asset_xtokens_works() {
 
 #[test]
 fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
-	let minimum = relay_per_second_as_fee(20); // TODO: recheck it! similar consume weight limit(20 instructions)
+	// actually consume 4 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
+	let minimum = relay_per_second_as_fee(20);
 	let ksm_minimum = Tokens::minimum_balance(KSM);
 	assert_eq!(ksm_minimum, 100_000_000);
 
@@ -1080,6 +1080,7 @@ fn trap_assets_larger_than_ed_works() {
 
 	let mut kar_treasury_amount = 0;
 	let (ksm_asset_amount, kar_asset_amount) = (dollar(KSM), dollar(KAR));
+	// actually consume 3 instruction, but charge by WeightLimit for this issue: https://github.com/paritytech/polkadot/issues/6770
 	let trader_weight_to_treasury: u128 = relay_per_second_as_fee(4);
 
 	let parent_account: AccountId = ParentIsPreset::<AccountId>::convert(Parent.into()).unwrap();
@@ -1097,7 +1098,7 @@ fn trap_assets_larger_than_ed_works() {
 			WithdrawAsset(assets.clone().into()),
 			BuyExecution {
 				fees: assets,
-				weight_limit: Limited(XcmWeight::from_ref_time(800_000_000)), // can buy 4 instructions
+				weight_limit: Limited(XcmWeight::from_ref_time(800_000_000)),
 			},
 			WithdrawAsset(
 				(
@@ -1121,7 +1122,7 @@ fn trap_assets_larger_than_ed_works() {
 		)));
 
 		assert_eq!(
-			trader_weight_to_treasury + dollar(KSM), // TODO: recheck it! similar consume weight limit(4 instructions)
+			trader_weight_to_treasury + dollar(KSM),
 			Currencies::free_balance(KSM, &KaruraTreasuryAccount::get())
 		);
 		assert_eq!(
@@ -1152,7 +1153,7 @@ fn trap_assets_lower_than_ed_works() {
 			WithdrawAsset(assets.clone().into()),
 			BuyExecution {
 				fees: assets,
-				weight_limit: Limited(XcmWeight::from_ref_time(800_000_000)), // can buy 4 instructions
+				weight_limit: Limited(XcmWeight::from_ref_time(800_000_000)),
 			},
 			WithdrawAsset(
 				(
@@ -1190,61 +1191,71 @@ fn trap_assets_lower_than_ed_works() {
 	});
 }
 
-// #[test]
-// fn sibling_trap_assets_works() {
-// 	TestNet::reset();
+#[test]
+fn sibling_trap_assets_works() {
+	TestNet::reset();
 
-// 	let mut kar_treasury_amount = 0;
-// 	let (bnc_asset_amount, kar_asset_amount) = (dollar(BNC) / 10, cent(KAR));
+	let mut kar_treasury_amount = 0;
+	let (bnc_asset_amount, kar_asset_amount) = (cent(BNC) / 10, cent(KAR));
 
-// 	Karura::execute_with(|| {
-// 		assert_ok!(Tokens::deposit(BNC, &sibling_reserve_account(), dollar(BNC)));
-// 		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&sibling_reserve_account(),
-// dollar(KAR)); 		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
-// 	});
+	Karura::execute_with(|| {
+		assert_ok!(Tokens::deposit(BNC, &sibling_reserve_account(), 100 * dollar(BNC)));
+		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&sibling_reserve_account(), 100 * dollar(KAR));
+		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
+	});
 
-// 	Sibling::execute_with(|| {
-// 		let assets: MultiAsset = (
-// 			MultiLocation::new(0, X1(Junction::from(BoundedVec::try_from(KAR.encode()).unwrap()))),
-// 			kar_asset_amount,
-// 		).into();
+	Sibling::execute_with(|| {
+		let assets: MultiAsset = (
+			MultiLocation::new(0, X1(Junction::from(BoundedVec::try_from(KAR.encode()).unwrap()))),
+			kar_asset_amount,
+		)
+			.into();
 
-// 		let xcm = vec![
-// 			WithdrawAsset(assets.clone().into()),
-// 			BuyExecution {
-// 				fees: assets,
-// 				weight_limit: Unlimited,
-// 			},
-// 			WithdrawAsset((
-// 				(Parent, X2(Parachain(BIFROST_ID),
-// Junction::from(BoundedVec::try_from(BNC_KEY.encode()).unwrap()))), 				bnc_asset_amount,
-// 			).into()),
-// 		];
-// 		assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(
-// 			Here,
-// 			(Parent, Parachain(KARURA_ID)),
-// 			Xcm(xcm),
-// 		));
-// 	});
+		let xcm = vec![
+			WithdrawAsset(assets.clone().into()),
+			BuyExecution {
+				fees: assets,
+				weight_limit: Unlimited,
+			},
+			WithdrawAsset(
+				(
+					(
+						Parent,
+						X2(
+							Parachain(BIFROST_ID),
+							Junction::from(BoundedVec::try_from(BNC_KEY.to_vec()).unwrap()),
+						),
+					),
+					bnc_asset_amount,
+				)
+					.into(),
+			),
+		];
+		assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(
+			Here,
+			(Parent, Parachain(KARURA_ID)),
+			Xcm(xcm),
+		));
+	});
 
-// 	Karura::execute_with(|| {
-// 		assert_eq!(
-// 			System::events().iter().find(|r| matches!(
-// 				r.event,
-// 				RuntimeEvent::PolkadotXcm(pallet_xcm::Event::AssetsTrapped(_, _, _))
-// 			)),
-// 			None
-// 		);
-// 		assert_eq!(
-// 			Currencies::free_balance(KAR, &KaruraTreasuryAccount::get()) - kar_treasury_amount,
-// 			kar_asset_amount
-// 		);
-// 		assert_eq!(
-// 			Currencies::free_balance(BNC, &KaruraTreasuryAccount::get()),
-// 			bnc_asset_amount
-// 		);
-// 	});
-// }
+	Karura::execute_with(|| {
+		assert_eq!(
+			System::events().iter().find(|r| matches!(
+				r.event,
+				RuntimeEvent::PolkadotXcm(pallet_xcm::Event::AssetsTrapped(_, _, _))
+			)),
+			None
+		);
+		assert_eq!(
+			Currencies::free_balance(KAR, &KaruraTreasuryAccount::get()) - kar_treasury_amount,
+			kar_asset_amount
+		);
+		assert_eq!(
+			Currencies::free_balance(BNC, &KaruraTreasuryAccount::get()),
+			bnc_asset_amount
+		);
+	});
+}
 
 #[test]
 fn send_arbitrary_xcm_fails() {
