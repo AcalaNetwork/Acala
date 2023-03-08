@@ -190,18 +190,20 @@ pub mod module {
 				vec![
 					(
 						T::RelayChainCallBuilder::utility_as_derivative_call(
-							T::RelayChainCallBuilder::staking_withdraw_unbonded(T::RelayChainUnbondingSlashingSpans::get()),
-							sub_account_index
+							T::RelayChainCallBuilder::staking_withdraw_unbonded(
+								T::RelayChainUnbondingSlashingSpans::get(),
+							),
+							sub_account_index,
 						),
-						xcm_dest_weight
+						xcm_dest_weight,
 					),
 					(
 						T::RelayChainCallBuilder::utility_as_derivative_call(
 							T::RelayChainCallBuilder::balances_transfer_keep_alive(T::ParachainAccount::get(), amount),
-							sub_account_index
+							sub_account_index,
 						),
-						xcm_dest_weight
-					)
+						xcm_dest_weight,
+					),
 				],
 				xcm_fee.saturating_mul(2),
 			);

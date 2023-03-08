@@ -1059,18 +1059,20 @@ pub mod module {
 				vec![
 					(
 						T::RelayChainCallBuilder::utility_as_derivative_call(
-							T::RelayChainCallBuilder::staking_withdraw_unbonded(T::RelayChainUnbondingSlashingSpans::get()),
-							T::SubAccountIndex::get()
+							T::RelayChainCallBuilder::staking_withdraw_unbonded(
+								T::RelayChainUnbondingSlashingSpans::get(),
+							),
+							T::SubAccountIndex::get(),
 						),
-						Self::xcm_dest_weight()
+						Self::xcm_dest_weight(),
 					),
 					(
 						T::RelayChainCallBuilder::utility_as_derivative_call(
 							T::RelayChainCallBuilder::balances_transfer_keep_alive(parachain_account, amount),
-							T::SubAccountIndex::get()
+							T::SubAccountIndex::get(),
 						),
-						Self::xcm_dest_weight()
-					)
+						Self::xcm_dest_weight(),
+					),
 				],
 				T::HomaUnbondFee::get(),
 			)

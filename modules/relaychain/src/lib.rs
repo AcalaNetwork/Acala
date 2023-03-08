@@ -178,11 +178,14 @@ where
 			fun: Fungibility::Fungible(extra_fee),
 		};
 
-		let transacts = calls.iter().map(|(call, weight)| Transact {
-			origin_type: OriginKind::SovereignAccount,
-			require_weight_at_most: *weight,
-			call: call.encode().into(),
-		}).collect();
+		let transacts = calls
+			.iter()
+			.map(|(call, weight)| Transact {
+				origin_type: OriginKind::SovereignAccount,
+				require_weight_at_most: *weight,
+				call: call.encode().into(),
+			})
+			.collect();
 
 		Xcm([
 			vec![
@@ -203,7 +206,8 @@ where
 						interior: X1(Parachain(ParachainId::get().into())),
 					},
 				},
-			]
-		].concat())
+			],
+		]
+		.concat())
 	}
 }
