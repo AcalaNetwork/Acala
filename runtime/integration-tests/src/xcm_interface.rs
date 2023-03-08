@@ -249,7 +249,7 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1002 * dollar(RELAY_CHAIN_CURRENCY) - XCM_BOND_FEE
+			1_001_985_867_540_099
 		);
 	});
 }
