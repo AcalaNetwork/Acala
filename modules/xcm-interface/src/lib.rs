@@ -183,17 +183,31 @@ pub mod module {
 		/// and send it back.
 		fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaWithdrawUnbonded);
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
-				T::RelayChainCallBuilder::utility_as_derivative_call(
-					T::RelayChainCallBuilder::utility_batch_call(vec![
-						T::RelayChainCallBuilder::staking_withdraw_unbonded(T::RelayChainUnbondingSlashingSpans::get()),
-						T::RelayChainCallBuilder::balances_transfer_keep_alive(T::ParachainAccount::get(), amount),
-					]),
-					sub_account_index,
-				),
-				xcm_fee,
-				xcm_dest_weight,
+
+			// TODO: config xcm_dest_weight and fee for withdraw_unbonded and transfer seperately.
+			// Temperarily use double fee.
+			let xcm_message = T::RelayChainCallBuilder::finalize_multiple_calls_into_xcm_message(
+				vec![
+					(
+						T::RelayChainCallBuilder::utility_as_derivative_call(
+							T::RelayChainCallBuilder::staking_withdraw_unbonded(
+								T::RelayChainUnbondingSlashingSpans::get(),
+							),
+							sub_account_index,
+						),
+						xcm_dest_weight,
+					),
+					(
+						T::RelayChainCallBuilder::utility_as_derivative_call(
+							T::RelayChainCallBuilder::balances_transfer_keep_alive(T::ParachainAccount::get(), amount),
+							sub_account_index,
+						),
+						xcm_dest_weight,
+					),
+				],
+				xcm_fee.saturating_mul(2),
 			);
+
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
 			log::debug!(
 				target: "xcm-interface",
