@@ -291,7 +291,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			return Some(Token(DOT));
 		}
 
-		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location.clone()) {
+		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location) {
 			return Some(currency_id);
 		}
 

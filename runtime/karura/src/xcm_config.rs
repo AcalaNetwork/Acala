@@ -335,7 +335,7 @@ parameter_type_with_key! {
 	pub ParachainMinFee: |location: MultiLocation| -> Option<u128> {
 		#[allow(clippy::match_ref_pats)] // false positive
 		match (location.parents, location.first_interior()) {
-			(1, Some(Parachain(parachains::statemine::ID))) => Some(XcmInterface::get_parachain_fee(location.clone())),
+			(1, Some(Parachain(parachains::statemine::ID))) => Some(XcmInterface::get_parachain_fee(*location)),
 			_ => None,
 		}
 	};
@@ -409,7 +409,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			return Some(Token(KSM));
 		}
 
-		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location.clone()) {
+		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location) {
 			return Some(currency_id);
 		}
 

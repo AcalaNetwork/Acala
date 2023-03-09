@@ -138,6 +138,7 @@ kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "rel
 kusama-runtime-constants = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
 polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
 polkadot-runtime-constants = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
+polkadot-test-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
 
 xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "754f3b90ecc65af735a6c9a2e1792c5253926ff6" }
 
@@ -169,3 +170,8 @@ with-ethereum-compatibility = [
 	"module-evm/with-ethereum-compatibility",
 ]
 std = []
+runtime-benchmarks = [
+	"polkadot-test-runtime/runtime-benchmarks",
+	"statemine-runtime/runtime-benchmarks",
+	"statemint-runtime/runtime-benchmarks",
+]

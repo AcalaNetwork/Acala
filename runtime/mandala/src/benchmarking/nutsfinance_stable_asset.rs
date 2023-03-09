@@ -22,7 +22,6 @@ use super::utils::{
 	create_stable_pools, dollar, register_stable_asset, set_balance, LIQUID, NATIVE, STABLECOIN, STAKING,
 };
 use frame_benchmarking::{account, whitelisted_caller};
-use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
@@ -167,7 +166,6 @@ runtime_benchmarks! {
 		StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, mint_args, 0u128)?;
 	}: {
 		let _ = StableAsset::redeem_single(RawOrigin::Signed(tester).into(), pool_id, 10_000u128, 0u32, 0u128, u);
-		Ok(()) as DispatchResult
 	}
 
 	redeem_multi {

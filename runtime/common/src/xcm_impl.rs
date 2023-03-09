@@ -152,14 +152,14 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		if let AssetId::Concrete(ref multi_location) = asset_id {
 			log::debug!(target: "xcm::weight", "buy_weight multi_location: {:?}", multi_location);
 
-			if let Some(ratio) = M::calculate_rate(multi_location.clone()) {
+			if let Some(ratio) = M::calculate_rate(*multi_location) {
 				// The WEIGHT_REF_TIME_PER_SECOND is non-zero.
 				let weight_ratio =
 					FixedU128::saturating_from_rational(weight.ref_time() as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
 				let amount = ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
 
 				let required = MultiAsset {
-					id: asset_id.clone(),
+					id: *asset_id,
 					fun: Fungible(amount),
 				};
 
@@ -174,7 +174,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 				self.weight = self.weight.saturating_add(weight);
 				self.amount = self.amount.saturating_add(amount);
 				self.ratio = ratio;
-				self.multi_location = Some(multi_location.clone());
+				self.multi_location = Some(*multi_location);
 				return Ok(unused);
 			}
 		}
@@ -202,7 +202,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		if amount > 0 && self.multi_location.is_some() {
 			Some(
 				(
-					self.multi_location.as_ref().expect("checked is non-empty; qed").clone(),
+					*self.multi_location.as_ref().expect("checked is non-empty; qed"),
 					amount,
 				)
 					.into(),
@@ -219,7 +219,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateO
 		if self.amount > 0 && self.multi_location.is_some() {
 			R::take_revenue(
 				(
-					self.multi_location.as_ref().expect("checked is non-empty; qed").clone(),
+					*self.multi_location.as_ref().expect("checked is non-empty; qed"),
 					self.amount,
 				)
 					.into(),
@@ -263,7 +263,7 @@ impl<
 		weight_credit: XcmWeight,
 	) -> Outcome {
 		let origin = origin.into();
-		let account = AccountIdConvert::convert(origin.clone());
+		let account = AccountIdConvert::convert(origin);
 		let clear = if let Ok(account) = account {
 			EVMBridge::push_origin(account);
 			true

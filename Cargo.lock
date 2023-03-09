@@ -2119,6 +2119,7 @@ name = "cumulus-pallet-session-benchmarking"
 version = "3.0.0"
 source = "git+https://github.com/paritytech//cumulus?rev=3275e271e8937c06dca44331e98f31ef020a71e6#3275e271e8937c06dca44331e98f31ef020a71e6"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-session",
@@ -4822,7 +4823,7 @@ dependencies = [
  "pallet-vesting",
  "pallet-whitelist",
  "pallet-xcm",
- "pallet-xcm-benchmarks",
+ "pallet-xcm-benchmarks 0.9.38 (git+https://github.com/paritytech//polkadot?rev=8deef133d3ca1bdea8c6267c4a66ecabb903a18b)",
  "parity-scale-codec",
  "polkadot-primitives",
  "polkadot-runtime-common",
@@ -8628,6 +8629,25 @@ dependencies = [
 [[package]]
 name = "pallet-xcm-benchmarks"
 version = "0.9.38"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.38#8deef133d3ca1bdea8c6267c4a66ecabb903a18b"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
+]
+
+[[package]]
+name = "pallet-xcm-benchmarks"
+version = "0.9.38"
 source = "git+https://github.com/paritytech//polkadot?rev=8deef133d3ca1bdea8c6267c4a66ecabb903a18b#8deef133d3ca1bdea8c6267c4a66ecabb903a18b"
 dependencies = [
  "frame-benchmarking",
@@ -11062,7 +11082,7 @@ dependencies = [
  "pallet-utility",
  "pallet-vesting",
  "pallet-xcm",
- "pallet-xcm-benchmarks",
+ "pallet-xcm-benchmarks 0.9.38 (git+https://github.com/paritytech//polkadot?rev=8deef133d3ca1bdea8c6267c4a66ecabb903a18b)",
  "parity-scale-codec",
  "polkadot-parachain",
  "polkadot-primitives",
@@ -11332,6 +11352,7 @@ dependencies = [
  "polkadot-runtime",
  "polkadot-runtime-constants",
  "polkadot-runtime-parachains",
+ "polkadot-test-runtime",
  "runtime-common",
  "serde_json",
  "smallvec",
@@ -13854,9 +13875,11 @@ dependencies = [
  "cumulus-primitives-core",
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
+ "frame-benchmarking",
  "frame-executive",
  "frame-support",
  "frame-system",
+ "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal",
  "kusama-runtime-constants",
@@ -13877,6 +13900,7 @@ dependencies = [
  "pallet-uniques",
  "pallet-utility",
  "pallet-xcm",
+ "pallet-xcm-benchmarks 0.9.38 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.38)",
  "parachain-info",
  "parachains-common",
  "parity-scale-codec",
@@ -13916,10 +13940,13 @@ dependencies = [
  "cumulus-primitives-core",
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
+ "frame-benchmarking",
  "frame-executive",
  "frame-support",
  "frame-system",
+ "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
+ "hex-literal",
  "log",
  "pallet-asset-tx-payment",
  "pallet-assets",
@@ -13936,6 +13963,7 @@ dependencies = [
  "pallet-uniques",
  "pallet-utility",
  "pallet-xcm",
+ "pallet-xcm-benchmarks 0.9.38 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.38)",
  "parachain-info",
  "parachains-common",
  "parity-scale-codec",
@@ -15930,7 +15958,7 @@ dependencies = [
  "pallet-utility",
  "pallet-vesting",
  "pallet-xcm",
- "pallet-xcm-benchmarks",
+ "pallet-xcm-benchmarks 0.9.38 (git+https://github.com/paritytech//polkadot?rev=8deef133d3ca1bdea8c6267c4a66ecabb903a18b)",
  "parity-scale-codec",
  "polkadot-parachain",
  "polkadot-primitives",
