@@ -1901,10 +1901,12 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	// TODO: reset Migrations
 	(
-		pallet_balances::migration::MigrateToTrackInactive<Runtime, xcm_config::CheckingAccount>,
-		pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
+		// "Use 2D weights in XCM v3" <https://github.com/paritytech/polkadot/pull/6134>
+		pallet_xcm::migration::v1::MigrateToV1<Runtime>,
+		// Note: The following Migrations do not use the StorageVersion feature, must to be removed after the upgrade
+		module_asset_registry::migrations::MigrateV1MultiLocationToV3<Runtime>,
+		module_xcm_interface::migrations::MigrateXcmDestWeightAndFee<Runtime>,
 	),
 >;
 

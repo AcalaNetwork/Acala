@@ -110,7 +110,6 @@ pub mod module {
 		},
 	}
 
-	// TODO: migrate XcmWeight
 	/// The dest weight limit and fee for execution XCM msg sended by XcmInterface. Must be
 	/// sufficient, otherwise the execution of XCM msg on relaychain will fail.
 	///
