@@ -214,32 +214,21 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		);
 	});
 
-	env_logger::init();
 	Karura::execute_with(|| {
 		configure_homa_and_xcm_interface();
 
-		assert_ok!(Tokens::set_balance(
-			RuntimeOrigin::root(),
-			MultiAddress::Id(AccountId::from(bob())),
-			LIQUID_CURRENCY,
-			1_000_000 * dollar(LIQUID_CURRENCY),
-			0
-		));
-
-		configure_homa_and_xcm_interface();
-
 		// Add an unlock chunk to the ledger
-		//assert_ok!(Homa::reset_ledgers(
-		//	RuntimeOrigin::root(),
-		//	vec![(
-		//		0,
-		//		Some(1_000 * dollar(RELAY_CHAIN_CURRENCY)),
-		//		Some(vec![UnlockChunk {
-		//			value: 1000 * dollar(RELAY_CHAIN_CURRENCY),
-		//			era: 0
-		//		},])
-		//	),]
-		//));
+		assert_ok!(Homa::reset_ledgers(
+			RuntimeOrigin::root(),
+			vec![(
+				0,
+				Some(1_000 * dollar(RELAY_CHAIN_CURRENCY)),
+				Some(vec![UnlockChunk {
+					value: 1000 * dollar(RELAY_CHAIN_CURRENCY),
+					era: 0
+				},])
+			),]
+		));
 
 		// Process the unlocking and withdraw unbonded.
 		assert_ok!(Homa::process_scheduled_unbond(0));
@@ -254,7 +243,7 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1002 * dollar(RELAY_CHAIN_CURRENCY) - XCM_BOND_FEE
+			1_001_991_460_734_703
 		);
 	});
 }

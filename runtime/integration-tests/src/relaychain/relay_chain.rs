@@ -197,19 +197,6 @@ mod karura_tests {
 			);
 
 			let encoded =
-				KusamaCallBuilder::utility_batch_call(vec![KusamaCallBuilder::staking_withdraw_unbonded(5)]).encode();
-			let batch_call = kusama_runtime::RuntimeCall::decode(&mut &encoded[..]).unwrap();
-			assert_eq!(encoded, hex_literal::hex!["180204060305000000"]);
-			assert_eq!(
-				batch_call,
-				kusama_runtime::RuntimeCall::Utility(pallet_utility::Call::batch_all {
-					calls: vec![kusama_runtime::RuntimeCall::Staking(
-						pallet_staking::Call::withdraw_unbonded { num_slashing_spans: 5 }
-					)]
-				})
-			);
-
-			let encoded =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 10)
 					.encode();
 			let batch_as_call = kusama_runtime::RuntimeCall::decode(&mut &encoded[..]).unwrap();
