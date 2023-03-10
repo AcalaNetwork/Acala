@@ -315,7 +315,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents,
 				interior: X2(Parachain(para_id), GeneralKey { data, length }),
 			} if parents == 1 => {
-				match (para_id, &data[..length as usize]) {
+				match (para_id, &data[..data.len().min(length as usize)]) {
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Acala
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
@@ -340,7 +340,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 0,
 				interior: X1(GeneralKey { data, length }),
 			} => {
-				let key = &data[..length as usize];
+				let key = &data[..data.len().min(length as usize)];
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
 					Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => Some(currency_id),

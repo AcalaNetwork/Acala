@@ -1634,7 +1634,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				interior: X1(GeneralKey { data, length }),
 				..
 			} => {
-				let key = &data[..length as usize];
+				let key = &data[..data.len().min(length as usize)];
 				CurrencyId::decode(&mut &*key).ok()
 			}
 			_ => None,

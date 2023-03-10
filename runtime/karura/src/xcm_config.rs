@@ -418,7 +418,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey { data, length }),
 			} => {
-				match (para_id, &data[..length as usize]) {
+				match (para_id, &data[..data.len().min(length as usize)]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
 					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
 					(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY) => Some(Token(KINT)),
@@ -451,7 +451,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 0,
 				interior: X1(GeneralKey { data, length }),
 			} => {
-				let key = &data[..length as usize];
+				let key = &data[..data.len().min(length as usize)];
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
 					Token(KAR) | Token(KUSD) | Token(LKSM) | Token(TAI) => Some(currency_id),
