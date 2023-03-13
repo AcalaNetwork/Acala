@@ -29,7 +29,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 
 		expect(data.gas.toNumber()).to.be.eq(273373);
 		expect(data.storage.toNumber()).to.be.eq(10921);
-		expect(data.weightFee.toNumber()).to.be.eq(5051781473790);
+		expect(data.weightFee.toNumber()).to.be.eq(5007962937257);
 	});
 
 	it("eth_estimateGas for contract call", async function () {
@@ -47,6 +47,6 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 
 		expect(data.gas.toNumber()).to.be.eq(22409);
 		expect(data.storage.toNumber()).to.be.eq(0);
-		expect(data.weightFee.toNumber()).to.be.eq(5051757164324);
+		expect(data.weightFee.toNumber()).to.be.eq(5007938838897);
 	});
 });
