@@ -153,7 +153,7 @@ pub mod module {
 	/// LocationToCurrencyIds: map MultiLocation => Option<CurrencyId>
 	#[pallet::storage]
 	#[pallet::getter(fn location_to_currency_ids)]
-	pub type LocationToCurrencyIds<T: Config> = StorageMap<_, Blake2_128Concat, MultiLocation, CurrencyId, OptionQuery>;
+	pub type LocationToCurrencyIds<T: Config> = StorageMap<_, Twox64Concat, MultiLocation, CurrencyId, OptionQuery>;
 
 	/// The storages for EvmAddress.
 	///
