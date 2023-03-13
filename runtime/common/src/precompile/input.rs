@@ -249,6 +249,10 @@ impl Output {
 		ethabi::encode(&[Token::Bytes(b.to_vec())])
 	}
 
+	pub fn encode_bytes_tuple(b: Vec<&[u8]>) -> Vec<u8> {
+		ethabi::encode(&[Token::Tuple(b.into_iter().map(|v| Token::Bytes(v.to_vec())).collect())])
+	}
+
 	pub fn encode_fixed_bytes(b: &[u8]) -> Vec<u8> {
 		ethabi::encode(&[Token::FixedBytes(b.to_vec())])
 	}

@@ -27,7 +27,7 @@ use frame_support::{
 		OnInitialize, SortedMembers,
 	},
 	weights::IdentityFee,
-	PalletId, RuntimeDebug,
+	PalletId, RuntimeDebug, WeakBoundedVec,
 };
 use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
 use module_cdp_engine::CollateralCurrencyIds;
@@ -38,7 +38,7 @@ use module_support::{
 	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId, PriceProvider,
 	Rate, SpecificJointsSwap,
 };
-use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 pub use primitives::{
 	define_combined_task,
 	evm::{convert_decimals_to_evm, EvmAddress},
@@ -52,8 +52,13 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
 	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill,
 };
+use sp_std::cell::RefCell;
 use sp_std::prelude::*;
-use xcm::latest::prelude::*;
+use xcm::{
+	latest::{Weight as XcmWeight, Xcm},
+	prelude::*,
+};
+use xcm_builder::{FixedWeightBounds, LocationInverter};
 
 pub type AccountId = AccountId32;
 type Key = CurrencyId;
@@ -757,6 +762,143 @@ impl module_incentives::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub Ancestry: MultiLocation = Parachain(2000).into();
+}
+
+pub fn native_currency_location(para_id: u32, key: Vec<u8>) -> MultiLocation {
+	MultiLocation::new(
+		1,
+		X2(
+			Parachain(para_id),
+			GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(key, None)),
+		),
+	)
+}
+
+pub struct CurrencyIdConvert;
+impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
+	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+		use primitives::TokenSymbol::*;
+		use CurrencyId::Token;
+		match id {
+			Token(DOT) => Some(MultiLocation::parent()),
+			_ => None,
+		}
+	}
+}
+impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+		use primitives::TokenSymbol::*;
+		use CurrencyId::Token;
+
+		if location == MultiLocation::parent() {
+			return Some(Token(DOT));
+		}
+		None
+	}
+}
+impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
+		if let MultiAsset {
+			id: Concrete(location), ..
+		} = asset
+		{
+			Self::convert(location)
+		} else {
+			None
+		}
+	}
+}
+
+parameter_types! {
+	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(2000)));
+}
+
+pub struct AccountIdToMultiLocation;
+impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
+	fn convert(account: AccountId) -> MultiLocation {
+		X1(Junction::AccountId32 {
+			network: NetworkId::Any,
+			id: account.into(),
+		})
+		.into()
+	}
+}
+
+parameter_types! {
+	pub const BaseXcmWeight: XcmWeight = 100_000_000; // TODO: recheck this
+	pub const MaxAssetsForTransfer: usize = 2;
+}
+
+parameter_type_with_key! {
+	pub ParachainMinFee: |location: MultiLocation| -> Option<u128> {
+		#[allow(clippy::match_ref_pats)] // false positive
+		match (location.parents, location.first_interior()) {
+			(1, Some(Parachain(3))) => Some(100),
+			_ => None,
+		}
+	};
+}
+
+thread_local! {
+	pub static TRACE: RefCell<Vec<(Xcm<RuntimeCall>, Outcome)>> = RefCell::new(Vec::new());
+}
+pub fn take_trace() -> Vec<(Xcm<RuntimeCall>, Outcome)> {
+	TRACE.with(|q| {
+		let q = &mut *q.borrow_mut();
+		let r = q.clone();
+		q.clear();
+		r
+	})
+}
+
+pub struct MockExec;
+impl ExecuteXcm<RuntimeCall> for MockExec {
+	fn execute_xcm_in_credit(
+		_origin: impl Into<MultiLocation>,
+		message: Xcm<RuntimeCall>,
+		weight_limit: XcmWeight,
+		_credit: XcmWeight,
+	) -> Outcome {
+		let o = match (message.0.len(), &message.0.first()) {
+			(
+				1,
+				Some(Transact {
+					require_weight_at_most, ..
+				}),
+			) => {
+				if *require_weight_at_most <= weight_limit {
+					Outcome::Complete(*require_weight_at_most)
+				} else {
+					Outcome::Error(XcmError::WeightLimitReached(*require_weight_at_most))
+				}
+			}
+			// use 1000 to decide that it's not supported.
+			_ => Outcome::Incomplete(1000.min(weight_limit), XcmError::Unimplemented),
+		};
+		TRACE.with(|q| q.borrow_mut().push((message, o.clone())));
+		o
+	}
+}
+
+impl orml_xtokens::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type CurrencyIdConvert = CurrencyIdConvert;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation;
+	type SelfLocation = SelfLocation;
+	type XcmExecutor = MockExec;
+	type Weigher = FixedWeightBounds<ConstU64<10>, RuntimeCall, ConstU32<100>>;
+	type BaseXcmWeight = BaseXcmWeight;
+	type LocationInverter = LocationInverter<Ancestry>;
+	type MaxAssetsForTransfer = MaxAssetsForTransfer;
+	type MinXcmFee = ParachainMinFee;
+	type MultiLocationsFilter = Everything;
+	type ReserveProvider = AbsoluteReserveProvider;
+}
+
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const EVA: AccountId = AccountId::new([5u8; 32]);
@@ -833,6 +975,7 @@ frame_support::construct_runtime!(
 		Homa: module_homa,
 		Incentives: module_incentives,
 		Rewards: orml_rewards,
+		Xtokens: orml_xtokens,
 		StableAsset: nutsfinance_stable_asset,
 	}
 );

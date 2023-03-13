@@ -133,7 +133,7 @@ where
 				let gas_limit = input.u64_at(4)?;
 				let storage_limit = input.u32_at(5)?;
 				let min_delay = input.u32_at(6)?;
-				// solidity abi encode bytes will add an length at input[7]
+				// solidity abi encode bytes will add an offset at input[7]
 				let input_len = input.u32_at(8)?;
 				let input_data = input.bytes_at(9, input_len as usize)?;
 
@@ -234,7 +234,7 @@ where
 			}
 			Action::Cancel => {
 				let from = input.evm_address_at(1)?;
-				// solidity abi encode bytes will add an length at input[2]
+				// solidity abi encode bytes will add an offset at input[2]
 				let task_id_len = input.u32_at(3)?;
 				let task_id = input.bytes_at(4, task_id_len as usize)?;
 
@@ -291,7 +291,7 @@ where
 			Action::Reschedule => {
 				let from = input.evm_address_at(1)?;
 				let min_delay = input.u32_at(2)?;
-				// solidity abi encode bytes will add an length at input[3]
+				// solidity abi encode bytes will add an offset at input[3]
 				let task_id_len = input.u32_at(4)?;
 				let task_id = input.bytes_at(5, task_id_len as usize)?;
 

@@ -72,6 +72,7 @@ module-transaction-pause = { path = "../../modules/transaction-pause", default-f
 orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
+orml-xtokens = { path = "../../orml/xtokens", default-features = false }
 orml-bencher = { path = "../../orml/bencher", default-features = false, optional = true }
 orml-nft = { path = "../../orml/nft", default-features = false, optional = true }
 orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }
@@ -117,6 +118,7 @@ std = [
 	"orml-rewards/std",
 	"orml-tokens/std",
 	"orml-traits/std",
+	"orml-xtokens/std",
 
 	"module-asset-registry/std",
 	"module-cdp-engine/std",
