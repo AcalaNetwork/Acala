@@ -70,7 +70,8 @@ impl<T: Config> OnRuntimeUpgrade for MigrateXcmDestWeightAndFee<T> {
 			module_prefix,
 			storage_prefix,
 		)
-		.drain();
+		.drain()
+		.collect::<sp_std::vec::Vec<_>>();
 		for (old_key, old_value) in old_data {
 			weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 			let new_key: XcmInterfaceOperation = old_key.try_into().expect("Stored xcm::v2::MultiLocation");

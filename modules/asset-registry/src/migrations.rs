@@ -45,10 +45,12 @@ impl<T: Config> OnRuntimeUpgrade for MigrateV1MultiLocationToV3<T> {
 		let module_prefix = LocationToCurrencyIds::<T>::module_prefix();
 		let storage_prefix = LocationToCurrencyIds::<T>::storage_prefix();
 		let old_data =
-			storage_key_iter::<xcm::v2::MultiLocation, CurrencyId, Twox64Concat>(module_prefix, storage_prefix).drain();
+			storage_key_iter::<xcm::v2::MultiLocation, CurrencyId, Twox64Concat>(module_prefix, storage_prefix)
+				.drain()
+				.collect::<sp_std::vec::Vec<_>>();
 		for (old_key, value) in old_data {
 			weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
-			let new_key: MultiLocation = old_key.clone().try_into().expect("Stored xcm::v2::MultiLocation");
+			let new_key: MultiLocation = old_key.try_into().expect("Stored xcm::v2::MultiLocation");
 			LocationToCurrencyIds::<T>::insert(new_key, value);
 		}
 

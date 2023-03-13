@@ -81,12 +81,43 @@ fn simulate_migrate_multilocation_storage_to_v3() {
 			0,
 			xcm::v2::Junctions::X1(xcm::v2::Junction::GeneralKey(vec![1, 1].try_into().unwrap())),
 		);
+		let old_multilocation_2 = xcm::v2::MultiLocation::new(
+			1,
+			xcm::v2::Junctions::X2(
+				xcm::v2::Junction::Parachain(2088),
+				xcm::v2::Junction::GeneralKey(vec![0, 1].try_into().unwrap()),
+			),
+		);
+		let old_multilocation_3 = xcm::v2::MultiLocation::new(
+			1,
+			xcm::v2::Junctions::X2(
+				xcm::v2::Junction::Parachain(2096),
+				xcm::v2::Junction::GeneralKey(vec![0, 0, 0, 0, 0, 0, 0, 0, 0].try_into().unwrap()),
+			),
+		);
+		let old_multilocation_4 = xcm::v2::MultiLocation::new(
+			1,
+			xcm::v2::Junctions::X2(
+				xcm::v2::Junction::Parachain(2096),
+				xcm::v2::Junction::GeneralKey(vec![1, 1].try_into().unwrap()),
+			),
+		);
+
 		let new_multilocation_0 = MultiLocation::try_from(old_multilocation_0.clone()).unwrap();
 		let new_multilocation_1 = MultiLocation::try_from(old_multilocation_1.clone()).unwrap();
+		let new_multilocation_2 = MultiLocation::try_from(old_multilocation_2.clone()).unwrap();
+		let new_multilocation_3 = MultiLocation::try_from(old_multilocation_3.clone()).unwrap();
+		let new_multilocation_4 = MultiLocation::try_from(old_multilocation_4.clone()).unwrap();
 		let foreign_asset_id_0: ForeignAssetId = 0;
 		let foreign_asset_id_1: ForeignAssetId = 1;
+		let foreign_asset_id_2: ForeignAssetId = 2;
+		let foreign_asset_id_3: ForeignAssetId = 3;
+		let foreign_asset_id_4: ForeignAssetId = 4;
 		let currency_id_0 = CurrencyId::ForeignAsset(foreign_asset_id_0);
 		let currency_id_1 = CurrencyId::ForeignAsset(foreign_asset_id_1);
+		let currency_id_2 = CurrencyId::ForeignAsset(foreign_asset_id_2);
+		let currency_id_3 = CurrencyId::ForeignAsset(foreign_asset_id_3);
+		let currency_id_4 = CurrencyId::ForeignAsset(foreign_asset_id_4);
 
 		// Store raw xcm::v2 data
 		put_storage_value(
@@ -96,16 +127,34 @@ fn simulate_migrate_multilocation_storage_to_v3() {
 			&old_multilocation_0,
 		);
 		put_storage_value(
-			location_to_currency_ids_module_prefix,
-			location_to_currency_ids_storage_prefix,
-			&Twox64Concat::hash(&old_multilocation_0.encode()),
-			currency_id_0,
-		);
-		put_storage_value(
 			foreign_asset_locations_module_prefix,
 			foreign_asset_locations_storage_prefix,
 			&Twox64Concat::hash(&foreign_asset_id_1.encode()),
 			&old_multilocation_1,
+		);
+		put_storage_value(
+			foreign_asset_locations_module_prefix,
+			foreign_asset_locations_storage_prefix,
+			&Twox64Concat::hash(&foreign_asset_id_2.encode()),
+			&old_multilocation_2,
+		);
+		put_storage_value(
+			foreign_asset_locations_module_prefix,
+			foreign_asset_locations_storage_prefix,
+			&Twox64Concat::hash(&foreign_asset_id_3.encode()),
+			&old_multilocation_3,
+		);
+		put_storage_value(
+			foreign_asset_locations_module_prefix,
+			foreign_asset_locations_storage_prefix,
+			&Twox64Concat::hash(&foreign_asset_id_4.encode()),
+			&old_multilocation_4,
+		);
+		put_storage_value(
+			location_to_currency_ids_module_prefix,
+			location_to_currency_ids_storage_prefix,
+			&Twox64Concat::hash(&old_multilocation_0.encode()),
+			currency_id_0,
 		);
 		put_storage_value(
 			location_to_currency_ids_module_prefix,
@@ -113,7 +162,33 @@ fn simulate_migrate_multilocation_storage_to_v3() {
 			&Twox64Concat::hash(&old_multilocation_1.encode()),
 			currency_id_1,
 		);
+		put_storage_value(
+			location_to_currency_ids_module_prefix,
+			location_to_currency_ids_storage_prefix,
+			&Twox64Concat::hash(&old_multilocation_2.encode()),
+			currency_id_2,
+		);
+		put_storage_value(
+			location_to_currency_ids_module_prefix,
+			location_to_currency_ids_storage_prefix,
+			&Twox64Concat::hash(&old_multilocation_3.encode()),
+			currency_id_3,
+		);
+		put_storage_value(
+			location_to_currency_ids_module_prefix,
+			location_to_currency_ids_storage_prefix,
+			&Twox64Concat::hash(&old_multilocation_4.encode()),
+			currency_id_4,
+		);
 
+		assert_eq!(
+			get_storage_value::<CurrencyId>(
+				location_to_currency_ids_module_prefix,
+				location_to_currency_ids_storage_prefix,
+				&Twox64Concat::hash(&old_multilocation_0.encode()),
+			),
+			Some(currency_id_0)
+		);
 		assert_eq!(
 			get_storage_value::<CurrencyId>(
 				location_to_currency_ids_module_prefix,
@@ -121,6 +196,30 @@ fn simulate_migrate_multilocation_storage_to_v3() {
 				&Twox64Concat::hash(&old_multilocation_1.encode()),
 			),
 			Some(currency_id_1)
+		);
+		assert_eq!(
+			get_storage_value::<CurrencyId>(
+				location_to_currency_ids_module_prefix,
+				location_to_currency_ids_storage_prefix,
+				&Twox64Concat::hash(&old_multilocation_2.encode()),
+			),
+			Some(currency_id_2)
+		);
+		assert_eq!(
+			get_storage_value::<CurrencyId>(
+				location_to_currency_ids_module_prefix,
+				location_to_currency_ids_storage_prefix,
+				&Twox64Concat::hash(&old_multilocation_3.encode()),
+			),
+			Some(currency_id_3)
+		);
+		assert_eq!(
+			get_storage_value::<CurrencyId>(
+				location_to_currency_ids_module_prefix,
+				location_to_currency_ids_storage_prefix,
+				&Twox64Concat::hash(&old_multilocation_4.encode()),
+			),
+			Some(currency_id_4)
 		);
 
 		// Assert the v3 multilocation value does not exist in ForeignAssetLocations
@@ -135,7 +234,7 @@ fn simulate_migrate_multilocation_storage_to_v3() {
 		assert_eq!(
 			crate::migrations::MigrateV1MultiLocationToV3::<Runtime>::on_runtime_upgrade(),
 			<<Runtime as frame_system::Config>::DbWeight as Get<frame_support::weights::RuntimeDbWeight>>::get()
-				.reads_writes(4, 4)
+				.reads_writes(10, 10)
 		);
 
 		// Assert the value type of ForeignAssetLocations has been migrated to v3 MultiLocation
@@ -147,6 +246,18 @@ fn simulate_migrate_multilocation_storage_to_v3() {
 			AssetRegistry::foreign_asset_locations(foreign_asset_id_1),
 			Some(new_multilocation_1)
 		);
+		assert_eq!(
+			AssetRegistry::foreign_asset_locations(foreign_asset_id_2),
+			Some(new_multilocation_2)
+		);
+		assert_eq!(
+			AssetRegistry::foreign_asset_locations(foreign_asset_id_3),
+			Some(new_multilocation_3)
+		);
+		assert_eq!(
+			AssetRegistry::foreign_asset_locations(foreign_asset_id_4),
+			Some(new_multilocation_4)
+		);
 
 		// Assert the key type of LocationToCurrencyIds has been migrated to v3 MultiLocation
 		assert_eq!(
@@ -156,6 +267,60 @@ fn simulate_migrate_multilocation_storage_to_v3() {
 		assert_eq!(
 			AssetRegistry::location_to_currency_ids(new_multilocation_1),
 			Some(currency_id_1)
+		);
+		assert_eq!(
+			AssetRegistry::location_to_currency_ids(new_multilocation_2),
+			Some(currency_id_2)
+		);
+		assert_eq!(
+			AssetRegistry::location_to_currency_ids(new_multilocation_3),
+			Some(currency_id_3)
+		);
+		assert_eq!(
+			AssetRegistry::location_to_currency_ids(new_multilocation_4),
+			Some(currency_id_4)
+		);
+
+		// Assert the old key does not exist anymore
+		assert_eq!(
+			get_storage_value::<CurrencyId>(
+				location_to_currency_ids_module_prefix,
+				location_to_currency_ids_storage_prefix,
+				&Twox64Concat::hash(&old_multilocation_0.encode()),
+			),
+			None
+		);
+		assert_eq!(
+			get_storage_value::<CurrencyId>(
+				location_to_currency_ids_module_prefix,
+				location_to_currency_ids_storage_prefix,
+				&Twox64Concat::hash(&old_multilocation_1.encode()),
+			),
+			None
+		);
+		assert_eq!(
+			get_storage_value::<CurrencyId>(
+				location_to_currency_ids_module_prefix,
+				location_to_currency_ids_storage_prefix,
+				&Twox64Concat::hash(&old_multilocation_2.encode()),
+			),
+			None
+		);
+		assert_eq!(
+			get_storage_value::<CurrencyId>(
+				location_to_currency_ids_module_prefix,
+				location_to_currency_ids_storage_prefix,
+				&Twox64Concat::hash(&old_multilocation_3.encode()),
+			),
+			None
+		);
+		assert_eq!(
+			get_storage_value::<CurrencyId>(
+				location_to_currency_ids_module_prefix,
+				location_to_currency_ids_storage_prefix,
+				&Twox64Concat::hash(&old_multilocation_4.encode()),
+			),
+			None
 		);
 	});
 }
