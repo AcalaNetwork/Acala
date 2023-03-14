@@ -22,11 +22,14 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 
 use frame_support::assert_ok;
+use hex_literal::hex;
 use karura_runtime::{AssetRegistry, Erc20HoldingAccount, KaruraTreasuryAccount};
+use module_evm::{precompiles::Precompile, Context};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::EVM as EVMTrait;
 use orml_traits::MultiCurrency;
 use primitives::evm::EvmAddress;
+use runtime_common::precompile::XtokensPrecompile;
 use sp_core::{H256, U256};
 use std::str::FromStr;
 use xcm_emulator::TestExt;
@@ -439,6 +442,163 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 	});
 
 	Karura::execute_with(|| {
+		assert_eq!(
+			9_999_191_760_000,
+			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
+		);
+	});
+}
+
+#[test]
+fn xtokens_precompile_works() {
+	TestNet::reset();
+
+	Sibling::execute_with(|| {
+		let erc20_as_foreign_asset = CurrencyId::Erc20(erc20_address_0());
+		// register Karura's erc20 as foreign asset
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			RuntimeOrigin::root(),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2000),
+						GeneralKey(erc20_as_foreign_asset.encode().try_into().unwrap())
+					)
+				)
+				.into()
+			),
+			Box::new(AssetMetadata {
+				name: b"Karura USDC".to_vec(),
+				symbol: b"kUSDC".to_vec(),
+				decimals: 12,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
+			})
+		));
+	});
+
+	let initial_native_amount = 1_000_000_000_000u128;
+	let storage_fee = 6_400_000_000u128;
+
+	Karura::execute_with(|| {
+		let alith = MockAddressMapping::get_account_id(&alice_evm_addr());
+		let total_erc20 = 100_000_000_000_000_000_000_000u128;
+		let transfer_amount = 10 * dollar(NATIVE_CURRENCY);
+
+		// used to deploy contracts
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&alice(),
+			1_000_000 * dollar(NATIVE_CURRENCY)
+		));
+		// when transfer erc20 cross chain, the origin `alith` is used to charge storage
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&alith.clone(),
+			initial_native_amount
+		));
+		// when withdraw sibling parachain account, the origin `sibling_reserve_account` is used to charge
+		// storage
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&sibling_reserve_account(),
+			initial_native_amount
+		));
+		// when deposit to recipient, the origin is recipient `BOB`, and is used to charge storage.
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&AccountId::from(BOB),
+			initial_native_amount
+		));
+		// when xcm finished, deposit to treasury account, the origin is `treasury account`, and is used to
+		// charge storage.
+		assert_ok!(Currencies::deposit(
+			NATIVE_CURRENCY,
+			&KaruraTreasuryAccount::get(),
+			initial_native_amount
+		));
+
+		deploy_erc20_contracts();
+
+		// `transfer` invoked by `TransferReserveAsset` xcm instruction need to passing origin check.
+		// In frontend/js, when issue xtokens extrinsic, it have `EvmSetOrigin` SignedExtra to
+		// `push_origin`. In testcase, we're manual invoke `push_origin` here. because in erc20 xtokens
+		// transfer, the `from` or `to` is not erc20 holding account. so we need make sure origin exists.
+		<EVM as EVMTrait<AccountId>>::push_origin(alith.clone());
+
+		assert_eq!(
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith),
+			total_erc20
+		);
+
+		// transfer erc20 token to Sibling
+		let context = Context {
+			address: Default::default(),
+			caller: alice_evm_addr(),
+			apparent_value: Default::default(),
+		};
+		// assert_ok!(XTokens::transfer(
+		// 	RuntimeOrigin::signed(alith.clone()),
+		// 	CurrencyId::Erc20(erc20_address_0()),
+		// 	transfer_amount,
+		// 	Box::new(
+		// 		MultiLocation::new(
+		// 			1,
+		// 			X2(
+		// 				Parachain(SIBLING_ID),
+		// 				Junction::AccountId32 {
+		// 					network: NetworkId::Any,
+		// 					id: BOB.into(),
+		// 				},
+		// 			),
+		// 		)
+		// 		.into(),
+		// 	),
+		// 	WeightLimit::Limited(1_000_000_000),
+		// ));
+		let input = hex! {"
+			dd2a3599
+			000000000000000000000000 1000000000000000000000000000000000000001
+			000000000000000000000000 5e0b4bfa0b55932a3587e648c3552a6515ba56b1
+			00000000000000000000000000000000 0000000000000000000009184e72a000
+			00000000000000000000000000000000 000000000000000000000000000000a0
+			00000000000000000000000000000000 0000000000000000000000003b9aca00
+			00000000000000000000000000000000 00000000000000000000000000000028
+			01010200491f0100050505050505050505050505050505050505050505050505
+			0505050505050505000000000000000000000000000000000000000000000000
+		"};
+
+		assert_ok!(frame_support::storage::with_transaction(|| {
+			frame_support::storage::TransactionOutcome::Commit({
+				XtokensPrecompile::<Runtime>::execute(&input, None, &context, false)
+					.map_err(|_| DispatchError::Other("failed"))
+			})
+		}));
+
+		// using native token to charge storage fee
+		assert_eq!(
+			initial_native_amount - storage_fee,
+			Currencies::free_balance(NATIVE_CURRENCY, &alith)
+		);
+		assert_eq!(
+			total_erc20 - transfer_amount,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith)
+		);
+		assert_eq!(
+			transfer_amount,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
+		);
+		// initial_native_amount + ed
+		assert_eq!(
+			1_100_000_000_000,
+			Currencies::free_balance(NATIVE_CURRENCY, &KaruraTreasuryAccount::get())
+		);
+
+		System::reset_events();
+	});
+
+	Sibling::execute_with(|| {
+		// Sibling will take (1, 2000, GeneralKey(Erc20(address))) as foreign asset
 		assert_eq!(
 			9_999_191_760_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))

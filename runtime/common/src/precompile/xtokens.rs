@@ -121,10 +121,17 @@ where
 					Balance,
 					CurrencyId,
 				>>::transfer(from, currency_id, amount, dest, Limited(weight))
-				.map_err(|_| PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken Transfer failed".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				.map_err(|e| {
+					log::debug!(
+						target: "evm",
+						"xtokens: Transfer failed: {:?}",
+						e
+					);
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken Transfer failed".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					}
 				})?;
 
 				Ok(PrecompileOutput {
@@ -187,10 +194,17 @@ where
 					Balance,
 					CurrencyId,
 				>>::transfer_multiasset(from, asset, dest, Limited(weight))
-				.map_err(|_| PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken TransferMultiAsset failed".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				.map_err(|e| {
+					log::debug!(
+						target: "evm",
+						"xtokens: TransferMultiAsset failed: {:?}",
+						e
+					);
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken TransferMultiAsset failed".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					}
 				})?;
 
 				Ok(PrecompileOutput {
@@ -236,10 +250,17 @@ where
 					Balance,
 					CurrencyId,
 				>>::transfer_with_fee(from, currency_id, amount, fee, dest, Limited(weight))
-				.map_err(|_| PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken TransferWithFee failed".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				.map_err(|e| {
+					log::debug!(
+						target: "evm",
+						"xtokens: TransferWithFee failed: {:?}",
+						e
+					);
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken TransferWithFee failed".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					}
 				})?;
 
 				Ok(PrecompileOutput {
@@ -318,10 +339,17 @@ where
 					Balance,
 					CurrencyId,
 				>>::transfer_multiasset_with_fee(from, asset, fee, dest, Limited(weight))
-				.map_err(|_| PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken TransferMultiAssetWithFee failed".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				.map_err(|e| {
+					log::debug!(
+						target: "evm",
+						"xtokens: TransferMultiAssetWithFee failed: {:?}",
+						e
+					);
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken TransferMultiAssetWithFee failed".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					}
 				})?;
 
 				Ok(PrecompileOutput {
@@ -380,10 +408,17 @@ where
 					Balance,
 					CurrencyId,
 				>>::transfer_multicurrencies(from, currencies, fee_item, dest, Limited(weight))
-				.map_err(|_| PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken TransferMultiCurrencies failed".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				.map_err(|e| {
+					log::debug!(
+						target: "evm",
+						"xtokens: TransferMultiCurrencies failed: {:?}",
+						e
+					);
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken TransferMultiCurrencies failed".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					}
 				})?;
 
 				Ok(PrecompileOutput {
@@ -452,10 +487,17 @@ where
 					Balance,
 					CurrencyId,
 				>>::transfer_multiassets(from, assets.clone(), fee.clone(), dest, Limited(weight))
-				.map_err(|_| PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken TransferMultiAssets failed".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				.map_err(|e| {
+					log::debug!(
+						target: "evm",
+						"xtokens: TransferMultiAssets failed: {:?}",
+						e
+					);
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken TransferMultiAssets failed".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					}
 				})?;
 
 				Ok(PrecompileOutput {
@@ -536,13 +578,19 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
-				Junction::AccountId32 {
-					network: NetworkId::Any,
-					id: BOB.into(),
-				}
-				.into(),
-			);
+			pub const a: [u8; 32] = [5u8; 32];
+
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(MultiLocation::new(
+				1,
+				X2(
+					Parachain(2002),
+					Junction::AccountId32 {
+						network: NetworkId::Any,
+						id: a.into(),
+					},
+				),
+			));
+
 			assert_eq!(
 				dest.encode(),
 				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")

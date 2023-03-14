@@ -975,7 +975,7 @@ frame_support::construct_runtime!(
 		Homa: module_homa,
 		Incentives: module_incentives,
 		Rewards: orml_rewards,
-		Xtokens: orml_xtokens,
+		XTokens: orml_xtokens,
 		StableAsset: nutsfinance_stable_asset,
 	}
 );
