@@ -27,7 +27,7 @@ use frame_support::{
 		OnInitialize, SortedMembers,
 	},
 	weights::IdentityFee,
-	PalletId, RuntimeDebug, WeakBoundedVec,
+	PalletId, RuntimeDebug,
 };
 use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
 use module_cdp_engine::CollateralCurrencyIds;
@@ -764,16 +764,6 @@ impl module_incentives::Config for Test {
 
 parameter_types! {
 	pub Ancestry: MultiLocation = Parachain(2000).into();
-}
-
-pub fn native_currency_location(para_id: u32, key: Vec<u8>) -> MultiLocation {
-	MultiLocation::new(
-		1,
-		X2(
-			Parachain(para_id),
-			GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(key, None)),
-		),
-	)
 }
 
 pub struct CurrencyIdConvert;
