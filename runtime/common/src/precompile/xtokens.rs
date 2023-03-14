@@ -45,9 +45,13 @@ use xcm::{
 /// `input` data starts with `action`.
 ///
 /// Actions:
-/// - Transfer. Rest `input` bytes: `currency_id_a`, `currency_id_b`.
-/// - TransferMultiasset. Rest `input` bytes: `who`, `currency_id_a`, `currency_id_b`,
-///   `supply_amount`, `min_target_amount`.
+/// - Transfer. Rest `input` bytes: `who`, `currency_id`, `amount`, `dest`, `weight`.
+/// - TransferMultiasset. Rest `input` bytes: `who`, `asset`, `dest`, `weight`.
+/// - TransferWithFee. Rest `input` bytes: `who`, `currency_id`, `amount`, `fee`, `dest`, `weight`.
+/// - TransferMultiAssetWithFee. Rest `input` bytes: `who`, `asset`, `fee`, `dest`, `weight`.
+/// - TransferMultiCurrencies. Rest `input` bytes: `who`, `currencies`, `fee_item`, `dest`,
+///   `weight`.
+/// - TransferMultiAssets. Rest `input` bytes: `who`, `assets`, `fee_item`, `dest`, `weight`.
 pub struct XtokensPrecompile<R>(PhantomData<R>);
 
 #[module_evm_utility_macro::generate_function_selector]
