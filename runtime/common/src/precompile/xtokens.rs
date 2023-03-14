@@ -20,22 +20,19 @@ use super::{
 	input::{Input, InputPricer, InputT, Output, PER_PARAM_BYTES},
 	target_gas_limit,
 };
-use crate::WeightToGas;
 use frame_support::{
 	log,
 	pallet_prelude::{Decode, Encode},
-	traits::Get,
 };
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
 	Context, ExitError, ExitRevert, ExitSucceed,
 };
-use module_support::Erc20InfoMapping;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use orml_traits::XcmTransfer;
 use primitives::{Balance, CurrencyId};
-use sp_runtime::{traits::Convert, RuntimeDebug};
+use sp_runtime::RuntimeDebug;
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::{
 	latest::{MultiAsset, MultiAssets, MultiLocation},
@@ -62,7 +59,7 @@ pub enum Action {
 	TransferWithFee = "transferWithFee(address,address,uint256,uint256,bytes,uint64)",
 	TransferMultiAssetWithFee = "transferMultiAssetWithFee(address,bytes,bytes,bytes,uint64)",
 	TransferMultiCurrencies = "transferMultiCurrencies(address,(address,uint256)[],uint32,bytes,uint64)",
-	TransferMultiAssets = "transferMultiAssets(address,bytes,bytes,bytes,uint64)",
+	TransferMultiAssets = "transferMultiAssets(address,bytes,uint32,bytes,uint64)",
 }
 
 impl<Runtime> Precompile for XtokensPrecompile<Runtime>
@@ -91,27 +88,27 @@ where
 		match action {
 			Action::Transfer => {
 				let from = input.account_id_at(1)?;
-				let currency_address = input.evm_address_at(2)?;
+				let currency_id = input.currency_id_at(2)?;
 				let amount = input.balance_at(3)?;
+
 				// solidity abi encode bytes will add an offset at input[4]
-				let weight = input.u64_at(5)?;
-				let dest_bytes_len = input.u32_at(6)?;
-				let mut dest_bytes: &[u8] = &input.bytes_at(7, dest_bytes_len as usize)?[..];
-				let dest: MultiLocation = Decode::decode(&mut dest_bytes).or_else(|_| {
-					Err(PrecompileFailure::Revert {
+				let dest_offset = input.u64_at(4)?;
+				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
+				let dest_bytes_len = input.u32_at(dest_index)?;
+				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
+				let versioned_dest: VersionedMultiLocation =
+					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "invalid dest".into(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})
+					})?;
+				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "dest bad version".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				let currency_id = Runtime::Erc20InfoMapping::decode_evm_address(currency_address).ok_or_else(|| {
-					PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid currency id".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					}
-				})?;
+				let weight = input.u64_at(5)?;
 
 				log::debug!(
 					target: "evm",
@@ -139,6 +136,7 @@ where
 			}
 			Action::TransferMultiAsset => {
 				let from = input.account_id_at(1)?;
+
 				// solidity abi encode bytes will add an offset at input[2]
 				let asset_offset = input.u64_at(2)?;
 				let asset_index = (asset_offset as usize)
@@ -147,25 +145,35 @@ where
 				let asset_bytes_len = input.u64_at(asset_index)?;
 				let mut asset_bytes: &[u8] =
 					&input.bytes_at(asset_index.saturating_add(1), asset_bytes_len as usize)?[..];
-				let asset: MultiAsset = Decode::decode(&mut asset_bytes).or_else(|_| {
-					Err(PrecompileFailure::Revert {
+				let versioned_asset: VersionedMultiAsset =
+					Decode::decode(&mut asset_bytes).map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "invalid multi asset".into(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})
+					})?;
+				let asset: MultiAsset = versioned_asset.try_into().map_err(|()| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "asset bad version".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
+
 				// solidity abi encode bytes will add an offset at input[3]
 				let dest_offset = input.u64_at(3)?;
 				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
 				let dest_bytes_len = input.u32_at(dest_index)?;
 				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
-				let dest: MultiLocation = Decode::decode(&mut dest_bytes).or_else(|_| {
-					Err(PrecompileFailure::Revert {
+				let versioned_dest: VersionedMultiLocation =
+					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "invalid dest".into(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})
+					})?;
+				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "dest bad version".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
+
 				let weight = input.u64_at(4)?;
 
 				log::debug!(
@@ -194,30 +202,28 @@ where
 			}
 			Action::TransferWithFee => {
 				let from = input.account_id_at(1)?;
-				let currency_address = input.evm_address_at(2)?;
+				let currency_id = input.currency_id_at(2)?;
 				let amount = input.balance_at(3)?;
 				let fee = input.balance_at(4)?;
+
 				// solidity abi encode bytes will add an offset at input[5]
 				let dest_offset = input.u32_at(5)?;
 				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
 				let dest_bytes_len = input.u32_at(dest_index)?;
 				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
-				let dest: MultiLocation = Decode::decode(&mut dest_bytes).or_else(|_| {
-					Err(PrecompileFailure::Revert {
+				let versioned_dest: VersionedMultiLocation =
+					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "invalid dest".into(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})
+					})?;
+				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "dest bad version".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
-				let weight = input.u64_at(6)?;
 
-				let currency_id = Runtime::Erc20InfoMapping::decode_evm_address(currency_address).ok_or_else(|| {
-					PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid currency id".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					}
-				})?;
+				let weight = input.u64_at(6)?;
 
 				log::debug!(
 					target: "evm",
@@ -253,12 +259,16 @@ where
 				let asset_bytes_len = input.u32_at(asset_index)?;
 				let mut asset_bytes: &[u8] =
 					&input.bytes_at(asset_index.saturating_add(1), asset_bytes_len as usize)?[..];
-				let asset: MultiAsset = Decode::decode(&mut asset_bytes).or_else(|_| {
-					Err(PrecompileFailure::Revert {
+				let versioned_asset: VersionedMultiAsset =
+					Decode::decode(&mut asset_bytes).map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "invalid multi asset".into(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})
+					})?;
+				let asset: MultiAsset = versioned_asset.try_into().map_err(|()| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "asset bad version".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				// solidity abi encode bytes will add an offset at input[3]
@@ -266,12 +276,16 @@ where
 				let fee_index = (fee_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
 				let fee_bytes_len = input.u32_at(fee_index)?;
 				let mut fee_bytes: &[u8] = &input.bytes_at(fee_index.saturating_add(1), fee_bytes_len as usize)?[..];
-				let fee: MultiAsset = Decode::decode(&mut fee_bytes).or_else(|_| {
-					Err(PrecompileFailure::Revert {
+				let versioned_fee: VersionedMultiAsset =
+					Decode::decode(&mut fee_bytes).map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "invalid fee asset".into(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})
+					})?;
+				let fee: MultiAsset = versioned_fee.try_into().map_err(|()| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "fee bad version".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				// solidity abi encode bytes will add an offset at input[4]
@@ -279,13 +293,18 @@ where
 				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
 				let dest_bytes_len = input.u32_at(dest_index)?;
 				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
-				let dest: MultiLocation = Decode::decode(&mut dest_bytes).or_else(|_| {
-					Err(PrecompileFailure::Revert {
+				let versioned_dest: VersionedMultiLocation =
+					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "invalid dest".into(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})
+					})?;
+				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "dest bad version".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
+
 				let weight = input.u64_at(5)?;
 
 				log::debug!(
@@ -323,16 +342,7 @@ where
 				let mut currencies = Vec::with_capacity(currencies_len);
 				for i in 0..currencies_len {
 					let index = currencies_index.saturating_add(i.saturating_mul(2)); // address + amount
-					let currency_address = input.evm_address_at(index.saturating_add(1))?;
-					let currency_id =
-						Runtime::Erc20InfoMapping::decode_evm_address(currency_address).ok_or_else(|| {
-							PrecompileFailure::Revert {
-								exit_status: ExitRevert::Reverted,
-								output: "invalid currency id".into(),
-								cost: target_gas_limit(target_gas).unwrap_or_default(),
-							}
-						})?;
-
+					let currency_id = input.currency_id_at(index.saturating_add(1))?;
 					let amount = input.balance_at(index.saturating_add(2))?;
 
 					currencies.push((currency_id, amount));
@@ -345,13 +355,18 @@ where
 				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
 				let dest_bytes_len = input.u32_at(dest_index)?;
 				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
-				let dest: MultiLocation = Decode::decode(&mut dest_bytes).or_else(|_| {
-					Err(PrecompileFailure::Revert {
+				let versioned_dest: VersionedMultiLocation =
+					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "invalid dest".into(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})
+					})?;
+				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "dest bad version".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
+
 				let weight = input.u64_at(5)?;
 
 				log::debug!(
@@ -388,25 +403,23 @@ where
 				let assets_bytes_len = input.u32_at(assets_index)?;
 				let mut assets_bytes: &[u8] =
 					&input.bytes_at(assets_index.saturating_add(1), assets_bytes_len as usize)?[..];
-				let assets: MultiAssets = Decode::decode(&mut assets_bytes).or_else(|_| {
-					Err(PrecompileFailure::Revert {
+				let versioned_assets: VersionedMultiAssets =
+					Decode::decode(&mut assets_bytes).map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "invalid multi assets".into(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})
+					})?;
+				let assets: MultiAssets = versioned_assets.try_into().map_err(|()| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "asset bad version".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				// solidity abi encode bytes will add an offset at input[3]
-				let fee_offset = input.u32_at(3)?;
-				let fee_index = (fee_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
-				let fee_bytes_len = input.u32_at(fee_index)?;
-				let mut fee_bytes: &[u8] = &input.bytes_at(fee_index.saturating_add(1), fee_bytes_len as usize)?[..];
-				let fee: MultiAsset = Decode::decode(&mut fee_bytes).or_else(|_| {
-					Err(PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid fee asset".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})
+				let fee_item = input.u32_at(3)?;
+				let fee: &MultiAsset = assets.get(fee_item as usize).ok_or(PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "fee index non-existent".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				// solidity abi encode bytes will add an offset at input[4]
@@ -414,13 +427,18 @@ where
 				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
 				let dest_bytes_len = input.u32_at(dest_index)?;
 				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
-				let dest: MultiLocation = Decode::decode(&mut dest_bytes).or_else(|_| {
-					Err(PrecompileFailure::Revert {
+				let versioned_dest: VersionedMultiLocation =
+					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "invalid dest".into(),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})
+					})?;
+				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "dest bad version".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
+
 				let weight = input.u64_at(5)?;
 
 				log::debug!(
@@ -433,7 +451,7 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multiassets(from, assets, fee, dest, Limited(weight))
+				>>::transfer_multiassets(from, assets.clone(), fee.clone(), dest, Limited(weight))
 				.map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Xtoken TransferMultiAssets failed".into(),
@@ -466,89 +484,35 @@ where
 
 		let cost: u64 = match action {
 			Action::Transfer => {
-				let currency_id_a = input.currency_id_at(1)?;
-				let currency_id_b = input.currency_id_at(2)?;
-				let read_currency_a = InputPricer::<Runtime>::read_currency(currency_id_a);
-				let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
+				let currency_id = input.currency_id_at(2)?;
+				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
 
-				// DEX::LiquidityPool (r: 1)
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-
-				Self::BASE_COST
-					.saturating_add(read_currency_a)
-					.saturating_add(read_currency_b)
-					.saturating_add(WeightToGas::convert(weight))
+				Self::BASE_COST.saturating_add(read_currency)
 			}
-			Action::TransferMultiAsset => {
-				// let currency_id_a = input.currency_id_at(1)?;
-				// let currency_id_b = input.currency_id_at(2)?;
-				// let read_currency_a = InputPricer::<Runtime>::read_currency(currency_id_a);
-				// let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
-
-				// DEX::LiquidityPool (r: 1)
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-
-				Self::BASE_COST
-					// .saturating_add(read_currency_a)
-					// .saturating_add(read_currency_b)
-					.saturating_add(WeightToGas::convert(weight))
-			}
+			Action::TransferMultiAsset => Self::BASE_COST,
 			Action::TransferWithFee => {
-				// let currency_id_a = input.currency_id_at(1)?;
-				// let currency_id_b = input.currency_id_at(2)?;
-				// let read_currency_a = InputPricer::<Runtime>::read_currency(currency_id_a);
-				// let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
+				let currency_id = input.currency_id_at(2)?;
+				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
 
-				// DEX::LiquidityPool (r: 1)
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-
-				Self::BASE_COST
-					// .saturating_add(read_currency_a)
-					// .saturating_add(read_currency_b)
-					.saturating_add(WeightToGas::convert(weight))
+				Self::BASE_COST.saturating_add(read_currency)
 			}
-			Action::TransferMultiAssetWithFee => {
-				// let currency_id_a = input.currency_id_at(1)?;
-				// let currency_id_b = input.currency_id_at(2)?;
-				// let read_currency_a = InputPricer::<Runtime>::read_currency(currency_id_a);
-				// let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
-
-				// DEX::LiquidityPool (r: 1)
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-
-				Self::BASE_COST
-					// .saturating_add(read_currency_a)
-					// .saturating_add(read_currency_b)
-					.saturating_add(WeightToGas::convert(weight))
-			}
+			Action::TransferMultiAssetWithFee => Self::BASE_COST,
 			Action::TransferMultiCurrencies => {
-				// let currency_id_a = input.currency_id_at(1)?;
-				// let currency_id_b = input.currency_id_at(2)?;
-				// let read_currency_a = InputPricer::<Runtime>::read_currency(currency_id_a);
-				// let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
+				let currencies_offset = input.u32_at(2)?;
+				let currencies_index = (currencies_offset as usize)
+					.saturating_div(PER_PARAM_BYTES)
+					.saturating_add(1);
+				let currencies_len = input.u32_at(currencies_index)? as usize;
+				let mut read_currency: u64 = 0;
+				for i in 0..currencies_len {
+					let index = currencies_index.saturating_add(i.saturating_mul(2)); // address + amount
+					let currency_id = input.currency_id_at(index.saturating_add(1))?;
+					read_currency = read_currency.saturating_add(InputPricer::<Runtime>::read_currency(currency_id));
+				}
 
-				// DEX::LiquidityPool (r: 1)
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-
-				Self::BASE_COST
-					// .saturating_add(read_currency_a)
-					// .saturating_add(read_currency_b)
-					.saturating_add(WeightToGas::convert(weight))
+				Self::BASE_COST.saturating_add(read_currency)
 			}
-			Action::TransferMultiAssets => {
-				// let currency_id_a = input.currency_id_at(1)?;
-				// let currency_id_b = input.currency_id_at(2)?;
-				// let read_currency_a = InputPricer::<Runtime>::read_currency(currency_id_a);
-				// let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
-
-				// DEX::LiquidityPool (r: 1)
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-
-				Self::BASE_COST
-					// .saturating_add(read_currency_a)
-					// .saturating_add(read_currency_b)
-					.saturating_add(WeightToGas::convert(weight))
-			}
+			Action::TransferMultiAssets => Self::BASE_COST,
 		};
 		Ok(cost)
 	}
@@ -572,14 +536,16 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: MultiLocation = Junction::AccountId32 {
-				network: NetworkId::Any,
-				id: BOB.into(),
-			}
-			.into();
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
+				Junction::AccountId32 {
+					network: NetworkId::Any,
+					id: BOB.into(),
+				}
+				.into(),
+			);
 			assert_eq!(
 				dest.encode(),
-				hex!("000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			// transfer(address,address,uint256,bytes,uint64) -> 0xdd2a3599
@@ -593,13 +559,13 @@ mod tests {
 			let input = hex! {"
 				dd2a3599
 				000000000000000000000000 1000000000000000000000000000000000000001
-				000000000000000000000000 0000000000000000000100000000000000000000
+				00000000000000000000000000000000 00000000000100000000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000001
 				00000000000000000000000000000000 000000000000000000000000000000a0
 				00000000000000000000000000000000 00000000000000000000000000000002
-				00000000000000000000000000000000 00000000000000000000000000000024
-				0001010002020202020202020202020202020202020202020202020202020202
-				0202020200000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000025
+				0100010100020202020202020202020202020202020202020202020202020202
+				0202020202000000000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
@@ -621,17 +587,19 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let asset: MultiAsset = (Here, 1_000_000_000_000).into();
-			assert_eq!(asset.encode(), hex!("00000000070010a5d4e8"));
+			let asset: VersionedMultiAsset = (Here, 1_000_000_000_000).into();
+			assert_eq!(asset.encode(), hex!("0100000000070010a5d4e8"));
 
-			let dest: MultiLocation = Junction::AccountId32 {
-				network: NetworkId::Any,
-				id: BOB.into(),
-			}
-			.into();
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
+				Junction::AccountId32 {
+					network: NetworkId::Any,
+					id: BOB.into(),
+				}
+				.into(),
+			);
 			assert_eq!(
 				dest.encode(),
-				hex!("000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			// transferMultiAsset(address,bytes,bytes,uint64) -> 0xc94c06e7
@@ -649,11 +617,11 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000080
 				00000000000000000000000000000000 000000000000000000000000000000c0
 				00000000000000000000000000000000 00000000000000000000000000000002
-				00000000000000000000000000000000 0000000000000000000000000000000a
-				00000000070010a5d4e8000000000000 00000000000000000000000000000000
-				00000000000000000000000000000000 00000000000000000000000000000024
-				0001010002020202020202020202020202020202020202020202020202020202
-				0202020200000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 0000000000000000000000000000000b
+				0100000000070010a5d4e8000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000025
+				0100010100020202020202020202020202020202020202020202020202020202
+				0202020202000000000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
@@ -675,14 +643,16 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: MultiLocation = Junction::AccountId32 {
-				network: NetworkId::Any,
-				id: BOB.into(),
-			}
-			.into();
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
+				Junction::AccountId32 {
+					network: NetworkId::Any,
+					id: BOB.into(),
+				}
+				.into(),
+			);
 			assert_eq!(
 				dest.encode(),
-				hex!("000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			// transferWithFee(address,address,uint256,uint256,bytes,uint64) -> 0x014f858e
@@ -697,14 +667,14 @@ mod tests {
 			let input = hex! {"
 				014f858e
 				000000000000000000000000 1000000000000000000000000000000000000001
-				000000000000000000000000 0000000000000000000100000000000000000000
+				00000000000000000000000000000000 00000000000100000000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000000002
 				00000000000000000000000000000000 000000000000000000000000000000c0
 				00000000000000000000000000000000 00000000000000000000000000000003
-				00000000000000000000000000000000 00000000000000000000000000000024
-				0001010002020202020202020202020202020202020202020202020202020202
-				0202020200000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000025
+				0100010100020202020202020202020202020202020202020202020202020202
+				0202020202000000000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
@@ -726,20 +696,22 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let asset: MultiAsset = (Here, 1_000_000_000_000).into();
-			assert_eq!(asset.encode(), hex!("00000000070010a5d4e8"));
+			let asset: VersionedMultiAsset = (Here, 1_000_000_000_000).into();
+			assert_eq!(asset.encode(), hex!("0100000000070010a5d4e8"));
 
-			let fee: MultiAsset = (Here, 1_000_000).into();
-			assert_eq!(fee.encode(), hex!("0000000002093d00"));
+			let fee: VersionedMultiAsset = (Here, 1_000_000).into();
+			assert_eq!(fee.encode(), hex!("010000000002093d00"));
 
-			let dest: MultiLocation = Junction::AccountId32 {
-				network: NetworkId::Any,
-				id: BOB.into(),
-			}
-			.into();
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
+				Junction::AccountId32 {
+					network: NetworkId::Any,
+					id: BOB.into(),
+				}
+				.into(),
+			);
 			assert_eq!(
 				dest.encode(),
-				hex!("000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			// transferMultiAssetWithFee(address,bytes,bytes,bytes,uint64) -> 0x7c9d2ad5
@@ -760,14 +732,14 @@ mod tests {
 				00000000000000000000000000000000 000000000000000000000000000000a0
 				00000000000000000000000000000000 000000000000000000000000000000e0
 				00000000000000000000000000000000 00000000000000000000000000000120
-				00000000000000000000000000000000 00000000000000000000000000000001
-				00000000000000000000000000000000 0000000000000000000000000000000a
-				00000000070010a5d4e800000000000000000000000000000000000000000000
-				0000000000000000000000000000000000000000000000000000000000000008
-				0000000002093d00000000000000000000000000000000000000000000000000
-				0000000000000000000000000000000000000000000000000000000000000024
-				0001010002020202020202020202020202020202020202020202020202020202
-				0202020200000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000002
+				00000000000000000000000000000000 0000000000000000000000000000000b
+				0100000000070010a5d4e8000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000009
+				010000000002093d000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000025
+				0100010100020202020202020202020202020202020202020202020202020202
+				0202020202000000000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
@@ -789,14 +761,16 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: MultiLocation = Junction::AccountId32 {
-				network: NetworkId::Any,
-				id: BOB.into(),
-			}
-			.into();
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
+				Junction::AccountId32 {
+					network: NetworkId::Any,
+					id: BOB.into(),
+				}
+				.into(),
+			);
 			assert_eq!(
 				dest.encode(),
-				hex!("000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			// transferMultiCurrencies(address,(address,uint256)[],uint32,bytes,uint64) -> 0x78ff822f
@@ -815,18 +789,18 @@ mod tests {
 			let input = hex! {"
 				78ff822f
 				000000000000000000000000 1000000000000000000000000000000000000001
-				00000000000000000000000000000000000000000000000000000000000000a0
-				0000000000000000000000000000000000000000000000000000000000000001
-				0000000000000000000000000000000000000000000000000000000000000140
-				0000000000000000000000000000000000000000000000000000000000000002
-				0000000000000000000000000000000000000000000000000000000000000002
-				000000000000000000000000 0000000000000000000100000000000000000000
+				00000000000000000000000000000000 000000000000000000000000000000a0
 				00000000000000000000000000000000 00000000000000000000000000000001
-				000000000000000000000000 0000000000000000000100000000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000140
 				00000000000000000000000000000000 00000000000000000000000000000002
-				0000000000000000000000000000000000000000000000000000000000000024
-				0001010002020202020202020202020202020202020202020202020202020202
-				0202020200000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000002
+				000000000000000000000000 1000000000000000000000000000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000001
+				000000000000000000000000 1000000000000000000000000000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000002
+				00000000000000000000000000000000 00000000000000000000000000000025
+				0100010100020202020202020202020202020202020202020202020202020202
+				0202020202000000000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
@@ -848,48 +822,43 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let assets: MultiAssets = vec![(Here, 1_000_000_000_000).into()].into();
-			assert_eq!(assets.encode(), hex!("0400000000070010a5d4e8"));
+			let assets: VersionedMultiAssets = VersionedMultiAssets::from(MultiAssets::from((Here, 1_000_000_000_000)));
+			assert_eq!(assets.encode(), hex!("010400000000070010a5d4e8"));
 
-			let fee: MultiAsset = (Here, 1_000_000).into();
-			assert_eq!(fee.encode(), hex!("0000000002093d00"));
-
-			let dest: MultiLocation = Junction::AccountId32 {
-				network: NetworkId::Any,
-				id: BOB.into(),
-			}
-			.into();
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
+				Junction::AccountId32 {
+					network: NetworkId::Any,
+					id: BOB.into(),
+				}
+				.into(),
+			);
 			assert_eq!(
 				dest.encode(),
-				hex!("000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
-			// transferMultiAssets(address,bytes,bytes,bytes,uint64) -> 0x3ab249cd
+			// transferMultiAssets(address,bytes,bytes,bytes,uint64) -> 0x78fccf6c
 			// from
 			// assets offset
-			// fee offset
+			// fee_item
 			// dest offset
 			// weight
 			// assets length
 			// assets
-			// fee length
-			// fee
 			// dest length
 			// dest
 			let input = hex! {"
-				3ab249cd
+				78fccf6c
 				000000000000000000000000 1000000000000000000000000000000000000001
-				00000000000000000000000000000000000000000000000000000000000000a0
-				00000000000000000000000000000000000000000000000000000000000000e0
-				0000000000000000000000000000000000000000000000000000000000000120
-				00000000000000000000000000000000 00000000000000000000000000000001
-				000000000000000000000000000000000000000000000000000000000000000b
-				0400000000070010a5d4e8000000000000000000000000000000000000000000
-				0000000000000000000000000000000000000000000000000000000000000008
-				0000000002093d00000000000000000000000000000000000000000000000000
-				0000000000000000000000000000000000000000000000000000000000000024
-				0001010002020202020202020202020202020202020202020202020202020202
-				0202020200000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 000000000000000000000000000000a0
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000 000000000000000000000000000000e0
+				00000000000000000000000000000000 00000000000000000000000000000002
+				00000000000000000000000000000000 0000000000000000000000000000000c
+				010400000000070010a5d4e80000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000025
+				0100010100020202020202020202020202020202020202020202020202020202
+				0202020202000000000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
