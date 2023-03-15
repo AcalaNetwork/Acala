@@ -129,6 +129,7 @@ where
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
 						.ok_or(InvalidTransaction::BadProof)?
 				} else {
+					// eth_call_v2, the gas_price and gas_limit are encoded.
 					(eth_msg.gas_price as u128, eth_msg.gas_limit as u128)
 				};
 
@@ -171,6 +172,7 @@ where
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
 						.ok_or(InvalidTransaction::BadProof)?
 				} else {
+					// eth_call_v2, the gas_price and gas_limit are encoded.
 					(eth_msg.gas_price as u128, eth_msg.gas_limit as u128)
 				};
 

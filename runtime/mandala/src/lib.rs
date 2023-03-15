@@ -68,7 +68,7 @@ use orml_traits::{
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
 	define_combined_task,
-	evm::{AccessListItem, EthereumTransactionMessage, GAS_MASK, STORAGE_MASK},
+	evm::{decode_gas_limit, decode_gas_price, AccessListItem, EthereumTransactionMessage},
 	task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 };
@@ -1837,11 +1837,9 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 				gas_limit,
 				access_list,
 			}) => {
-				// TODO: tip & handle error
-				let valid_until: u32 = (gas_price as u128)
-					.saturating_sub(TxFeePerGas::get())
-					.try_into()
-					.unwrap();
+				let (tip, valid_until) =
+					decode_gas_price(gas_price, TxFeePerGas::get()).ok_or(InvalidTransaction::Stale)?;
+
 				if System::block_number() > valid_until {
 					return Err(InvalidTransaction::Stale);
 				}
@@ -1854,17 +1852,14 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 				}
 
 				let nonce = check_nonce.nonce;
-				// TODO: verify tip from gasPrice
-				let tip = charge.0;
+				if tip != charge.0 {
+					// The tip decoded from gas-price is different from the extra
+					return Err(InvalidTransaction::BadProof);
+				}
 
 				extra.5.mark_as_ethereum_tx(valid_until);
 
-				let gas_and_storage: u64 = gas_limit.checked_rem(GAS_MASK).expect("constant never failed; qed");
-				let storage_limit: u32 = 2u32.saturating_pow(
-					gas_and_storage
-						.checked_rem(STORAGE_MASK)
-						.expect("constant never failed; qed") as u32,
-				);
+				let storage_limit = decode_gas_limit(gas_limit).1;
 
 				Ok((
 					EthereumTransactionMessage {

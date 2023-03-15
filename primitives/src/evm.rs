@@ -49,11 +49,11 @@ pub const CHAIN_ID_KARURA_MAINNET: u64 = 686u64;
 pub const CHAIN_ID_ACALA_MAINNET: u64 = 787u64;
 
 // GAS MASK
-pub const GAS_MASK: u64 = 100_000u64;
+const GAS_MASK: u64 = 100_000u64;
 // STORAGE MASK
-pub const STORAGE_MASK: u64 = 100u64;
+const STORAGE_MASK: u64 = 100u64;
 // GAS LIMIT CHUNK
-pub const GAS_LIMIT_CHUNK: u64 = 30_000u64;
+const GAS_LIMIT_CHUNK: u64 = 30_000u64;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -228,6 +228,32 @@ impl TryFrom<CurrencyId> for EvmAddress {
 
 		Ok(EvmAddress::from_slice(&address))
 	}
+}
+
+pub fn decode_gas_price(gas_price: u64, tx_fee_per_gas: u128) -> Option<(u128, u32)> {
+	// gasPrice cannot be too large to prevent overflow
+	let valid_until: u32 = Into::<u128>::into(gas_price)
+		.saturating_sub(tx_fee_per_gas)
+		.try_into()
+		.ok()?;
+	let tip: u128 = 0;
+	Some((tip, valid_until))
+}
+
+pub fn decode_gas_limit(gas_limit: u64) -> (u64, u32) {
+	let gas_and_storage: u64 = gas_limit.checked_rem(GAS_MASK).expect("constant never failed; qed");
+	let actual_gas_limit: u64 = gas_and_storage
+		.checked_div(STORAGE_MASK)
+		.expect("constant never failed; qed")
+		.saturating_mul(GAS_LIMIT_CHUNK);
+	let storage_limit: u32 = 2u32.saturating_pow(
+		gas_and_storage
+			.checked_rem(STORAGE_MASK)
+			.expect("constant never failed; qed")
+			.try_into()
+			.expect("The maximum is 99; qed"),
+	);
+	(actual_gas_limit, storage_limit)
 }
 
 #[cfg(not(feature = "evm-tests"))]

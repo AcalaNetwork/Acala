@@ -59,8 +59,8 @@ pub use module_support::{
 pub use orml_traits::{currency::TransferAll, MultiCurrency};
 pub use primitives::{
 	evm::{
-		convert_decimals_from_evm, convert_decimals_to_evm, CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity,
-		GAS_LIMIT_CHUNK, GAS_MASK, MIRRORED_NFT_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START, STORAGE_MASK,
+		convert_decimals_from_evm, convert_decimals_to_evm, decode_gas_limit, CallInfo, CreateInfo, EvmAddress,
+		ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START,
 	},
 	task::TaskResult,
 	Balance, CurrencyId, ReserveIdentifier,
@@ -567,8 +567,8 @@ pub mod module {
 
 		#[pallet::call_index(15)]
 		#[pallet::weight(match *action {
-			TransactionAction::Call(_) => call_weight::<T>((*gas_limit).checked_rem(GAS_MASK).unwrap().checked_div(STORAGE_MASK).unwrap().saturating_mul(GAS_LIMIT_CHUNK)),
-			TransactionAction::Create => create_weight::<T>((*gas_limit).checked_rem(GAS_MASK).unwrap().checked_div(STORAGE_MASK).unwrap().saturating_mul(GAS_LIMIT_CHUNK))
+			TransactionAction::Call(_) => call_weight::<T>(decode_gas_limit(*gas_limit).0),
+			TransactionAction::Create => create_weight::<T>(decode_gas_limit(*gas_limit).0)
 		})]
 		#[transactional]
 		pub fn eth_call_v2(
@@ -580,16 +580,7 @@ pub mod module {
 			#[pallet::compact] gas_limit: u64,
 			access_list: Vec<AccessListItem>,
 		) -> DispatchResultWithPostInfo {
-			let gas_and_storage: u64 = gas_limit.checked_rem(GAS_MASK).expect("constant never failed; qed");
-			let actual_gas_limit: u64 = gas_and_storage
-				.checked_div(STORAGE_MASK)
-				.expect("constant never failed; qed")
-				.saturating_mul(GAS_LIMIT_CHUNK);
-			let storage_limit: u32 = 2u32.saturating_pow(
-				gas_and_storage
-					.checked_rem(STORAGE_MASK)
-					.expect("constant never failed; qed") as u32,
-			);
+			let (actual_gas_limit, storage_limit) = decode_gas_limit(gas_limit);
 
 			match action {
 				TransactionAction::Call(target) => Self::call(
