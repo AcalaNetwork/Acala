@@ -547,6 +547,8 @@ pub mod module {
 			TransactionAction::Create => create_weight::<T>(*gas_limit)
 		})]
 		#[transactional]
+		#[allow(deprecated)]
+		#[deprecated(note = "please migrate to `eth_call_v2`")]
 		pub fn eth_call(
 			origin: OriginFor<T>,
 			action: TransactionAction,

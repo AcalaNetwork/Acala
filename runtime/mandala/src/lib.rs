@@ -2589,6 +2589,7 @@ mod tests {
 					EthereumTransactionMessage {
 						nonce: 3, // evm::account.nonce
 						tip: 0,
+						gas_price: 0,
 						gas_limit: 21_000,
 						storage_limit: 1_000,
 						action: module_evm::TransactionAction::Create,
