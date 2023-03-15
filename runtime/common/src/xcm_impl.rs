@@ -110,6 +110,7 @@ where
 		if !asset_traps.is_empty() {
 			X::drop_assets(origin, asset_traps.into(), context);
 		}
+		// TODO #2492: Put the real weight in there.
 		XcmWeight::from_ref_time(0)
 	}
 }
