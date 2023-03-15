@@ -28,7 +28,6 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "
 
 module-evm = { path = "../evm" }
 module-evm-bridge = { path = "../evm-bridge" }
-orml-utilities = { path = "../../orml/utilities" }
 
 [features]
 default = ["std"]

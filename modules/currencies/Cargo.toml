@@ -16,7 +16,6 @@ frame-support = { git = "https://github.com/paritytech/substrate", branch = "pol
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 
 orml-traits = { path = "../../orml/traits", default-features = false }
-orml-utilities = { path = "../../orml/utilities", default-features = false }
 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
@@ -39,7 +38,6 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"orml-traits/std",
-	"orml-utilities/std",
 	"primitives/std",
 	"scale-info/std",
 	"sp-core/std",
