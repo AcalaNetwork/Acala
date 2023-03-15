@@ -1599,9 +1599,20 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	}
 }
 
+// TODO: remove
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct TxFeePerGas;
 impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
+	fn get() -> I {
+		// NOTE: 200 GWei
+		// ensure suffix is 0x0000
+		I::from(200u128.saturating_mul(10u128.saturating_pow(9)) & !0xffff)
+	}
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct TxFeePerGasV2;
+impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGasV2 {
 	fn get() -> I {
 		// NOTE: 100 GWei
 		I::from(100_000_000_000u128)
@@ -1838,7 +1849,7 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 				access_list,
 			}) => {
 				let (tip, valid_until) =
-					decode_gas_price(gas_price, TxFeePerGas::get()).ok_or(InvalidTransaction::Stale)?;
+					decode_gas_price(gas_price, TxFeePerGasV2::get()).ok_or(InvalidTransaction::Stale)?;
 
 				if System::block_number() > valid_until {
 					return Err(InvalidTransaction::Stale);

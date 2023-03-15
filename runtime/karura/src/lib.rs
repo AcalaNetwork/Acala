@@ -87,7 +87,10 @@ pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	currency::AssetIds,
 	define_combined_task,
-	evm::{AccessListItem, BlockLimits, EstimateResourcesRequest, EthereumTransactionMessage, EvmAddress},
+	evm::{
+		decode_gas_limit, decode_gas_price, AccessListItem, BlockLimits, EstimateResourcesRequest,
+		EthereumTransactionMessage, EvmAddress,
+	},
 	task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
@@ -1409,6 +1412,7 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	}
 }
 
+// TODO: remove
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct TxFeePerGas;
 impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
@@ -1416,6 +1420,15 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
 		// NOTE: 200 GWei
 		// ensure suffix is 0x0000
 		I::from(200u128.saturating_mul(10u128.saturating_pow(9)) & !0xffff)
+	}
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct TxFeePerGasV2;
+impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGasV2 {
+	fn get() -> I {
+		// NOTE: 100 GWei
+		I::from(100_000_000_000u128)
 	}
 }
 
@@ -2182,50 +2195,101 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 	fn convert(
 		(call, mut extra): (RuntimeCall, SignedExtra),
 	) -> Result<(EthereumTransactionMessage, SignedExtra), InvalidTransaction> {
-		if let RuntimeCall::EVM(module_evm::Call::eth_call {
-			action,
-			input,
-			value,
-			gas_limit,
-			storage_limit,
-			access_list,
-			valid_until,
-		}) = call
-		{
-			if System::block_number() > valid_until {
-				return Err(InvalidTransaction::Stale);
+		match call {
+			RuntimeCall::EVM(module_evm::Call::eth_call {
+				action,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list,
+				valid_until,
+			}) => {
+				if System::block_number() > valid_until {
+					return Err(InvalidTransaction::Stale);
+				}
+
+				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
+
+				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
+					// require immortal
+					return Err(InvalidTransaction::BadProof);
+				}
+
+				let nonce = check_nonce.nonce;
+				let tip = charge.0;
+
+				extra.5.mark_as_ethereum_tx(valid_until);
+
+				Ok((
+					EthereumTransactionMessage {
+						chain_id: EVM::chain_id(),
+						genesis: System::block_hash(0),
+						nonce,
+						tip,
+						gas_price: Default::default(),
+						gas_limit,
+						storage_limit,
+						action,
+						value,
+						input,
+						valid_until,
+						access_list,
+					},
+					extra,
+				))
 			}
+			RuntimeCall::EVM(module_evm::Call::eth_call_v2 {
+				action,
+				input,
+				value,
+				gas_price,
+				gas_limit,
+				access_list,
+			}) => {
+				let (tip, valid_until) =
+					decode_gas_price(gas_price, TxFeePerGasV2::get()).ok_or(InvalidTransaction::Stale)?;
 
-			let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
+				if System::block_number() > valid_until {
+					return Err(InvalidTransaction::Stale);
+				}
 
-			if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
-				// require immortal
-				return Err(InvalidTransaction::BadProof);
+				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
+
+				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
+					// require immortal
+					return Err(InvalidTransaction::BadProof);
+				}
+
+				let nonce = check_nonce.nonce;
+				if tip != charge.0 {
+					// The tip decoded from gas-price is different from the extra
+					return Err(InvalidTransaction::BadProof);
+				}
+
+				extra.5.mark_as_ethereum_tx(valid_until);
+
+				let storage_limit = decode_gas_limit(gas_limit).1;
+
+				Ok((
+					EthereumTransactionMessage {
+						chain_id: EVM::chain_id(),
+						genesis: System::block_hash(0),
+						nonce,
+						tip,
+						gas_price,
+						gas_limit,
+						storage_limit,
+						action,
+						value,
+						input,
+						valid_until,
+						access_list,
+					},
+					extra,
+				))
 			}
-
-			let nonce = check_nonce.nonce;
-			let tip = charge.0;
-
-			extra.5.mark_as_ethereum_tx(valid_until);
-
-			Ok((
-				EthereumTransactionMessage {
-					chain_id: EVM::chain_id(),
-					genesis: System::block_hash(0),
-					nonce,
-					tip,
-					gas_limit,
-					storage_limit,
-					action,
-					value,
-					input,
-					valid_until,
-					access_list,
-				},
-				extra,
-			))
-		} else {
-			Err(InvalidTransaction::BadProof)
+			_ => Err(InvalidTransaction::BadProof),
 		}
 	}
 }
