@@ -576,7 +576,7 @@ pub mod module {
 			action: TransactionAction,
 			input: Vec<u8>,
 			#[pallet::compact] value: BalanceOf<T>,
-			#[pallet::compact] _gas_prcie: u64, // checked by tx validation logic
+			#[pallet::compact] _gas_price: u64, // checked by tx validation logic
 			#[pallet::compact] gas_limit: u64,
 			access_list: Vec<AccessListItem>,
 		) -> DispatchResultWithPostInfo {

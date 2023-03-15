@@ -68,7 +68,7 @@ use orml_traits::{
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
 	define_combined_task,
-	evm::{AccessListItem, EthereumTransactionMessage},
+	evm::{AccessListItem, EthereumTransactionMessage, GAS_MASK, STORAGE_MASK},
 	task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 };
@@ -1817,6 +1817,7 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 						genesis: System::block_hash(0),
 						nonce,
 						tip,
+						gas_price: Default::default(),
 						gas_limit,
 						storage_limit,
 						action,
@@ -1836,8 +1837,11 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 				gas_limit,
 				access_list,
 			}) => {
-				// TODO: tip
-				let valid_until = gas_price.saturating_sub(TxFeePerGas::get());
+				// TODO: tip & handle error
+				let valid_until: u32 = (gas_price as u128)
+					.saturating_sub(TxFeePerGas::get())
+					.try_into()
+					.unwrap();
 				if System::block_number() > valid_until {
 					return Err(InvalidTransaction::Stale);
 				}
@@ -1854,6 +1858,13 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 				let tip = charge.0;
 
 				extra.5.mark_as_ethereum_tx(valid_until);
+
+				let gas_and_storage: u64 = gas_limit.checked_rem(GAS_MASK).expect("constant never failed; qed");
+				let storage_limit: u32 = 2u32.saturating_pow(
+					gas_and_storage
+						.checked_rem(STORAGE_MASK)
+						.expect("constant never failed; qed") as u32,
+				);
 
 				Ok((
 					EthereumTransactionMessage {

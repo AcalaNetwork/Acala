@@ -125,11 +125,11 @@ where
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
-				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero {
+				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero() {
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
-						.ok_or(InvalidTransaction::BadProof)?;
+						.ok_or(InvalidTransaction::BadProof)?
 				} else {
-					(eth_msg.gas_price, eth_msg.gas_limit)
+					(eth_msg.gas_price as u128, eth_msg.gas_limit as u128)
 				};
 
 				let msg = LegacyTransactionMessage {
@@ -167,9 +167,12 @@ where
 					target: "evm", "Eip1559 eth_msg: {:?}", eth_msg
 				);
 
-				let (tx_gas_price, tx_gas_limit) =
+				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero() {
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
-						.ok_or(InvalidTransaction::BadProof)?;
+						.ok_or(InvalidTransaction::BadProof)?
+				} else {
+					(eth_msg.gas_price as u128, eth_msg.gas_limit as u128)
+				};
 
 				// tip = priority_fee * gas_limit
 				let priority_fee = eth_msg.tip.checked_div(eth_msg.gas_limit.into()).unwrap_or_default();
