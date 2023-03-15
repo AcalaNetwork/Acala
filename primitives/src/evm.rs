@@ -48,6 +48,13 @@ pub const CHAIN_ID_KARURA_MAINNET: u64 = 686u64;
 /// acala mainnet 787
 pub const CHAIN_ID_ACALA_MAINNET: u64 = 787u64;
 
+// GAS MASK
+pub const GAS_MASK: u64 = 100_000u64;
+// STORAGE MASK
+pub const STORAGE_MASK: u64 = 100u64;
+// GAS LIMIT CHUNK
+pub const GAS_LIMIT_CHUNK: u64 = 30_000u64;
+
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// External input from the transaction.
@@ -114,6 +121,7 @@ pub struct EthereumTransactionMessage {
 	pub genesis: H256,
 	pub nonce: Nonce,
 	pub tip: Balance,
+	pub gas_price: u64,
 	pub gas_limit: u64,
 	pub storage_limit: u32,
 	pub action: TransactionAction,

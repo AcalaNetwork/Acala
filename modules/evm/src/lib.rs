@@ -60,7 +60,7 @@ pub use orml_traits::{currency::TransferAll, MultiCurrency};
 pub use primitives::{
 	evm::{
 		convert_decimals_from_evm, convert_decimals_to_evm, CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity,
-		MIRRORED_NFT_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START,
+		GAS_LIMIT_CHUNK, GAS_MASK, MIRRORED_NFT_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START, STORAGE_MASK,
 	},
 	task::TaskResult,
 	Balance, CurrencyId, ReserveIdentifier,
@@ -562,6 +562,48 @@ pub mod module {
 					Self::call(origin, target, input, value, gas_limit, storage_limit, access_list)
 				}
 				TransactionAction::Create => Self::create(origin, input, value, gas_limit, storage_limit, access_list),
+			}
+		}
+
+		#[pallet::call_index(15)]
+		#[pallet::weight(match *action {
+			TransactionAction::Call(_) => call_weight::<T>((*gas_limit).checked_rem(GAS_MASK).unwrap().checked_div(STORAGE_MASK).unwrap().saturating_mul(GAS_LIMIT_CHUNK)),
+			TransactionAction::Create => create_weight::<T>((*gas_limit).checked_rem(GAS_MASK).unwrap().checked_div(STORAGE_MASK).unwrap().saturating_mul(GAS_LIMIT_CHUNK))
+		})]
+		#[transactional]
+		pub fn eth_call_v2(
+			origin: OriginFor<T>,
+			action: TransactionAction,
+			input: Vec<u8>,
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] _gas_prcie: u64, // checked by tx validation logic
+			#[pallet::compact] gas_limit: u64,
+			access_list: Vec<AccessListItem>,
+		) -> DispatchResultWithPostInfo {
+			let gas_and_storage: u64 = gas_limit.checked_rem(GAS_MASK).expect("constant never failed; qed");
+			let actual_gas_limit: u64 = gas_and_storage
+				.checked_div(STORAGE_MASK)
+				.expect("constant never failed; qed")
+				.saturating_mul(GAS_LIMIT_CHUNK);
+			let storage_limit: u32 = 2u32.saturating_pow(
+				gas_and_storage
+					.checked_rem(STORAGE_MASK)
+					.expect("constant never failed; qed") as u32,
+			);
+
+			match action {
+				TransactionAction::Call(target) => Self::call(
+					origin,
+					target,
+					input,
+					value,
+					actual_gas_limit,
+					storage_limit,
+					access_list,
+				),
+				TransactionAction::Create => {
+					Self::create(origin, input, value, actual_gas_limit, storage_limit, access_list)
+				}
 			}
 		}
 

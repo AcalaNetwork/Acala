@@ -125,9 +125,12 @@ where
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
-				let (tx_gas_price, tx_gas_limit) =
+				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero {
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
 						.ok_or(InvalidTransaction::BadProof)?;
+				} else {
+					(eth_msg.gas_price, eth_msg.gas_limit)
+				};
 
 				let msg = LegacyTransactionMessage {
 					nonce: eth_msg.nonce.into(),

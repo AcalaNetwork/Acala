@@ -1603,9 +1603,8 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 pub struct TxFeePerGas;
 impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
 	fn get() -> I {
-		// NOTE: 200 GWei
-		// ensure suffix is 0x0000
-		I::from(200u128.saturating_mul(10u128.saturating_pow(9)) & !0xffff)
+		// NOTE: 100 GWei
+		I::from(100_000_000_000u128)
 	}
 }
 
@@ -1818,6 +1817,51 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 						genesis: System::block_hash(0),
 						nonce,
 						tip,
+						gas_limit,
+						storage_limit,
+						action,
+						value,
+						input,
+						valid_until,
+						access_list,
+					},
+					extra,
+				))
+			}
+			RuntimeCall::EVM(module_evm::Call::eth_call_v2 {
+				action,
+				input,
+				value,
+				gas_price,
+				gas_limit,
+				access_list,
+			}) => {
+				// TODO: tip
+				let valid_until = gas_price.saturating_sub(TxFeePerGas::get());
+				if System::block_number() > valid_until {
+					return Err(InvalidTransaction::Stale);
+				}
+
+				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
+
+				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
+					// require immortal
+					return Err(InvalidTransaction::BadProof);
+				}
+
+				let nonce = check_nonce.nonce;
+				// TODO: verify tip from gasPrice
+				let tip = charge.0;
+
+				extra.5.mark_as_ethereum_tx(valid_until);
+
+				Ok((
+					EthereumTransactionMessage {
+						chain_id: EVM::chain_id(),
+						genesis: System::block_hash(0),
+						nonce,
+						tip,
+						gas_price,
 						gas_limit,
 						storage_limit,
 						action,
