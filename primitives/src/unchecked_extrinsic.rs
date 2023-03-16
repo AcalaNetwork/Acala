@@ -115,11 +115,6 @@ where
 					target: "evm", "Ethereum eth_msg: {:?}", eth_msg
 				);
 
-				if !eth_msg.tip.is_zero() {
-					// Not yet supported, require zero tip
-					return Err(InvalidTransaction::BadProof.into());
-				}
-
 				if !eth_msg.access_list.len().is_zero() {
 					// Not yet supported, require empty
 					return Err(InvalidTransaction::BadProof.into());
