@@ -231,24 +231,26 @@ impl TryFrom<CurrencyId> for EvmAddress {
 }
 
 pub fn decode_gas_price(gas_price: u64, gas_limit: u64, tx_fee_per_gas: u128) -> Option<(u128, u32)> {
-	// gasPrice cannot be too large to prevent overflow
-	let valid_until: u32 = Into::<u128>::into(gas_price)
-		.saturating_sub(tx_fee_per_gas)
-		.try_into()
-		.ok()?;
 	let mut tip: u128 = 0;
+	let mut actual_gas_price = gas_price;
 	const ONE_GWEI: u64 = 1_000_000_000u64;
 
 	// percentage
 	let tip_number = gas_price.saturating_div(ONE_GWEI).saturating_sub(100);
 	if !tip_number.is_zero() {
-		let actual_gas_price = gas_price.saturating_sub(tip_number.saturating_mul(ONE_GWEI));
+		actual_gas_price = gas_price.saturating_sub(tip_number.saturating_mul(ONE_GWEI));
 		tip = actual_gas_price
 			.saturating_mul(gas_limit)
 			.saturating_mul(tip_number)
 			.saturating_div(100)
 			.into();
 	}
+
+	let valid_until: u32 = Into::<u128>::into(actual_gas_price)
+		.saturating_sub(tx_fee_per_gas)
+		.try_into()
+		.ok()?;
+
 	Some((tip, valid_until))
 }
 
