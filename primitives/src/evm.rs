@@ -231,23 +231,30 @@ impl TryFrom<CurrencyId> for EvmAddress {
 }
 
 pub fn decode_gas_price(gas_price: u64, gas_limit: u64, tx_fee_per_gas: u128) -> Option<(u128, u32)> {
+	// ensure gas_price >= 100 Gwei
+	if u128::from(gas_price) < tx_fee_per_gas {
+		return None;
+	}
+
 	let mut tip: u128 = 0;
 	let mut actual_gas_price = gas_price;
 	const ONE_GWEI: u64 = 1_000_000_000u64;
 
 	// percentage
-	let tip_number = gas_price.saturating_div(ONE_GWEI).saturating_sub(100);
+	let tip_number = gas_price.checked_div(ONE_GWEI)?.checked_sub(100)?;
 	if !tip_number.is_zero() {
-		actual_gas_price = gas_price.saturating_sub(tip_number.saturating_mul(ONE_GWEI));
+		actual_gas_price = gas_price.checked_sub(tip_number.checked_mul(ONE_GWEI)?)?;
 		tip = actual_gas_price
-			.saturating_mul(gas_limit)
-			.saturating_mul(tip_number)
-			.saturating_div(100)
+			.checked_mul(gas_limit)?
+			.checked_mul(tip_number)?
+			.checked_div(100)? // percentage
+			.checked_div(1_000_000)? // ACA decimail is 12, ETH decimail is 18
 			.into();
 	}
 
+	// valid_until max is 999_999_999
 	let valid_until: u32 = Into::<u128>::into(actual_gas_price)
-		.saturating_sub(tx_fee_per_gas)
+		.checked_sub(tx_fee_per_gas)?
 		.try_into()
 		.ok()?;
 
@@ -260,14 +267,19 @@ pub fn decode_gas_limit(gas_limit: u64) -> (u64, u32) {
 		.checked_div(STORAGE_MASK)
 		.expect("constant never failed; qed")
 		.saturating_mul(GAS_LIMIT_CHUNK);
-	let storage_limit: u32 = 2u32.saturating_pow(
-		gas_and_storage
-			.checked_rem(STORAGE_MASK)
-			.expect("constant never failed; qed")
-			.try_into()
-			.expect("The maximum is 99; qed"),
-	);
-	(actual_gas_limit, storage_limit)
+	let storage_limit_number: u32 = gas_and_storage
+		.checked_rem(STORAGE_MASK)
+		.expect("constant never failed; qed")
+		.try_into()
+		.expect("STORAGE_MASK is 100, the result maximum is 99; qed");
+
+	let actual_storage_limit = if storage_limit_number.is_zero() {
+		Default::default()
+	} else {
+		2u32.saturating_pow(storage_limit_number)
+	};
+
+	(actual_gas_limit, actual_storage_limit)
 }
 
 #[cfg(not(feature = "evm-tests"))]
