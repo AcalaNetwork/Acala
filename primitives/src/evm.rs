@@ -31,7 +31,7 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256, U256};
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{traits::Zero, RuntimeDebug};
 use sp_std::vec::Vec;
 
 /// Evm Address.
@@ -230,13 +230,25 @@ impl TryFrom<CurrencyId> for EvmAddress {
 	}
 }
 
-pub fn decode_gas_price(gas_price: u64, tx_fee_per_gas: u128) -> Option<(u128, u32)> {
+pub fn decode_gas_price(gas_price: u64, gas_limit: u64, tx_fee_per_gas: u128) -> Option<(u128, u32)> {
 	// gasPrice cannot be too large to prevent overflow
 	let valid_until: u32 = Into::<u128>::into(gas_price)
 		.saturating_sub(tx_fee_per_gas)
 		.try_into()
 		.ok()?;
-	let tip: u128 = 0;
+	let mut tip: u128 = 0;
+	const ONE_GWEI: u64 = 1_000_000_000u64;
+
+	// percentage
+	let tip_number = gas_price.saturating_div(ONE_GWEI).saturating_sub(100);
+	if !tip_number.is_zero() {
+		let actual_gas_price = gas_price.saturating_sub(tip_number.saturating_mul(ONE_GWEI));
+		tip = actual_gas_price
+			.saturating_mul(gas_limit)
+			.saturating_mul(tip_number)
+			.saturating_div(100)
+			.into();
+	}
 	Some((tip, valid_until))
 }
 
