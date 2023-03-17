@@ -248,7 +248,7 @@ pub fn decode_gas_price(gas_price: u64, gas_limit: u64, tx_fee_per_gas: u128) ->
 			.checked_mul(gas_limit)?
 			.checked_mul(tip_number)?
 			.checked_div(100)? // percentage
-			.checked_div(1_000_000)? // ACA decimail is 12, ETH decimail is 18
+			.checked_div(1_000_000)? // ACA decimal is 12, ETH decimal is 18
 			.into();
 	}
 
