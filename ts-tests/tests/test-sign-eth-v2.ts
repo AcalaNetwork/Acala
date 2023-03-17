@@ -11,7 +11,7 @@ import Erc20DemoContract from "../build/Erc20DemoContract.json"
 // const GAS_MASK = 100000;
 const STORAGE_MASK = 100;
 const GAS_LIMIT_CHUNK = BigNumber.from(30000);
-const ONE_GWEI = BigNumber.from(1000000000);
+const TEN_GWEI = BigNumber.from(10000000000);
 
 describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	let alice: Signer;
@@ -330,16 +330,16 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 		const storageLimit = 20000;
 		const gasLimit = BigNumber.from('2100000');
 
-		// 1%
+		// 10%
 		const tipNumber = BigNumber.from('1');
 		// 100 Gwei
-		const txFeePerGas = BigNumber.from('101000000000');
+		const txFeePerGas = BigNumber.from('110000000000');
 		const txGasPrice = txFeePerGas.add(validUntil);
 		const encodedGasLimit = gasLimit.div(GAS_LIMIT_CHUNK).add(1);
 		const encodedStorageLimit = Math.ceil(Math.log2(storageLimit));
 		// tx fee = 100_00000
 		const txGasLimit = BigNumber.from('10000000').add(encodedGasLimit.mul(STORAGE_MASK)).add(encodedStorageLimit);
-		const tip = txGasPrice.sub(tipNumber.mul(ONE_GWEI)).mul(txGasLimit).mul(tipNumber).div(100).div(1000000);
+		const tip = txGasPrice.sub(tipNumber.mul(TEN_GWEI)).mul(txGasLimit).mul(tipNumber).div(10).div(1000000);
 
 		const deploy = factory.getDeployTransaction(100000);
 
@@ -358,7 +358,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 
 		expect(rawtx).to.deep.include({
 			nonce: 0,
-			gasPrice: BigNumber.from(101000000105),
+			gasPrice: BigNumber.from(110000000105),
 			gasLimit: BigNumber.from(10007115),
 			// to: '0x0000000000000000000000000000000000000000',
 			value: BigNumber.from(0),
@@ -407,7 +407,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 					"immortalEra": "0x00"
 				  },
 				  "nonce": 0,
-				  "tip": 10007115010
+				  "tip": 100071150105
 				},
 				"method": {
 				  "callIndex": "0xb40f",
@@ -417,7 +417,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 					},
 					"input": "${deploy.data}",
 					"value": 0,
-					"gas_price": 101000000105,
+					"gas_price": 110000000105,
 					"gas_limit": 10007115,
 					"access_list": []
 				  }
@@ -456,16 +456,16 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 		const storageLimit = 1000;
 		const gasLimit = BigNumber.from('210000');
 
-		// 1%
+		// 10%
 		const tipNumber = BigNumber.from('1');
 		// 100 Gwei
-		const txFeePerGas = BigNumber.from('101000000000');
+		const txFeePerGas = BigNumber.from('110000000000');
 		const txGasPrice = txFeePerGas.add(validUntil);
 		const encodedGasLimit = gasLimit.div(GAS_LIMIT_CHUNK).add(1);
 		const encodedStorageLimit = Math.ceil(Math.log2(storageLimit));
 		// tx fee = 100_00000
 		const txGasLimit = BigNumber.from('10000000').add(encodedGasLimit.mul(STORAGE_MASK)).add(encodedStorageLimit);
-		const tip = txGasPrice.sub(tipNumber.mul(ONE_GWEI)).mul(txGasLimit).mul(tipNumber).div(100).div(1000000);
+		const tip = txGasPrice.sub(tipNumber.mul(TEN_GWEI)).mul(txGasLimit).mul(tipNumber).div(10).div(1000000);
 
 		const receiver = '0x1111222233334444555566667777888899990000';
 		const input = await factory.attach(contract).populateTransaction.transfer(receiver, 100);
@@ -485,7 +485,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 
 		expect(rawtx).to.deep.include({
 			nonce: 1,
-			gasPrice: BigNumber.from(101000000106),
+			gasPrice: BigNumber.from(110000000106),
 			gasLimit: BigNumber.from(10000810),
 			to: ethers.utils.getAddress(contract),
 			value: BigNumber.from(0),
@@ -534,7 +534,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 					"immortalEra": "0x00"
 				  },
 				  "nonce": 1,
-				  "tip": 10000810010
+				  "tip": 100008100106
 				},
 				"method": {
 				  "callIndex": "0xb40f",
@@ -544,7 +544,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 					},
 					"input": "${input.data}",
 					"value": 0,
-					"gas_price": 101000000106,
+					"gas_price": 110000000106,
 					"gas_limit": 10000810,
 					"access_list": []
 				  }

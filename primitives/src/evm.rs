@@ -238,25 +238,25 @@ pub fn decode_gas_price(gas_price: u64, gas_limit: u64, tx_fee_per_gas: u128) ->
 
 	let mut tip: u128 = 0;
 	let mut actual_gas_price = gas_price;
-	const ONE_GWEI: u64 = 1_000_000_000u64;
+	const TEN_GWEI: u64 = 10_000_000_000u64;
 
-	// percentage
-	let tip_number = gas_price.checked_div(ONE_GWEI)?.checked_sub(100)?;
+	// tip = 10% * tip_number
+	let tip_number = gas_price.checked_div(TEN_GWEI)?.checked_sub(10)?;
 	if !tip_number.is_zero() {
-		actual_gas_price = gas_price.checked_sub(tip_number.checked_mul(ONE_GWEI)?)?;
+		actual_gas_price = gas_price.checked_sub(tip_number.checked_mul(TEN_GWEI)?)?;
 		tip = actual_gas_price
 			.checked_mul(gas_limit)?
 			.checked_mul(tip_number)?
-			.checked_div(100)? // percentage
+			.checked_div(10)? // percentage
 			.checked_div(1_000_000)? // ACA decimal is 12, ETH decimal is 18
 			.into();
 	}
 
-	// valid_until max is 999_999_999
+	// valid_until max is u32::MAX.
 	let valid_until: u32 = Into::<u128>::into(actual_gas_price)
 		.checked_sub(tx_fee_per_gas)?
 		.try_into()
-		.ok()?;
+		.unwrap_or(u32::MAX);
 
 	Some((tip, valid_until))
 }

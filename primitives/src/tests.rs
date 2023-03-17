@@ -199,21 +199,21 @@ fn decode_gas_price_works() {
 		Some((0, 0))
 	);
 
-	// tip = 0, gas_price = 100 Gwei, gas_limit = u64::MIN
+	// tip = 0, gas_price = 105 Gwei, gas_limit = u64::MIN
 	assert_eq!(
-		decode_gas_price(100_999_999_999, u64::MIN, TX_FEE_PRE_GAS),
-		Some((0, 999_999_999))
+		decode_gas_price(105_000_000_000, u64::MIN, TX_FEE_PRE_GAS),
+		Some((0, u32::MAX))
 	);
-	// tip = 0, gas_price = 100 Gwei, gas_limit = u64::MAX
+	// tip = 0, gas_price = 105 Gwei, gas_limit = u64::MAX
 	assert_eq!(
-		decode_gas_price(100_999_999_999, u64::MAX, TX_FEE_PRE_GAS),
-		Some((0, 999_999_999))
+		decode_gas_price(105_000_000_000, u64::MAX, TX_FEE_PRE_GAS),
+		Some((0, u32::MAX))
 	);
 
 	// tip = 0, gas_price = u64::MAX, gas_limit = u64::MIN
 	assert_eq!(
 		decode_gas_price(u64::MAX, u64::MIN, TX_FEE_PRE_GAS),
-		Some((0, 709_551_615))
+		Some((0, 3_709_551_615))
 	);
 	// tip != 0, gas_price = u64::MAX, gas_limit = 1
 	assert_eq!(decode_gas_price(u64::MAX, 1, TX_FEE_PRE_GAS), None);
