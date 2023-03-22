@@ -1795,7 +1795,14 @@ impl<T: Config> Pallet<T> {
 		)?;
 		debug_assert!(val.is_zero());
 
-		T::TransferAll::transfer_all(&contract_acc, &maintainer_acc)?;
+		// transfer to treasury if maintainer is contract itself
+		let dest = if contract_acc == maintainer_acc {
+			T::TreasuryAccount::get()
+		} else {
+			maintainer_acc
+		};
+
+		T::TransferAll::transfer_all(&contract_acc, &dest)?;
 
 		Ok(())
 	}
@@ -2102,7 +2109,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 					let result = Pallet::<T>::refund_storage(&caller, &contract, &maintainer);
 
 					// Remove account after all of the storages are cleared.
-					Pallet::<T>::remove_account_if_empty(&contract);
+					let _ = Pallet::<T>::remove_account(&contract);
 
 					TaskResult {
 						result,
