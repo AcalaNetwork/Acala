@@ -839,10 +839,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			}
 
 			// We will keep the nonce until the storages are cleared.
-			// if self.nonce(address) > U256::zero() {
-			// 	let _ = self.exit_substate(StackExitKind::Failed);
-			// 	return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
-			// }
+			if self.nonce(address) > U256::zero() {
+				let _ = self.exit_substate(StackExitKind::Failed);
+				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
+			}
 
 			// Still do this, although it is superfluous.
 			self.state.reset_storage(address);
