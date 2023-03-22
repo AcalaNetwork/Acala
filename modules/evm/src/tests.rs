@@ -1449,7 +1449,7 @@ fn should_selfdestruct() {
 
 		assert_eq!(System::providers(&contract_account_id), 0);
 		assert!(!System::account_exists(&contract_account_id));
-		assert!(Accounts::<Runtime>::contains_key(&contract_address));
+		assert!(!Accounts::<Runtime>::contains_key(&contract_address));
 		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 0);
 	});
 }

@@ -1793,7 +1793,14 @@ impl<T: Config> Pallet<T> {
 		)?;
 		debug_assert!(val.is_zero());
 
-		T::TransferAll::transfer_all(&contract_acc, &maintainer_acc)?;
+		// transfer to treasury if maintainer is contract itself
+		let dest = if contract_acc == maintainer_acc {
+			T::TreasuryAccount::get()
+		} else {
+			maintainer_acc
+		};
+
+		T::TransferAll::transfer_all(&contract_acc, &dest)?;
 
 		Ok(())
 	}
