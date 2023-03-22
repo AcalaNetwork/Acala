@@ -2037,14 +2037,6 @@ fn convert_decimals_should_not_work() {
 }
 
 #[test]
-fn remove_empty_account_works() {
-	new_test_ext().execute_with(|| {
-		let address = H160::from([1; 20]);
-		assert_ok!(Pallet::<Runtime>::remove_account(&address));
-	});
-}
-
-#[test]
 #[should_panic(expected = "removed account while is still linked to contract info")]
 fn remove_account_with_provides_should_panic() {
 	new_test_ext().execute_with(|| {
@@ -2085,7 +2077,7 @@ fn remove_account_works() {
 				contract_info: None,
 			},
 		);
-		assert_ok!(Pallet::<Runtime>::remove_account(&address));
+		Pallet::<Runtime>::remove_account(&address);
 		assert_eq!(Accounts::<Runtime>::contains_key(&address), false);
 	});
 }
