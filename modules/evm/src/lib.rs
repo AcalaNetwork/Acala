@@ -1290,11 +1290,11 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Remove an account if its empty.
-	/// Keep the non-zero nonce exists.
+	/// NOTE: If the nonce is non-zero, it cannot be deleted to prevent the user from failing to
+	/// create a contract due to nonce reset
 	pub fn remove_account_if_empty(address: &H160) {
 		if Self::is_account_empty(address) {
-			let res = Self::remove_account(address);
-			debug_assert!(res.is_ok());
+			Self::remove_account(address);
 		}
 	}
 
@@ -1341,8 +1341,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Removes an account from Accounts and AccountStorages.
-	/// Only used in `remove_account_if_empty`
-	fn remove_account(address: &EvmAddress) -> DispatchResult {
+	/// NOTE: It will reset account nonce.
+	fn remove_account(address: &EvmAddress) {
 		// Deref code, and remove it if ref count is zero.
 		Accounts::<T>::mutate_exists(address, |maybe_account| {
 			if let Some(account) = maybe_account {
@@ -1371,8 +1371,6 @@ impl<T: Config> Pallet<T> {
 				*maybe_account = None;
 			}
 		});
-
-		Ok(())
 	}
 
 	/// Create an account.
@@ -2109,7 +2107,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 					let result = Pallet::<T>::refund_storage(&caller, &contract, &maintainer);
 
 					// Remove account after all of the storages are cleared.
-					let _ = Pallet::<T>::remove_account(&contract);
+					Pallet::<T>::remove_account(&contract);
 
 					TaskResult {
 						result,
