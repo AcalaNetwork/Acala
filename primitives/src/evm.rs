@@ -31,7 +31,7 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256, U256};
-use sp_runtime::{traits::Zero, RuntimeDebug};
+use sp_runtime::{traits::Zero, RuntimeDebug, SaturatedConversion};
 use sp_std::vec::Vec;
 
 /// Evm Address.
@@ -255,8 +255,7 @@ pub fn decode_gas_price(gas_price: u64, gas_limit: u64, tx_fee_per_gas: u128) ->
 	// valid_until max is u32::MAX.
 	let valid_until: u32 = Into::<u128>::into(actual_gas_price)
 		.checked_sub(tx_fee_per_gas)?
-		.try_into()
-		.unwrap_or(u32::MAX);
+		.saturated_into();
 
 	Some((tip, valid_until))
 }
