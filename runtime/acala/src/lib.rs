@@ -1801,6 +1801,7 @@ pub type Executive = frame_executive::Executive<
 		// Note: The following Migrations do not use the StorageVersion feature, must to be removed after the upgrade
 		module_asset_registry::migrations::MigrateV1MultiLocationToV3<Runtime>,
 		module_xcm_interface::migrations::MigrateXcmDestWeightAndFee<Runtime>,
+		module_transaction_pause::migrations::MigrateEvmPrecompile<Runtime>,
 	),
 >;
 

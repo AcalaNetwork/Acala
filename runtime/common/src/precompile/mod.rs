@@ -132,12 +132,12 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
-				// STABLE_ASSET,
-				// HOMA,
+				STABLE_ASSET,
+				HOMA,
 				EVM_ACCOUNTS,
-				/* HONZON
-				 * INCENTIVES
-				 * XTOKENS */
+				HONZON,
+				INCENTIVES,
+				XTOKENS,
 			]),
 			_marker: Default::default(),
 		}
@@ -166,12 +166,12 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
-				// STABLE_ASSET,
-				// HOMA,
+				STABLE_ASSET,
+				HOMA,
 				EVM_ACCOUNTS,
-				/* HONZON
-				 * INCENTIVES
-				 * XTOKENS */
+				HONZON,
+				INCENTIVES,
+				XTOKENS,
 			]),
 			_marker: Default::default(),
 		}

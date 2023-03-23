@@ -6552,6 +6552,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "hex-literal",
  "module-support",
  "orml-tokens",
  "orml-traits",
