@@ -22,6 +22,7 @@ use crate::setup::*;
 use module_aggregated_dex::SwapPath;
 use module_support::{AggregatedSwapPath, ExchangeRate, Swap, SwapLimit, EVM as EVMTrait};
 use primitives::{currency::AssetMetadata, evm::EvmAddress};
+use sp_core::bounded::BoundedVec;
 use sp_runtime::{
 	traits::{SignedExtension, UniqueSaturatedInto},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
@@ -169,7 +170,7 @@ fn three_usd_pool_works() {
 						1,
 						X2(
 							Parachain(1000),
-							GeneralKey("USDT".as_bytes().to_vec().try_into().unwrap())
+							Junction::from(BoundedVec::try_from("USDT".as_bytes().to_vec()).unwrap())
 						)
 					)
 					.into()
@@ -371,9 +372,9 @@ fn three_usd_pool_works() {
 				)
 			);
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
-			let (amount1, amount2) = (227029667u128, 2250002487u128);
+			let (amount1, amount2) = (227_029_666u128, 2_250_002_477u128);
 			#[cfg(feature = "with-mandala-runtime")]
-			let (amount1, amount2) = (906308662u128, 9000001515u128);
+			let (amount1, amount2) = (906_308_660u128, 9_000_001_503u128);
 			System::assert_has_event(RuntimeEvent::Dex(module_dex::Event::Swap {
 				trader: AccountId::from(BOB),
 				path: vec![USD_CURRENCY, NATIVE_CURRENCY],

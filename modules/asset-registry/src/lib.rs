@@ -48,11 +48,9 @@ use scale_info::prelude::format;
 use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedU128};
 use sp_std::{boxed::Box, vec::Vec};
 
-use xcm::{
-	v1::{Junction, Junctions::*, MultiLocation},
-	VersionedMultiLocation,
-};
+use xcm::{v3::prelude::*, VersionedMultiLocation};
 
+pub mod migrations;
 mod mock;
 mod tests;
 mod weights;
@@ -395,7 +393,7 @@ impl<T: Config> Pallet<T> {
 
 			ForeignAssetLocations::<T>::try_mutate(foreign_asset_id, |maybe_location| -> DispatchResult {
 				ensure!(maybe_location.is_none(), Error::<T>::MultiLocationExisted);
-				*maybe_location = Some(location.clone());
+				*maybe_location = Some(*location);
 
 				AssetMetadatas::<T>::try_mutate(
 					AssetIds::ForeignAssetId(foreign_asset_id),
@@ -427,7 +425,7 @@ impl<T: Config> Pallet<T> {
 
 					// modify location
 					if location != old_multi_locations {
-						LocationToCurrencyIds::<T>::remove(old_multi_locations.clone());
+						LocationToCurrencyIds::<T>::remove(*old_multi_locations);
 						LocationToCurrencyIds::<T>::try_mutate(location, |maybe_currency_ids| -> DispatchResult {
 							ensure!(maybe_currency_ids.is_none(), Error::<T>::MultiLocationExisted);
 							*maybe_currency_ids = Some(CurrencyId::ForeignAsset(foreign_asset_id));
@@ -435,7 +433,7 @@ impl<T: Config> Pallet<T> {
 						})?;
 					}
 					*maybe_asset_metadatas = Some(metadata.clone());
-					*old_multi_locations = location.clone();
+					*old_multi_locations = *location;
 					Ok(())
 				},
 			)
@@ -564,8 +562,11 @@ fn key_to_currency(location: MultiLocation) -> Option<CurrencyId> {
 	match location {
 		MultiLocation {
 			parents: 0,
-			interior: X1(Junction::GeneralKey(key)),
-		} => CurrencyId::decode(&mut &*key.into_inner()).ok(),
+			interior: X1(Junction::GeneralKey { data, length }),
+		} => {
+			let key = &data[..data.len().min(length as usize)];
+			CurrencyId::decode(&mut &*key).ok()
+		}
 		_ => None,
 	}
 }

@@ -30,30 +30,30 @@ use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
 
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
-const XCM_WEIGHT: XcmWeight = 20_000_000_000;
+const XCM_WEIGHT: XcmWeight = XcmWeight::from_ref_time(20_000_000_000);
 const XCM_FEE: Balance = 10_000_000_000;
-const XCM_BOND_FEE: Balance = 7_118_539_605;
-const XCM_UNBOND_FEE: Balance = 5_423_483_202;
-const XCM_TRANSFER_FEE: Balance = 104_571_645;
+const XCM_BOND_FEE: Balance = 6_123_530_292;
+const XCM_UNBOND_FEE: Balance = 4_661_427_850;
+const XCM_TRANSFER_FEE: Balance = 90_287_436;
 
 fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Balance>)> {
 	vec![
 		// Xcm weight = 400_000_000, fee = XCM_BOND_FEE
 		(XcmInterfaceOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)),
 		(
-			XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into())),
+			XcmInterfaceOperation::ParachainFee(Box::new((Parent, Parachain(1000)).into())),
 			Some(XCM_WEIGHT),
 			Some(XCM_FEE),
 		),
 		// Xcm weight = 14_000_000_000, fee = XCM_BOND_FEE
 		(
 			XcmInterfaceOperation::HomaWithdrawUnbonded,
-			Some(XCM_WEIGHT),
+			Some(XcmWeight::from_parts(14_000_000_000, 65536)),
 			Some(XCM_FEE),
 		),
 		// Xcm weight = 14_000_000_000, fee = XCM_BOND_FEE
 		(XcmInterfaceOperation::HomaBondExtra, Some(XCM_WEIGHT), Some(XCM_FEE)),
-		// Xcm weight = 14_000_000_000, fee = XCM_BOND_FEE
+		// Xcm weight = 14_000_000_000, fee = XCM_UNBOND_FEE
 		(XcmInterfaceOperation::HomaUnbond, Some(XCM_WEIGHT), Some(XCM_FEE)),
 	]
 }
@@ -90,7 +90,10 @@ fn configure_homa_and_xcm_interface() {
 		param.commission_rate,
 		param.fast_match_fee_rate,
 	));
-	assert_eq!(XcmInterface::get_parachain_fee((1, Parachain(1000)).into()), XCM_FEE);
+	assert_eq!(
+		XcmInterface::get_parachain_fee(MultiLocation::new(1, Parachain(1000))),
+		XCM_FEE
+	);
 }
 
 #[test]
@@ -105,14 +108,13 @@ fn xcm_interface_transfer_staking_to_sub_account_works() {
 		// Transfer some KSM into the parachain.
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(2000).into_versioned()),
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
-					network: NetworkId::Any
+					network: None
 				}
-				.into()
-				.into()
+				.into_versioned()
 			),
 			Box::new((Here, 2001 * dollar(RELAY_CHAIN_CURRENCY)).into()),
 			0
@@ -148,7 +150,7 @@ fn xcm_interface_transfer_staking_to_sub_account_works() {
 		// 1000 dollars (minus fee) are transferred into the Kusama chain
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-			999_999_895_428_355
+			999_999_909_712_564
 		);
 		// XCM fee is paid by the parachain account.
 		assert_eq!(
@@ -195,7 +197,7 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 			1_000 * dollar(RELAY_CHAIN_CURRENCY)
 		));
 
-		// Kusama's unbonding period is 27 days = 100_800 blocks
+		// Kusama's unbonding period is 28 eras = 100_800 blocks
 		kusama_runtime::System::set_block_number(101_000);
 		for _i in 0..29 {
 			kusama_runtime::Staking::trigger_new_era(0, BoundedVec::default());
@@ -213,14 +215,6 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 	});
 
 	Karura::execute_with(|| {
-		assert_ok!(Tokens::set_balance(
-			RuntimeOrigin::root(),
-			MultiAddress::Id(AccountId::from(bob())),
-			LIQUID_CURRENCY,
-			1_000_000 * dollar(LIQUID_CURRENCY),
-			0
-		));
-
 		configure_homa_and_xcm_interface();
 
 		// Add an unlock chunk to the ledger
@@ -249,7 +243,7 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1002 * dollar(RELAY_CHAIN_CURRENCY) - XCM_BOND_FEE
+			1_001_991_460_734_703
 		);
 	});
 }
@@ -272,14 +266,13 @@ fn xcm_interface_bond_extra_on_sub_account_works() {
 		// Transfer some KSM into the parachain.
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(2000).into_versioned()),
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
-					network: NetworkId::Any
+					network: None
 				}
-				.into()
-				.into()
+				.into_versioned()
 			),
 			Box::new((Here, 1_000 * dollar(RELAY_CHAIN_CURRENCY)).into()),
 			0
@@ -374,14 +367,13 @@ fn xcm_interface_unbond_on_sub_account_works() {
 		// Transfer some KSM into the parachain.
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(2000).into_versioned()),
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
-					network: NetworkId::Any
+					network: None
 				}
-				.into()
-				.into()
+				.into_versioned()
 			),
 			Box::new((Here, 1_000 * dollar(RELAY_CHAIN_CURRENCY)).into()),
 			0
@@ -481,14 +473,13 @@ fn homa_mint_and_redeem_works() {
 		// Transfer some KSM into the parachain.
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(2000).into().into()),
+			Box::new(Parachain(2000).into_versioned()),
 			Box::new(
 				Junction::AccountId32 {
 					id: alice().into(),
-					network: NetworkId::Any
+					network: None
 				}
-				.into()
-				.into()
+				.into_versioned()
 			),
 			Box::new((Here, 2001 * dollar(RELAY_CHAIN_CURRENCY)).into()),
 			0

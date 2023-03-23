@@ -31,7 +31,7 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
-use xcm::latest::prelude::*;
+use xcm::v3::prelude::*;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;

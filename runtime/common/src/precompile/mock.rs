@@ -26,7 +26,7 @@ use frame_support::{
 		ConstU128, ConstU32, ConstU64, EqualPrivilegeOnly, Everything, InstanceFilter, Nothing, OnFinalize,
 		OnInitialize, SortedMembers,
 	},
-	weights::IdentityFee,
+	weights::{ConstantMultiplier, IdentityFee},
 	PalletId, RuntimeDebug,
 };
 use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
@@ -54,11 +54,8 @@ use sp_runtime::{
 };
 use sp_std::cell::RefCell;
 use sp_std::prelude::*;
-use xcm::{
-	latest::{Weight as XcmWeight, Xcm},
-	prelude::*,
-};
-use xcm_builder::{FixedWeightBounds, LocationInverter};
+use xcm::{prelude::*, v3::Xcm};
+use xcm_builder::FixedWeightBounds;
 
 pub type AccountId = AccountId32;
 type Key = CurrencyId;
@@ -276,7 +273,7 @@ impl module_transaction_payment::Config for Test {
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type AlternativeFeeSwapDeposit = ExistenceRequirement;
 	type WeightToFee = IdentityFee<Balance>;
-	type TransactionByteFee = ConstU128<10>;
+	type LengthToFee = ConstantMultiplier<Balance, ConstU128<10>>;
 	type FeeMultiplierUpdate = ();
 	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
@@ -763,7 +760,7 @@ impl module_incentives::Config for Test {
 }
 
 parameter_types! {
-	pub Ancestry: MultiLocation = Parachain(2000).into();
+	pub UniversalLocation: InteriorMultiLocation = Here;
 }
 
 pub struct CurrencyIdConvert;
@@ -809,16 +806,11 @@ pub struct AccountIdToMultiLocation;
 impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 	fn convert(account: AccountId) -> MultiLocation {
 		X1(Junction::AccountId32 {
-			network: NetworkId::Any,
+			network: None,
 			id: account.into(),
 		})
 		.into()
 	}
-}
-
-parameter_types! {
-	pub const BaseXcmWeight: XcmWeight = 100_000_000; // TODO: recheck this
-	pub const MaxAssetsForTransfer: usize = 2;
 }
 
 parameter_type_with_key! {
@@ -843,13 +835,31 @@ pub fn take_trace() -> Vec<(Xcm<RuntimeCall>, Outcome)> {
 	})
 }
 
+pub enum Weightless {}
+impl PreparedMessage for Weightless {
+	fn weight_of(&self) -> Weight {
+		unreachable!()
+	}
+}
+
 pub struct MockExec;
 impl ExecuteXcm<RuntimeCall> for MockExec {
+	type Prepared = Weightless;
+
+	fn prepare(_message: Xcm<RuntimeCall>) -> Result<Self::Prepared, Xcm<RuntimeCall>> {
+		unreachable!()
+	}
+
+	fn execute(_origin: impl Into<MultiLocation>, _pre: Weightless, _hash: XcmHash, _weight_credit: Weight) -> Outcome {
+		unreachable!()
+	}
+
 	fn execute_xcm_in_credit(
 		_origin: impl Into<MultiLocation>,
 		message: Xcm<RuntimeCall>,
-		weight_limit: XcmWeight,
-		_credit: XcmWeight,
+		_hash: XcmHash,
+		weight_limit: Weight,
+		_weight_credit: Weight,
 	) -> Outcome {
 		let o = match (message.0.len(), &message.0.first()) {
 			(
@@ -858,18 +868,33 @@ impl ExecuteXcm<RuntimeCall> for MockExec {
 					require_weight_at_most, ..
 				}),
 			) => {
-				if *require_weight_at_most <= weight_limit {
+				if require_weight_at_most.all_lte(weight_limit) {
 					Outcome::Complete(*require_weight_at_most)
 				} else {
 					Outcome::Error(XcmError::WeightLimitReached(*require_weight_at_most))
 				}
 			}
 			// use 1000 to decide that it's not supported.
-			_ => Outcome::Incomplete(1000.min(weight_limit), XcmError::Unimplemented),
+			_ => Outcome::Incomplete(
+				Weight::from_parts(1000, 1000).min(weight_limit),
+				XcmError::Unimplemented,
+			),
 		};
 		TRACE.with(|q| q.borrow_mut().push((message, o.clone())));
 		o
 	}
+
+	fn charge_fees(_location: impl Into<MultiLocation>, _fees: MultiAssets) -> XcmResult {
+		Err(XcmError::Unimplemented)
+	}
+}
+
+parameter_types! {
+	pub const UnitWeightCost: Weight = Weight::from_parts(10, 10);
+	pub const BaseXcmWeight: Weight = Weight::from_parts(100_000_000, 100_000_000);
+	pub const MaxInstructions: u32 = 100;
+	pub const MaxAssetsIntoHolding: u32 = 64;
+	pub const MaxAssetsForTransfer: usize = 2;
 }
 
 impl orml_xtokens::Config for Test {
@@ -880,9 +905,9 @@ impl orml_xtokens::Config for Test {
 	type AccountIdToMultiLocation = AccountIdToMultiLocation;
 	type SelfLocation = SelfLocation;
 	type XcmExecutor = MockExec;
-	type Weigher = FixedWeightBounds<ConstU64<10>, RuntimeCall, ConstU32<100>>;
+	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type BaseXcmWeight = BaseXcmWeight;
-	type LocationInverter = LocationInverter<Ancestry>;
+	type UniversalLocation = UniversalLocation;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
 	type MultiLocationsFilter = Everything;

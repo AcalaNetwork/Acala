@@ -94,10 +94,14 @@ mod karura_tests {
 		});
 
 		Karura::execute_with(|| {
-			// Call withdraw_unbonded as the homa-lite subaccount
+			// Call withdraw_unbonded as the homa subaccount
 			let xcm_message =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 0);
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 20_000_000_000, 10_000_000_000);
+			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
+				xcm_message,
+				20_000_000_000,
+				XcmWeight::from_ref_time(10_000_000_000),
+			);
 
 			// Withdraw unbonded
 			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
@@ -143,7 +147,11 @@ mod karura_tests {
 			// Transfer all remaining, but leave enough fund to pay for the XCM transaction.
 			let xcm_message = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1_970_000_000_000);
 
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, 20_000_000_000, 10_000_000_000);
+			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
+				xcm_message,
+				20_000_000_000,
+				XcmWeight::from_ref_time(10_000_000_000),
+			);
 
 			// Withdraw unbonded
 			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
@@ -157,7 +165,7 @@ mod karura_tests {
 			// Only leftover XCM fee remains in the account
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				26_386_247_925
+				26_891_014_868
 			);
 		});
 	}
@@ -185,19 +193,6 @@ mod karura_tests {
 				kusama_runtime::RuntimeCall::Balances(pallet_balances::Call::transfer_keep_alive {
 					dest: MultiAddress::Id(AccountId::from([4u8; 32])),
 					value: 1
-				})
-			);
-
-			let encoded =
-				KusamaCallBuilder::utility_batch_call(vec![KusamaCallBuilder::staking_withdraw_unbonded(5)]).encode();
-			let batch_call = kusama_runtime::RuntimeCall::decode(&mut &encoded[..]).unwrap();
-			assert_eq!(encoded, hex_literal::hex!["180204060305000000"]);
-			assert_eq!(
-				batch_call,
-				kusama_runtime::RuntimeCall::Utility(pallet_utility::Call::batch_all {
-					calls: vec![kusama_runtime::RuntimeCall::Staking(
-						pallet_staking::Call::withdraw_unbonded { num_slashing_spans: 5 }
-					)]
 				})
 			);
 

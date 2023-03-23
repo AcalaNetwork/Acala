@@ -124,7 +124,7 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer(from, currency_id, amount, dest, Limited(weight))
+				>>::transfer(from, currency_id, amount, dest, Limited(weight.into()))
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -197,7 +197,7 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multiasset(from, asset, dest, Limited(weight))
+				>>::transfer_multiasset(from, asset, dest, Limited(weight.into()))
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -253,7 +253,7 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_with_fee(from, currency_id, amount, fee, dest, Limited(weight))
+				>>::transfer_with_fee(from, currency_id, amount, fee, dest, Limited(weight.into()))
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -342,7 +342,7 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multiasset_with_fee(from, asset, fee, dest, Limited(weight))
+				>>::transfer_multiasset_with_fee(from, asset, fee, dest, Limited(weight.into()))
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -411,7 +411,7 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multicurrencies(from, currencies, fee_item, dest, Limited(weight))
+				>>::transfer_multicurrencies(from, currencies, fee_item, dest, Limited(weight.into()))
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -490,7 +490,9 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multiassets(from, assets.clone(), fee.clone(), dest, Limited(weight))
+				>>::transfer_multiassets(
+					from, assets.clone(), fee.clone(), dest, Limited(weight.into())
+				)
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -582,22 +584,20 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			pub const a: [u8; 32] = [5u8; 32];
-
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(MultiLocation::new(
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(MultiLocation::new(
 				1,
 				X2(
 					Parachain(2002),
 					Junction::AccountId32 {
-						network: NetworkId::Any,
-						id: a.into(),
+						network: None,
+						id: BOB.into(),
 					},
 				),
 			));
 
 			assert_eq!(
 				dest.encode(),
-				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("03010200491f01000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			// transfer(address,address,uint256,bytes,uint64) -> 0xdd2a3599
@@ -639,19 +639,19 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let asset: VersionedMultiAsset = (Here, 1_000_000_000_000).into();
-			assert_eq!(asset.encode(), hex!("0100000000070010a5d4e8"));
+			let asset: VersionedMultiAsset = (Here, 1_000_000_000_000u128).into();
+			assert_eq!(asset.encode(), hex!("0300000000070010a5d4e8"));
 
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(
 				Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None,
 					id: BOB.into(),
 				}
 				.into(),
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			// transferMultiAsset(address,bytes,bytes,uint64) -> 0xc94c06e7
@@ -695,16 +695,16 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(
 				Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None,
 					id: BOB.into(),
 				}
 				.into(),
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			// transferWithFee(address,address,uint256,uint256,bytes,uint64) -> 0x014f858e
@@ -748,22 +748,22 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let asset: VersionedMultiAsset = (Here, 1_000_000_000_000).into();
-			assert_eq!(asset.encode(), hex!("0100000000070010a5d4e8"));
+			let asset: VersionedMultiAsset = (Here, 1_000_000_000_000u128).into();
+			assert_eq!(asset.encode(), hex!("0300000000070010a5d4e8"));
 
 			let fee: VersionedMultiAsset = (Here, 1_000_000).into();
-			assert_eq!(fee.encode(), hex!("010000000002093d00"));
+			assert_eq!(fee.encode(), hex!("030000000002093d00"));
 
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(
 				Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None,
 					id: BOB.into(),
 				}
 				.into(),
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			// transferMultiAssetWithFee(address,bytes,bytes,bytes,uint64) -> 0x7c9d2ad5
@@ -813,16 +813,16 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(
 				Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None,
 					id: BOB.into(),
 				}
 				.into(),
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			// transferMultiCurrencies(address,(address,uint256)[],uint32,bytes,uint64) -> 0x78ff822f
@@ -874,19 +874,20 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let assets: VersionedMultiAssets = VersionedMultiAssets::from(MultiAssets::from((Here, 1_000_000_000_000)));
-			assert_eq!(assets.encode(), hex!("010400000000070010a5d4e8"));
+			let assets: VersionedMultiAssets =
+				VersionedMultiAssets::from(MultiAssets::from((Here, 1_000_000_000_000u128)));
+			assert_eq!(assets.encode(), hex!("030400000000070010a5d4e8"));
 
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V1(
+			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(
 				Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None,
 					id: BOB.into(),
 				}
 				.into(),
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("01000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			// transferMultiAssets(address,bytes,bytes,bytes,uint64) -> 0x78fccf6c

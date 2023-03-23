@@ -75,7 +75,7 @@ pub use frame_support::{
 		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
 		U128CurrencyToVote,
 	},
-	weights::{constants::RocksDbWeight, IdentityFee, Weight},
+	weights::{constants::RocksDbWeight, ConstantMultiplier, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
 };
 
@@ -108,7 +108,7 @@ pub use runtime_common::{
 	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, RENBTC, TAP,
 };
-pub use xcm::latest::prelude::*;
+pub use xcm::v3::prelude::*;
 
 mod authority;
 mod benchmarking;
@@ -123,7 +123,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2130,
+	spec_version: 2150,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -278,8 +278,6 @@ impl pallet_aura::Config for Runtime {
 
 impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-	type UncleGenerations = ConstU32<0>;
-	type FilterUncle = ();
 	type EventHandler = CollatorSelection;
 }
 
@@ -893,10 +891,10 @@ impl EnsureOrigin<RuntimeOrigin> for EnsureAcalaFoundation {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin() -> RuntimeOrigin {
+	fn try_successful_origin() -> Result<RuntimeOrigin, ()> {
 		let zero_account_id = AccountId::decode(&mut sp_runtime::traits::TrailingZeroInput::zeroes())
 			.expect("infinite length input; no invalid inputs for type; qed");
-		RuntimeOrigin::from(RawOrigin::Signed(zero_account_id))
+		Ok(RuntimeOrigin::from(RawOrigin::Signed(zero_account_id)))
 	}
 }
 
@@ -1197,7 +1195,7 @@ impl module_transaction_payment::Config for Runtime {
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = MaxTipsOfPriority;
 	type WeightToFee = WeightToFee;
-	type TransactionByteFee = TransactionByteFee;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type Swap = AcalaSwap;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
@@ -1499,7 +1497,7 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 	MultiLocation::new(
 		1,
 		X1(AccountId32 {
-			network: NetworkId::Any,
+			network: None,
 			id: Utility::derivative_account_id(ParachainInfo::get().into_account_truncating(), index).into(),
 		}),
 	)
@@ -1797,6 +1795,12 @@ pub type Executive = frame_executive::Executive<
 	(
 		pallet_balances::migration::MigrateToTrackInactive<Runtime, xcm_config::CheckingAccount>,
 		pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
+		// "Use 2D weights in XCM v3" <https://github.com/paritytech/polkadot/pull/6134>
+		pallet_xcm::migration::v1::MigrateToV1<Runtime>,
+		orml_unknown_tokens::Migration<Runtime>,
+		// Note: The following Migrations do not use the StorageVersion feature, must to be removed after the upgrade
+		module_asset_registry::migrations::MigrateV1MultiLocationToV3<Runtime>,
+		module_xcm_interface::migrations::MigrateXcmDestWeightAndFee<Runtime>,
 	),
 >;
 
@@ -1930,9 +1934,14 @@ impl_runtime_apis! {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
 		}
-
 		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
+		}
+		fn query_weight_to_fee(weight: Weight) -> Balance {
+			TransactionPayment::weight_to_fee(weight)
+		}
+		fn query_length_to_fee(length: u32) -> Balance {
+			TransactionPayment::length_to_fee(length)
 		}
 	}
 

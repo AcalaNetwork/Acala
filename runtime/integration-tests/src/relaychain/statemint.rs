@@ -26,26 +26,30 @@ use frame_support::assert_ok;
 pub use orml_traits::GetByKey;
 use polkadot_parachain::primitives::Sibling;
 use primitives::currency::AssetMetadata;
-use xcm::v1::{Junction, MultiLocation};
+use xcm::v3::{Junction, MultiLocation};
 use xcm_emulator::TestExt;
 
 pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE: Balance = 50_000_000;
-pub const FEE_STATEMINT: Balance = 10_312_677;
+pub const FEE_STATEMINT: Balance = 1_609_084;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
-		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
+		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((Parent, Parachain(1000)).into()));
 	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
 		RuntimeOrigin::root(),
-		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(50_000_000),)],
+		vec![(
+			xcm_operation.clone(),
+			Some(XcmWeight::from_ref_time(4_000_000_000)),
+			Some(50_000_000),
+		)],
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(
 		module_xcm_interface::Event::XcmDestWeightUpdated {
 			xcm_operation: xcm_operation.clone(),
-			new_xcm_dest_weight: 4_000_000_000,
+			new_xcm_dest_weight: XcmWeight::from_ref_time(4_000_000_000),
 		},
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
@@ -63,7 +67,7 @@ fn statemint_min_xcm_fee_matched() {
 		let weight = Weight::from_ref_time(FEE_WEIGHT as u64);
 
 		let fee: Balance = IdentityFee::weight_to_fee(&weight);
-		let statemine: MultiLocation = (1, Parachain(parachains::statemint::ID)).into();
+		let statemine: MultiLocation = (Parent, Parachain(parachains::statemint::ID)).into();
 		assert_eq!(fee, 4_000_000_000);
 
 		let statemine_fee: u128 = ParachainMinFee::get(&statemine).unwrap();
@@ -76,15 +80,8 @@ fn teleport_from_relay_chain() {
 	PolkadotNet::execute_with(|| {
 		assert_ok!(polkadot_runtime::XcmPallet::teleport_assets(
 			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(1000).into().into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Parachain(1000).into_versioned()),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((Here, dollar(DOT)).into()),
 			0
 		));
@@ -107,7 +104,8 @@ fn acala_statemint_transfer_works() {
 
 	// minimum asset should be: FEE_WEIGHT+FEE_KUSAMA+max(KUSAMA_ED,STATEMINE_ED+FEE_STATEMINE).
 	// but due to current half fee, sender asset should at lease: FEE_WEIGHT + 2 * FEE_KUSAMA
-	let asset = FEE_WEIGHT + 2 * 31_488_122;
+	// let asset = FEE_WEIGHT + 2 * 31_488_122;
+	let asset = FEE_WEIGHT + 2 * 31_488_122; // 4_062_976_244
 
 	statemint_side(UNIT);
 
@@ -132,8 +130,8 @@ fn acala_statemint_transfer_works() {
 		// and withdraw sibling parachain sovereign account
 		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
 
-		assert_eq!(10_000_36_577_567, Balances::free_balance(&AccountId::from(BOB)));
-		assert_eq!(1_003_531_229_427, Balances::free_balance(&para_2000));
+		assert_eq!(1_000_044_010_367, Balances::free_balance(&AccountId::from(BOB)));
+		assert_eq!(1_003_598_838_160, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -143,7 +141,7 @@ fn acala_side(fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			TEN - 80824000,
+			TEN - 80_128_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough DOT balance to be charged as fee
@@ -159,18 +157,18 @@ fn acala_side(fee_amount: u128) {
 					X2(
 						Parachain(1000),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(FEE_WEIGHT as u64)
+			WeightLimit::Unlimited
 		));
 
 		assert_eq!(
-			TEN - UNIT - 80824000,
+			TEN - UNIT - 80_128_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - fee_amount, Tokens::free_balance(DOT, &AccountId::from(BOB)));
@@ -212,14 +210,7 @@ fn statemint_side(para_2000_init_amount: u128) {
 		assert_ok!(PolkadotXcm::limited_reserve_transfer_assets(
 			origin.clone(),
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((X2(PalletInstance(50), GeneralIndex(0)), TEN).into()),
 			0,
 			WeightLimit::Unlimited

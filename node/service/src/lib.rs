@@ -32,7 +32,7 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
-use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
+use cumulus_relay_chain_interface::{RelayChainInterface, RelayChainResult};
 use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node;
 pub use futures::stream::StreamExt;
 use jsonrpsee::RpcModule;
@@ -422,10 +422,8 @@ where
 		collator_options.clone(),
 	)
 	.await
-	.map_err(|e| match e {
-		RelayChainError::ServiceError(polkadot_service::Error::Sub(x)) => x,
-		s => s.to_string().into(),
-	})?;
+	.map_err(|e| sc_service::Error::Application(Box::new(e) as Box<_>))?;
+
 	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), para_id);
 
 	let force_authoring = parachain_config.force_authoring;

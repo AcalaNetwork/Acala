@@ -30,7 +30,7 @@ use module_support::EVM as EVMTrait;
 use orml_traits::MultiCurrency;
 use primitives::evm::EvmAddress;
 use runtime_common::precompile::XtokensPrecompile;
-use sp_core::{H256, U256};
+use sp_core::{bounded::BoundedVec, H256, U256};
 use std::str::FromStr;
 use xcm_emulator::TestExt;
 
@@ -108,7 +108,7 @@ fn erc20_transfer_between_sibling() {
 					1,
 					X2(
 						Parachain(2000),
-						GeneralKey(erc20_as_foreign_asset.encode().try_into().unwrap())
+						Junction::from(BoundedVec::try_from(erc20_as_foreign_asset.encode()).unwrap())
 					)
 				)
 				.into()
@@ -187,14 +187,14 @@ fn erc20_transfer_between_sibling() {
 					X2(
 						Parachain(SIBLING_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						},
 					),
 				)
 				.into(),
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		// using native token to charge storage fee
@@ -220,9 +220,9 @@ fn erc20_transfer_between_sibling() {
 	});
 
 	Sibling::execute_with(|| {
-		// Sibling will take (1, 2000, GeneralKey(Erc20(address))) as foreign asset
+		// Sibling will take (1, 2000, GeneralKey{ data:Erc20(address), ..} as foreign asset
 		assert_eq!(
-			9_999_191_760_000,
+			9_999_198_720_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 
@@ -237,14 +237,14 @@ fn erc20_transfer_between_sibling() {
 					X2(
 						Parachain(2000),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						},
 					),
 				)
 				.into(),
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		// transfer erc20 token to new account on Karura
@@ -258,18 +258,18 @@ fn erc20_transfer_between_sibling() {
 					X2(
 						Parachain(2000),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: CHARLIE.into(),
 						},
 					),
 				)
 				.into(),
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(
-			3_999_191_760_000,
+			3_999_198_720_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});
@@ -282,15 +282,15 @@ fn erc20_transfer_between_sibling() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
 		);
 		assert_eq!(
-			4_991_917_600_000,
+			4_991_987_200_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
 		assert_eq!(
-			8_082_400_000 * 2,
+			16_025_600_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &KaruraTreasuryAccount::get())
 		);
 		assert_eq!(
-			991_917_600_000,
+			991_987_200_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE))
 		);
 		assert_eq!(
@@ -325,13 +325,13 @@ fn erc20_transfer_between_sibling() {
 		System::assert_has_event(RuntimeEvent::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
 			who: AccountId::from(BOB),
-			amount: 4_991_917_600_000,
+			amount: 4_991_987_200_000,
 		}));
 		// TakeRevenue deposit from erc20 holding account to treasury account
 		System::assert_has_event(RuntimeEvent::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
 			who: KaruraTreasuryAccount::get(),
-			amount: 8_082_400_000,
+			amount: 8_012_800_000,
 		}));
 	});
 }
@@ -350,7 +350,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 					1,
 					X2(
 						Parachain(2002),
-						GeneralKey(erc20_as_foreign_asset.encode().try_into().unwrap())
+						Junction::from(BoundedVec::try_from(erc20_as_foreign_asset.encode()).unwrap())
 					)
 				)
 				.into()
@@ -416,14 +416,14 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 					X2(
 						Parachain(2000),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						},
 					),
 				)
 				.into(),
 			),
-			WeightLimit::Limited(1_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
 		assert_eq!(
@@ -443,7 +443,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 
 	Karura::execute_with(|| {
 		assert_eq!(
-			9_999_191_760_000,
+			9_999_198_720_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});
@@ -463,7 +463,7 @@ fn xtokens_precompile_works() {
 					1,
 					X2(
 						Parachain(2000),
-						GeneralKey(erc20_as_foreign_asset.encode().try_into().unwrap())
+						Junction::from(BoundedVec::try_from(erc20_as_foreign_asset.encode()).unwrap())
 					)
 				)
 				.into()
@@ -600,7 +600,7 @@ fn xtokens_precompile_works() {
 	Sibling::execute_with(|| {
 		// Sibling will take (1, 2000, GeneralKey(Erc20(address))) as foreign asset
 		assert_eq!(
-			9_999_191_760_000,
+			9_999_198_720_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});

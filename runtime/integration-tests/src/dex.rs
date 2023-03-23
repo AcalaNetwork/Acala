@@ -18,6 +18,7 @@
 
 use crate::setup::*;
 use primitives::currency::AssetMetadata;
+use sp_core::bounded::BoundedVec;
 
 #[test]
 fn test_dex_module() {
@@ -220,7 +221,14 @@ fn test_trading_pair() {
 			assert_ok!(AssetRegistry::register_foreign_asset(
 				RuntimeOrigin::root(),
 				Box::new(
-					MultiLocation::new(1, X2(Parachain(2002), GeneralKey(KAR.encode().try_into().unwrap()))).into()
+					MultiLocation::new(
+						1,
+						X2(
+							Parachain(2002),
+							Junction::from(BoundedVec::try_from(KAR.encode()).unwrap())
+						)
+					)
+					.into()
 				),
 				Box::new(AssetMetadata {
 					name: b"Sibling Token".to_vec(),
