@@ -131,7 +131,7 @@ pallet-staking = { git = "https://github.com/paritytech/substrate", branch = "po
 pallet-bags-list = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 
 [build-dependencies]
-substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38", optional = true }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
@@ -186,6 +186,7 @@ std = [
 	"sp-std/std",
 	"sp-transaction-pool/std",
 	"sp-version/std",
+	"substrate-wasm-builder",
 
 	"cumulus-pallet-aura-ext/std",
 	"cumulus-pallet-dmp-queue/std",
