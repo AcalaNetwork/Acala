@@ -35,8 +35,8 @@ use primitives::{Balance, CurrencyId};
 use sp_runtime::RuntimeDebug;
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::{
-	latest::{MultiAsset, MultiAssets, MultiLocation},
 	prelude::*,
+	v3::{MultiAsset, MultiAssets, MultiLocation},
 };
 
 /// The `Xtokens` impl precompile.
