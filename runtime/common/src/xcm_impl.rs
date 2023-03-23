@@ -253,16 +253,6 @@ impl<
 		message_hash: XcmHash,
 		weight_credit: XcmWeight,
 	) -> Outcome {
-		xcm_executor::XcmExecutor::<Config>::execute(origin, weighed_message, message_hash, weight_credit)
-	}
-
-	fn execute_xcm_in_credit(
-		origin: impl Into<MultiLocation>,
-		message: Xcm<Config::RuntimeCall>,
-		hash: XcmHash,
-		weight_limit: XcmWeight,
-		weight_credit: XcmWeight,
-	) -> Outcome {
 		let origin = origin.into();
 		let account = AccountIdConvert::convert(origin);
 		let clear = if let Ok(account) = account {
@@ -272,13 +262,7 @@ impl<
 			false
 		};
 
-		let res = xcm_executor::XcmExecutor::<Config>::execute_xcm_in_credit(
-			origin,
-			message,
-			hash,
-			weight_limit,
-			weight_credit,
-		);
+		let res = xcm_executor::XcmExecutor::<Config>::execute(origin, weighed_message, message_hash, weight_credit);
 
 		if clear {
 			EVMBridge::pop_origin();
