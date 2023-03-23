@@ -1,6 +1,6 @@
 [package]
 name = "acala-service"
-version = "2.15.0"
+version = "2.16.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
