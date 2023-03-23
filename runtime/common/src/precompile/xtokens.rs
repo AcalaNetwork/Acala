@@ -100,20 +100,10 @@ where
 				let currency_id = input.currency_id_at(2)?;
 				let amount = input.balance_at(3)?;
 
-				// solidity abi encode bytes will add an offset at input[4]
-				let dest_offset = input.u64_at(4)?;
-				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
-				let dest_bytes_len = input.u32_at(dest_index)?;
-				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
-				let versioned_dest: VersionedMultiLocation =
-					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid dest".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})?;
-				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
+				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "dest bad version".into(),
+					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -156,40 +146,17 @@ where
 			Action::TransferMultiAsset => {
 				let from = input.account_id_at(1)?;
 
-				// solidity abi encode bytes will add an offset at input[2]
-				let asset_offset = input.u64_at(2)?;
-				let asset_index = (asset_offset as usize)
-					.saturating_div(PER_PARAM_BYTES)
-					.saturating_add(1);
-				let asset_bytes_len = input.u64_at(asset_index)?;
-				let mut asset_bytes: &[u8] =
-					&input.bytes_at(asset_index.saturating_add(1), asset_bytes_len as usize)?[..];
-				let versioned_asset: VersionedMultiAsset =
-					Decode::decode(&mut asset_bytes).map_err(|_| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid multi asset".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})?;
-				let asset: MultiAsset = versioned_asset.try_into().map_err(|()| PrecompileFailure::Revert {
+				let mut asset_bytes: &[u8] = &input.bytes_at(2)?[..];
+				let asset: MultiAsset = decode_multi_asset(&mut asset_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "asset bad version".into(),
+					output: "invalid multi asset".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				// solidity abi encode bytes will add an offset at input[3]
-				let dest_offset = input.u64_at(3)?;
-				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
-				let dest_bytes_len = input.u32_at(dest_index)?;
-				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
-				let versioned_dest: VersionedMultiLocation =
-					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid dest".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})?;
-				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+				let mut dest_bytes: &[u8] = &input.bytes_at(3)?[..];
+				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "dest bad version".into(),
+					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -237,20 +204,10 @@ where
 				let amount = input.balance_at(3)?;
 				let fee = input.balance_at(4)?;
 
-				// solidity abi encode bytes will add an offset at input[5]
-				let dest_offset = input.u32_at(5)?;
-				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
-				let dest_bytes_len = input.u32_at(dest_index)?;
-				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
-				let versioned_dest: VersionedMultiLocation =
-					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid dest".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})?;
-				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+				let mut dest_bytes: &[u8] = &input.bytes_at(5)?[..];
+				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "dest bad version".into(),
+					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -296,57 +253,25 @@ where
 			}
 			Action::TransferMultiAssetWithFee => {
 				let from = input.account_id_at(1)?;
-				// solidity abi encode bytes will add an offset at input[2]
-				let asset_offset = input.u32_at(2)?;
-				let asset_index = (asset_offset as usize)
-					.saturating_div(PER_PARAM_BYTES)
-					.saturating_add(1);
-				let asset_bytes_len = input.u32_at(asset_index)?;
-				let mut asset_bytes: &[u8] =
-					&input.bytes_at(asset_index.saturating_add(1), asset_bytes_len as usize)?[..];
-				let versioned_asset: VersionedMultiAsset =
-					Decode::decode(&mut asset_bytes).map_err(|_| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid multi asset".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})?;
-				let asset: MultiAsset = versioned_asset.try_into().map_err(|()| PrecompileFailure::Revert {
+
+				let mut asset_bytes: &[u8] = &input.bytes_at(2)?[..];
+				let asset: MultiAsset = decode_multi_asset(&mut asset_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "asset bad version".into(),
+					output: "invalid multi asset".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				// solidity abi encode bytes will add an offset at input[3]
-				let fee_offset = input.u32_at(3)?;
-				let fee_index = (fee_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
-				let fee_bytes_len = input.u32_at(fee_index)?;
-				let mut fee_bytes: &[u8] = &input.bytes_at(fee_index.saturating_add(1), fee_bytes_len as usize)?[..];
-				let versioned_fee: VersionedMultiAsset =
-					Decode::decode(&mut fee_bytes).map_err(|_| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid fee asset".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})?;
-				let fee: MultiAsset = versioned_fee.try_into().map_err(|()| PrecompileFailure::Revert {
+				let mut fee_bytes: &[u8] = &input.bytes_at(3)?[..];
+				let fee: MultiAsset = decode_multi_asset(&mut fee_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "fee bad version".into(),
+					output: "invalid fee asset".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				// solidity abi encode bytes will add an offset at input[4]
-				let dest_offset = input.u32_at(4)?;
-				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
-				let dest_bytes_len = input.u32_at(dest_index)?;
-				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
-				let versioned_dest: VersionedMultiLocation =
-					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid dest".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})?;
-				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
+				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "dest bad version".into(),
+					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -408,20 +333,10 @@ where
 
 				let fee_item = input.u32_at(3)?;
 
-				// solidity abi encode bytes will add an offset at input[4]
-				let dest_offset = input.u32_at(4)?;
-				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
-				let dest_bytes_len = input.u32_at(dest_index)?;
-				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
-				let versioned_dest: VersionedMultiLocation =
-					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid dest".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})?;
-				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
+				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "dest bad version".into(),
+					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -466,47 +381,25 @@ where
 			}
 			Action::TransferMultiAssets => {
 				let from = input.account_id_at(1)?;
-				// solidity abi encode bytes will add an offset at input[2]
-				let assets_offset = input.u32_at(2)?;
-				let assets_index = (assets_offset as usize)
-					.saturating_div(PER_PARAM_BYTES)
-					.saturating_add(1);
-				let assets_bytes_len = input.u32_at(assets_index)?;
-				let mut assets_bytes: &[u8] =
-					&input.bytes_at(assets_index.saturating_add(1), assets_bytes_len as usize)?[..];
-				let versioned_assets: VersionedMultiAssets =
-					Decode::decode(&mut assets_bytes).map_err(|_| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid multi assets".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})?;
-				let assets: MultiAssets = versioned_assets.try_into().map_err(|()| PrecompileFailure::Revert {
+
+				let mut assets_bytes: &[u8] = &input.bytes_at(2)?[..];
+				let assets: MultiAssets = decode_multi_assets(&mut assets_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "asset bad version".into(),
+					output: "invalid multi assets".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				let fee_item = input.u32_at(3)?;
 				let fee: &MultiAsset = assets.get(fee_item as usize).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "fee index non-existent".into(),
+					output: "invalid fee index".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				// solidity abi encode bytes will add an offset at input[4]
-				let dest_offset = input.u32_at(4)?;
-				let dest_index = (dest_offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
-				let dest_bytes_len = input.u32_at(dest_index)?;
-				let mut dest_bytes: &[u8] = &input.bytes_at(dest_index.saturating_add(1), dest_bytes_len as usize)?[..];
-				let versioned_dest: VersionedMultiLocation =
-					Decode::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid dest".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					})?;
-				let dest: MultiLocation = versioned_dest.try_into().map_err(|()| PrecompileFailure::Revert {
+				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
+				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "dest bad version".into(),
+					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -551,6 +444,18 @@ where
 			}
 		}
 	}
+}
+
+fn decode_multi_asset(mut bytes: &[u8]) -> Option<MultiAsset> {
+	VersionedMultiAsset::decode(&mut bytes).ok()?.try_into().ok()
+}
+
+fn decode_multi_assets(mut bytes: &[u8]) -> Option<MultiAssets> {
+	VersionedMultiAssets::decode(&mut bytes).ok()?.try_into().ok()
+}
+
+fn decode_multi_location(mut bytes: &[u8]) -> Option<MultiLocation> {
+	VersionedMultiLocation::decode(&mut bytes).ok()?.try_into().ok()
 }
 
 struct Pricer<R>(PhantomData<R>);

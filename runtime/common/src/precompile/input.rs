@@ -54,7 +54,8 @@ pub trait InputT {
 	fn u64_at(&self, index: usize) -> Result<u64, Self::Error>;
 	fn u32_at(&self, index: usize) -> Result<u32, Self::Error>;
 
-	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error>;
+	fn bytes_at(&self, start: usize) -> Result<Vec<u8>, Self::Error>;
+	fn bytes32_at(&self, start: usize) -> Result<Vec<u8>, Self::Error>;
 	fn bool_at(&self, index: usize) -> Result<bool, Self::Error>;
 }
 
@@ -194,8 +195,18 @@ where
 		})
 	}
 
-	fn bytes_at(&self, index: usize, len: usize) -> Result<Vec<u8>, Self::Error> {
-		let bytes = self.nth_param(index, Some(len))?;
+	fn bytes_at(&self, index: usize) -> Result<Vec<u8>, Self::Error> {
+		let offset = self.u32_at(index)?;
+		let data_index = (offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
+
+		let bytes_len = self.u32_at(data_index)?;
+		let bytes = self.nth_param(data_index.saturating_add(1), Some(bytes_len as usize))?;
+
+		Ok(bytes.to_vec())
+	}
+
+	fn bytes32_at(&self, index: usize) -> Result<Vec<u8>, Self::Error> {
+		let bytes = self.nth_param(index, Some(32))?;
 
 		Ok(bytes.to_vec())
 	}
