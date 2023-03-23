@@ -23,7 +23,6 @@ use super::{
 use frame_support::{
 	log,
 	pallet_prelude::{Decode, Encode},
-	weights::Weight,
 };
 use module_evm::{
 	precompiles::Precompile,
@@ -39,10 +38,6 @@ use xcm::{
 	latest::{MultiAsset, MultiAssets, MultiLocation},
 	prelude::*,
 };
-
-/// Refer: https://github.com/paritytech/polkadot/blob/616b287e/xcm/src/v3/mod.rs#L1195
-/// Default value for the proof size weight component. Set at 64 KB.
-const DEFAULT_PROOF_SIZE: u64 = 64 * 1024;
 
 /// The `Xtokens` impl precompile.
 ///
@@ -63,12 +58,12 @@ pub struct XtokensPrecompile<R>(PhantomData<R>);
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
-	Transfer = "transfer(address,address,uint256,bytes,uint64)",
-	TransferMultiAsset = "transferMultiAsset(address,bytes,bytes,uint64)",
-	TransferWithFee = "transferWithFee(address,address,uint256,uint256,bytes,uint64)",
-	TransferMultiAssetWithFee = "transferMultiAssetWithFee(address,bytes,bytes,bytes,uint64)",
-	TransferMultiCurrencies = "transferMultiCurrencies(address,(address,uint256)[],uint32,bytes,uint64)",
-	TransferMultiAssets = "transferMultiAssets(address,bytes,uint32,bytes,uint64)",
+	Transfer = "transfer(address,address,uint256,bytes,bytes)",
+	TransferMultiAsset = "transferMultiAsset(address,bytes,bytes,bytes)",
+	TransferWithFee = "transferWithFee(address,address,uint256,uint256,bytes,bytes)",
+	TransferMultiAssetWithFee = "transferMultiAssetWithFee(address,bytes,bytes,bytes,bytes)",
+	TransferMultiCurrencies = "transferMultiCurrencies(address,(address,uint256)[],uint32,bytes,bytes)",
+	TransferMultiAssets = "transferMultiAssets(address,bytes,uint32,bytes,bytes)",
 }
 
 impl<Runtime> Precompile for XtokensPrecompile<Runtime>
@@ -107,7 +102,12 @@ where
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				let weight = input.u64_at(5)?;
+				let mut weight_bytes: &[u8] = &input.bytes_at(5)?[..];
+				let weight = WeightLimit::decode(&mut weight_bytes).map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid weight".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
 
 				log::debug!(
 					target: "evm",
@@ -115,26 +115,23 @@ where
 					from, currency_id, amount, dest, weight
 				);
 
-				let transferred =
-					<orml_xtokens::Pallet<Runtime> as XcmTransfer<Runtime::AccountId, Balance, CurrencyId>>::transfer(
-						from,
-						currency_id,
-						amount,
-						dest,
-						WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
-					)
-					.map_err(|e| {
-						log::debug!(
-							target: "evm",
-							"xtokens: Transfer failed: {:?}",
-							e
-						);
-						PrecompileFailure::Revert {
-							exit_status: ExitRevert::Reverted,
-							output: "Xtoken Transfer failed".into(),
-							cost: target_gas_limit(target_gas).unwrap_or_default(),
-						}
-					})?;
+				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
+					Runtime::AccountId,
+					Balance,
+					CurrencyId,
+				>>::transfer(from, currency_id, amount, dest, weight)
+				.map_err(|e| {
+					log::debug!(
+						target: "evm",
+						"xtokens: Transfer failed: {:?}",
+						e
+					);
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken Transfer failed".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					}
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -160,7 +157,12 @@ where
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				let weight = input.u64_at(4)?;
+				let mut weight_bytes: &[u8] = &input.bytes_at(4)?[..];
+				let weight = WeightLimit::decode(&mut weight_bytes).map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid weight".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
 
 				log::debug!(
 					target: "evm",
@@ -172,12 +174,7 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multiasset(
-					from,
-					asset,
-					dest,
-					WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
-				)
+				>>::transfer_multiasset(from, asset, dest, weight)
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -211,7 +208,12 @@ where
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				let weight = input.u64_at(6)?;
+				let mut weight_bytes: &[u8] = &input.bytes_at(6)?[..];
+				let weight = WeightLimit::decode(&mut weight_bytes).map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid weight".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
 
 				log::debug!(
 					target: "evm",
@@ -223,14 +225,7 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_with_fee(
-					from,
-					currency_id,
-					amount,
-					fee,
-					dest,
-					WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
-				)
+				>>::transfer_with_fee(from, currency_id, amount, fee, dest, weight)
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -275,7 +270,12 @@ where
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				let weight = input.u64_at(5)?;
+				let mut weight_bytes: &[u8] = &input.bytes_at(5)?[..];
+				let weight = WeightLimit::decode(&mut weight_bytes).map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid weight".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
 
 				log::debug!(
 					target: "evm",
@@ -287,13 +287,7 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multiasset_with_fee(
-					from,
-					asset,
-					fee,
-					dest,
-					WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
-				)
+				>>::transfer_multiasset_with_fee(from, asset, fee, dest, weight)
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -340,7 +334,12 @@ where
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				let weight = input.u64_at(5)?;
+				let mut weight_bytes: &[u8] = &input.bytes_at(5)?[..];
+				let weight = WeightLimit::decode(&mut weight_bytes).map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid weight".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
 
 				log::debug!(
 					target: "evm",
@@ -352,13 +351,7 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multicurrencies(
-					from,
-					currencies,
-					fee_item,
-					dest,
-					WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
-				)
+				>>::transfer_multicurrencies(from, currencies, fee_item, dest, weight)
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -403,7 +396,12 @@ where
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				let weight = input.u64_at(5)?;
+				let mut weight_bytes: &[u8] = &input.bytes_at(5)?[..];
+				let weight = WeightLimit::decode(&mut weight_bytes).map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid weight".into(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
 
 				log::debug!(
 					target: "evm",
@@ -415,13 +413,7 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multiassets(
-					from,
-					assets.clone(),
-					fee.clone(),
-					dest,
-					WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
-				)
+				>>::transfer_multiassets(from, assets.clone(), fee.clone(), dest, weight)
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -512,6 +504,7 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{alice_evm_addr, new_test_ext, Test, BOB};
+	use frame_support::weights::Weight;
 	use hex_literal::hex;
 	use module_evm::ExitRevert;
 
@@ -535,30 +528,39 @@ mod tests {
 					},
 				),
 			));
-
 			assert_eq!(
 				dest.encode(),
 				hex!("03010200491f01000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
-			// transfer(address,address,uint256,bytes,uint64) -> 0xdd2a3599
+			let weight = WeightLimit::Unlimited;
+			assert_eq!(weight.encode(), hex!("00"));
+
+			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
+			assert_eq!(weight.encode(), hex!("01821a060002000400"));
+
+			// transfer(address,address,uint256,bytes,bytes) -> 0xc78fed04
 			// from
 			// currency
 			// amount
 			// dest offset
-			// weight
+			// weight offset
 			// dest length
 			// dest
+			// weight length
+			// weight
 			let input = hex! {"
-				dd2a3599
+				c78fed04
 				000000000000000000000000 1000000000000000000000000000000000000001
-				00000000000000000000000000000000 00000000000100000000000000000000
+				000000000000000000000000 0000000000000000000100000000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000001
 				00000000000000000000000000000000 000000000000000000000000000000a0
-				00000000000000000000000000000000 00000000000000000000000000000002
-				0000000000000000000000000000000000000000000000000000000000000025
-				0100010100020202020202020202020202020202020202020202020202020202
-				0202020202000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000100
+				00000000000000000000000000000000 00000000000000000000000000000028
+				03010200491f0100020202020202020202020202020202020202020202020202
+				0202020202020202000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000009
+				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
@@ -595,26 +597,33 @@ mod tests {
 				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
-			// transferMultiAsset(address,bytes,bytes,uint64) -> 0xc94c06e7
+			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
+			assert_eq!(weight.encode(), hex!("01821a060002000400"));
+
+			// transferMultiAsset(address,bytes,bytes,bytes) -> 0x948796cf
 			// from
 			// asset offset
 			// dest offset
-			// weight
+			// weight offset
 			// asset length
 			// asset
 			// dest length
 			// dest
+			// weight length
+			// weight
 			let input = hex! {"
-				c94c06e7
+				948796cf
 				000000000000000000000000 1000000000000000000000000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000000080
 				00000000000000000000000000000000 000000000000000000000000000000c0
-				00000000000000000000000000000000 00000000000000000000000000000002
+				00000000000000000000000000000000 00000000000000000000000000000120
 				00000000000000000000000000000000 0000000000000000000000000000000b
-				0100000000070010a5d4e8000000000000000000000000000000000000000000
+				0300000000070010a5d4e8000000000000000000000000000000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000025
-				0100010100020202020202020202020202020202020202020202020202020202
+				0300010100020202020202020202020202020202020202020202020202020202
 				0202020202000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000009
+				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
@@ -648,26 +657,33 @@ mod tests {
 				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
-			// transferWithFee(address,address,uint256,uint256,bytes,uint64) -> 0x014f858e
+			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
+			assert_eq!(weight.encode(), hex!("01821a060002000400"));
+
+			// transferWithFee(address,address,uint256,uint256,bytes,bytes) -> 0x0c8d6181
 			// from
 			// currency
 			// amount
 			// fee
 			// dest offset
-			// weight
+			// weight offset
 			// dest length
 			// dest
+			// weight length
+			// weight
 			let input = hex! {"
-				014f858e
+				0c8d6181
 				000000000000000000000000 1000000000000000000000000000000000000001
-				00000000000000000000000000000000 00000000000100000000000000000000
+				000000000000000000000000 0000000000000000000100000000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000000002
 				00000000000000000000000000000000 000000000000000000000000000000c0
-				00000000000000000000000000000000 00000000000000000000000000000003
+				00000000000000000000000000000000 00000000000000000000000000000120
 				00000000000000000000000000000000 00000000000000000000000000000025
-				0100010100020202020202020202020202020202020202020202020202020202
+				0300010100020202020202020202020202020202020202020202020202020202
 				0202020202000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000009
+				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
@@ -707,32 +723,39 @@ mod tests {
 				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
-			// transferMultiAssetWithFee(address,bytes,bytes,bytes,uint64) -> 0x7c9d2ad5
+			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
+			assert_eq!(weight.encode(), hex!("01821a060002000400"));
+
+			// transferMultiAssetWithFee(address,bytes,bytes,bytes,bytes) -> 0x3ccae822
 			// from
 			// asset offset
 			// fee offset
 			// dest offset
-			// weight
+			// weight offset
 			// asset length
 			// asset
 			// fee length
 			// fee
 			// dest length
 			// dest
+			// weight length
+			// weight
 			let input = hex! {"
-				7c9d2ad5
+				3ccae822
 				000000000000000000000000 1000000000000000000000000000000000000001
 				00000000000000000000000000000000 000000000000000000000000000000a0
 				00000000000000000000000000000000 000000000000000000000000000000e0
 				00000000000000000000000000000000 00000000000000000000000000000120
-				00000000000000000000000000000000 00000000000000000000000000000002
+				00000000000000000000000000000000 00000000000000000000000000000180
 				00000000000000000000000000000000 0000000000000000000000000000000b
-				0100000000070010a5d4e8000000000000000000000000000000000000000000
+				0300000000070010a5d4e8000000000000000000000000000000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000009
-				010000000002093d000000000000000000000000000000000000000000000000
+				030000000002093d000000000000000000000000000000000000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000025
-				0100010100020202020202020202020202020202020202020202020202020202
+				0300010100020202020202020202020202020202020202020202020202020202
 				0202020202000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000009
+				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
@@ -766,12 +789,18 @@ mod tests {
 				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
-			// transferMultiCurrencies(address,(address,uint256)[],uint32,bytes,uint64) -> 0x78ff822f
+			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
+			assert_eq!(weight.encode(), hex!("01821a060002000400"));
+
+			// currencies
+			// [[1000000000000000000000000000000000000001,1],[1000000000000000000000000000000000000001,2]]
+
+			// transferMultiCurrencies(address,(address,uint256)[],uint32,bytes,bytes) -> 0xcfea5c46
 			// from
 			// currencies offset
 			// fee item
 			// dest offset
-			// weight
+			// weight offset
 			// currencies length
 			// address1
 			// amount1
@@ -779,21 +808,25 @@ mod tests {
 			// amount2
 			// dest length
 			// dest
+			// weight length
+			// weight
 			let input = hex! {"
-				78ff822f
+				cfea5c46
 				000000000000000000000000 1000000000000000000000000000000000000001
 				00000000000000000000000000000000 000000000000000000000000000000a0
 				00000000000000000000000000000000 00000000000000000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000000140
-				00000000000000000000000000000000 00000000000000000000000000000002
+				00000000000000000000000000000000 000000000000000000000000000001a0
 				00000000000000000000000000000000 00000000000000000000000000000002
 				000000000000000000000000 1000000000000000000000000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000000001
 				000000000000000000000000 1000000000000000000000000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000000002
 				00000000000000000000000000000000 00000000000000000000000000000025
-				0100010100020202020202020202020202020202020202020202020202020202
+				0300010100020202020202020202020202020202020202020202020202020202
 				0202020202000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000009
+				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
@@ -831,28 +864,35 @@ mod tests {
 				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
-			// transferMultiAssets(address,bytes,bytes,bytes,uint64) -> 0x78fccf6c
+			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
+			assert_eq!(weight.encode(), hex!("01821a060002000400"));
+
+			// transferMultiAssets(address,bytes,bytes,bytes,bytes) -> 0x97ed2b15
 			// from
 			// assets offset
 			// fee_item
 			// dest offset
-			// weight
+			// weight offset
 			// assets length
 			// assets
 			// dest length
 			// dest
+			// weight length
+			// weight
 			let input = hex! {"
-				78fccf6c
+				97ed2b15
 				000000000000000000000000 1000000000000000000000000000000000000001
 				00000000000000000000000000000000 000000000000000000000000000000a0
 				00000000000000000000000000000000 00000000000000000000000000000000
 				00000000000000000000000000000000 000000000000000000000000000000e0
-				00000000000000000000000000000000 00000000000000000000000000000002
+				00000000000000000000000000000000 00000000000000000000000000000140
 				00000000000000000000000000000000 0000000000000000000000000000000c
-				010400000000070010a5d4e80000000000000000000000000000000000000000
+				030400000000070010a5d4e80000000000000000000000000000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000025
-				0100010100020202020202020202020202020202020202020202020202020202
+				0300010100020202020202020202020202020202020202020202020202020202
 				0202020202000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000009
+				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
 			assert_eq!(
