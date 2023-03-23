@@ -115,19 +115,18 @@ where
 					target: "evm", "Ethereum eth_msg: {:?}", eth_msg
 				);
 
-				if !eth_msg.tip.is_zero() {
-					// Not yet supported, require zero tip
-					return Err(InvalidTransaction::BadProof.into());
-				}
-
 				if !eth_msg.access_list.len().is_zero() {
 					// Not yet supported, require empty
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
-				let (tx_gas_price, tx_gas_limit) =
+				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero() {
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
-						.ok_or(InvalidTransaction::BadProof)?;
+						.ok_or(InvalidTransaction::BadProof)?
+				} else {
+					// eth_call_v2, the gas_price and gas_limit are encoded.
+					(eth_msg.gas_price as u128, eth_msg.gas_limit as u128)
+				};
 
 				let msg = LegacyTransactionMessage {
 					nonce: eth_msg.nonce.into(),
@@ -164,9 +163,13 @@ where
 					target: "evm", "Eip1559 eth_msg: {:?}", eth_msg
 				);
 
-				let (tx_gas_price, tx_gas_limit) =
+				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero() {
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
-						.ok_or(InvalidTransaction::BadProof)?;
+						.ok_or(InvalidTransaction::BadProof)?
+				} else {
+					// eth_call_v2, the gas_price and gas_limit are encoded.
+					(eth_msg.gas_price as u128, eth_msg.gas_limit as u128)
+				};
 
 				// tip = priority_fee * gas_limit
 				let priority_fee = eth_msg.tip.checked_div(eth_msg.gas_limit.into()).unwrap_or_default();
@@ -372,6 +375,7 @@ mod tests {
 			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
 			nonce: 0,
 			tip: 2,
+			gas_price: 0,
 			gas_limit: 2100000,
 			storage_limit: 20000,
 			action: TransactionAction::Create,
@@ -389,6 +393,7 @@ mod tests {
 			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
 			nonce: 0,
 			tip: 2,
+			gas_price: 0,
 			gas_limit: 2100000,
 			storage_limit: 20000,
 			action: TransactionAction::Create,
@@ -408,6 +413,7 @@ mod tests {
 			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
 			nonce: 0,
 			tip: 2,
+			gas_price: 0,
 			gas_limit: 2100000,
 			storage_limit: 20000,
 			action: TransactionAction::Create,
@@ -586,6 +592,7 @@ mod tests {
 			genesis: Default::default(),
 			nonce: 1,
 			tip: 0,
+			gas_price: 0,
 			gas_limit: 2100000,
 			storage_limit: 64000,
 			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),
