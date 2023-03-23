@@ -26,7 +26,7 @@ use frame_support::{
 		ConstU128, ConstU32, ConstU64, EqualPrivilegeOnly, Everything, InstanceFilter, Nothing, OnFinalize,
 		OnInitialize, SortedMembers,
 	},
-	weights::IdentityFee,
+	weights::{ConstantMultiplier, IdentityFee},
 	PalletId, RuntimeDebug,
 };
 use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
@@ -53,7 +53,7 @@ use sp_runtime::{
 	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill,
 };
 use sp_std::prelude::*;
-use xcm::latest::prelude::*;
+use xcm::v3::prelude::*;
 
 pub type AccountId = AccountId32;
 type Key = CurrencyId;
@@ -271,7 +271,7 @@ impl module_transaction_payment::Config for Test {
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type AlternativeFeeSwapDeposit = ExistenceRequirement;
 	type WeightToFee = IdentityFee<Balance>;
-	type TransactionByteFee = ConstU128<10>;
+	type LengthToFee = ConstantMultiplier<Balance, ConstU128<10>>;
 	type FeeMultiplierUpdate = ();
 	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;

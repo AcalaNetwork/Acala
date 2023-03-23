@@ -28,7 +28,7 @@ use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
 use sp_std::{prelude::*, result::Result};
-use xcm::{latest::Weight as XcmWeight, prelude::*};
+use xcm::{prelude::*, v3::Weight as XcmWeight};
 
 pub mod bounded;
 pub mod dex;

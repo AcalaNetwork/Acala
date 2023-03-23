@@ -24,6 +24,7 @@ use crate::setup::*;
 
 use frame_support::{assert_noop, assert_ok};
 use orml_traits::MultiCurrency;
+use sp_core::bounded::BoundedVec;
 use xcm::VersionedXcm;
 use xcm_emulator::TestExt;
 
@@ -37,10 +38,10 @@ fn bifrost_reserve_account() -> AccountId {
 #[test]
 fn token_per_second_works() {
 	let aca_per_second = acala_runtime::aca_per_second();
-	assert_eq!(10_103_000_000_000, aca_per_second);
+	assert_eq!(10_016_000_000_000, aca_per_second);
 
 	let dot_per_second = acala_runtime::dot_per_second();
-	assert_eq!(2_020_600_000, dot_per_second);
+	assert_eq!(2_003_200_000, dot_per_second);
 }
 
 #[test]
@@ -48,22 +49,15 @@ fn transfer_from_relay_chain() {
 	PolkadotNet::execute_with(|| {
 		assert_ok!(polkadot_runtime::XcmPallet::reserve_transfer_assets(
 			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(ACALA_ID).into().into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Parachain(ACALA_ID).into_versioned()),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((Here, dollar(DOT)).into()),
 			0
 		));
 	});
 
 	Acala::execute_with(|| {
-		assert_eq!(9_998_383_520, Tokens::free_balance(DOT, &AccountId::from(BOB)));
+		assert_eq!(9_998_397_440, Tokens::free_balance(DOT, &AccountId::from(BOB)));
 	});
 }
 
@@ -74,20 +68,10 @@ fn transfer_to_relay_chain() {
 			RuntimeOrigin::signed(ALICE.into()),
 			DOT,
 			5 * dollar(DOT),
-			Box::new(
-				MultiLocation::new(
-					1,
-					X1(Junction::AccountId32 {
-						id: BOB,
-						network: NetworkId::Any,
-					})
-				)
-				.into()
-			),
-			WeightLimit::Limited(4_000_000_000)
+			Box::new(MultiLocation::new(1, X1(Junction::AccountId32 { id: BOB, network: None })).into()),
+			WeightLimit::Unlimited
 		));
 	});
-
 	PolkadotNet::execute_with(|| {
 		assert_eq!(
 			// v0.9.19: 49_517_228_896
@@ -96,7 +80,8 @@ fn transfer_to_relay_chain() {
 			// v0.9.33: 49_581_059_712
 			// v0.9.36: 49_591_353_032
 			// v0.9.37: 49_578_565_860
-			49_578_565_860,
+			// v0.9.38: 49_637_471_000
+			49_637_471_000,
 			polkadot_runtime::Balances::free_balance(&AccountId::from(BOB))
 		);
 		assert_eq!(
@@ -120,7 +105,10 @@ fn liquid_crowdloan_xtokens_works() {
 			Box::new(
 				MultiLocation::new(
 					1,
-					X2(Parachain(ACALA_ID), GeneralKey(LCDOT.encode().try_into().unwrap()))
+					X2(
+						Parachain(ACALA_ID),
+						Junction::from(BoundedVec::try_from(LCDOT.encode()).unwrap())
+					)
 				)
 				.into()
 			),
@@ -156,14 +144,14 @@ fn liquid_crowdloan_xtokens_works() {
 					X2(
 						Parachain(MOCK_BIFROST_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: ALICE.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
 		));
 
 		assert_eq!(Tokens::free_balance(LCDOT, &AccountId::from(BOB)), 5 * dollar);
@@ -186,14 +174,14 @@ fn liquid_crowdloan_xtokens_works() {
 					X2(
 						Parachain(ACALA_ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
 		));
 	});
 

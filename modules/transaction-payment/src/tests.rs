@@ -40,8 +40,7 @@ use sp_runtime::{
 	traits::{One, UniqueSaturatedInto},
 };
 use support::{BuyWeightRate, DEXManager, Price, TransactionPayment as TransactionPaymentT};
-use xcm::latest::prelude::*;
-use xcm::prelude::GeneralKey;
+use xcm::v3::prelude::*;
 
 const CALL: <Runtime as frame_system::Config>::RuntimeCall =
 	RuntimeCall::Currencies(module_currencies::Call::transfer {
@@ -1632,17 +1631,12 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 
 		match location {
 			MultiLocation {
-				interior: X1(GeneralKey(key)),
+				interior: X1(GeneralKey { data, length }),
 				..
-			} => match &key.into_inner()[..] {
-				key => {
-					if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
-						Some(currency_id)
-					} else {
-						None
-					}
-				}
-			},
+			} => {
+				let key = &data[..data.len().min(length as usize)];
+				CurrencyId::decode(&mut &*key).ok()
+			}
 			_ => None,
 		}
 	}
@@ -1658,7 +1652,11 @@ fn buy_weight_transaction_fee_pool_works() {
 
 		// Token not in charge fee pool
 		let currency_id = CurrencyId::Token(TokenSymbol::LDOT);
-		let location = MultiLocation::new(1, X1(GeneralKey(currency_id.encode().try_into().unwrap())));
+
+		let location = MultiLocation::new(
+			1,
+			X1(Junction::from(BoundedVec::try_from(currency_id.encode()).unwrap())),
+		);
 		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
 		assert_eq!(rate, None);
 

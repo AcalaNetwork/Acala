@@ -481,8 +481,6 @@ pub mod pallet {
 				DispatchClass::Mandatory,
 			);
 		}
-
-		fn note_uncle(_author: T::AccountId, _age: T::BlockNumber) {}
 	}
 
 	/// Play the role of the session manager.

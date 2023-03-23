@@ -58,7 +58,7 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 use support::{AggregatedSwapPath, BuyWeightRate, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment};
-use xcm::opaque::latest::MultiLocation;
+use xcm::v3::prelude::MultiLocation;
 
 mod mock;
 mod tests;
@@ -301,10 +301,6 @@ pub mod module {
 		/// transaction fee paid, the second is the tip paid, if any.
 		type OnTransactionPayment: OnUnbalanced<NegativeImbalanceOf<Self>>;
 
-		/// The fee to be paid for making a transaction; the per-byte portion.
-		#[pallet::constant]
-		type TransactionByteFee: Get<PalletBalanceOf<Self>>;
-
 		/// A fee mulitplier for `Operational` extrinsics to compute "virtual tip" to boost their
 		/// `priority`
 		///
@@ -345,6 +341,9 @@ pub mod module {
 		/// Convert a weight value into a deductible fee based on the currency
 		/// type.
 		type WeightToFee: WeightToFee<Balance = PalletBalanceOf<Self>>;
+
+		/// Convert a length value into a deductible fee based on the currency type.
+		type LengthToFee: WeightToFee<Balance = PalletBalanceOf<Self>>;
 
 		/// Update the multiplier of the next block, based on the previous
 		/// block's weight.
@@ -798,11 +797,8 @@ where
 		class: DispatchClass,
 	) -> FeeDetails<PalletBalanceOf<T>> {
 		if pays_fee == Pays::Yes {
-			let len = <PalletBalanceOf<T>>::from(len);
-			let per_byte = T::TransactionByteFee::get();
-
-			// length fee. this is not adjusted.
-			let fixed_len_fee = per_byte.saturating_mul(len);
+			// length fee. this is adjusted via `LengthToFee`.
+			let len_fee = Self::length_to_fee(len);
 
 			// the adjustable part of the fee.
 			let unadjusted_weight_fee = Self::weight_to_fee(weight);
@@ -814,7 +810,7 @@ where
 			FeeDetails {
 				inclusion_fee: Some(InclusionFee {
 					base_fee,
-					len_fee: fixed_len_fee,
+					len_fee,
 					adjusted_weight_fee,
 				}),
 				tip,
@@ -827,6 +823,13 @@ where
 		}
 	}
 
+	/// Compute the length portion of a fee by invoking the configured `LengthToFee` impl.
+	pub fn length_to_fee(length: u32) -> PalletBalanceOf<T> {
+		T::LengthToFee::weight_to_fee(&Weight::from_ref_time(length as u64))
+	}
+
+	/// Compute the unadjusted portion of the weight fee by invoking the configured `WeightToFee`
+	/// impl. Note that the input `weight` is capped by the maximum block weight before computation.
 	pub fn weight_to_fee(weight: Weight) -> PalletBalanceOf<T> {
 		// cap the weight to the maximum defined in runtime, otherwise it will be the
 		// `Bounded` maximum of its data type, which is not desired.

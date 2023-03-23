@@ -23,36 +23,28 @@ use frame_support::{traits::Get, weights::constants::WEIGHT_REF_TIME_PER_SECOND}
 use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
 use primitives::{Balance, CurrencyId};
-use sp_runtime::{
-	traits::{ConstU32, Convert, Zero},
-	FixedPointNumber, FixedU128, WeakBoundedVec,
-};
+use sp_core::bounded::BoundedVec;
+use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
 use sp_std::{marker::PhantomData, prelude::*};
-use xcm::{latest::Weight as XcmWeight, prelude::*};
+use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::TakeRevenue;
 use xcm_executor::{
 	traits::{DropAssets, WeightTrader},
 	Assets,
 };
 
-pub fn local_currency_location(key: CurrencyId) -> MultiLocation {
-	MultiLocation::new(
+pub fn local_currency_location(key: CurrencyId) -> Option<MultiLocation> {
+	Some(MultiLocation::new(
 		0,
-		X1(GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(
-			key.encode(),
-			None,
-		))),
-	)
+		X1(Junction::from(BoundedVec::try_from(key.encode()).ok()?)),
+	))
 }
 
-pub fn native_currency_location(para_id: u32, key: Vec<u8>) -> MultiLocation {
-	MultiLocation::new(
+pub fn native_currency_location(para_id: u32, key: Vec<u8>) -> Option<MultiLocation> {
+	Some(MultiLocation::new(
 		1,
-		X2(
-			Parachain(para_id),
-			GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(key, None)),
-		),
-	)
+		X2(Parachain(para_id), Junction::from(BoundedVec::try_from(key).ok()?)),
+	))
 }
 
 /// `ExistentialDeposit` for tokens, give priority to match native token, then handled by
@@ -94,7 +86,7 @@ where
 	NB: Get<Balance>,
 	GK: GetByKey<CurrencyId, Balance>,
 {
-	fn drop_assets(origin: &MultiLocation, assets: Assets) -> XcmWeight {
+	fn drop_assets(origin: &MultiLocation, assets: Assets, context: &XcmContext) -> XcmWeight {
 		let multi_assets: Vec<MultiAsset> = assets.into();
 		let mut asset_traps: Vec<MultiAsset> = vec![];
 		for asset in multi_assets {
@@ -116,9 +108,10 @@ where
 			}
 		}
 		if !asset_traps.is_empty() {
-			X::drop_assets(origin, asset_traps.into());
+			X::drop_assets(origin, asset_traps.into(), context);
 		}
-		0
+		// TODO #2492: Put the real weight in there.
+		XcmWeight::from_ref_time(0)
 	}
 }
 
@@ -160,14 +153,14 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		if let AssetId::Concrete(ref multi_location) = asset_id {
 			log::debug!(target: "xcm::weight", "buy_weight multi_location: {:?}", multi_location);
 
-			if let Some(ratio) = M::calculate_rate(multi_location.clone()) {
+			if let Some(ratio) = M::calculate_rate(*multi_location) {
 				// The WEIGHT_REF_TIME_PER_SECOND is non-zero.
 				let weight_ratio =
-					FixedU128::saturating_from_rational(weight as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
+					FixedU128::saturating_from_rational(weight.ref_time() as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
 				let amount = ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
 
 				let required = MultiAsset {
-					id: asset_id.clone(),
+					id: *asset_id,
 					fun: Fungible(amount),
 				};
 
@@ -182,7 +175,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 				self.weight = self.weight.saturating_add(weight);
 				self.amount = self.amount.saturating_add(amount);
 				self.ratio = ratio;
-				self.multi_location = Some(multi_location.clone());
+				self.multi_location = Some(*multi_location);
 				return Ok(unused);
 			}
 		}
@@ -197,7 +190,8 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 			weight, self.weight, self.amount, self.ratio, self.multi_location
 		);
 		let weight = weight.min(self.weight);
-		let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
+		let weight_ratio =
+			FixedU128::saturating_from_rational(weight.ref_time() as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
 		let amount = self
 			.ratio
 			.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
@@ -209,7 +203,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		if amount > 0 && self.multi_location.is_some() {
 			Some(
 				(
-					self.multi_location.as_ref().expect("checked is non-empty; qed").clone(),
+					*self.multi_location.as_ref().expect("checked is non-empty; qed"),
 					amount,
 				)
 					.into(),
@@ -226,7 +220,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateO
 		if self.amount > 0 && self.multi_location.is_some() {
 			R::take_revenue(
 				(
-					self.multi_location.as_ref().expect("checked is non-empty; qed").clone(),
+					*self.multi_location.as_ref().expect("checked is non-empty; qed"),
 					self.amount,
 				)
 					.into(),
@@ -247,26 +241,37 @@ impl<
 		EVMBridge: module_support::EVMBridge<AccountId, Balance>,
 	> ExecuteXcm<Config::RuntimeCall> for XcmExecutor<Config, AccountId, Balance, AccountIdConvert, EVMBridge>
 {
-	fn execute_xcm_in_credit(
+	type Prepared = <xcm_executor::XcmExecutor<Config> as ExecuteXcm<Config::RuntimeCall>>::Prepared;
+
+	fn prepare(message: Xcm<Config::RuntimeCall>) -> Result<Self::Prepared, Xcm<Config::RuntimeCall>> {
+		xcm_executor::XcmExecutor::<Config>::prepare(message)
+	}
+
+	fn execute(
 		origin: impl Into<MultiLocation>,
-		message: Xcm<Config::RuntimeCall>,
-		weight_limit: XcmWeight,
+		weighed_message: Self::Prepared,
+		message_hash: XcmHash,
 		weight_credit: XcmWeight,
 	) -> Outcome {
 		let origin = origin.into();
-		let account = AccountIdConvert::convert(origin.clone());
+		let account = AccountIdConvert::convert(origin);
 		let clear = if let Ok(account) = account {
 			EVMBridge::push_origin(account);
 			true
 		} else {
 			false
 		};
-		let res =
-			xcm_executor::XcmExecutor::<Config>::execute_xcm_in_credit(origin, message, weight_limit, weight_credit);
+
+		let res = xcm_executor::XcmExecutor::<Config>::execute(origin, weighed_message, message_hash, weight_credit);
+
 		if clear {
 			EVMBridge::pop_origin();
 		}
 		res
+	}
+
+	fn charge_fees(origin: impl Into<MultiLocation>, fees: MultiAssets) -> XcmResult {
+		xcm_executor::XcmExecutor::<Config>::charge_fees(origin, fees)
 	}
 }
 
@@ -303,21 +308,34 @@ mod tests {
 		use primitives::TokenSymbol::ACA;
 		let evm_addr = sp_core::H160(hex_literal::hex!("0000000000000000000000000000000000000400"));
 
-		assert_eq!(native_currency_location(0, CurrencyId::Token(ACA).encode()).parents, 1);
 		assert_eq!(
-			native_currency_location(0, CurrencyId::Erc20(evm_addr).encode()).parents,
+			native_currency_location(0, CurrencyId::Token(ACA).encode())
+				.unwrap()
+				.parents,
 			1
 		);
 		assert_eq!(
-			native_currency_location(0, CurrencyId::StableAssetPoolToken(0).encode()).parents,
+			native_currency_location(0, CurrencyId::Erc20(evm_addr).encode())
+				.unwrap()
+				.parents,
 			1
 		);
 		assert_eq!(
-			native_currency_location(0, CurrencyId::ForeignAsset(0).encode()).parents,
+			native_currency_location(0, CurrencyId::StableAssetPoolToken(0).encode())
+				.unwrap()
+				.parents,
 			1
 		);
 		assert_eq!(
-			native_currency_location(0, CurrencyId::LiquidCrowdloan(0).encode()).parents,
+			native_currency_location(0, CurrencyId::ForeignAsset(0).encode())
+				.unwrap()
+				.parents,
+			1
+		);
+		assert_eq!(
+			native_currency_location(0, CurrencyId::LiquidCrowdloan(0).encode())
+				.unwrap()
+				.parents,
 			1
 		);
 
@@ -326,6 +344,7 @@ mod tests {
 				0,
 				CurrencyId::DexShare(DexShare::Token(ACA), DexShare::ForeignAsset(0)).encode()
 			)
+			.unwrap()
 			.parents,
 			1
 		);
@@ -334,18 +353,18 @@ mod tests {
 				0,
 				CurrencyId::DexShare(DexShare::Token(ACA), DexShare::Erc20(evm_addr)).encode()
 			)
+			.unwrap()
 			.parents,
 			1
 		);
 
-		// DexShare of two Erc20 limit to 32 length.
+		// DexShare of two Erc20 exceed 32 length
 		assert_eq!(
 			native_currency_location(
 				0,
 				CurrencyId::DexShare(DexShare::Erc20(evm_addr), DexShare::Erc20(evm_addr)).encode()
-			)
-			.parents,
-			1
+			),
+			None
 		);
 	}
 
@@ -355,11 +374,11 @@ mod tests {
 			let asset: MultiAsset = (Parent, 100).into();
 			let assets: Assets = asset.into();
 			let mut trader = <FixedRateOfAsset<(), (), MockNoneBuyWeightRate>>::new();
-			let buy_weight = trader.buy_weight(WEIGHT_REF_TIME_PER_SECOND, assets.clone());
+			let buy_weight = trader.buy_weight(XcmWeight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND), assets.clone());
 			assert_noop!(buy_weight, XcmError::TooExpensive);
 
 			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockFixedBuyWeightRate<FixedRate>>>::new();
-			let buy_weight = trader.buy_weight(WEIGHT_REF_TIME_PER_SECOND, assets.clone());
+			let buy_weight = trader.buy_weight(XcmWeight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND), assets.clone());
 			let asset: MultiAsset = (Parent, 90).into();
 			let assets: Assets = asset.into();
 			assert_ok!(buy_weight, assets.clone());

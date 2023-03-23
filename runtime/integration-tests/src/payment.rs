@@ -227,11 +227,10 @@ fn trader_works() {
 		ClearOrigin,
 		BuyExecution {
 			fees: (Parent, 100).into(),
-			weight_limit: Limited(100),
+			weight_limit: Limited(Weight::from_ref_time(100)),
 		},
 		DepositAsset {
-			assets: All.into(),
-			max_assets: 1,
+			assets: AllCounted(1).into(),
 			beneficiary: Here.into(),
 		},
 	]);
@@ -552,11 +551,12 @@ fn with_fee_call_works(
 				)
 			);
 			#[cfg(feature = "with-karura-runtime")]
-			let amount = 12726949853;
+			let amount = 12_726_949_852u128;
 			#[cfg(feature = "with-acala-runtime")]
-			let amount = 12726949853;
+			let amount = 12_726_949_852u128;
 			#[cfg(feature = "with-mandala-runtime")]
-			let amount = 13264589849;
+			let amount = 13_264_589_848u128;
+
 			System::assert_has_event(RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
 				currency_id: USD_CURRENCY,
 				from: AccountId::from(CHARLIE),
