@@ -52,8 +52,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
 	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill,
 };
-use sp_std::cell::RefCell;
-use sp_std::prelude::*;
+use sp_std::{cell::RefCell, prelude::*};
 use xcm::{prelude::*, v3::Xcm};
 use xcm_builder::FixedWeightBounds;
 

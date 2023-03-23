@@ -23,6 +23,7 @@ use super::{
 use frame_support::{
 	log,
 	pallet_prelude::{Decode, Encode},
+	weights::Weight,
 };
 use module_evm::{
 	precompiles::Precompile,
@@ -38,6 +39,10 @@ use xcm::{
 	latest::{MultiAsset, MultiAssets, MultiLocation},
 	prelude::*,
 };
+
+/// Refer: https://github.com/paritytech/polkadot/blob/616b287e/xcm/src/v3/mod.rs#L1195
+/// Default value for the proof size weight component. Set at 64 KB.
+const DEFAULT_PROOF_SIZE: u64 = 64 * 1024;
 
 /// The `Xtokens` impl precompile.
 ///
@@ -120,23 +125,26 @@ where
 					from, currency_id, amount, dest, weight
 				);
 
-				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
-					Runtime::AccountId,
-					Balance,
-					CurrencyId,
-				>>::transfer(from, currency_id, amount, dest, Limited(weight.into()))
-				.map_err(|e| {
-					log::debug!(
-						target: "evm",
-						"xtokens: Transfer failed: {:?}",
-						e
-					);
-					PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "Xtoken Transfer failed".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
-					}
-				})?;
+				let transferred =
+					<orml_xtokens::Pallet<Runtime> as XcmTransfer<Runtime::AccountId, Balance, CurrencyId>>::transfer(
+						from,
+						currency_id,
+						amount,
+						dest,
+						WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
+					)
+					.map_err(|e| {
+						log::debug!(
+							target: "evm",
+							"xtokens: Transfer failed: {:?}",
+							e
+						);
+						PrecompileFailure::Revert {
+							exit_status: ExitRevert::Reverted,
+							output: "Xtoken Transfer failed".into(),
+							cost: target_gas_limit(target_gas).unwrap_or_default(),
+						}
+					})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -197,7 +205,12 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multiasset(from, asset, dest, Limited(weight.into()))
+				>>::transfer_multiasset(
+					from,
+					asset,
+					dest,
+					WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
+				)
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -253,7 +266,14 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_with_fee(from, currency_id, amount, fee, dest, Limited(weight.into()))
+				>>::transfer_with_fee(
+					from,
+					currency_id,
+					amount,
+					fee,
+					dest,
+					WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
+				)
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -342,7 +362,13 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multiasset_with_fee(from, asset, fee, dest, Limited(weight.into()))
+				>>::transfer_multiasset_with_fee(
+					from,
+					asset,
+					fee,
+					dest,
+					WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
+				)
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -411,7 +437,13 @@ where
 					Runtime::AccountId,
 					Balance,
 					CurrencyId,
-				>>::transfer_multicurrencies(from, currencies, fee_item, dest, Limited(weight.into()))
+				>>::transfer_multicurrencies(
+					from,
+					currencies,
+					fee_item,
+					dest,
+					WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
+				)
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
@@ -491,7 +523,11 @@ where
 					Balance,
 					CurrencyId,
 				>>::transfer_multiassets(
-					from, assets.clone(), fee.clone(), dest, Limited(weight.into())
+					from,
+					assets.clone(),
+					fee.clone(),
+					dest,
+					WeightLimit::Limited(Weight::from_parts(weight, DEFAULT_PROOF_SIZE)),
 				)
 				.map_err(|e| {
 					log::debug!(
