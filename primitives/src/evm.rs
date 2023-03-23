@@ -31,7 +31,7 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256, U256};
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{traits::Zero, RuntimeDebug, SaturatedConversion};
 use sp_std::vec::Vec;
 
 /// Evm Address.
@@ -47,6 +47,13 @@ pub const CHAIN_ID_ACALA_TESTNET: u64 = 597u64;
 pub const CHAIN_ID_KARURA_MAINNET: u64 = 686u64;
 /// acala mainnet 787
 pub const CHAIN_ID_ACALA_MAINNET: u64 = 787u64;
+
+// GAS MASK
+const GAS_MASK: u64 = 100_000u64;
+// STORAGE MASK
+const STORAGE_MASK: u64 = 100u64;
+// GAS LIMIT CHUNK
+const GAS_LIMIT_CHUNK: u64 = 30_000u64;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -114,6 +121,7 @@ pub struct EthereumTransactionMessage {
 	pub genesis: H256,
 	pub nonce: Nonce,
 	pub tip: Balance,
+	pub gas_price: u64,
 	pub gas_limit: u64,
 	pub storage_limit: u32,
 	pub action: TransactionAction,
@@ -220,6 +228,57 @@ impl TryFrom<CurrencyId> for EvmAddress {
 
 		Ok(EvmAddress::from_slice(&address))
 	}
+}
+
+pub fn decode_gas_price(gas_price: u64, gas_limit: u64, tx_fee_per_gas: u128) -> Option<(u128, u32)> {
+	// ensure gas_price >= 100 Gwei
+	if u128::from(gas_price) < tx_fee_per_gas {
+		return None;
+	}
+
+	let mut tip: u128 = 0;
+	let mut actual_gas_price = gas_price;
+	const TEN_GWEI: u64 = 10_000_000_000u64;
+
+	// tip = 10% * tip_number
+	let tip_number = gas_price.checked_div(TEN_GWEI)?.checked_sub(10)?;
+	if !tip_number.is_zero() {
+		actual_gas_price = gas_price.checked_sub(tip_number.checked_mul(TEN_GWEI)?)?;
+		tip = actual_gas_price
+			.checked_mul(gas_limit)?
+			.checked_mul(tip_number)?
+			.checked_div(10)? // percentage
+			.checked_div(1_000_000)? // ACA decimal is 12, ETH decimal is 18
+			.into();
+	}
+
+	// valid_until max is u32::MAX.
+	let valid_until: u32 = Into::<u128>::into(actual_gas_price)
+		.checked_sub(tx_fee_per_gas)?
+		.saturated_into();
+
+	Some((tip, valid_until))
+}
+
+pub fn decode_gas_limit(gas_limit: u64) -> (u64, u32) {
+	let gas_and_storage: u64 = gas_limit.checked_rem(GAS_MASK).expect("constant never failed; qed");
+	let actual_gas_limit: u64 = gas_and_storage
+		.checked_div(STORAGE_MASK)
+		.expect("constant never failed; qed")
+		.saturating_mul(GAS_LIMIT_CHUNK);
+	let storage_limit_number: u32 = gas_and_storage
+		.checked_rem(STORAGE_MASK)
+		.expect("constant never failed; qed")
+		.try_into()
+		.expect("STORAGE_MASK is 100, the result maximum is 99; qed");
+
+	let actual_storage_limit = if storage_limit_number.is_zero() {
+		Default::default()
+	} else {
+		2u32.saturating_pow(storage_limit_number)
+	};
+
+	(actual_gas_limit, actual_storage_limit)
 }
 
 #[cfg(not(feature = "evm-tests"))]

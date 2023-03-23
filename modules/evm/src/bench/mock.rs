@@ -23,7 +23,7 @@ use super::super::*;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, FindAuthor, Nothing},
-	weights::IdentityFee,
+	weights::{ConstantMultiplier, IdentityFee},
 	ConsensusEngineId, PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -252,7 +252,7 @@ impl module_transaction_payment::Config for Runtime {
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type AlternativeFeeSwapDeposit = ExistenceRequirement;
 	type WeightToFee = IdentityFee<Balance>;
-	type TransactionByteFee = ConstU128<10>;
+	type LengthToFee = ConstantMultiplier<Balance, ConstU128<10>>;
 	type FeeMultiplierUpdate = ();
 	type Swap = SpecificJointsSwap<Dex, AlternativeSwapPathJointList>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;

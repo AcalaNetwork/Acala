@@ -25,7 +25,7 @@ pub use crate as transaction_payment;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
-	weights::{WeightToFeeCoefficients, WeightToFeePolynomial},
+	weights::{WeightToFee as WeightToFeeT, WeightToFeeCoefficients, WeightToFeePolynomial},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -266,6 +266,14 @@ ord_parameter_types! {
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
 
+impl WeightToFeeT for TransactionByteFee {
+	type Balance = Balance;
+
+	fn weight_to_fee(weight: &Weight) -> Self::Balance {
+		Self::Balance::saturated_from(weight.ref_time()).saturating_mul(TRANSACTION_BYTE_FEE.with(|v| *v.borrow()))
+	}
+}
+
 impl Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
@@ -278,7 +286,7 @@ impl Config for Runtime {
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type WeightToFee = WeightToFee;
-	type TransactionByteFee = TransactionByteFee;
+	type LengthToFee = TransactionByteFee;
 	type FeeMultiplierUpdate = ();
 	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;

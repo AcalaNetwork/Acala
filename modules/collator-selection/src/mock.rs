@@ -48,7 +48,7 @@ frame_support::construct_runtime!(
 		Aura: pallet_aura::{Pallet, Storage, Config<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		CollatorSelection: collator_selection::{Pallet, Call, Storage, Event<T>},
-		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
+		Authorship: pallet_authorship::{Pallet, Storage},
 	}
 );
 
@@ -103,8 +103,6 @@ impl FindAuthor<u64> for Author4 {
 
 impl pallet_authorship::Config for Test {
 	type FindAuthor = Author4;
-	type UncleGenerations = ();
-	type FilterUncle = ();
 	type EventHandler = CollatorSelection;
 }
 

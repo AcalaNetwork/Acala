@@ -26,7 +26,7 @@ use module_support::AddressMapping;
 use orml_benchmarking::runtime_benchmarks;
 use primitives::currency::AssetMetadata;
 use sp_std::{boxed::Box, str::FromStr, vec};
-use xcm::{v1::MultiLocation, VersionedMultiLocation};
+use xcm::{v3::MultiLocation, VersionedMultiLocation};
 
 pub fn alice() -> AccountId {
 	<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr())
@@ -62,9 +62,9 @@ runtime_benchmarks! {
 	{ Runtime, module_asset_registry }
 
 	register_foreign_asset {
-		let location = VersionedMultiLocation::V1(MultiLocation {
+		let location = VersionedMultiLocation::V3(MultiLocation {
 			parents: 0,
-			interior: xcm::v1::Junctions::X1(xcm::v1::Junction::Parachain(1000)),
+			interior: xcm::v3::Junctions::X1(xcm::v3::Junction::Parachain(1000)),
 		});
 		let asset_metadata = AssetMetadata {
 			name: b"Token Name".to_vec(),
@@ -75,9 +75,9 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, Box::new(location), Box::new(asset_metadata))
 
 	update_foreign_asset {
-		let location = VersionedMultiLocation::V1(MultiLocation {
+		let location = VersionedMultiLocation::V3(MultiLocation {
 			parents: 0,
-			interior: xcm::v1::Junctions::X1(xcm::v1::Junction::Parachain(1000)),
+			interior: xcm::v3::Junctions::X1(xcm::v3::Junction::Parachain(1000)),
 		});
 		let asset_metadata = AssetMetadata {
 			name: b"Token Name".to_vec(),

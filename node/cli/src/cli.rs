@@ -18,6 +18,8 @@
 
 //! Acala CLI library.
 
+#![allow(clippy::large_enum_variant)]
+
 use clap::Parser;
 use sc_cli::{KeySubcommand, SignCmd, VanityCmd, VerifyCmd};
 use std::path::PathBuf;

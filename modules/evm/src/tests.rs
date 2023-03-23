@@ -2380,7 +2380,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_ref_time(1452022502)),
+					actual_weight: Some(Weight::from_parts(1_441_019_352, 5_206)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::NoPermission.into(),
@@ -2413,7 +2413,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_ref_time(1451066204)),
+					actual_weight: Some(Weight::from_parts(1_440_063_054, 5_206)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::StrictCallFailed.into(),

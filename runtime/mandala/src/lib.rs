@@ -45,7 +45,7 @@ pub use frame_support::{
 	},
 	weights::{
 		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
-		IdentityFee, Weight,
+		ConstantMultiplier, IdentityFee, Weight,
 	},
 	PalletId, RuntimeDebug, StorageValue,
 };
@@ -68,7 +68,7 @@ use orml_traits::{
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
 	define_combined_task,
-	evm::{AccessListItem, EthereumTransactionMessage},
+	evm::{decode_gas_limit, decode_gas_price, AccessListItem, EthereumTransactionMessage},
 	task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 };
@@ -115,7 +115,7 @@ pub use runtime_common::{
 	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT, RENBTC,
 };
-pub use xcm::{latest::Weight as XcmWeight, prelude::*};
+pub use xcm::{prelude::*, v3::Weight as XcmWeight};
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
@@ -255,8 +255,6 @@ impl pallet_aura::Config for Runtime {
 
 impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-	type UncleGenerations = ConstU32<0>;
-	type FilterUncle = ();
 	type EventHandler = CollatorSelection;
 }
 
@@ -943,10 +941,10 @@ impl EnsureOrigin<RuntimeOrigin> for EnsureRootOrTreasury {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin() -> RuntimeOrigin {
+	fn try_successful_origin() -> Result<RuntimeOrigin, ()> {
 		let zero_account_id = AccountId::decode(&mut sp_runtime::traits::TrailingZeroInput::zeroes())
 			.expect("infinite length input; no invalid inputs for type; qed");
-		RuntimeOrigin::from(RawOrigin::Signed(zero_account_id))
+		Ok(RuntimeOrigin::from(RawOrigin::Signed(zero_account_id)))
 	}
 }
 
@@ -1261,7 +1259,7 @@ impl module_transaction_payment::Config for Runtime {
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = MaxTipsOfPriority;
 	type WeightToFee = WeightToFee;
-	type TransactionByteFee = TransactionByteFee;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate =
 		TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier, MaximumMultiplier>;
 	type Swap = AcalaSwap;
@@ -1349,7 +1347,7 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 	MultiLocation::new(
 		1,
 		X1(AccountId32 {
-			network: NetworkId::Any,
+			network: None,
 			id: Utility::derivative_account_id(ParachainInfo::get().into_account_truncating(), index).into(),
 		}),
 	)
@@ -1599,6 +1597,7 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	}
 }
 
+// TODO: remove
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct TxFeePerGas;
 impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
@@ -1606,6 +1605,15 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
 		// NOTE: 200 GWei
 		// ensure suffix is 0x0000
 		I::from(200u128.saturating_mul(10u128.saturating_pow(9)) & !0xffff)
+	}
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct TxFeePerGasV2;
+impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGasV2 {
+	fn get() -> I {
+		// NOTE: 100 GWei
+		I::from(100_000_000_000u128)
 	}
 }
 
@@ -1818,6 +1826,57 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 						genesis: System::block_hash(0),
 						nonce,
 						tip,
+						gas_price: Default::default(),
+						gas_limit,
+						storage_limit,
+						action,
+						value,
+						input,
+						valid_until,
+						access_list,
+					},
+					extra,
+				))
+			}
+			RuntimeCall::EVM(module_evm::Call::eth_call_v2 {
+				action,
+				input,
+				value,
+				gas_price,
+				gas_limit,
+				access_list,
+			}) => {
+				let (tip, valid_until) =
+					decode_gas_price(gas_price, gas_limit, TxFeePerGasV2::get()).ok_or(InvalidTransaction::Stale)?;
+
+				if System::block_number() > valid_until {
+					return Err(InvalidTransaction::Stale);
+				}
+
+				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
+
+				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
+					// require immortal
+					return Err(InvalidTransaction::BadProof);
+				}
+
+				let nonce = check_nonce.nonce;
+				if tip != charge.0 {
+					// The tip decoded from gas-price is different from the extra
+					return Err(InvalidTransaction::BadProof);
+				}
+
+				extra.5.mark_as_ethereum_tx(valid_until);
+
+				let storage_limit = decode_gas_limit(gas_limit).1;
+
+				Ok((
+					EthereumTransactionMessage {
+						chain_id: EVM::chain_id(),
+						genesis: System::block_hash(0),
+						nonce,
+						tip,
+						gas_price,
 						gas_limit,
 						storage_limit,
 						action,
@@ -1906,6 +1965,12 @@ pub type Executive = frame_executive::Executive<
 	(
 		pallet_balances::migration::MigrateToTrackInactive<Runtime, xcm_config::CheckingAccount>,
 		pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
+		// "Use 2D weights in XCM v3" <https://github.com/paritytech/polkadot/pull/6134>
+		pallet_xcm::migration::v1::MigrateToV1<Runtime>,
+		orml_unknown_tokens::Migration<Runtime>,
+		// Note: The following Migrations do not use the StorageVersion feature, must to be removed after the upgrade
+		module_asset_registry::migrations::MigrateV1MultiLocationToV3<Runtime>,
+		module_xcm_interface::migrations::MigrateXcmDestWeightAndFee<Runtime>,
 	),
 >;
 
@@ -2170,6 +2235,12 @@ impl_runtime_apis! {
 		}
 		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
+		}
+		fn query_weight_to_fee(weight: Weight) -> Balance {
+			TransactionPayment::weight_to_fee(weight)
+		}
+		fn query_length_to_fee(length: u32) -> Balance {
+			TransactionPayment::length_to_fee(length)
 		}
 	}
 
@@ -2528,6 +2599,7 @@ mod tests {
 					EthereumTransactionMessage {
 						nonce: 3, // evm::account.nonce
 						tip: 0,
+						gas_price: 0,
 						gas_limit: 21_000,
 						storage_limit: 1_000,
 						action: module_evm::TransactionAction::Create,

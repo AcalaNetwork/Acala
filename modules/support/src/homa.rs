@@ -18,7 +18,7 @@
 
 use crate::{ExchangeRate, Rate};
 use sp_runtime::DispatchResult;
-use xcm::latest::prelude::*;
+use xcm::v3::prelude::*;
 
 pub trait HomaSubAccountXcm<AccountId, Balance> {
 	/// Cross-chain transfer staking currency to sub account on relaychain.
