@@ -32,6 +32,7 @@ use primitives::evm::EvmAddress;
 use runtime_common::precompile::XtokensPrecompile;
 use sp_core::{bounded::BoundedVec, H256, U256};
 use std::str::FromStr;
+use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
 
 pub const SIBLING_ID: u32 = 2002;
@@ -554,18 +555,50 @@ fn xtokens_precompile_works() {
 		// 		)
 		// 		.into(),
 		// 	),
-		// 	WeightLimit::Limited(1_000_000_000),
+		// 	WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		// ));
+
+		let dest: VersionedMultiLocation = MultiLocation::new(
+			1,
+			X2(
+				Parachain(SIBLING_ID),
+				Junction::AccountId32 {
+					network: None,
+					id: BOB.into(),
+				},
+			),
+		)
+		.into();
+		assert_eq!(
+			dest.encode(),
+			hex!("03010200491f01000505050505050505050505050505050505050505050505050505050505050505")
+		);
+
+		let weight = WeightLimit::Limited(Weight::from_ref_time(1_000_000_000));
+		assert_eq!(weight.encode(), hex!("0102286bee00"));
+
+		// transfer(address,address,uint256,bytes,bytes) -> 0xc78fed04
+		// from
+		// currency
+		// amount
+		// dest offset
+		// weight offset
+		// dest length
+		// dest
+		// weight length
+		// weight
 		let input = hex! {"
-			dd2a3599
+			c78fed04
 			000000000000000000000000 1000000000000000000000000000000000000001
 			000000000000000000000000 5e0b4bfa0b55932a3587e648c3552a6515ba56b1
 			00000000000000000000000000000000 0000000000000000000009184e72a000
 			00000000000000000000000000000000 000000000000000000000000000000a0
-			00000000000000000000000000000000 0000000000000000000000003b9aca00
+			00000000000000000000000000000000 00000000000000000000000000000100
 			00000000000000000000000000000000 00000000000000000000000000000028
-			01010200491f0100050505050505050505050505050505050505050505050505
+			03010200491f0100050505050505050505050505050505050505050505050505
 			0505050505050505000000000000000000000000000000000000000000000000
+			00000000000000000000000000000000 00000000000000000000000000000006
+			0102286bee000000000000000000000000000000000000000000000000000000
 		"};
 
 		assert_ok!(frame_support::storage::with_transaction(|| {

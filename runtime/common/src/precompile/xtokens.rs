@@ -95,8 +95,8 @@ where
 				let currency_id = input.currency_id_at(2)?;
 				let amount = input.balance_at(3)?;
 
-				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest_bytes: &[u8] = &input.bytes_at(4)?[..];
+				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
@@ -143,15 +143,15 @@ where
 			Action::TransferMultiAsset => {
 				let from = input.account_id_at(1)?;
 
-				let mut asset_bytes: &[u8] = &input.bytes_at(2)?[..];
-				let asset: MultiAsset = decode_multi_asset(&mut asset_bytes).ok_or(PrecompileFailure::Revert {
+				let asset_bytes: &[u8] = &input.bytes_at(2)?[..];
+				let asset: MultiAsset = decode_multi_asset(asset_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid multi asset".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				let mut dest_bytes: &[u8] = &input.bytes_at(3)?[..];
-				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest_bytes: &[u8] = &input.bytes_at(3)?[..];
+				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
@@ -201,8 +201,8 @@ where
 				let amount = input.balance_at(3)?;
 				let fee = input.balance_at(4)?;
 
-				let mut dest_bytes: &[u8] = &input.bytes_at(5)?[..];
-				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest_bytes: &[u8] = &input.bytes_at(5)?[..];
+				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
@@ -249,22 +249,22 @@ where
 			Action::TransferMultiAssetWithFee => {
 				let from = input.account_id_at(1)?;
 
-				let mut asset_bytes: &[u8] = &input.bytes_at(2)?[..];
-				let asset: MultiAsset = decode_multi_asset(&mut asset_bytes).ok_or(PrecompileFailure::Revert {
+				let asset_bytes: &[u8] = &input.bytes_at(2)?[..];
+				let asset: MultiAsset = decode_multi_asset(asset_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid multi asset".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				let mut fee_bytes: &[u8] = &input.bytes_at(3)?[..];
-				let fee: MultiAsset = decode_multi_asset(&mut fee_bytes).ok_or(PrecompileFailure::Revert {
+				let fee_bytes: &[u8] = &input.bytes_at(3)?[..];
+				let fee: MultiAsset = decode_multi_asset(fee_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid fee asset".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest_bytes: &[u8] = &input.bytes_at(4)?[..];
+				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
@@ -327,8 +327,8 @@ where
 
 				let fee_item = input.u32_at(3)?;
 
-				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest_bytes: &[u8] = &input.bytes_at(4)?[..];
+				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
@@ -375,8 +375,8 @@ where
 			Action::TransferMultiAssets => {
 				let from = input.account_id_at(1)?;
 
-				let mut assets_bytes: &[u8] = &input.bytes_at(2)?[..];
-				let assets: MultiAssets = decode_multi_assets(&mut assets_bytes).ok_or(PrecompileFailure::Revert {
+				let assets_bytes: &[u8] = &input.bytes_at(2)?[..];
+				let assets: MultiAssets = decode_multi_assets(assets_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid multi assets".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
@@ -389,8 +389,8 @@ where
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
-				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest: MultiLocation = decode_multi_location(&mut dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest_bytes: &[u8] = &input.bytes_at(4)?[..];
+				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
