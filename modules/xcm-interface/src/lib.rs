@@ -180,6 +180,7 @@ pub mod module {
 				T::SovereignSubAccountLocationConvert::convert(sub_account_index),
 				WeightLimit::Limited(Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0),
 			)
+			.map(|_| ())
 		}
 
 		/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency

@@ -5,6 +5,7 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
+hex-literal = "0.3.1"
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
 scale-info = { version = "2.2.0", default-features = false, features = ["derive"] }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38", default-features = false }

@@ -27,6 +27,7 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 };
 use frame_system::EnsureSignedBy;
+use orml_traits::xcm_transfer::Transferred;
 use primitives::{CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
@@ -147,17 +148,28 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcmTransfer {
 		_amount: Balance,
 		_dest: MultiLocation,
 		_dest_weight_limit: WeightLimit,
-	) -> DispatchResult {
+	) -> Result<Transferred<AccountId32>, DispatchError> {
 		unimplemented!()
 	}
 
 	/// Transfer `MultiAsset`
-	fn transfer_multi_asset(
+	fn transfer_multiasset(
 		_who: AccountId,
 		_asset: MultiAsset,
 		_dest: MultiLocation,
 		_dest_weight_limit: WeightLimit,
-	) -> DispatchResult {
+	) -> Result<Transferred<AccountId32>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn transfer_with_fee(
+		_who: AccountId,
+		_currency_id: CurrencyId,
+		_amount: Balance,
+		_fee: Balance,
+		_dest: MultiLocation,
+		_dest_weight_limit: WeightLimit,
+	) -> Result<Transferred<AccountId>, DispatchError> {
 		unimplemented!()
 	}
 
@@ -168,7 +180,27 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcmTransfer {
 		_fee: MultiAsset,
 		_dest: MultiLocation,
 		_dest_weight_limit: WeightLimit,
-	) -> DispatchResult {
+	) -> Result<Transferred<AccountId32>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn transfer_multicurrencies(
+		_who: AccountId,
+		_currencies: Vec<(CurrencyId, Balance)>,
+		_fee_item: u32,
+		_dest: MultiLocation,
+		_dest_weight_limit: WeightLimit,
+	) -> Result<Transferred<AccountId32>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn transfer_multiassets(
+		_who: AccountId,
+		_assets: MultiAssets,
+		_fee: MultiAsset,
+		_dest: MultiLocation,
+		_dest_weight_limit: WeightLimit,
+	) -> Result<Transferred<AccountId32>, DispatchError> {
 		unimplemented!()
 	}
 }

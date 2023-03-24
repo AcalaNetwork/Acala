@@ -89,7 +89,7 @@ where
 			}
 			Action::GetEvmAddress => {
 				// bytes32
-				let input_data = input.bytes_at(1, 32)?;
+				let input_data = input.bytes32_at(1)?;
 
 				let mut buf = [0u8; 32];
 				buf.copy_from_slice(&input_data[..]);
@@ -107,7 +107,7 @@ where
 			}
 			Action::ClaimDefaultEvmAddress => {
 				// bytes32
-				let input_data = input.bytes_at(1, 32)?;
+				let input_data = input.bytes32_at(1)?;
 
 				let mut buf = [0u8; 32];
 				buf.copy_from_slice(&input_data[..]);
