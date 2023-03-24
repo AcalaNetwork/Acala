@@ -6406,6 +6406,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-liquid-crowdloan"
+version = "2.16.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "module-loans"
 version = "2.16.0"
 dependencies = [
