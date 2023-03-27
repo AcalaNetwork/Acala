@@ -310,7 +310,12 @@ impl<'config> StackSubstateMetadata<'config> {
 	}
 }
 
-pub trait StackState<'config>: Backend {
+pub trait CustomStackState {
+	fn code_hash_at_address(&self, address: H160) -> H256;
+	fn code_size_at_address(&self, address: H160) -> U256;
+}
+
+pub trait StackState<'config>: Backend + CustomStackState {
 	fn metadata(&self) -> &StackSubstateMetadata<'config>;
 	fn metadata_mut(&mut self) -> &mut StackSubstateMetadata<'config>;
 
@@ -1105,7 +1110,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 	}
 
 	fn code_size(&self, address: H160) -> U256 {
-		U256::from(self.state.code(address).len())
+		self.state.code_size_at_address(address)
 	}
 
 	fn code_hash(&self, address: H160) -> H256 {
@@ -1113,7 +1118,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 			return H256::default();
 		}
 
-		H256::from_slice(Keccak256::digest(&self.state.code(address)).as_slice())
+		self.state.code_hash_at_address(address)
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
