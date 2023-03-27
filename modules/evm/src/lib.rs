@@ -1505,6 +1505,12 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
+	/// Get code size at given address.
+	pub fn code_size_at_address(address: &EvmAddress) -> U256 {
+		Self::code_infos(Self::code_hash_at_address(address))
+			.map_or(U256::zero(), |code_info| U256::from(code_info.code_size))
+	}
+
 	/// Get code at given address.
 	pub fn code_at_address(address: &EvmAddress) -> BoundedVec<u8, MaxCodeSize> {
 		Self::codes(Self::code_hash_at_address(address))

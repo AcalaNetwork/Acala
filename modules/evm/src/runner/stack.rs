@@ -21,7 +21,7 @@
 
 use crate::{
 	runner::{
-		state::{Accessed, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
+		state::{Accessed, CustomStackState, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
 		Runner as RunnerT, RunnerExtended,
 	},
 	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, One, Pallet,
@@ -911,5 +911,15 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	fn is_storage_cold(&self, address: H160, key: H256) -> bool {
 		self.substate
 			.recursive_is_cold(&|a: &Accessed| a.accessed_storage.contains(&(address, key)))
+	}
+}
+
+impl<'vicinity, 'config, T: Config> CustomStackState for SubstrateStackState<'vicinity, 'config, T> {
+	fn code_hash_at_address(&self, address: H160) -> H256 {
+		Pallet::<T>::code_hash_at_address(&address)
+	}
+
+	fn code_size_at_address(&self, address: H160) -> U256 {
+		Pallet::<T>::code_size_at_address(&address)
 	}
 }
