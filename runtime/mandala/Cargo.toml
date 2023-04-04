@@ -92,6 +92,7 @@ orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
 orml-unknown-tokens = { path = "../../orml/unknown-tokens", default-features = false }
 orml-xcm = { path = "../../orml/xcm", default-features = false }
 orml-payments = { path = "../../orml/payments", default-features = false }
+orml-utilities = { path = "../../orml/utilities", default-features = false }
 
 # modules
 module-transaction-pause = { path = "../../modules/transaction-pause", default-features = false }
@@ -238,6 +239,7 @@ std = [
 	"orml-xcm-support/std",
 	"orml-xcm/std",
 	"orml-xtokens/std",
+	"orml-utilities/std",
 
 	"module-aggregated-dex/std",
 	"module-asset-registry/std",
