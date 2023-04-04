@@ -51,10 +51,12 @@ mod call_request;
 pub trait EVMApi<BlockHash> {
 	/// Call contract, returning the output data.
 	#[method(name = "evm_call")]
+	#[transactional]
 	fn call(&self, call_request: CallRequest, at: Option<BlockHash>) -> RpcResult<Bytes>;
 
 	/// Estimate resources needed for execution of given contract.
 	#[method(name = "evm_estimateResources")]
+	#[transactional]
 	fn estimate_resources(
 		&self,
 		from: H160,
