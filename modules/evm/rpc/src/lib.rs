@@ -18,7 +18,11 @@
 
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::log;
+use frame_support::{
+	log,
+	pallet_prelude::DispatchError,
+	storage::{with_transaction, TransactionOutcome},
+};
 use jsonrpsee::{
 	core::{async_trait, Error as JsonRpseeError, RpcResult},
 	proc_macros::rpc,
@@ -84,11 +88,13 @@ fn invalid_params<T: ToString>(message: T) -> JsonRpseeError {
 }
 
 // Fix xtokens: Transfer failed: Transactional(NoLayer)
-pub fn simulate_execution<R>(f: impl FnOnce() -> RpcResult<R>) -> RpcResult<R> {
-	sp_io::storage::start_transaction();
-	let res = f();
-	sp_io::storage::rollback_transaction();
-	res
+fn simulate_transaction<T>(f: impl FnOnce() -> RpcResult<T>) -> RpcResult<T> {
+	let mut res: Option<RpcResult<T>> = None;
+	let _ = with_transaction::<(), DispatchError, _>(|| {
+		res = Some(f());
+		TransactionOutcome::Rollback(Ok(()))
+	});
+	res.expect("result is never empty; qed")
 }
 
 #[allow(dead_code)]
@@ -176,7 +182,7 @@ where
 	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128> + Into<U256>,
 {
 	fn call(&self, request: CallRequest, at: Option<<B as BlockT>::Hash>) -> RpcResult<Bytes> {
-		simulate_execution(|| {
+		simulate_transaction(|| {
 			let api = self.client.runtime_api();
 
 			let hash = at.unwrap_or_else(|| self.client.info().best_hash);
@@ -297,7 +303,7 @@ where
 		unsigned_extrinsic: Bytes,
 		at: Option<<B as BlockT>::Hash>,
 	) -> RpcResult<EstimateResourcesResponse> {
-		simulate_execution(|| {
+		simulate_transaction(|| {
 			let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
 			let block_id = BlockId::Hash(hash);
