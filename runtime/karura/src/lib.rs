@@ -1807,24 +1807,8 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	(
-		pallet_balances::migration::MigrateToTrackInactive<Runtime, xcm_config::CheckingAccount>,
-		pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
-		// "Use 2D weights in XCM v3" <https://github.com/paritytech/polkadot/pull/6134>
-		pallet_xcm::migration::v1::MigrateToV1<Runtime>,
-		orml_unknown_tokens::Migration<Runtime>,
-		// Note: The following Migrations do not use the StorageVersion feature, must to be removed after the upgrade
-		module_asset_registry::migrations::MigrateV1MultiLocationToV3<Runtime>,
-		module_xcm_interface::migrations::MigrateXcmDestWeightAndFee<Runtime>,
-		module_transaction_pause::migrations::MigrateEvmPrecompile<Runtime>,
-	),
->;
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
