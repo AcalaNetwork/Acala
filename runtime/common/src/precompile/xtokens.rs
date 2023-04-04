@@ -673,11 +673,11 @@ mod tests {
 			"};
 
 			assert_eq!(
-				XtokensPrecompile::execute(&input, None, &context, false),
+				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
 				Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Xtoken Transfer failed".into(),
-					cost: 0,
+					cost: 9000,
 				})
 			);
 		});
@@ -736,11 +736,11 @@ mod tests {
 			"};
 
 			assert_eq!(
-				XtokensPrecompile::execute(&input, None, &context, false),
+				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
 				Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Xtoken TransferMultiAsset failed".into(),
-					cost: 0,
+					cost: 9000,
 				})
 			);
 		});
@@ -796,11 +796,11 @@ mod tests {
 			"};
 
 			assert_eq!(
-				XtokensPrecompile::execute(&input, None, &context, false),
+				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
 				Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Xtoken TransferWithFee failed".into(),
-					cost: 0,
+					cost: 9000,
 				})
 			);
 		});
@@ -868,11 +868,11 @@ mod tests {
 			"};
 
 			assert_eq!(
-				XtokensPrecompile::execute(&input, None, &context, false),
+				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
 				Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Xtoken TransferMultiAssetWithFee failed".into(),
-					cost: 0,
+					cost: 9000,
 				})
 			);
 		});
@@ -939,11 +939,11 @@ mod tests {
 			"};
 
 			assert_eq!(
-				XtokensPrecompile::execute(&input, None, &context, false),
+				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
 				Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Xtoken TransferMultiCurrencies failed".into(),
-					cost: 0,
+					cost: 9000,
 				})
 			);
 		});
@@ -1005,11 +1005,11 @@ mod tests {
 			"};
 
 			assert_eq!(
-				XtokensPrecompile::execute(&input, None, &context, false),
+				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
 				Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Xtoken TransferMultiAssets failed".into(),
-					cost: 0,
+					cost: 9000,
 				})
 			);
 		});
