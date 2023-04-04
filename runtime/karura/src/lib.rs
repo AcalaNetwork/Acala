@@ -64,6 +64,7 @@ use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
 };
+use orml_utilities::simulate_execution;
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 pub use frame_support::{
@@ -2005,17 +2006,20 @@ impl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 			_estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			<Runtime as module_evm::Config>::Runner::rpc_call(
-				from,
-				from,
-				to,
-				data,
-				value,
-				gas_limit,
-				storage_limit,
-				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-				<Runtime as module_evm::Config>::config(),
-			)
+			// Fix xtokens: Transfer failed: Transactional(NoLayer)
+			simulate_execution(|| {
+				<Runtime as module_evm::Config>::Runner::rpc_call(
+					from,
+					from,
+					to,
+					data,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+					<Runtime as module_evm::Config>::config(),
+				)
+			})
 		}
 
 		fn create(
