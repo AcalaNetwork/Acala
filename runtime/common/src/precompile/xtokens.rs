@@ -132,7 +132,7 @@ where
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: "Xtoken Transfer failed".into(),
+						output: Output::encode_error_msg("Xtoken Transfer failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
@@ -187,7 +187,7 @@ where
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: "Xtoken TransferMultiAsset failed".into(),
+						output: Output::encode_error_msg("Xtoken TransferMultiAsset failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
@@ -238,7 +238,7 @@ where
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: "Xtoken TransferWithFee failed".into(),
+						output: Output::encode_error_msg("Xtoken TransferWithFee failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
@@ -300,7 +300,7 @@ where
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: "Xtoken TransferMultiAssetWithFee failed".into(),
+						output: Output::encode_error_msg("Xtoken TransferMultiAssetWithFee failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
@@ -364,7 +364,7 @@ where
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: "Xtoken TransferMultiCurrencies failed".into(),
+						output: Output::encode_error_msg("Xtoken TransferMultiCurrencies failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
@@ -426,7 +426,7 @@ where
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: "Xtoken TransferMultiAssets failed".into(),
+						output: Output::encode_error_msg("Xtoken TransferMultiAssets failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
@@ -616,6 +616,7 @@ mod tests {
 	use frame_support::weights::Weight;
 	use hex_literal::hex;
 	use module_evm::ExitRevert;
+	use orml_utilities::with_transaction_result;
 
 	type XtokensPrecompile = crate::precompile::XtokensPrecompile<Test>;
 
@@ -672,14 +673,17 @@ mod tests {
 				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
-			assert_eq!(
-				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
-				Err(PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken Transfer failed".into(),
-					cost: 9000,
-				})
-			);
+			let _ = with_transaction_result(|| {
+				assert_eq!(
+					XtokensPrecompile::execute(&input, Some(10_000), &context, false),
+					Err(PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken Transfer failed: NotCrossChainTransferableCurrency".into(),
+						cost: 9000,
+					})
+				);
+				Ok(())
+			});
 		});
 	}
 
@@ -735,14 +739,17 @@ mod tests {
 				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
-			assert_eq!(
-				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
-				Err(PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken TransferMultiAsset failed".into(),
-					cost: 9000,
-				})
-			);
+			let _ = with_transaction_result(|| {
+				assert_eq!(
+					XtokensPrecompile::execute(&input, Some(10_000), &context, false),
+					Err(PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken TransferMultiAsset failed: InvalidDest".into(),
+						cost: 9000,
+					})
+				);
+				Ok(())
+			});
 		});
 	}
 
@@ -795,14 +802,17 @@ mod tests {
 				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
-			assert_eq!(
-				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
-				Err(PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken TransferWithFee failed".into(),
-					cost: 9000,
-				})
-			);
+			let _ = with_transaction_result(|| {
+				assert_eq!(
+					XtokensPrecompile::execute(&input, Some(10_000), &context, false),
+					Err(PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken TransferWithFee failed: NotCrossChainTransferableCurrency".into(),
+						cost: 9000,
+					})
+				);
+				Ok(())
+			});
 		});
 	}
 
@@ -867,14 +877,17 @@ mod tests {
 				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
-			assert_eq!(
-				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
-				Err(PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken TransferMultiAssetWithFee failed".into(),
-					cost: 9000,
-				})
-			);
+			let _ = with_transaction_result(|| {
+				assert_eq!(
+					XtokensPrecompile::execute(&input, Some(10_000), &context, false),
+					Err(PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken TransferMultiAssetWithFee failed: InvalidDest".into(),
+						cost: 9000,
+					})
+				);
+				Ok(())
+			});
 		});
 	}
 
@@ -938,14 +951,17 @@ mod tests {
 				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
-			assert_eq!(
-				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
-				Err(PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken TransferMultiCurrencies failed".into(),
-					cost: 9000,
-				})
-			);
+			let _ = with_transaction_result(|| {
+				assert_eq!(
+					XtokensPrecompile::execute(&input, Some(10_000), &context, false),
+					Err(PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken TransferMultiCurrencies failed: NotCrossChainTransferableCurrency".into(),
+						cost: 9000,
+					})
+				);
+				Ok(())
+			});
 		});
 	}
 
@@ -1004,14 +1020,17 @@ mod tests {
 				01821a0600020004000000000000000000000000000000000000000000000000
 			"};
 
-			assert_eq!(
-				XtokensPrecompile::execute(&input, Some(10_000), &context, false),
-				Err(PrecompileFailure::Revert {
-					exit_status: ExitRevert::Reverted,
-					output: "Xtoken TransferMultiAssets failed".into(),
-					cost: 9000,
-				})
-			);
+			let _ = with_transaction_result(|| {
+				assert_eq!(
+					XtokensPrecompile::execute(&input, Some(10_000), &context, false),
+					Err(PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Xtoken TransferMultiAssets failed: InvalidDest".into(),
+						cost: 9000,
+					})
+				);
+				Ok(())
+			});
 		});
 	}
 }

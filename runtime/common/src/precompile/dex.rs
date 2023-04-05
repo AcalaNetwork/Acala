@@ -232,7 +232,7 @@ where
 					.map_err(|e|
 							 PrecompileFailure::Revert {
 								 exit_status: ExitRevert::Reverted,
-								 output: Into::<&str>::into(e).as_bytes().to_vec(),
+								 output: Output::encode_error_msg("DEX SwapWithExactTarget failed", e),
 								 cost: target_gas_limit(target_gas).unwrap_or_default(),
 							 })?;
 
@@ -268,7 +268,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("DEX AddLiquidity failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -304,7 +304,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("DEX RemoveLiquidity failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 

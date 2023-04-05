@@ -11231,6 +11231,7 @@ dependencies = [
  "orml-rewards",
  "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "orml-xtokens",
  "pallet-balances",
  "pallet-collective",
