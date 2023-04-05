@@ -103,7 +103,7 @@ where
 				>>::adjust_loan(&who, currency_id, collateral_adjustment, debit_adjustment).map_err(|e|
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Honzon AdjustLoan failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				)?;
@@ -134,7 +134,7 @@ where
 				>>::close_loan_by_dex(who, currency_id, max_collateral_amount).map_err(|e|
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Honzon CloseLoanByDex failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				)?;

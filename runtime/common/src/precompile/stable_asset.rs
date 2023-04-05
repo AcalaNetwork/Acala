@@ -243,7 +243,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("StableAsset StableAssetSwap failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
@@ -272,7 +272,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("StableAsset StableAssetMint failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
@@ -301,7 +301,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("StableAsset StableAssetRedeem failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
@@ -329,7 +329,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("StableAsset StableAssetRedeemSingle failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
@@ -358,7 +358,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("StableAsset StableAssetRedeemMulti failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
@@ -949,7 +949,7 @@ mod tests {
 				resp,
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: b"PoolNotFound".to_vec(),
+					output: "StableAsset StableAssetSwap failed: PoolNotFound".into(),
 					cost: target_gas_limit(Some(200_000)).unwrap_or_default()
 				}
 			);
