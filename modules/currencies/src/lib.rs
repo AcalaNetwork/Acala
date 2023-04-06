@@ -285,7 +285,7 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	fn get_evm_origin() -> Result<EvmAddress, DispatchError> {
-		let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
+		let origin = T::EVMBridge::get_real_or_xcm_origin().ok_or(Error::<T>::RealOriginNotFound)?;
 		Ok(T::AddressMapping::get_or_create_evm_address(&origin))
 	}
 }
@@ -420,8 +420,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
 				// deposit from erc20 holding account to receiver(who). in xcm case which receive erc20 from sibling
-				// parachain, we choose receiver to charge storage fee. we must make sure receiver has enough native
-				// token to charge storage fee.
+				// parachain, we choose sibling parachain sovereign account to charge storage fee. we must make sure
+				// sibling parachain sovereign account has enough native token to charge storage fee.
 				let sender = T::Erc20HoldingAccount::get();
 				let from = T::AddressMapping::get_account_id(&sender);
 				ensure!(

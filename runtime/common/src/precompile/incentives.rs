@@ -117,7 +117,7 @@ where
 				>>::deposit_dex_share(&who, lp_currency_id, amount)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Incentives DepositDexShare failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -141,7 +141,7 @@ where
 				>>::withdraw_dex_share(&who, lp_currency_id, amount)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Incentives WithdrawDexShare failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -166,7 +166,7 @@ where
 				>>::claim_rewards(who, pool_id)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Incentives ClaimRewards failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 

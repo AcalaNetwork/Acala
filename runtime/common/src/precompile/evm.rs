@@ -158,7 +158,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Evm TransferMaintainer failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -175,7 +175,7 @@ where
 				<module_evm::Pallet<Runtime>>::publish_contract_precompile(who, contract_address).map_err(|e| {
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Evm PublishContract failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
@@ -192,7 +192,7 @@ where
 				<module_evm::Pallet<Runtime>>::disable_account_contract_development(who).map_err(|e| {
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Evm DisableDeveloperAccount failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
@@ -209,7 +209,7 @@ where
 				<module_evm::Pallet<Runtime>>::enable_account_contract_development(who).map_err(|e| {
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Evm EnableDeveloperAccount failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;

@@ -100,7 +100,7 @@ where
 				<module_homa::Pallet<Runtime> as HomaManager<Runtime::AccountId, Balance>>::mint(who, amount).map_err(
 					|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Homa Mint failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					},
 				)?;
@@ -128,7 +128,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Homa RequestRedeem failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 

@@ -80,6 +80,7 @@ orml-rewards = { path = "../../orml/rewards", default-features = false, optional
 
 [dev-dependencies]
 polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
+orml-utilities = { path = "../../orml/utilities" }
 
 [features]
 default = ["std"]

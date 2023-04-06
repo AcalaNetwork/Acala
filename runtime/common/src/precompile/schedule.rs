@@ -162,9 +162,11 @@ where
 						fee,
 						None,
 					)
-					.map_err(|e| PrecompileFailure::Revert {
+					.map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: "Scheduler charge failed".into(),
+						// TODO: upgrade schedule::v3::Named
+						// output: Output::encode_error_msg("Scheduler charge failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					})?;
 				}
@@ -218,7 +220,9 @@ where
 				)
 				.map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "Schedule failed".into(),
+					output: "Scheduler schedule failed".into(),
+					// TODO: upgrade schedule::v3::Named
+					// output: Output::encode_error_msg("Scheduler schedule failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -261,7 +265,9 @@ where
 				>>::cancel_named(task_id)
 				.map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "Cancel schedule failed".into(),
+					output: "Scheduler cancel failed".into(),
+					// TODO: upgrade schedule::v3::Named
+					// output: Output::encode_error_msg("Scheduler cancel failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -317,7 +323,7 @@ where
 				>>::reschedule_named(task_id, DispatchTime::After(min_delay))
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Scheduler reschedule failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
