@@ -256,7 +256,7 @@ impl<
 		let origin = origin.into();
 		let account = AccountIdConvert::convert(origin);
 		let clear = if let Ok(account) = account {
-			EVMBridge::push_origin(account);
+			EVMBridge::push_xcm_origin(account);
 			true
 		} else {
 			false
@@ -265,7 +265,7 @@ impl<
 		let res = xcm_executor::XcmExecutor::<Config>::execute(origin, weighed_message, message_hash, weight_credit);
 
 		if clear {
-			EVMBridge::pop_origin();
+			EVMBridge::pop_xcm_origin();
 		}
 		res
 	}

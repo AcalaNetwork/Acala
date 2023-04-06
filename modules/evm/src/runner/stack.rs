@@ -24,8 +24,8 @@ use crate::{
 		state::{Accessed, CustomStackState, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
 		Runner as RunnerT, RunnerExtended,
 	},
-	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, One, Pallet,
-	STORAGE_SIZE,
+	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo,
+	ExtrinsicOrigin, One, Pallet, STORAGE_SIZE,
 };
 use frame_support::{
 	dispatch::DispatchError,
@@ -42,7 +42,7 @@ pub use primitives::{
 	evm::{convert_decimals_from_evm, EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START},
 	ReserveIdentifier,
 };
-use sp_core::{H160, H256, U256};
+use sp_core::{defer, H160, H256, U256};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::{
 	boxed::Box,
@@ -370,6 +370,10 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 		access_list: Vec<(H160, Vec<H256>)>,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
+		// Ensure eth_call has evm origin, otherwise xcm charge rent fee will fail.
+		ExtrinsicOrigin::<T>::set(Some(T::AddressMapping::get_account_id(&origin)));
+		defer!(ExtrinsicOrigin::<T>::kill());
+
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(

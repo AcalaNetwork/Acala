@@ -214,7 +214,7 @@ fn three_usd_pool_works() {
 				EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB))
 			));
 			// transfer USDC erc20 from alith to ALICE/BOB, used for swap
-			<EVM as EVMTrait<AccountId>>::push_origin(alith.clone());
+			<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
 			assert_ok!(Currencies::transfer(
 				RuntimeOrigin::signed(alith.clone()),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),

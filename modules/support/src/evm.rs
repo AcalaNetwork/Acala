@@ -57,10 +57,12 @@ pub trait EVM<AccountId> {
 
 	/// Get the real origin account and charge storage rent from the origin.
 	fn get_origin() -> Option<AccountId>;
+	fn set_origin(origin: AccountId);
 	/// Push new EVM origin
-	fn push_origin(origin: AccountId);
+	fn push_xcm_origin(origin: AccountId);
 	/// Pop EVM origin
-	fn pop_origin();
+	fn pop_xcm_origin();
+	fn get_real_or_xcm_origin() -> Option<AccountId>;
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
@@ -98,10 +100,14 @@ pub trait EVMBridge<AccountId, Balance> {
 	fn transfer(context: InvokeContext, to: EvmAddress, value: Balance) -> DispatchResult;
 	/// Get the real origin account and charge storage rent from the origin.
 	fn get_origin() -> Option<AccountId>;
-	/// Push new EVM origin
-	fn push_origin(origin: AccountId);
-	/// Pop EVM origin
-	fn pop_origin();
+	/// Set the EVM origin
+	fn set_origin(origin: AccountId);
+	/// Push new EVM origin in xcm
+	fn push_xcm_origin(origin: AccountId);
+	/// Pop EVM origin in xcmg
+	fn pop_xcm_origin();
+	/// Get the real origin account or xcm origin and charge storage rent from the origin.
+	fn get_real_or_xcm_origin() -> Option<AccountId>;
 }
 
 #[cfg(feature = "std")]
@@ -127,8 +133,12 @@ impl<AccountId, Balance: Default> EVMBridge<AccountId, Balance> for () {
 	fn get_origin() -> Option<AccountId> {
 		None
 	}
-	fn push_origin(_origin: AccountId) {}
-	fn pop_origin() {}
+	fn set_origin(_origin: AccountId) {}
+	fn push_xcm_origin(_origin: AccountId) {}
+	fn pop_xcm_origin() {}
+	fn get_real_or_xcm_origin() -> Option<AccountId> {
+		None
+	}
 }
 
 /// EVM bridge for collateral liquidation.

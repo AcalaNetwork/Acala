@@ -61,7 +61,7 @@ fn to_bridged_works() {
 			erc20_address()
 		));
 		// ensure the honzon-bridge pallet account bind the evmaddress
-		<EVM as EVMTrait<AccountId>>::push_origin(EvmAccountsModule::get_account_id(&alice_evm_addr()));
+		<EVM as EVMTrait<AccountId>>::set_origin(EvmAccountsModule::get_account_id(&alice_evm_addr()));
 		assert_ok!(Currencies::transfer(
 			RuntimeOrigin::signed(alice()),
 			HonzonBridgeAccount::get(),
@@ -132,7 +132,7 @@ fn from_bridged_works() {
 			erc20_address()
 		));
 		// ensure the honzon-bridge pallet account bind the evmaddress
-		<EVM as EVMTrait<AccountId>>::push_origin(EvmAccountsModule::get_account_id(&alice_evm_addr()));
+		<EVM as EVMTrait<AccountId>>::set_origin(EvmAccountsModule::get_account_id(&alice_evm_addr()));
 		assert_ok!(Currencies::transfer(
 			RuntimeOrigin::signed(alice()),
 			HonzonBridgeAccount::get(),
