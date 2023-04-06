@@ -238,7 +238,7 @@ fn dex_module_works_with_evm_contract() {
 				0,
 			));
 
-			<EVM as EVMTrait<AccountId>>::push_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
+			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
 			assert_ok!(Dex::add_provision(
 				RuntimeOrigin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
@@ -261,7 +261,7 @@ fn dex_module_works_with_evm_contract() {
 			);
 
 			// CurrencyId::DexShare(Erc20, Erc20)
-			<EVM as EVMTrait<AccountId>>::push_origin(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()));
+			<EVM as EVMTrait<AccountId>>::set_origin(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()));
 
 			assert_ok!(Dex::add_provision(
 				RuntimeOrigin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
@@ -431,7 +431,7 @@ fn test_multicurrency_precompile_module() {
 			));
 
 			// CurrencyId::DexShare(Erc20, Erc20)
-			<EVM as EVMTrait<AccountId>>::push_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
+			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
 			assert_ok!(Dex::add_provision(
 				RuntimeOrigin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
@@ -765,7 +765,7 @@ fn test_default_evm_address_in_evm_accounts_module() {
 			assert!(EvmAccounts::evm_addresses(AccountId::from(ALICE)).is_some());
 
 			// get_or_create_evm_address
-			<EVM as EVMTrait<AccountId>>::push_origin(alice());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 			assert_ok!(Currencies::transfer(
 				RuntimeOrigin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
@@ -861,7 +861,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 				0,
 			));
 
-			<EVM as EVMTrait<AccountId>>::push_origin(alice_evm_account.clone());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
 			assert_ok!(Dex::add_provision(
 				RuntimeOrigin::signed(alice_evm_account.clone()),
 				erc20_token,
@@ -875,7 +875,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			assert_eq!(Currencies::free_balance(dex_share, &alice_evm_account), 0);
 
 			// CurrencyId::DexShare(Erc20, ACA)
-			<EVM as EVMTrait<AccountId>>::push_origin(alice_evm_account.clone());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
 			assert_ok!(Dex::add_provision(
 				RuntimeOrigin::signed(alice_evm_account.clone()),
 				erc20_token,
@@ -1252,7 +1252,7 @@ fn honzon_works_with_evm_contract() {
 				.map(|n| n.saturating_mul_int(MinimumDebitValue::get()))
 				.unwrap();
 
-			<EVM as EVMTrait<AccountId>>::push_origin(alice_evm_account.clone());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
 			// 1.Honzon::adjust_loan
 			assert_ok!(Honzon::adjust_loan(
 				RuntimeOrigin::signed(alice_evm_account.clone()),

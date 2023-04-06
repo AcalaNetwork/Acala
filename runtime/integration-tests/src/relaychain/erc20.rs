@@ -30,7 +30,7 @@ use module_support::EVM as EVMTrait;
 use orml_traits::MultiCurrency;
 use primitives::evm::EvmAddress;
 use runtime_common::precompile::XtokensPrecompile;
-use sp_core::{bounded::BoundedVec, H256, U256};
+use sp_core::{bounded::BoundedVec, defer, H256, U256};
 use std::str::FromStr;
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
@@ -168,9 +168,10 @@ fn erc20_transfer_between_sibling() {
 
 		// `transfer` invoked by `TransferReserveAsset` xcm instruction need to passing origin check.
 		// In frontend/js, when issue xtokens extrinsic, it have `EvmSetOrigin` SignedExtra to
-		// `push_origin`. In testcase, we're manual invoke `push_origin` here. because in erc20 xtokens
+		// `set_origin`. In testcase, we're manual invoke `set_origin` here. because in erc20 xtokens
 		// transfer, the `from` or `to` is not erc20 holding account. so we need make sure origin exists.
-		<EVM as EVMTrait<AccountId>>::push_origin(alith.clone());
+		<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
+		defer!(<EVM as EVMTrait<AccountId>>::kill_origin());
 
 		assert_eq!(
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith),
@@ -392,8 +393,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 			EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 		));
 
-		<EVM as EVMTrait<AccountId>>::push_origin(alith.clone());
-
+		<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
 		// use Currencies `transfer` dispatch call to transfer erc20 token to bob.
 		assert_ok!(Currencies::transfer(
 			RuntimeOrigin::signed(alith),
@@ -405,6 +405,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE)),
 			1_000_000_000_000_000
 		);
+		<EVM as EVMTrait<AccountId>>::kill_origin();
 
 		// transfer erc20 token to Karura
 		assert_ok!(XTokens::transfer(
@@ -523,9 +524,10 @@ fn xtokens_precompile_works() {
 
 		// `transfer` invoked by `TransferReserveAsset` xcm instruction need to passing origin check.
 		// In frontend/js, when issue xtokens extrinsic, it have `EvmSetOrigin` SignedExtra to
-		// `push_origin`. In testcase, we're manual invoke `push_origin` here. because in erc20 xtokens
+		// `set_origin`. In testcase, we're manual invoke `set_origin` here. because in erc20 xtokens
 		// transfer, the `from` or `to` is not erc20 holding account. so we need make sure origin exists.
-		<EVM as EVMTrait<AccountId>>::push_origin(alith.clone());
+		<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
+		defer!(<EVM as EVMTrait<AccountId>>::kill_origin());
 
 		assert_eq!(
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith),
