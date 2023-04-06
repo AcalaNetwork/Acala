@@ -1924,6 +1924,11 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 		ExtrinsicOrigin::<T>::set(Some(origin));
 	}
 
+	// Kill the EVM origin
+	fn kill_origin() {
+		ExtrinsicOrigin::<T>::kill();
+	}
+
 	// Set the EVM origin in xcm
 	fn push_xcm_origin(origin: T::AccountId) {
 		XcmOrigin::<T>::mutate(|o| {
@@ -1945,6 +1950,11 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 				}
 			}
 		});
+	}
+
+	// Kill the EVM origin in xcm
+	fn kill_xcm_origin() {
+		XcmOrigin::<T>::kill();
 	}
 
 	// Get the real origin account or xcm origin and charge storage rent from the origin.

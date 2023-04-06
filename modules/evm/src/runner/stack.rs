@@ -24,8 +24,8 @@ use crate::{
 		state::{Accessed, CustomStackState, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
 		Runner as RunnerT, RunnerExtended,
 	},
-	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo,
-	ExtrinsicOrigin, One, Pallet, STORAGE_SIZE,
+	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, One, Pallet,
+	STORAGE_SIZE,
 };
 use frame_support::{
 	dispatch::DispatchError,
@@ -37,7 +37,7 @@ use module_evm_utility::{
 	ethereum::Log,
 	evm::{self, backend::Backend as BackendT, ExitError, ExitReason, Transfer},
 };
-use module_support::AddressMapping;
+use module_support::{AddressMapping, EVM};
 pub use primitives::{
 	evm::{convert_decimals_from_evm, EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START},
 	ReserveIdentifier,
@@ -371,8 +371,8 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
 		// Ensure eth_call has evm origin, otherwise xcm charge rent fee will fail.
-		ExtrinsicOrigin::<T>::set(Some(T::AddressMapping::get_account_id(&origin)));
-		defer!(ExtrinsicOrigin::<T>::kill());
+		Pallet::<T>::set_origin(T::AddressMapping::get_account_id(&origin));
+		defer!(Pallet::<T>::kill_origin());
 
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));

@@ -57,11 +57,17 @@ pub trait EVM<AccountId> {
 
 	/// Get the real origin account and charge storage rent from the origin.
 	fn get_origin() -> Option<AccountId>;
+	/// Set the EVM origin
 	fn set_origin(origin: AccountId);
-	/// Push new EVM origin
+	/// Kill the EVM origin
+	fn kill_origin();
+	/// Push new EVM origin in xcm
 	fn push_xcm_origin(origin: AccountId);
-	/// Pop EVM origin
+	/// Pop EVM origin in xcm
 	fn pop_xcm_origin();
+	/// Kill the EVM origin in xcm
+	fn kill_xcm_origin();
+	/// Get the real origin account or xcm origin and charge storage rent from the origin.
 	fn get_real_or_xcm_origin() -> Option<AccountId>;
 }
 
@@ -102,10 +108,14 @@ pub trait EVMBridge<AccountId, Balance> {
 	fn get_origin() -> Option<AccountId>;
 	/// Set the EVM origin
 	fn set_origin(origin: AccountId);
+	/// Kill the EVM origin
+	fn kill_origin();
 	/// Push new EVM origin in xcm
 	fn push_xcm_origin(origin: AccountId);
-	/// Pop EVM origin in xcmg
+	/// Pop EVM origin in xcm
 	fn pop_xcm_origin();
+	/// Kill the EVM origin in xcm
+	fn kill_xcm_origin();
 	/// Get the real origin account or xcm origin and charge storage rent from the origin.
 	fn get_real_or_xcm_origin() -> Option<AccountId>;
 }
@@ -134,8 +144,10 @@ impl<AccountId, Balance: Default> EVMBridge<AccountId, Balance> for () {
 		None
 	}
 	fn set_origin(_origin: AccountId) {}
+	fn kill_origin() {}
 	fn push_xcm_origin(_origin: AccountId) {}
 	fn pop_xcm_origin() {}
+	fn kill_xcm_origin() {}
 	fn get_real_or_xcm_origin() -> Option<AccountId> {
 		None
 	}

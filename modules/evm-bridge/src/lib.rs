@@ -255,12 +255,20 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		T::EVM::set_origin(origin);
 	}
 
+	fn kill_origin() {
+		T::EVM::kill_origin();
+	}
+
 	fn push_xcm_origin(origin: AccountIdOf<T>) {
 		T::EVM::push_xcm_origin(origin);
 	}
 
 	fn pop_xcm_origin() {
 		T::EVM::pop_xcm_origin();
+	}
+
+	fn kill_xcm_origin() {
+		T::EVM::kill_xcm_origin();
 	}
 
 	fn get_real_or_xcm_origin() -> Option<AccountIdOf<T>> {
