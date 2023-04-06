@@ -66,6 +66,27 @@ pub enum StakingCall {
 	WithdrawUnbonded(u32),
 }
 
+/// `pallet-xcm` calls.
+#[derive(Encode, Decode, RuntimeDebug)]
+pub enum XcmCall {
+	/// `reserve_transfer_assets(dest, beneficiary, assets, fee_asset_item)` call.
+	#[codec(index = 2)]
+	ReserveTransferAssets(
+		VersionedMultiLocation,
+		VersionedMultiLocation,
+		VersionedMultiAssets,
+		u32,
+	),
+}
+
+/// `pallet-proxy` calls.
+#[derive(Encode, Decode, RuntimeDebug)]
+pub enum ProxyCall<T: Config, RelayChainCall> {
+	/// `proxy(real, force_proxy_type, call)` call.
+	#[codec(index = 0)]
+	Proxy(<T::Lookup as StaticLookup>::Source, Option<()>, RelayChainCall),
+}
+
 #[cfg(feature = "kusama")]
 mod kusama {
 	use crate::*;
@@ -79,7 +100,11 @@ mod kusama {
 		#[codec(index = 6)]
 		Staking(StakingCall),
 		#[codec(index = 24)]
-		Utility(Box<UtilityCall<Self>>),
+		Utility(Box<UtilityCall<RelayChainCall<T>>>),
+		#[codec(index = 30)]
+		Proxy(Box<ProxyCall<T, RelayChainCall<T>>>),
+		#[codec(index = 99)]
+		XcmPallet(XcmCall),
 	}
 }
 
@@ -96,7 +121,11 @@ mod polkadot {
 		#[codec(index = 7)]
 		Staking(StakingCall),
 		#[codec(index = 26)]
-		Utility(Box<UtilityCall<Self>>),
+		Utility(Box<UtilityCall<RelayChainCall<T>>>),
+		#[codec(index = 29)]
+		Proxy(Box<ProxyCall<T, RelayChainCall<T>>>),
+		#[codec(index = 99)]
+		XcmPallet(XcmCall),
 	}
 }
 
@@ -207,5 +236,23 @@ where
 			],
 		]
 		.concat())
+	}
+
+	fn xcm_pallet_reserve_transfer_assets(
+		dest: MultiLocation,
+		beneficiary: MultiLocation,
+		assets: MultiAssets,
+		fee_assets_item: u32,
+	) -> Self::RelayChainCall {
+		RelayChainCall::XcmPallet(XcmCall::ReserveTransferAssets(
+			VersionedMultiLocation::V3(dest),
+			VersionedMultiLocation::V3(beneficiary),
+			VersionedMultiAssets::V3(assets),
+			fee_assets_item,
+		))
+	}
+
+	fn proxy_call(real: Self::AccountId, call: Self::RelayChainCall) -> Self::RelayChainCall {
+		RelayChainCall::Proxy(Box::new(ProxyCall::Proxy(T::Lookup::unlookup(real), None, call)))
 	}
 }

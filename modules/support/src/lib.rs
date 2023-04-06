@@ -36,6 +36,7 @@ pub mod evm;
 pub mod homa;
 pub mod honzon;
 pub mod incentives;
+pub mod liquid_crowdloan;
 pub mod mocks;
 pub mod stable_asset;
 
@@ -45,6 +46,7 @@ pub use crate::evm::*;
 pub use crate::homa::*;
 pub use crate::honzon::*;
 pub use crate::incentives::*;
+pub use crate::liquid_crowdloan::*;
 pub use crate::stable_asset::*;
 
 pub type Price = FixedU128;
@@ -152,6 +154,25 @@ pub trait CallBuilder {
 		calls: Vec<(Self::RelayChainCall, XcmWeight)>,
 		extra_fee: Self::Balance,
 	) -> Xcm<()>;
+
+	/// Reserve transfer assets.
+	/// params:
+	/// - dest: The destination chain.
+	/// - beneficiary: The beneficiary.
+	/// - assets: The assets to be transferred.
+	/// - fee_assets_item: The index of assets for fees.
+	fn xcm_pallet_reserve_transfer_assets(
+		dest: MultiLocation,
+		beneficiary: MultiLocation,
+		assets: MultiAssets,
+		fee_assets_item: u32,
+	) -> Self::RelayChainCall;
+
+	/// Proxy a call with a `real` account without a forced proxy type.
+	/// params:
+	/// - real: The real account.
+	/// - call: The call to be executed.
+	fn proxy_call(real: Self::AccountId, call: Self::RelayChainCall) -> Self::RelayChainCall;
 }
 
 /// Dispatchable tasks

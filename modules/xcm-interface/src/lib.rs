@@ -27,9 +27,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{log, pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, traits::Get, transactional};
 use frame_system::pallet_prelude::*;
-use module_support::{CallBuilder, HomaSubAccountXcm};
+use module_support::{CallBuilder, CrowdloanVaultXcm, HomaSubAccountXcm};
 use orml_traits::XcmTransfer;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
@@ -57,6 +57,8 @@ pub mod module {
 		HomaUnbond,
 		// Parachain fee with location info
 		ParachainFee(Box<MultiLocation>),
+		// `XcmPallet::reserve_transfer_assets` call via proxy account
+		ProxyReserveTransferAssets,
 	}
 
 	#[pallet::config]
@@ -87,6 +89,17 @@ pub mod module {
 
 		/// The interface to Cross-chain transfer.
 		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
+
+		/// Self parachain location.
+		#[pallet::constant]
+		type SelfLocation: Get<MultiLocation>;
+
+		/// Convert AccountId to MultiLocation to build XCM message.
+		type AccountIdToMultiLocation: Convert<Self::AccountId, MultiLocation>;
+
+		/// Crowdloan vault account.
+		#[pallet::constant]
+		type CrowdloanVaultAccount: Get<Self::AccountId>;
 	}
 
 	#[pallet::error]
@@ -275,6 +288,41 @@ pub mod module {
 		/// The fee of parachain transfer.
 		fn get_parachain_fee(location: MultiLocation) -> Balance {
 			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ParachainFee(Box::new(location))).1
+		}
+	}
+
+	impl<T: Config> CrowdloanVaultXcm<T::AccountId, Balance> for Pallet<T> {
+		fn transfer_to_liquid_crowdloan_module_account(
+			vault: T::AccountId,
+			recipient: T::AccountId,
+			amount: Balance,
+		) -> DispatchResult {
+			let (xcm_dest_weight, xcm_fee) =
+				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ProxyReserveTransferAssets);
+
+			let proxy_call = T::RelayChainCallBuilder::proxy_call(
+				vault.clone(),
+				T::RelayChainCallBuilder::xcm_pallet_reserve_transfer_assets(
+					T::SelfLocation::get(),
+					T::AccountIdToMultiLocation::convert(recipient.clone()),
+					// Note this message is executed in the relay chain context.
+					vec![(Concrete(Here.into()), amount).into()].into(),
+					0,
+				),
+			);
+			let xcm_message =
+				T::RelayChainCallBuilder::finalize_call_into_xcm_message(proxy_call, xcm_fee, xcm_dest_weight);
+
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			log::debug!(
+				target: "xcm-interface",
+				"Send {:?} DOT from crowdloan vault {:?} to {:?}, result: {:?}",
+				amount, vault, recipient, result,
+			);
+
+			ensure!(result.is_ok(), Error::<T>::XcmFailed);
+
+			Ok(())
 		}
 	}
 }

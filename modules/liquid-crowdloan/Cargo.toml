@@ -14,6 +14,7 @@ frame-system = { git = "https://github.com/paritytech/substrate", branch = "polk
 
 orml-traits = { path = "../../orml/traits", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+support = { package = "module-support", path = "../support", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
@@ -29,6 +30,7 @@ std = [
 	"frame-system/std",
 	"orml-traits/std",
 	"primitives/std",
+	"support/std",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

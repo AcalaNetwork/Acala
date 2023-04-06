@@ -1400,6 +1400,8 @@ impl module_xcm_interface::Config for Runtime {
 	type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
 	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
 	type XcmTransfer = XTokens;
+	type SelfLocation = xcm_config::SelfLocation;
+	type AccountIdToMultiLocation = xcm_config::AccountIdToMultiLocation;
 }
 
 parameter_types! {

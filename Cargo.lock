@@ -6412,6 +6412,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "module-support",
  "orml-traits",
  "parity-scale-codec",
  "scale-info",

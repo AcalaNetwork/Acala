@@ -23,11 +23,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, PalletId};
+use frame_support::{pallet_prelude::*, traits::EnsureOrigin, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::traits::AccountIdConversion;
+
+use support::CrowdloanVaultXcm;
 
 mod mock;
 mod tests;
@@ -49,13 +51,29 @@ pub mod module {
 
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
+
+		/// The governance origin for liquid crowdloan module. For instance for DOT cross-chain
+		/// transfer DOT from relay chain crowdloan vault to liquid crowdloan module account.
+		type GovernanceOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+
+		/// The crowdloan vault account on relay chain.
+		#[pallet::constant]
+		type CrowdloanVault: Get<Self::AccountId>;
+
+		/// XCM transfer impl.
+		type XcmTransfer: CrowdloanVaultXcm<Self::AccountId, Balance>;
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Liquid Crowdloan asset was redeemed.
-		Redeemed { amount: Balance },
+		Redeemed {
+			amount: Balance,
+		},
+		TransferFromCrowdloanVaultRequested {
+			amount: Balance,
+		},
 	}
 
 	#[pallet::pallet]
@@ -72,6 +90,29 @@ pub mod module {
 			T::Currency::transfer(T::LiquidCrowdloanCurrencyId::get(), &Self::account_id(), &who, amount)?;
 
 			Self::deposit_event(Event::Redeemed { amount });
+
+			Ok(())
+		}
+
+		/// Cross-chain transfer DOT from relay chain crowdloan vault to liquid crowdloan module
+		/// account.
+		///
+		/// This call requires `GovernanceOrigin`.
+		#[pallet::call_index(1)]
+		#[pallet::weight(0)]
+		pub fn transfer_from_crowdloan_vault(
+			origin: OriginFor<T>,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			T::XcmTransfer::transfer_to_liquid_crowdloan_module_account(
+				T::CrowdloanVault::get(),
+				Self::account_id(),
+				amount,
+			)?;
+
+			Self::deposit_event(Event::TransferFromCrowdloanVaultRequested { amount });
 
 			Ok(())
 		}
