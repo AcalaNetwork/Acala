@@ -131,6 +131,8 @@ parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const ParachainAccount: AccountId = AccountId32::new([0u8; 32]);
 	pub const ParachainId: module_relaychain::ParaId = module_relaychain::ParaId::new(2000);
+	pub CrowdloanVaultAccount: AccountId = AccountId::from([0u8; 32]);
+	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainId::get().into())));
 }
 
 pub struct SubAccountIndexMultiLocationConvertor;
@@ -205,6 +207,17 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcmTransfer {
 	}
 }
 
+pub struct AccountIdToMultiLocation;
+impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
+	fn convert(account: AccountId) -> MultiLocation {
+		X1(Junction::AccountId32 {
+			network: None,
+			id: account.into(),
+		})
+		.into()
+	}
+}
+
 impl Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
@@ -212,8 +225,11 @@ impl Config for Runtime {
 	type ParachainAccount = ParachainAccount;
 	type RelayChainUnbondingSlashingSpans = ConstU32<28>;
 	type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
-	type RelayChainCallBuilder = module_relaychain::RelayChainCallBuilder<Runtime, ParachainId>;
+	type RelayChainCallBuilder = module_relaychain::RelayChainCallBuilder<ParachainId>;
 	type XcmTransfer = MockXcmTransfer;
+	type SelfLocation = SelfLocation;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation;
+	type CrowdloanVaultAccount = CrowdloanVaultAccount;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

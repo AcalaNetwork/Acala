@@ -1382,6 +1382,8 @@ impl module_homa::Config for Runtime {
 
 parameter_types! {
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account_truncating();
+	//TODO: update with real crowdloan account
+	pub CrowdloanVaultAccount: AccountId = AccountId::from([0u8; 32]);
 }
 
 pub struct SubAccountIndexMultiLocationConvertor;
@@ -1398,10 +1400,11 @@ impl module_xcm_interface::Config for Runtime {
 	type ParachainAccount = ParachainAccount;
 	type RelayChainUnbondingSlashingSpans = ConstU32<5>;
 	type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
-	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
+	type RelayChainCallBuilder = RelayChainCallBuilder<ParachainInfo>;
 	type XcmTransfer = XTokens;
 	type SelfLocation = xcm_config::SelfLocation;
 	type AccountIdToMultiLocation = xcm_config::AccountIdToMultiLocation;
+	type CrowdloanVaultAccount = CrowdloanVaultAccount;
 }
 
 parameter_types! {
