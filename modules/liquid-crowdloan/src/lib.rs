@@ -50,6 +50,9 @@ pub mod module {
 		type LiquidCrowdloanCurrencyId: Get<CurrencyId>;
 
 		#[pallet::constant]
+		type RelayChainCurrencyId: Get<CurrencyId>;
+
+		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
 		/// The governance origin for liquid crowdloan module. For instance for DOT cross-chain
@@ -87,15 +90,15 @@ pub mod module {
 
 			T::Currency::withdraw(T::LiquidCrowdloanCurrencyId::get(), &who, amount)?;
 
-			T::Currency::transfer(T::LiquidCrowdloanCurrencyId::get(), &Self::account_id(), &who, amount)?;
+			T::Currency::transfer(T::RelayChainCurrencyId::get(), &Self::account_id(), &who, amount)?;
 
 			Self::deposit_event(Event::Redeemed { amount });
 
 			Ok(())
 		}
 
-		/// Cross-chain transfer DOT from relay chain crowdloan vault to liquid crowdloan module
-		/// account.
+		/// Send an XCM message to cross-chain transfer DOT from relay chain crowdloan vault to
+		///  liquid crowdloan module account.
 		///
 		/// This call requires `GovernanceOrigin`.
 		#[pallet::call_index(1)]

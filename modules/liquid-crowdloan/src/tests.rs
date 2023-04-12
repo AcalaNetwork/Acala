@@ -20,12 +20,78 @@
 
 #![cfg(test)]
 
+use super::*;
 use crate::mock::*;
-use frame_support::assert_ok;
+use frame_support::{assert_err, assert_ok};
+use orml_traits::MultiCurrency;
+use sp_runtime::traits::BadOrigin;
 
 #[test]
-fn set_dummy_work() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Ok(()));
+fn redeem_works() {
+	ExtBuilder::default()
+		.balances(vec![(BOB, LDOT, 100), (LiquidCrowdloan::account_id(), DOT, 100)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(LiquidCrowdloan::redeem(RuntimeOrigin::signed(BOB), 100));
+			assert_eq!(Currencies::free_balance(LDOT, &BOB), 0);
+			assert_eq!(Currencies::free_balance(DOT, &BOB), 100);
+			assert_eq!(Currencies::free_balance(DOT, &LiquidCrowdloan::account_id()), 0);
+			System::assert_last_event(RuntimeEvent::LiquidCrowdloan(crate::Event::Redeemed { amount: 100 }));
+		});
+}
+
+#[test]
+fn redeem_fails_if_not_enough_liquid_crowdloan_token() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_err!(
+			LiquidCrowdloan::redeem(RuntimeOrigin::signed(BOB), 100),
+			orml_tokens::Error::<Runtime>::BalanceTooLow
+		);
 	});
+}
+
+#[test]
+fn redeem_fails_if_not_enough_relay_chain_token() {
+	ExtBuilder::default()
+		.balances(vec![(BOB, LDOT, 100)])
+		.build()
+		.execute_with(|| {
+			assert_err!(
+				LiquidCrowdloan::redeem(RuntimeOrigin::signed(BOB), 100),
+				orml_tokens::Error::<Runtime>::BalanceTooLow
+			);
+		});
+}
+
+#[test]
+fn transfer_from_crowdloan_vault_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(LiquidCrowdloan::transfer_from_crowdloan_vault(
+			RuntimeOrigin::signed(ALICE),
+			100,
+		));
+		System::assert_last_event(RuntimeEvent::LiquidCrowdloan(
+			crate::Event::TransferFromCrowdloanVaultRequested { amount: 100 },
+		));
+	});
+}
+
+#[test]
+fn transfer_from_crowdloan_vault_fails_if_not_gov_origin() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_err!(
+			LiquidCrowdloan::transfer_from_crowdloan_vault(RuntimeOrigin::signed(BOB), 100,),
+			BadOrigin
+		);
+	});
+}
+
+#[test]
+fn transfer_from_crowdloan_vault_fails_if_sending_xcm_failed() {
+	ExtBuilder::default().transfer_ok(false).build().execute_with(|| {
+		assert_err!(
+			LiquidCrowdloan::transfer_from_crowdloan_vault(RuntimeOrigin::signed(ALICE), 100,),
+			DispatchError::Other("transfer failed")
+		);
+	})
 }
