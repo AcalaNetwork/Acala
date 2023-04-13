@@ -16,11 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::relaychain::fee_test::*;
 use crate::relaychain::polkadot_test_net::*;
 use crate::setup::*;
 
-use frame_support::{assert_noop, assert_ok};
+use frame_support::assert_ok;
 use module_xcm_interface::XcmInterfaceOperation;
 use sp_runtime::traits::StaticLookup;
 use xcm_emulator::TestExt;
@@ -39,9 +38,9 @@ fn transfer_from_crowdloan_vault_works() {
 	let acala_sovereign_account: AccountId = ParaId::from(ACALA_PARA_ID).into_account_truncating();
 
 	PolkadotNet::execute_with(|| {
-		use polkadot_runtime::{Balances, Proxy, ProxyType, Runtime, RuntimeCall, RuntimeOrigin, XcmPallet};
+		use polkadot_runtime::{Balances, Proxy, ProxyType, Runtime, RuntimeOrigin};
 
-		Balances::deposit_creating(&vault, dollar(DOT) * 100);
+		let _ = Balances::deposit_creating(&vault, dollar(DOT) * 100);
 
 		assert_ok!(Proxy::add_proxy(
 			RuntimeOrigin::signed(vault.clone()),
@@ -71,20 +70,6 @@ fn transfer_from_crowdloan_vault_works() {
 		// 	<Runtime as frame_system::Config>::Lookup::unlookup(vault.clone()),
 		// 	None,
 		// 	Box::new(call),
-		// ));
-
-		// assert_ok!(XcmPallet::reserve_transfer_assets(
-		// 	RuntimeOrigin::signed(vault),
-		// 	Box::new(Parachain(2000).into_versioned()),
-		// 	Box::new(
-		// 		Junction::AccountId32 {
-		// 			id: module_liquid_crowdloan_account.clone().into(),
-		// 			network: None
-		// 		}
-		// 		.into_versioned()
-		// 	),
-		// 	Box::new((Here, dollar(DOT)).into()),
-		// 	0
 		// ));
 	});
 

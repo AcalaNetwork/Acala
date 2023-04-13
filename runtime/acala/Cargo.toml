@@ -382,6 +382,7 @@ try-runtime = [
 	"module-transaction-pause/try-runtime",
 	"module-transaction-payment/try-runtime",
 	"module-xcm-interface/try-runtime",
+	"module-liquid-crowdloan/try-runtime",
 
 	"primitives/try-runtime",
 

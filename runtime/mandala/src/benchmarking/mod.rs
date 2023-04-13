@@ -43,6 +43,7 @@ pub mod homa;
 pub mod honzon;
 pub mod idle_scheduler;
 pub mod incentives;
+pub mod liquid_crowdloan;
 pub mod nominees_election;
 pub mod nutsfinance_stable_asset;
 pub mod prices;
