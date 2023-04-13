@@ -73,7 +73,7 @@ use sp_core::{H160, H256, U256};
 use sp_runtime::{
 	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto, Zero},
 	transaction_validity::TransactionValidityError,
-	Either, TransactionOutcome,
+	Either, SaturatedConversion, TransactionOutcome,
 };
 use sp_std::{cmp, collections::btree_map::BTreeMap, fmt::Debug, marker::PhantomData, prelude::*};
 
@@ -91,6 +91,8 @@ pub use weights::WeightInfo;
 
 /// Storage key size and storage value size.
 pub const STORAGE_SIZE: u32 = 64;
+/// Remove contract item limit
+pub const REMOVE_LIMIT: u32 = 100;
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -1344,14 +1346,16 @@ impl<T: Config> Pallet<T> {
 	pub fn remove_contract(caller: &EvmAddress, contract: &EvmAddress) -> DispatchResult {
 		let contract_account = T::AddressMapping::get_account_id(contract);
 
-		Accounts::<T>::try_mutate_exists(contract, |account_info| -> DispatchResult {
+		Accounts::<T>::try_mutate_exists(contract, |maybe_account_info| -> DispatchResult {
 			// We will keep the nonce until the storages are cleared.
 			// Only remove the `contract_info`
-			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info.contract_info.take().ok_or(Error::<T>::ContractNotFound)?;
 
+			let mut code_size: u32 = 0;
 			CodeInfos::<T>::mutate_exists(contract_info.code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
+					code_size = code_info.code_size;
 					code_info.ref_count = code_info.ref_count.saturating_sub(1);
 					if code_info.ref_count == 0 {
 						Codes::<T>::remove(contract_info.code_hash);
@@ -1363,16 +1367,51 @@ impl<T: Config> Pallet<T> {
 				}
 			});
 
-			ContractStorageSizes::<T>::take(contract);
+			let total_size = ContractStorageSizes::<T>::take(contract);
+			if total_size
+				.saturating_sub(T::NewContractExtraBytes::get())
+				.saturating_sub(code_size)
+				.checked_div(STORAGE_SIZE)
+				.expect("constant never failed; qed")
+				<= REMOVE_LIMIT
+			{
+				// remove directly
+				let r = <AccountStorages<T>>::clear_prefix(contract, REMOVE_LIMIT, None);
+				log::debug!(
+					target: "evm",
+					"Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, backend: {:?}, unique: {:?}]",
+					caller, contract, contract_info.maintainer, r.backend, r.unique
+				);
 
-			T::IdleScheduler::schedule(
-				EvmTask::Remove {
-					caller: *caller,
-					contract: *contract,
-					maintainer: contract_info.maintainer,
+				if r.maybe_cursor.is_none() {
+					// AllRemoved
+					let result = Pallet::<T>::refund_storage(caller, contract, &contract_info.maintainer);
+					// We also remove the contract if refund storage failed.
+					debug_assert!(result.is_ok());
+					log::debug!(
+						target: "evm",
+						"refund_storage: [from: {:?}, contract: {:?}, maintainer: {:?}, result: {:?}]",
+						caller, contract, contract_info.maintainer, result
+					);
+
+					// Remove account after all of the storages are cleared.
+					*maybe_account_info = None;
+				} else {
+					// shouldn't happen.
+					debug_assert!(false);
 				}
-				.into(),
-			)
+				Ok(())
+			} else {
+				// schedule to remove
+				T::IdleScheduler::schedule(
+					EvmTask::Remove {
+						caller: *caller,
+						contract: *contract,
+						maintainer: contract_info.maintainer,
+					}
+					.into(),
+				)
+			}
 		})?;
 
 		// this should happen after `Accounts` is updated because this could trigger another updates on
@@ -1541,7 +1580,7 @@ impl<T: Config> Pallet<T> {
 			if change > 0 {
 				*val = val.saturating_add(change as u32);
 			} else {
-				*val = val.saturating_sub((-change) as u32);
+				*val = val.saturating_sub(change.unsigned_abs());
 			}
 		});
 	}
@@ -2150,17 +2189,18 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 				contract,
 				maintainer,
 			} => {
-				// default limit 100
-				let limit = cmp::min(
+				// default limit REMOVE_LIMIT
+				let limit: u32 = cmp::min(
 					weight
 						.ref_time()
 						.checked_div(<T as frame_system::Config>::DbWeight::get().write)
-						.unwrap_or(100),
-					100,
-				) as u32;
+						.unwrap_or(REMOVE_LIMIT.into())
+						.saturated_into(),
+					REMOVE_LIMIT,
+				);
 
 				let r = <AccountStorages<T>>::clear_prefix(contract, limit, None);
-				let count = r.unique;
+				let count = r.backend;
 				let used_weight = Weight::from_ref_time(
 					<T as frame_system::Config>::DbWeight::get()
 						.write
@@ -2168,12 +2208,19 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 				);
 				log::debug!(
 					target: "evm",
-					"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",
+					"EvmTask remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",
 					caller, contract, maintainer, count
 				);
 				if r.maybe_cursor.is_none() {
 					// AllRemoved
 					let result = Pallet::<T>::refund_storage(&caller, &contract, &maintainer);
+					// We also remove the contract if refund storage failed.
+					debug_assert!(result.is_ok());
+					log::debug!(
+						target: "evm",
+						"EvmTask refund_storage: [from: {:?}, contract: {:?}, maintainer: {:?}, result: {:?}]",
+						caller, contract, maintainer, result
+					);
 
 					// Remove account after all of the storages are cleared.
 					Pallet::<T>::remove_account(&contract);

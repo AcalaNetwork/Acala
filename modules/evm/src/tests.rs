@@ -1334,7 +1334,7 @@ fn should_set_code() {
 }
 
 #[test]
-fn should_selfdestruct() {
+fn should_selfdestruct_without_schedule_task() {
 	// pragma solidity ^0.5.0;
 	//
 	// contract Test {
@@ -1364,7 +1364,7 @@ fn should_selfdestruct() {
 		// create contract
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
-			contract,
+			contract.clone(),
 			convert_decimals_to_evm(amount),
 			1000000,
 			100000,
@@ -1406,19 +1406,152 @@ fn should_selfdestruct() {
 			contract_address
 		));
 
+		assert_eq!(System::providers(&contract_account_id), 0);
+		assert!(!System::account_exists(&contract_account_id));
+		assert!(!Accounts::<Runtime>::contains_key(&contract_address));
+		assert!(!ContractStorageSizes::<Runtime>::contains_key(&contract_address));
+		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 0);
+		assert!(!CodeInfos::<Runtime>::contains_key(&code_hash));
+		assert!(!Codes::<Runtime>::contains_key(&code_hash));
+
+		let reserved_amount = 287 * EVM::get_storage_deposit_per_byte();
+
+		// refund storage deposit
+		assert_eq!(balance(alice()), alice_balance + amount + reserved_amount);
+		assert_eq!(balance(contract_address), 0);
+		assert_eq!(reserved_balance(contract_address), 0);
+
+		// can publish at the same address
+		assert_ok!(EVM::create_predeploy_contract(
+			RuntimeOrigin::signed(NetworkContractAccount::get()),
+			contract_address,
+			contract,
+			0,
+			1000000,
+			1000000,
+			vec![],
+		));
+	});
+}
+
+#[test]
+fn should_selfdestruct_with_schedule_task() {
+	env_logger::init();
+	// pragma solidity ^0.8.0;
+	//
+	// contract Test {
+	//     mapping(uint256 => uint256) private data;
+	//
+	//     constructor() public payable {}
+	//
+	//     function setValue(uint256 key, uint256 value) public {
+	//         data[key] = value;
+	//     }
+	// }
+	let contract = from_hex(
+		"0x6080604052610105806100136000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c80637b8d56e314602d575b600080fd5b60436004803603810190603f91906096565b6045565b005b80600080848152602001908152602001600020819055505050565b600080fd5b6000819050919050565b6076816065565b8114608057600080fd5b50565b600081359050609081606f565b92915050565b6000806040838503121560aa5760a96060565b5b600060b6858286016083565b925050602060c5858286016083565b915050925092905056fea26469706673582212201cbfb5695481e8cf4c7a1206d22d0a707cb85907a10b47038ac14af0c386344464736f6c63430008120033"
+	).unwrap();
+
+	new_test_ext().execute_with(|| {
+		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
+
+		let amount = 1000u128;
+
+		// create contract
+		let result = <Runtime as Config>::Runner::create(
+			alice(),
+			contract,
+			convert_decimals_to_evm(amount),
+			1000000,
+			100000,
+			vec![],
+			<Runtime as Config>::config(),
+		)
+		.unwrap();
+
+		let contract_address = result.value;
+		assert_eq!(result.used_storage, 361);
+		let alice_balance = INITIAL_BALANCE - 361 * EVM::get_storage_deposit_per_byte() - amount;
+
+		assert_eq!(balance(alice()), alice_balance);
+
+		let code_hash = H256::from_str("7c96b02b6e32519ac1f47de5dd18efa07efd70b7eb57fc7a3d599eafa8329cd1").unwrap();
+		let code_size = 261u32;
+		assert_eq!(
+			Accounts::<Runtime>::get(&contract_address)
+				.unwrap()
+				.contract_info
+				.unwrap()
+				.code_hash,
+			code_hash
+		);
+
+		assert_eq!(
+			ContractStorageSizes::<Runtime>::get(&contract_address),
+			code_size + NEW_CONTRACT_EXTRA_BYTES
+		);
+		assert_eq!(
+			CodeInfos::<Runtime>::get(&code_hash),
+			Some(CodeInfo {
+				code_size,
+				ref_count: 1,
+			})
+		);
+		assert!(Codes::<Runtime>::contains_key(&code_hash));
+
+		let storage_count: u32 = REMOVE_LIMIT + 1;
+		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 0);
+		for i in 1..=storage_count {
+			// setValue
+			let mut input: Vec<u8> = from_hex("0x7b8d56e3").unwrap();
+
+			let mut buf = [0u8; 32];
+			U256::from(i).to_big_endian(&mut buf);
+			input.append(&mut H256::from_slice(&buf).as_bytes().to_vec()); // key
+			input.append(&mut H256::from_slice(&buf).as_bytes().to_vec()); // value
+
+			assert_ok!(EVM::call(
+				RuntimeOrigin::signed(alice_account_id.clone()),
+				contract_address,
+				input,
+				0,
+				1000000000,
+				1000,
+				vec![],
+			));
+		}
+		assert_eq!(
+			AccountStorages::<Runtime>::iter_prefix(&contract_address).count(),
+			storage_count as usize
+		);
+
+		assert_noop!(
+			EVM::selfdestruct(RuntimeOrigin::signed(bob_account_id), contract_address),
+			Error::<Runtime>::NoPermission
+		);
+		let contract_account_id = <Runtime as Config>::AddressMapping::get_account_id(&contract_address);
+		assert_eq!(System::providers(&contract_account_id), 2);
+		assert_ok!(EVM::selfdestruct(
+			RuntimeOrigin::signed(alice_account_id),
+			contract_address
+		));
+
 		assert_eq!(System::providers(&contract_account_id), 1);
 		assert!(System::account_exists(&contract_account_id));
 		assert!(Accounts::<Runtime>::contains_key(&contract_address));
 		assert!(!ContractStorageSizes::<Runtime>::contains_key(&contract_address));
-		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 1);
+		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 101);
 		assert!(!CodeInfos::<Runtime>::contains_key(&code_hash));
 		assert!(!Codes::<Runtime>::contains_key(&code_hash));
 
-		assert_eq!(balance(alice()), alice_balance);
+		let reserved_amount = (storage_count * STORAGE_SIZE) as u128 * EVM::get_storage_deposit_per_byte();
+		assert_eq!(balance(alice()), alice_balance - reserved_amount);
 		assert_eq!(balance(contract_address), 1000);
-
-		let reserved_amount = 287 * EVM::get_storage_deposit_per_byte();
-		assert_eq!(reserved_balance(contract_address), reserved_amount);
+		assert_eq!(
+			reserved_balance(contract_address),
+			reserved_amount + 361 * EVM::get_storage_deposit_per_byte()
+		);
 
 		// can't publish at the same address
 		assert_noop!(
@@ -1443,7 +1576,10 @@ fn should_selfdestruct() {
 		IdleScheduler::on_idle(0, Weight::from_ref_time(1_000_000_000_000));
 
 		// refund storage deposit
-		assert_eq!(balance(alice()), alice_balance + amount + reserved_amount);
+		assert_eq!(
+			balance(alice()),
+			alice_balance + amount + 361 * EVM::get_storage_deposit_per_byte()
+		);
 		assert_eq!(balance(contract_address), 0);
 		assert_eq!(reserved_balance(contract_address), 0);
 
