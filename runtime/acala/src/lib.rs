@@ -1661,7 +1661,7 @@ impl module_liquid_crowdloan::Config for Runtime {
 	type LiquidCrowdloanCurrencyId = GetLiquidCurrencyId;
 	type RelayChainCurrencyId = GetStakingCurrencyId;
 	type PalletId = LiquidCrowdloanPalletId;
-	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type CrowdloanVault = CrowdloanVault;
 	type XcmTransfer = XcmInterface;
 }
