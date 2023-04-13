@@ -172,6 +172,7 @@ parameter_types! {
 	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
 	// because transaction payment pallet will ensure the accounts always have enough ED.
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
+	pub const LiquidCrowdloanPalletId: PalletId = PalletId(*b"aca/lqcl");
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 }
 
@@ -1525,8 +1526,8 @@ impl Convert<u16, MultiLocation> for SubAccountIndexMultiLocationConvertor {
 
 parameter_types! {
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account_truncating();
-	//TODO: update with real crowdloan account
-	pub CrowdloanVaultAccount: AccountId = AccountId::from([0u8; 32]);
+	// Crowdloan vault address: `132zsjMwGjNaUXF5XjUCDs2cDEq9Qao51TsL9RSUTGZbinVK`
+	pub CrowdloanVault: AccountId = AccountId::from(hex_literal::hex!("59fe89295c2e57d7b4d4d8be9e00a3802e513703ab4b5b424ed0a646e899d3c9"));
 }
 
 impl module_xcm_interface::Config for Runtime {
@@ -1540,7 +1541,6 @@ impl module_xcm_interface::Config for Runtime {
 	type XcmTransfer = XTokens;
 	type SelfLocation = xcm_config::SelfLocation;
 	type AccountIdToMultiLocation = xcm_config::AccountIdToMultiLocation;
-	type CrowdloanVaultAccount = CrowdloanVaultAccount;
 }
 
 impl orml_unknown_tokens::Config for Runtime {
@@ -1655,6 +1655,17 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
+impl module_liquid_crowdloan::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Currencies;
+	type LiquidCrowdloanCurrencyId = GetLiquidCurrencyId;
+	type RelayChainCurrencyId = GetStakingCurrencyId;
+	type PalletId = LiquidCrowdloanPalletId;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type CrowdloanVault = CrowdloanVault;
+	type XcmTransfer = XcmInterface;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1750,6 +1761,7 @@ construct_runtime!(
 		Incentives: module_incentives = 120,
 		NFT: module_nft = 121,
 		AssetRegistry: module_asset_registry = 122,
+		LiquidCrowdloan: module_liquid_crowdloan = 123,
 
 		// Smart contracts
 		EVM: module_evm = 130,

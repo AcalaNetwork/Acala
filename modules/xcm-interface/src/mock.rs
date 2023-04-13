@@ -131,7 +131,6 @@ parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const ParachainAccount: AccountId = AccountId32::new([0u8; 32]);
 	pub const ParachainId: module_relaychain::ParaId = module_relaychain::ParaId::new(2000);
-	pub CrowdloanVaultAccount: AccountId = AccountId::from([0u8; 32]);
 	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainId::get().into())));
 }
 
@@ -229,7 +228,6 @@ impl Config for Runtime {
 	type XcmTransfer = MockXcmTransfer;
 	type SelfLocation = SelfLocation;
 	type AccountIdToMultiLocation = AccountIdToMultiLocation;
-	type CrowdloanVaultAccount = CrowdloanVaultAccount;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

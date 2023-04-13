@@ -139,6 +139,7 @@ kusama-runtime-constants = { git = "https://github.com/paritytech/polkadot", bra
 polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
 polkadot-runtime-constants = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
 polkadot-test-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
+pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
 
 xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "754f3b90ecc65af735a6c9a2e1792c5253926ff6" }
 
@@ -147,7 +148,7 @@ module-aggregated-dex = { path = "../../modules/aggregated-dex" }
 nutsfinance-stable-asset = { version = "0.1.0", path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 
 [features]
-default = ["std"]
+default = ["std", "with-acala-runtime"]
 no_std = []
 with-mandala-runtime = [
 	"mandala-runtime",

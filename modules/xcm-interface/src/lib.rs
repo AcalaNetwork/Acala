@@ -96,10 +96,6 @@ pub mod module {
 
 		/// Convert AccountId to MultiLocation to build XCM message.
 		type AccountIdToMultiLocation: Convert<Self::AccountId, MultiLocation>;
-
-		/// Crowdloan vault account.
-		#[pallet::constant]
-		type CrowdloanVaultAccount: Get<Self::AccountId>;
 	}
 
 	#[pallet::error]

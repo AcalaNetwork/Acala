@@ -1536,8 +1536,6 @@ impl Convert<u16, MultiLocation> for SubAccountIndexMultiLocationConvertor {
 
 parameter_types! {
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account_truncating();
-	//TODO: update with real crowdloan account
-	pub CrowdloanVaultAccount: AccountId = AccountId::from([0u8; 32]);
 }
 
 impl module_xcm_interface::Config for Runtime {
@@ -1551,7 +1549,6 @@ impl module_xcm_interface::Config for Runtime {
 	type XcmTransfer = XTokens;
 	type SelfLocation = xcm_config::SelfLocation;
 	type AccountIdToMultiLocation = xcm_config::AccountIdToMultiLocation;
-	type CrowdloanVaultAccount = CrowdloanVaultAccount;
 }
 
 impl orml_unknown_tokens::Config for Runtime {
