@@ -46,12 +46,15 @@ pub mod module {
 
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
+		/// Liquid crowdloan currency Id, i.e. LDOT for Polkadot.
 		#[pallet::constant]
 		type LiquidCrowdloanCurrencyId: Get<CurrencyId>;
 
+		/// Relay chain currency Id, i.e. DOT for Polkadot.
 		#[pallet::constant]
 		type RelayChainCurrencyId: Get<CurrencyId>;
 
+		/// Pallet Id for liquid crowdloan module.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
@@ -71,18 +74,16 @@ pub mod module {
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Liquid Crowdloan asset was redeemed.
-		Redeemed {
-			amount: Balance,
-		},
-		TransferFromCrowdloanVaultRequested {
-			amount: Balance,
-		},
+		Redeemed { amount: Balance },
+		/// The transfer from relay chain crowdloan vault was requested.
+		TransferFromCrowdloanVaultRequested { amount: Balance },
 	}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Redeem liquid crowdloan currency for relay chain currency.
 		#[pallet::call_index(0)]
 		#[pallet::weight(0)]
 		pub fn redeem(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {

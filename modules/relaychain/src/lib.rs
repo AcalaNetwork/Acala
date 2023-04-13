@@ -22,6 +22,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::large_enum_variant)]
 
 use codec::{Decode, Encode};
 use sp_runtime::traits::{AccountIdLookup, StaticLookup};
