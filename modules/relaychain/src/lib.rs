@@ -87,7 +87,8 @@ pub type RelayChainLookup = AccountIdLookup<AccountId, ()>;
 /// `pallet-proxy` calls.
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum ProxyCall<RelayChainCall> {
-	/// `proxy(real, force_proxy_type, call)` call.
+	/// `proxy(real, force_proxy_type, call)` call. Force proxy type is not supported and
+	/// is always set to `None`.
 	#[codec(index = 0)]
 	Proxy(<RelayChainLookup as StaticLookup>::Source, Option<()>, RelayChainCall),
 }
