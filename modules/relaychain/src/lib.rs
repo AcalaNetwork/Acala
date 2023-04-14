@@ -246,9 +246,9 @@ impl<ParachainId: Get<ParaId>> CallBuilder for RelayChainCallBuilder<ParachainId
 		fee_assets_item: u32,
 	) -> Self::RelayChainCall {
 		RelayChainCall::XcmPallet(XcmCall::ReserveTransferAssets(
-			VersionedMultiLocation::V3(dest),
-			VersionedMultiLocation::V3(beneficiary),
-			VersionedMultiAssets::V3(assets),
+			dest.into_versioned(),
+			beneficiary.into_versioned(),
+			assets.into(),
 			fee_assets_item,
 		))
 	}

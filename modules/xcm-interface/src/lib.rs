@@ -312,7 +312,7 @@ pub mod module {
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
 			log::debug!(
 				target: "xcm-interface",
-				"Send {:?} DOT from crowdloan vault {:?} to {:?}, result: {:?}",
+				"Send {:?} planck DOT from crowdloan vault {:?} to {:?}, result: {:?}",
 				amount, vault, recipient, result,
 			);
 
