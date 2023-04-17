@@ -33,8 +33,10 @@ use support::CrowdloanVaultXcm;
 
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod module {
@@ -68,6 +70,9 @@ pub mod module {
 
 		/// XCM transfer impl.
 		type XcmTransfer: CrowdloanVaultXcm<Self::AccountId, Balance>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -85,7 +90,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		/// Redeem liquid crowdloan currency for relay chain currency.
 		#[pallet::call_index(0)]
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::redeem())]
 		pub fn redeem(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -103,7 +108,7 @@ pub mod module {
 		///
 		/// This call requires `GovernanceOrigin`.
 		#[pallet::call_index(1)]
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_from_crowdloan_vault())]
 		pub fn transfer_from_crowdloan_vault(
 			origin: OriginFor<T>,
 			#[pallet::compact] amount: Balance,

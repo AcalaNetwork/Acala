@@ -36,6 +36,7 @@ pub mod module_homa;
 pub mod module_honzon;
 pub mod module_idle_scheduler;
 pub mod module_incentives;
+pub mod module_liquid_crowdloan;
 pub mod module_nft;
 pub mod module_nominees_election;
 pub mod module_prices;

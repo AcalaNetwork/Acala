@@ -164,6 +164,7 @@ impl liquid_crowdloan::Config for Runtime {
 	type GovernanceOrigin = EnsureSignedBy<Alice, AccountId>;
 	type CrowdloanVault = CrowdloanVault;
 	type XcmTransfer = MockXcmTransfer;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

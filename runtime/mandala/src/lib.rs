@@ -1802,6 +1802,7 @@ impl module_liquid_crowdloan::Config for Runtime {
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type CrowdloanVault = CrowdloanVault;
 	type XcmTransfer = XcmInterface;
+	type WeightInfo = weights::module_liquid_crowdloan::WeightInfo<Runtime>;
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
