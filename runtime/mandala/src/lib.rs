@@ -113,7 +113,7 @@ pub use runtime_common::{
 	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	MaxTipsOfPriority, OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price,
 	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT, RENBTC,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LCDOT, LDOT, RENBTC,
 };
 pub use xcm::{prelude::*, v3::Weight as XcmWeight};
 
@@ -1791,12 +1791,13 @@ impl cumulus_pallet_aura_ext::Config for Runtime {}
 parameter_types!(
 	// Crowdloan vault address: `132zsjMwGjNaUXF5XjUCDs2cDEq9Qao51TsL9RSUTGZbinVK`
 	pub CrowdloanVault: AccountId = AccountId::from(hex_literal::hex!("59fe89295c2e57d7b4d4d8be9e00a3802e513703ab4b5b424ed0a646e899d3c9"));
+	pub const LiquidCrowdloanCurrencyId: CurrencyId = LCDOT;
 );
 
 impl module_liquid_crowdloan::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
-	type LiquidCrowdloanCurrencyId = GetLiquidCurrencyId;
+	type LiquidCrowdloanCurrencyId = LiquidCrowdloanCurrencyId;
 	type RelayChainCurrencyId = GetStakingCurrencyId;
 	type PalletId = LiquidCrowdloanPalletId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;

@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, LiquidCrowdloan, PolkadotXcm, Runtime, RuntimeOrigin, System};
+use crate::{AccountId, LiquidCrowdloan, LiquidCrowdloanCurrencyId, PolkadotXcm, Runtime, RuntimeOrigin, System};
 
-use super::utils::{set_balance, LIQUID, STAKING};
+use super::utils::{set_balance, STAKING};
 use frame_benchmarking::whitelisted_caller;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
@@ -30,7 +30,7 @@ runtime_benchmarks! {
 	redeem {
 		let caller: AccountId = whitelisted_caller();
 		let amount = 100_000_000_000_000;
-		set_balance(LIQUID, &caller, amount);
+		set_balance(LiquidCrowdloanCurrencyId::get(), &caller, amount);
 		set_balance(STAKING, &LiquidCrowdloan::account_id(), amount);
 	}: _(RawOrigin::Signed(caller), amount)
 	verify {

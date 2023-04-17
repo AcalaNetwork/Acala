@@ -104,7 +104,7 @@ pub mod module {
 		}
 
 		/// Send an XCM message to cross-chain transfer DOT from relay chain crowdloan vault to
-		///  liquid crowdloan module account.
+		/// liquid crowdloan module account.
 		///
 		/// This call requires `GovernanceOrigin`.
 		#[pallet::call_index(1)]
