@@ -1346,7 +1346,6 @@ impl<T: Config> Pallet<T> {
 	pub fn remove_contract(caller: &EvmAddress, contract: &EvmAddress) -> DispatchResult {
 		let contract_account = T::AddressMapping::get_account_id(contract);
 		let mut task_id = Default::default();
-		let mut maybe_weight_limit: Option<Weight> = None;
 		Accounts::<T>::try_mutate_exists(contract, |maybe_account_info| -> DispatchResult {
 			// We will keep the nonce until the storages are cleared.
 			// Only remove the `contract_info`
@@ -1368,23 +1367,7 @@ impl<T: Config> Pallet<T> {
 				}
 			});
 
-			let total_size = ContractStorageSizes::<T>::take(contract);
-			// If there are less than 50 items, we will remove it directly
-			maybe_weight_limit = if total_size
-				.saturating_sub(T::NewContractExtraBytes::get())
-				.saturating_sub(code_size)
-				.checked_div(STORAGE_SIZE)
-				.expect("constant never failed; qed")
-				< REMOVE_LIMIT.saturating_div(2)
-			{
-				Some(Weight::from_ref_time(
-					<T as frame_system::Config>::DbWeight::get()
-						.write
-						.saturating_mul(REMOVE_LIMIT.saturating_div(2).into()),
-				))
-			} else {
-				None
-			};
+			let _total_size = ContractStorageSizes::<T>::take(contract);
 
 			// schedule to remove
 			task_id = T::IdleScheduler::schedule(
@@ -1399,10 +1382,13 @@ impl<T: Config> Pallet<T> {
 			Ok(())
 		})?;
 
-		// try to dispatch the task
-		if let Some(weight_limit) = maybe_weight_limit {
-			let _weight_remaining = T::IdleScheduler::dispatch(task_id, weight_limit);
-		}
+		// try to dispatch the task, limit 50 DB writes
+		let weight_limit = Weight::from_ref_time(
+			<T as frame_system::Config>::DbWeight::get()
+				.write
+				.saturating_mul(REMOVE_LIMIT.saturating_div(2).into()),
+		);
+		let _weight_remaining = T::IdleScheduler::dispatch(task_id, weight_limit);
 
 		// this should happen after `Accounts` is updated because this could trigger another updates on
 		// `Accounts`
