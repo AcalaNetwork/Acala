@@ -63,7 +63,7 @@ pub use primitives::{
 		ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START,
 	},
 	task::TaskResult,
-	Balance, CurrencyId, ReserveIdentifier,
+	Balance, CurrencyId, Nonce, ReserveIdentifier,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -93,6 +93,8 @@ pub use weights::WeightInfo;
 pub const STORAGE_SIZE: u32 = 64;
 /// Remove contract item limit
 pub const REMOVE_LIMIT: u32 = 100;
+/// Immediate remove contract item limit 50 DB writes
+pub const IMMEDIATE_REMOVE_LIMIT: u32 = 50;
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -1345,48 +1347,46 @@ impl<T: Config> Pallet<T> {
 	#[transactional]
 	pub fn remove_contract(caller: &EvmAddress, contract: &EvmAddress) -> DispatchResult {
 		let contract_account = T::AddressMapping::get_account_id(contract);
-		let mut task_id = Default::default();
-		Accounts::<T>::try_mutate_exists(contract, |maybe_account_info| -> DispatchResult {
-			// We will keep the nonce until the storages are cleared.
-			// Only remove the `contract_info`
-			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
-			let contract_info = account_info.contract_info.take().ok_or(Error::<T>::ContractNotFound)?;
+		let task_id =
+			Accounts::<T>::try_mutate_exists(contract, |maybe_account_info| -> Result<Nonce, DispatchError> {
+				// We will keep the nonce until the storages are cleared.
+				// Only remove the `contract_info`
+				let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+				let contract_info = account_info.contract_info.take().ok_or(Error::<T>::ContractNotFound)?;
 
-			let mut code_size: u32 = 0;
-			CodeInfos::<T>::mutate_exists(contract_info.code_hash, |maybe_code_info| {
-				if let Some(code_info) = maybe_code_info.as_mut() {
-					code_size = code_info.code_size;
-					code_info.ref_count = code_info.ref_count.saturating_sub(1);
-					if code_info.ref_count == 0 {
-						Codes::<T>::remove(contract_info.code_hash);
-						*maybe_code_info = None;
+				let mut code_size: u32 = 0;
+				CodeInfos::<T>::mutate_exists(contract_info.code_hash, |maybe_code_info| {
+					if let Some(code_info) = maybe_code_info.as_mut() {
+						code_size = code_info.code_size;
+						code_info.ref_count = code_info.ref_count.saturating_sub(1);
+						if code_info.ref_count == 0 {
+							Codes::<T>::remove(contract_info.code_hash);
+							*maybe_code_info = None;
+						}
+					} else {
+						// code info removed while still having reference to it?
+						debug_assert!(false);
 					}
-				} else {
-					// code info removed while still having reference to it?
-					debug_assert!(false);
-				}
-			});
+				});
 
-			let _total_size = ContractStorageSizes::<T>::take(contract);
+				let _total_size = ContractStorageSizes::<T>::take(contract);
 
-			// schedule to remove
-			task_id = T::IdleScheduler::schedule(
-				EvmTask::Remove {
-					caller: *caller,
-					contract: *contract,
-					maintainer: contract_info.maintainer,
-				}
-				.into(),
-			)?;
+				// schedule to remove
+				T::IdleScheduler::schedule(
+					EvmTask::Remove {
+						caller: *caller,
+						contract: *contract,
+						maintainer: contract_info.maintainer,
+					}
+					.into(),
+				)
+			})?;
 
-			Ok(())
-		})?;
-
-		// try to dispatch the task, limit 50 DB writes
+		// try to dispatch the task
 		let weight_limit = Weight::from_ref_time(
 			<T as frame_system::Config>::DbWeight::get()
 				.write
-				.saturating_mul(REMOVE_LIMIT.saturating_div(2).into()),
+				.saturating_mul(IMMEDIATE_REMOVE_LIMIT.into()),
 		);
 		let _weight_remaining = T::IdleScheduler::dispatch(task_id, weight_limit);
 

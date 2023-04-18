@@ -19,7 +19,7 @@
 #![cfg(test)]
 
 use super::*;
-use mock::{evm_mod, IdleScheduler, RuntimeCall, RuntimeEvent, *};
+use mock::{evm_mod, RuntimeCall, RuntimeEvent, *};
 
 use crate::runner::{
 	stack::SubstrateStackState,
@@ -2509,7 +2509,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1_441_019_352, 5_206)),
+					actual_weight: Some(Weight::from_parts(1_437_794_352, 5_206)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::NoPermission.into(),
@@ -2542,7 +2542,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1_440_063_054, 5_206)),
+					actual_weight: Some(Weight::from_parts(1_436_838_054, 5_206)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::StrictCallFailed.into(),
