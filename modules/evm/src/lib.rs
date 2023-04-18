@@ -1345,7 +1345,8 @@ impl<T: Config> Pallet<T> {
 	#[transactional]
 	pub fn remove_contract(caller: &EvmAddress, contract: &EvmAddress) -> DispatchResult {
 		let contract_account = T::AddressMapping::get_account_id(contract);
-
+		let mut task_id = Default::default();
+		let mut maybe_weight_limit: Option<Weight> = None;
 		Accounts::<T>::try_mutate_exists(contract, |maybe_account_info| -> DispatchResult {
 			// We will keep the nonce until the storages are cleared.
 			// Only remove the `contract_info`
@@ -1368,51 +1369,40 @@ impl<T: Config> Pallet<T> {
 			});
 
 			let total_size = ContractStorageSizes::<T>::take(contract);
-			if total_size
+			// If there are less than 50 items, we will remove it directly
+			maybe_weight_limit = if total_size
 				.saturating_sub(T::NewContractExtraBytes::get())
 				.saturating_sub(code_size)
 				.checked_div(STORAGE_SIZE)
 				.expect("constant never failed; qed")
-				<= REMOVE_LIMIT
+				< REMOVE_LIMIT.saturating_div(2)
 			{
-				// remove directly
-				let r = <AccountStorages<T>>::clear_prefix(contract, REMOVE_LIMIT, None);
-				log::debug!(
-					target: "evm",
-					"Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, backend: {:?}, unique: {:?}]",
-					caller, contract, contract_info.maintainer, r.backend, r.unique
-				);
-
-				if r.maybe_cursor.is_none() {
-					// AllRemoved
-					let result = Pallet::<T>::refund_storage(caller, contract, &contract_info.maintainer);
-					// We also remove the contract if refund storage failed.
-					debug_assert!(result.is_ok());
-					log::debug!(
-						target: "evm",
-						"refund_storage: [from: {:?}, contract: {:?}, maintainer: {:?}, result: {:?}]",
-						caller, contract, contract_info.maintainer, result
-					);
-
-					// Remove account after all of the storages are cleared.
-					*maybe_account_info = None;
-				} else {
-					// shouldn't happen.
-					debug_assert!(false);
-				}
-				Ok(())
+				Some(Weight::from_ref_time(
+					<T as frame_system::Config>::DbWeight::get()
+						.write
+						.saturating_mul(REMOVE_LIMIT.saturating_div(2).into()),
+				))
 			} else {
-				// schedule to remove
-				T::IdleScheduler::schedule(
-					EvmTask::Remove {
-						caller: *caller,
-						contract: *contract,
-						maintainer: contract_info.maintainer,
-					}
-					.into(),
-				)
-			}
+				None
+			};
+
+			// schedule to remove
+			task_id = T::IdleScheduler::schedule(
+				EvmTask::Remove {
+					caller: *caller,
+					contract: *contract,
+					maintainer: contract_info.maintainer,
+				}
+				.into(),
+			)?;
+
+			Ok(())
 		})?;
+
+		// try to dispatch the task
+		if let Some(weight_limit) = maybe_weight_limit {
+			let _weight_remaining = T::IdleScheduler::dispatch(task_id, weight_limit);
+		}
 
 		// this should happen after `Accounts` is updated because this could trigger another updates on
 		// `Accounts`
