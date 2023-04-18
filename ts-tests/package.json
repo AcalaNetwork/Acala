@@ -10,7 +10,7 @@
 	},
 	"dependencies": {
 		"@acala-network/bodhi": "^2.4.10",
-		"@openzeppelin/contracts": "4.7.3",
+		"@openzeppelin/contracts": "4.8.3",
 		"@types/chai": "^4.2.22",
 		"@types/chai-as-promised": "^7.1.4",
 		"@types/mocha": "^9.0.0",
