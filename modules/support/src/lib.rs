@@ -23,7 +23,7 @@
 
 use codec::FullCodec;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
-use primitives::{task::TaskResult, Balance, CurrencyId, Multiplier, ReserveIdentifier};
+use primitives::{task::TaskResult, Balance, CurrencyId, Multiplier, Nonce, ReserveIdentifier};
 use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
@@ -161,7 +161,8 @@ pub trait DispatchableTask {
 
 /// Idle scheduler trait
 pub trait IdleScheduler<Task> {
-	fn schedule(task: Task) -> DispatchResult;
+	fn schedule(task: Task) -> Result<Nonce, DispatchError>;
+	fn dispatch(id: Nonce, weight: Weight) -> Weight;
 }
 
 #[cfg(feature = "std")]
@@ -173,7 +174,10 @@ impl DispatchableTask for () {
 
 #[cfg(feature = "std")]
 impl<Task> IdleScheduler<Task> for () {
-	fn schedule(_task: Task) -> DispatchResult {
+	fn schedule(_task: Task) -> Result<Nonce, DispatchError> {
+		unimplemented!()
+	}
+	fn dispatch(_id: Nonce, _weight: Weight) -> Weight {
 		unimplemented!()
 	}
 }
