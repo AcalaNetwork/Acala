@@ -665,15 +665,8 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			#[cfg(feature = "with-ethereum-compatibility")]
 			assert_eq!(System::providers(&contract_account_id), 0);
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			assert_eq!(System::providers(&contract_account_id), 1);
-
-			// contract account will hang around until storage is cleared
-			assert_eq!(EVM::accounts(contract), Some(module_evm::AccountInfo{ nonce: 1, contract_info: None}));
-
-			// use IdleScheduler to remove contract
-			run_to_block(System::block_number() + 1);
-
 			assert_eq!(System::providers(&contract_account_id), 0);
+
 			// contract account should be gone
 			assert_eq!(EVM::accounts(contract), None);
 

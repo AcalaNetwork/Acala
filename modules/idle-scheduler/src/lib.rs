@@ -144,18 +144,18 @@ pub mod module {
 		#[pallet::weight(< T as Config >::WeightInfo::schedule_task())]
 		pub fn schedule_task(origin: OriginFor<T>, task: T::Task) -> DispatchResult {
 			ensure_root(origin)?;
-			Self::do_schedule_task(task)
+			Self::do_schedule_task(task).map(|_| ())
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
 	/// Add the task to the queue to be dispatched later.
-	fn do_schedule_task(task: T::Task) -> DispatchResult {
+	fn do_schedule_task(task: T::Task) -> Result<Nonce, DispatchError> {
 		let id = Self::get_next_task_id()?;
 		Tasks::<T>::insert(id, &task);
 		Self::deposit_event(Event::<T>::TaskAdded { task_id: id, task });
-		Ok(())
+		Ok(id)
 	}
 
 	/// Retrieves the next task ID from storage, and increment it by one.
@@ -210,7 +210,25 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> IdleScheduler<T::Task> for Pallet<T> {
-	fn schedule(task: T::Task) -> DispatchResult {
+	fn schedule(task: T::Task) -> Result<Nonce, DispatchError> {
 		Self::do_schedule_task(task)
+	}
+
+	/// If the task can be executed under given weight limit, dispatch it.
+	/// Otherwise the scheduler will keep the task and run it later.
+	/// NOTE: Only used for synchronous execution case, because `T::WeightInfo::clear_tasks()` is
+	/// not considered.
+	fn dispatch(id: Nonce, weight_limit: Weight) -> Weight {
+		if let Some(task) = Tasks::<T>::get(id) {
+			let result = task.dispatch(weight_limit);
+			let used_weight = result.used_weight;
+			if result.finished {
+				Self::remove_completed_tasks(vec![(id, result)]);
+			}
+
+			weight_limit.saturating_sub(used_weight)
+		} else {
+			weight_limit
+		}
 	}
 }
