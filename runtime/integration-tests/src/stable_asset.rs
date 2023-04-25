@@ -67,6 +67,76 @@ pub fn enable_stable_asset(currencies: Vec<CurrencyId>, amounts: Vec<u128>, mint
 }
 
 #[test]
+fn stable_asset_mint_overflow() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				// NetworkContractSource
+				MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
+				NATIVE_CURRENCY,
+				1_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				1_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				LIQUID_CURRENCY,
+				12_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+		])
+		.build()
+		.execute_with(|| {
+			let exchange_rate = Homa::current_exchange_rate();
+			assert_eq!(exchange_rate, ExchangeRate::saturating_from_rational(1, 10)); // 0.1
+
+			let ksm_target_amount = 10_000_123u128;
+			let lksm_target_amount = u128::MAX / 2;
+
+			let currencies = vec![RELAY_CHAIN_CURRENCY, LIQUID_CURRENCY];
+			let amounts = vec![ksm_target_amount, lksm_target_amount];
+			let pool_asset = CurrencyId::StableAssetPoolToken(0);
+			let precisions = currencies.iter().map(|_| 1u128).collect::<Vec<_>>();
+			assert_ok!(StableAsset::create_pool(
+				RuntimeOrigin::root(),
+				pool_asset,
+				currencies, // assets
+				precisions,
+				10_000_000u128,           // mint fee
+				20_000_000u128,           // swap fee
+				50_000_000u128,           // redeem fee
+				1_000u128,                // initialA
+				AccountId::from(BOB),     // fee recipient
+				AccountId::from(CHARLIE), // yield recipient
+				1_000_000_000_000u128,    // precision
+			));
+
+			let asset_metadata = AssetMetadata {
+				name: b"Token Name".to_vec(),
+				symbol: b"TN".to_vec(),
+				decimals: 12,
+				minimal_balance: 1,
+			};
+			assert_ok!(AssetRegistry::register_stable_asset(
+				RawOrigin::Root.into(),
+				Box::new(asset_metadata.clone())
+			));
+
+			assert_noop!(
+				StableAsset::mint(
+					RuntimeOrigin::signed(None.unwrap_or(AccountId::from(ALICE))),
+					0,
+					amounts,
+					0u128
+				),
+				orml_tokens::Error::<Runtime>::BalanceTooLow
+			);
+		});
+}
+
+#[test]
 fn stable_asset_mint_works() {
 	ExtBuilder::default()
 		.balances(vec![
