@@ -873,8 +873,9 @@ fn charges_fee_when_validate_with_fee_currency_call_use_pool() {
 			50
 		));
 		assert_eq!(sub_dot_aca - fee_amount, Currencies::free_balance(ACA, &dot_acc));
-		assert_eq!(sub_dot_dot + fee_amount / 10, Currencies::free_balance(DOT, &dot_acc)); // 1 DOT = 10
-		                                                                            // ACA
+		assert_eq!(sub_dot_dot + fee_amount / 10, Currencies::free_balance(DOT, &dot_acc));
+		// 1 DOT = 10
+		// ACA
 	});
 }
 
