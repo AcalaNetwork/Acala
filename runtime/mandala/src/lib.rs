@@ -1694,24 +1694,17 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LDOT) => {
-				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
-			}
+			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate().saturating_mul_int(balance),
 			_ => balance,
 		}
 	}
 
 	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
-		/*
-		 * When overflow occurs, it's better to return 0 than max because returning zero will fail the
-		 * current transaction. If returning max here, the current transaction won't fail but latter
-		 * transactions have a possibility to fail, and this is undesirable.
-		 */
 		match asset_id {
 			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate()
 				.reciprocal()
 				.and_then(|x| x.checked_mul_int(balance))
-				.unwrap_or_default(),
+				.unwrap_or_else(Bounded::max_value),
 			_ => balance,
 		}
 	}
