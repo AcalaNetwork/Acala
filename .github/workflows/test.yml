@@ -49,7 +49,8 @@ jobs:
       - name: Install clippy
         run: rustup component add clippy
       - name: Run mandala-runtime clippy
-        run: cargo clippy --features with-mandala-runtime -- -A clippy::derivable-impls -A clippy::useless-conversion -D warnings // TODO: remove it after https://github.com/open-web3-stack/open-runtime-module-library/pull/906
+        # TODO: remove it after https://github.com/open-web3-stack/open-runtime-module-library/pull/906
+        run: cargo clippy --features with-mandala-runtime -- -A clippy::derivable-impls -A clippy::useless-conversion -D warnings
       - name: Run karura-runtime clippy
         run: cargo clippy --features with-karura-runtime -- -A clippy::derivable-impls -A clippy::useless-conversion -D warnings
       - name: Run acala-runtime clippy
