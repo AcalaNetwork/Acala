@@ -1609,9 +1609,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => {
-				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
-			}
+			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate().saturating_mul_int(balance),
 			_ => balance,
 		}
 	}
@@ -1621,7 +1619,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate()
 				.reciprocal()
 				.and_then(|x| x.checked_mul_int(balance))
-				.unwrap_or_default(),
+				.unwrap_or_else(Bounded::max_value),
 			_ => balance,
 		}
 	}

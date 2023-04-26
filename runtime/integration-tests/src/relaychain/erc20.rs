@@ -52,6 +52,9 @@ fn sibling_reserve_account() -> AccountId {
 fn karura_reserve_account() -> AccountId {
 	polkadot_parachain::primitives::Sibling::from(KARURA_ID).into_account_truncating()
 }
+fn new_evm_address() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000009999").unwrap()
+}
 
 pub fn deploy_erc20_contracts() {
 	let json: serde_json::Value =
@@ -270,8 +273,29 @@ fn erc20_transfer_between_sibling() {
 			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
 		));
 
+		// transfer erc20 token to evm address on Karura
+		assert_ok!(XTokens::transfer(
+			RuntimeOrigin::signed(BOB.into()),
+			CurrencyId::ForeignAsset(0),
+			1_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2000),
+						Junction::AccountKey20 {
+							network: None,
+							key: new_evm_address().into(),
+						},
+					),
+				)
+				.into(),
+			),
+			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+		));
+
 		assert_eq!(
-			3_999_198_720_000,
+			2_999_198_720_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});
@@ -279,8 +303,10 @@ fn erc20_transfer_between_sibling() {
 	Karura::execute_with(|| {
 		use karura_runtime::{RuntimeEvent, System};
 		let erc20_holding_account = EvmAddressMapping::<Runtime>::get_account_id(&Erc20HoldingAccount::get());
+		let new_account = EvmAddressMapping::<Runtime>::get_account_id(&new_evm_address());
+
 		assert_eq!(
-			4_000_000_000_000,
+			3_000_000_000_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
 		);
 		assert_eq!(
@@ -288,7 +314,7 @@ fn erc20_transfer_between_sibling() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
 		assert_eq!(
-			16_025_600_000,
+			6_009_600_000 * 4,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &KaruraTreasuryAccount::get())
 		);
 		assert_eq!(
@@ -296,12 +322,16 @@ fn erc20_transfer_between_sibling() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE))
 		);
 		assert_eq!(
+			991_987_200_000,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &new_account)
+		);
+		assert_eq!(
 			0,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &erc20_holding_account)
 		);
-		// withdraw erc20 need charge storage fee for both sibling, BOB and CHARLIE
+		// withdraw erc20 need charge storage fee for both sibling, BOB, CHARLIE and new_account
 		assert_eq!(
-			initial_native_amount - storage_fee * 3,
+			initial_native_amount - storage_fee * 4,
 			Currencies::free_balance(NATIVE_CURRENCY, &sibling_reserve_account())
 		);
 		// no storage fee for BOB
