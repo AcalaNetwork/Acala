@@ -1,8 +1,8 @@
 FROM rust:buster as builder
 WORKDIR /app
 
-RUN rustup default nightly-2022-10-30 && \
-	rustup target add wasm32-unknown-unknown --toolchain nightly-2022-10-30
+RUN rustup default nightly-2023-03-04 && \
+	rustup target add wasm32-unknown-unknown --toolchain nightly-2023-03-04
 
 RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
