@@ -37,11 +37,11 @@ use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, Mu
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
-use primitives::evm::{is_system_contract, EvmAddress};
+use primitives::evm::is_system_contract;
 use runtime_common::{
-	local_currency_location, native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
+	local_currency_location, native_currency_location, xcm_impl::AccountKey20Aliases, AcalaDropAssets,
+	EnsureRootOrHalfGeneralCouncil,
 };
-use sp_std::marker::PhantomData;
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
@@ -71,37 +71,6 @@ pub type LocationToAccountId = (
 	// Convert `AccountKey20` to `AccountId`
 	AccountKey20Aliases<RelayNetwork, AccountId, EvmAddressMapping<Runtime>>,
 );
-
-/// Convert `AccountKey20` to `AccountId`
-pub struct AccountKey20Aliases<Network, AccountId, AddressMapping>(PhantomData<(Network, AccountId, AddressMapping)>);
-impl<Network, AccountId, AddressMapping> xcm_executor::traits::Convert<MultiLocation, AccountId>
-	for AccountKey20Aliases<Network, AccountId, AddressMapping>
-where
-	Network: Get<Option<NetworkId>>,
-	AccountId: From<[u8; 32]> + Into<[u8; 32]> + Clone,
-	AddressMapping: module_support::AddressMapping<AccountId>,
-{
-	fn convert(location: MultiLocation) -> Result<AccountId, MultiLocation> {
-		let key = match location {
-			MultiLocation {
-				parents: 0,
-				interior: X1(AccountKey20 { key, network: None }),
-			} => key,
-			MultiLocation {
-				parents: 0,
-				interior: X1(AccountKey20 { key, network }),
-			} if network == Network::get() => key,
-			_ => return Err(location),
-		};
-
-		Ok(AddressMapping::get_account_id(&EvmAddress::from(key)))
-	}
-
-	fn reverse(who: AccountId) -> Result<MultiLocation, AccountId> {
-		// Not sure whether to use AccountId32 or AccountKey20, not implemented for now
-		Err(who)
-	}
-}
 
 /// This is the type we use to convert an (incoming) XCM origin into a local `RuntimeOrigin`
 /// instance, ready for dispatching a transaction with Xcm's `Transact`. There is an `OriginKind`
