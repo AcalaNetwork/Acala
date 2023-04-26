@@ -19,9 +19,9 @@
 use super::{
 	constants::{fee::*, parachains},
 	AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert, Currencies, CurrencyId,
-	ExistentialDeposits, FixedRateOfAsset, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit,
-	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, UnknownTokens,
-	XcmInterface, XcmpQueue, KAR, KUSD, LKSM, TAI,
+	EvmAddressMapping, ExistentialDeposits, FixedRateOfAsset, GetNativeCurrencyId, KaruraTreasuryAccount,
+	NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeOrigin, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM, TAI,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -39,7 +39,8 @@ use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use primitives::evm::is_system_contract;
 use runtime_common::{
-	local_currency_location, native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
+	local_currency_location, native_currency_location, xcm_impl::AccountKey20Aliases, AcalaDropAssets,
+	EnsureRootOrHalfGeneralCouncil,
 };
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 pub use xcm_builder::{
@@ -67,6 +68,8 @@ pub type LocationToAccountId = (
 	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
 	AccountId32Aliases<RelayNetwork, AccountId>,
+	// Convert `AccountKey20` to `AccountId`
+	AccountKey20Aliases<RelayNetwork, AccountId, EvmAddressMapping<Runtime>>,
 );
 
 /// This is the type we use to convert an (incoming) XCM origin into a local `RuntimeOrigin`
