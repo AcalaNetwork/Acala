@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 log = "0.4.17"
-clap = { version = "4.0.9", features = ["derive"] }
+clap = { version = "4.2.4", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.0.0" }
 
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38", optional = true }

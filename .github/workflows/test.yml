@@ -37,7 +37,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2022-10-30
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
       - name: Setup cmake
@@ -49,11 +49,12 @@ jobs:
       - name: Install clippy
         run: rustup component add clippy
       - name: Run mandala-runtime clippy
-        run: cargo clippy --features with-mandala-runtime -- -D warnings
+        # TODO: remove it after https://github.com/open-web3-stack/open-runtime-module-library/pull/906
+        run: cargo clippy --features with-mandala-runtime -- -A clippy::derivable-impls -A clippy::useless-conversion -D warnings
       - name: Run karura-runtime clippy
-        run: cargo clippy --features with-karura-runtime -- -D warnings
+        run: cargo clippy --features with-karura-runtime -- -A clippy::derivable-impls -A clippy::useless-conversion -D warnings
       - name: Run acala-runtime clippy
-        run: cargo clippy --features with-acala-runtime -- -D warnings
+        run: cargo clippy --features with-acala-runtime -- -A clippy::derivable-impls -A clippy::useless-conversion -D warnings
       - name: Run build benches
         run: make build-benches
   benchmarking:
@@ -69,7 +70,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2022-10-30
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
       - name: Setup cmake
@@ -89,7 +90,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2022-10-30
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
       - name: Setup cmake
@@ -117,7 +118,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2022-10-30
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
       - name: Setup cmake
