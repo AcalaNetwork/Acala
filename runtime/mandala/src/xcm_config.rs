@@ -120,7 +120,7 @@ impl TakeRevenue for ToTreasury {
 
 parameter_types! {
 	// One XCM operation is 1_000_000 weight - almost certainly a conservative estimate.
-	pub UnitWeightCost: XcmWeight = XcmWeight::from_ref_time(1_000_000);
+	pub UnitWeightCost: XcmWeight = XcmWeight::from_parts(1_000_000, 0);
 	pub const MaxInstructions: u32 = 100;
 	pub DotPerSecond: (AssetId, u128, u128) = (
 		MultiLocation::parent().into(),
@@ -366,7 +366,7 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 }
 
 parameter_types! {
-	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_ref_time(100_000_000);
+	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_parts(100_000_000, 0);
 	pub const MaxAssetsForTransfer: usize = 2;
 }
 

@@ -51,14 +51,14 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	// Storage: Dex TradingPairStatuses (r:1 w:1)
 	fn enable_trading_pair() -> Weight {
 		// Minimum execution time: 16_890 nanoseconds.
-		Weight::from_ref_time(17_331_000)
+		Weight::from_parts(17_331_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: Dex TradingPairStatuses (r:1 w:1)
 	fn disable_trading_pair() -> Weight {
 		// Minimum execution time: 17_988 nanoseconds.
-		Weight::from_ref_time(18_452_000)
+		Weight::from_parts(18_452_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -67,14 +67,14 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	// Storage: Dex ProvisioningPool (r:1 w:0)
 	fn list_provisioning() -> Weight {
 		// Minimum execution time: 23_197 nanoseconds.
-		Weight::from_ref_time(23_858_000)
+		Weight::from_parts(23_858_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: Dex TradingPairStatuses (r:1 w:1)
 	fn update_provisioning_parameters() -> Weight {
 		// Minimum execution time: 10_315 nanoseconds.
-		Weight::from_ref_time(10_948_000)
+		Weight::from_parts(10_948_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -86,7 +86,7 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	// Storage: Dex InitialShareExchangeRates (r:0 w:1)
 	fn end_provisioning() -> Weight {
 		// Minimum execution time: 46_167 nanoseconds.
-		Weight::from_ref_time(48_094_000)
+		Weight::from_parts(48_094_000, 0)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -96,7 +96,7 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	// Storage: Tokens Accounts (r:2 w:2)
 	fn add_provision() -> Weight {
 		// Minimum execution time: 74_900 nanoseconds.
-		Weight::from_ref_time(76_656_000)
+		Weight::from_parts(76_656_000, 0)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -107,7 +107,7 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	fn claim_dex_share() -> Weight {
 		// Minimum execution time: 66_817 nanoseconds.
-		Weight::from_ref_time(69_164_000)
+		Weight::from_parts(69_164_000, 0)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -119,7 +119,7 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn add_liquidity() -> Weight {
 		// Minimum execution time: 91_092 nanoseconds.
-		Weight::from_ref_time(94_294_000)
+		Weight::from_parts(94_294_000, 0)
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -133,7 +133,7 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	// Storage: Rewards SharesAndWithdrawnRewards (r:1 w:1)
 	fn add_liquidity_and_stake() -> Weight {
 		// Minimum execution time: 128_056 nanoseconds.
-		Weight::from_ref_time(131_607_000)
+		Weight::from_parts(131_607_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -143,7 +143,7 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	fn remove_liquidity() -> Weight {
 		// Minimum execution time: 85_988 nanoseconds.
-		Weight::from_ref_time(88_510_000)
+		Weight::from_parts(88_510_000, 0)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -156,7 +156,7 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn remove_liquidity_by_unstake() -> Weight {
 		// Minimum execution time: 139_350 nanoseconds.
-		Weight::from_ref_time(141_724_000)
+		Weight::from_parts(141_724_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -167,9 +167,9 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	/// The range of component `u` is `[2, 4]`.
 	fn swap_with_exact_supply(u: u32, ) -> Weight {
 		// Minimum execution time: 71_241 nanoseconds.
-		Weight::from_ref_time(52_471_993)
+		Weight::from_parts(52_471_993, 0)
 			// Standard Error: 61_943
-			.saturating_add(Weight::from_ref_time(10_676_220).saturating_mul(u.into()))
+			.saturating_add(Weight::from_parts(10_676_220, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
@@ -182,9 +182,9 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	/// The range of component `u` is `[2, 4]`.
 	fn swap_with_exact_target(u: u32, ) -> Weight {
 		// Minimum execution time: 71_427 nanoseconds.
-		Weight::from_ref_time(52_512_131)
+		Weight::from_parts(52_512_131, 0)
 			// Standard Error: 62_644
-			.saturating_add(Weight::from_ref_time(10_710_101).saturating_mul(u.into()))
+			.saturating_add(Weight::from_parts(10_710_101, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
@@ -198,14 +198,14 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn refund_provision() -> Weight {
 		// Minimum execution time: 76_682 nanoseconds.
-		Weight::from_ref_time(78_334_000)
+		Weight::from_parts(78_334_000, 0)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
 	// Storage: Dex TradingPairStatuses (r:1 w:1)
 	fn abort_provisioning() -> Weight {
 		// Minimum execution time: 21_801 nanoseconds.
-		Weight::from_ref_time(22_759_000)
+		Weight::from_parts(22_759_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

@@ -53,28 +53,28 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: System Account (r:1 w:1)
 	fn create_pool() -> Weight {
 		// Minimum execution time: 28_172 nanoseconds.
-		Weight::from_ref_time(29_063_000)
+		Weight::from_parts(29_063_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
 	// Storage: StableAsset Pools (r:1 w:1)
 	fn modify_a() -> Weight {
 		// Minimum execution time: 21_754 nanoseconds.
-		Weight::from_ref_time(22_419_000)
+		Weight::from_parts(22_419_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: StableAsset Pools (r:1 w:1)
 	fn modify_fees() -> Weight {
 		// Minimum execution time: 20_958 nanoseconds.
-		Weight::from_ref_time(21_429_000)
+		Weight::from_parts(21_429_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: StableAsset Pools (r:1 w:1)
 	fn modify_recipients() -> Weight {
 		// Minimum execution time: 21_112 nanoseconds.
-		Weight::from_ref_time(21_614_000)
+		Weight::from_parts(21_614_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -89,9 +89,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	/// The range of component `u` is `[2, 5]`.
 	fn mint(u: u32, ) -> Weight {
 		// Minimum execution time: 135_117 nanoseconds.
-		Weight::from_ref_time(61_610_604)
+		Weight::from_parts(61_610_604, 0)
 			// Standard Error: 358_307
-			.saturating_add(Weight::from_ref_time(42_053_389).saturating_mul(u.into()))
+			.saturating_add(Weight::from_parts(42_053_389, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().reads((4_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(4))
@@ -108,9 +108,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	/// The range of component `u` is `[2, 5]`.
 	fn swap(u: u32, ) -> Weight {
 		// Minimum execution time: 1_480_767 nanoseconds.
-		Weight::from_ref_time(140_130_522)
+		Weight::from_parts(140_130_522, 0)
 			// Standard Error: 4_550_519
-			.saturating_add(Weight::from_ref_time(715_059_991).saturating_mul(u.into()))
+			.saturating_add(Weight::from_parts(715_059_991, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(6))
@@ -126,9 +126,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	/// The range of component `u` is `[2, 5]`.
 	fn redeem_proportion(u: u32, ) -> Weight {
 		// Minimum execution time: 150_533 nanoseconds.
-		Weight::from_ref_time(84_650_827)
+		Weight::from_parts(84_650_827, 0)
 			// Standard Error: 245_239
-			.saturating_add(Weight::from_ref_time(37_234_084).saturating_mul(u.into()))
+			.saturating_add(Weight::from_parts(37_234_084, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((4_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(3))
@@ -144,9 +144,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	/// The range of component `u` is `[2, 5]`.
 	fn redeem_single(u: u32, ) -> Weight {
 		// Minimum execution time: 999_773 nanoseconds.
-		Weight::from_ref_time(493_806_102)
+		Weight::from_parts(493_806_102, 0)
 			// Standard Error: 797_946
-			.saturating_add(Weight::from_ref_time(256_096_389).saturating_mul(u.into()))
+			.saturating_add(Weight::from_parts(256_096_389, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(u.into())))
 	}
@@ -161,9 +161,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	/// The range of component `u` is `[2, 5]`.
 	fn redeem_multi(u: u32, ) -> Weight {
 		// Minimum execution time: 132_069 nanoseconds.
-		Weight::from_ref_time(52_376_258)
+		Weight::from_parts(52_376_258, 0)
 			// Standard Error: 429_214
-			.saturating_add(Weight::from_ref_time(45_070_133).saturating_mul(u.into()))
+			.saturating_add(Weight::from_parts(45_070_133, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((4_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(3))

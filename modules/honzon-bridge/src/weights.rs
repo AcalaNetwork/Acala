@@ -56,25 +56,25 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn set_bridged_stable_coin_address() -> Weight {
-		Weight::from_ref_time(8_000_000)
+		Weight::from_parts(8_000_000, 0)
 	}
 	fn to_bridged() -> Weight {
-		Weight::from_ref_time(8_000_000)
+		Weight::from_parts(8_000_000, 0)
 	}
 	fn from_bridged() -> Weight {
-		Weight::from_ref_time(8_000_000)
+		Weight::from_parts(8_000_000, 0)
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn set_bridged_stable_coin_address() -> Weight {
-		Weight::from_ref_time(8_000_000)
+		Weight::from_parts(8_000_000, 0)
 	}
 	fn to_bridged() -> Weight {
-		Weight::from_ref_time(8_000_000)
+		Weight::from_parts(8_000_000, 0)
 	}
 	fn from_bridged() -> Weight {
-		Weight::from_ref_time(8_000_000)
+		Weight::from_parts(8_000_000, 0)
 	}
 }

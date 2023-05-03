@@ -25,4 +25,4 @@ module-evm-rpc-runtime-api = { path = "runtime_api" }
 module-evm = { path = ".." }
 
 [dev-dependencies]
-serde_json = "1.0.68"
+serde_json = "1.0.81"

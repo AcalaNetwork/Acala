@@ -60,7 +60,7 @@ impl<T: frame_system::Config> module_auction_manager::WeightInfo for WeightInfo<
 	// Storage: Auction AuctionEndTime (r:0 w:1)
 	fn cancel_collateral_auction() -> Weight {
 		// Minimum execution time: 87_419 nanoseconds.
-		Weight::from_ref_time(90_846_000)
+		Weight::from_parts(90_846_000, 0)
 			.saturating_add(T::DbWeight::get().reads(12))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}

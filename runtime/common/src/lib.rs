@@ -36,7 +36,7 @@ use orml_traits::{currency::MutationHooks, GetByKey};
 use polkadot_parachain::primitives::RelayChainBlockNumber;
 use primitives::{
 	evm::{is_system_contract, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},
-	Balance, CurrencyId, Nonce,
+	Balance, CurrencyId,
 };
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
@@ -107,7 +107,7 @@ impl PrecompileCallerFilter for SystemContractsFilter {
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(gas: u64) -> Weight {
-		Weight::from_ref_time(gas.saturating_mul(gas_to_weight_ratio::RATIO))
+		Weight::from_parts(gas.saturating_mul(gas_to_weight_ratio::RATIO), 0)
 	}
 }
 
@@ -404,7 +404,7 @@ where
 
 #[cfg(feature = "std")]
 /// Returns `evm_genesis_accounts`
-pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
+pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, primitives::Nonce>> {
 	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();

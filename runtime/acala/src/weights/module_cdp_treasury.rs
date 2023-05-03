@@ -60,9 +60,9 @@ impl<T: frame_system::Config> module_cdp_treasury::WeightInfo for WeightInfo<T> 
 	/// The range of component `b` is `[1, 50]`.
 	fn auction_collateral(b: u32, ) -> Weight {
 		// Minimum execution time: 41_367 nanoseconds.
-		Weight::from_ref_time(42_055_717)
+		Weight::from_parts(42_055_717, 0)
 			// Standard Error: 19_331
-			.saturating_add(Weight::from_ref_time(11_386_284).saturating_mul(b.into()))
+			.saturating_add(Weight::from_parts(11_386_284, 0).saturating_mul(b.into()))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(6))
 			.saturating_add(T::DbWeight::get().writes((3_u64).saturating_mul(b.into())))
@@ -82,21 +82,21 @@ impl<T: frame_system::Config> module_cdp_treasury::WeightInfo for WeightInfo<T> 
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:0)
 	fn exchange_collateral_to_stable() -> Weight {
 		// Minimum execution time: 329_731 nanoseconds.
-		Weight::from_ref_time(337_591_000)
+		Weight::from_parts(337_591_000, 0)
 			.saturating_add(T::DbWeight::get().reads(32))
 			.saturating_add(T::DbWeight::get().writes(12))
 	}
 	// Storage: CdpTreasury ExpectedCollateralAuctionSize (r:0 w:1)
 	fn set_expected_collateral_auction_size() -> Weight {
 		// Minimum execution time: 14_623 nanoseconds.
-		Weight::from_ref_time(15_409_000)
+		Weight::from_parts(15_409_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: Tokens Accounts (r:2 w:2)
 	// Storage: System Account (r:2 w:1)
 	fn extract_surplus_to_treasury() -> Weight {
 		// Minimum execution time: 41_153 nanoseconds.
-		Weight::from_ref_time(41_856_000)
+		Weight::from_parts(41_856_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}

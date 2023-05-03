@@ -59,42 +59,42 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn bond() -> Weight {
-		Weight::from_ref_time(17_919_000)
+		Weight::from_parts(17_919_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	fn unbond() -> Weight {
-		Weight::from_ref_time(16_640_000)
+		Weight::from_parts(16_640_000, 0)
 			.saturating_add(T::DbWeight::get().reads(5 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	fn rebond(c: u32, ) -> Weight {
-		Weight::from_ref_time(23_396_000)
+		Weight::from_parts(23_396_000, 0)
 			// Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(46_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(46_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	fn withdraw_unbonded(c: u32, ) -> Weight {
-		Weight::from_ref_time(15_118_000)
+		Weight::from_parts(15_118_000, 0)
 			// Standard Error: 4_000
-			.saturating_add(Weight::from_ref_time(42_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(42_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	fn nominate(c: u32, ) -> Weight {
-		Weight::from_ref_time(6_287_000)
+		Weight::from_parts(6_287_000, 0)
 			// Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(2_509_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(2_509_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	fn chill(c: u32, ) -> Weight {
-		Weight::from_ref_time(5_871_000)
+		Weight::from_parts(5_871_000, 0)
 			// Standard Error: 15_000
-			.saturating_add(Weight::from_ref_time(3_870_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(3_870_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
@@ -105,42 +105,42 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn bond() -> Weight {
-		Weight::from_ref_time(17_919_000)
+		Weight::from_parts(17_919_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(4 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 	fn unbond() -> Weight {
-		Weight::from_ref_time(16_640_000)
+		Weight::from_parts(16_640_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(5 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 	fn rebond(c: u32, ) -> Weight {
-		Weight::from_ref_time(23_396_000)
+		Weight::from_parts(23_396_000, 0)
 			// Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(46_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(46_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().reads(4 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 	fn withdraw_unbonded(c: u32, ) -> Weight {
-		Weight::from_ref_time(15_118_000)
+		Weight::from_parts(15_118_000, 0)
 			// Standard Error: 4_000
-			.saturating_add(Weight::from_ref_time(42_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(42_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().reads(4 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 	fn nominate(c: u32, ) -> Weight {
-		Weight::from_ref_time(6_287_000)
+		Weight::from_parts(6_287_000, 0)
 			// Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(2_509_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(2_509_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	fn chill(c: u32, ) -> Weight {
-		Weight::from_ref_time(5_871_000)
+		Weight::from_parts(5_871_000, 0)
 			// Standard Error: 15_000
-			.saturating_add(Weight::from_ref_time(3_870_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(3_870_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))

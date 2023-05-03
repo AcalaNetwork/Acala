@@ -31,7 +31,7 @@ runtime_benchmarks! {
 
 	on_idle_base {
 	}: {
-		IdleScheduler::on_idle(0, Weight::from_ref_time(1_000_000_000));
+		IdleScheduler::on_idle(0, Weight::from_parts(1_000_000_000, 0));
 	}
 
 	clear_tasks {

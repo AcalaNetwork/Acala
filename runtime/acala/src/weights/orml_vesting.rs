@@ -52,7 +52,7 @@ impl<T: frame_system::Config> orml_vesting::WeightInfo for WeightInfo<T> {
 	// Storage: Vesting VestingSchedules (r:1 w:1)
 	fn vested_transfer() -> Weight {
 		// Minimum execution time: 20_436 nanoseconds.
-		Weight::from_ref_time(21_041_000)
+		Weight::from_parts(21_041_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -62,9 +62,9 @@ impl<T: frame_system::Config> orml_vesting::WeightInfo for WeightInfo<T> {
 	/// The range of component `i` is `[1, 100]`.
 	fn claim(i: u32, ) -> Weight {
 		// Minimum execution time: 31_236 nanoseconds.
-		Weight::from_ref_time(32_625_189)
+		Weight::from_parts(32_625_189, 0)
 			// Standard Error: 619
-			.saturating_add(Weight::from_ref_time(736).saturating_mul(i.into()))
+			.saturating_add(Weight::from_parts(736, 0).saturating_mul(i.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -73,9 +73,9 @@ impl<T: frame_system::Config> orml_vesting::WeightInfo for WeightInfo<T> {
 	/// The range of component `i` is `[1, 100]`.
 	fn update_vesting_schedules(i: u32, ) -> Weight {
 		// Minimum execution time: 15_597 nanoseconds.
-		Weight::from_ref_time(16_318_661)
+		Weight::from_parts(16_318_661, 0)
 			// Standard Error: 394
-			.saturating_add(Weight::from_ref_time(51_603).saturating_mul(i.into()))
+			.saturating_add(Weight::from_parts(51_603, 0).saturating_mul(i.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

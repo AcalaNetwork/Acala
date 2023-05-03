@@ -2575,7 +2575,7 @@ fn transfer_erc20_will_charge_gas() {
 		assert_eq!(
 			dispatch_info.weight,
 			<Runtime as module::Config>::WeightInfo::transfer_non_native_currency()
-				+ Weight::from_ref_time(support::evm::limits::erc20::TRANSFER.gas) // mock GasToWeight is 1:1
+				+ Weight::from_parts(support::evm::limits::erc20::TRANSFER.gas, 0) // mock GasToWeight is 1:1
 		);
 
 		let dispatch_info = module::Call::<Runtime>::transfer {

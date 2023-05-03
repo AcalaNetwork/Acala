@@ -52,7 +52,7 @@ impl<T: frame_system::Config> module_idle_scheduler::WeightInfo for WeightInfo<T
 	// Storage: IdleScheduler PreviousRelayBlockNumber (r:0 w:1)
 	fn on_initialize() -> Weight {
 		// Minimum execution time: 3_409 nanoseconds.
-		Weight::from_ref_time(3_662_000)
+		Weight::from_parts(3_662_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -60,20 +60,20 @@ impl<T: frame_system::Config> module_idle_scheduler::WeightInfo for WeightInfo<T
 	// Storage: IdleScheduler PreviousRelayBlockNumber (r:1 w:0)
 	fn on_idle_base() -> Weight {
 		// Minimum execution time: 4_944 nanoseconds.
-		Weight::from_ref_time(5_273_000)
+		Weight::from_parts(5_273_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 	}
 	// Storage: IdleScheduler Tasks (r:0 w:1)
 	fn clear_tasks() -> Weight {
 		// Minimum execution time: 9_372 nanoseconds.
-		Weight::from_ref_time(9_602_000)
+		Weight::from_parts(9_602_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: IdleScheduler NextTaskId (r:1 w:1)
 	// Storage: IdleScheduler Tasks (r:0 w:1)
 	fn schedule_task() -> Weight {
 		// Minimum execution time: 16_433 nanoseconds.
-		Weight::from_ref_time(17_100_000)
+		Weight::from_parts(17_100_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}

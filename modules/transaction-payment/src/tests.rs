@@ -53,24 +53,24 @@ const CALL2: <Runtime as frame_system::Config>::RuntimeCall =
 	RuntimeCall::Currencies(module_currencies::Call::transfer_native_currency { dest: BOB, amount: 12 });
 
 const INFO: DispatchInfo = DispatchInfo {
-	weight: Weight::from_ref_time(1000),
+	weight: Weight::from_parts(1000, 0),
 	class: DispatchClass::Normal,
 	pays_fee: Pays::Yes,
 };
 
 const INFO2: DispatchInfo = DispatchInfo {
-	weight: Weight::from_ref_time(100),
+	weight: Weight::from_parts(100, 0),
 	class: DispatchClass::Normal,
 	pays_fee: Pays::Yes,
 };
 
 const POST_INFO: PostDispatchInfo = PostDispatchInfo {
-	actual_weight: Some(Weight::from_ref_time(800)),
+	actual_weight: Some(Weight::from_parts(800, 0)),
 	pays_fee: Pays::Yes,
 };
 
 const POST_INFO2: PostDispatchInfo = PostDispatchInfo {
-	actual_weight: Some(Weight::from_ref_time(80)),
+	actual_weight: Some(Weight::from_parts(80, 0)),
 	pays_fee: Pays::Yes,
 };
 
@@ -231,7 +231,7 @@ fn charges_fee_when_native_is_enough_but_cannot_keep_alive() {
 		// after charge fee, balance=fee-fee2=ED, equal to ED, keep alive
 		let fee2 = 5000 * 2 + 990;
 		let info = DispatchInfo {
-			weight: Weight::from_ref_time(990),
+			weight: Weight::from_parts(990, 0),
 			class: DispatchClass::Normal,
 			pays_fee: Pays::Yes,
 		};
@@ -733,7 +733,7 @@ fn refund_should_not_works() {
 
 		// actual_weight > weight
 		const POST_INFO: PostDispatchInfo = PostDispatchInfo {
-			actual_weight: Some(INFO.weight.add(1)),
+			actual_weight: Some(INFO.weight.add_ref_time(1)),
 			pays_fee: Pays::Yes,
 		};
 
@@ -1270,7 +1270,7 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 #[test]
 fn query_info_works() {
 	ExtBuilder::default()
-		.base_weight(Weight::from_ref_time(5))
+		.base_weight(Weight::from_parts(5, 0))
 		.byte_fee(1)
 		.weight_fee(2)
 		.build()
@@ -1305,7 +1305,7 @@ fn query_info_works() {
 #[test]
 fn compute_fee_works_without_multiplier() {
 	ExtBuilder::default()
-		.base_weight(Weight::from_ref_time(100))
+		.base_weight(Weight::from_parts(100, 0))
 		.byte_fee(10)
 		.build()
 		.execute_with(|| {
@@ -1314,14 +1314,14 @@ fn compute_fee_works_without_multiplier() {
 
 			// Tip only, no fees works
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_ref_time(0),
+				weight: Weight::from_parts(0, 0),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::No,
 			};
 			assert_eq!(Pallet::<Runtime>::compute_fee(0, &dispatch_info, 10), 10);
 			// No tip, only base fee works
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_ref_time(0),
+				weight: Weight::from_parts(0, 0),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1332,7 +1332,7 @@ fn compute_fee_works_without_multiplier() {
 			assert_eq!(Pallet::<Runtime>::compute_fee(42, &dispatch_info, 0), 520);
 			// Weight fee + base fee works
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_ref_time(1000),
+				weight: Weight::from_parts(1000, 0),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1343,7 +1343,7 @@ fn compute_fee_works_without_multiplier() {
 #[test]
 fn compute_fee_works_with_multiplier() {
 	ExtBuilder::default()
-		.base_weight(Weight::from_ref_time(100))
+		.base_weight(Weight::from_parts(100, 0))
 		.byte_fee(10)
 		.build()
 		.execute_with(|| {
@@ -1351,7 +1351,7 @@ fn compute_fee_works_with_multiplier() {
 			NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
 			// Base fee is unaffected by multiplier
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_ref_time(0),
+				weight: Weight::from_parts(0, 0),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1359,7 +1359,7 @@ fn compute_fee_works_with_multiplier() {
 
 			// Everything works together :)
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_ref_time(123),
+				weight: Weight::from_parts(123, 0),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1374,7 +1374,7 @@ fn compute_fee_works_with_multiplier() {
 #[test]
 fn compute_fee_works_with_negative_multiplier() {
 	ExtBuilder::default()
-		.base_weight(Weight::from_ref_time(100))
+		.base_weight(Weight::from_parts(100, 0))
 		.byte_fee(10)
 		.build()
 		.execute_with(|| {
@@ -1383,7 +1383,7 @@ fn compute_fee_works_with_negative_multiplier() {
 
 			// Base fee is unaffected by multiplier.
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_ref_time(0),
+				weight: Weight::from_parts(0, 0),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1391,7 +1391,7 @@ fn compute_fee_works_with_negative_multiplier() {
 
 			// Everything works together.
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_ref_time(123),
+				weight: Weight::from_parts(123, 0),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1406,7 +1406,7 @@ fn compute_fee_works_with_negative_multiplier() {
 #[test]
 fn compute_fee_does_not_overflow() {
 	ExtBuilder::default()
-		.base_weight(Weight::from_ref_time(100))
+		.base_weight(Weight::from_parts(100, 0))
 		.byte_fee(10)
 		.build()
 		.execute_with(|| {
@@ -1433,7 +1433,7 @@ fn should_alter_operational_priority() {
 		.build()
 		.execute_with(|| {
 			let normal = DispatchInfo {
-				weight: Weight::from_ref_time(100),
+				weight: Weight::from_parts(100, 0),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};
@@ -1457,7 +1457,7 @@ fn should_alter_operational_priority() {
 		.build()
 		.execute_with(|| {
 			let op = DispatchInfo {
-				weight: Weight::from_ref_time(100),
+				weight: Weight::from_parts(100, 0),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1491,7 +1491,7 @@ fn no_tip_has_some_priority() {
 		.build()
 		.execute_with(|| {
 			let normal = DispatchInfo {
-				weight: Weight::from_ref_time(100),
+				weight: Weight::from_parts(100, 0),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};
@@ -1508,7 +1508,7 @@ fn no_tip_has_some_priority() {
 		.build()
 		.execute_with(|| {
 			let op = DispatchInfo {
-				weight: Weight::from_ref_time(100),
+				weight: Weight::from_parts(100, 0),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1534,7 +1534,7 @@ fn min_tip_has_same_priority() {
 		.build()
 		.execute_with(|| {
 			let normal = DispatchInfo {
-				weight: Weight::from_ref_time(100),
+				weight: Weight::from_parts(100, 0),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};
@@ -1599,7 +1599,7 @@ fn max_tip_has_same_priority() {
 		.build()
 		.execute_with(|| {
 			let normal = DispatchInfo {
-				weight: Weight::from_ref_time(100),
+				weight: Weight::from_parts(100, 0),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};

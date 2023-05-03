@@ -31,7 +31,7 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::{Decode, DecodeLimit, Encode};
-use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
+use cumulus_pallet_parachain_system::RelaychainDataProvider;
 use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime,
@@ -49,7 +49,7 @@ pub use frame_support::{
 	},
 	PalletId, RuntimeDebug, StorageValue,
 };
-use frame_system::{EnsureRoot, RawOrigin};
+use frame_system::{EnsureRoot, EnsureSigned, RawOrigin};
 use hex_literal::hex;
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
@@ -371,6 +371,7 @@ impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -399,6 +400,7 @@ impl pallet_collective::Config<FinancialCouncilInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -427,6 +429,7 @@ impl pallet_collective::Config<HomaCouncilInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -455,6 +458,7 @@ impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -663,6 +667,7 @@ impl pallet_democracy::Config for Runtime {
 	type Preimages = Preimage;
 	type MaxDeposits = ConstU32<100>;
 	type MaxBlacklisted = ConstU32<100>;
+	type SubmitOrigin = EnsureSigned<AccountId>;
 }
 
 impl orml_auction::Config for Runtime {
@@ -750,6 +755,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type KickedMember = ();
 	type MaxVoters = ConstU32<10000>;
 	type MaxCandidates = ConstU32<1000>;
+	type MaxVotesPerVoter = ConstU32<100>;
 	type WeightInfo = ();
 }
 
@@ -897,7 +903,7 @@ impl module_prices::Config for Runtime {
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
-	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type PricingPegged = PricingPegged;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
@@ -956,7 +962,7 @@ impl orml_vesting::Config for Runtime {
 	type VestedTransferOrigin = EnsureRootOrTreasury;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 	type MaxVestingSchedules = ConstU32<100>;
-	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	type BlockNumberProvider = RelaychainDataProvider<Runtime>;
 }
 
 parameter_types! {
@@ -1376,7 +1382,7 @@ impl module_homa::Config for Runtime {
 	type BondingDuration = ConstU32<28>;
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
-	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
@@ -1771,7 +1777,7 @@ impl module_idle_scheduler::Config for Runtime {
 	type WeightInfo = weights::module_idle_scheduler::WeightInfo<Runtime>;
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
-	type RelayChainBlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumberProvider = RelaychainDataProvider<Runtime>;
 	// Number of relay chain blocks produced with no parachain blocks finalized,
 	// once this number is reached idle scheduler is disabled as block production is slow
 	type DisableBlockThreshold = ConstU32<6>;

@@ -121,7 +121,7 @@ pub mod module {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			Dummy::<T>::put(T::Balance::from(10));
-			Weight::from_ref_time(10)
+			Weight::from_parts(10, 0)
 		}
 
 		fn on_finalize(_n: T::BlockNumber) {

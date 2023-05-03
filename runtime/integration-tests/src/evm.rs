@@ -965,7 +965,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 					amount: 1,
 				});
 			let info: DispatchInfo = DispatchInfo {
-				weight: Weight::from_ref_time(100),
+				weight: Weight::from_parts(100, 0),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};

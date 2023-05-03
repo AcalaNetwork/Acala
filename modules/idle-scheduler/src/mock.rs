@@ -34,7 +34,7 @@ use super::*;
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
-pub const BASE_WEIGHT: Weight = Weight::from_ref_time(1_000_000);
+pub const BASE_WEIGHT: Weight = Weight::from_parts(1_000_000, 0);
 pub const RELAY_BLOCK_KEY: [u8; 32] = [0; 32];
 
 pub type AccountId = u32;
@@ -77,7 +77,7 @@ impl BlockNumberProvider for MockBlockNumberProvider {
 }
 
 parameter_types! {
-	pub MinimumWeightRemainInBlock: Weight = Weight::from_ref_time(100_000_000_000);
+	pub MinimumWeightRemainInBlock: Weight = Weight::from_parts(100_000_000_000, 0);
 }
 
 impl module_idle_scheduler::Config for Runtime {

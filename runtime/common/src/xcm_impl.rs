@@ -111,7 +111,7 @@ where
 			X::drop_assets(origin, asset_traps.into(), context);
 		}
 		// TODO #2492: Put the real weight in there.
-		XcmWeight::from_ref_time(0)
+		XcmWeight::from_parts(0, 0)
 	}
 }
 
@@ -408,11 +408,11 @@ mod tests {
 			let asset: MultiAsset = (Parent, 100).into();
 			let assets: Assets = asset.into();
 			let mut trader = <FixedRateOfAsset<(), (), MockNoneBuyWeightRate>>::new();
-			let buy_weight = trader.buy_weight(XcmWeight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND), assets.clone());
+			let buy_weight = trader.buy_weight(XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0), assets.clone());
 			assert_noop!(buy_weight, XcmError::TooExpensive);
 
 			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockFixedBuyWeightRate<FixedRate>>>::new();
-			let buy_weight = trader.buy_weight(XcmWeight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND), assets.clone());
+			let buy_weight = trader.buy_weight(XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0), assets.clone());
 			let asset: MultiAsset = (Parent, 90).into();
 			let assets: Assets = asset.into();
 			assert_ok!(buy_weight, assets.clone());

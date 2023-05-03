@@ -57,22 +57,22 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn pause_transaction() -> Weight {
-		Weight::from_ref_time(25_798_000)
+		Weight::from_parts(25_798_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn unpause_transaction() -> Weight {
-		Weight::from_ref_time(25_355_000)
+		Weight::from_parts(25_355_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn pause_evm_precompile() -> Weight {
-		Weight::from_ref_time(13_000_000)
+		Weight::from_parts(13_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	fn unpause_evm_precompile() -> Weight {
-		Weight::from_ref_time(14_000_000)
+		Weight::from_parts(14_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
@@ -81,22 +81,22 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn pause_transaction() -> Weight {
-		Weight::from_ref_time(25_798_000)
+		Weight::from_parts(25_798_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn unpause_transaction() -> Weight {
-		Weight::from_ref_time(25_355_000)
+		Weight::from_parts(25_355_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn pause_evm_precompile() -> Weight {
-		Weight::from_ref_time(13_000_000)
+		Weight::from_parts(13_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn unpause_evm_precompile() -> Weight {
-		Weight::from_ref_time(14_000_000)
+		Weight::from_parts(14_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}

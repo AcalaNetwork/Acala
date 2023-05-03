@@ -595,6 +595,6 @@ impl<T: Config, GetBufferSize: Get<Balance>> frame_support::traits::OnRuntimeUpg
 			}
 		});
 
-		Weight::from_ref_time(0)
+		Weight::from_parts(0, 0)
 	}
 }

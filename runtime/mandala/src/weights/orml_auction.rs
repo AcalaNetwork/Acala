@@ -56,7 +56,7 @@ impl<T: frame_system::Config> orml_auction::WeightInfo for WeightInfo<T> {
 	// Storage: Auction AuctionEndTime (r:0 w:2)
 	fn bid_collateral_auction() -> Weight {
 		// Minimum execution time: 93_554 nanoseconds.
-		Weight::from_ref_time(96_105_000)
+		Weight::from_parts(96_105_000, 0)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}
@@ -76,9 +76,9 @@ impl<T: frame_system::Config> orml_auction::WeightInfo for WeightInfo<T> {
 	/// The range of component `c` is `[1, 100]`.
 	fn on_finalize(c: u32, ) -> Weight {
 		// Minimum execution time: 102_998 nanoseconds.
-		Weight::from_ref_time(51_072_583)
+		Weight::from_parts(51_072_583, 0)
 			// Standard Error: 22_008
-			.saturating_add(Weight::from_ref_time(46_300_946).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(46_300_946, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(14))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(7))

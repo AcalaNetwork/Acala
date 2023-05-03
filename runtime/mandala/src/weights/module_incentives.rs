@@ -55,9 +55,9 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 	/// The range of component `c` is `[0, 5]`.
 	fn on_initialize(c: u32, ) -> Weight {
 		// Minimum execution time: 8_494 nanoseconds.
-		Weight::from_ref_time(13_068_076)
+		Weight::from_parts(13_068_076, 0)
 			// Standard Error: 85_290
-			.saturating_add(Weight::from_ref_time(15_022_389).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(15_022_389, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(c.into())))
 	}
@@ -68,7 +68,7 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 	// Storage: Rewards SharesAndWithdrawnRewards (r:1 w:1)
 	fn deposit_dex_share() -> Weight {
 		// Minimum execution time: 62_789 nanoseconds.
-		Weight::from_ref_time(64_951_000)
+		Weight::from_parts(64_951_000, 0)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -78,7 +78,7 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 	// Storage: Rewards PoolInfos (r:1 w:1)
 	fn withdraw_dex_share() -> Weight {
 		// Minimum execution time: 61_929 nanoseconds.
-		Weight::from_ref_time(63_405_000)
+		Weight::from_parts(63_405_000, 0)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -90,7 +90,7 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn claim_rewards() -> Weight {
 		// Minimum execution time: 64_750 nanoseconds.
-		Weight::from_ref_time(66_356_000)
+		Weight::from_parts(66_356_000, 0)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -98,9 +98,9 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 	/// The range of component `c` is `[0, 5]`.
 	fn update_incentive_rewards(c: u32, ) -> Weight {
 		// Minimum execution time: 4_663 nanoseconds.
-		Weight::from_ref_time(8_295_152)
+		Weight::from_parts(8_295_152, 0)
 			// Standard Error: 72_000
-			.saturating_add(Weight::from_ref_time(6_420_478).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(6_420_478, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
 	}
@@ -108,9 +108,9 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 	/// The range of component `c` is `[0, 5]`.
 	fn update_claim_reward_deduction_rates(c: u32, ) -> Weight {
 		// Minimum execution time: 4_489 nanoseconds.
-		Weight::from_ref_time(5_364_062)
+		Weight::from_parts(5_364_062, 0)
 			// Standard Error: 11_983
-			.saturating_add(Weight::from_ref_time(1_694_673).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(1_694_673, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
 	}

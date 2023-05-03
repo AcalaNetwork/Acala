@@ -35,11 +35,11 @@ use mandala_runtime::{
 };
 use runtime_common::evm_genesis;
 use sc_chain_spec::ChainType;
+use sc_consensus_grandpa::AuthorityId as GrandpaId;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, sr25519, H160};
-use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 use tiny_keccak::{Hasher, Keccak};

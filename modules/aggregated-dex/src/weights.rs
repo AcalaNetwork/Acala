@@ -55,27 +55,27 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn swap_with_exact_supply(u: u32, ) -> Weight {
-		Weight::from_ref_time(70_917_000)
+		Weight::from_parts(70_917_000, 0)
 			// Standard Error: 1_041_000
-			.saturating_add(Weight::from_ref_time(8_550_000).saturating_mul(u as u64))
+			.saturating_add(Weight::from_parts(8_550_000, 0).saturating_mul(u as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(u as u64)))
 	}
 	fn swap_with_exact_target(u: u32, ) -> Weight {
-		Weight::from_ref_time(58_717_000)
+		Weight::from_parts(58_717_000, 0)
 			// Standard Error: 147_000
-			.saturating_add(Weight::from_ref_time(15_650_000).saturating_mul(u as u64))
+			.saturating_add(Weight::from_parts(15_650_000, 0).saturating_mul(u as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(u as u64)))
 	}
 	fn update_aggregated_swap_paths(n: u32, ) -> Weight {
-		Weight::from_ref_time(4_558_000)
+		Weight::from_parts(4_558_000, 0)
 			// Standard Error: 25_000
-			.saturating_add(Weight::from_ref_time(1_533_000).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(1_533_000, 0).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(n as u64)))
 	}
@@ -84,27 +84,27 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn swap_with_exact_supply(u: u32, ) -> Weight {
-		Weight::from_ref_time(70_917_000)
+		Weight::from_parts(70_917_000, 0)
 			// Standard Error: 1_041_000
-			.saturating_add(Weight::from_ref_time(8_550_000).saturating_mul(u as u64))
+			.saturating_add(Weight::from_parts(8_550_000, 0).saturating_mul(u as u64))
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(u as u64)))
 	}
 	fn swap_with_exact_target(u: u32, ) -> Weight {
-		Weight::from_ref_time(58_717_000)
+		Weight::from_parts(58_717_000, 0)
 			// Standard Error: 147_000
-			.saturating_add(Weight::from_ref_time(15_650_000).saturating_mul(u as u64))
+			.saturating_add(Weight::from_parts(15_650_000, 0).saturating_mul(u as u64))
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(u as u64)))
 	}
 	fn update_aggregated_swap_paths(n: u32, ) -> Weight {
-		Weight::from_ref_time(4_558_000)
+		Weight::from_parts(4_558_000, 0)
 			// Standard Error: 25_000
-			.saturating_add(Weight::from_ref_time(1_533_000).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(1_533_000, 0).saturating_mul(n as u64))
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(n as u64)))
 	}

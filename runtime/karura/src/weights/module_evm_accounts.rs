@@ -55,7 +55,7 @@ impl<T: frame_system::Config> module_evm_accounts::WeightInfo for WeightInfo<T> 
 	// Storage: System Account (r:1 w:0)
 	fn claim_account() -> Weight {
 		// Minimum execution time: 76_451 nanoseconds.
-		Weight::from_ref_time(78_180_000)
+		Weight::from_parts(78_180_000, 0)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -63,7 +63,7 @@ impl<T: frame_system::Config> module_evm_accounts::WeightInfo for WeightInfo<T> 
 	// Storage: EvmAccounts Accounts (r:0 w:1)
 	fn claim_default_account() -> Weight {
 		// Minimum execution time: 17_867 nanoseconds.
-		Weight::from_ref_time(18_450_000)
+		Weight::from_parts(18_450_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}

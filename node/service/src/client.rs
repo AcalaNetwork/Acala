@@ -20,7 +20,7 @@
 
 use acala_primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, DataProviderId, Hash, Header, Nonce};
 use runtime_common::TimeStampedPrice;
-use sc_client_api::{Backend as BackendT, BlockchainEvents, KeyIterator};
+use sc_client_api::{Backend as BackendT, BlockchainEvents, KeysIter, PairsIter};
 use sp_api::{CallApiAt, NumberFor, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
 use sp_consensus::BlockStatus;
@@ -41,7 +41,6 @@ pub trait RuntimeApiCollection:
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 	+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
 	+ orml_tokens_rpc::TokensRuntimeApi<Block, CurrencyId, Balance>
-	+ module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance>
 	+ sp_api::Metadata<Block>
 	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_session::SessionKeys<Block>
@@ -60,7 +59,6 @@ where
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 		+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
 		+ orml_tokens_rpc::TokensRuntimeApi<Block, CurrencyId, Balance>
-		+ module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance>
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_session::SessionKeys<Block>
@@ -299,15 +297,16 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 	fn storage_keys(
 		&self,
 		hash: <Block as BlockT>::Hash,
-		key_prefix: &StorageKey,
-	) -> sp_blockchain::Result<Vec<StorageKey>> {
+		prefix: Option<&StorageKey>,
+		start_key: Option<&StorageKey>,
+	) -> sp_blockchain::Result<KeysIter<<crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.storage_keys(hash, key_prefix),
+			Self::Mandala(client) => client.storage_keys(hash, prefix, start_key),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.storage_keys(hash, key_prefix),
+			Self::Karura(client) => client.storage_keys(hash, prefix, start_key),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.storage_keys(hash, key_prefix),
+			Self::Acala(client) => client.storage_keys(hash, prefix, start_key),
 		}
 	}
 
@@ -329,48 +328,16 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 	fn storage_pairs(
 		&self,
 		hash: <Block as BlockT>::Hash,
-		key_prefix: &StorageKey,
-	) -> sp_blockchain::Result<Vec<(StorageKey, StorageData)>> {
-		match self {
-			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.storage_pairs(hash, key_prefix),
-			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.storage_pairs(hash, key_prefix),
-			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.storage_pairs(hash, key_prefix),
-		}
-	}
-
-	fn storage_keys_iter(
-		&self,
-		hash: <Block as BlockT>::Hash,
-		prefix: Option<&StorageKey>,
+		key_prefix: Option<&StorageKey>,
 		start_key: Option<&StorageKey>,
-	) -> sp_blockchain::Result<KeyIterator<<crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
+	) -> sp_blockchain::Result<PairsIter<<crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.storage_keys_iter(hash, prefix, start_key),
+			Self::Mandala(client) => client.storage_pairs(hash, key_prefix, start_key),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.storage_keys_iter(hash, prefix, start_key),
+			Self::Karura(client) => client.storage_pairs(hash, key_prefix, start_key),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.storage_keys_iter(hash, prefix, start_key),
-		}
-	}
-
-	fn child_storage_keys_iter(
-		&self,
-		hash: <Block as BlockT>::Hash,
-		child_info: ChildInfo,
-		prefix: Option<&StorageKey>,
-		start_key: Option<&StorageKey>,
-	) -> sp_blockchain::Result<KeyIterator<<crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
-		match self {
-			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.child_storage_keys_iter(hash, child_info, prefix, start_key),
-			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.child_storage_keys_iter(hash, child_info, prefix, start_key),
-			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.child_storage_keys_iter(hash, child_info, prefix, start_key),
+			Self::Acala(client) => client.storage_pairs(hash, key_prefix, start_key),
 		}
 	}
 
@@ -393,16 +360,17 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 	fn child_storage_keys(
 		&self,
 		hash: <Block as BlockT>::Hash,
-		child_info: &ChildInfo,
-		key_prefix: &StorageKey,
-	) -> sp_blockchain::Result<Vec<StorageKey>> {
+		child_info: ChildInfo,
+		prefix: Option<&StorageKey>,
+		start_key: Option<&StorageKey>,
+	) -> sp_blockchain::Result<KeysIter<<crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
 		match self {
 			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.child_storage_keys(hash, child_info, key_prefix),
+			Self::Mandala(client) => client.child_storage_keys(hash, child_info, prefix, start_key),
 			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.child_storage_keys(hash, child_info, key_prefix),
+			Self::Karura(client) => client.child_storage_keys(hash, child_info, prefix, start_key),
 			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.child_storage_keys(hash, child_info, key_prefix),
+			Self::Acala(client) => client.child_storage_keys(hash, child_info, prefix, start_key),
 		}
 	}
 

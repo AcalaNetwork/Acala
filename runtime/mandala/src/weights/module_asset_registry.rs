@@ -54,7 +54,7 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:1)
 	fn register_foreign_asset() -> Weight {
 		// Minimum execution time: 23_395 nanoseconds.
-		Weight::from_ref_time(24_124_000)
+		Weight::from_parts(24_124_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -62,7 +62,7 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:1)
 	fn update_foreign_asset() -> Weight {
 		// Minimum execution time: 22_711 nanoseconds.
-		Weight::from_ref_time(23_590_000)
+		Weight::from_parts(23_590_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -70,14 +70,14 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:1)
 	fn register_stable_asset() -> Weight {
 		// Minimum execution time: 18_782 nanoseconds.
-		Weight::from_ref_time(19_344_000)
+		Weight::from_parts(19_344_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:1)
 	fn update_stable_asset() -> Weight {
 		// Minimum execution time: 19_060 nanoseconds.
-		Weight::from_ref_time(19_549_000)
+		Weight::from_parts(19_549_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -88,28 +88,28 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 	// Storage: AssetRegistry Erc20IdToAddress (r:1 w:1)
 	fn register_erc20_asset() -> Weight {
 		// Minimum execution time: 298_313 nanoseconds.
-		Weight::from_ref_time(304_082_000)
+		Weight::from_parts(304_082_000, 0)
 			.saturating_add(T::DbWeight::get().reads(10))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:1)
 	fn update_erc20_asset() -> Weight {
 		// Minimum execution time: 26_878 nanoseconds.
-		Weight::from_ref_time(28_436_000)
+		Weight::from_parts(28_436_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:1)
 	fn register_native_asset() -> Weight {
 		// Minimum execution time: 17_396 nanoseconds.
-		Weight::from_ref_time(17_965_000)
+		Weight::from_parts(17_965_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:1)
 	fn update_native_asset() -> Weight {
 		// Minimum execution time: 18_320 nanoseconds.
-		Weight::from_ref_time(18_787_000)
+		Weight::from_parts(18_787_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

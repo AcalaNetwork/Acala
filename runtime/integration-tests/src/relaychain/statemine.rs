@@ -45,14 +45,14 @@ fn init_statemine_xcm_interface() {
 		RuntimeOrigin::root(),
 		vec![(
 			xcm_operation.clone(),
-			Some(XcmWeight::from_ref_time(4_000_000_000)),
+			Some(XcmWeight::from_parts(4_000_000_000, 0)),
 			Some(200_000_000),
 		)],
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(
 		module_xcm_interface::Event::XcmDestWeightUpdated {
 			xcm_operation: xcm_operation.clone(),
-			new_xcm_dest_weight: XcmWeight::from_ref_time(4_000_000_000),
+			new_xcm_dest_weight: XcmWeight::from_parts(4_000_000_000, 0),
 		},
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
@@ -69,7 +69,7 @@ fn statemine_min_xcm_fee_matched() {
 		init_statemine_xcm_interface();
 		let weight = FEE_WEIGHT as u64;
 
-		let fee: Balance = IdentityFee::weight_to_fee(&Weight::from_ref_time(weight));
+		let fee: Balance = IdentityFee::weight_to_fee(&Weight::from_parts(weight, 0));
 		let statemine: MultiLocation = (Parent, Parachain(parachains::statemine::ID)).into();
 		let bifrost: MultiLocation = (Parent, Parachain(parachains::bifrost::ID)).into();
 
@@ -159,7 +159,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(4_000_000_000))
+			WeightLimit::Limited(XcmWeight::from_parts(4_000_000_000, 0))
 		));
 
 		assert_eq!(9 * UNIT, Tokens::free_balance(KSM, &AccountId::from(ALICE)));
@@ -279,7 +279,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 					)
 					.into()
 				),
-				WeightLimit::Limited(XcmWeight::from_ref_time(FEE_WEIGHT as u64))
+				WeightLimit::Limited(XcmWeight::from_parts(FEE_WEIGHT as u64, 0))
 			));
 		} else {
 			// use KSM as fee
@@ -300,7 +300,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 					)
 					.into()
 				),
-				//WeightLimit::Limited(XcmWeight::from_ref_time(400_000_000))
+				//WeightLimit::Limited(XcmWeight::from_parts(400_000_000, 0))
 				WeightLimit::Unlimited
 			));
 		}

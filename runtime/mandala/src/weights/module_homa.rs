@@ -53,7 +53,7 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: Homa BumpEraFrequency (r:1 w:0)
 	fn on_initialize() -> Weight {
 		// Minimum execution time: 5_913 nanoseconds.
-		Weight::from_ref_time(6_202_000)
+		Weight::from_parts(6_202_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 	}
 	// Storage: ParachainSystem ValidationData (r:1 w:0)
@@ -80,7 +80,7 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: Homa TotalVoidLiquid (r:0 w:1)
 	fn on_initialize_with_bump_era() -> Weight {
 		// Minimum execution time: 230_232 nanoseconds.
-		Weight::from_ref_time(236_318_000)
+		Weight::from_parts(236_318_000, 0)
 			.saturating_add(T::DbWeight::get().reads(30))
 			.saturating_add(T::DbWeight::get().writes(17))
 	}
@@ -94,7 +94,7 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: Homa EstimatedRewardRatePerEra (r:1 w:0)
 	fn mint() -> Weight {
 		// Minimum execution time: 77_047 nanoseconds.
-		Weight::from_ref_time(80_267_000)
+		Weight::from_parts(80_267_000, 0)
 			.saturating_add(T::DbWeight::get().reads(10))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
@@ -103,7 +103,7 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	fn request_redeem() -> Weight {
 		// Minimum execution time: 51_322 nanoseconds.
-		Weight::from_ref_time(52_520_000)
+		Weight::from_parts(52_520_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -118,9 +118,9 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	/// The range of component `n` is `[1, 50]`.
 	fn fast_match_redeems(n: u32, ) -> Weight {
 		// Minimum execution time: 87_037 nanoseconds.
-		Weight::from_ref_time(28_484_783)
+		Weight::from_parts(28_484_783, 0)
 			// Standard Error: 34_139
-			.saturating_add(Weight::from_ref_time(51_162_842).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(51_162_842, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(5))
@@ -134,7 +134,7 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn claim_redemption() -> Weight {
 		// Minimum execution time: 70_981 nanoseconds.
-		Weight::from_ref_time(72_442_000)
+		Weight::from_parts(72_442_000, 0)
 			.saturating_add(T::DbWeight::get().reads(9))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -144,7 +144,7 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: Homa SoftBondedCapPerSubAccount (r:0 w:1)
 	fn update_homa_params() -> Weight {
 		// Minimum execution time: 29_482 nanoseconds.
-		Weight::from_ref_time(30_516_000)
+		Weight::from_parts(30_516_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -153,7 +153,7 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: Homa BumpEraFrequency (r:0 w:1)
 	fn update_bump_era_params() -> Weight {
 		// Minimum execution time: 21_562 nanoseconds.
-		Weight::from_ref_time(22_233_000)
+		Weight::from_parts(22_233_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -162,9 +162,9 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	/// The range of component `n` is `[0, 10]`.
 	fn reset_ledgers(n: u32, ) -> Weight {
 		// Minimum execution time: 4_692 nanoseconds.
-		Weight::from_ref_time(11_766_606)
+		Weight::from_parts(11_766_606, 0)
 			// Standard Error: 41_061
-			.saturating_add(Weight::from_ref_time(8_258_954).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(8_258_954, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
@@ -173,7 +173,7 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Storage: Homa RelayChainCurrentEra (r:1 w:1)
 	fn reset_current_era() -> Weight {
 		// Minimum execution time: 16_434 nanoseconds.
-		Weight::from_ref_time(16_864_000)
+		Weight::from_parts(16_864_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

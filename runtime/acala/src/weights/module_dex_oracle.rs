@@ -63,11 +63,11 @@ impl<T: frame_system::Config> module_dex_oracle::WeightInfo for WeightInfo<T> {
 	/// The range of component `u` is `[0, 3]`.
 	fn on_initialize_with_update_average_prices(n: u32, u: u32, ) -> Weight {
 		// Minimum execution time: 15_498 nanoseconds.
-		Weight::from_ref_time(16_075_000)
+		Weight::from_parts(16_075_000, 0)
 			// Standard Error: 133_609
-			.saturating_add(Weight::from_ref_time(11_005_173).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(11_005_173, 0).saturating_mul(n.into()))
 			// Standard Error: 133_609
-			.saturating_add(Weight::from_ref_time(4_198_437).saturating_mul(u.into()))
+			.saturating_add(Weight::from_parts(4_198_437, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(u.into())))
@@ -81,7 +81,7 @@ impl<T: frame_system::Config> module_dex_oracle::WeightInfo for WeightInfo<T> {
 	// Storage: DexOracle Cumulatives (r:0 w:1)
 	fn enable_average_price() -> Weight {
 		// Minimum execution time: 18_088 nanoseconds.
-		Weight::from_ref_time(18_742_000)
+		Weight::from_parts(18_742_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -89,14 +89,14 @@ impl<T: frame_system::Config> module_dex_oracle::WeightInfo for WeightInfo<T> {
 	// Storage: DexOracle Cumulatives (r:0 w:1)
 	fn disable_average_price() -> Weight {
 		// Minimum execution time: 11_010 nanoseconds.
-		Weight::from_ref_time(11_513_000)
+		Weight::from_parts(11_513_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
 	// Storage: DexOracle AveragePrices (r:1 w:1)
 	fn update_average_price_interval() -> Weight {
 		// Minimum execution time: 10_607 nanoseconds.
-		Weight::from_ref_time(11_096_000)
+		Weight::from_parts(11_096_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

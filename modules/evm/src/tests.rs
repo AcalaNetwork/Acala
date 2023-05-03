@@ -1574,7 +1574,7 @@ fn should_selfdestruct_with_schedule_task() {
 		// 	}
 		// );
 
-		// IdleScheduler::on_idle(0, Weight::from_ref_time(1_000_000_000_000));
+		// IdleScheduler::on_idle(0, Weight::from_parts(1_000_000_000_000, 0));
 
 		// refund storage deposit
 		assert_eq!(

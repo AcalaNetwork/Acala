@@ -63,25 +63,25 @@ pub trait WeightInfo {
 // TODO: do benchmarking test.
 impl WeightInfo for () {
 	fn bond() -> Weight {
-		Weight::from_ref_time(10_000)
+		Weight::from_parts(10_000, 0)
 	}
 	fn unbond() -> Weight {
-		Weight::from_ref_time(10_000)
+		Weight::from_parts(10_000, 0)
 	}
 	fn rebond() -> Weight {
-		Weight::from_ref_time(10_000)
+		Weight::from_parts(10_000, 0)
 	}
 	fn withdraw_unbonded() -> Weight {
-		Weight::from_ref_time(10_000)
+		Weight::from_parts(10_000, 0)
 	}
 	fn freeze(_u: u32) -> Weight {
-		Weight::from_ref_time(10_000)
+		Weight::from_parts(10_000, 0)
 	}
 	fn thaw() -> Weight {
-		Weight::from_ref_time(10_000)
+		Weight::from_parts(10_000, 0)
 	}
 	fn slash() -> Weight {
-		Weight::from_ref_time(10_000)
+		Weight::from_parts(10_000, 0)
 	}
 }
 

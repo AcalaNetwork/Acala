@@ -56,9 +56,9 @@ impl<T: frame_system::Config> orml_oracle::WeightInfo for WeightInfo<T> {
 	/// The range of component `c` is `[0, 5]`.
 	fn feed_values(c: u32, ) -> Weight {
 		// Minimum execution time: 16_920 nanoseconds.
-		Weight::from_ref_time(19_696_305)
+		Weight::from_parts(19_696_305, 0)
 			// Standard Error: 40_357
-			.saturating_add(Weight::from_ref_time(7_809_596).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(7_809_596, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
@@ -67,7 +67,7 @@ impl<T: frame_system::Config> orml_oracle::WeightInfo for WeightInfo<T> {
 	// Storage: AcalaOracle HasDispatched (r:0 w:1)
 	fn on_finalize() -> Weight {
 		// Minimum execution time: 6_053 nanoseconds.
-		Weight::from_ref_time(6_274_000)
+		Weight::from_parts(6_274_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 }

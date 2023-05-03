@@ -60,36 +60,36 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn on_initialize(c: u32) -> Weight {
-		Weight::from_ref_time(33_360_000)
-			.saturating_add(Weight::from_ref_time(23_139_000).saturating_mul(c as u64))
+		Weight::from_parts(33_360_000, 0)
+			.saturating_add(Weight::from_parts(23_139_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 	}
 	fn deposit_dex_share() -> Weight {
-		Weight::from_ref_time(84_000_000)
+		Weight::from_parts(84_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(9 as u64))
 			.saturating_add(T::DbWeight::get().writes(9 as u64))
 	}
 	fn withdraw_dex_share() -> Weight {
-		Weight::from_ref_time(96_000_000)
+		Weight::from_parts(96_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(6 as u64))
 			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
 	fn claim_rewards() -> Weight {
-		Weight::from_ref_time(27_000_000)
+		Weight::from_parts(27_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	fn update_incentive_rewards(c: u32, ) -> Weight {
-		Weight::from_ref_time(479_000)
+		Weight::from_parts(479_000, 0)
 			// Standard Error: 29_000
-			.saturating_add(Weight::from_ref_time(1_893_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(1_893_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	fn update_claim_reward_deduction_rates(c: u32, ) -> Weight {
-		Weight::from_ref_time(914_000)
+		Weight::from_parts(914_000, 0)
 			// Standard Error: 21_000
-			.saturating_add(Weight::from_ref_time(1_829_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(1_829_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 }
@@ -97,36 +97,36 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_initialize(c: u32) -> Weight {
-		Weight::from_ref_time(33_360_000)
-			.saturating_add(Weight::from_ref_time(23_139_000).saturating_mul(c as u64))
+		Weight::from_parts(33_360_000, 0)
+			.saturating_add(Weight::from_parts(23_139_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 	}
 	fn deposit_dex_share() -> Weight {
-		Weight::from_ref_time(84_000_000)
+		Weight::from_parts(84_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(9 as u64))
 			.saturating_add(RocksDbWeight::get().writes(9 as u64))
 	}
 	fn withdraw_dex_share() -> Weight {
-		Weight::from_ref_time(96_000_000)
+		Weight::from_parts(96_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(6 as u64))
 			.saturating_add(RocksDbWeight::get().writes(6 as u64))
 	}
 	fn claim_rewards() -> Weight {
-		Weight::from_ref_time(27_000_000)
+		Weight::from_parts(27_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn update_incentive_rewards(c: u32, ) -> Weight {
-		Weight::from_ref_time(479_000)
+		Weight::from_parts(479_000, 0)
 			// Standard Error: 29_000
-			.saturating_add(Weight::from_ref_time(1_893_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(1_893_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	fn update_claim_reward_deduction_rates(c: u32, ) -> Weight {
-		Weight::from_ref_time(914_000)
+		Weight::from_parts(914_000, 0)
 			// Standard Error: 21_000
-			.saturating_add(Weight::from_ref_time(1_829_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(1_829_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 }

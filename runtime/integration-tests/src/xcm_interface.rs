@@ -30,7 +30,7 @@ use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
 
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
-const XCM_WEIGHT: XcmWeight = XcmWeight::from_ref_time(20_000_000_000);
+const XCM_WEIGHT: XcmWeight = XcmWeight::from_parts(20_000_000_000, 0);
 const XCM_FEE: Balance = 10_000_000_000;
 const XCM_BOND_FEE: Balance = 6_123_530_292;
 const XCM_UNBOND_FEE: Balance = 4_661_427_850;

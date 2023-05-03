@@ -54,14 +54,14 @@ impl<T: frame_system::Config> module_session_manager::WeightInfo for WeightInfo<
 	// Storage: SessionManager SessionDurationChanges (r:0 w:1)
 	fn schedule_session_duration() -> Weight {
 		// Minimum execution time: 19_992 nanoseconds.
-		Weight::from_ref_time(20_942_000)
+		Weight::from_parts(20_942_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: SessionManager SessionDurationChanges (r:1 w:1)
 	fn on_initialize_skip() -> Weight {
 		// Minimum execution time: 4_550 nanoseconds.
-		Weight::from_ref_time(4_813_000)
+		Weight::from_parts(4_813_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -70,7 +70,7 @@ impl<T: frame_system::Config> module_session_manager::WeightInfo for WeightInfo<
 	// Storage: SessionManager SessionDuration (r:0 w:1)
 	fn on_initialize() -> Weight {
 		// Minimum execution time: 5_833 nanoseconds.
-		Weight::from_ref_time(6_170_000)
+		Weight::from_parts(6_170_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -78,14 +78,14 @@ impl<T: frame_system::Config> module_session_manager::WeightInfo for WeightInfo<
 	// Storage: SessionManager SessionDuration (r:1 w:0)
 	fn estimate_current_session_progress() -> Weight {
 		// Minimum execution time: 3_967 nanoseconds.
-		Weight::from_ref_time(4_211_000)
+		Weight::from_parts(4_211_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 	}
 	// Storage: SessionManager DurationOffset (r:1 w:0)
 	// Storage: SessionManager SessionDuration (r:1 w:0)
 	fn estimate_next_session_rotation() -> Weight {
 		// Minimum execution time: 3_927 nanoseconds.
-		Weight::from_ref_time(4_150_000)
+		Weight::from_parts(4_150_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 	}
 }

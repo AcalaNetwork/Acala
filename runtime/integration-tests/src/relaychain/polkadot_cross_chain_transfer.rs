@@ -151,7 +151,7 @@ fn liquid_crowdloan_xtokens_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(8_000_000_000, 0)),
 		));
 
 		assert_eq!(Tokens::free_balance(LCDOT, &AccountId::from(BOB)), 5 * dollar);
@@ -181,7 +181,7 @@ fn liquid_crowdloan_xtokens_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(8_000_000_000, 0)),
 		));
 	});
 

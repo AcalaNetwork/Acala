@@ -54,7 +54,7 @@ impl<T: frame_system::Config> module_earning::WeightInfo for WeightInfo<T> {
 	// Storage: Rewards SharesAndWithdrawnRewards (r:1 w:1)
 	fn bond() -> Weight {
 		// Minimum execution time: 39_614 nanoseconds.
-		Weight::from_ref_time(41_034_000)
+		Weight::from_parts(41_034_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -64,7 +64,7 @@ impl<T: frame_system::Config> module_earning::WeightInfo for WeightInfo<T> {
 	// Storage: Rewards PoolInfos (r:1 w:1)
 	fn unbond_instant() -> Weight {
 		// Minimum execution time: 64_025 nanoseconds.
-		Weight::from_ref_time(66_416_000)
+		Weight::from_parts(66_416_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -74,7 +74,7 @@ impl<T: frame_system::Config> module_earning::WeightInfo for WeightInfo<T> {
 	// Storage: Rewards PoolInfos (r:1 w:1)
 	fn unbond() -> Weight {
 		// Minimum execution time: 45_559 nanoseconds.
-		Weight::from_ref_time(47_575_000)
+		Weight::from_parts(47_575_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -84,7 +84,7 @@ impl<T: frame_system::Config> module_earning::WeightInfo for WeightInfo<T> {
 	// Storage: Rewards SharesAndWithdrawnRewards (r:1 w:1)
 	fn rebond() -> Weight {
 		// Minimum execution time: 44_777 nanoseconds.
-		Weight::from_ref_time(46_249_000)
+		Weight::from_parts(46_249_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -92,7 +92,7 @@ impl<T: frame_system::Config> module_earning::WeightInfo for WeightInfo<T> {
 	// Storage: Balances Locks (r:1 w:1)
 	fn withdraw_unbonded() -> Weight {
 		// Minimum execution time: 37_257 nanoseconds.
-		Weight::from_ref_time(38_670_000)
+		Weight::from_parts(38_670_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}

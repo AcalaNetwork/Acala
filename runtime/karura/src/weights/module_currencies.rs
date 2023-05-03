@@ -53,7 +53,7 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	fn transfer_non_native_currency() -> Weight {
 		// Minimum execution time: 46_207 nanoseconds.
-		Weight::from_ref_time(47_717_000)
+		Weight::from_parts(47_717_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -61,7 +61,7 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn transfer_native_currency() -> Weight {
 		// Minimum execution time: 36_434 nanoseconds.
-		Weight::from_ref_time(37_399_000)
+		Weight::from_parts(37_399_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -70,14 +70,14 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	fn update_balance_non_native_currency() -> Weight {
 		// Minimum execution time: 27_147 nanoseconds.
-		Weight::from_ref_time(28_712_000)
+		Weight::from_parts(28_712_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
 	// Storage: System Account (r:1 w:1)
 	fn update_balance_native_currency_creating() -> Weight {
 		// Minimum execution time: 27_607 nanoseconds.
-		Weight::from_ref_time(28_202_000)
+		Weight::from_parts(28_202_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -85,7 +85,7 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn update_balance_native_currency_killing() -> Weight {
 		// Minimum execution time: 28_148 nanoseconds.
-		Weight::from_ref_time(29_136_000)
+		Weight::from_parts(29_136_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -94,9 +94,9 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 	/// The range of component `c` is `[1, 3]`.
 	fn sweep_dust(c: u32, ) -> Weight {
 		// Minimum execution time: 34_843 nanoseconds.
-		Weight::from_ref_time(18_159_044)
+		Weight::from_parts(18_159_044, 0)
 			// Standard Error: 31_394
-			.saturating_add(Weight::from_ref_time(18_381_687).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(18_381_687, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
@@ -107,7 +107,7 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	fn force_set_lock() -> Weight {
 		// Minimum execution time: 27_301 nanoseconds.
-		Weight::from_ref_time(28_271_000)
+		Weight::from_parts(28_271_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -116,7 +116,7 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	fn force_remove_lock() -> Weight {
 		// Minimum execution time: 27_438 nanoseconds.
-		Weight::from_ref_time(28_223_000)
+		Weight::from_parts(28_223_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}

@@ -100,7 +100,7 @@ mod karura_tests {
 			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
 				xcm_message,
 				20_000_000_000,
-				XcmWeight::from_ref_time(10_000_000_000),
+				XcmWeight::from_parts(10_000_000_000, 0),
 			);
 
 			// Withdraw unbonded
@@ -150,7 +150,7 @@ mod karura_tests {
 			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
 				xcm_message,
 				20_000_000_000,
-				XcmWeight::from_ref_time(10_000_000_000),
+				XcmWeight::from_parts(10_000_000_000, 0),
 			);
 
 			// Withdraw unbonded

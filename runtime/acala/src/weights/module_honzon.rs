@@ -52,7 +52,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Balances Reserves (r:1 w:1)
 	fn authorize() -> Weight {
 		// Minimum execution time: 31_158 nanoseconds.
-		Weight::from_ref_time(32_074_000)
+		Weight::from_parts(32_074_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -60,7 +60,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Balances Reserves (r:1 w:1)
 	fn unauthorize() -> Weight {
 		// Minimum execution time: 34_860 nanoseconds.
-		Weight::from_ref_time(35_572_000)
+		Weight::from_parts(35_572_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -69,9 +69,9 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	/// The range of component `c` is `[0, 4]`.
 	fn unauthorize_all(c: u32, ) -> Weight {
 		// Minimum execution time: 18_591 nanoseconds.
-		Weight::from_ref_time(23_629_434)
+		Weight::from_parts(23_629_434, 0)
 			// Standard Error: 149_714
-			.saturating_add(Weight::from_ref_time(5_992_800).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(5_992_800, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
 	}
@@ -90,7 +90,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: AssetRegistry AssetMetadatas (r:2 w:0)
 	fn adjust_loan() -> Weight {
 		// Minimum execution time: 105_078 nanoseconds.
-		Weight::from_ref_time(108_556_000)
+		Weight::from_parts(108_556_000, 0)
 			.saturating_add(T::DbWeight::get().reads(15))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
@@ -108,7 +108,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Loans TotalPositions (r:1 w:1)
 	fn transfer_loan_from() -> Weight {
 		// Minimum execution time: 91_223 nanoseconds.
-		Weight::from_ref_time(93_237_000)
+		Weight::from_parts(93_237_000, 0)
 			.saturating_add(T::DbWeight::get().reads(16))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
@@ -137,7 +137,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Homa TotalVoidLiquid (r:1 w:0)
 	fn close_loan_has_debit_by_dex() -> Weight {
 		// Minimum execution time: 491_652 nanoseconds.
-		Weight::from_ref_time(500_382_000)
+		Weight::from_parts(500_382_000, 0)
 			.saturating_add(T::DbWeight::get().reads(46))
 			.saturating_add(T::DbWeight::get().writes(20))
 	}
@@ -159,7 +159,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: AssetRegistry AssetMetadatas (r:2 w:0)
 	fn expand_position_collateral() -> Weight {
 		// Minimum execution time: 245_031 nanoseconds.
-		Weight::from_ref_time(250_492_000)
+		Weight::from_parts(250_492_000, 0)
 			.saturating_add(T::DbWeight::get().reads(31))
 			.saturating_add(T::DbWeight::get().writes(12))
 	}
@@ -182,7 +182,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Loans TotalPositions (r:1 w:1)
 	fn shrink_position_debit() -> Weight {
 		// Minimum execution time: 377_958 nanoseconds.
-		Weight::from_ref_time(382_630_000)
+		Weight::from_parts(382_630_000, 0)
 			.saturating_add(T::DbWeight::get().reads(38))
 			.saturating_add(T::DbWeight::get().writes(18))
 	}
@@ -200,7 +200,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: Homa TotalVoidLiquid (r:1 w:0)
 	fn transfer_debit() -> Weight {
 		// Minimum execution time: 140_307 nanoseconds.
-		Weight::from_ref_time(145_998_000)
+		Weight::from_parts(145_998_000, 0)
 			.saturating_add(T::DbWeight::get().reads(20))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -215,7 +215,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	// Storage: CdpEngine DebitExchangeRate (r:1 w:0)
 	fn precompile_get_current_collateral_ratio() -> Weight {
 		// Minimum execution time: 37_019 nanoseconds.
-		Weight::from_ref_time(38_737_000)
+		Weight::from_parts(38_737_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11))
 	}
 }

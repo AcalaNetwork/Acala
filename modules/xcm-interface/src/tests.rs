@@ -66,10 +66,10 @@ fn simulate_migrate_xcm_dest_weight_and_fee() {
 		));
 		let old_value_2: (OldXcmWeight, Balance) = (2_000_000_000, 500_000_000);
 		let new_key_1: XcmInterfaceOperation = XcmInterfaceOperation::XtokensTransfer;
-		let new_value_1: (XcmWeight, Balance) = (XcmWeight::from_ref_time(1_000_000_000), 200_000_000);
+		let new_value_1: (XcmWeight, Balance) = (XcmWeight::from_parts(1_000_000_000, 0), 200_000_000);
 		let new_key_2: XcmInterfaceOperation =
 			XcmInterfaceOperation::ParachainFee(Box::new(MultiLocation::new(1, X1(Parachain(1000)))));
-		let new_value_2: (XcmWeight, Balance) = (XcmWeight::from_ref_time(2_000_000_000), 500_000_000);
+		let new_value_2: (XcmWeight, Balance) = (XcmWeight::from_parts(2_000_000_000, 0), 500_000_000);
 
 		// put old raw storage
 		put_storage_value(

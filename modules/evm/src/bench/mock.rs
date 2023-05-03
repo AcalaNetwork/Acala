@@ -160,7 +160,7 @@ impl module_idle_scheduler::Config for Runtime {
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(a: u64) -> Weight {
-		Weight::from_ref_time(a)
+		Weight::from_parts(a, 0)
 	}
 }
 

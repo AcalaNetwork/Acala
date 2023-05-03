@@ -55,7 +55,7 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	// Storage: OrmlNFT Classes (r:0 w:1)
 	fn create_class() -> Weight {
 		// Minimum execution time: 75_503 nanoseconds.
-		Weight::from_ref_time(78_850_000)
+		Weight::from_parts(78_850_000, 0)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -68,9 +68,9 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	/// The range of component `i` is `[1, 1000]`.
 	fn mint(i: u32, ) -> Weight {
 		// Minimum execution time: 88_214 nanoseconds.
-		Weight::from_ref_time(23_796_486)
+		Weight::from_parts(23_796_486, 0)
 			// Standard Error: 6_372
-			.saturating_add(Weight::from_ref_time(18_665_735).saturating_mul(i.into()))
+			.saturating_add(Weight::from_parts(18_665_735, 0).saturating_mul(i.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(5))
 			.saturating_add(T::DbWeight::get().writes((2_u64).saturating_mul(i.into())))
@@ -83,7 +83,7 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	// Storage: OrmlNFT TokensByOwner (r:0 w:2)
 	fn transfer() -> Weight {
 		// Minimum execution time: 93_933 nanoseconds.
-		Weight::from_ref_time(97_594_000)
+		Weight::from_parts(97_594_000, 0)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
@@ -94,7 +94,7 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
 	fn burn() -> Weight {
 		// Minimum execution time: 70_964 nanoseconds.
-		Weight::from_ref_time(71_854_000)
+		Weight::from_parts(71_854_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -106,9 +106,9 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	/// The range of component `b` is `[0, 3670016]`.
 	fn burn_with_remark(b: u32, ) -> Weight {
 		// Minimum execution time: 71_812 nanoseconds.
-		Weight::from_ref_time(72_402_000)
+		Weight::from_parts(72_402_000, 0)
 			// Standard Error: 3
-			.saturating_add(Weight::from_ref_time(2_044).saturating_mul(b.into()))
+			.saturating_add(Weight::from_parts(2_044, 0).saturating_mul(b.into()))
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -120,14 +120,14 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	// Storage: OrmlNFT NextTokenId (r:0 w:1)
 	fn destroy_class() -> Weight {
 		// Minimum execution time: 85_016 nanoseconds.
-		Weight::from_ref_time(87_021_000)
+		Weight::from_parts(87_021_000, 0)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
 	// Storage: OrmlNFT Classes (r:1 w:1)
 	fn update_class_properties() -> Weight {
 		// Minimum execution time: 18_954 nanoseconds.
-		Weight::from_ref_time(19_412_000)
+		Weight::from_parts(19_412_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
