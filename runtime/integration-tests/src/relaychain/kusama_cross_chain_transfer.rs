@@ -77,7 +77,7 @@ fn transfer_to_relay_chain() {
 
 	let weight: XcmWeight = XcmWeight::from_parts(299_506_000, 0);
 	let fee = WeightToFee::weight_to_fee(&weight);
-	assert_eq!(90_287_436, fee);
+	assert_eq!(94_172_727, fee);
 
 	Karura::execute_with(|| {
 		assert_ok!(XTokens::transfer(
@@ -926,7 +926,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 		// Unspent fund from the 1 dollar XCM fee is returned to the sovereign account.
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1_000 * dollar_r + 996_891_014_868
+			1_000 * dollar_r + 996_757_227_594
 		);
 	});
 }
@@ -964,14 +964,14 @@ fn trapped_asset() -> MultiAsset {
 		));
 	});
 
-	let asset = MultiAsset {
+	let trapped_asset = MultiAsset {
 		id: Concrete(MultiLocation::here()),
-		fun: Fungibility::Fungible(999_950_959_651),
+		fun: Fungibility::Fungible(999_948_849_324),
 	};
 
 	KusamaNet::execute_with(|| {
 		let location = MultiLocation::new(0, X1(Parachain(KARURA_ID)));
-		let versioned = xcm::VersionedMultiAssets::from(MultiAssets::from(vec![asset.clone()]));
+		let versioned = xcm::VersionedMultiAssets::from(MultiAssets::from(vec![trapped_asset.clone()]));
 		let hash = BlakeTwo256::hash_of(&(&location, &versioned));
 		kusama_runtime::System::assert_has_event(kusama_runtime::RuntimeEvent::XcmPallet(
 			pallet_xcm::Event::AssetsTrapped(hash, location, versioned),
@@ -988,7 +988,7 @@ fn trapped_asset() -> MultiAsset {
 		kusama_runtime::System::reset_events();
 	});
 
-	asset
+	trapped_asset
 }
 
 fn claim_asset(asset: MultiAsset, recipient: [u8; 32]) {
@@ -1024,7 +1024,7 @@ fn claim_asset(asset: MultiAsset, recipient: [u8; 32]) {
 
 #[test]
 fn claim_trapped_asset_works() {
-	let claimed_amount = 999_865_607_628;
+	let claimed_amount = 999_859_824_394;
 	let asset = trapped_asset();
 	claim_asset(asset, BOB.into());
 

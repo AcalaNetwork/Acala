@@ -33,7 +33,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE: Balance = 50_000_000;
-pub const FEE_STATEMINT: Balance = 1_609_084;
+pub const FEE_STATEMINT: Balance = 10_143_569;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
@@ -130,8 +130,8 @@ fn acala_statemint_transfer_works() {
 		// and withdraw sibling parachain sovereign account
 		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
 
-		assert_eq!(1_000_044_010_367, Balances::free_balance(&AccountId::from(BOB)));
-		assert_eq!(1_003_598_838_160, Balances::free_balance(&para_2000));
+		assert_eq!(1_000_036_921_836, Balances::free_balance(&AccountId::from(BOB)));
+		assert_eq!(1_003_569_584_455, Balances::free_balance(&para_2000));
 	});
 }
 
