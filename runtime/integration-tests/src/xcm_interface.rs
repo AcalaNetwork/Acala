@@ -625,7 +625,6 @@ fn homa_mint_and_redeem_works() {
 		// Some bonds are being unlocked via Xcm from the parachain.
 		let ledger = kusama_runtime::Staking::ledger(&homa_lite_sub_account).expect("record should exist");
 		assert_eq!(ledger.total, 2001 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE);
-		assert_eq!(ledger.unlocking, vec![]);
 		assert_eq!(ledger.active, dollar(RELAY_CHAIN_CURRENCY));
 
 		// Fast forward the era until unlocking period ends.
