@@ -95,13 +95,20 @@ mod karura_tests {
 		});
 
 		Karura::execute_with(|| {
+			// send v3 xcm message to relaychain
+			assert_ok!(PolkadotXcm::force_xcm_version(
+				RuntimeOrigin::root(),
+				Box::new(MultiLocation::new(1, Here)),
+				3
+			));
+
 			// Call withdraw_unbonded as the homa subaccount
 			let transact_call =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 0);
 			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
 				transact_call,
-				20_000_000_000,
-				XcmWeight::from_parts(10_000_000_000, 0),
+				10_000_000_000,
+				XcmWeight::from_parts(10_000_000_000, 1024 * 128),
 			);
 
 			// Withdraw unbonded
@@ -163,6 +170,13 @@ mod karura_tests {
 		});
 
 		Karura::execute_with(|| {
+			// send v3 xcm message to relaychain
+			assert_ok!(PolkadotXcm::force_xcm_version(
+				RuntimeOrigin::root(),
+				Box::new(MultiLocation::new(1, Here)),
+				3
+			));
+
 			// Call bond_extra as the homa subaccount
 			let transact_call = KusamaCallBuilder::utility_as_derivative_call(
 				KusamaCallBuilder::staking_bond_extra(5_000_000_000_000),
@@ -171,7 +185,7 @@ mod karura_tests {
 			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
 				transact_call,
 				10_000_000_000,
-				XcmWeight::from_parts(20_000_000_000, 0),
+				XcmWeight::from_parts(20_000_000_000, 1024 * 128),
 			);
 
 			// bond_extra
@@ -234,13 +248,20 @@ mod karura_tests {
 		});
 
 		Karura::execute_with(|| {
+			// send v3 xcm message to relaychain
+			assert_ok!(PolkadotXcm::force_xcm_version(
+				RuntimeOrigin::root(),
+				Box::new(MultiLocation::new(1, Here)),
+				3
+			));
+
 			// Call unbond as the homa subaccount
 			let transact_call =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_unbond(50_000_000_000_000), 0);
 			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
 				transact_call,
 				10_000_000_000,
-				XcmWeight::from_parts(20_000_000_000, 0),
+				XcmWeight::from_parts(20_000_000_000, 1024 * 128),
 			);
 
 			// unbond
@@ -274,13 +295,20 @@ mod karura_tests {
 		});
 
 		Karura::execute_with(|| {
+			// send v3 xcm message to relaychain
+			assert_ok!(PolkadotXcm::force_xcm_version(
+				RuntimeOrigin::root(),
+				Box::new(MultiLocation::new(1, Here)),
+				3
+			));
+
 			// Transfer all remaining, but leave enough fund to pay for the XCM transaction.
 			let xcm_message = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1_970_000_000_000);
 
 			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
 				xcm_message,
-				20_000_000_000,
-				XcmWeight::from_parts(10_000_000_000, 0),
+				10_000_000_000,
+				XcmWeight::from_parts(20_000_000_000, 1024 * 128),
 			);
 
 			// Withdraw unbonded
@@ -295,7 +323,7 @@ mod karura_tests {
 			// Only leftover XCM fee remains in the account
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				26_757_227_594
+				23_612_959_144
 			);
 		});
 	}
