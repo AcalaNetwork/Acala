@@ -32,9 +32,9 @@ use xcm_emulator::TestExt;
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
 const XCM_WEIGHT: XcmWeight = XcmWeight::from_parts(20_000_000_000, 0);
 const XCM_FEE: Balance = 10_000_000_000;
-const XCM_BOND_FEE: Balance = 6_123_530_292;
+const XCM_BOND_FEE: Balance = 6_387_040_856;
 const XCM_UNBOND_FEE: Balance = 4_661_427_850;
-const XCM_TRANSFER_FEE: Balance = 90_287_436;
+const XCM_TRANSFER_FEE: Balance = 94_172_727;
 
 fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Balance>)> {
 	vec![
@@ -48,13 +48,17 @@ fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Bal
 		// Xcm weight = 14_000_000_000, fee = XCM_BOND_FEE
 		(
 			XcmInterfaceOperation::HomaWithdrawUnbonded,
-			Some(XcmWeight::from_parts(14_000_000_000, 65536)),
+			Some(XCM_WEIGHT),
 			Some(XCM_FEE),
 		),
 		// Xcm weight = 14_000_000_000, fee = XCM_BOND_FEE
 		(XcmInterfaceOperation::HomaBondExtra, Some(XCM_WEIGHT), Some(XCM_FEE)),
 		// Xcm weight = 14_000_000_000, fee = XCM_UNBOND_FEE
-		(XcmInterfaceOperation::HomaUnbond, Some(XCM_WEIGHT), Some(XCM_FEE)),
+		(
+			XcmInterfaceOperation::HomaUnbond,
+			Some(XcmWeight::from_parts(2_000_000_000, 100_000)),
+			Some(100_000_000_000),
+		),
 	]
 }
 
@@ -150,7 +154,7 @@ fn xcm_interface_transfer_staking_to_sub_account_works() {
 		// 1000 dollars (minus fee) are transferred into the Kusama chain
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-			999_999_909_712_564
+			1_000 * dollar(RELAY_CHAIN_CURRENCY) - XCM_TRANSFER_FEE
 		);
 		// XCM fee is paid by the parachain account.
 		assert_eq!(
@@ -243,7 +247,7 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1_001_991_460_734_703
+			1_001_987_320_146_982
 		);
 	});
 }
@@ -435,6 +439,7 @@ fn xcm_interface_unbond_on_sub_account_works() {
 			10_000 * dollar(LIQUID_CURRENCY),
 			false,
 		));
+
 		// Process the redeem request and unbond funds on the relaychain.
 		assert_ok!(Homa::process_redeem_requests(1));
 	});
