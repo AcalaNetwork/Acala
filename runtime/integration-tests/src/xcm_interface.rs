@@ -30,8 +30,8 @@ use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
 
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
-const XCM_WEIGHT: XcmWeight = XcmWeight::from_parts(20_000_000_000, 0);
-const XCM_FEE: Balance = 10_000_000_000;
+const XCM_WEIGHT: XcmWeight = XcmWeight::from_parts(50_000_000_000, 1024 * 128);
+const XCM_FEE: Balance = 50_000_000_000;
 const XCM_BOND_FEE: Balance = 6_387_040_856;
 const XCM_UNBOND_FEE: Balance = 4_661_427_850;
 const XCM_TRANSFER_FEE: Balance = 94_172_727;
@@ -53,12 +53,7 @@ fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Bal
 		),
 		// Xcm weight = 14_000_000_000, fee = XCM_BOND_FEE
 		(XcmInterfaceOperation::HomaBondExtra, Some(XCM_WEIGHT), Some(XCM_FEE)),
-		// Xcm weight = 14_000_000_000, fee = XCM_UNBOND_FEE
-		(
-			XcmInterfaceOperation::HomaUnbond,
-			Some(XcmWeight::from_parts(2_000_000_000, 100_000)),
-			Some(100_000_000_000),
-		),
+		(XcmInterfaceOperation::HomaUnbond, Some(XCM_WEIGHT), Some(XCM_FEE)),
 	]
 }
 
@@ -98,6 +93,11 @@ fn configure_homa_and_xcm_interface() {
 		XcmInterface::get_parachain_fee(MultiLocation::new(1, Parachain(1000))),
 		XCM_FEE
 	);
+	assert_ok!(PolkadotXcm::force_xcm_version(
+		RuntimeOrigin::root(),
+		Box::new(MultiLocation::new(1, Here)),
+		3
+	));
 }
 
 #[test]
