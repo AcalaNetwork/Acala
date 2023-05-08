@@ -1827,8 +1827,21 @@ pub type Executive = frame_executive::Executive<
 		module_asset_registry::migrations::MigrateV1MultiLocationToV3<Runtime>,
 		module_xcm_interface::migrations::MigrateXcmDestWeightAndFee<Runtime>,
 		module_transaction_pause::migrations::MigrateEvmPrecompile<Runtime>,
+		MigrateSetXcmVersionForKusama,
 	),
 >;
+
+pub struct MigrateSetXcmVersionForKusama;
+impl OnRuntimeUpgrade for MigrateSetXcmVersionForKusama {
+	fn on_runtime_upgrade() -> Weight {
+		let _ = PolkadotXcm::force_xcm_version(
+			RuntimeOrigin::root(),
+			Box::new(MultiLocation::new(1, Junctions::Here)),
+			3,
+		);
+		RocksDbWeight::get().writes(1)
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
