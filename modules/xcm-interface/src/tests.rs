@@ -29,30 +29,6 @@ use frame_support::{
 	StorageHasher, StoragePrefixedMap,
 };
 
-// #[test]
-// fn simulate_v3() {
-// 	ExtBuilder::default().build().execute_with(|| {
-// 		let key: ForeignAssetId = 1;
-// 		let value: MultiLocation = MultiLocation::new(
-// 			1, X1(Parachain(1000))
-// 		);
-// 		put_storage_value(
-// 			b"AssetRegistry",
-// 			b"ForeignAssetLocations",
-// 			&Twox64Concat::hash(&key.encode()),
-// 			value,
-// 		);
-// 		assert_eq!(
-// 			get_storage_value::<MultiLocation>(
-// 				b"AssetRegistry",
-// 				b"ForeignAssetLocations",
-// 				&Twox64Concat::hash(&key.encode()),
-// 			),
-// 			None
-// 		);
-// 	});
-// }
-
 #[test]
 fn simulate_migrate_xcm_dest_weight_and_fee() {
 	ExtBuilder::default().build().execute_with(|| {
@@ -66,10 +42,10 @@ fn simulate_migrate_xcm_dest_weight_and_fee() {
 		));
 		let old_value_2: (OldXcmWeight, Balance) = (2_000_000_000, 500_000_000);
 		let new_key_1: XcmInterfaceOperation = XcmInterfaceOperation::XtokensTransfer;
-		let new_value_1: (XcmWeight, Balance) = (XcmWeight::from_parts(1_000_000_000, 0), 200_000_000);
+		let new_value_1: (XcmWeight, Balance) = (XcmWeight::from_parts(1_000_000_000, 1024 * 128), 200_000_000);
 		let new_key_2: XcmInterfaceOperation =
 			XcmInterfaceOperation::ParachainFee(Box::new(MultiLocation::new(1, X1(Parachain(1000)))));
-		let new_value_2: (XcmWeight, Balance) = (XcmWeight::from_parts(2_000_000_000, 0), 500_000_000);
+		let new_value_2: (XcmWeight, Balance) = (XcmWeight::from_parts(2_000_000_000, 1024 * 128), 500_000_000);
 
 		// put old raw storage
 		put_storage_value(
