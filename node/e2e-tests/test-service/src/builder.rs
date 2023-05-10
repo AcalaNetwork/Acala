@@ -248,7 +248,11 @@ pub fn node_config(
 	nodes_exlusive: bool,
 	is_collator: bool,
 ) -> Result<Configuration, ServiceError> {
-	let base_path = BasePath::new_temp_dir()?;
+	// https://github.com/paritytech/substrate/blob/f465fee723c87b734/client/service/src/config.rs#L280-L290
+	// let base_path = BasePath::new_temp_dir()?;
+	let base_path = BasePath::new(std::path::PathBuf::from(
+		tempfile::Builder::new().prefix("substrate").tempdir()?.path(),
+	));
 	let root = base_path.path().join(format!("cumulus_test_service_{}", key));
 	let role = if is_collator { Role::Authority } else { Role::Full };
 	let key_seed = key.to_seed();
