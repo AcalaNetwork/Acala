@@ -158,7 +158,11 @@ test-runtimes:
 
 .PHONY: test-e2e
 test-e2e:
-	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test --test-threads=1
+	cargo test --release --package test-service -- simple_balances_dev_test --include-ignored --test-threads=1
+	cargo test --release --package test-service -- transaction_pool_priority_order_test --include-ignored --test-threads=1
+	cargo test --release --package test-service -- evm_fill_block_test --include-ignored --test-threads=1
+	cargo test --release --package test-service -- evm_create_fill_block_test --include-ignored --test-threads=1
+	cargo test --release --package test-service -- evm_gas_limit_test --include-ignored --test-threads=1
 
 .PHONY: test-ts
 test-ts: build-mandala-internal-release
