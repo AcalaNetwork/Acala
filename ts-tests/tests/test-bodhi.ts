@@ -5,14 +5,16 @@ import { describeWithAcala } from "./util";
 import { deployContract } from "ethereum-waffle";
 import { BigNumber, Contract } from "ethers";
 import Block from "../build/Block.json"
+import { BodhiSigner } from "@acala-network/bodhi";
 
 describeWithAcala("Acala RPC (bodhi.js)", (context) => {
-	let alice: Signer;
+	console.log({ context })
+	let alice: BodhiSigner;
 	let contract: Contract;
 
 	before(async () => {
-		[alice] = await context.provider.getWallets();
-		contract = await deployContract(alice as any, Block);
+		[alice] = context.wallets;
+		contract = await deployContract(alice, Block);
 	});
 
 	step("should get client network", async function () {
@@ -90,8 +92,8 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 			await contract.populateTransaction.multiply(3)
 		);
 
-		expect(data.gas.toNumber()).to.be.eq(22409);
-		expect(data.storage.toNumber()).to.be.eq(0);
-		expect(data.weightFee.toNumber()).to.be.eq(5007950888062);
+		expect(data.usedGas.toNumber()).to.be.eq(22038);
+		expect(data.usedStorage.toNumber()).to.be.eq(0);
+		expect(data.gasLimit.toNumber()).to.be.eq(22409);
 	});
 });

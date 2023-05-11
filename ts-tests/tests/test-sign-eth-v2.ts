@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
 import { describeWithAcala, getEvmNonce, transfer } from "./util";
-import { Signer } from "@acala-network/bodhi";
+import { BodhiSigner } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
 import { encodeAddress } from "@polkadot/keyring";
 import { hexToU8a, u8aConcat, stringToU8a } from "@polkadot/util";
@@ -14,7 +14,7 @@ const GAS_LIMIT_CHUNK = BigNumber.from(30000);
 const TEN_GWEI = BigNumber.from(10000000000);
 
 describeWithAcala("Acala RPC (Sign eth)", (context) => {
-	let alice: Signer;
+	let alice: BodhiSigner;
 	let signer: Wallet;
 	let subAddr: string;
 	let factory: ContractFactory;
@@ -22,7 +22,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 	before("init", async function () {
 		this.timeout(15000);
-		[alice] = await context.provider.getWallets();
+		[alice] = context.wallets;
 
 		signer = new Wallet(
 			"0x0123456789012345678901234567890123456789012345678901234567890123"
@@ -38,7 +38,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		expect(subAddr).to.equal("5EMjsczQH4R2WZaB5Svau8HWZp1aAfMqjxfv3GeLWotYSkLc");
 
-		await transfer(context, await alice.getSubstrateAddress(), subAddr, 10000000000000);
+		await transfer(context, alice.substrateAddress, subAddr, 10000000000000);
 
 		factory = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode);
 	});
@@ -78,10 +78,10 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		expect(rawtx).to.deep.include({
 			nonce: 0,
-			gasPrice: BigNumber.from(100000000105),
-			gasLimit: BigNumber.from(7115),
+			// gasPrice: BigNumber.from(100000000105),
+			// gasLimit: BigNumber.from(7115),
 			// to: '0x0000000000000000000000000000000000000000',
-			value: BigNumber.from(0),
+			// value: BigNumber.from(0),
 			data: deploy.data,
 			chainId: 595,
 			// v: 1226,
@@ -91,6 +91,9 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 			// hash: '0x456d37c868520b362bbf5baf1b19752818eba49cc92c1a512e2e80d1ccfbc18b',
 			type: null
 		});
+		expect(rawtx.gasPrice?.toNumber()).to.eq(100000000105);
+		expect(rawtx.gasLimit?.toNumber()).to.eq(7115);
+		expect(rawtx.value?.toNumber()).to.eq(0);
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Create: null },
@@ -201,10 +204,10 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		expect(rawtx).to.deep.include({
 			nonce: 1,
-			gasPrice: BigNumber.from(100000000106),
-			gasLimit: BigNumber.from(810),
+			// gasPrice: BigNumber.from(100000000106),
+			// gasLimit: BigNumber.from(810),
 			to: ethers.utils.getAddress(contract),
-			value: BigNumber.from(0),
+			// value: BigNumber.from(0),
 			data: input.data,
 			chainId: 595,
 			// v: 1225,
@@ -214,6 +217,9 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 			// hash: '0x67274cd0347795d0e2986021a19b1347948a0a93e1fb31a315048320fbfcae8a',
 			type: null
 		});
+		expect(rawtx.gasPrice?.toNumber()).to.eq(100000000106);
+		expect(rawtx.gasLimit?.toNumber()).to.eq(810);
+		expect(rawtx.value?.toNumber()).to.eq(0);
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Call: value.to },
@@ -277,7 +283,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		});
 
 		await new Promise(async (resolve) => {
-			context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.publishFree(contract)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
+			context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.publishFree(contract)).signAndSend(alice.substrateAddress, ((result) => {
 				if (result.status.isFinalized || result.status.isInBlock) {
 					resolve(undefined);
 				}
@@ -291,7 +297,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 });
 
 describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
-	let alice: Signer;
+	let alice: BodhiSigner;
 	let signer: Wallet;
 	let subAddr: string;
 	let factory: ContractFactory;
@@ -299,7 +305,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 
 	before("init", async function () {
 		this.timeout(15000);
-		[alice] = await context.provider.getWallets();
+		[alice] = context.wallets;
 
 		signer = new Wallet(
 			"0x0123456789012345678901234567890123456789012345678901234567890123"
@@ -315,7 +321,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 
 		expect(subAddr).to.equal("5EMjsczQH4R2WZaB5Svau8HWZp1aAfMqjxfv3GeLWotYSkLc");
 
-		await transfer(context, await alice.getSubstrateAddress(), subAddr, 10000000000000);
+		await transfer(context, alice.substrateAddress, subAddr, 10000000000000);
 
 		factory = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode);
 	});
@@ -358,10 +364,10 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 
 		expect(rawtx).to.deep.include({
 			nonce: 0,
-			gasPrice: BigNumber.from(110000000105),
-			gasLimit: BigNumber.from(10007115),
+			// gasPrice: BigNumber.from(110000000105),
+			// gasLimit: BigNumber.from(10007115),
 			// to: '0x0000000000000000000000000000000000000000',
-			value: BigNumber.from(0),
+			// value: BigNumber.from(0),
 			data: deploy.data,
 			chainId: 595,
 			// v: 1226,
@@ -371,6 +377,9 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 			// hash: '0x456d37c868520b362bbf5baf1b19752818eba49cc92c1a512e2e80d1ccfbc18b',
 			type: null
 		});
+		expect(rawtx.gasPrice?.toNumber()).to.eq(110000000105);
+		expect(rawtx.gasLimit?.toNumber()).to.eq(10007115);
+		expect(rawtx.value?.toNumber()).to.eq(0);
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Create: null },
@@ -485,10 +494,10 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 
 		expect(rawtx).to.deep.include({
 			nonce: 1,
-			gasPrice: BigNumber.from(110000000106),
-			gasLimit: BigNumber.from(10000810),
+			// gasPrice: BigNumber.from(110000000106),
+			// gasLimit: BigNumber.from(10000810),
 			to: ethers.utils.getAddress(contract),
-			value: BigNumber.from(0),
+			// value: BigNumber.from(0),
 			data: input.data,
 			chainId: 595,
 			// v: 1225,
@@ -498,6 +507,9 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 			// hash: '0x67274cd0347795d0e2986021a19b1347948a0a93e1fb31a315048320fbfcae8a',
 			type: null
 		});
+		expect(rawtx.gasPrice?.toNumber()).to.eq(110000000106);
+		expect(rawtx.gasLimit?.toNumber()).to.eq(10000810);
+		expect(rawtx.value?.toNumber()).to.eq(0);
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Call: value.to },
@@ -561,7 +573,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 		});
 
 		await new Promise(async (resolve) => {
-			context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.publishFree(contract)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
+			context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.publishFree(contract)).signAndSend(alice.substrateAddress, ((result) => {
 				if (result.status.isFinalized || result.status.isInBlock) {
 					resolve(undefined);
 				}

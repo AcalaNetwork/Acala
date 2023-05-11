@@ -20,8 +20,8 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 
 	before("create the contract", async function () {
 		this.timeout(15000);
-		[alice] = await context.provider.getWallets();
-		contract = await deployContract(alice as any, TestCalls);
+		[alice] = context.wallets;
+		contract = await deployContract(alice, TestCalls);
 	});
 
 	it('call non-standard precompile should not work with DELEGATECALL', async function () {
@@ -82,7 +82,7 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 
 		// pause precompile
 		await new Promise(async (resolve) => {
-			context.provider.api.tx.sudo.sudo(context.provider.api.tx.transactionPause.pauseEvmPrecompile(identity)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
+			context.provider.api.tx.sudo.sudo(context.provider.api.tx.transactionPause.pauseEvmPrecompile(identity)).signAndSend(alice.substrateAddress, ((result) => {
 				if (result.status.isFinalized || result.status.isInBlock) {
 					resolve(undefined);
 				}
@@ -101,7 +101,7 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 
 		// unpause precompile
 		await new Promise(async (resolve) => {
-			context.provider.api.tx.sudo.sudo(context.provider.api.tx.transactionPause.unpauseEvmPrecompile(identity)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
+			context.provider.api.tx.sudo.sudo(context.provider.api.tx.transactionPause.unpauseEvmPrecompile(identity)).signAndSend(alice.substrateAddress, ((result) => {
 				if (result.status.isFinalized || result.status.isInBlock) {
 					resolve(undefined);
 				}
