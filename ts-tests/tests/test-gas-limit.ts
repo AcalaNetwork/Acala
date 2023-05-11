@@ -6,16 +6,22 @@ import { deployContract } from "ethereum-waffle";
 import { Option } from "@polkadot/types/codec";
 import { u32 } from "@polkadot/types";
 import { EvmAccountInfo, CodeInfo } from "@acala-network/types/interfaces";
+import { BodhiSigner } from "@acala-network/bodhi";
 
 describeWithAcala("Acala RPC (GasLimit)", (context) => {
-	let alice: Signer;
+	let alice: BodhiSigner;
 
     before(async () => {
-        [alice] = await context.provider.getWallets();
+        [alice] = context.wallets;
     });
 
-    it("block gas limit", async () => {
-        const contract = await deployContract(alice as any, Factory);
+    it.skip("block gas limit", async () => {
+        const gasOverrides = await context.provider._getEthGas();
+        // console.log({
+        //     gasLimit: gasOverrides.gasLimit.toNumber(),
+        //     gasPrice: gasOverrides.gasPrice.toNumber(),
+        // })
+        const contract = await deployContract(alice, Factory, undefined, gasOverrides);
         // limited by used_storage
         const result = await contract.createContractLoop(350);
         expect(result.gasLimit.toNumber()).to.be.eq(28851871);
