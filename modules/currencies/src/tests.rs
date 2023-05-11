@@ -1089,7 +1089,7 @@ fn fungible_inspect_trait_should_work() {
 			// Test for Inspect::balance
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(NATIVE_CURRENCY_ID, &alice()),
-				48600
+				48690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(X_TOKEN_ID, &alice()),
@@ -1099,22 +1099,22 @@ fn fungible_inspect_trait_should_work() {
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE
 			);
-			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 48600);
-			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&alice()), 48600);
+			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 48690);
+			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&alice()), 48690);
 
 			// Test for Inspect::reducible_balance. No locks or reserves
 			// With Keep alive
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(NATIVE_CURRENCY_ID, &alice(), true),
-				48598
+				48688
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), true),
-				48598
+				48688
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), true),
-				48598
+				48688
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(X_TOKEN_ID, &alice(), true),
@@ -1133,7 +1133,7 @@ fn fungible_inspect_trait_should_work() {
 			// without Keep alive.
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(NATIVE_CURRENCY_ID, &alice(), false),
-				48600
+				48690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(X_TOKEN_ID, &alice(), false),
@@ -1149,11 +1149,11 @@ fn fungible_inspect_trait_should_work() {
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), false),
-				48600
+				48690
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), false),
-				48600
+				48690
 			);
 
 			// Set some locks
@@ -1163,7 +1163,7 @@ fn fungible_inspect_trait_should_work() {
 			// Test Inspect::reducible_balance with locks
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(NATIVE_CURRENCY_ID, &alice(), true),
-				47600
+				47690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(X_TOKEN_ID, &alice(), true),
@@ -1179,16 +1179,16 @@ fn fungible_inspect_trait_should_work() {
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), true),
-				47600
+				47690
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), true),
-				47600
+				47690
 			);
 
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(NATIVE_CURRENCY_ID, &alice(), false),
-				47600
+				47690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(X_TOKEN_ID, &alice(), false),
@@ -1204,11 +1204,11 @@ fn fungible_inspect_trait_should_work() {
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), false),
-				47600
+				47690
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), false),
-				47600
+				47690
 			);
 
 			// Test for Inspect::can_deposit
@@ -1314,11 +1314,11 @@ fn fungible_inspect_trait_should_work() {
 			);
 
 			assert_eq!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 47600 + 1),
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 47690 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 47600 + 1),
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 47690 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(

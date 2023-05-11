@@ -205,8 +205,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1237365,
-		used_storage: 5140,
+		used_gas: 1235081,
+		used_storage: 5131,
 	}));
 
 	assert_ok!(EVM::publish_free(
