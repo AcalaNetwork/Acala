@@ -8,7 +8,6 @@ import Block from "../build/Block.json"
 import { BodhiSigner } from "@acala-network/bodhi";
 
 describeWithAcala("Acala RPC (bodhi.js)", (context) => {
-	console.log({ context })
 	let alice: BodhiSigner;
 	let contract: Contract;
 
