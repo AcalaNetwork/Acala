@@ -106,7 +106,9 @@ export function describeWithAcala(title: string, cb: (context: TestContext) => v
 			console.log('starting acala node ...')
 			this.timeout(SPAWNING_TIME);
 
-			const autoClaim = title !== 'Acala RPC (Claim Account Eip712)';
+			const autoClaim =
+				title !== 'Acala RPC (Claim Account Eip712)' &&
+				title !== 'Acala RPC (Block)';
 			const init = await startAcalaNode(autoClaim);
 
 			context.provider = init.provider,
