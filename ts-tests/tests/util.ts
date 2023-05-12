@@ -103,7 +103,6 @@ export function describeWithAcala(title: string, cb: (context: TestContext) => v
 		let binary: ChildProcess;
 		// Making sure the Acala node has started
 		before("Starting Acala Test Node", async function () {
-			console.log('starting acala node ...')
 			this.timeout(SPAWNING_TIME);
 
 			const autoClaim = title !== 'Acala RPC (Claim Account Eip712)';
@@ -112,8 +111,6 @@ export function describeWithAcala(title: string, cb: (context: TestContext) => v
 			context.provider = init.provider,
 			context.wallets = init.wallets,
 			binary = init.binary;
-
-			console.log('acala node started!')
 		});
 
 		after(async function () {
