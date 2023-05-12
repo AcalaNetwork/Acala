@@ -16,11 +16,6 @@ describeWithAcala("Acala RPC (GasLimit)", (context) => {
     });
 
     it("block gas limit", async () => {
-        // const gasOverrides = await context.provider._getEthGas();
-        // // console.log({
-        // //     gasLimit: gasOverrides.gasLimit.toNumber(),
-        // //     gasPrice: gasOverrides.gasPrice.toNumber(),
-        // // })
         const contract = await deployContract(alice, Factory);
         // limited by used_storage
         const result = await contract.createContractLoop(50);
