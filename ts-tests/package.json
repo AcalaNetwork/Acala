@@ -10,7 +10,7 @@
 	},
 	"dependencies": {
 		"@acala-network/api": "~5.0.3-0",
-		"@acala-network/bodhi": "~2.6.9",
+		"@acala-network/bodhi": "~2.6.10",
 		"@babel/runtime": "^7.21.5",
 		"@polkadot/api": "^10.5.1",
 		"@openzeppelin/contracts": "4.8.3",
