@@ -60,38 +60,38 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn on_initialize(c: u32) -> Weight {
-		Weight::from_ref_time(33_360_000)
-			.saturating_add(Weight::from_ref_time(23_139_000).saturating_mul(c as u64))
+		Weight::from_parts(33_360_000, 0)
+			.saturating_add(Weight::from_parts(23_139_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 	}
 	fn set_collateral_params() -> Weight {
-		Weight::from_ref_time(37_000_000)
+		Weight::from_parts(37_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn liquidate_by_auction(_b: u32) -> Weight {
-		Weight::from_ref_time(203_000_000)
+		Weight::from_parts(203_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(28 as u64))
 			.saturating_add(T::DbWeight::get().writes(17 as u64))
 	}
 	fn liquidate_by_dex() -> Weight {
-		Weight::from_ref_time(252_000_000)
+		Weight::from_parts(252_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(29 as u64))
 			.saturating_add(T::DbWeight::get().writes(15 as u64))
 	}
 	fn settle() -> Weight {
-		Weight::from_ref_time(97_000_000)
+		Weight::from_parts(97_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11 as u64))
 			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
 	fn register_liquidation_contract() -> Weight {
-		Weight::from_ref_time(97_000_000)
+		Weight::from_parts(97_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11 as u64))
 			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
 	fn deregister_liquidation_contract() -> Weight {
-		Weight::from_ref_time(97_000_000)
+		Weight::from_parts(97_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11 as u64))
 			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
@@ -100,39 +100,39 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_initialize(c: u32) -> Weight {
-		Weight::from_ref_time(33_360_000)
-			.saturating_add(Weight::from_ref_time(23_139_000).saturating_mul(c as u64))
+		Weight::from_parts(33_360_000, 0)
+			.saturating_add(Weight::from_parts(23_139_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 	}
 	fn set_collateral_params() -> Weight {
-		Weight::from_ref_time(37_000_000)
+		Weight::from_parts(37_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn liquidate_by_auction(_b: u32) -> Weight {
-		Weight::from_ref_time(203_000_000)
+		Weight::from_parts(203_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(28 as u64))
 			.saturating_add(RocksDbWeight::get().writes(17 as u64))
 	}
 	fn liquidate_by_dex() -> Weight {
-		Weight::from_ref_time(252_000_000)
+		Weight::from_parts(252_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(29 as u64))
 			.saturating_add(RocksDbWeight::get().writes(15 as u64))
 	}
 	fn settle() -> Weight {
-		Weight::from_ref_time(97_000_000)
+		Weight::from_parts(97_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(11 as u64))
 			.saturating_add(RocksDbWeight::get().writes(8 as u64))
 	}
 	fn register_liquidation_contract() -> Weight {
-		Weight::from_ref_time(97_000_000)
+		Weight::from_parts(97_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(11 as u64))
 			.saturating_add(RocksDbWeight::get().writes(8 as u64))
 	}
 
 	fn deregister_liquidation_contract() -> Weight {
-		Weight::from_ref_time(97_000_000)
+		Weight::from_parts(97_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(11 as u64))
 			.saturating_add(RocksDbWeight::get().writes(8 as u64))
 	}

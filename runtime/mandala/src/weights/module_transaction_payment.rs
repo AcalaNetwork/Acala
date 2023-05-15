@@ -52,7 +52,7 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	// Storage: TransactionPayment AlternativeFeeSwapPath (r:0 w:1)
 	fn set_alternative_fee_swap_path() -> Weight {
 		// Minimum execution time: 28_837 nanoseconds.
-		Weight::from_ref_time(30_308_000)
+		Weight::from_parts(30_308_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -67,7 +67,7 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
 	fn enable_charge_fee_pool() -> Weight {
 		// Minimum execution time: 95_410 nanoseconds.
-		Weight::from_ref_time(98_176_000)
+		Weight::from_parts(98_176_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -80,38 +80,38 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	// Storage: TransactionPayment PoolSize (r:0 w:1)
 	fn disable_charge_fee_pool() -> Weight {
 		// Minimum execution time: 72_774 nanoseconds.
-		Weight::from_ref_time(74_127_000)
+		Weight::from_parts(74_127_000, 0)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
 	// Storage: TransactionPause PausedTransactions (r:1 w:0)
 	fn with_fee_path() -> Weight {
 		// Minimum execution time: 10_342 nanoseconds.
-		Weight::from_ref_time(10_708_000)
+		Weight::from_parts(10_708_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 	}
 	// Storage: TransactionPause PausedTransactions (r:1 w:0)
 	fn with_fee_currency() -> Weight {
 		// Minimum execution time: 11_428 nanoseconds.
-		Weight::from_ref_time(11_999_000)
+		Weight::from_parts(11_999_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 	}
 	// Storage: TransactionPause PausedTransactions (r:1 w:0)
 	fn with_fee_aggregated_path() -> Weight {
 		// Minimum execution time: 11_480 nanoseconds.
-		Weight::from_ref_time(12_366_000)
+		Weight::from_parts(12_366_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 	}
 	// Storage: TransactionPause PausedTransactions (r:1 w:0)
 	fn with_fee_paid_by() -> Weight {
 		// Minimum execution time: 7_469 nanoseconds.
-		Weight::from_ref_time(7_782_000)
+		Weight::from_parts(7_782_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 	}
 	// Storage: TransactionPayment NextFeeMultiplier (r:1 w:1)
 	fn on_finalize() -> Weight {
 		// Minimum execution time: 9_165 nanoseconds.
-		Weight::from_ref_time(9_514_000)
+		Weight::from_parts(9_514_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

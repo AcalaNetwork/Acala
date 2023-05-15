@@ -57,22 +57,22 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn emergency_shutdown(c: u32, ) -> Weight {
-		Weight::from_ref_time(232_768_000)
+		Weight::from_parts(232_768_000, 0)
 			// Standard Error: 565_000
-			.saturating_add(Weight::from_ref_time(20_539_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(20_539_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().reads(60 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 			.saturating_add(T::DbWeight::get().writes((3 as u64).saturating_mul(c as u64)))
 	}
 	fn open_collateral_refund() -> Weight {
-		Weight::from_ref_time(62_000_000)
+		Weight::from_parts(62_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(17 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn refund_collaterals(c: u32, ) -> Weight {
-		Weight::from_ref_time(122_271_000)
+		Weight::from_parts(122_271_000, 0)
 			// Standard Error: 215_000
-			.saturating_add(Weight::from_ref_time(34_100_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(34_100_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().reads(12 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 			.saturating_add(T::DbWeight::get().writes(4 as u64))
@@ -83,22 +83,22 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn emergency_shutdown(c: u32, ) -> Weight {
-		Weight::from_ref_time(232_768_000)
+		Weight::from_parts(232_768_000, 0)
 			// Standard Error: 565_000
-			.saturating_add(Weight::from_ref_time(20_539_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(20_539_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().reads(60 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes((3 as u64).saturating_mul(c as u64)))
 	}
 	fn open_collateral_refund() -> Weight {
-		Weight::from_ref_time(62_000_000)
+		Weight::from_parts(62_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(17 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn refund_collaterals(c: u32, ) -> Weight {
-		Weight::from_ref_time(122_271_000)
+		Weight::from_parts(122_271_000, 0)
 			// Standard Error: 215_000
-			.saturating_add(Weight::from_ref_time(34_100_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(34_100_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().reads(12 as u64))
 			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 			.saturating_add(RocksDbWeight::get().writes(4 as u64))

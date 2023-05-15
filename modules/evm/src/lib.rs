@@ -1383,10 +1383,11 @@ impl<T: Config> Pallet<T> {
 			})?;
 
 		// try to dispatch the task
-		let weight_limit = Weight::from_ref_time(
+		let weight_limit = Weight::from_parts(
 			<T as frame_system::Config>::DbWeight::get()
 				.write
 				.saturating_mul(IMMEDIATE_REMOVE_LIMIT.into()),
+			0,
 		);
 		let _weight_remaining = T::IdleScheduler::dispatch(task_id, weight_limit);
 
@@ -2177,10 +2178,11 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 
 				let r = <AccountStorages<T>>::clear_prefix(contract, limit, None);
 				let count = r.backend;
-				let used_weight = Weight::from_ref_time(
+				let used_weight = Weight::from_parts(
 					<T as frame_system::Config>::DbWeight::get()
 						.write
 						.saturating_mul(count.into()),
+					0,
 				);
 				log::debug!(
 					target: "evm",

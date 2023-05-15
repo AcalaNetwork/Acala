@@ -163,7 +163,7 @@ pub mod module {
 			Self::do_mint(&who, amount, &sig)?;
 
 			// TODO: update by benchmarks.
-			let weight: Weight = Weight::from_ref_time(10_000);
+			let weight: Weight = Weight::from_parts(10_000, 0);
 
 			// charge mint fee. Ignore the result, if it failed, only lost the fee.
 			let _ = T::ChargeTransactionPayment::charge_fee(

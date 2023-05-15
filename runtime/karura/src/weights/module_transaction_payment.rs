@@ -52,7 +52,7 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	// Storage: TransactionPayment AlternativeFeeSwapPath (r:0 w:1)
 	fn set_alternative_fee_swap_path() -> Weight {
 		// Minimum execution time: 26_993 nanoseconds.
-		Weight::from_ref_time(28_183_000)
+		Weight::from_parts(28_183_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -67,7 +67,7 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
 	fn enable_charge_fee_pool() -> Weight {
 		// Minimum execution time: 89_095 nanoseconds.
-		Weight::from_ref_time(91_681_000)
+		Weight::from_parts(91_681_000, 0)
 			.saturating_add(T::DbWeight::get().reads(10))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -80,30 +80,30 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	// Storage: TransactionPayment PoolSize (r:0 w:1)
 	fn disable_charge_fee_pool() -> Weight {
 		// Minimum execution time: 69_931 nanoseconds.
-		Weight::from_ref_time(71_457_000)
+		Weight::from_parts(71_457_000, 0)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
 	fn with_fee_path() -> Weight {
 		// Minimum execution time: 7_090 nanoseconds.
-		Weight::from_ref_time(7_302_000)
+		Weight::from_parts(7_302_000, 0)
 	}
 	fn with_fee_currency() -> Weight {
 		// Minimum execution time: 7_329 nanoseconds.
-		Weight::from_ref_time(7_916_000)
+		Weight::from_parts(7_916_000, 0)
 	}
 	fn with_fee_aggregated_path() -> Weight {
 		// Minimum execution time: 8_218 nanoseconds.
-		Weight::from_ref_time(8_937_000)
+		Weight::from_parts(8_937_000, 0)
 	}
 	fn with_fee_paid_by() -> Weight {
 		// Minimum execution time: 4_998 nanoseconds.
-		Weight::from_ref_time(5_392_000)
+		Weight::from_parts(5_392_000, 0)
 	}
 	// Storage: TransactionPayment NextFeeMultiplier (r:1 w:1)
 	fn on_finalize() -> Weight {
 		// Minimum execution time: 8_894 nanoseconds.
-		Weight::from_ref_time(9_185_000)
+		Weight::from_parts(9_185_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

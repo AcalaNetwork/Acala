@@ -81,7 +81,8 @@ fn transfer_to_relay_chain() {
 			// v0.9.36: 49_591_353_032
 			// v0.9.37: 49_578_565_860
 			// v0.9.38: 49_637_471_000
-			49_637_471_000,
+			// v0.9.40: 49_616_751_780
+			49_616_751_780,
 			polkadot_runtime::Balances::free_balance(&AccountId::from(BOB))
 		);
 		assert_eq!(
@@ -151,7 +152,7 @@ fn liquid_crowdloan_xtokens_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(8_000_000_000, 0)),
 		));
 
 		assert_eq!(Tokens::free_balance(LCDOT, &AccountId::from(BOB)), 5 * dollar);
@@ -181,7 +182,7 @@ fn liquid_crowdloan_xtokens_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(8_000_000_000, 0)),
 		));
 	});
 

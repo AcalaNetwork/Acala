@@ -52,21 +52,21 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 	/// The range of component `b` is `[1, 50]`.
 	fn set_invulnerables(b: u32, ) -> Weight {
 		// Minimum execution time: 12_518 nanoseconds.
-		Weight::from_ref_time(13_596_419)
+		Weight::from_parts(13_596_419, 0)
 			// Standard Error: 755
-			.saturating_add(Weight::from_ref_time(30_480).saturating_mul(b.into()))
+			.saturating_add(Weight::from_parts(30_480, 0).saturating_mul(b.into()))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: CollatorSelection DesiredCandidates (r:0 w:1)
 	fn set_desired_candidates() -> Weight {
 		// Minimum execution time: 12_460 nanoseconds.
-		Weight::from_ref_time(12_831_000)
+		Weight::from_parts(12_831_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: CollatorSelection CandidacyBond (r:0 w:1)
 	fn set_candidacy_bond() -> Weight {
 		// Minimum execution time: 12_201 nanoseconds.
-		Weight::from_ref_time(13_020_000)
+		Weight::from_parts(13_020_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: CollatorSelection NonCandidates (r:1 w:1)
@@ -79,9 +79,9 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 	/// The range of component `c` is `[5, 200]`.
 	fn register_as_candidate(c: u32, ) -> Weight {
 		// Minimum execution time: 50_754 nanoseconds.
-		Weight::from_ref_time(63_425_743)
+		Weight::from_parts(63_425_743, 0)
 			// Standard Error: 2_804
-			.saturating_add(Weight::from_ref_time(180_598).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(180_598, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -93,9 +93,9 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 	/// The range of component `c` is `[1, 200]`.
 	fn register_candidate(c: u32, ) -> Weight {
 		// Minimum execution time: 29_792 nanoseconds.
-		Weight::from_ref_time(42_186_933)
+		Weight::from_parts(42_186_933, 0)
 			// Standard Error: 2_252
-			.saturating_add(Weight::from_ref_time(171_039).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(171_039, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -105,9 +105,9 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 	/// The range of component `c` is `[6, 200]`.
 	fn leave_intent(c: u32, ) -> Weight {
 		// Minimum execution time: 24_011 nanoseconds.
-		Weight::from_ref_time(29_999_317)
+		Weight::from_parts(29_999_317, 0)
 			// Standard Error: 1_468
-			.saturating_add(Weight::from_ref_time(146_973).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(146_973, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -116,7 +116,7 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 	// Storage: Balances Reserves (r:1 w:1)
 	fn withdraw_bond() -> Weight {
 		// Minimum execution time: 58_550 nanoseconds.
-		Weight::from_ref_time(59_970_000)
+		Weight::from_parts(59_970_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -124,14 +124,14 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 	// Storage: CollatorSelection SessionPoints (r:1 w:0)
 	fn note_author() -> Weight {
 		// Minimum execution time: 27_468 nanoseconds.
-		Weight::from_ref_time(27_997_000)
+		Weight::from_parts(27_997_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 	}
 	// Storage: CollatorSelection Candidates (r:1 w:0)
 	// Storage: CollatorSelection Invulnerables (r:1 w:0)
 	fn new_session() -> Weight {
 		// Minimum execution time: 37_487 nanoseconds.
-		Weight::from_ref_time(38_191_000)
+		Weight::from_parts(38_191_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 	}
 	// Storage: Session Validators (r:1 w:0)
@@ -141,9 +141,9 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 	/// The range of component `c` is `[5, 200]`.
 	fn start_session(_r: u32, c: u32, ) -> Weight {
 		// Minimum execution time: 17_544 nanoseconds.
-		Weight::from_ref_time(9_463_222)
+		Weight::from_parts(9_463_222, 0)
 			// Standard Error: 3_568
-			.saturating_add(Weight::from_ref_time(1_372_777).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(1_372_777, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(5))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
@@ -156,9 +156,9 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 	/// The range of component `c` is `[5, 200]`.
 	fn end_session(_r: u32, c: u32, ) -> Weight {
 		// Minimum execution time: 37_906 nanoseconds.
-		Weight::from_ref_time(2_537_916_946)
+		Weight::from_parts(2_537_916_946, 0)
 			// Standard Error: 41_569
-			.saturating_add(Weight::from_ref_time(6_475_797).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(6_475_797, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(198))

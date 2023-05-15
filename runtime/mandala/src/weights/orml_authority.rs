@@ -50,14 +50,14 @@ pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> orml_authority::WeightInfo for WeightInfo<T> {
 	fn dispatch_as() -> Weight {
 		// Minimum execution time: 13_595 nanoseconds.
-		Weight::from_ref_time(14_198_000)
+		Weight::from_parts(14_198_000, 0)
 	}
 	// Storage: Authority NextTaskIndex (r:1 w:1)
 	// Storage: Scheduler Lookup (r:1 w:1)
 	// Storage: Scheduler Agenda (r:1 w:1)
 	fn schedule_dispatch_without_delay() -> Weight {
 		// Minimum execution time: 26_609 nanoseconds.
-		Weight::from_ref_time(27_245_000)
+		Weight::from_parts(27_245_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -66,7 +66,7 @@ impl<T: frame_system::Config> orml_authority::WeightInfo for WeightInfo<T> {
 	// Storage: Scheduler Agenda (r:1 w:1)
 	fn schedule_dispatch_with_delay() -> Weight {
 		// Minimum execution time: 27_162 nanoseconds.
-		Weight::from_ref_time(28_130_000)
+		Weight::from_parts(28_130_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -74,7 +74,7 @@ impl<T: frame_system::Config> orml_authority::WeightInfo for WeightInfo<T> {
 	// Storage: Scheduler Agenda (r:2 w:2)
 	fn fast_track_scheduled_dispatch() -> Weight {
 		// Minimum execution time: 33_539 nanoseconds.
-		Weight::from_ref_time(34_126_000)
+		Weight::from_parts(34_126_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -82,7 +82,7 @@ impl<T: frame_system::Config> orml_authority::WeightInfo for WeightInfo<T> {
 	// Storage: Scheduler Agenda (r:2 w:2)
 	fn delay_scheduled_dispatch() -> Weight {
 		// Minimum execution time: 33_503 nanoseconds.
-		Weight::from_ref_time(34_432_000)
+		Weight::from_parts(34_432_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -90,27 +90,27 @@ impl<T: frame_system::Config> orml_authority::WeightInfo for WeightInfo<T> {
 	// Storage: Scheduler Agenda (r:1 w:1)
 	fn cancel_scheduled_dispatch() -> Weight {
 		// Minimum execution time: 25_419 nanoseconds.
-		Weight::from_ref_time(26_169_000)
+		Weight::from_parts(26_169_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
 	// Storage: Authority SavedCalls (r:0 w:1)
 	fn authorize_call() -> Weight {
 		// Minimum execution time: 13_823 nanoseconds.
-		Weight::from_ref_time(14_450_000)
+		Weight::from_parts(14_450_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: Authority SavedCalls (r:1 w:1)
 	fn remove_authorized_call() -> Weight {
 		// Minimum execution time: 17_744 nanoseconds.
-		Weight::from_ref_time(18_246_000)
+		Weight::from_parts(18_246_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: Authority SavedCalls (r:1 w:1)
 	fn trigger_call() -> Weight {
 		// Minimum execution time: 23_343 nanoseconds.
-		Weight::from_ref_time(23_802_000)
+		Weight::from_parts(23_802_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

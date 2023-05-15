@@ -62,9 +62,9 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	/// The range of component `c` is `[0, 4]`.
 	fn on_initialize(c: u32, ) -> Weight {
 		// Minimum execution time: 21_101 nanoseconds.
-		Weight::from_ref_time(22_779_780)
+		Weight::from_parts(22_779_780, 0)
 			// Standard Error: 45_569
-			.saturating_add(Weight::from_ref_time(7_042_566).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(7_042_566, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(8))
@@ -72,7 +72,7 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: CdpEngine CollateralParams (r:1 w:1)
 	fn set_collateral_params() -> Weight {
 		// Minimum execution time: 29_246 nanoseconds.
-		Weight::from_ref_time(29_829_000)
+		Weight::from_parts(29_829_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -104,9 +104,9 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	/// The range of component `b` is `[1, 50]`.
 	fn liquidate_by_auction(b: u32, ) -> Weight {
 		// Minimum execution time: 178_024 nanoseconds.
-		Weight::from_ref_time(183_947_950)
+		Weight::from_parts(183_947_950, 0)
 			// Standard Error: 21_547
-			.saturating_add(Weight::from_ref_time(11_270_853).saturating_mul(b.into()))
+			.saturating_add(Weight::from_parts(11_270_853, 0).saturating_mul(b.into()))
 			.saturating_add(T::DbWeight::get().reads(28))
 			.saturating_add(T::DbWeight::get().writes(15))
 			.saturating_add(T::DbWeight::get().writes((3_u64).saturating_mul(b.into())))
@@ -136,7 +136,7 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: AggregatedDex AggregatedSwapPaths (r:1 w:0)
 	fn liquidate_by_dex() -> Weight {
 		// Minimum execution time: 273_271 nanoseconds.
-		Weight::from_ref_time(280_372_000)
+		Weight::from_parts(280_372_000, 0)
 			.saturating_add(T::DbWeight::get().reads(36))
 			.saturating_add(T::DbWeight::get().writes(16))
 	}
@@ -153,21 +153,21 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	// Storage: Loans TotalPositions (r:1 w:1)
 	fn settle() -> Weight {
 		// Minimum execution time: 102_299 nanoseconds.
-		Weight::from_ref_time(104_750_000)
+		Weight::from_parts(104_750_000, 0)
 			.saturating_add(T::DbWeight::get().reads(14))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}
 	// Storage: CdpEngine LiquidationContracts (r:1 w:1)
 	fn register_liquidation_contract() -> Weight {
 		// Minimum execution time: 16_669 nanoseconds.
-		Weight::from_ref_time(17_291_000)
+		Weight::from_parts(17_291_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: CdpEngine LiquidationContracts (r:1 w:1)
 	fn deregister_liquidation_contract() -> Weight {
 		// Minimum execution time: 17_219 nanoseconds.
-		Weight::from_ref_time(17_742_000)
+		Weight::from_parts(17_742_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

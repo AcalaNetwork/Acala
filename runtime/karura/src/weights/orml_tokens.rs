@@ -53,7 +53,7 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	fn transfer() -> Weight {
 		// Minimum execution time: 43_225 nanoseconds.
-		Weight::from_ref_time(44_116_000)
+		Weight::from_parts(44_116_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -62,7 +62,7 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	fn transfer_all() -> Weight {
 		// Minimum execution time: 44_840 nanoseconds.
-		Weight::from_ref_time(46_837_000)
+		Weight::from_parts(46_837_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -70,7 +70,7 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	fn transfer_keep_alive() -> Weight {
 		// Minimum execution time: 32_247 nanoseconds.
-		Weight::from_ref_time(33_160_000)
+		Weight::from_parts(33_160_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -78,7 +78,7 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:2 w:1)
 	fn force_transfer() -> Weight {
 		// Minimum execution time: 34_471 nanoseconds.
-		Weight::from_ref_time(35_808_000)
+		Weight::from_parts(35_808_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -87,7 +87,7 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:1 w:1)
 	fn set_balance() -> Weight {
 		// Minimum execution time: 26_892 nanoseconds.
-		Weight::from_ref_time(27_724_000)
+		Weight::from_parts(27_724_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}

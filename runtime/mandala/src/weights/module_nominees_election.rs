@@ -54,7 +54,7 @@ impl<T: frame_system::Config> module_nominees_election::WeightInfo for WeightInf
 	// Storage: NomineesElection Nominations (r:1 w:0)
 	fn bond() -> Weight {
 		// Minimum execution time: 39_118 nanoseconds.
-		Weight::from_ref_time(40_184_000)
+		Weight::from_parts(40_184_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -65,7 +65,7 @@ impl<T: frame_system::Config> module_nominees_election::WeightInfo for WeightInf
 	// Storage: NomineesElection Nominations (r:1 w:0)
 	fn unbond() -> Weight {
 		// Minimum execution time: 35_859 nanoseconds.
-		Weight::from_ref_time(37_165_000)
+		Weight::from_parts(37_165_000, 0)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -76,9 +76,9 @@ impl<T: frame_system::Config> module_nominees_election::WeightInfo for WeightInf
 	/// The range of component `c` is `[1, 7]`.
 	fn rebond(c: u32, ) -> Weight {
 		// Minimum execution time: 38_404 nanoseconds.
-		Weight::from_ref_time(39_962_608)
+		Weight::from_parts(39_962_608, 0)
 			// Standard Error: 9_613
-			.saturating_add(Weight::from_ref_time(38_191).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(38_191, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -87,9 +87,9 @@ impl<T: frame_system::Config> module_nominees_election::WeightInfo for WeightInf
 	/// The range of component `c` is `[1, 7]`.
 	fn withdraw_unbonded(c: u32, ) -> Weight {
 		// Minimum execution time: 12_155 nanoseconds.
-		Weight::from_ref_time(12_741_115)
+		Weight::from_parts(12_741_115, 0)
 			// Standard Error: 3_561
-			.saturating_add(Weight::from_ref_time(13_937).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(13_937, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 	}
 	// Storage: NomineesElection Ledger (r:1 w:0)
@@ -98,9 +98,9 @@ impl<T: frame_system::Config> module_nominees_election::WeightInfo for WeightInf
 	/// The range of component `c` is `[1, 7]`.
 	fn nominate(c: u32, ) -> Weight {
 		// Minimum execution time: 14_073 nanoseconds.
-		Weight::from_ref_time(13_303_642)
+		Weight::from_parts(13_303_642, 0)
 			// Standard Error: 5_487
-			.saturating_add(Weight::from_ref_time(1_619_638).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(1_619_638, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
@@ -112,9 +112,9 @@ impl<T: frame_system::Config> module_nominees_election::WeightInfo for WeightInf
 	/// The range of component `c` is `[1, 7]`.
 	fn chill(c: u32, ) -> Weight {
 		// Minimum execution time: 16_471 nanoseconds.
-		Weight::from_ref_time(14_661_663)
+		Weight::from_parts(14_661_663, 0)
 			// Standard Error: 11_825
-			.saturating_add(Weight::from_ref_time(3_078_397).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(3_078_397, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(1))

@@ -62,7 +62,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Balances Reserves (r:1 w:1)
 	// Storage: TransactionPayment AlternativeFeeSwapPath (r:0 w:1)
 	fn set_alternative_fee_swap_path() -> Weight {
-		Weight::from_ref_time(21_367_000)
+		Weight::from_parts(21_367_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
@@ -75,7 +75,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: TransactionPayment TokenExchangeRate (r:0 w:1)
 	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
 	fn enable_charge_fee_pool() -> Weight {
-		Weight::from_ref_time(62_403_000)
+		Weight::from_parts(62_403_000, 0)
 			.saturating_add(T::DbWeight::get().reads(8 as u64))
 			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
@@ -88,28 +88,28 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: TransactionPayment PoolSize (r:0 w:1)
 	// Storage: EvmAccounts Accounts (r:0 w:1)
 	fn disable_charge_fee_pool() -> Weight {
-		Weight::from_ref_time(66_491_000)
+		Weight::from_parts(66_491_000, 0)
 			.saturating_add(T::DbWeight::get().reads(7 as u64))
 			.saturating_add(T::DbWeight::get().writes(9 as u64))
 	}
 	fn with_fee_path() -> Weight {
-		Weight::from_ref_time(156_000_000)
+		Weight::from_parts(156_000_000, 0)
 	}
 	fn with_fee_aggregated_path() -> Weight {
-		Weight::from_ref_time(156_000_000)
+		Weight::from_parts(156_000_000, 0)
 	}
 	fn with_fee_currency() -> Weight {
-		Weight::from_ref_time(193_000_000)
+		Weight::from_parts(193_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 	}
 	fn with_fee_paid_by() -> Weight {
-		Weight::from_ref_time(193_000_000)
+		Weight::from_parts(193_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 	}
 	// Storage: TransactionPayment NextFeeMultiplier (r:1 w:1)
 	// Storage: System BlockWeight (r:1 w:0)
 	fn on_finalize() -> Weight {
-		Weight::from_ref_time(6_779_000)
+		Weight::from_parts(6_779_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -118,37 +118,37 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn set_alternative_fee_swap_path() -> Weight {
-		Weight::from_ref_time(21_367_000)
+		Weight::from_parts(21_367_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn enable_charge_fee_pool() -> Weight {
-		Weight::from_ref_time(62_403_000)
+		Weight::from_parts(62_403_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(8 as u64))
 			.saturating_add(RocksDbWeight::get().writes(7 as u64))
 	}
 	fn disable_charge_fee_pool() -> Weight {
-		Weight::from_ref_time(66_491_000)
+		Weight::from_parts(66_491_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(7 as u64))
 			.saturating_add(RocksDbWeight::get().writes(9 as u64))
 	}
 	fn on_finalize() -> Weight {
-		Weight::from_ref_time(6_779_000)
+		Weight::from_parts(6_779_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn with_fee_path() -> Weight {
-		Weight::from_ref_time(156_000_000)
+		Weight::from_parts(156_000_000, 0)
 	}
 	fn with_fee_aggregated_path() -> Weight {
-		Weight::from_ref_time(156_000_000)
+		Weight::from_parts(156_000_000, 0)
 	}
 	fn with_fee_currency() -> Weight {
-		Weight::from_ref_time(193_000_000)
+		Weight::from_parts(193_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 	}
 	fn with_fee_paid_by() -> Weight {
-		Weight::from_ref_time(193_000_000)
+		Weight::from_parts(193_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 	}
 }

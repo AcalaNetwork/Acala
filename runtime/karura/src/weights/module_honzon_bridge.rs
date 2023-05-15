@@ -51,19 +51,19 @@ impl<T: frame_system::Config> module_honzon_bridge::WeightInfo for WeightInfo<T>
 	// Storage: HonzonBridge BridgedStableCoinCurrencyId (r:0 w:1)
 	fn set_bridged_stable_coin_address() -> Weight {
 		// Minimum execution time: 13_633 nanoseconds.
-		Weight::from_ref_time(14_588_000)
+		Weight::from_parts(14_588_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: HonzonBridge BridgedStableCoinCurrencyId (r:1 w:0)
 	fn to_bridged() -> Weight {
 		// Minimum execution time: 16_054 nanoseconds.
-		Weight::from_ref_time(16_507_000)
+		Weight::from_parts(16_507_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 	}
 	// Storage: HonzonBridge BridgedStableCoinCurrencyId (r:1 w:0)
 	fn from_bridged() -> Weight {
 		// Minimum execution time: 15_856 nanoseconds.
-		Weight::from_ref_time(16_292_000)
+		Weight::from_parts(16_292_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 	}
 }

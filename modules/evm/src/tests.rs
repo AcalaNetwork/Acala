@@ -1436,7 +1436,6 @@ fn should_selfdestruct_without_schedule_task() {
 
 #[test]
 fn should_selfdestruct_with_schedule_task() {
-	env_logger::init();
 	// pragma solidity ^0.8.0;
 	//
 	// contract Test {
@@ -1574,7 +1573,7 @@ fn should_selfdestruct_with_schedule_task() {
 		// 	}
 		// );
 
-		// IdleScheduler::on_idle(0, Weight::from_ref_time(1_000_000_000_000));
+		// IdleScheduler::on_idle(0, Weight::from_parts(1_000_000_000_000, 0));
 
 		// refund storage deposit
 		assert_eq!(
@@ -2509,7 +2508,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1_437_794_352, 5_206)),
+					actual_weight: Some(Weight::from_parts(1417384352, 7186)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::NoPermission.into(),
@@ -2542,7 +2541,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1_436_838_054, 5_206)),
+					actual_weight: Some(Weight::from_parts(1416428054, 7186)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::StrictCallFailed.into(),

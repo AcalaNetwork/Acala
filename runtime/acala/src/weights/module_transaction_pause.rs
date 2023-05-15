@@ -51,28 +51,28 @@ impl<T: frame_system::Config> module_transaction_pause::WeightInfo for WeightInf
 	// Storage: TransactionPause PausedTransactions (r:1 w:1)
 	fn pause_transaction() -> Weight {
 		// Minimum execution time: 16_755 nanoseconds.
-		Weight::from_ref_time(17_724_000)
+		Weight::from_parts(17_724_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: TransactionPause PausedTransactions (r:1 w:1)
 	fn unpause_transaction() -> Weight {
 		// Minimum execution time: 17_562 nanoseconds.
-		Weight::from_ref_time(17_948_000)
+		Weight::from_parts(17_948_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: TransactionPause PausedEvmPrecompiles (r:1 w:1)
 	fn pause_evm_precompile() -> Weight {
 		// Minimum execution time: 16_161 nanoseconds.
-		Weight::from_ref_time(16_860_000)
+		Weight::from_parts(16_860_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: TransactionPause PausedEvmPrecompiles (r:1 w:1)
 	fn unpause_evm_precompile() -> Weight {
 		// Minimum execution time: 16_920 nanoseconds.
-		Weight::from_ref_time(17_811_000)
+		Weight::from_parts(17_811_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

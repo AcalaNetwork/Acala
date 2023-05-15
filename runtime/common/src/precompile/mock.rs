@@ -214,7 +214,7 @@ impl BlockNumberProvider for MockBlockNumberProvider {
 }
 
 parameter_types! {
-	pub MinimumWeightRemainInBlock: Weight = Weight::from_ref_time(0);
+	pub MinimumWeightRemainInBlock: Weight = Weight::from_parts(0, 0);
 }
 
 impl module_idle_scheduler::Config for Test {
@@ -570,7 +570,7 @@ ord_parameter_types! {
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(a: u64) -> Weight {
-		Weight::from_ref_time(a)
+		Weight::from_parts(a, 0)
 	}
 }
 

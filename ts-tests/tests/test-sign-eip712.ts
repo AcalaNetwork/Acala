@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
 import { describeWithAcala, getEvmNonce, transfer } from "./util";
-import { Signer } from "@acala-network/bodhi";
+import { BodhiSigner } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
 import { encodeAddress } from "@polkadot/keyring";
 import { hexToU8a, u8aConcat, stringToU8a } from "@polkadot/util";
@@ -9,7 +9,7 @@ import { ethers, BigNumber, ContractFactory } from "ethers";
 import Erc20DemoContract from "../build/Erc20DemoContract.json"
 
 describeWithAcala("Acala RPC (Sign eip712)", (context) => {
-	let alice: Signer;
+	let alice: BodhiSigner;
 	let signer: Wallet;
 	let subAddr: string;
 	let factory: ContractFactory;
@@ -17,7 +17,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 
 	before("init", async function () {
 		this.timeout(15000);
-		[alice] = await context.provider.getWallets();
+		[alice] = context.wallets;
 
 		signer = new Wallet(
 			"0x0123456789012345678901234567890123456789012345678901234567890123"
@@ -33,7 +33,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 
 		expect(subAddr).to.equal("5EMjsczQH4R2WZaB5Svau8HWZp1aAfMqjxfv3GeLWotYSkLc");
 
-		await transfer(context, await alice.getSubstrateAddress(), subAddr, 10000000000000);
+		await transfer(context, alice.substrateAddress, subAddr, 10000000000000);
 
 		factory = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode);
 	});
@@ -285,7 +285,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		});
 
 		await new Promise(async (resolve) => {
-			context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.publishFree(contract)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
+			context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.publishFree(contract)).signAndSend(alice.substrateAddress, ((result) => {
 				if (result.status.isFinalized || result.status.isInBlock) {
 					resolve(undefined);
 				}

@@ -55,9 +55,9 @@ impl<T: frame_system::Config> module_aggregated_dex::WeightInfo for WeightInfo<T
 	/// The range of component `u` is `[2, 4]`.
 	fn swap_with_exact_supply(u: u32, ) -> Weight {
 		// Minimum execution time: 78_639 nanoseconds.
-		Weight::from_ref_time(59_048_015)
+		Weight::from_parts(59_048_015, 0)
 			// Standard Error: 72_718
-			.saturating_add(Weight::from_ref_time(11_330_713).saturating_mul(u.into()))
+			.saturating_add(Weight::from_parts(11_330_713, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
@@ -70,9 +70,9 @@ impl<T: frame_system::Config> module_aggregated_dex::WeightInfo for WeightInfo<T
 	/// The range of component `u` is `[2, 4]`.
 	fn swap_with_exact_target(u: u32, ) -> Weight {
 		// Minimum execution time: 87_102 nanoseconds.
-		Weight::from_ref_time(57_560_170)
+		Weight::from_parts(57_560_170, 0)
 			// Standard Error: 82_204
-			.saturating_add(Weight::from_ref_time(16_415_928).saturating_mul(u.into()))
+			.saturating_add(Weight::from_parts(16_415_928, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
@@ -82,9 +82,9 @@ impl<T: frame_system::Config> module_aggregated_dex::WeightInfo for WeightInfo<T
 	/// The range of component `n` is `[0, 7]`.
 	fn update_aggregated_swap_paths(n: u32, ) -> Weight {
 		// Minimum execution time: 4_674 nanoseconds.
-		Weight::from_ref_time(4_219_852)
+		Weight::from_parts(4_219_852, 0)
 			// Standard Error: 9_109
-			.saturating_add(Weight::from_ref_time(1_499_113).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(1_499_113, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
 	}
 }

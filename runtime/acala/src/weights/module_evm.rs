@@ -66,7 +66,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create() -> Weight {
 		// Minimum execution time: 131_632 nanoseconds.
-		Weight::from_ref_time(134_829_000)
+		Weight::from_parts(134_829_000, 0)
 			.saturating_add(T::DbWeight::get().reads(12))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -88,7 +88,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create2() -> Weight {
 		// Minimum execution time: 128_335 nanoseconds.
-		Weight::from_ref_time(132_510_000)
+		Weight::from_parts(132_510_000, 0)
 			.saturating_add(T::DbWeight::get().reads(12))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -110,7 +110,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create_nft_contract() -> Weight {
 		// Minimum execution time: 144_434 nanoseconds.
-		Weight::from_ref_time(146_823_000)
+		Weight::from_parts(146_823_000, 0)
 			.saturating_add(T::DbWeight::get().reads(12))
 			.saturating_add(T::DbWeight::get().writes(10))
 	}
@@ -130,7 +130,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create_predeploy_contract() -> Weight {
 		// Minimum execution time: 144_969 nanoseconds.
-		Weight::from_ref_time(148_997_000)
+		Weight::from_parts(148_997_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -150,7 +150,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Proof Skipped: EVM ContractStorageSizes (max_values: None, max_size: None, mode: Measured)
 	fn call() -> Weight {
 		// Minimum execution time: 127_038 nanoseconds.
-		Weight::from_ref_time(129_823_000)
+		Weight::from_parts(129_823_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -160,7 +160,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Proof: EvmAccounts EvmAddresses (max_values: None, max_size: Some(60), added: 2535, mode: MaxEncodedLen)
 	fn transfer_maintainer() -> Weight {
 		// Minimum execution time: 101_503 nanoseconds.
-		Weight::from_ref_time(104_460_000)
+		Weight::from_parts(104_460_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -170,7 +170,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Proof Skipped: EVM Accounts (max_values: None, max_size: None, mode: Measured)
 	fn publish_contract() -> Weight {
 		// Minimum execution time: 119_507 nanoseconds.
-		Weight::from_ref_time(120_691_000)
+		Weight::from_parts(120_691_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -178,7 +178,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Proof Skipped: EVM Accounts (max_values: None, max_size: None, mode: Measured)
 	fn publish_free() -> Weight {
 		// Minimum execution time: 27_058 nanoseconds.
-		Weight::from_ref_time(28_370_000)
+		Weight::from_parts(28_370_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -186,7 +186,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Proof: Balances Reserves (max_values: None, max_size: Some(168), added: 2643, mode: MaxEncodedLen)
 	fn enable_contract_development() -> Weight {
 		// Minimum execution time: 103_110 nanoseconds.
-		Weight::from_ref_time(103_985_000)
+		Weight::from_parts(103_985_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -194,7 +194,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Proof: Balances Reserves (max_values: None, max_size: Some(168), added: 2643, mode: MaxEncodedLen)
 	fn disable_contract_development() -> Weight {
 		// Minimum execution time: 104_317 nanoseconds.
-		Weight::from_ref_time(105_524_000)
+		Weight::from_parts(105_524_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -217,9 +217,9 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	/// The range of component `c` is `[0, 61440]`.
 	fn set_code(c: u32, ) -> Weight {
 		// Minimum execution time: 166_836 nanoseconds.
-		Weight::from_ref_time(164_042_499)
+		Weight::from_parts(164_042_499, 0)
 			// Standard Error: 15
-			.saturating_add(Weight::from_ref_time(5_586).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(5_586, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(10))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -247,7 +247,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn selfdestruct() -> Weight {
 		// Minimum execution time: 179_822 nanoseconds.
-		Weight::from_ref_time(183_023_000)
+		Weight::from_parts(183_023_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}

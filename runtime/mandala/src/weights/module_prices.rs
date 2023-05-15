@@ -53,14 +53,14 @@ impl<T: frame_system::Config> module_prices::WeightInfo for WeightInfo<T> {
 	// Storage: Prices LockedPrice (r:0 w:1)
 	fn lock_price() -> Weight {
 		// Minimum execution time: 23_865 nanoseconds.
-		Weight::from_ref_time(24_425_000)
+		Weight::from_parts(24_425_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: Prices LockedPrice (r:1 w:1)
 	fn unlock_price() -> Weight {
 		// Minimum execution time: 18_299 nanoseconds.
-		Weight::from_ref_time(19_152_000)
+		Weight::from_parts(19_152_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

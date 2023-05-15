@@ -444,11 +444,12 @@ pub fn run() -> sc_cli::Result<()> {
 					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
 					let task_manager = sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
 						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+					let info_provider = try_runtime_cli::block_building_info::substrate_info(12000);
 					Ok((
 						cmd.run::<Block, ExtendedHostFunctions<
 							sp_io::SubstrateHostFunctions,
 							<Executor as NativeExecutionDispatch>::ExtendHostFunctions,
-						>>(),
+						>, _>(Some(info_provider)),
 						task_manager,
 					))
 				});

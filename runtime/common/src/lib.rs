@@ -31,17 +31,16 @@ use frame_support::{
 	RuntimeDebug,
 };
 use frame_system::{limits, EnsureRoot};
-use module_evm::GenesisAccount;
 use orml_traits::{currency::MutationHooks, GetByKey};
 use polkadot_parachain::primitives::RelayChainBlockNumber;
 use primitives::{
 	evm::{is_system_contract, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},
-	Balance, CurrencyId, Nonce,
+	Balance, CurrencyId,
 };
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
 use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
-use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, prelude::*};
+use sp_std::{marker::PhantomData, prelude::*};
 use static_assertions::const_assert;
 
 pub use check_nonce::CheckNonce;
@@ -59,9 +58,11 @@ pub use primitives::{
 pub use xcm_impl::{local_currency_location, native_currency_location, AcalaDropAssets, FixedRateOfAsset, XcmExecutor};
 
 #[cfg(feature = "std")]
+use module_evm::GenesisAccount;
+#[cfg(feature = "std")]
 use sp_core::bytes::from_hex;
 #[cfg(feature = "std")]
-use std::str::FromStr;
+use std::{collections::btree_map::BTreeMap, str::FromStr};
 
 pub mod bench;
 pub mod check_nonce;
@@ -107,7 +108,7 @@ impl PrecompileCallerFilter for SystemContractsFilter {
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(gas: u64) -> Weight {
-		Weight::from_ref_time(gas.saturating_mul(gas_to_weight_ratio::RATIO))
+		Weight::from_parts(gas.saturating_mul(gas_to_weight_ratio::RATIO), 0)
 	}
 }
 
@@ -404,7 +405,7 @@ where
 
 #[cfg(feature = "std")]
 /// Returns `evm_genesis_accounts`
-pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
+pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, primitives::Nonce>> {
 	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();

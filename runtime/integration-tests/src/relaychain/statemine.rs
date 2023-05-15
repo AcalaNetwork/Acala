@@ -34,7 +34,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 40_000_000_000;
 pub const FEE: Balance = 200_000_000;
-pub const FEE_STATEMINE: Balance = 19_842_214;
+pub const FEE_STATEMINE: Balance = 43_543_101;
 pub const FEE_KUSAMA: Balance = 11_492_737;
 const ASSET_ID: u32 = 100;
 
@@ -45,14 +45,14 @@ fn init_statemine_xcm_interface() {
 		RuntimeOrigin::root(),
 		vec![(
 			xcm_operation.clone(),
-			Some(XcmWeight::from_ref_time(4_000_000_000)),
+			Some(XcmWeight::from_parts(4_000_000_000, 0)),
 			Some(200_000_000),
 		)],
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(
 		module_xcm_interface::Event::XcmDestWeightUpdated {
 			xcm_operation: xcm_operation.clone(),
-			new_xcm_dest_weight: XcmWeight::from_ref_time(4_000_000_000),
+			new_xcm_dest_weight: XcmWeight::from_parts(4_000_000_000, 0),
 		},
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
@@ -69,7 +69,7 @@ fn statemine_min_xcm_fee_matched() {
 		init_statemine_xcm_interface();
 		let weight = FEE_WEIGHT as u64;
 
-		let fee: Balance = IdentityFee::weight_to_fee(&Weight::from_ref_time(weight));
+		let fee: Balance = IdentityFee::weight_to_fee(&Weight::from_parts(weight, 0));
 		let statemine: MultiLocation = (Parent, Parachain(parachains::statemine::ID)).into();
 		let bifrost: MultiLocation = (Parent, Parachain(parachains::bifrost::ID)).into();
 
@@ -159,7 +159,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(4_000_000_000))
+			WeightLimit::Limited(XcmWeight::from_parts(4_000_000_000, 0))
 		));
 
 		assert_eq!(9 * UNIT, Tokens::free_balance(KSM, &AccountId::from(ALICE)));
@@ -170,7 +170,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 		// source parachain sovereign account withrawn.
 		assert_eq!(UNIT, kusama_runtime::Balances::free_balance(&child_2000));
 		// destination parachain sovereign account deposited.
-		assert_eq!(999_768_280_053, kusama_runtime::Balances::free_balance(&child_1000));
+		assert_eq!(999_758_308_574, kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	// In receiver, xm execution error: UntrustedReserveLocation.
@@ -200,7 +200,7 @@ fn karura_transfer_asset_to_statemine_works() {
 
 		// https://github.com/paritytech/cumulus/pull/1278 support using self sufficient asset
 		// for paying xcm execution fee on Statemine.
-		assert_eq!(990_000_000_000, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
+		assert_eq!(988_423_297_485, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
 	});
 }
 
@@ -239,10 +239,10 @@ fn karura_statemine_transfer_use_ksm_as_fee() {
 		assert_eq!(9 * UNIT, Assets::balance(ASSET_ID, &para_2000));
 
 		assert_eq!(
-			UNIT + FEE - FEE_STATEMINE, // 1_000_180_157_786
+			UNIT + FEE - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(1_039_426_023_863, Balances::free_balance(&para_2000));
+		assert_eq!(1_039_387_546_047, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -279,7 +279,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 					)
 					.into()
 				),
-				WeightLimit::Limited(XcmWeight::from_ref_time(FEE_WEIGHT as u64))
+				WeightLimit::Limited(XcmWeight::from_parts(FEE_WEIGHT as u64, 0))
 			));
 		} else {
 			// use KSM as fee
@@ -300,7 +300,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 					)
 					.into()
 				),
-				//WeightLimit::Limited(XcmWeight::from_ref_time(400_000_000))
+				//WeightLimit::Limited(XcmWeight::from_parts(400_000_000, 0))
 				WeightLimit::Unlimited
 			));
 		}

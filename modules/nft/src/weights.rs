@@ -60,42 +60,42 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn create_class() -> Weight {
-		Weight::from_ref_time(177_661_000)
+		Weight::from_parts(177_661_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	fn mint(i: u32, ) -> Weight {
-		Weight::from_ref_time(44_387_000)
+		Weight::from_parts(44_387_000, 0)
 			// Standard Error: 46_000
-			.saturating_add(Weight::from_ref_time(72_699_000).saturating_mul(i as u64))
+			.saturating_add(Weight::from_parts(72_699_000, 0).saturating_mul(i as u64))
 			.saturating_add(T::DbWeight::get().reads(5 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(i as u64)))
 	}
 	fn transfer() -> Weight {
-		Weight::from_ref_time(266_936_000)
+		Weight::from_parts(266_936_000, 0)
 			.saturating_add(T::DbWeight::get().reads(7 as u64))
 			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
 	fn burn() -> Weight {
-		Weight::from_ref_time(189_094_000)
+		Weight::from_parts(189_094_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	fn burn_with_remark(b: u32, ) -> Weight {
-		Weight::from_ref_time(196_036_000)
+		Weight::from_parts(196_036_000, 0)
 			// Standard Error: 0
-			.saturating_add(Weight::from_ref_time(2_000).saturating_mul(b as u64))
+			.saturating_add(Weight::from_parts(2_000, 0).saturating_mul(b as u64))
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 	fn destroy_class() -> Weight {
-		Weight::from_ref_time(217_091_000)
+		Weight::from_parts(217_091_000, 0)
 			.saturating_add(T::DbWeight::get().reads(6 as u64))
 			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
 	fn update_class_properties() -> Weight {
-		Weight::from_ref_time(52_914_000)
+		Weight::from_parts(52_914_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -104,42 +104,42 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn create_class() -> Weight {
-		Weight::from_ref_time(177_661_000)
+		Weight::from_parts(177_661_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(4 as u64))
 			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	fn mint(i: u32, ) -> Weight {
-		Weight::from_ref_time(44_387_000)
+		Weight::from_parts(44_387_000, 0)
 			// Standard Error: 46_000
-			.saturating_add(Weight::from_ref_time(72_699_000).saturating_mul(i as u64))
+			.saturating_add(Weight::from_parts(72_699_000, 0).saturating_mul(i as u64))
 			.saturating_add(RocksDbWeight::get().reads(5 as u64))
 			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 			.saturating_add(RocksDbWeight::get().writes((2 as u64).saturating_mul(i as u64)))
 	}
 	fn transfer() -> Weight {
-		Weight::from_ref_time(266_936_000)
+		Weight::from_parts(266_936_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(7 as u64))
 			.saturating_add(RocksDbWeight::get().writes(7 as u64))
 	}
 	fn burn() -> Weight {
-		Weight::from_ref_time(189_094_000)
+		Weight::from_parts(189_094_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(4 as u64))
 			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	fn burn_with_remark(b: u32, ) -> Weight {
-		Weight::from_ref_time(196_036_000)
+		Weight::from_parts(196_036_000, 0)
 			// Standard Error: 0
-			.saturating_add(Weight::from_ref_time(2_000).saturating_mul(b as u64))
+			.saturating_add(Weight::from_parts(2_000, 0).saturating_mul(b as u64))
 			.saturating_add(RocksDbWeight::get().reads(4 as u64))
 			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	fn destroy_class() -> Weight {
-		Weight::from_ref_time(217_091_000)
+		Weight::from_parts(217_091_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(6 as u64))
 			.saturating_add(RocksDbWeight::get().writes(6 as u64))
 	}
 	fn update_class_properties() -> Weight {
-		Weight::from_ref_time(52_914_000)
+		Weight::from_parts(52_914_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}

@@ -27,7 +27,7 @@ pub use module_support::{
 	mocks::MockAddressMapping, AddressMapping, CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager,
 };
 
-pub use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
+pub use cumulus_pallet_parachain_system::RelaychainDataProvider;
 pub use orml_traits::{location::RelativeLocations, Change, GetByKey, MultiCurrency};
 
 pub use primitives::{

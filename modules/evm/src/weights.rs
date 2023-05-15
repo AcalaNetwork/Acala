@@ -82,7 +82,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create() -> Weight {
 		// Minimum execution time: 202_922 nanoseconds.
-		Weight::from_ref_time(204_527_000)
+		Weight::from_parts(204_527_000, 0)
 			.saturating_add(T::DbWeight::get().reads(12))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -104,7 +104,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create2() -> Weight {
 		// Minimum execution time: 194_188 nanoseconds.
-		Weight::from_ref_time(199_650_000)
+		Weight::from_parts(199_650_000, 0)
 			.saturating_add(T::DbWeight::get().reads(12))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -126,7 +126,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create_nft_contract() -> Weight {
 		// Minimum execution time: 223_480 nanoseconds.
-		Weight::from_ref_time(227_640_000)
+		Weight::from_parts(227_640_000, 0)
 			.saturating_add(T::DbWeight::get().reads(12))
 			.saturating_add(T::DbWeight::get().writes(10))
 	}
@@ -146,7 +146,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create_predeploy_contract() -> Weight {
 		// Minimum execution time: 229_528 nanoseconds.
-		Weight::from_ref_time(233_183_000)
+		Weight::from_parts(233_183_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -166,7 +166,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof Skipped: EVM ContractStorageSizes (max_values: None, max_size: None, mode: Measured)
 	fn call() -> Weight {
 		// Minimum execution time: 185_756 nanoseconds.
-		Weight::from_ref_time(189_885_000)
+		Weight::from_parts(189_885_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -176,7 +176,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof: EvmAccounts EvmAddresses (max_values: None, max_size: Some(60), added: 2535, mode: MaxEncodedLen)
 	fn transfer_maintainer() -> Weight {
 		// Minimum execution time: 120_422 nanoseconds.
-		Weight::from_ref_time(122_117_000)
+		Weight::from_parts(122_117_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -186,7 +186,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof Skipped: EVM Accounts (max_values: None, max_size: None, mode: Measured)
 	fn publish_contract() -> Weight {
 		// Minimum execution time: 149_010 nanoseconds.
-		Weight::from_ref_time(150_918_000)
+		Weight::from_parts(150_918_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -194,7 +194,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof Skipped: EVM Accounts (max_values: None, max_size: None, mode: Measured)
 	fn publish_free() -> Weight {
 		// Minimum execution time: 39_214 nanoseconds.
-		Weight::from_ref_time(40_271_000)
+		Weight::from_parts(40_271_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -202,7 +202,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof: Balances Reserves (max_values: None, max_size: Some(168), added: 2643, mode: MaxEncodedLen)
 	fn enable_contract_development() -> Weight {
 		// Minimum execution time: 126_304 nanoseconds.
-		Weight::from_ref_time(127_492_000)
+		Weight::from_parts(127_492_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -210,7 +210,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof: Balances Reserves (max_values: None, max_size: Some(168), added: 2643, mode: MaxEncodedLen)
 	fn disable_contract_development() -> Weight {
 		// Minimum execution time: 128_756 nanoseconds.
-		Weight::from_ref_time(129_795_000)
+		Weight::from_parts(129_795_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -233,9 +233,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	/// The range of component `c` is `[0, 61440]`.
 	fn set_code(c: u32, ) -> Weight {
 		// Minimum execution time: 221_718 nanoseconds.
-		Weight::from_ref_time(218_913_195)
+		Weight::from_parts(218_913_195, 0)
 			// Standard Error: 17
-			.saturating_add(Weight::from_ref_time(5_766).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(5_766, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(10))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -263,7 +263,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn selfdestruct() -> Weight {
 		// Minimum execution time: 239_686 nanoseconds.
-		Weight::from_ref_time(246_450_000)
+		Weight::from_parts(246_450_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}
@@ -289,7 +289,7 @@ impl WeightInfo for () {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create() -> Weight {
 		// Minimum execution time: 202_922 nanoseconds.
-		Weight::from_ref_time(204_527_000)
+		Weight::from_parts(204_527_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(12))
 			.saturating_add(RocksDbWeight::get().writes(9))
 	}
@@ -311,7 +311,7 @@ impl WeightInfo for () {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create2() -> Weight {
 		// Minimum execution time: 194_188 nanoseconds.
-		Weight::from_ref_time(199_650_000)
+		Weight::from_parts(199_650_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(12))
 			.saturating_add(RocksDbWeight::get().writes(9))
 	}
@@ -333,7 +333,7 @@ impl WeightInfo for () {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create_nft_contract() -> Weight {
 		// Minimum execution time: 223_480 nanoseconds.
-		Weight::from_ref_time(227_640_000)
+		Weight::from_parts(227_640_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(12))
 			.saturating_add(RocksDbWeight::get().writes(10))
 	}
@@ -353,7 +353,7 @@ impl WeightInfo for () {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn create_predeploy_contract() -> Weight {
 		// Minimum execution time: 229_528 nanoseconds.
-		Weight::from_ref_time(233_183_000)
+		Weight::from_parts(233_183_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(11))
 			.saturating_add(RocksDbWeight::get().writes(9))
 	}
@@ -373,7 +373,7 @@ impl WeightInfo for () {
 	// Proof Skipped: EVM ContractStorageSizes (max_values: None, max_size: None, mode: Measured)
 	fn call() -> Weight {
 		// Minimum execution time: 185_756 nanoseconds.
-		Weight::from_ref_time(189_885_000)
+		Weight::from_parts(189_885_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(11))
 			.saturating_add(RocksDbWeight::get().writes(6))
 	}
@@ -383,7 +383,7 @@ impl WeightInfo for () {
 	// Proof: EvmAccounts EvmAddresses (max_values: None, max_size: Some(60), added: 2535, mode: MaxEncodedLen)
 	fn transfer_maintainer() -> Weight {
 		// Minimum execution time: 120_422 nanoseconds.
-		Weight::from_ref_time(122_117_000)
+		Weight::from_parts(122_117_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
@@ -393,7 +393,7 @@ impl WeightInfo for () {
 	// Proof Skipped: EVM Accounts (max_values: None, max_size: None, mode: Measured)
 	fn publish_contract() -> Weight {
 		// Minimum execution time: 149_010 nanoseconds.
-		Weight::from_ref_time(150_918_000)
+		Weight::from_parts(150_918_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
@@ -401,7 +401,7 @@ impl WeightInfo for () {
 	// Proof Skipped: EVM Accounts (max_values: None, max_size: None, mode: Measured)
 	fn publish_free() -> Weight {
 		// Minimum execution time: 39_214 nanoseconds.
-		Weight::from_ref_time(40_271_000)
+		Weight::from_parts(40_271_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
@@ -409,7 +409,7 @@ impl WeightInfo for () {
 	// Proof: Balances Reserves (max_values: None, max_size: Some(168), added: 2643, mode: MaxEncodedLen)
 	fn enable_contract_development() -> Weight {
 		// Minimum execution time: 126_304 nanoseconds.
-		Weight::from_ref_time(127_492_000)
+		Weight::from_parts(127_492_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
@@ -417,7 +417,7 @@ impl WeightInfo for () {
 	// Proof: Balances Reserves (max_values: None, max_size: Some(168), added: 2643, mode: MaxEncodedLen)
 	fn disable_contract_development() -> Weight {
 		// Minimum execution time: 128_756 nanoseconds.
-		Weight::from_ref_time(129_795_000)
+		Weight::from_parts(129_795_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
@@ -440,9 +440,9 @@ impl WeightInfo for () {
 	/// The range of component `c` is `[0, 61440]`.
 	fn set_code(c: u32, ) -> Weight {
 		// Minimum execution time: 221_718 nanoseconds.
-		Weight::from_ref_time(218_913_195)
+		Weight::from_parts(218_913_195, 0)
 			// Standard Error: 17
-			.saturating_add(Weight::from_ref_time(5_766).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(5_766, 0).saturating_mul(c.into()))
 			.saturating_add(RocksDbWeight::get().reads(10))
 			.saturating_add(RocksDbWeight::get().writes(9))
 	}
@@ -470,7 +470,7 @@ impl WeightInfo for () {
 	// Proof Skipped: EVM Codes (max_values: None, max_size: None, mode: Measured)
 	fn selfdestruct() -> Weight {
 		// Minimum execution time: 239_686 nanoseconds.
-		Weight::from_ref_time(246_450_000)
+		Weight::from_parts(246_450_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(11))
 			.saturating_add(RocksDbWeight::get().writes(8))
 	}

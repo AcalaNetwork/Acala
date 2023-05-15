@@ -107,8 +107,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1237365,
-		used_storage: 15139,
+		used_gas: 1235081,
+		used_storage: 15130,
 	}));
 
 	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address_0()));
@@ -143,8 +143,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1237365,
-		used_storage: 15139,
+		used_gas: 1235081,
+		used_storage: 15130,
 	}));
 
 	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address_1()));
@@ -965,7 +965,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 					amount: 1,
 				});
 			let info: DispatchInfo = DispatchInfo {
-				weight: Weight::from_ref_time(100),
+				weight: Weight::from_parts(100, 0),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};

@@ -53,9 +53,9 @@ impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightIn
 	/// The range of component `c` is `[0, 4]`.
 	fn emergency_shutdown(c: u32, ) -> Weight {
 		// Minimum execution time: 19_699 nanoseconds.
-		Weight::from_ref_time(20_671_867)
+		Weight::from_parts(20_671_867, 0)
 			// Standard Error: 10_004
-			.saturating_add(Weight::from_ref_time(475_904).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(475_904, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -64,7 +64,7 @@ impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightIn
 	// Storage: EmergencyShutdown CanRefund (r:0 w:1)
 	fn open_collateral_refund() -> Weight {
 		// Minimum execution time: 19_413 nanoseconds.
-		Weight::from_ref_time(20_202_000)
+		Weight::from_parts(20_202_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -76,9 +76,9 @@ impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightIn
 	/// The range of component `c` is `[0, 4]`.
 	fn refund_collaterals(c: u32, ) -> Weight {
 		// Minimum execution time: 48_519 nanoseconds.
-		Weight::from_ref_time(50_750_512)
+		Weight::from_parts(50_750_512, 0)
 			// Standard Error: 22_097
-			.saturating_add(Weight::from_ref_time(1_939_640).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(1_939_640, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}

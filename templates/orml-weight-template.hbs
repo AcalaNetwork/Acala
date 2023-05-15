@@ -43,10 +43,10 @@ impl WeightInfo for () {
 		{{~#if (not c.is_used)}}_{{/if}}{{c.name}}: u32, {{/each~}}
 	) -> Weight {
 		// Minimum execution time: {{underscore benchmark.min_execution_time}} nanoseconds.
-		Weight::from_ref_time({{underscore benchmark.base_weight}})
+		Weight::from_parts({{underscore benchmark.base_weight}}, 0)
 		{{#each benchmark.component_weight as |cw|}}
 			// Standard Error: {{underscore cw.error}}
-			.saturating_add(Weight::from_ref_time({{underscore cw.slope}}).saturating_mul({{cw.name}}.into()))
+			.saturating_add(Weight::from_parts({{underscore cw.slope}}, 0).saturating_mul({{cw.name}}.into()))
 			{{/each}}
 			{{#if (ne benchmark.base_reads "0")}}
 			.saturating_add(RocksDbWeight::get().reads({{benchmark.base_reads}}))

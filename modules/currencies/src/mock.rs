@@ -157,7 +157,7 @@ ord_parameter_types! {
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(a: u64) -> Weight {
-		Weight::from_ref_time(a)
+		Weight::from_parts(a, 0)
 	}
 }
 
@@ -298,8 +298,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1237365,
-		used_storage: 5140,
+		used_gas: 1235081,
+		used_storage: 5131,
 	}));
 
 	assert_ok!(EVM::publish_free(
