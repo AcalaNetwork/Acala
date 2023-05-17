@@ -52,7 +52,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
 	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill,
 };
-use sp_std::{cell::RefCell, prelude::*};
+use sp_std::prelude::*;
 use xcm::{prelude::*, v3::Xcm};
 use xcm_builder::FixedWeightBounds;
 
@@ -822,18 +822,6 @@ parameter_type_with_key! {
 	};
 }
 
-thread_local! {
-	pub static TRACE: RefCell<Vec<(Xcm<RuntimeCall>, Outcome)>> = RefCell::new(Vec::new());
-}
-pub fn take_trace() -> Vec<(Xcm<RuntimeCall>, Outcome)> {
-	TRACE.with(|q| {
-		let q = &mut *q.borrow_mut();
-		let r = q.clone();
-		q.clear();
-		r
-	})
-}
-
 pub enum Weightless {}
 impl PreparedMessage for Weightless {
 	fn weight_of(&self) -> Weight {
@@ -879,7 +867,6 @@ impl ExecuteXcm<RuntimeCall> for MockExec {
 				XcmError::Unimplemented,
 			),
 		};
-		TRACE.with(|q| q.borrow_mut().push((message, o.clone())));
 		o
 	}
 
