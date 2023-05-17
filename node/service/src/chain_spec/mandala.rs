@@ -29,9 +29,8 @@ use mandala_runtime::{
 	CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, ExistentialDeposits,
 	FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 	NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
-	PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
-	SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
-	RENBTC,
+	PolkadotXcmConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig,
+	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
 };
 use runtime_common::evm_genesis;
 use sc_chain_spec::ChainType;
@@ -398,7 +397,6 @@ fn testnet_genesis(
 		cdp_treasury: CdpTreasuryConfig {
 			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
-				(RENBTC, dollar(RENBTC)),
 			],
 		},
 		cdp_engine: CdpEngineConfig {
@@ -419,14 +417,6 @@ fn testnet_genesis(
 					Some(FixedU128::saturating_from_rational(180, 100)),
 					10_000_000 * dollar(AUSD),
 				),
-				(
-					RENBTC,
-					Some(FixedU128::zero()),
-					Some(FixedU128::saturating_from_rational(150, 100)),
-					Some(FixedU128::saturating_from_rational(10, 100)),
-					Some(FixedU128::saturating_from_rational(150, 100)),
-					10_000_000 * dollar(AUSD),
-				),
 			],
 		},
 		asset_registry: AssetRegistryConfig {
@@ -438,7 +428,6 @@ fn testnet_genesis(
 				(AUSD, ExistentialDeposits::get(&AUSD)),
 				(DOT, ExistentialDeposits::get(&DOT)),
 				(LDOT, ExistentialDeposits::get(&LDOT)),
-				(RENBTC, ExistentialDeposits::get(&RENBTC)),
 			],
 		},
 		evm: EVMConfig {
@@ -467,9 +456,6 @@ fn testnet_genesis(
 		},
 		parachain_info: ParachainInfoConfig {
 			parachain_id: PARA_ID.into(),
-		},
-		ren_vm_bridge: RenVmBridgeConfig {
-			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
 		collator_selection: CollatorSelectionConfig {
@@ -587,7 +573,6 @@ fn mandala_genesis(
 		cdp_treasury: CdpTreasuryConfig {
 			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
-				(RENBTC, 5 * cent(RENBTC)),
 			],
 		},
 		cdp_engine: CdpEngineConfig {
@@ -608,14 +593,6 @@ fn mandala_genesis(
 					Some(FixedU128::saturating_from_rational(130, 100)),
 					10_000_000 * dollar(AUSD),
 				),
-				(
-					RENBTC,
-					Some(FixedU128::zero()),
-					Some(FixedU128::saturating_from_rational(110, 100)),
-					Some(FixedU128::saturating_from_rational(4, 100)),
-					Some(FixedU128::saturating_from_rational(115, 100)),
-					10_000_000 * dollar(AUSD),
-				),
 			],
 		},
 		asset_registry: AssetRegistryConfig {
@@ -624,7 +601,6 @@ fn mandala_genesis(
 				(AUSD, ExistentialDeposits::get(&AUSD)),
 				(DOT, ExistentialDeposits::get(&DOT)),
 				(LDOT, ExistentialDeposits::get(&LDOT)),
-				(RENBTC, ExistentialDeposits::get(&RENBTC)),
 			],
 		},
 		evm: EVMConfig {
@@ -638,9 +614,6 @@ fn mandala_genesis(
 		},
 		parachain_info: ParachainInfoConfig {
 			parachain_id: PARA_ID.into(),
-		},
-		ren_vm_bridge: RenVmBridgeConfig {
-			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
 		collator_selection: CollatorSelectionConfig {

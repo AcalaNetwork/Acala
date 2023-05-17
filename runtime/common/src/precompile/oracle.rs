@@ -142,7 +142,7 @@ where
 mod tests {
 	use super::*;
 
-	use crate::precompile::mock::{alice_evm_addr, new_test_ext, Oracle, Price, Test, ALICE, RENBTC};
+	use crate::precompile::mock::{alice_evm_addr, new_test_ext, Oracle, Price, Test, ALICE, DOT};
 	use frame_support::{assert_noop, assert_ok};
 	use hex_literal::hex;
 	use module_evm::ExitRevert;
@@ -162,10 +162,10 @@ mod tests {
 			let price = Price::from(30_000);
 
 			// getPrice(address) -> 0x41976e09
-			// RENBTC
+			// DOT
 			let input = hex! {"
 				41976e09
-				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000002
 			"};
 
 			// no price yet
@@ -177,9 +177,9 @@ mod tests {
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
-			assert_ok!(Oracle::feed_value(ALICE, RENBTC, price));
+			assert_ok!(Oracle::feed_value(ALICE, DOT, price));
 			assert_eq!(
-				Oracle::get(&RENBTC),
+				Oracle::get(&DOT),
 				Some(orml_oracle::TimestampedValue {
 					value: price,
 					timestamp: 1

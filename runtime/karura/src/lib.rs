@@ -109,7 +109,7 @@ pub use runtime_common::{
 	HomaCouncilMembershipInstance, MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price,
 	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
-	PHA, RENBTC, TAI, VSKSM,
+	PHA, TAI, VSKSM,
 };
 pub use xcm::v3::prelude::*;
 
@@ -755,10 +755,8 @@ parameter_type_with_key! {
 				TokenSymbol::AUSD |
 				TokenSymbol::DOT |
 				TokenSymbol::LDOT |
-				TokenSymbol::RENBTC |
 				TokenSymbol::KAR |
-				TokenSymbol::TAP |
-				TokenSymbol::CASH => Balance::max_value() // unsupported
+				TokenSymbol::TAP => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
 				let currency_id_0: CurrencyId = (*dex_share_0).into();

@@ -89,7 +89,6 @@ node-service = { package = "acala-service", path = "../../service", features = [
 module-transaction-payment = { path = "../../../modules/transaction-payment" }
 module-evm = { path = "../../../modules/evm" }
 module-emergency-shutdown = { path = "../../../modules/emergency-shutdown" }
-ecosystem-renvm-bridge = { path = "../../../ecosystem-modules/ren/renvm-bridge" }
 
 [dev-dependencies]
 portpicker = "0.1.1"

@@ -97,13 +97,6 @@ fn currency_id_convert() {
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
 					id,
-					RENBTC.encode().try_into().unwrap()
-				)),
-				Some(RENBTC)
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
-					id,
 					KAR.encode().try_into().unwrap()
 				)),
 				None
@@ -133,14 +126,6 @@ fn currency_id_convert() {
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
 					id,
 					TAP.encode().try_into().unwrap()
-				)),
-				None
-			);
-
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
-					id + 1,
-					RENBTC.encode().try_into().unwrap()
 				)),
 				None
 			);
@@ -249,13 +234,6 @@ fn currency_id_convert() {
 			assert_eq!(CurrencyIdConvert::convert(LKSM), None);
 			assert_eq!(CurrencyIdConvert::convert(TAI), None);
 
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
-					id,
-					RENBTC.encode().try_into().unwrap()
-				)),
-				None
-			);
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
 					id,
@@ -369,7 +347,6 @@ mod mandala_only_tests {
 	use ecosystem_renvm_bridge::EcdsaSignature;
 	use frame_support::dispatch::GetDispatchInfo;
 	use hex_literal::hex;
-	use mandala_runtime::RenVmBridge;
 	use module_transaction_payment::ChargeTransactionPayment;
 	use pallet_transaction_payment::InclusionFee;
 	use sp_runtime::{
@@ -492,20 +469,6 @@ mod mandala_only_tests {
 				n_hash: hex!["f6a75cc370a2dda6dfc8d016529766bb6099d7fa0d787d9fe5d3a7e60c9ac2a0"],
 				sig: sig.clone(),
 			};
-
-			assert_eq!(
-				RenVmBridge::validate_unsigned(
-					TransactionSource::Local,
-					&call,
-				),
-				Ok(ValidTransaction {
-					priority: 14_999_999_997_000,
-					requires: vec![],
-					provides: vec![("renvm-bridge", sig).encode()],
-					longevity: 64,
-					propagate: true,
-				})
-			);
 
 			// tips = 0
 			// operational extrinsic

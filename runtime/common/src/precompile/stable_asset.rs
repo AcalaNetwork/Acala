@@ -454,9 +454,7 @@ where
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::precompile::mock::{
-		alice_evm_addr, new_test_ext, RuntimeOrigin, StableAsset, Test, ALICE, AUSD, RENBTC,
-	};
+	use crate::precompile::mock::{alice_evm_addr, new_test_ext, RuntimeOrigin, StableAsset, Test, ALICE, AUSD, DOT};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
 
@@ -468,7 +466,7 @@ mod tests {
 			assert_ok!(StableAsset::create_pool(
 				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -519,7 +517,7 @@ mod tests {
 			assert_ok!(StableAsset::create_pool(
 				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -573,7 +571,7 @@ mod tests {
 			assert_ok!(StableAsset::create_pool(
 				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -621,7 +619,7 @@ mod tests {
 			assert_ok!(StableAsset::create_pool(
 				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -669,7 +667,7 @@ mod tests {
 			assert_ok!(StableAsset::create_pool(
 				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -717,7 +715,7 @@ mod tests {
 			assert_ok!(StableAsset::create_pool(
 				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -765,7 +763,7 @@ mod tests {
 			assert_ok!(StableAsset::create_pool(
 				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -872,7 +870,7 @@ mod tests {
 			assert_ok!(StableAsset::create_pool(
 				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,

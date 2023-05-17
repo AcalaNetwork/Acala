@@ -47,7 +47,7 @@ pub const BOB: AccountId = 1;
 pub const CHARLIE: AccountId = 2;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
+pub const BTC: CurrencyId = CurrencyId::ForeignAsset(255);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const STABLE_ASSET_LP: CurrencyId = CurrencyId::StableAssetPoolToken(0);
 pub const LP_AUSD_DOT: CurrencyId =
@@ -302,10 +302,7 @@ impl StableAsset for MockStableAsset {
 	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
-			assets: vec![
-				CurrencyId::Token(TokenSymbol::RENBTC),
-				CurrencyId::Token(TokenSymbol::DOT),
-			],
+			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
 			precisions: vec![1, 1],
 			mint_fee: 0,
 			swap_fee: 0,
@@ -442,10 +439,7 @@ impl StableAsset for MockStableAsset {
 	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
-			assets: vec![
-				CurrencyId::Token(TokenSymbol::RENBTC),
-				CurrencyId::Token(TokenSymbol::DOT),
-			],
+			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
 			precisions: vec![1, 1],
 			mint_fee: 0,
 			swap_fee: 0,
@@ -474,10 +468,7 @@ impl StableAsset for MockStableAsset {
 	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
-			assets: vec![
-				CurrencyId::Token(TokenSymbol::RENBTC),
-				CurrencyId::Token(TokenSymbol::DOT),
-			],
+			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
 			precisions: vec![1, 1],
 			mint_fee: 0,
 			swap_fee: 0,
