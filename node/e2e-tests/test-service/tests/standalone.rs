@@ -20,10 +20,13 @@ use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
 use module_evm::AddressMapping;
 use node_primitives::{CurrencyId, TokenSymbol};
+use orml_traits::Change;
+use runtime_common::{Price, Rate, Ratio};
 use sc_transaction_pool_api::TransactionPool;
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256};
 use sp_keyring::Sr25519Keyring::*;
+use sp_runtime::FixedPointNumber;
 use sp_runtime::{traits::IdentifyAccount, MultiAddress, MultiSigner};
 use test_service::{ensure_event, SealMode};
 
@@ -80,6 +83,64 @@ async fn transaction_pool_priority_order_test() {
 	let bob = MultiSigner::from(Bob.public());
 	let bob_account_id = bob.into_account();
 
+	// setup an unsafe cdp
+	node.submit_extrinsic_batch::<node_runtime::RuntimeCall>(
+		vec![
+			pallet_sudo::Call::sudo {
+				call: Box::new(
+					orml_oracle::Call::feed_values {
+						values: vec![(CurrencyId::Token(TokenSymbol::ACA), Price::from_rational(10, 1)).into()],
+					}
+					.into(),
+				),
+			}
+			.into(),
+			pallet_sudo::Call::sudo {
+				call: Box::new(
+					module_cdp_engine::Call::set_collateral_params {
+						currency_id: CurrencyId::Token(TokenSymbol::ACA),
+						interest_rate_per_sec: Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+						liquidation_ratio: Change::NewValue(Some(Rate::saturating_from_rational(3, 2))),
+						liquidation_penalty: Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+						required_collateral_ratio: Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+						maximum_total_debit_value: Change::NewValue(10000000000000000),
+					}
+					.into(),
+				),
+			}
+			.into(),
+			module_honzon::Call::adjust_loan {
+				currency_id: CurrencyId::Token(TokenSymbol::ACA),
+				collateral_adjustment: 100000000000000,
+				debit_adjustment: 500000000000000,
+			}
+			.into(),
+		],
+		Some(Alice),
+		0,
+	)
+	.await
+	.unwrap();
+
+	node.wait_for_blocks(1).await;
+
+	node.submit_extrinsic(
+		pallet_sudo::Call::sudo {
+			call: Box::new(
+				orml_oracle::Call::feed_values {
+					values: vec![(CurrencyId::Token(TokenSymbol::ACA), Price::from_rational(1, 10)).into()],
+				}
+				.into(),
+			),
+		},
+		Some(Alice),
+		3,
+	)
+	.await
+	.unwrap();
+
+	node.wait_for_blocks(1).await;
+
 	// send operational extrinsic
 	let operational_tx_hash = node
 		.submit_extrinsic(
@@ -87,7 +148,7 @@ async fn transaction_pool_priority_order_test() {
 				call: Box::new(module_emergency_shutdown::Call::emergency_shutdown {}.into()),
 			},
 			Some(Alice),
-			0,
+			4,
 		)
 		.await
 		.unwrap();
