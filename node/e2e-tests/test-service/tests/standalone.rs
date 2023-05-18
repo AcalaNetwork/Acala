@@ -171,7 +171,7 @@ async fn transaction_pool_priority_order_test() {
 		.submit_extrinsic(
 			module_cdp_engine::Call::liquidate {
 				currency_id: CurrencyId::Token(TokenSymbol::ACA),
-				who: MultiAddress::from(bob_account_id.clone()),
+				who: MultiAddress::from(Alice.to_account_id()),
 			},
 			None,
 			0,
