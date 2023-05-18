@@ -96,11 +96,6 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 	fn apply_multiplier_to_fee(fee: Balance, multiplier: Option<Multiplier>) -> Balance;
 }
 
-/// Used to interface with the Compound's Cash module
-pub trait CompoundCashTrait<Balance, Moment> {
-	fn set_future_yield(next_cash_yield: Balance, yield_index: u128, timestamp_effective: Moment) -> DispatchResult;
-}
-
 pub trait CallBuilder {
 	type AccountId: FullCodec;
 	type Balance: FullCodec;

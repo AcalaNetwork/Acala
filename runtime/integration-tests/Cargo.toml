@@ -116,9 +116,6 @@ mandala-runtime = { path = "../mandala", optional = true }
 karura-runtime = { path = "../karura", optional = true }
 acala-runtime = { path = "../acala", optional = true }
 
-# ecosystem
-ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
-
 [dev-dependencies]
 env_logger = "0.9.0"
 log = "0.4.17"

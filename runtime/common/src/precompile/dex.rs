@@ -480,7 +480,7 @@ where
 mod tests {
 	use super::*;
 
-	use crate::precompile::mock::{alice_evm_addr, new_test_ext, DexModule, RuntimeOrigin, Test, ALICE, AUSD, RENBTC};
+	use crate::precompile::mock::{alice_evm_addr, new_test_ext, DexModule, RuntimeOrigin, Test, ALICE, AUSD, DOT};
 	use frame_support::{assert_noop, assert_ok};
 	use hex_literal::hex;
 	use module_evm::ExitRevert;
@@ -490,16 +490,12 @@ mod tests {
 	#[test]
 	fn get_liquidity_works() {
 		new_test_ext().execute_with(|| {
-			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(
-				RuntimeOrigin::signed(ALICE),
-				RENBTC,
-				AUSD,
-			));
+			// enable DOT/AUSD
+			assert_ok!(DexModule::enable_trading_pair(RuntimeOrigin::signed(ALICE), DOT, AUSD,));
 
 			assert_ok!(DexModule::add_liquidity(
 				RuntimeOrigin::signed(ALICE),
-				RENBTC,
+				DOT,
 				AUSD,
 				1_000,
 				1_000_000,
@@ -514,11 +510,11 @@ mod tests {
 			};
 
 			// getLiquidityPool(address,address) -> 0xf4f31ede
-			// RENBTC
+			// DOT
 			// AUSD
 			let input = hex! {"
 				f4f31ede
-				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000002
 				000000000000000000000000 0000000000000000000100000000000000000001
 			"};
 
@@ -538,16 +534,12 @@ mod tests {
 	#[test]
 	fn get_liquidity_token_address_works() {
 		new_test_ext().execute_with(|| {
-			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(
-				RuntimeOrigin::signed(ALICE),
-				RENBTC,
-				AUSD,
-			));
+			// enable DOT/AUSD
+			assert_ok!(DexModule::enable_trading_pair(RuntimeOrigin::signed(ALICE), DOT, AUSD,));
 
 			assert_ok!(DexModule::add_liquidity(
 				RuntimeOrigin::signed(ALICE),
-				RENBTC,
+				DOT,
 				AUSD,
 				1_000,
 				1_000_000,
@@ -562,17 +554,17 @@ mod tests {
 			};
 
 			// getLiquidityTokenAddress(address,address) -> 0xffd73c4a
-			// RENBTC
+			// DOT
 			// AUSD
 			let input = hex! {"
 				ffd73c4a
-				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000002
 				000000000000000000000000 0000000000000000000100000000000000000001
 			"};
 
-			// LP_RENBTC_AUSD
+			// LP_DOT_AUSD
 			let expected_output = hex! {"
-				000000000000000000000000 0000000000000000000200000000010000000014
+				000000000000000000000000 0000000000000000000200000000010000000002
 			"};
 
 			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
@@ -580,11 +572,11 @@ mod tests {
 			assert_eq!(resp.output, expected_output.to_vec());
 
 			// getLiquidityTokenAddress(address,address) -> 0xffd73c4a
-			// RENBTC
+			// DOT
 			// unkonwn token
 			let input = hex! {"
 				ffd73c4a
-				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000002
 				000000000000000000000000 00000000000000000001000000000000000000ff
 			"};
 
@@ -602,16 +594,12 @@ mod tests {
 	#[test]
 	fn get_swap_target_amount_works() {
 		new_test_ext().execute_with(|| {
-			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(
-				RuntimeOrigin::signed(ALICE),
-				RENBTC,
-				AUSD,
-			));
+			// enable DOT/AUSD
+			assert_ok!(DexModule::enable_trading_pair(RuntimeOrigin::signed(ALICE), DOT, AUSD,));
 
 			assert_ok!(DexModule::add_liquidity(
 				RuntimeOrigin::signed(ALICE),
-				RENBTC,
+				DOT,
 				AUSD,
 				1_000,
 				1_000_000,
@@ -629,14 +617,14 @@ mod tests {
 			// offset
 			// supply_amount
 			// path_len
-			// RENBTC
+			// DOT
 			// AUSD
 			let input = hex! {"
 				4d60beb1
 				00000000000000000000000000000000 00000000000000000000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000001
 				00000000000000000000000000000000000000000000000000000000 00000002
-				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000002
 				000000000000000000000000 0000000000000000000100000000000000000001
 			"};
 
@@ -654,16 +642,12 @@ mod tests {
 	#[test]
 	fn get_swap_supply_amount_works() {
 		new_test_ext().execute_with(|| {
-			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(
-				RuntimeOrigin::signed(ALICE),
-				RENBTC,
-				AUSD,
-			));
+			// enable DOT/AUSD
+			assert_ok!(DexModule::enable_trading_pair(RuntimeOrigin::signed(ALICE), DOT, AUSD,));
 
 			assert_ok!(DexModule::add_liquidity(
 				RuntimeOrigin::signed(ALICE),
-				RENBTC,
+				DOT,
 				AUSD,
 				1_000,
 				1_000_000,
@@ -681,14 +665,14 @@ mod tests {
 			// offset
 			// target_amount
 			// path_len
-			// RENBTC
+			// DOT
 			// AUSD
 			let input = hex! {"
 				dbcd19a2
 				00000000000000000000000000000000 00000000000000000000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000001
 				00000000000000000000000000000000000000000000000000000000 00000002
-				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000002
 				000000000000000000000000 0000000000000000000100000000000000000001
 			"};
 
@@ -706,16 +690,12 @@ mod tests {
 	#[test]
 	fn swap_with_exact_supply_works() {
 		new_test_ext().execute_with(|| {
-			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(
-				RuntimeOrigin::signed(ALICE),
-				RENBTC,
-				AUSD,
-			));
+			// enable DOT/AUSD
+			assert_ok!(DexModule::enable_trading_pair(RuntimeOrigin::signed(ALICE), DOT, AUSD,));
 
 			assert_ok!(DexModule::add_liquidity(
 				RuntimeOrigin::signed(ALICE),
-				RENBTC,
+				DOT,
 				AUSD,
 				1_000,
 				1_000_000,
@@ -735,7 +715,7 @@ mod tests {
 			// supply_amount
 			// min_target_amount
 			// path_len
-			// RENBTC
+			// DOT
 			// AUSD
 			let input = hex! {"
 				579baa18
@@ -744,7 +724,7 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000000000
 				00000000000000000000000000000000000000000000000000000000 00000002
-				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000002
 				000000000000000000000000 0000000000000000000100000000000000000001
 			"};
 
@@ -762,16 +742,12 @@ mod tests {
 	#[test]
 	fn dex_precompile_swap_with_exact_target_should_work() {
 		new_test_ext().execute_with(|| {
-			// enable RENBTC/AUSD
-			assert_ok!(DexModule::enable_trading_pair(
-				RuntimeOrigin::signed(ALICE),
-				RENBTC,
-				AUSD,
-			));
+			// enable DOT/AUSD
+			assert_ok!(DexModule::enable_trading_pair(RuntimeOrigin::signed(ALICE), DOT, AUSD,));
 
 			assert_ok!(DexModule::add_liquidity(
 				RuntimeOrigin::signed(ALICE),
-				RENBTC,
+				DOT,
 				AUSD,
 				1_000,
 				1_000_000,
@@ -791,7 +767,7 @@ mod tests {
 			// target_amount
 			// max_supply_amount
 			// path_len
-			// RENBTC
+			// DOT
 			// AUSD
 			let input = hex! {"
 				9782ac81
@@ -800,7 +776,7 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000000001
 				00000000000000000000000000000000000000000000000000000000 00000002
-				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000002
 				000000000000000000000000 0000000000000000000100000000000000000001
 			"};
 

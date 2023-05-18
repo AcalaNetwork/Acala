@@ -130,7 +130,6 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 runtime-common = { path = "../common", default-features = false }
 
 # ecosystem
-ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 
 # benchmarking deps
@@ -274,7 +273,6 @@ std = [
 	"primitives/std",
 	"runtime-common/std",
 
-	"ecosystem-renvm-bridge/std",
 	"nutsfinance-stable-asset/std",
 ]
 runtime-benchmarks = [
@@ -423,7 +421,6 @@ try-runtime = [
 
 	"primitives/try-runtime",
 
-	"ecosystem-renvm-bridge/try-runtime",
 	"nutsfinance-stable-asset/try-runtime",
 ]
 # By default some types have documentation, `no-metadata-docs` allows to reduce the documentation

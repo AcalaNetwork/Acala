@@ -40,10 +40,10 @@ pub type BlockNumber = u64;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
+pub const BTC: CurrencyId = CurrencyId::ForeignAsset(255);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const BTC_AUSD_LP: CurrencyId =
-	CurrencyId::DexShare(DexShare::Token(TokenSymbol::RENBTC), DexShare::Token(TokenSymbol::AUSD));
+	CurrencyId::DexShare(DexShare::ForeignAsset(255), DexShare::Token(TokenSymbol::AUSD));
 pub const DOT_AUSD_LP: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::DOT), DexShare::Token(TokenSymbol::AUSD));
 

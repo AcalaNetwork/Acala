@@ -24,13 +24,13 @@ use module_dex::TradingPairStatus;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::TradingPair;
-use runtime_common::{BNC, RENBTC, VSKSM};
+use runtime_common::{BNC, VSKSM};
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 
-const CURRENCY_LIST: [CurrencyId; 7] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC, VSKSM, RENBTC];
+const CURRENCY_LIST: [CurrencyId; 6] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC, VSKSM];
 
 fn assert_last_event(generic_event: RuntimeEvent) {
 	System::assert_last_event(generic_event.into());

@@ -44,7 +44,6 @@ members = [
 	"orml/xtokens",
  	"orml/oracle/rpc/runtime-api",
 
-	"ecosystem-modules/ren/renvm-bridge",
 	"ecosystem-modules/stable-asset/lib/stable-asset",
 
 ]

@@ -2835,27 +2835,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ecosystem-renvm-bridge"
-version = "2.18.0"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "hex-literal",
- "module-support",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "ed25519"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5694,7 +5673,6 @@ dependencies = [
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "cumulus-test-relay-sproof-builder",
- "ecosystem-renvm-bridge",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -6390,19 +6368,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "module-example"
-version = "2.18.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
 ]
 
 [[package]]
@@ -11363,7 +11328,6 @@ dependencies = [
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "cumulus-test-relay-sproof-builder",
- "ecosystem-renvm-bridge",
  "env_logger 0.9.3",
  "frame-support",
  "frame-system",
@@ -14579,7 +14543,6 @@ dependencies = [
  "cumulus-relay-chain-minimal-node",
  "cumulus-relay-chain-rpc-interface",
  "cumulus-test-relay-validation-worker-provider",
- "ecosystem-renvm-bridge",
  "frame-support",
  "frame-system",
  "frame-system-rpc-runtime-api",
@@ -14588,9 +14551,13 @@ dependencies = [
  "jsonrpsee",
  "log",
  "mandala-runtime",
+ "module-cdp-engine",
  "module-emergency-shutdown",
  "module-evm",
+ "module-honzon",
  "module-transaction-payment",
+ "orml-oracle",
+ "orml-traits",
  "pallet-balances",
  "pallet-sudo",
  "pallet-transaction-payment",

@@ -157,7 +157,6 @@ impl pallet_balances::Config for Test {
 }
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const RENBTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
@@ -1029,7 +1028,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut storage)
 	.unwrap();
 	module_asset_registry::GenesisConfig::<Test> {
-		assets: vec![(ACA, ExistenceRequirement::get()), (RENBTC, 0)],
+		assets: vec![(ACA, ExistenceRequirement::get()), (DOT, 0)],
 	}
 	.assimilate_storage(&mut storage)
 	.unwrap();
@@ -1042,7 +1041,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		assert_ok!(Currencies::update_balance(
 			RuntimeOrigin::root(),
 			ALICE,
-			RENBTC,
+			DOT,
 			1_000_000_000_000
 		));
 		assert_ok!(Currencies::update_balance(
@@ -1055,7 +1054,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		assert_ok!(Currencies::update_balance(
 			RuntimeOrigin::root(),
 			EvmAddressMapping::<Test>::get_account_id(&alice_evm_addr()),
-			RENBTC,
+			DOT,
 			1_000_000_000
 		));
 

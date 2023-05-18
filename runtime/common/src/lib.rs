@@ -50,9 +50,7 @@ pub use precompile::{
 	SchedulePrecompile, StableAssetPrecompile,
 };
 pub use primitives::{
-	currency::{
-		TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, TAI, TAP, VSKSM,
-	},
+	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, TAI, TAP, VSKSM},
 	AccountId,
 };
 pub use xcm_impl::{local_currency_location, native_currency_location, AcalaDropAssets, FixedRateOfAsset, XcmExecutor};
@@ -93,7 +91,6 @@ parameter_types! {
 		.expect("Check that there is no overflow here");
 	pub CdpEngineUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 1000;
 	pub AuctionManagerUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 2000;
-	pub RenvmBridgeUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 3000;
 }
 
 /// The call is allowed only if caller is a system contract.

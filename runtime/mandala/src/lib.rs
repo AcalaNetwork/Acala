@@ -50,7 +50,6 @@ pub use frame_support::{
 	PalletId, RuntimeDebug, StorageValue,
 };
 use frame_system::{EnsureRoot, EnsureSigned, RawOrigin};
-use hex_literal::hex;
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::{BasicCurrencyAdapter, Currency};
@@ -114,7 +113,7 @@ pub use runtime_common::{
 	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	MaxTipsOfPriority, OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price,
 	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT, RENBTC,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT,
 };
 pub use xcm::{prelude::*, v3::Weight as XcmWeight};
 
@@ -813,14 +812,12 @@ parameter_type_with_key! {
 				TokenSymbol::KUSD |
 				TokenSymbol::KSM |
 				TokenSymbol::LKSM |
-				TokenSymbol::RENBTC |
 				TokenSymbol::KINT |
 				TokenSymbol::KBTC |
 				TokenSymbol::TAI => 10 * millicent(*currency_id),
 				TokenSymbol::TAP => 10 * millicent(*currency_id),
 				TokenSymbol::ACA |
-				TokenSymbol::KAR |
-				TokenSymbol::CASH => Balance::max_value() // unsupported
+				TokenSymbol::KAR => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
 				let currency_id_0: CurrencyId = (*dex_share_0).into();
@@ -1152,7 +1149,6 @@ parameter_types! {
 		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
 		TradingPair::from_currency_ids(DOT, LDOT).unwrap(),
-		TradingPair::from_currency_ids(AUSD, RENBTC).unwrap(),
 		TradingPair::from_currency_ids(DOT, ACA).unwrap(),
 	];
 	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
@@ -1228,7 +1224,7 @@ impl module_transaction_pause::Config for Runtime {
 }
 
 parameter_types! {
-	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT, RENBTC];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT];
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
@@ -1556,20 +1552,6 @@ impl pallet_proxy::Config for Runtime {
 	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
-}
-
-parameter_types! {
-	pub const RENBTCCurrencyId: CurrencyId = RENBTC;
-	pub const RENBTCIdentifier: [u8; 32] = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
-}
-
-impl ecosystem_renvm_bridge::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Balances;
-	type BridgedTokenCurrency = Currency<Runtime, RENBTCCurrencyId>;
-	type CurrencyIdentifier = RENBTCIdentifier;
-	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
-	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
 }
 
 parameter_types! {
@@ -2057,9 +2039,6 @@ construct_runtime!(
 		Incentives: module_incentives = 140,
 		NFT: module_nft = 141,
 		AssetRegistry: module_asset_registry = 142,
-
-		// Ecosystem modules
-		RenVmBridge: ecosystem_renvm_bridge = 150,
 
 		// Parachain
 		ParachainInfo: parachain_info exclude_parts { Call } = 161,
