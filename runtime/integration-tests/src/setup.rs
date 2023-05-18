@@ -302,15 +302,6 @@ impl ExtBuilder {
 		let existential_deposit = NativeTokenExistentialDeposit::get();
 		let initial_enabled_trading_pairs = EnabledTradingPairs::get();
 
-		#[cfg(feature = "with-mandala-runtime")]
-		GenesisBuild::<Runtime>::assimilate_storage(
-			&ecosystem_renvm_bridge::GenesisConfig {
-				ren_vm_public_key: hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
-			},
-			&mut t,
-		)
-		.unwrap();
-
 		module_asset_registry::GenesisConfig::<Runtime> {
 			assets: vec![
 				(NATIVE_CURRENCY, existential_deposit),

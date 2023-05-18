@@ -89,6 +89,7 @@ node-service = { package = "acala-service", path = "../../service", features = [
 module-transaction-payment = { path = "../../../modules/transaction-payment" }
 module-evm = { path = "../../../modules/evm" }
 module-emergency-shutdown = { path = "../../../modules/emergency-shutdown" }
+module-cdp-engine = { path = "../../../modules/cdp-engine" }
 
 [dev-dependencies]
 portpicker = "0.1.1"

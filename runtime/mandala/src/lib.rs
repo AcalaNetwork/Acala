@@ -50,7 +50,6 @@ pub use frame_support::{
 	PalletId, RuntimeDebug, StorageValue,
 };
 use frame_system::{EnsureRoot, EnsureSigned, RawOrigin};
-use hex_literal::hex;
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::{BasicCurrencyAdapter, Currency};

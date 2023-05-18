@@ -14551,6 +14551,7 @@ dependencies = [
  "jsonrpsee",
  "log",
  "mandala-runtime",
+ "module-cdp-engine",
  "module-emergency-shutdown",
  "module-evm",
  "module-transaction-payment",

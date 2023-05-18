@@ -25,7 +25,7 @@ use k256::{
 	EncodedPoint as K256PublicKey,
 };
 use mandala_runtime::{
-	cent, dollar, get_all_module_accounts, AssetRegistryConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
+	dollar, get_all_module_accounts, AssetRegistryConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 	CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, ExistentialDeposits,
 	FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 	NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,

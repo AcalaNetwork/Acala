@@ -283,22 +283,22 @@ fn lock_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 
-		assert_noop!(PricesModule::unlock_price(RuntimeOrigin::signed(5), BTC), BadOrigin);
+		assert_noop!(PricesModule::unlock_price(RuntimeOrigin::signed(5), TAI), BadOrigin);
 
-		// lock the price of BTC
+		// lock the price of TAI
 		assert_eq!(
-			PricesModule::access_price(BTC),
-			Some(Price::saturating_from_integer(500000000000000u128))
+			PricesModule::access_price(TAI),
+			Some(Price::saturating_from_integer(50000000000u128))
 		);
-		assert_eq!(PricesModule::locked_price(BTC), None);
-		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), BTC));
+		assert_eq!(PricesModule::locked_price(TAI), None);
+		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), TAI));
 		System::assert_last_event(RuntimeEvent::PricesModule(crate::Event::LockPrice {
-			currency_id: BTC,
-			locked_price: Price::saturating_from_integer(500000000000000u128),
+			currency_id: TAI,
+			locked_price: Price::saturating_from_integer(50000000000u128),
 		}));
 		assert_eq!(
-			PricesModule::locked_price(BTC),
-			Some(Price::saturating_from_integer(500000000000000u128))
+			PricesModule::locked_price(TAI),
+			Some(Price::saturating_from_integer(50000000000u128))
 		);
 
 		// cannot lock the price of KSM when the price from oracle is None
@@ -335,24 +335,24 @@ fn unlock_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 
-		assert_noop!(PricesModule::unlock_price(RuntimeOrigin::signed(5), BTC), BadOrigin);
+		assert_noop!(PricesModule::unlock_price(RuntimeOrigin::signed(5), TAI), BadOrigin);
 
 		// unlock failed when there's no locked price
 		assert_noop!(
-			PricesModule::unlock_price(RuntimeOrigin::signed(1), BTC),
+			PricesModule::unlock_price(RuntimeOrigin::signed(1), TAI),
 			Error::<Runtime>::NoLockedPrice
 		);
 
-		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), BTC));
+		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), TAI));
 		assert_eq!(
-			PricesModule::locked_price(BTC),
-			Some(Price::saturating_from_integer(500000000000000u128))
+			PricesModule::locked_price(TAI),
+			Some(Price::saturating_from_integer(50000000000u128))
 		);
-		assert_ok!(PricesModule::unlock_price(RuntimeOrigin::signed(1), BTC));
+		assert_ok!(PricesModule::unlock_price(RuntimeOrigin::signed(1), TAI));
 		System::assert_last_event(RuntimeEvent::PricesModule(crate::Event::UnlockPrice {
-			currency_id: BTC,
+			currency_id: TAI,
 		}));
-		assert_eq!(PricesModule::locked_price(BTC), None);
+		assert_eq!(PricesModule::locked_price(TAI), None);
 	});
 }
 
@@ -375,8 +375,8 @@ fn price_providers_work() {
 			Some(Price::saturating_from_integer(1000000u128))
 		);
 		assert_eq!(
-			RealTimePriceProvider::<Runtime>::get_price(BTC),
-			Some(Price::saturating_from_integer(500000000000000u128))
+			RealTimePriceProvider::<Runtime>::get_price(TAI),
+			Some(Price::saturating_from_integer(50000000000u128))
 		);
 		assert_eq!(
 			RealTimePriceProvider::<Runtime>::get_price(LDOT),
@@ -384,15 +384,15 @@ fn price_providers_work() {
 		);
 		assert_eq!(RealTimePriceProvider::<Runtime>::get_price(KSM), None);
 		assert_eq!(RealTimePriceProvider::<Runtime>::get_price(LP_AUSD_DOT), lp_price_1);
-		assert_eq!(RealTimePriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
+		assert_eq!(RealTimePriceProvider::<Runtime>::get_relative_price(TAI, KSM), None);
 
 		assert_eq!(
 			PriorityLockedPriceProvider::<Runtime>::get_price(AUSD),
 			Some(Price::saturating_from_integer(1000000u128))
 		);
 		assert_eq!(
-			PriorityLockedPriceProvider::<Runtime>::get_price(BTC),
-			Some(Price::saturating_from_integer(500000000000000u128))
+			PriorityLockedPriceProvider::<Runtime>::get_price(TAI),
+			Some(Price::saturating_from_integer(50000000000u128))
 		);
 		assert_eq!(
 			PriorityLockedPriceProvider::<Runtime>::get_price(LDOT),
@@ -404,20 +404,20 @@ fn price_providers_work() {
 			lp_price_1
 		);
 		assert_eq!(
-			PriorityLockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM),
+			PriorityLockedPriceProvider::<Runtime>::get_relative_price(TAI, KSM),
 			None
 		);
 
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(AUSD), None);
-		assert_eq!(LockedPriceProvider::<Runtime>::get_price(BTC), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(TAI), None);
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LDOT), None);
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(KSM), None);
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LP_AUSD_DOT), None);
-		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(TAI, KSM), None);
 
 		// lock price
 		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), AUSD));
-		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), BTC));
+		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), TAI));
 		assert_ok!(PricesModule::lock_price(RuntimeOrigin::signed(1), LDOT));
 		assert_noop!(
 			PricesModule::lock_price(RuntimeOrigin::signed(1), KSM),
@@ -430,8 +430,8 @@ fn price_providers_work() {
 			Some(Price::saturating_from_integer(1000000u128))
 		);
 		assert_eq!(
-			LockedPriceProvider::<Runtime>::get_price(BTC),
-			Some(Price::saturating_from_integer(500000000000000u128))
+			LockedPriceProvider::<Runtime>::get_price(TAI),
+			Some(Price::saturating_from_integer(50000000000u128))
 		);
 		assert_eq!(
 			LockedPriceProvider::<Runtime>::get_price(LDOT),
@@ -439,7 +439,7 @@ fn price_providers_work() {
 		);
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(KSM), None);
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LP_AUSD_DOT), lp_price_1);
-		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(TAI, KSM), None);
 
 		// mock oracle update
 		mock_oracle_update();
@@ -456,8 +456,8 @@ fn price_providers_work() {
 			Some(Price::saturating_from_integer(1000000u128))
 		);
 		assert_eq!(
-			RealTimePriceProvider::<Runtime>::get_price(BTC),
-			Some(Price::saturating_from_integer(400000000000000u128))
+			RealTimePriceProvider::<Runtime>::get_price(TAI),
+			Some(Price::saturating_from_integer(40000000000u128))
 		);
 		assert_eq!(
 			RealTimePriceProvider::<Runtime>::get_price(LDOT),
@@ -469,8 +469,8 @@ fn price_providers_work() {
 		);
 		assert_eq!(RealTimePriceProvider::<Runtime>::get_price(LP_AUSD_DOT), lp_price_2);
 		assert_eq!(
-			RealTimePriceProvider::<Runtime>::get_relative_price(BTC, KSM),
-			Some(Price::saturating_from_integer(2000000u128))
+			RealTimePriceProvider::<Runtime>::get_relative_price(TAI, KSM),
+			Some(Price::saturating_from_integer(200u128))
 		);
 
 		assert_eq!(
@@ -478,8 +478,8 @@ fn price_providers_work() {
 			Some(Price::saturating_from_integer(1000000u128))
 		);
 		assert_eq!(
-			PriorityLockedPriceProvider::<Runtime>::get_price(BTC),
-			Some(Price::saturating_from_integer(500000000000000u128))
+			PriorityLockedPriceProvider::<Runtime>::get_price(TAI),
+			Some(Price::saturating_from_integer(50000000000u128))
 		);
 		assert_eq!(
 			PriorityLockedPriceProvider::<Runtime>::get_price(LDOT),
@@ -494,8 +494,8 @@ fn price_providers_work() {
 			lp_price_1
 		);
 		assert_eq!(
-			PriorityLockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM),
-			Some(Price::saturating_from_integer(2500000u128))
+			PriorityLockedPriceProvider::<Runtime>::get_relative_price(TAI, KSM),
+			Some(Price::saturating_from_integer(250u128))
 		);
 
 		assert_eq!(
@@ -503,8 +503,8 @@ fn price_providers_work() {
 			Some(Price::saturating_from_integer(1000000u128))
 		);
 		assert_eq!(
-			LockedPriceProvider::<Runtime>::get_price(BTC),
-			Some(Price::saturating_from_integer(500000000000000u128))
+			LockedPriceProvider::<Runtime>::get_price(TAI),
+			Some(Price::saturating_from_integer(50000000000u128))
 		);
 		assert_eq!(
 			LockedPriceProvider::<Runtime>::get_price(LDOT),
@@ -512,11 +512,11 @@ fn price_providers_work() {
 		);
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(KSM), None);
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LP_AUSD_DOT), lp_price_1);
-		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(TAI, KSM), None);
 
 		// unlock price
 		assert_ok!(PricesModule::unlock_price(RuntimeOrigin::signed(1), AUSD));
-		assert_ok!(PricesModule::unlock_price(RuntimeOrigin::signed(1), BTC));
+		assert_ok!(PricesModule::unlock_price(RuntimeOrigin::signed(1), TAI));
 		assert_ok!(PricesModule::unlock_price(RuntimeOrigin::signed(1), LDOT));
 		assert_noop!(
 			PricesModule::unlock_price(RuntimeOrigin::signed(1), KSM),
@@ -529,8 +529,8 @@ fn price_providers_work() {
 			Some(Price::saturating_from_integer(1000000u128))
 		);
 		assert_eq!(
-			PriorityLockedPriceProvider::<Runtime>::get_price(BTC),
-			Some(Price::saturating_from_integer(400000000000000u128))
+			PriorityLockedPriceProvider::<Runtime>::get_price(TAI),
+			Some(Price::saturating_from_integer(40000000000u128))
 		);
 		assert_eq!(
 			PriorityLockedPriceProvider::<Runtime>::get_price(LDOT),
@@ -545,15 +545,15 @@ fn price_providers_work() {
 			lp_price_2
 		);
 		assert_eq!(
-			PriorityLockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM),
-			Some(Price::saturating_from_integer(2000000u128))
+			PriorityLockedPriceProvider::<Runtime>::get_relative_price(TAI, KSM),
+			Some(Price::saturating_from_integer(200u128))
 		);
 
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(AUSD), None);
-		assert_eq!(LockedPriceProvider::<Runtime>::get_price(BTC), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(TAI), None);
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LDOT), None);
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(KSM), None);
 		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LP_AUSD_DOT), None);
-		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(TAI, KSM), None);
 	});
 }

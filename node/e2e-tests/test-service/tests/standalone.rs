@@ -17,12 +17,12 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use cumulus_primitives_core::ParaId;
-use ecosystem_renvm_bridge::EcdsaSignature;
 use hex_literal::hex;
 use module_evm::AddressMapping;
+use node_primitives::{CurrencyId, TokenSymbol};
 use sc_transaction_pool_api::TransactionPool;
 use sha3::{Digest, Keccak256};
-use sp_core::{crypto::AccountId32, H160, H256};
+use sp_core::{H160, H256};
 use sp_keyring::Sr25519Keyring::*;
 use sp_runtime::{traits::IdentifyAccount, MultiAddress, MultiSigner};
 use test_service::{ensure_event, SealMode};
@@ -106,18 +106,17 @@ async fn transaction_pool_priority_order_test() {
 		.unwrap();
 
 	// send unsigned extrinsic
-	let to: AccountId32 = hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into();
-	let unsigned_tx_hash = node.submit_extrinsic(
-		ecosystem_renvm_bridge::Call::mint {
-			who: to,
-			p_hash: hex!["67028f26328144de6ef80b8cd3b05e0cefb488762c340d1574c0542f752996cb"],
-			amount: 93963,
-			n_hash: hex!["f6a75cc370a2dda6dfc8d016529766bb6099d7fa0d787d9fe5d3a7e60c9ac2a0"],
-			sig: EcdsaSignature::from_slice(&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"]).unwrap(),
-		},
-		None,
-		0,
-	).await.unwrap();
+	let unsigned_tx_hash = node
+		.submit_extrinsic(
+			module_cdp_engine::Call::liquidate {
+				currency_id: CurrencyId::Token(TokenSymbol::ACA),
+				who: MultiAddress::from(bob_account_id.clone()),
+			},
+			None,
+			0,
+		)
+		.await
+		.unwrap();
 
 	assert_eq!(node.transaction_pool.ready().count(), 3);
 
