@@ -256,11 +256,6 @@ async fn evm_fill_block_test() {
 	node.wait_for_blocks(6).await;
 	let new_balance = node.with_state(|| Balances::free_balance(acc));
 
-	// Due to some unknown reason, the `node.transaction_pool.status` query lags behind the on-chain
-	// state by 1 block. Here temporarily wait for one additional block.
-	// This should be removed once the issue is resolved.
-	node.wait_for_blocks(1).await;
-
 	let pending_tx = node.transaction_pool.status().ready as u128;
 
 	assert_eq!(new_balance - old_balance, (1000 - pending_tx) * 100000000000);
