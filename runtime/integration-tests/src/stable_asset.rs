@@ -125,13 +125,81 @@ fn stable_asset_mint_overflow() {
 			));
 
 			assert_noop!(
-				StableAsset::mint(
-					RuntimeOrigin::signed(None.unwrap_or(AccountId::from(ALICE))),
+				StableAsset::mint(RuntimeOrigin::signed(AccountId::from(ALICE)), 0, amounts, 0u128),
+				orml_tokens::Error::<Runtime>::BalanceTooLow
+			);
+		});
+}
+
+#[test]
+fn stable_asset_check_pool_balance() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				// NetworkContractSource
+				MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
+				NATIVE_CURRENCY,
+				1_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				1_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				LIQUID_CURRENCY,
+				12_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+		])
+		.build()
+		.execute_with(|| {
+			let exchange_rate = Homa::current_exchange_rate();
+			assert_eq!(exchange_rate, ExchangeRate::saturating_from_rational(1, 10)); // 0.1
+
+			let ksm_target_amount = 10_000_123u128;
+			let lksm_target_amount = 10_000_456u128;
+			let account_id: AccountId = StableAssetPalletId::get().into_sub_account_truncating(0);
+			enable_stable_asset(
+				vec![RELAY_CHAIN_CURRENCY, LIQUID_CURRENCY],
+				vec![ksm_target_amount, lksm_target_amount],
+				None,
+			);
+
+			// modify pool balance
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
+				MultiAddress::Id(account_id),
+				RELAY_CHAIN_CURRENCY,
+				1,
+			));
+
+			assert_noop!(
+				StableAsset::mint(RuntimeOrigin::signed(AccountId::from(ALICE)), 0, vec![0, 0], 0u128),
+				nutsfinance_stable_asset::Error::<Runtime>::InvalidPoolBalance
+			);
+
+			assert_noop!(
+				StableAsset::redeem_proportion(
+					RuntimeOrigin::signed(AccountId::from(ALICE)),
 					0,
-					amounts,
+					0u128,
+					vec![0u128, 0u128, 0u128]
+				),
+				nutsfinance_stable_asset::Error::<Runtime>::InvalidPoolBalance
+			);
+			assert_noop!(
+				StableAsset::redeem_multi(
+					RuntimeOrigin::signed(AccountId::from(ALICE)),
+					0,
+					vec![0u128, 0u128],
 					0u128
 				),
-				orml_tokens::Error::<Runtime>::BalanceTooLow
+				nutsfinance_stable_asset::Error::<Runtime>::InvalidPoolBalance
+			);
+			assert_noop!(
+				StableAsset::redeem_single(RuntimeOrigin::signed(AccountId::from(ALICE)), 0, 0u128, 0, 0u128, 2),
+				nutsfinance_stable_asset::Error::<Runtime>::InvalidPoolBalance
 			);
 		});
 }

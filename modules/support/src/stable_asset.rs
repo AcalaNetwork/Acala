@@ -236,19 +236,6 @@ where
 		StableAsset::collect_fee(pool_id, pool_info)
 	}
 
-	fn update_balance(
-		pool_id: StableAssetPoolId,
-		pool_info: &mut StableAssetPoolInfo<
-			Self::AssetId,
-			Self::AtLeast64BitUnsigned,
-			Self::Balance,
-			Self::AccountId,
-			Self::BlockNumber,
-		>,
-	) -> DispatchResult {
-		StableAsset::update_balance(pool_id, pool_info)
-	}
-
 	fn collect_yield(
 		pool_id: StableAssetPoolId,
 		pool_info: &mut StableAssetPoolInfo<
@@ -290,7 +277,7 @@ where
 		StableAsset::get_collect_yield_amount(pool_info)
 	}
 
-	fn get_balance_update_amount(
+	fn check_pool_balances(
 		pool_info: &StableAssetPoolInfo<
 			Self::AssetId,
 			Self::AtLeast64BitUnsigned,
@@ -298,16 +285,8 @@ where
 			Self::AccountId,
 			Self::BlockNumber,
 		>,
-	) -> Option<
-		StableAssetPoolInfo<
-			Self::AssetId,
-			Self::AtLeast64BitUnsigned,
-			Self::Balance,
-			Self::AccountId,
-			Self::BlockNumber,
-		>,
-	> {
-		StableAsset::get_balance_update_amount(pool_info)
+	) -> DispatchResult {
+		StableAsset::check_pool_balances(pool_info)
 	}
 
 	fn get_redeem_proportion_amount(
