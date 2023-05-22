@@ -3091,6 +3091,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethjson"
+version = "0.1.0"
+dependencies = [
+ "ethereum-types",
+ "maplit",
+ "rustc-hex",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "event-listener"
 version = "2.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3136,6 +3147,42 @@ dependencies = [
  "evm-core",
  "evm-runtime",
  "primitive-types",
+]
+
+[[package]]
+name = "evm-jsontests"
+version = "0.13.1"
+dependencies = [
+ "acala-primitives",
+ "env_logger 0.9.3",
+ "ethjson",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "lazy_static",
+ "libsecp256k1",
+ "log",
+ "module-evm",
+ "module-evm-accounts",
+ "module-evm-utility",
+ "module-idle-scheduler",
+ "module-support",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-bytes",
+ "parity-scale-codec",
+ "rlp",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "sha3 0.10.7",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "triehash-ethereum",
 ]
 
 [[package]]
@@ -4817,6 +4864,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "keccak-hasher"
+version = "0.1.1"
+dependencies = [
+ "ethereum-types",
+ "hash-db 0.15.2",
+ "plain_hasher",
+ "tiny-keccak",
+]
+
+[[package]]
 name = "kusama-runtime"
 version = "0.9.40"
 source = "git+https://github.com/paritytech//polkadot?rev=95fe4c8862810bffd68343231a517e62689c05c0#95fe4c8862810bffd68343231a517e62689c05c0"
@@ -5783,6 +5840,12 @@ dependencies = [
  "xcm-builder",
  "xcm-executor",
 ]
+
+[[package]]
+name = "maplit"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "match_cfg"
@@ -8793,6 +8856,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "parity-bytes"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16b56e3a2420138bdb970f84dfb9c774aea80fa0e7371549eedec0d80c209c67"
+
+[[package]]
 name = "parity-db"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9089,6 +9158,15 @@ name = "pkg-config"
 version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ac9a59f73473f1b8d852421e59e64809f025994837ef743615c6d0c5b305160"
+
+[[package]]
+name = "plain_hasher"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e19e6491bdde87c2c43d70f4c194bc8a758f2eb732df00f61e43f7362e3b4cc"
+dependencies = [
+ "crunchy",
+]
 
 [[package]]
 name = "platforms"
@@ -15080,6 +15158,15 @@ checksum = "a1631b201eb031b563d2e85ca18ec8092508e262a3196ce9bd10a67ec87b9f5c"
 dependencies = [
  "hash-db 0.15.2",
  "rlp",
+]
+
+[[package]]
+name = "triehash-ethereum"
+version = "0.2.0"
+dependencies = [
+ "ethereum-types",
+ "keccak-hasher",
+ "triehash",
 ]
 
 [[package]]

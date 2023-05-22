@@ -137,7 +137,7 @@ try-runtime-acala:
 
 .PHONY: test
 test: githooks
-	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --all
+	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --all --exclude evm-jsontests
 
 .PHONY: test-eth
 test-eth: githooks test-evm
@@ -147,11 +147,11 @@ test-eth: githooks test-evm
 
 .PHONY: test-evm
 test-evm: githooks
-	SKIP_WASM_BUILD= cargo test --release --manifest-path evm-tests/jsontests/Cargo.toml
+	SKIP_WASM_BUILD= cargo test --release -p evm-jsontests
 
 .PHONY: test-runtimes
 test-runtimes:
-	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime
+	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime --exclude evm-jsontests
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-mandala-runtime
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-karura-runtime
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-acala-runtime
@@ -167,7 +167,7 @@ test-ts: build-mandala-internal-release
 .PHONY: test-benchmarking
 test-benchmarking:
 	cargo test --features bench --package module-evm --package runtime-common
-	cargo test --features runtime-benchmarks --features with-all-runtime --all benchmarking
+	cargo test --features runtime-benchmarks --features with-all-runtime --all benchmarking --exclude evm-jsontests
 
 .PHONY: test-all
 test-all: test-runtimes test-eth test-benchmarking
@@ -215,15 +215,15 @@ cargo-update:
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
-	./scripts/build-only-wasm.sh --profile production -p mandala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	./scripts/build-only-wasm.sh --profile production -p mandala-runtime --features=on-chain-release-build --package mandala-runtime
 
 .PHONY: build-wasm-karura
 build-wasm-karura:
-	./scripts/build-only-wasm.sh --profile production -p karura-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	./scripts/build-only-wasm.sh --profile production -p karura-runtime --features=on-chain-release-build --package karura-runtime
 
 .PHONY: build-wasm-acala
 build-wasm-acala:
-	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=on-chain-release-build --package acala-runtime
 
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:
