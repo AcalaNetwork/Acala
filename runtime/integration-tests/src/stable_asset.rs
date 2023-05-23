@@ -132,7 +132,7 @@ fn stable_asset_mint_overflow() {
 }
 
 #[test]
-fn stable_asset_check_pool_balance() {
+fn stable_asset_update_pool_balance() {
 	ExtBuilder::default()
 		.balances(vec![
 			(
@@ -166,41 +166,129 @@ fn stable_asset_check_pool_balance() {
 				None,
 			);
 
-			// modify pool balance
+			// update first pool token balance
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
+				MultiAddress::Id(account_id.clone()),
+				RELAY_CHAIN_CURRENCY,
+				100000000000000,
+			));
+
+			assert_ok!(StableAsset::mint(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				vec![10000, 10000],
+				0u128
+			));
+			assert_ok!(StableAsset::swap(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				0,
+				1,
+				5000000u128,
+				0,
+				2
+			));
+			assert_ok!(StableAsset::swap(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				1,
+				0,
+				5000000u128,
+				0,
+				2
+			));
+
+			assert_ok!(StableAsset::redeem_proportion(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				vec![0u128, 0u128]
+			));
+			assert_ok!(StableAsset::redeem_single(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				0,
+				0u128,
+				2
+			));
+			assert_ok!(StableAsset::redeem_single(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				1,
+				0u128,
+				2
+			));
+			assert_ok!(StableAsset::redeem_multi(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				vec![1000u128, 1000u128],
+				1000000000u128
+			));
+
+			// update second pool token balance
 			assert_ok!(Currencies::update_balance(
 				RuntimeOrigin::root(),
 				MultiAddress::Id(account_id),
-				RELAY_CHAIN_CURRENCY,
-				1,
+				LIQUID_CURRENCY,
+				1000000000000000,
 			));
 
-			assert_noop!(
-				StableAsset::mint(RuntimeOrigin::signed(AccountId::from(ALICE)), 0, vec![0, 0], 0u128),
-				nutsfinance_stable_asset::Error::<Runtime>::InvalidPoolBalance
-			);
+			assert_ok!(StableAsset::mint(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				vec![10000, 10000],
+				0u128
+			));
+			assert_ok!(StableAsset::swap(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				0,
+				1,
+				5000000u128,
+				0,
+				2
+			));
+			assert_ok!(StableAsset::swap(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				1,
+				0,
+				5000000u128,
+				0,
+				2
+			));
 
-			assert_noop!(
-				StableAsset::redeem_proportion(
-					RuntimeOrigin::signed(AccountId::from(ALICE)),
-					0,
-					0u128,
-					vec![0u128, 0u128, 0u128]
-				),
-				nutsfinance_stable_asset::Error::<Runtime>::InvalidPoolBalance
-			);
-			assert_noop!(
-				StableAsset::redeem_multi(
-					RuntimeOrigin::signed(AccountId::from(ALICE)),
-					0,
-					vec![0u128, 0u128],
-					0u128
-				),
-				nutsfinance_stable_asset::Error::<Runtime>::InvalidPoolBalance
-			);
-			assert_noop!(
-				StableAsset::redeem_single(RuntimeOrigin::signed(AccountId::from(ALICE)), 0, 0u128, 0, 0u128, 2),
-				nutsfinance_stable_asset::Error::<Runtime>::InvalidPoolBalance
-			);
+			assert_ok!(StableAsset::redeem_proportion(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				vec![0u128, 0u128]
+			));
+			assert_ok!(StableAsset::redeem_single(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				0,
+				0u128,
+				2
+			));
+			assert_ok!(StableAsset::redeem_single(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				1,
+				0u128,
+				2
+			));
+			assert_ok!(StableAsset::redeem_multi(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				vec![1000u128, 1000u128],
+				1000000000u128
+			));
 		});
 }
 

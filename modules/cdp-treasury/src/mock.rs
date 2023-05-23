@@ -398,6 +398,19 @@ impl StableAsset for MockStableAsset {
 		unimplemented!()
 	}
 
+	fn update_balance(
+		_pool_id: StableAssetPoolId,
+		_pool_info: &mut StableAssetPoolInfo<
+			Self::AssetId,
+			Self::Balance,
+			Self::Balance,
+			Self::AccountId,
+			Self::BlockNumber,
+		>,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
 	fn collect_yield(
 		_pool_id: StableAssetPoolId,
 		_pool_info: &mut StableAssetPoolInfo<
@@ -444,7 +457,7 @@ impl StableAsset for MockStableAsset {
 		})
 	}
 
-	fn check_pool_balances(
+	fn get_balance_update_amount(
 		_pool_info: &StableAssetPoolInfo<
 			Self::AssetId,
 			Self::Balance,
@@ -452,8 +465,25 @@ impl StableAsset for MockStableAsset {
 			Self::AccountId,
 			Self::BlockNumber,
 		>,
-	) -> DispatchResult {
-		Ok(())
+	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
+		Some(StableAssetPoolInfo {
+			pool_asset: CurrencyId::StableAssetPoolToken(0),
+			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
+			precisions: vec![1, 1],
+			mint_fee: 0,
+			swap_fee: 0,
+			redeem_fee: 0,
+			total_supply: 1000,
+			a: 100,
+			a_block: 1,
+			future_a: 100,
+			future_a_block: 1,
+			balances: vec![0, 0],
+			fee_recipient: 0,
+			account_id: 1,
+			yield_recipient: 2,
+			precision: 1,
+		})
 	}
 
 	fn get_redeem_proportion_amount(

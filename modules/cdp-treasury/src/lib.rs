@@ -447,8 +447,10 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 		match currency_id {
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				let pool_info = T::StableAsset::pool(stable_asset_id).ok_or(Error::<T>::CannotSwap)?;
-				T::StableAsset::check_pool_balances(&pool_info).map_err(|_| Error::<T>::CannotSwap)?;
-				let yield_info = T::StableAsset::get_collect_yield_amount(&pool_info).ok_or(Error::<T>::CannotSwap)?;
+				let updated_balance_info =
+					T::StableAsset::get_balance_update_amount(&pool_info).ok_or(Error::<T>::CannotSwap)?;
+				let yield_info =
+					T::StableAsset::get_collect_yield_amount(&updated_balance_info).ok_or(Error::<T>::CannotSwap)?;
 				ensure!(
 					yield_info.total_supply >= pool_info.total_supply,
 					Error::<T>::CannotSwap,

@@ -315,6 +315,19 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 		unimplemented!()
 	}
 
+	fn update_balance(
+		_pool_id: StableAssetPoolId,
+		_pool_info: &mut StableAssetPoolInfo<
+			Self::AssetId,
+			Self::Balance,
+			Self::Balance,
+			Self::AccountId,
+			Self::BlockNumber,
+		>,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
 	fn collect_yield(
 		_pool_id: StableAssetPoolId,
 		_pool_info: &mut StableAssetPoolInfo<
@@ -344,7 +357,7 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 		unimplemented!()
 	}
 
-	fn check_pool_balances(
+	fn get_balance_update_amount(
 		_pool_info: &StableAssetPoolInfo<
 			Self::AssetId,
 			Self::Balance,
@@ -352,7 +365,7 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 			Self::AccountId,
 			Self::BlockNumber,
 		>,
-	) -> DispatchResult {
+	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
 		unimplemented!()
 	}
 
