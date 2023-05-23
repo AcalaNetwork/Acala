@@ -27,13 +27,20 @@ jobs:
   build:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
@@ -59,13 +66,20 @@ jobs:
   benchmarking:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
@@ -79,13 +93,20 @@ jobs:
   checks-and-tests:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
@@ -107,13 +128,20 @@ jobs:
   e2e-tests:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
