@@ -1,10 +1,10 @@
 {
   "name": "Rococo Mandala Testnet",
-  "id": "rococo_mandala",
+  "id": "roc-man-2",
   "chainType": "Local",
   "bootNodes": [],
   "telemetryEndpoints": null,
-  "protocolId": "roc-man",
+  "protocolId": "rocman2",
   "properties": null,
   "forkBlocks": null,
   "badBlocks": null,
