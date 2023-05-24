@@ -125,14 +125,170 @@ fn stable_asset_mint_overflow() {
 			));
 
 			assert_noop!(
-				StableAsset::mint(
-					RuntimeOrigin::signed(None.unwrap_or(AccountId::from(ALICE))),
-					0,
-					amounts,
-					0u128
-				),
+				StableAsset::mint(RuntimeOrigin::signed(AccountId::from(ALICE)), 0, amounts, 0u128),
 				orml_tokens::Error::<Runtime>::BalanceTooLow
 			);
+		});
+}
+
+#[test]
+fn stable_asset_update_pool_balance() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				// NetworkContractSource
+				MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
+				NATIVE_CURRENCY,
+				1_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				1_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				LIQUID_CURRENCY,
+				12_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+		])
+		.build()
+		.execute_with(|| {
+			let exchange_rate = Homa::current_exchange_rate();
+			assert_eq!(exchange_rate, ExchangeRate::saturating_from_rational(1, 10)); // 0.1
+
+			let ksm_target_amount = 10_000_123u128;
+			let lksm_target_amount = 10_000_456u128;
+			let account_id: AccountId = StableAssetPalletId::get().into_sub_account_truncating(0);
+			enable_stable_asset(
+				vec![RELAY_CHAIN_CURRENCY, LIQUID_CURRENCY],
+				vec![ksm_target_amount, lksm_target_amount],
+				None,
+			);
+
+			// update first pool token balance
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
+				MultiAddress::Id(account_id.clone()),
+				RELAY_CHAIN_CURRENCY,
+				100000000000000,
+			));
+
+			assert_ok!(StableAsset::mint(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				vec![10000, 10000],
+				0u128
+			));
+			assert_ok!(StableAsset::swap(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				0,
+				1,
+				5000000u128,
+				0,
+				2
+			));
+			assert_ok!(StableAsset::swap(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				1,
+				0,
+				5000000u128,
+				0,
+				2
+			));
+
+			assert_ok!(StableAsset::redeem_proportion(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				vec![0u128, 0u128]
+			));
+			assert_ok!(StableAsset::redeem_single(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				0,
+				0u128,
+				2
+			));
+			assert_ok!(StableAsset::redeem_single(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				1,
+				0u128,
+				2
+			));
+			assert_ok!(StableAsset::redeem_multi(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				vec![1000u128, 1000u128],
+				1000000000u128
+			));
+
+			// update second pool token balance
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
+				MultiAddress::Id(account_id),
+				LIQUID_CURRENCY,
+				1000000000000000,
+			));
+
+			assert_ok!(StableAsset::mint(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				vec![10000, 10000],
+				0u128
+			));
+			assert_ok!(StableAsset::swap(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				0,
+				1,
+				5000000u128,
+				0,
+				2
+			));
+			assert_ok!(StableAsset::swap(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				1,
+				0,
+				5000000u128,
+				0,
+				2
+			));
+
+			assert_ok!(StableAsset::redeem_proportion(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				vec![0u128, 0u128]
+			));
+			assert_ok!(StableAsset::redeem_single(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				0,
+				0u128,
+				2
+			));
+			assert_ok!(StableAsset::redeem_single(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				100000u128,
+				1,
+				0u128,
+				2
+			));
+			assert_ok!(StableAsset::redeem_multi(
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				0,
+				vec![1000u128, 1000u128],
+				1000000000u128
+			));
 		});
 }
 
