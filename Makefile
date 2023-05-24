@@ -215,15 +215,15 @@ cargo-update:
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
-	./scripts/build-only-wasm.sh --profile production -p mandala-runtime --features=on-chain-release-build --package mandala-runtime
+	./scripts/build-only-wasm.sh --profile production -p mandala-runtime --features=on-chain-release-build
 
 .PHONY: build-wasm-karura
 build-wasm-karura:
-	./scripts/build-only-wasm.sh --profile production -p karura-runtime --features=on-chain-release-build --package karura-runtime
+	./scripts/build-only-wasm.sh --profile production -p karura-runtime --features=on-chain-release-build
 
 .PHONY: build-wasm-acala
 build-wasm-acala:
-	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=on-chain-release-build --package acala-runtime
+	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=on-chain-release-build
 
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:
