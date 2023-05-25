@@ -45,11 +45,7 @@ members = [
  	"orml/oracle/rpc/runtime-api",
 
 	"ecosystem-modules/stable-asset/lib/stable-asset",
-
-]
-
-exclude = [
-	"evm-tests",
+	"evm-tests/jsontests",
 ]
 
 resolver = "2"
