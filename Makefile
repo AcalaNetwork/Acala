@@ -45,31 +45,31 @@ build-benches:
 
 .PHONY: build-release
 build-release:
-	cargo build --locked --features with-all-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-all-runtime --profile production --bin acala
 
 .PHONY: build-mandala-release
 build-mandala-release:
-	cargo build --locked --features with-mandala-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-mandala-runtime --profile production --bin acala
 
 .PHONY: build-karura-release
 build-karura-release:
-	cargo build --locked --features with-karura-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-karura-runtime --profile production --bin acala
 
 .PHONY: build-acala-release
 build-acala-release:
-	cargo build --locked --features with-acala-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-acala-runtime --profile production --bin acala
 
 .PHONY: build-mandala-internal-release
 build-mandala-internal-release:
-	cargo build --locked --features with-mandala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-mandala-runtime --release --bin acala
 
 .PHONY: build-karura-internal-release
 build-karura-internal-release:
-	cargo build --locked --features with-karura-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-karura-runtime --release --bin acala
 
 .PHONY: build-acala-internal-release
 build-acala-internal-release:
-	cargo build --locked --features with-acala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-acala-runtime --release --bin acala
 
 .PHONY: check
 check: githooks
@@ -122,17 +122,17 @@ check-try-runtime:
 
 .PHONY: try-runtime-karura
 try-runtime-karura:
-	cargo build --release --locked --features with-karura-runtime --features try-runtime --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --release --locked --features with-karura-runtime --features try-runtime --bin acala
 	./target/release/acala try-runtime --runtime ./target/release/wbuild/karura-runtime/karura_runtime.compact.compressed.wasm --chain=karura-dev on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws
 
 .PHONY: try-runtime-mandala
 try-runtime-mandala:
-	cargo build --release --locked --features with-mandala-runtime --features try-runtime --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --release --locked --features with-mandala-runtime --features try-runtime --bin acala
 	./target/release/acala try-runtime --runtime ./target/release/wbuild/mandala-runtime/mandala_runtime.compact.compressed.wasm --chain=dev on-runtime-upgrade live --uri wss://mandala.polkawallet.io:443
 
 .PHONY: try-runtime-acala
 try-runtime-acala:
-	cargo build --release --locked --features with-acala-runtime --features try-runtime --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --release --locked --features with-acala-runtime --features try-runtime --bin acala
 	./target/release/acala try-runtime --runtime ./target/release/wbuild/acala-runtime/acala_runtime.compact.compressed.wasm --chain=acala-dev on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws
 
 .PHONY: test
