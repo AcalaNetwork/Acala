@@ -1042,7 +1042,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-karura-runtime")]
 			let (erc20_with_fee, native_with_fee) = (376162732, 3750001503);
 			#[cfg(feature = "with-acala-runtime")]
-			let (erc20_with_fee, native_with_fee) = (376162732, 376162732);
+			let (erc20_with_fee, native_with_fee) = (376162732, 3750001503);
 			#[cfg(feature = "with-mandala-runtime")]
 			let (erc20_with_fee, native_with_fee) = (375409653, 3750001503);
 			assert_eq!(
