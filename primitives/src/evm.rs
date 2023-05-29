@@ -276,12 +276,10 @@ pub fn decode_gas_limit(gas_limit: u64) -> (u64, u32) {
 
 	let actual_storage_limit = if storage_limit_number.is_zero() {
 		Default::default()
+	} else if storage_limit_number > MAX_GAS_LIMIT_CC {
+		2u32.saturating_pow(MAX_GAS_LIMIT_CC)
 	} else {
-		if storage_limit_number > MAX_GAS_LIMIT_CC {
-			2u32.saturating_pow(MAX_GAS_LIMIT_CC)
-		} else {
-			2u32.saturating_pow(storage_limit_number)
-		}
+		2u32.saturating_pow(storage_limit_number)
 	};
 
 	(actual_gas_limit, actual_storage_limit)
