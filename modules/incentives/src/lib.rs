@@ -397,7 +397,7 @@ impl<T: Config> Pallet<T> {
 		// orml_rewards will claim rewards for all currencies rewards
 		<orml_rewards::Pallet<T>>::claim_rewards(&who, &pool_id);
 
-		PendingMultiRewards::<T>::mutate_exists(&pool_id, &who, |maybe_pending_multi_rewards| {
+		PendingMultiRewards::<T>::mutate_exists(pool_id, &who, |maybe_pending_multi_rewards| {
 			if let Some(pending_multi_rewards) = maybe_pending_multi_rewards {
 				let deduction_rate = Self::claim_reward_deduction_rates(&pool_id);
 
