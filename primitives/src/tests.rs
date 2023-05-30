@@ -17,7 +17,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::evm::{decode_gas_limit, decode_gas_price, is_system_contract, EvmAddress, SYSTEM_CONTRACT_ADDRESS_PREFIX};
+use crate::evm::{
+	decode_gas_limit, decode_gas_price, is_system_contract, EvmAddress, MAX_GAS_LIMIT_CC,
+	SYSTEM_CONTRACT_ADDRESS_PREFIX,
+};
 use frame_support::assert_ok;
 use sp_core::H160;
 use std::str::FromStr;
@@ -229,4 +232,9 @@ fn decode_gas_price_works() {
 fn decode_gas_limit_works() {
 	assert_eq!(decode_gas_limit(u64::MAX), (15_480_000, 32768));
 	assert_eq!(decode_gas_limit(u64::MIN), (0, 0));
+	assert_eq!(
+		// u64::MAX = 4294967295
+		decode_gas_limit(u64::MAX / 1000 * 1000 + 199),
+		(15330000, 2u32.pow(MAX_GAS_LIMIT_CC))
+	);
 }
