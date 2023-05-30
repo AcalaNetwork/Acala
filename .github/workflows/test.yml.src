@@ -28,8 +28,6 @@ jobs:
   build: &setup
     runs-on:
       [self-hosted, linux]
-    env:
-      CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - &checkout

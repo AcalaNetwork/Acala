@@ -26,8 +26,6 @@ jobs:
           access_token: ${{ github.token }}
   build:
     runs-on: [self-hosted, linux]
-    env:
-      CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
@@ -65,8 +63,6 @@ jobs:
         run: make build-benches
   benchmarking:
     runs-on: [self-hosted, linux]
-    env:
-      CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
@@ -93,7 +89,7 @@ jobs:
   checks-and-tests:
     runs-on: [self-hosted, linux]
     env:
-      CARGO_INCREMENTAL: 0
+      CARGO_INCREMENTAL: 1
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
@@ -128,7 +124,7 @@ jobs:
   e2e-tests:
     runs-on: [self-hosted, linux]
     env:
-      CARGO_INCREMENTAL: 0
+      CARGO_INCREMENTAL: 1
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
