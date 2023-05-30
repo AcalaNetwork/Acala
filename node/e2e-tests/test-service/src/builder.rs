@@ -33,6 +33,7 @@ pub struct TestNodeBuilder {
 	consensus: Consensus,
 	seal_mode: SealMode,
 	relay_chain_full_node_url: Vec<Url>,
+	offchain_worker: bool,
 }
 
 impl TestNodeBuilder {
@@ -57,6 +58,7 @@ impl TestNodeBuilder {
 			consensus: Consensus::Aura,
 			seal_mode: SealMode::DevAuraSeal,
 			relay_chain_full_node_url: vec![],
+			offchain_worker: true,
 		}
 	}
 
@@ -64,6 +66,12 @@ impl TestNodeBuilder {
 	pub fn enable_collator(mut self) -> Self {
 		let collator_key = CollatorPair::generate().0;
 		self.collator_key = Some(collator_key);
+		self
+	}
+
+	/// Disable offchain worker for this node.
+	pub fn disable_offchain_worker(mut self) -> Self {
+		self.offchain_worker = false;
 		self
 	}
 
@@ -167,7 +175,7 @@ impl TestNodeBuilder {
 
 	/// Build the [`TestNode`].
 	pub async fn build(self) -> TestNode {
-		let parachain_config = node_config(
+		let mut parachain_config = node_config(
 			self.storage_update_func_parachain.unwrap_or_else(|| Box::new(|| ())),
 			self.tokio_handle.clone(),
 			self.key,
@@ -176,6 +184,8 @@ impl TestNodeBuilder {
 			self.collator_key.is_some(),
 		)
 		.expect("could not generate Configuration");
+
+		parachain_config.offchain_worker.enabled = self.offchain_worker;
 
 		// start relay-chain full node inside para-chain
 		let mut relay_chain_config = polkadot_test_service::node_config(

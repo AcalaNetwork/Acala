@@ -77,6 +77,7 @@ async fn transaction_pool_priority_order_test() {
 	let node = test_service::TestNodeBuilder::new(para_id, tokio_handle.clone(), Alice)
 		.with_seal_mode(SealMode::DevAuraSeal)
 		.enable_collator()
+		.disable_offchain_worker()
 		.build()
 		.await;
 

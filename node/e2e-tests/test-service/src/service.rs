@@ -209,7 +209,9 @@ pub async fn start_dev_node(
 		})?;
 
 	// offchain workers
-	sc_service::build_offchain_workers(&config, task_manager.spawn_handle(), client.clone(), network.clone());
+	if config.offchain_worker.enabled {
+		sc_service::build_offchain_workers(&config, task_manager.spawn_handle(), client.clone(), network.clone());
+	}
 
 	let force_authoring = config.force_authoring;
 	let backoff_authoring_blocks: Option<()> = None;
