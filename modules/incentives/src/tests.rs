@@ -511,14 +511,14 @@ fn transfer_failed_when_claim_rewards() {
 			RuntimeOrigin::signed(BOB::get()),
 			PoolId::Loans(BTC)
 		));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+		System::assert_has_event(RuntimeEvent::IncentivesModule(crate::Event::ClaimRewards {
 			who: BOB::get(),
 			pool: PoolId::Loans(BTC),
 			reward_currency_id: AUSD,
 			actual_amount: 18,
 			deduction_amount: 0,
 		}));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+		System::assert_has_event(RuntimeEvent::IncentivesModule(crate::Event::ClaimRewards {
 			who: BOB::get(),
 			pool: PoolId::Loans(BTC),
 			reward_currency_id: DOT,
@@ -560,10 +560,10 @@ fn transfer_failed_when_claim_rewards() {
 
 		// Alice claim AUSD reward
 		assert_ok!(IncentivesModule::claim_rewards(
-			Origin::signed(ALICE::get()),
+			RuntimeOrigin::signed(ALICE::get()),
 			PoolId::Loans(BTC)
 		));
-		System::assert_last_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+		System::assert_last_event(RuntimeEvent::IncentivesModule(crate::Event::ClaimRewards {
 			who: ALICE::get(),
 			pool: PoolId::Loans(BTC),
 			reward_currency_id: AUSD,
@@ -606,7 +606,7 @@ fn transfer_failed_when_claim_rewards() {
 		// Bob claim rewards, payout AUSD failed for drained vault, the pending reward record of AUSD will
 		// not change.
 		assert_ok!(IncentivesModule::claim_rewards(
-			Origin::signed(BOB::get()),
+			RuntimeOrigin::signed(BOB::get()),
 			PoolId::Loans(BTC)
 		));
 
@@ -1153,7 +1153,7 @@ fn transfer_reward_and_update_rewards_storage_atomically_when_accumulate_incenti
 		);
 
 		assert_ok!(IncentivesModule::update_incentive_rewards(
-			Origin::signed(ROOT::get()),
+			RuntimeOrigin::signed(ROOT::get()),
 			vec![(PoolId::Loans(LDOT), vec![(ACA, 30), (AUSD, 90)]),],
 		));
 
