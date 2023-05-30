@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -51,6 +51,7 @@ pub mod nft;
 pub mod oracle;
 pub mod schedule;
 pub mod stable_asset;
+pub mod xtokens;
 
 use crate::SystemContractsFilter;
 pub use dex::DEXPrecompile;
@@ -64,6 +65,7 @@ pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
 pub use schedule::SchedulePrecompile;
 pub use stable_asset::StableAssetPrecompile;
+pub use xtokens::XtokensPrecompile;
 
 pub const ECRECOVER: H160 = H160(hex!("0000000000000000000000000000000000000001"));
 pub const SHA256: H160 = H160(hex!("0000000000000000000000000000000000000002"));
@@ -92,6 +94,7 @@ pub const HOMA: H160 = H160(hex!("0000000000000000000000000000000000000407"));
 pub const EVM_ACCOUNTS: H160 = H160(hex!("0000000000000000000000000000000000000408"));
 pub const HONZON: H160 = H160(hex!("0000000000000000000000000000000000000409"));
 pub const INCENTIVES: H160 = H160(hex!("000000000000000000000000000000000000040a"));
+pub const XTOKENS: H160 = H160(hex!("000000000000000000000000000000000000040b"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
 	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
@@ -129,11 +132,12 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
-				// STABLE_ASSET,
-				// HOMA,
+				STABLE_ASSET,
+				HOMA,
 				EVM_ACCOUNTS,
-				/* HONZON
-				 * INCENTIVES */
+				HONZON,
+				INCENTIVES,
+				XTOKENS,
 			]),
 			_marker: Default::default(),
 		}
@@ -162,11 +166,12 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
-				// STABLE_ASSET,
-				// HOMA,
+				STABLE_ASSET,
+				HOMA,
 				EVM_ACCOUNTS,
-				/* HONZON
-				 * INCENTIVES */
+				HONZON,
+				INCENTIVES,
+				XTOKENS,
 			]),
 			_marker: Default::default(),
 		}
@@ -200,6 +205,7 @@ where
 				EVM_ACCOUNTS,
 				HONZON,
 				INCENTIVES,
+				XTOKENS,
 			]),
 			_marker: Default::default(),
 		}
@@ -221,6 +227,7 @@ where
 	HomaPrecompile<R>: Precompile,
 	HonzonPrecompile<R>: Precompile,
 	IncentivesPrecompile<R>: Precompile,
+	XtokensPrecompile<R>: Precompile,
 {
 	fn execute(
 		&self,
@@ -337,6 +344,8 @@ where
 				Some(IncentivesPrecompile::<R>::execute(
 					input, target_gas, context, is_static,
 				))
+			} else if address == XTOKENS {
+				Some(XtokensPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else {
 				None
 			}

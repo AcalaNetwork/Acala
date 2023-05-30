@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::evm::{is_system_contract, EvmAddress, SYSTEM_CONTRACT_ADDRESS_PREFIX};
+use crate::evm::{
+	decode_gas_limit, decode_gas_price, is_system_contract, EvmAddress, MAX_GAS_LIMIT_CC,
+	SYSTEM_CONTRACT_ADDRESS_PREFIX,
+};
 use frame_support::assert_ok;
 use sp_core::H160;
 use std::str::FromStr;
@@ -178,4 +181,60 @@ fn is_system_contract_works() {
 	bytes[0] = 1u8;
 
 	assert!(!is_system_contract(bytes.into()));
+}
+
+#[test]
+fn decode_gas_price_works() {
+	const TX_FEE_PRE_GAS: u128 = 100_000_000_000u128; // 100 Gwei
+
+	// tip = 0, gas_price = 0 Gwei, gas_limit = u64::MIN
+	assert_eq!(decode_gas_price(u64::MIN, u64::MIN, TX_FEE_PRE_GAS), None);
+	// tip = 0, gas_price = 99 Gwei, gas_limit = u64::MAX
+	assert_eq!(decode_gas_price(99_999_999_999, u64::MIN, TX_FEE_PRE_GAS), None);
+	// tip = 0, gas_price = 100 Gwei, gas_limit = u64::MIN
+	assert_eq!(
+		decode_gas_price(100_000_000_000, u64::MIN, TX_FEE_PRE_GAS),
+		Some((0, 0))
+	);
+	// tip = 0, gas_price = 100 Gwei, gas_limit = u64::MAX
+	assert_eq!(
+		decode_gas_price(100_000_000_000, u64::MAX, TX_FEE_PRE_GAS),
+		Some((0, 0))
+	);
+
+	// tip = 0, gas_price = 105 Gwei, gas_limit = u64::MIN
+	assert_eq!(
+		decode_gas_price(105_000_000_000, u64::MIN, TX_FEE_PRE_GAS),
+		Some((0, u32::MAX))
+	);
+	// tip = 0, gas_price = 105 Gwei, gas_limit = u64::MAX
+	assert_eq!(
+		decode_gas_price(105_000_000_000, u64::MAX, TX_FEE_PRE_GAS),
+		Some((0, u32::MAX))
+	);
+
+	// tip = 0, gas_price = u64::MAX, gas_limit = u64::MIN
+	assert_eq!(
+		decode_gas_price(u64::MAX, u64::MIN, TX_FEE_PRE_GAS),
+		Some((0, 3_709_551_615))
+	);
+	// tip != 0, gas_price = u64::MAX, gas_limit = 1
+	assert_eq!(decode_gas_price(u64::MAX, 1, TX_FEE_PRE_GAS), None);
+
+	// tip != 200%, gas_price = 200 Gwei, gas_limit = 10000
+	assert_eq!(
+		decode_gas_price(200_000_000_000, 10_000, TX_FEE_PRE_GAS),
+		Some((1_000_000_000, 0))
+	);
+}
+
+#[test]
+fn decode_gas_limit_works() {
+	assert_eq!(decode_gas_limit(u64::MAX), (15_480_000, 32768));
+	assert_eq!(decode_gas_limit(u64::MIN), (0, 0));
+	assert_eq!(
+		// u64::MAX = 4294967295
+		decode_gas_limit(u64::MAX / 1000 * 1000 + 199),
+		(15330000, 2u32.pow(MAX_GAS_LIMIT_CC))
+	);
 }

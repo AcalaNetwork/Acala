@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -63,15 +63,20 @@ fn whitelist_keys(b: &mut Bencher, caller: Option<H160>) {
 
 fn setup_liquidity() {
 	// faucet alice
-	assert_ok!(Currencies::update_balance(Origin::root(), ALICE, RENBTC, 1_000_000));
-	assert_ok!(Currencies::update_balance(Origin::root(), ALICE, AUSD, 1_000_000_000));
+	assert_ok!(Currencies::update_balance(RuntimeOrigin::root(), ALICE, DOT, 1_000_000));
+	assert_ok!(Currencies::update_balance(
+		RuntimeOrigin::root(),
+		ALICE,
+		AUSD,
+		1_000_000_000
+	));
 
-	// enable RENBTC/AUSD
-	assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+	// enable DOT/AUSD
+	assert_ok!(DexModule::enable_trading_pair(RuntimeOrigin::signed(ALICE), DOT, AUSD,));
 
 	assert_ok!(DexModule::add_liquidity(
-		Origin::signed(ALICE),
-		RENBTC,
+		RuntimeOrigin::signed(ALICE),
+		DOT,
 		AUSD,
 		1_000,
 		1_000_000,
@@ -91,24 +96,24 @@ fn oracle_get_price(b: &mut Bencher) {
 	};
 
 	let price = Price::from(30_000);
-	assert_ok!(Oracle::feed_value(ALICE, RENBTC, price));
+	assert_ok!(Oracle::feed_value(ALICE, DOT, price));
 
 	assert_ok!(AssetRegistry::register_native_asset(
-		Origin::signed(CouncilAccount::get()),
-		RENBTC,
+		RuntimeOrigin::signed(CouncilAccount::get()),
+		DOT,
 		sp_std::boxed::Box::new(AssetMetadata {
-			name: RENBTC.name().unwrap().into(),
-			symbol: RENBTC.symbol().unwrap().into(),
-			decimals: RENBTC.decimals().unwrap(),
+			name: DOT.name().unwrap().into(),
+			symbol: DOT.symbol().unwrap().into(),
+			decimals: DOT.decimals().unwrap(),
 			minimal_balance: 0
 		})
 	));
 
 	// getPrice(address) -> 0x41976e09
-	// RENBTC
+	// DOT
 	let input = hex! {"
 		41976e09
-		000000000000000000000000 0000000000000000000100000000000000000014
+		000000000000000000000000 0000000000000000000100000000000000000002
 	"};
 	// returned price
 	let expected_output = hex! {"

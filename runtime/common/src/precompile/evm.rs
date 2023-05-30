@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -158,7 +158,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Evm TransferMaintainer failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -175,7 +175,7 @@ where
 				<module_evm::Pallet<Runtime>>::publish_contract_precompile(who, contract_address).map_err(|e| {
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Evm PublishContract failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
@@ -192,7 +192,7 @@ where
 				<module_evm::Pallet<Runtime>>::disable_account_contract_development(who).map_err(|e| {
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Evm DisableDeveloperAccount failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
@@ -209,7 +209,7 @@ where
 				<module_evm::Pallet<Runtime>>::enable_account_contract_development(who).map_err(|e| {
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Evm EnableDeveloperAccount failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
@@ -310,7 +310,8 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{
-		alice_evm_addr, bob, bob_evm_addr, new_test_ext, EVMModule, Event as TestEvent, Origin, System, Test,
+		alice_evm_addr, bob, bob_evm_addr, new_test_ext, EVMModule, RuntimeEvent as TestEvent, RuntimeOrigin, System,
+		Test,
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
@@ -455,7 +456,7 @@ mod tests {
 			// The error is shown in the last event.
 			// The call extrinsic still succeeds, the evm emits a executed failed event
 			assert_ok!(EVMModule::call(
-				Origin::signed(bob()),
+				RuntimeOrigin::signed(bob()),
 				contract_address,
 				multiply.to_vec(),
 				0,
@@ -497,7 +498,7 @@ mod tests {
 
 			// Same call as above now works as contract is now published
 			assert_ok!(EVMModule::call(
-				Origin::signed(bob()),
+				RuntimeOrigin::signed(bob()),
 				contract_address,
 				multiply.to_vec(),
 				0,

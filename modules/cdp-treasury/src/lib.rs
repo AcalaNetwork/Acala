@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -55,11 +55,11 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The origin which may update parameters and handle
 		/// surplus/collateral.
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The Currency for managing assets related to CDP
 		type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -118,7 +118,7 @@ pub mod module {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(fn deposit_event)]
+	#[pallet::generate_deposit(pub fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// The expected amount size for per lot collateral auction of specific collateral type
 		/// updated.
@@ -126,6 +126,8 @@ pub mod module {
 			collateral_type: CurrencyId,
 			new_size: Balance,
 		},
+		/// The buffer amount of debit pool that will not be offset by suplus pool updated.
+		DebitOffsetBufferUpdated { amount: Balance },
 	}
 
 	/// The expected amount size for per lot collateral auction of specific
@@ -143,6 +145,13 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn debit_pool)]
 	pub type DebitPool<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
+	/// The buffer amount of debit pool that will not be offset by surplus pool.
+	///
+	/// DebitOffsetBuffer: Balance
+	#[pallet::storage]
+	#[pallet::getter(fn debit_offset_buffer)]
+	pub type DebitOffsetBuffer<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	#[pallet::genesis_config]
 	#[cfg_attr(feature = "std", derive(Default))]
@@ -175,6 +184,7 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::extract_surplus_to_treasury())]
 		#[transactional]
 		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -196,6 +206,7 @@ pub mod module {
 		/// - `amount`: collateral amount
 		/// - `target`: target amount
 		/// - `splited`: split collateral to multiple auction according to the config size
+		#[pallet::call_index(1)]
 		#[pallet::weight(
 			if *splited {
 				T::WeightInfo::auction_collateral(T::MaxAuctionsCount::get())
@@ -228,6 +239,7 @@ pub mod module {
 		///
 		/// - `currency_id`: collateral type
 		/// - `swap_limit`: target amount
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::exchange_collateral_to_stable())]
 		#[transactional]
 		pub fn exchange_collateral_to_stable(
@@ -248,6 +260,7 @@ pub mod module {
 		///
 		/// - `currency_id`: collateral type
 		/// - `amount`: expected size of per lot collateral auction
+		#[pallet::call_index(3)]
 		#[pallet::weight((T::WeightInfo::set_expected_collateral_auction_size(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn set_expected_collateral_auction_size(
@@ -260,6 +273,25 @@ pub mod module {
 			Self::deposit_event(Event::ExpectedCollateralAuctionSizeUpdated {
 				collateral_type: currency_id,
 				new_size: size,
+			});
+			Ok(())
+		}
+
+		/// Update the debit offset buffer
+		///
+		/// The dispatch origin of this call must be `UpdateOrigin`.
+		///
+		/// - `amount`: the buffer amount of debit pool
+		#[pallet::call_index(4)]
+		#[pallet::weight((T::WeightInfo::set_expected_collateral_auction_size(), DispatchClass::Operational))]
+		#[transactional]
+		pub fn set_debit_offset_buffer(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			DebitOffsetBuffer::<T>::mutate(|v| {
+				if *v != amount {
+					*v = amount;
+					Self::deposit_event(Event::DebitOffsetBufferUpdated { amount });
+				}
 			});
 			Ok(())
 		}
@@ -289,7 +321,11 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn offset_surplus_and_debit() {
-		let offset_amount = sp_std::cmp::min(Self::debit_pool(), Self::surplus_pool());
+		// The part of the debit pool that exceeds the debit offset buffer can be offset by the surplus
+		let offset_amount = sp_std::cmp::min(
+			Self::debit_pool().saturating_sub(Self::debit_offset_buffer()),
+			Self::surplus_pool(),
+		);
 
 		// Burn the amount that is equal to offset amount of stable currency.
 		if !offset_amount.is_zero() {
@@ -540,5 +576,25 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 
 	fn max_auction() -> u32 {
 		T::MaxAuctionsCount::get()
+	}
+}
+
+pub struct InitializeDebitOffsetBuffer<T, GetBufferSize>(
+	sp_std::marker::PhantomData<T>,
+	sp_std::marker::PhantomData<GetBufferSize>,
+);
+impl<T: Config, GetBufferSize: Get<Balance>> frame_support::traits::OnRuntimeUpgrade
+	for InitializeDebitOffsetBuffer<T, GetBufferSize>
+{
+	fn on_runtime_upgrade() -> Weight {
+		let amount = GetBufferSize::get();
+		DebitOffsetBuffer::<T>::mutate(|v| {
+			if *v != amount {
+				*v = amount;
+				Pallet::<T>::deposit_event(Event::DebitOffsetBufferUpdated { amount });
+			}
+		});
+
+		Weight::from_parts(0, 0)
 	}
 }

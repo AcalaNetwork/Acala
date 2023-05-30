@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@ use crate as module_idle_scheduler;
 use acala_primitives::{define_combined_task, task::TaskResult};
 use frame_support::weights::Weight;
 use frame_support::{
-	construct_runtime,
+	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 };
 use module_support::DispatchableTask;
@@ -34,22 +34,22 @@ use super::*;
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
-pub const BASE_WEIGHT: Weight = 1_000_000;
+pub const BASE_WEIGHT: Weight = Weight::from_parts(1_000_000, 0);
 pub const RELAY_BLOCK_KEY: [u8; 32] = [0; 32];
 
 pub type AccountId = u32;
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
-	type Origin = Origin;
+	type RuntimeOrigin = RuntimeOrigin;
 	type Index = u64;
 	type BlockNumber = u64;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type Hash = sp_runtime::testing::H256;
 	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
 	type Header = sp_runtime::testing::Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -76,11 +76,15 @@ impl BlockNumberProvider for MockBlockNumberProvider {
 	}
 }
 
+parameter_types! {
+	pub MinimumWeightRemainInBlock: Weight = Weight::from_parts(100_000_000_000, 0);
+}
+
 impl module_idle_scheduler::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
-	type MinimumWeightRemainInBlock = ConstU64<100_000_000_000>;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
 	type DisableBlockThreshold = ConstU32<6>;
 }
@@ -96,7 +100,7 @@ impl DispatchableTask for BalancesTask {
 		TaskResult {
 			result: Ok(()),
 			used_weight: BASE_WEIGHT,
-			finished: weight >= BASE_WEIGHT,
+			finished: weight.ref_time() >= BASE_WEIGHT.ref_time(),
 		}
 	}
 }
@@ -111,7 +115,7 @@ impl DispatchableTask for HomaLiteTask {
 		TaskResult {
 			result: Ok(()),
 			used_weight: BASE_WEIGHT,
-			finished: weight >= BASE_WEIGHT,
+			finished: weight.ref_time() >= BASE_WEIGHT.ref_time(),
 		}
 	}
 }

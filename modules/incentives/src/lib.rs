@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -48,11 +48,8 @@ use sp_runtime::{
 	DispatchResult, FixedPointNumber, Permill,
 };
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
-use support::{
-	CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate,
-};
+use support::{DEXIncentives, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate};
 
-pub mod migration;
 mod mock;
 mod tests;
 pub mod weights;
@@ -69,7 +66,7 @@ pub mod module {
 		frame_system::Config
 		+ orml_rewards::Config<Share = Balance, Balance = Balance, PoolId = PoolId, CurrencyId = CurrencyId>
 	{
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The period to accumulate rewards
 		#[pallet::constant]
@@ -78,10 +75,6 @@ pub mod module {
 		/// The native currency for earning staking
 		#[pallet::constant]
 		type NativeCurrencyId: Get<CurrencyId>;
-
-		/// The reward type for dex saving.
-		#[pallet::constant]
-		type StableCurrencyId: Get<CurrencyId>;
 
 		/// The source account for native token rewards.
 		#[pallet::constant]
@@ -92,16 +85,10 @@ pub mod module {
 		type EarnShareBooster: Get<Permill>;
 
 		/// The origin which may update incentive related params
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
-
-		/// CDP treasury to issue rewards in stable token
-		type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Currency for transfer assets
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
-
-		/// DEX to supply liquidity info
-		type DEX: DEXManager<Self::AccountId, Balance, CurrencyId>;
 
 		/// Emergency shutdown.
 		type EmergencyShutdown: EmergencyShutdown;
@@ -167,14 +154,6 @@ pub mod module {
 	pub type IncentiveRewardAmounts<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, PoolId, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
-	/// NOTE: already deprecated, need remove it after next runtime upgrade
-	/// Mapping from pool to its fixed reward rate per period.
-	///
-	/// DexSavingRewardRates: map Pool => SavingRatePerPeriod
-	#[pallet::storage]
-	#[pallet::getter(fn dex_saving_reward_rates)]
-	pub type DexSavingRewardRates<T: Config> = StorageMap<_, Twox64Concat, PoolId, Rate, ValueQuery>;
-
 	/// Mapping from pool to its claim reward deduction rate.
 	///
 	/// ClaimRewardDeductionRates: map Pool => DeductionRate
@@ -227,7 +206,7 @@ pub mod module {
 
 				T::WeightInfo::on_initialize(count)
 			} else {
-				0
+				Weight::zero()
 			}
 		}
 	}
@@ -240,6 +219,7 @@ pub mod module {
 		///
 		/// - `lp_currency_id`: LP token type
 		/// - `amount`: amount to stake
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::deposit_dex_share())]
 		#[transactional]
 		pub fn deposit_dex_share(
@@ -258,6 +238,7 @@ pub mod module {
 		///
 		/// - `lp_currency_id`: LP token type
 		/// - `amount`: amount to unstake
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::withdraw_dex_share())]
 		#[transactional]
 		pub fn withdraw_dex_share(
@@ -275,6 +256,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `Signed` by the transactor.
 		///
 		/// - `pool_id`: pool type
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::claim_rewards())]
 		#[transactional]
 		pub fn claim_rewards(origin: OriginFor<T>, pool_id: PoolId) -> DispatchResult {
@@ -288,6 +270,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `updates`: Vec<(PoolId, Vec<(RewardCurrencyId, FixedAmountPerPeriod)>)>
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_incentive_rewards(
 			updates.iter().fold(0, |count, x| count + x.1.len()) as u32
 		))]
@@ -330,6 +313,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `updates`: Vec<(PoolId, DecutionRate>)>
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_claim_reward_deduction_rates(updates.len() as u32))]
 		#[transactional]
 		pub fn update_claim_reward_deduction_rates(
@@ -341,7 +325,7 @@ pub mod module {
 				if let PoolId::Dex(currency_id) = pool_id {
 					ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidPoolId);
 				}
-				ClaimRewardDeductionRates::<T>::mutate_exists(&pool_id, |maybe_rate| -> DispatchResult {
+				ClaimRewardDeductionRates::<T>::mutate_exists(pool_id, |maybe_rate| -> DispatchResult {
 					let mut v = maybe_rate.unwrap_or_default();
 					if deduction_rate != *v.inner() {
 						v.try_set(deduction_rate).map_err(|_| Error::<T>::InvalidRate)?;
@@ -423,8 +407,7 @@ impl<T: Config> Pallet<T> {
 					}
 
 					let (payout_amount, deduction_amount) = {
-						let should_deduction_amount =
-							deduction_rate.saturating_mul_int(*pending_reward).min(*pending_reward);
+						let should_deduction_amount = deduction_rate.saturating_mul_int(*pending_reward);
 						(
 							pending_reward.saturating_sub(should_deduction_amount),
 							should_deduction_amount,

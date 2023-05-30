@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,8 +22,8 @@ use crate::{
 	AccountId, AccountIdConversion, AuthoritysOriginId, BadOrigin, BlockNumber, DispatchResult, EnsureRoot,
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
-	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryPalletId, HonzonTreasuryPalletId, OneDay, Origin,
-	OriginCaller, SevenDays, TreasuryPalletId, TreasuryReservePalletId, HOURS,
+	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryPalletId, HonzonTreasuryPalletId, OneDay, OriginCaller,
+	RuntimeOrigin, SevenDays, TreasuryPalletId, TreasuryReservePalletId, HOURS,
 };
 pub use frame_support::traits::{schedule::Priority, EnsureOrigin, OriginTrait};
 use frame_system::ensure_root;
@@ -31,8 +31,8 @@ use orml_authority::EnsureDelayed;
 use sp_std::cmp::Ordering;
 
 pub struct AuthorityConfigImpl;
-impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for AuthorityConfigImpl {
-	fn check_schedule_dispatch(origin: Origin, _priority: Priority) -> DispatchResult {
+impl orml_authority::AuthorityConfig<RuntimeOrigin, OriginCaller, BlockNumber> for AuthorityConfigImpl {
+	fn check_schedule_dispatch(origin: RuntimeOrigin, _priority: Priority) -> DispatchResult {
 		EnsureRoot::<AccountId>::try_origin(origin)
 			.or_else(|o| EnsureRootOrHalfGeneralCouncil::try_origin(o).map(|_| ()))
 			.or_else(|o| EnsureRootOrHalfFinancialCouncil::try_origin(o).map(|_| ()))
@@ -41,7 +41,7 @@ impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for Auth
 	}
 
 	fn check_fast_track_schedule(
-		origin: Origin,
+		origin: RuntimeOrigin,
 		_initial_origin: &OriginCaller,
 		new_delay: BlockNumber,
 	) -> DispatchResult {
@@ -56,13 +56,13 @@ impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for Auth
 		})
 	}
 
-	fn check_delay_schedule(origin: Origin, _initial_origin: &OriginCaller) -> DispatchResult {
+	fn check_delay_schedule(origin: RuntimeOrigin, _initial_origin: &OriginCaller) -> DispatchResult {
 		ensure_root(origin.clone()).or_else(|_| {
 			EnsureRootOrOneThirdsTechnicalCommittee::ensure_origin(origin).map_or_else(|e| Err(e.into()), |_| Ok(()))
 		})
 	}
 
-	fn check_cancel_schedule(origin: Origin, initial_origin: &OriginCaller) -> DispatchResult {
+	fn check_cancel_schedule(origin: RuntimeOrigin, initial_origin: &OriginCaller) -> DispatchResult {
 		if matches!(
 			cmp_privilege(origin.caller(), initial_origin),
 			Some(Ordering::Greater) | Some(Ordering::Equal)
@@ -75,30 +75,32 @@ impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for Auth
 	}
 }
 
-impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
+impl orml_authority::AsOriginId<RuntimeOrigin, OriginCaller> for AuthoritysOriginId {
 	fn into_origin(self) -> OriginCaller {
 		match self {
-			AuthoritysOriginId::Root => Origin::root().caller().clone(),
-			AuthoritysOriginId::Treasury => Origin::signed(TreasuryPalletId::get().into_account_truncating())
+			AuthoritysOriginId::Root => RuntimeOrigin::root().caller().clone(),
+			AuthoritysOriginId::Treasury => RuntimeOrigin::signed(TreasuryPalletId::get().into_account_truncating())
 				.caller()
 				.clone(),
 			AuthoritysOriginId::HonzonTreasury => {
-				Origin::signed(HonzonTreasuryPalletId::get().into_account_truncating())
+				RuntimeOrigin::signed(HonzonTreasuryPalletId::get().into_account_truncating())
 					.caller()
 					.clone()
 			}
-			AuthoritysOriginId::HomaTreasury => Origin::signed(HomaTreasuryPalletId::get().into_account_truncating())
-				.caller()
-				.clone(),
+			AuthoritysOriginId::HomaTreasury => {
+				RuntimeOrigin::signed(HomaTreasuryPalletId::get().into_account_truncating())
+					.caller()
+					.clone()
+			}
 			AuthoritysOriginId::TreasuryReserve => {
-				Origin::signed(TreasuryReservePalletId::get().into_account_truncating())
+				RuntimeOrigin::signed(TreasuryReservePalletId::get().into_account_truncating())
 					.caller()
 					.clone()
 			}
 		}
 	}
 
-	fn check_dispatch_from(&self, origin: Origin) -> DispatchResult {
+	fn check_dispatch_from(&self, origin: RuntimeOrigin) -> DispatchResult {
 		ensure_root(origin.clone()).or_else(|_| {
 			match self {
 				AuthoritysOriginId::Root => <EnsureDelayed<
@@ -106,11 +108,11 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 					EnsureRootOrThreeFourthsGeneralCouncil,
 					BlockNumber,
 					OriginCaller,
-				> as EnsureOrigin<Origin>>::ensure_origin(origin)
+				> as EnsureOrigin<RuntimeOrigin>>::ensure_origin(origin)
 				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
 				AuthoritysOriginId::Treasury => {
 					<EnsureDelayed<OneDay, EnsureRootOrHalfGeneralCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-						Origin,
+						RuntimeOrigin,
 					>>::ensure_origin(origin)
 					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
 				}
@@ -119,11 +121,11 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 					EnsureRootOrHalfFinancialCouncil,
 					BlockNumber,
 					OriginCaller,
-				> as EnsureOrigin<Origin>>::ensure_origin(origin)
+				> as EnsureOrigin<RuntimeOrigin>>::ensure_origin(origin)
 				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
 				AuthoritysOriginId::HomaTreasury => {
 					<EnsureDelayed<OneDay, EnsureRootOrHalfHomaCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-						Origin,
+						RuntimeOrigin,
 					>>::ensure_origin(origin)
 					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
 				}

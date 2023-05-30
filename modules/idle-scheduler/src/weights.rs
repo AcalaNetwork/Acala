@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -58,48 +58,48 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: ParachainSystem ValidationData (r:1 w:0)
 	// Storage: IdleScheduler PreviousRelayBlockNumber (r:0 w:1)
 	fn on_initialize() -> Weight {
-		(2_545_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_parts(2_545_000, 0)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: ParachainSystem ValidationData (r:1 w:0)
 	// Storage: IdleScheduler PreviousRelayBlockNumber (r:1 w:0)
 	fn on_idle_base() -> Weight {
-		(3_627_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+		Weight::from_parts(3_627_000, 0)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
 	}
 	// Storage: IdleScheduler Tasks (r:0 w:1)
 	fn clear_tasks() -> Weight {
-		(9_181_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_parts(9_181_000, 0)
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: IdleScheduler NextTaskId (r:1 w:1)
 	// Storage: IdleScheduler Tasks (r:0 w:1)
 	fn schedule_task() -> Weight {
-		(4_103_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_parts(4_103_000, 0)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_initialize() -> Weight {
-		(2_545_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_parts(2_545_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn on_idle_base() -> Weight {
-		(3_627_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
+		Weight::from_parts(3_627_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 	}
 	fn clear_tasks() -> Weight {
-		(9_181_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_parts(9_181_000, 0)
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn schedule_task() -> Weight {
-		(4_103_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_parts(4_103_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 }

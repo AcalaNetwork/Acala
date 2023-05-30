@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,13 +18,16 @@
 
 use crate::{
 	AccountId, Address, Amount, CdpEngine, CdpTreasury, CurrencyId, DefaultDebitExchangeRate, Dex, EmergencyShutdown,
-	ExistentialDeposits, MinimumDebitValue, NativeTokenExistentialDeposit, Price, Rate, Ratio, Runtime, Timestamp,
-	H160, MILLISECS_PER_BLOCK,
+	ExistentialDeposits, MinimumDebitValue, NativeTokenExistentialDeposit, Price, Rate, Ratio, Runtime, H160,
+	MILLISECS_PER_BLOCK,
 };
 
 use super::{
 	get_benchmarking_collateral_currency_ids,
-	utils::{dollar, feed_price, inject_liquidity, set_balance, LIQUID, NATIVE, STABLECOIN, STAKING},
+	utils::{
+		dollar, feed_price, inject_liquidity, set_balance, set_block_number_timestamp, LIQUID, NATIVE, STABLECOIN,
+		STAKING,
+	},
 };
 use frame_benchmarking::account;
 use frame_support::traits::{Get, OnInitialize};
@@ -92,11 +95,11 @@ runtime_benchmarks! {
 			// adjust position
 			CdpEngine::adjust_position(&owner, currency_id, collateral_amount.try_into().unwrap(), min_debit_amount)?;
 		}
-		Timestamp::set_timestamp(MILLISECS_PER_BLOCK);
 
+		set_block_number_timestamp(2, MILLISECS_PER_BLOCK);
 		CdpEngine::on_initialize(2);
 	}: {
-		Timestamp::set_timestamp(MILLISECS_PER_BLOCK * 2);
+		set_block_number_timestamp(3, MILLISECS_PER_BLOCK * 2);
 		CdpEngine::on_initialize(3);
 	}
 

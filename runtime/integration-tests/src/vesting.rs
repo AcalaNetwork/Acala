@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -30,14 +30,14 @@ fn test_vesting_use_relaychain_block_number() {
 		let signer: AccountId = AcalaFoundationAccounts::get()[0].clone();
 
 		assert_ok!(Balances::set_balance(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			signer.clone().into(),
 			1_000 * dollar(ACA),
 			0
 		));
 
 		assert_ok!(Vesting::vested_transfer(
-			Origin::signed(signer),
+			RuntimeOrigin::signed(signer),
 			alice().into(),
 			VestingSchedule {
 				start: 10,
@@ -52,27 +52,27 @@ fn test_vesting_use_relaychain_block_number() {
 
 		set_relaychain_block_number(10);
 
-		assert_ok!(Vesting::claim(Origin::signed(alice())));
+		assert_ok!(Vesting::claim(RuntimeOrigin::signed(alice())));
 		assert_eq!(Balances::usable_balance(&alice()), 0);
 
 		set_relaychain_block_number(12);
 
-		assert_ok!(Vesting::claim(Origin::signed(alice())));
+		assert_ok!(Vesting::claim(RuntimeOrigin::signed(alice())));
 		assert_eq!(Balances::usable_balance(&alice()), 3 * dollar(NATIVE_CURRENCY));
 
 		set_relaychain_block_number(15);
 
-		assert_ok!(Vesting::claim(Origin::signed(alice())));
+		assert_ok!(Vesting::claim(RuntimeOrigin::signed(alice())));
 		assert_eq!(Balances::usable_balance(&alice()), 6 * dollar(NATIVE_CURRENCY));
 
 		set_relaychain_block_number(20);
 
-		assert_ok!(Vesting::claim(Origin::signed(alice())));
+		assert_ok!(Vesting::claim(RuntimeOrigin::signed(alice())));
 		assert_eq!(Balances::usable_balance(&alice()), 15 * dollar(NATIVE_CURRENCY));
 
 		set_relaychain_block_number(22);
 
-		assert_ok!(Vesting::claim(Origin::signed(alice())));
+		assert_ok!(Vesting::claim(RuntimeOrigin::signed(alice())));
 		assert_eq!(Balances::usable_balance(&alice()), 15 * dollar(NATIVE_CURRENCY));
 	});
 }

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -57,8 +57,18 @@ pub trait EVM<AccountId> {
 
 	/// Get the real origin account and charge storage rent from the origin.
 	fn get_origin() -> Option<AccountId>;
-	/// Provide a method to set origin for `on_initialize`
+	/// Set the EVM origin
 	fn set_origin(origin: AccountId);
+	/// Kill the EVM origin
+	fn kill_origin();
+	/// Push new EVM origin in xcm
+	fn push_xcm_origin(origin: AccountId);
+	/// Pop EVM origin in xcm
+	fn pop_xcm_origin();
+	/// Kill the EVM origin in xcm
+	fn kill_xcm_origin();
+	/// Get the real origin account or xcm origin and charge storage rent from the origin.
+	fn get_real_or_xcm_origin() -> Option<AccountId>;
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug)]
@@ -96,8 +106,18 @@ pub trait EVMBridge<AccountId, Balance> {
 	fn transfer(context: InvokeContext, to: EvmAddress, value: Balance) -> DispatchResult;
 	/// Get the real origin account and charge storage rent from the origin.
 	fn get_origin() -> Option<AccountId>;
-	/// Provide a method to set origin for `on_initialize`
+	/// Set the EVM origin
 	fn set_origin(origin: AccountId);
+	/// Kill the EVM origin
+	fn kill_origin();
+	/// Push new EVM origin in xcm
+	fn push_xcm_origin(origin: AccountId);
+	/// Pop EVM origin in xcm
+	fn pop_xcm_origin();
+	/// Kill the EVM origin in xcm
+	fn kill_xcm_origin();
+	/// Get the real origin account or xcm origin and charge storage rent from the origin.
+	fn get_real_or_xcm_origin() -> Option<AccountId>;
 }
 
 #[cfg(feature = "std")]
@@ -124,6 +144,13 @@ impl<AccountId, Balance: Default> EVMBridge<AccountId, Balance> for () {
 		None
 	}
 	fn set_origin(_origin: AccountId) {}
+	fn kill_origin() {}
+	fn push_xcm_origin(_origin: AccountId) {}
+	fn pop_xcm_origin() {}
+	fn kill_xcm_origin() {}
+	fn get_real_or_xcm_origin() -> Option<AccountId> {
+		None
+	}
 }
 
 /// EVM bridge for collateral liquidation.

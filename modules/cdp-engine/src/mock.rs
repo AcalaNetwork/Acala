@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -47,28 +47,27 @@ pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const CAROL: AccountId = AccountId32::new([3u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
+pub const BTC: CurrencyId = CurrencyId::ForeignAsset(255);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LP_AUSD_DOT: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
-pub const LP_DOT_BTC: CurrencyId =
-	CurrencyId::DexShare(DexShare::Token(TokenSymbol::RENBTC), DexShare::Token(TokenSymbol::DOT));
+pub const LP_DOT_BTC: CurrencyId = CurrencyId::DexShare(DexShare::ForeignAsset(255), DexShare::Token(TokenSymbol::DOT));
 
 mod cdp_engine {
 	pub use super::super::*;
 }
 
 impl frame_system::Config for Runtime {
-	type Origin = Origin;
+	type RuntimeOrigin = RuntimeOrigin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -92,25 +91,23 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
+	type CurrencyHooks = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
 }
 
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<1>;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
@@ -136,7 +133,7 @@ parameter_types! {
 }
 
 impl loans::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type RiskManager = CDPEngineModule;
 	type CDPTreasury = CDPTreasuryModule;
@@ -228,7 +225,7 @@ parameter_types! {
 }
 
 impl cdp_treasury::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
@@ -255,7 +252,7 @@ parameter_types! {
 }
 
 impl dex::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<4>;
@@ -276,7 +273,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl evm_accounts::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = PalletBalances;
 	type ChainId = ();
 	type AddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
@@ -381,7 +378,7 @@ parameter_types! {
 }
 
 impl Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type PriceSource = MockPriceSource;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
@@ -430,13 +427,13 @@ construct_runtime!(
 );
 
 /// An extrinsic type used for tests.
-pub type Extrinsic = TestXt<Call, ()>;
+pub type Extrinsic = TestXt<RuntimeCall, ()>;
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
 where
-	Call: From<LocalCall>,
+	RuntimeCall: From<LocalCall>,
 {
-	type OverarchingCall = Call;
+	type OverarchingCall = RuntimeCall;
 	type Extrinsic = Extrinsic;
 }
 

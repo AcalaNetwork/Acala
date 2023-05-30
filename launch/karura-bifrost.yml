@@ -1,11 +1,22 @@
 relaychain:
-  image: parity/polkadot:v0.9.24
+  image: parity/polkadot:v0.9.31
   chain: rococo-local
   runtimeGenesisConfig:
     configuration:
       config:
         validation_upgrade_cooldown: 10
         validation_upgrade_delay: 10
+    hrmp:
+      preopenHrmpChannels:
+        - sender: 2000
+          recipient: 3000
+          maxCapacity: 8
+          maxMessageSize: 102400
+        - sender: 3000
+          recipient: 2000
+          maxCapacity: 8
+          maxMessageSize: 102400
+
   env:
     RUST_LOG: parachain::candidate-backing=trace,parachain::candidate-selection=trace,parachain::pvf=trace,parachain::collator-protocol=trace,parachain::provisioner=trace
   flags:
@@ -18,9 +29,9 @@ relaychain:
     - name: charlie
 
 parachains:
-- image: acala/karura-node:2.8.0
+- image: acala/karura-node:2.11.0
   chain:
-    base: karura-dev
+    base: karura-local
     collators:
       - alice
       - bob
@@ -46,7 +57,7 @@ parachains:
     - --bob
   - flags:
     - --charlie
-- image: bifrostnetwork/bifrost:bifrost-v0.9.44
+- image: bifrostnetwork/bifrost:bifrost-v0.9.66
   chain:
     base: bifrost-local
     sudo: alice

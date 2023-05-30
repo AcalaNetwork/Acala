@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -24,7 +24,6 @@
 #![allow(clippy::unused_unit)]
 
 use frame_support::{
-	assert_ok,
 	dispatch::DispatchResult,
 	ensure,
 	pallet_prelude::*,
@@ -49,11 +48,9 @@ use scale_info::prelude::format;
 use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedU128};
 use sp_std::{boxed::Box, vec::Vec};
 
-use xcm::{
-	v1::{Junction, Junctions::*, MultiLocation},
-	VersionedMultiLocation,
-};
+use xcm::{v3::prelude::*, VersionedMultiLocation};
 
+pub mod migrations;
 mod mock;
 mod tests;
 mod weights;
@@ -71,7 +68,7 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Currency type for withdraw and balance storage.
 		type Currency: Currency<Self::AccountId>;
@@ -84,7 +81,7 @@ pub mod module {
 		type EVMBridge: EVMBridge<Self::AccountId, BalanceOf<Self>>;
 
 		/// Required origin for registering asset.
-		type RegisterOrigin: EnsureOrigin<Self::Origin>;
+		type RegisterOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -195,7 +192,7 @@ pub mod module {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			self.assets.iter().for_each(|(asset, ed)| {
-				assert_ok!(Pallet::<T>::do_register_native_asset(
+				frame_support::assert_ok!(Pallet::<T>::do_register_native_asset(
 					*asset,
 					&AssetMetadata {
 						name: asset.name().unwrap().as_bytes().to_vec(),
@@ -210,6 +207,7 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::register_foreign_asset())]
 		#[transactional]
 		pub fn register_foreign_asset(
@@ -230,6 +228,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::update_foreign_asset())]
 		#[transactional]
 		pub fn update_foreign_asset(
@@ -251,6 +250,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::register_stable_asset())]
 		#[transactional]
 		pub fn register_stable_asset(
@@ -268,6 +268,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::update_stable_asset())]
 		#[transactional]
 		pub fn update_stable_asset(
@@ -286,6 +287,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::register_erc20_asset())]
 		#[transactional]
 		pub fn register_erc20_asset(
@@ -304,6 +306,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::update_erc20_asset())]
 		#[transactional]
 		pub fn update_erc20_asset(
@@ -322,6 +325,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::register_native_asset())]
 		#[transactional]
 		pub fn register_native_asset(
@@ -340,6 +344,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(7)]
 		#[pallet::weight(T::WeightInfo::update_native_asset())]
 		#[transactional]
 		pub fn update_native_asset(
@@ -388,7 +393,7 @@ impl<T: Config> Pallet<T> {
 
 			ForeignAssetLocations::<T>::try_mutate(foreign_asset_id, |maybe_location| -> DispatchResult {
 				ensure!(maybe_location.is_none(), Error::<T>::MultiLocationExisted);
-				*maybe_location = Some(location.clone());
+				*maybe_location = Some(*location);
 
 				AssetMetadatas::<T>::try_mutate(
 					AssetIds::ForeignAssetId(foreign_asset_id),
@@ -420,7 +425,7 @@ impl<T: Config> Pallet<T> {
 
 					// modify location
 					if location != old_multi_locations {
-						LocationToCurrencyIds::<T>::remove(old_multi_locations.clone());
+						LocationToCurrencyIds::<T>::remove(*old_multi_locations);
 						LocationToCurrencyIds::<T>::try_mutate(location, |maybe_currency_ids| -> DispatchResult {
 							ensure!(maybe_currency_ids.is_none(), Error::<T>::MultiLocationExisted);
 							*maybe_currency_ids = Some(CurrencyId::ForeignAsset(foreign_asset_id));
@@ -428,7 +433,7 @@ impl<T: Config> Pallet<T> {
 						})?;
 					}
 					*maybe_asset_metadatas = Some(metadata.clone());
-					*old_multi_locations = location.clone();
+					*old_multi_locations = *location;
 					Ok(())
 				},
 			)
@@ -557,8 +562,11 @@ fn key_to_currency(location: MultiLocation) -> Option<CurrencyId> {
 	match location {
 		MultiLocation {
 			parents: 0,
-			interior: X1(Junction::GeneralKey(key)),
-		} => CurrencyId::decode(&mut &*key.into_inner()).ok(),
+			interior: X1(Junction::GeneralKey { data, length }),
+		} => {
+			let key = &data[..data.len().min(length as usize)];
+			CurrencyId::decode(&mut &*key).ok()
+		}
 		_ => None,
 	}
 }

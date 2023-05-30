@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -48,7 +48,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -140,21 +140,22 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
 		#[pallet::weight(< T as Config >::WeightInfo::schedule_task())]
 		pub fn schedule_task(origin: OriginFor<T>, task: T::Task) -> DispatchResult {
 			ensure_root(origin)?;
-			Self::do_schedule_task(task)
+			Self::do_schedule_task(task).map(|_| ())
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
 	/// Add the task to the queue to be dispatched later.
-	fn do_schedule_task(task: T::Task) -> DispatchResult {
+	fn do_schedule_task(task: T::Task) -> Result<Nonce, DispatchError> {
 		let id = Self::get_next_task_id()?;
 		Tasks::<T>::insert(id, &task);
 		Self::deposit_event(Event::<T>::TaskAdded { task_id: id, task });
-		Ok(())
+		Ok(id)
 	}
 
 	/// Retrieves the next task ID from storage, and increment it by one.
@@ -169,7 +170,7 @@ impl<T: Config> Pallet<T> {
 	/// Keep dispatching tasks in Storage, until insufficient weight remains.
 	pub fn do_dispatch_tasks(total_weight: Weight) -> Weight {
 		let mut weight_remaining = total_weight.saturating_sub(T::WeightInfo::on_idle_base());
-		if weight_remaining <= T::MinimumWeightRemainInBlock::get() {
+		if weight_remaining.ref_time() <= T::MinimumWeightRemainInBlock::get().ref_time() {
 			// return total weight so no `on_idle` hook will execute after IdleScheduler
 			return total_weight;
 		}
@@ -185,7 +186,7 @@ impl<T: Config> Pallet<T> {
 			}
 
 			// If remaining weight falls below the minimmum, break from the loop.
-			if weight_remaining <= T::MinimumWeightRemainInBlock::get() {
+			if weight_remaining.ref_time() <= T::MinimumWeightRemainInBlock::get().ref_time() {
 				break;
 			}
 		}
@@ -209,7 +210,25 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> IdleScheduler<T::Task> for Pallet<T> {
-	fn schedule(task: T::Task) -> DispatchResult {
+	fn schedule(task: T::Task) -> Result<Nonce, DispatchError> {
 		Self::do_schedule_task(task)
+	}
+
+	/// If the task can be executed under given weight limit, dispatch it.
+	/// Otherwise the scheduler will keep the task and run it later.
+	/// NOTE: Only used for synchronous execution case, because `T::WeightInfo::clear_tasks()` is
+	/// not considered.
+	fn dispatch(id: Nonce, weight_limit: Weight) -> Weight {
+		if let Some(task) = Tasks::<T>::get(id) {
+			let result = task.dispatch(weight_limit);
+			let used_weight = result.used_weight;
+			if result.finished {
+				Self::remove_completed_tasks(vec![(id, result)]);
+			}
+
+			weight_limit.saturating_sub(used_weight)
+		} else {
+			weight_limit
+		}
 	}
 }

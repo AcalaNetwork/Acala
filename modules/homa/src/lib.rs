@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -99,13 +99,13 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Multi-currency support for asset management
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Origin represented Governance
-		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The currency id of the Staking asset
 		#[pallet::constant]
@@ -382,6 +382,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of staking currency used to mint liquid currency.
+		#[pallet::call_index(0)]
 		#[pallet::weight(< T as Config >::WeightInfo::mint())]
 		#[transactional]
 		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -403,6 +404,7 @@ pub mod module {
 		///   currency.
 		/// - `allow_fast_match`: allow the request to be fast matched, fast match will take a fixed
 		///   rate as fee.
+		#[pallet::call_index(1)]
 		#[pallet::weight(< T as Config >::WeightInfo::request_redeem())]
 		#[transactional]
 		pub fn request_redeem(
@@ -418,6 +420,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `redeemer_list`: The list of redeem requests to execute fast redeem.
+		#[pallet::call_index(2)]
 		#[pallet::weight(< T as Config >::WeightInfo::fast_match_redeems(redeemer_list.len() as u32))]
 		#[transactional]
 		pub fn fast_match_redeems(origin: OriginFor<T>, redeemer_list: Vec<T::AccountId>) -> DispatchResult {
@@ -434,6 +437,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `redeemer`: redeemer.
+		#[pallet::call_index(3)]
 		#[pallet::weight(< T as Config >::WeightInfo::claim_redemption())]
 		#[transactional]
 		pub fn claim_redemption(origin: OriginFor<T>, redeemer: T::AccountId) -> DispatchResult {
@@ -482,6 +486,7 @@ pub mod module {
 		/// - `commission_rate`: the rate to draw from estimated staking rewards as commission to
 		///   HomaTreasury
 		/// - `fast_match_fee_rate`: the fixed fee rate when redeem request is been fast matched.
+		#[pallet::call_index(4)]
 		#[pallet::weight(< T as Config >::WeightInfo::update_homa_params())]
 		#[transactional]
 		pub fn update_homa_params(
@@ -527,6 +532,7 @@ pub mod module {
 		/// Parameters:
 		/// - `fix_last_era_bumped_block`: fix the relaychain block number of last era bumped.
 		/// - `frequency`: the frequency of block number on parachain.
+		#[pallet::call_index(5)]
 		#[pallet::weight(< T as Config >::WeightInfo::update_bump_era_params())]
 		#[transactional]
 		pub fn update_bump_era_params(
@@ -572,6 +578,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `updates`: update list of subaccount.
+		#[pallet::call_index(6)]
 		#[pallet::weight(< T as Config >::WeightInfo::reset_ledgers(updates.len() as u32))]
 		#[transactional]
 		pub fn reset_ledgers(
@@ -615,6 +622,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `era_index`: the latest era index of relaychain.
+		#[pallet::call_index(7)]
 		#[pallet::weight(< T as Config >::WeightInfo::reset_current_era())]
 		#[transactional]
 		pub fn reset_current_era(origin: OriginFor<T>, era_index: EraIndex) -> DispatchResult {
@@ -632,6 +640,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(8)]
 		#[pallet::weight(< T as Config >::WeightInfo::on_initialize_with_bump_era())]
 		pub fn force_bump_current_era(origin: OriginFor<T>, bump_amount: EraIndex) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
@@ -642,6 +651,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `redeemer_list`: The list of redeem requests to execute fast redeem.
+		#[pallet::call_index(9)]
 		#[pallet::weight(< T as Config >::WeightInfo::fast_match_redeems(redeemer_list.len() as u32))]
 		#[transactional]
 		pub fn fast_match_redeems_completely(origin: OriginFor<T>, redeemer_list: Vec<T::AccountId>) -> DispatchResult {

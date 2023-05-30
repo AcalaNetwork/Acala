@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ use super::super::*;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, FindAuthor, Nothing},
-	weights::IdentityFee,
+	weights::{ConstantMultiplier, IdentityFee},
 	ConsensusEngineId, PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -54,8 +54,8 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
 	type Hash = H256;
@@ -63,7 +63,7 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU32<250>;
 	type DbWeight = ();
 	type Version = ();
@@ -80,7 +80,7 @@ impl frame_system::Config for Runtime {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<1>;
 	type AccountStore = System;
 	type MaxLocks = ();
@@ -103,19 +103,17 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
+	type CurrencyHooks = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -146,19 +144,23 @@ impl BlockNumberProvider for MockBlockNumberProvider {
 	}
 }
 
+parameter_types! {
+	pub MinimumWeightRemainInBlock: Weight = Weight::zero();
+}
+
 impl module_idle_scheduler::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
-	type MinimumWeightRemainInBlock = ConstU64<0>;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
 	type DisableBlockThreshold = ConstU32<6>;
 }
 
 pub struct GasToWeight;
-impl Convert<u64, u64> for GasToWeight {
-	fn convert(a: u64) -> u64 {
-		a
+impl Convert<u64, Weight> for GasToWeight {
+	fn convert(a: u64) -> Weight {
+		Weight::from_parts(a, 0)
 	}
 }
 
@@ -191,7 +193,7 @@ impl Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<20_000_000>;
 
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = GasToWeight;
@@ -239,8 +241,8 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 impl module_transaction_payment::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
@@ -250,7 +252,7 @@ impl module_transaction_payment::Config for Runtime {
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type AlternativeFeeSwapDeposit = ExistenceRequirement;
 	type WeightToFee = IdentityFee<Balance>;
-	type TransactionByteFee = ConstU128<10>;
+	type LengthToFee = ConstantMultiplier<Balance, ConstU128<10>>;
 	type FeeMultiplierUpdate = ();
 	type Swap = SpecificJointsSwap<Dex, AlternativeSwapPathJointList>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
@@ -283,7 +285,7 @@ parameter_types! {
 }
 
 impl module_dex::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
@@ -297,7 +299,7 @@ impl module_dex::Config for Runtime {
 }
 
 pub type SignedExtra = (frame_system::CheckWeight<Runtime>,);
-pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 
 construct_runtime!(
 	pub enum Runtime where

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
 
 use sp_runtime::traits::AccountIdConversion;
 
-use super::{CurrencyId, ACA, DOT, LDOT, RENBTC};
+use super::{CurrencyId, ACA, DOT, LDOT};
 use sp_std::prelude::*;
 
 pub mod utils;
@@ -62,5 +62,5 @@ pub fn get_vesting_account() -> super::AccountId {
 }
 
 pub fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
-	vec![ACA, DOT, LDOT, RENBTC, CurrencyId::StableAssetPoolToken(0)]
+	vec![ACA, DOT, LDOT, CurrencyId::StableAssetPoolToken(0)]
 }

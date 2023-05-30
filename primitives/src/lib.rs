@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -191,8 +191,6 @@ pub enum ReserveIdentifier {
 	// always the last, indicate number of variants
 	Count,
 }
-
-pub type CashYieldIndex = u128;
 
 /// Convert any type that implements Into<U256> into byte representation ([u8, 32])
 pub fn to_bytes<T: Into<U256>>(value: T) -> [u8; 32] {

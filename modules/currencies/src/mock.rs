@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
-use orml_traits::parameter_type_with_key;
+use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use primitives::{evm::convert_decimals_to_evm, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
 use sp_core::{H160, U256};
@@ -43,8 +43,8 @@ use support::{mocks::MockAddressMapping, AddressMapping};
 
 pub type AccountId = AccountId32;
 impl frame_system::Config for Runtime {
-	type Origin = Origin;
-	type Call = Call;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
 	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
@@ -52,7 +52,7 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -82,20 +82,33 @@ parameter_types! {
 	pub DustAccount: AccountId = PalletId(*b"orml/dst").into_account_truncating();
 }
 
+pub struct CurrencyHooks<T>(marker::PhantomData<T>);
+impl<T: tokens::Config> MutationHooks<T::AccountId, T::CurrencyId, T::Balance> for CurrencyHooks<T>
+where
+	T::AccountId: From<AccountId>,
+{
+	type OnDust = tokens::TransferDust<T, DustAccount>;
+	type OnSlash = ();
+	type PreDeposit = ();
+	type PostDeposit = ();
+	type PreTransfer = ();
+	type PostTransfer = ();
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
+}
+
 impl tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = i64;
 	type CurrencyId = CurrencyId;
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
+	type CurrencyHooks = CurrencyHooks<Runtime>;
 	type WeightInfo = ();
 	type MaxLocks = ConstU32<100>;
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -109,7 +122,7 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<2>;
 	type AccountStore = System;
 	type MaxLocks = ();
@@ -142,9 +155,9 @@ ord_parameter_types! {
 }
 
 pub struct GasToWeight;
-impl Convert<u64, u64> for GasToWeight {
-	fn convert(a: u64) -> u64 {
-		a
+impl Convert<u64, Weight> for GasToWeight {
+	fn convert(a: u64) -> Weight {
+		Weight::from_parts(a, 0)
 	}
 }
 
@@ -155,7 +168,7 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = ConstU32<1>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = GasToWeight;
@@ -184,7 +197,7 @@ parameter_types! {
 }
 
 impl Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -203,7 +216,7 @@ pub type AdaptedBasicCurrency = BasicCurrencyAdapter<Runtime, PalletBalances, i6
 pub type SignedExtra = module_evm::SetEvmOrigin<Runtime>;
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Call, u32, SignedExtra>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, RuntimeCall, u32, SignedExtra>;
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -250,15 +263,26 @@ pub fn erc20_address() -> EvmAddress {
 	EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap()
 }
 
+pub fn erc20_address_not_exist() -> EvmAddress {
+	EvmAddress::from_str("0x00ddfce53ee040d9eb21afbc0ae1bb4dbb0ba600").unwrap()
+}
+
 pub const ALICE_BALANCE: u128 = 100_000_000_000_000_000_000_000u128;
 
 pub fn deploy_contracts() {
 	let json: serde_json::Value =
 		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
-	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000, vec![]));
+	assert_ok!(EVM::create(
+		RuntimeOrigin::signed(alice()),
+		code,
+		0,
+		2_100_000,
+		10000,
+		vec![]
+	));
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+	System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::Created {
 		from: alice_evm_addr(),
 		contract: erc20_address(),
 		logs: vec![module_evm::Log {
@@ -274,12 +298,12 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1306611,
-		used_storage: 5462,
+		used_gas: 1235081,
+		used_storage: 5131,
 	}));
 
 	assert_ok!(EVM::publish_free(
-		Origin::signed(CouncilAccount::get()),
+		RuntimeOrigin::signed(CouncilAccount::get()),
 		erc20_address()
 	));
 }

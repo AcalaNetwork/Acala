@@ -10,8 +10,8 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 	let contract: Contract;
 
 	before(async () => {
-		[alice] = await context.provider.getWallets();
-		contract = await deployContract(alice as any, ECRecoverTests);
+		[alice] = context.wallets;
+		contract = await deployContract(alice, ECRecoverTests);
 		signer = new Wallet(
 			"0x99B3C12287537E38C90A9219D4CB074A89A16E9CDB20BF85728EBD97C343E342"
 		);
@@ -28,19 +28,23 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 
 		const hash = ethers.utils.keccak256("0x" + Buffer.from('\x19Ethereum Signed Message:\n' + message.length + message).toString('hex')).slice(2);
 
-		expect(await contract.ecrecoverTest(`0x${hash.toString()}${sigPart}`)).to.deep.include({
+		const res = await contract.ecrecoverTest(`0x${hash.toString()}${sigPart}`);
+		expect(res).to.deep.include({
 			//hash: '0x14a18665b97477ba224a133a82798f2f895dfa13902a73be6199473aa13a8465',
 			from: await alice.getAddress(),
 			confirmations: 0,
 			nonce: 1,
-			gasLimit: BigNumber.from("28535"),
-			gasPrice: BigNumber.from("1"),
+			// gasLimit: BigNumber.from("28535"),
+			// gasPrice: BigNumber.from("1"),
 			//data: "",
-			value: BigNumber.from(0),
+			// value: BigNumber.from(0),
 			chainId: 595,
 		});
+		expect(res.gasLimit.toNumber()).to.eq(28535)
+		expect(res.gasPrice.toNumber()).to.eq(1)
+		expect(res.value.toNumber()).to.eq(0)
 
-		expect(await await context.provider.call({
+		expect(await context.provider.call({
 			to: '0x0000000000000000000000000000000000000001',
 			from: await alice.getAddress(),
 			data: `0x${hash.toString()}${sigPart}`,

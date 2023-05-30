@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -64,141 +64,141 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn set_invulnerables(b: u32, ) -> Weight {
-		(19_583_000 as Weight)
+		Weight::from_parts(19_583_000, 0)
 			// Standard Error: 1_000
-			.saturating_add((140_000 as Weight).saturating_mul(b as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+			.saturating_add(Weight::from_parts(140_000, 0).saturating_mul(b as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn set_desired_candidates() -> Weight {
-		(16_810_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_parts(16_810_000, 0)
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn set_candidacy_bond() -> Weight {
-		(17_450_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_parts(17_450_000, 0)
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn register_as_candidate(c: u32, ) -> Weight {
-		(80_708_000 as Weight)
+		Weight::from_parts(80_708_000, 0)
 			// Standard Error: 0
-			.saturating_add((295_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+			.saturating_add(Weight::from_parts(295_000, 0).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(7 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	fn register_candidate(c: u32, ) -> Weight {
-		(44_267_000 as Weight)
+		Weight::from_parts(44_267_000, 0)
 			// Standard Error: 0
-			.saturating_add((293_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+			.saturating_add(Weight::from_parts(293_000, 0).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(5 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn leave_intent(c: u32, ) -> Weight {
-		(30_866_000 as Weight)
+		Weight::from_parts(30_866_000, 0)
 			// Standard Error: 0
-			.saturating_add((282_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+			.saturating_add(Weight::from_parts(282_000, 0).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	fn withdraw_bond() -> Weight {
-		(57_918_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_parts(57_918_000, 0)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	fn note_author() -> Weight {
-		(60_838_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_parts(60_838_000, 0)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	fn new_session() -> Weight {
-		(65_197_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_parts(65_197_000, 0)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn start_session(_r: u32, c: u32, ) -> Weight {
-		(13_649_000 as Weight)
+		Weight::from_parts(13_649_000, 0)
 			// Standard Error: 2_000
-			.saturating_add((2_986_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_parts(2_986_000, 0).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	fn end_session(_r: u32, c: u32, ) -> Weight {
-		(8_892_726_000 as Weight)
+		Weight::from_parts(8_892_726_000, 0)
 			// Standard Error: 161_000
-			.saturating_add((11_841_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(T::DbWeight::get().writes(199 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_parts(11_841_000, 0).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(T::DbWeight::get().writes(199 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn set_invulnerables(b: u32, ) -> Weight {
-		(19_583_000 as Weight)
+		Weight::from_parts(19_583_000, 0)
 			// Standard Error: 1_000
-			.saturating_add((140_000 as Weight).saturating_mul(b as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+			.saturating_add(Weight::from_parts(140_000, 0).saturating_mul(b as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn set_desired_candidates() -> Weight {
-		(16_810_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_parts(16_810_000, 0)
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn set_candidacy_bond() -> Weight {
-		(17_450_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_parts(17_450_000, 0)
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn register_as_candidate(c: u32, ) -> Weight {
-		(80_708_000 as Weight)
+		Weight::from_parts(80_708_000, 0)
 			// Standard Error: 0
-			.saturating_add((295_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+			.saturating_add(Weight::from_parts(295_000, 0).saturating_mul(c as u64))
+			.saturating_add(RocksDbWeight::get().reads(7 as u64))
+			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 	fn register_candidate(c: u32, ) -> Weight {
-		(44_267_000 as Weight)
+		Weight::from_parts(44_267_000, 0)
 			// Standard Error: 0
-			.saturating_add((293_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+			.saturating_add(Weight::from_parts(293_000, 0).saturating_mul(c as u64))
+			.saturating_add(RocksDbWeight::get().reads(5 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn leave_intent(c: u32, ) -> Weight {
-		(30_866_000 as Weight)
+		Weight::from_parts(30_866_000, 0)
 			// Standard Error: 0
-			.saturating_add((282_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+			.saturating_add(Weight::from_parts(282_000, 0).saturating_mul(c as u64))
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn withdraw_bond() -> Weight {
-		(57_918_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_parts(57_918_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(3 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn note_author() -> Weight {
-		(60_838_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		Weight::from_parts(60_838_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 	fn new_session() -> Weight {
-		(65_197_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_parts(65_197_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(3 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn start_session(_r: u32, c: u32, ) -> Weight {
-		(13_649_000 as Weight)
+		Weight::from_parts(13_649_000, 0)
 			// Standard Error: 2_000
-			.saturating_add((2_986_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_parts(2_986_000, 0).saturating_mul(c as u64))
+			.saturating_add(RocksDbWeight::get().reads(3 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	fn end_session(_r: u32, c: u32, ) -> Weight {
-		(8_892_726_000 as Weight)
+		Weight::from_parts(8_892_726_000, 0)
 			// Standard Error: 161_000
-			.saturating_add((11_841_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(199 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_parts(11_841_000, 0).saturating_mul(c as u64))
+			.saturating_add(RocksDbWeight::get().reads(3 as u64))
+			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(RocksDbWeight::get().writes(199 as u64))
+			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 }

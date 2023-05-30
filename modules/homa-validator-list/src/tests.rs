@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -86,7 +86,10 @@ fn freeze_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_noop!(
-			HomaValidatorListModule::freeze(Origin::signed(ALICE), vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_3]),
+			HomaValidatorListModule::freeze(
+				RuntimeOrigin::signed(ALICE),
+				vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_3]
+			),
 			BadOrigin
 		);
 
@@ -106,7 +109,7 @@ fn freeze_work() {
 				.is_frozen,
 		);
 		assert_ok!(HomaValidatorListModule::freeze(
-			Origin::signed(10),
+			RuntimeOrigin::signed(10),
 			vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_3]
 		));
 		assert!(
@@ -125,15 +128,15 @@ fn freeze_work() {
 				.is_frozen
 		);
 
-		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::FreezeValidator {
-			validator: VALIDATOR_1,
-		}));
-		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::FreezeValidator {
-			validator: VALIDATOR_2,
-		}));
-		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::FreezeValidator {
-			validator: VALIDATOR_3,
-		}));
+		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::FreezeValidator { validator: VALIDATOR_1 },
+		));
+		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::FreezeValidator { validator: VALIDATOR_2 },
+		));
+		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::FreezeValidator { validator: VALIDATOR_3 },
+		));
 	});
 }
 
@@ -142,12 +145,15 @@ fn thaw_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_noop!(
-			HomaValidatorListModule::thaw(Origin::signed(ALICE), vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_3]),
+			HomaValidatorListModule::thaw(
+				RuntimeOrigin::signed(ALICE),
+				vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_3]
+			),
 			BadOrigin
 		);
 
 		assert_ok!(HomaValidatorListModule::freeze(
-			Origin::signed(10),
+			RuntimeOrigin::signed(10),
 			vec![VALIDATOR_1, VALIDATOR_2]
 		));
 		assert!(
@@ -166,7 +172,7 @@ fn thaw_work() {
 				.is_frozen
 		);
 		assert_ok!(HomaValidatorListModule::thaw(
-			Origin::signed(10),
+			RuntimeOrigin::signed(10),
 			vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_3]
 		));
 		assert!(
@@ -184,12 +190,12 @@ fn thaw_work() {
 				.unwrap_or_default()
 				.is_frozen
 		);
-		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::ThawValidator {
-			validator: VALIDATOR_1,
-		}));
-		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::ThawValidator {
-			validator: VALIDATOR_2,
-		}));
+		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::ThawValidator { validator: VALIDATOR_1 },
+		));
+		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::ThawValidator { validator: VALIDATOR_2 },
+		));
 	});
 }
 
@@ -199,7 +205,7 @@ fn bond_work() {
 		System::set_block_number(1);
 
 		assert_noop!(
-			HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 99),
+			HomaValidatorListModule::bond(RuntimeOrigin::signed(ALICE), VALIDATOR_1, 99),
 			Error::<Runtime>::BelowMinBondAmount
 		);
 		assert_eq!(
@@ -223,12 +229,18 @@ fn bond_work() {
 		);
 		assert_eq!(SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)), 0);
 
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 100));
-		System::assert_last_event(mock::Event::HomaValidatorListModule(crate::Event::BondGuarantee {
-			who: ALICE,
-			validator: VALIDATOR_1,
-			bond: 100,
-		}));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(ALICE),
+			VALIDATOR_1,
+			100
+		));
+		System::assert_last_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::BondGuarantee {
+				who: ALICE,
+				validator: VALIDATOR_1,
+				bond: 100,
+			},
+		));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
@@ -274,12 +286,18 @@ fn bond_work() {
 		);
 		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_1)).unwrap_or(&0)), 0);
 
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(BOB), VALIDATOR_1, 300));
-		System::assert_last_event(mock::Event::HomaValidatorListModule(crate::Event::BondGuarantee {
-			who: BOB,
-			validator: VALIDATOR_1,
-			bond: 300,
-		}));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(BOB),
+			VALIDATOR_1,
+			300
+		));
+		System::assert_last_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::BondGuarantee {
+				who: BOB,
+				validator: VALIDATOR_1,
+				bond: 300,
+			},
+		));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, BOB).unwrap_or_default(),
 			Guarantee {
@@ -322,12 +340,18 @@ fn bond_work() {
 		);
 		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_2)).unwrap_or(&0)), 0);
 
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(BOB), VALIDATOR_2, 200));
-		System::assert_last_event(mock::Event::HomaValidatorListModule(crate::Event::BondGuarantee {
-			who: BOB,
-			validator: VALIDATOR_2,
-			bond: 200,
-		}));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(BOB),
+			VALIDATOR_2,
+			200
+		));
+		System::assert_last_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::BondGuarantee {
+				who: BOB,
+				validator: VALIDATOR_2,
+				bond: 200,
+			},
+		));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_2, BOB).unwrap_or_default(),
 			Guarantee {
@@ -357,7 +381,11 @@ fn unbond_work() {
 		System::set_block_number(1);
 		MockBlockNumberProvider::set(1);
 
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 200));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(ALICE),
+			VALIDATOR_1,
+			200
+		));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
@@ -383,16 +411,22 @@ fn unbond_work() {
 		);
 
 		assert_noop!(
-			HomaValidatorListModule::unbond(Origin::signed(ALICE), VALIDATOR_1, 199),
+			HomaValidatorListModule::unbond(RuntimeOrigin::signed(ALICE), VALIDATOR_1, 199),
 			Error::<Runtime>::BelowMinBondAmount
 		);
 
-		assert_ok!(HomaValidatorListModule::unbond(Origin::signed(ALICE), VALIDATOR_1, 100));
-		System::assert_last_event(mock::Event::HomaValidatorListModule(crate::Event::UnbondGuarantee {
-			who: ALICE,
-			validator: VALIDATOR_1,
-			bond: 100,
-		}));
+		assert_ok!(HomaValidatorListModule::unbond(
+			RuntimeOrigin::signed(ALICE),
+			VALIDATOR_1,
+			100
+		));
+		System::assert_last_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::UnbondGuarantee {
+				who: ALICE,
+				validator: VALIDATOR_1,
+				bond: 100,
+			},
+		));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
@@ -418,7 +452,7 @@ fn unbond_work() {
 		);
 
 		assert_noop!(
-			HomaValidatorListModule::unbond(Origin::signed(ALICE), VALIDATOR_1, 100),
+			HomaValidatorListModule::unbond(RuntimeOrigin::signed(ALICE), VALIDATOR_1, 100),
 			Error::<Runtime>::UnbondingExists
 		);
 	});
@@ -430,8 +464,16 @@ fn rebond_work() {
 		System::set_block_number(1);
 		MockBlockNumberProvider::set(1);
 
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 200));
-		assert_ok!(HomaValidatorListModule::unbond(Origin::signed(ALICE), VALIDATOR_1, 100));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(ALICE),
+			VALIDATOR_1,
+			200
+		));
+		assert_ok!(HomaValidatorListModule::unbond(
+			RuntimeOrigin::signed(ALICE),
+			VALIDATOR_1,
+			100
+		));
 
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
@@ -457,7 +499,11 @@ fn rebond_work() {
 			200
 		);
 
-		assert_ok!(HomaValidatorListModule::rebond(Origin::signed(ALICE), VALIDATOR_1, 50));
+		assert_ok!(HomaValidatorListModule::rebond(
+			RuntimeOrigin::signed(ALICE),
+			VALIDATOR_1,
+			50
+		));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
@@ -490,10 +536,26 @@ fn withdraw_unbonded_work() {
 		System::set_block_number(1);
 		MockBlockNumberProvider::set(1);
 
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 200));
-		assert_ok!(HomaValidatorListModule::unbond(Origin::signed(ALICE), VALIDATOR_1, 100));
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(BOB), VALIDATOR_1, 200));
-		assert_ok!(HomaValidatorListModule::unbond(Origin::signed(BOB), VALIDATOR_1, 100));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(ALICE),
+			VALIDATOR_1,
+			200
+		));
+		assert_ok!(HomaValidatorListModule::unbond(
+			RuntimeOrigin::signed(ALICE),
+			VALIDATOR_1,
+			100
+		));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(BOB),
+			VALIDATOR_1,
+			200
+		));
+		assert_ok!(HomaValidatorListModule::unbond(
+			RuntimeOrigin::signed(BOB),
+			VALIDATOR_1,
+			100
+		));
 
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
@@ -521,7 +583,7 @@ fn withdraw_unbonded_work() {
 
 		MockBlockNumberProvider::set(100);
 		assert_ok!(HomaValidatorListModule::withdraw_unbonded(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			VALIDATOR_1
 		));
 		assert_eq!(
@@ -550,14 +612,16 @@ fn withdraw_unbonded_work() {
 		System::reset_events();
 		MockBlockNumberProvider::set(101);
 		assert_ok!(HomaValidatorListModule::withdraw_unbonded(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			VALIDATOR_1
 		));
-		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::WithdrawnGuarantee {
-			who: ALICE,
-			validator: VALIDATOR_1,
-			bond: 100,
-		}));
+		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::WithdrawnGuarantee {
+				who: ALICE,
+				validator: VALIDATOR_1,
+				bond: 100,
+			},
+		));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
@@ -582,9 +646,12 @@ fn withdraw_unbonded_work() {
 			100
 		);
 
-		assert_ok!(HomaValidatorListModule::freeze(Origin::signed(10), vec![VALIDATOR_1]));
+		assert_ok!(HomaValidatorListModule::freeze(
+			RuntimeOrigin::signed(10),
+			vec![VALIDATOR_1]
+		));
 		assert_noop!(
-			HomaValidatorListModule::withdraw_unbonded(Origin::signed(BOB), VALIDATOR_1),
+			HomaValidatorListModule::withdraw_unbonded(RuntimeOrigin::signed(BOB), VALIDATOR_1),
 			Error::<Runtime>::FrozenValidator
 		);
 	});
@@ -595,9 +662,21 @@ fn slash_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 100));
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(BOB), VALIDATOR_1, 200));
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(BOB), VALIDATOR_2, 300));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(ALICE),
+			VALIDATOR_1,
+			100
+		));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(BOB),
+			VALIDATOR_1,
+			200
+		));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(BOB),
+			VALIDATOR_2,
+			300
+		));
 
 		assert_eq!(
 			HomaValidatorListModule::validator_backings(VALIDATOR_1)
@@ -658,7 +737,7 @@ fn slash_work() {
 
 		assert_noop!(
 			HomaValidatorListModule::slash(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				vec![
 					SlashInfo {
 						validator: VALIDATOR_1,
@@ -674,7 +753,7 @@ fn slash_work() {
 		);
 
 		assert_ok!(HomaValidatorListModule::slash(
-			Origin::signed(10),
+			RuntimeOrigin::signed(10),
 			vec![
 				SlashInfo {
 					validator: VALIDATOR_1,
@@ -686,21 +765,27 @@ fn slash_work() {
 				},
 			]
 		));
-		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::SlashGuarantee {
-			who: ALICE,
-			validator: VALIDATOR_1,
-			bond: 59,
-		}));
-		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::SlashGuarantee {
-			who: BOB,
-			validator: VALIDATOR_1,
-			bond: 119,
-		}));
-		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::SlashGuarantee {
-			who: BOB,
-			validator: VALIDATOR_2,
-			bond: 100,
-		}));
+		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::SlashGuarantee {
+				who: ALICE,
+				validator: VALIDATOR_1,
+				bond: 59,
+			},
+		));
+		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::SlashGuarantee {
+				who: BOB,
+				validator: VALIDATOR_1,
+				bond: 119,
+			},
+		));
+		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::SlashGuarantee {
+				who: BOB,
+				validator: VALIDATOR_2,
+				bond: 100,
+			},
+		));
 		assert_eq!(
 			HomaValidatorListModule::validator_backings(VALIDATOR_1)
 				.unwrap_or_default()
@@ -765,7 +850,11 @@ fn contains_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		MockBlockNumberProvider::set(1);
 
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 100));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(ALICE),
+			VALIDATOR_1,
+			100
+		));
 		assert_eq!(
 			HomaValidatorListModule::validator_backings(VALIDATOR_1)
 				.unwrap_or_default()
@@ -774,7 +863,11 @@ fn contains_work() {
 		);
 		assert!(!HomaValidatorListModule::contains(&VALIDATOR_1));
 
-		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 100));
+		assert_ok!(HomaValidatorListModule::bond(
+			RuntimeOrigin::signed(ALICE),
+			VALIDATOR_1,
+			100
+		));
 		assert_eq!(
 			HomaValidatorListModule::validator_backings(VALIDATOR_1)
 				.unwrap_or_default()

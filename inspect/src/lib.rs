@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -139,27 +139,27 @@ impl<TBlock: Block, TPrinter: PrettyPrinter<TBlock>> Inspector<TBlock, TPrinter>
 			BlockAddress::Bytes(bytes) => TBlock::decode(&mut &*bytes)?,
 			BlockAddress::Number(number) => {
 				let id = BlockId::number(number);
+				let hash = self.chain.expect_block_hash_from_id(&id)?;
 				let not_found = format!("Could not find block {:?}", id);
 				let body = self
 					.chain
-					.block_body(&id)?
+					.block_body(hash)?
 					.ok_or_else(|| Error::NotFound(not_found.clone()))?;
 				let header = self
 					.chain
-					.header(id)?
+					.header(hash)?
 					.ok_or_else(|| Error::NotFound(not_found.clone()))?;
 				TBlock::new(header, body)
 			}
 			BlockAddress::Hash(hash) => {
-				let id = BlockId::hash(hash);
-				let not_found = format!("Could not find block {:?}", id);
+				let not_found = format!("Could not find block {:?}", BlockId::<TBlock>::Hash(hash));
 				let body = self
 					.chain
-					.block_body(&id)?
+					.block_body(hash)?
 					.ok_or_else(|| Error::NotFound(not_found.clone()))?;
 				let header = self
 					.chain
-					.header(id)?
+					.header(hash)?
 					.ok_or_else(|| Error::NotFound(not_found.clone()))?;
 				TBlock::new(header, body)
 			}

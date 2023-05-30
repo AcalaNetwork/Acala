@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -50,7 +50,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// A type for retrieving the validators supposed to be online in a session.
 		type ValidatorSet: ValidatorSet<Self::AccountId, ValidatorId = Self::AccountId>;
 		/// Weight information for the extrinsics in this module.
@@ -151,6 +151,7 @@ pub mod module {
 		///
 		/// - `start_session`: the session index that the new change become effective.
 		/// - `duration`:  new session duration.
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::schedule_session_duration())]
 		pub fn schedule_session_duration(
 			origin: OriginFor<T>,

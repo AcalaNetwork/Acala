@@ -27,23 +27,28 @@ jobs:
   build:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: nightly-2022-08-05
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build
@@ -61,45 +66,55 @@ jobs:
   benchmarking:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: nightly-2022-08-05
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: nightly-2022-08-05
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run runtime tests
         run: make test-runtimes
       - name: Run eth tests
@@ -113,27 +128,32 @@ jobs:
   e2e-tests:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: nightly-2022-08-05
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run e2e tests
         run: make test-e2e
       - name: Use Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: 16.x
       - name: Run ts tests

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -161,8 +161,8 @@ impl SubstrateCli for RelayChainCli {
 		format!(
 			"{} parachain collator\n\nThe command-line arguments provided first will be \
 		passed to the parachain node, while the arguments provided after -- will be passed \
-		to the relaychain node.\n\n\
-		rococo-collator [parachain-args] -- [relaychain-args]",
+		to the relay chain node.\n\n\
+		rococo-collator [parachain-args] -- [relay-chain-args]",
 			chain_name()
 		)
 	}
@@ -386,7 +386,7 @@ pub fn run() -> sc_cli::Result<()> {
 					&config,
 					[RelayChainCli::executable_name()]
 						.iter()
-						.chain(cli.relaychain_args.iter()),
+						.chain(cli.relay_chain_args.iter()),
 				);
 
 				let polkadot_config =
@@ -432,6 +432,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 		#[cfg(feature = "try-runtime")]
 		Some(Subcommand::TryRuntime(cmd)) => {
+			use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
 			let runner = cli.create_runner(cmd)?;
 			let chain_spec = &runner.config().chain_spec;
 			set_default_ss58_version(chain_spec);
@@ -443,7 +444,14 @@ pub fn run() -> sc_cli::Result<()> {
 					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
 					let task_manager = sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
 						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
-					Ok((cmd.run::<Block, Executor>(config), task_manager))
+					let info_provider = try_runtime_cli::block_building_info::substrate_info(12000);
+					Ok((
+						cmd.run::<Block, ExtendedHostFunctions<
+							sp_io::SubstrateHostFunctions,
+							<Executor as NativeExecutionDispatch>::ExtendHostFunctions,
+						>, _>(Some(info_provider)),
+						task_manager,
+					))
 				});
 			})
 		}
@@ -476,7 +484,7 @@ pub fn run() -> sc_cli::Result<()> {
 					&config,
 					[RelayChainCli::executable_name()]
 						.iter()
-						.chain(cli.relaychain_args.iter()),
+						.chain(cli.relay_chain_args.iter()),
 				);
 
 				let id = ParaId::from(para_id);
@@ -542,7 +550,7 @@ impl CliConfiguration<Self> for RelayChainCli {
 	fn base_path(&self) -> Result<Option<BasePath>> {
 		Ok(self
 			.shared_params()
-			.base_path()
+			.base_path()?
 			.or_else(|| self.base_path.clone().map(Into::into)))
 	}
 
@@ -597,8 +605,8 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.transaction_pool(is_dev)
 	}
 
-	fn state_cache_child_ratio(&self) -> Result<Option<usize>> {
-		self.base.base.state_cache_child_ratio()
+	fn trie_cache_maximum_size(&self) -> Result<Option<usize>> {
+		self.base.base.trie_cache_maximum_size()
 	}
 
 	fn rpc_methods(&self) -> Result<sc_service::config::RpcMethods> {

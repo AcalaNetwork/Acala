@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -43,7 +43,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Multi-currency support for asset management
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -56,7 +56,7 @@ pub mod module {
 		type HonzonBridgeAccount: Get<Self::AccountId>;
 
 		/// The origin which set the Currency ID of the Bridge's Stable currency.
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -104,6 +104,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `address`: The address of the Bridge's stable coin currency id.
+		#[pallet::call_index(0)]
 		#[pallet::weight(< T as Config >::WeightInfo::set_bridged_stable_coin_address())]
 		#[transactional]
 		pub fn set_bridged_stable_coin_address(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
@@ -123,6 +124,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of stable coin to exchange.
+		#[pallet::call_index(1)]
 		#[pallet::weight(< T as Config >::WeightInfo::to_bridged())]
 		#[transactional]
 		pub fn to_bridged(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -146,6 +148,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of stable coin to exchange.
+		#[pallet::call_index(2)]
 		#[pallet::weight(< T as Config >::WeightInfo::from_bridged())]
 		#[transactional]
 		pub fn from_bridged(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {

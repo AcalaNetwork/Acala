@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 use super::utils::{dollar, inject_liquidity, set_balance, LIQUID, NATIVE, STABLECOIN, STAKING};
 use crate::{AccountId, CurrencyId, Runtime};
 use module_aggregated_dex::SwapPath;
-use runtime_common::{BNC, RENBTC, VSKSM};
+use runtime_common::{BNC, VSKSM};
 
 use sp_std::prelude::*;
 
@@ -28,7 +28,7 @@ use frame_system::RawOrigin;
 
 use orml_benchmarking::runtime_benchmarks;
 
-const CURRENCY_LIST: [CurrencyId; 7] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC, RENBTC, VSKSM];
+const CURRENCY_LIST: [CurrencyId; 6] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC, VSKSM];
 
 runtime_benchmarks! {
 	{ Runtime, module_aggregated_dex }

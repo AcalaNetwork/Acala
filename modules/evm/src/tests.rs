@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 #![cfg(test)]
 
 use super::*;
-use mock::{evm_mod, Call, Event, IdleScheduler, *};
+use mock::{evm_mod, RuntimeCall, RuntimeEvent, *};
 
 use crate::runner::{
 	stack::SubstrateStackState,
@@ -41,7 +41,7 @@ fn fail_call_return_ok() {
 		data[0..4].copy_from_slice(b"evm:");
 		let signer: AccountId32 = AccountId32::from(data);
 
-		let origin = Origin::signed(signer);
+		let origin = RuntimeOrigin::signed(signer);
 		assert_ok!(EVM::call(
 			origin.clone(),
 			contract_a(),
@@ -760,7 +760,7 @@ fn create_nft_contract_works() {
 	new_test_ext().execute_with(|| {
 		// publish contract
 		assert_ok!(EVM::create_nft_contract(
-			Origin::signed(NetworkContractAccount::get()),
+			RuntimeOrigin::signed(NetworkContractAccount::get()),
 			contract,
 			0,
 			1000000,
@@ -772,7 +772,7 @@ fn create_nft_contract_works() {
 			Pallet::<Runtime>::account_basic(&NetworkContractSource::get()).nonce,
 			2.into()
 		);
-		System::assert_last_event(Event::EVM(crate::Event::Created {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::Created {
 			from: NetworkContractSource::get(),
 			contract: MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(MIRRORED_NFT_ADDRESS_START),
 			logs: vec![],
@@ -799,7 +799,7 @@ fn create_nft_contract_fails_if_non_network_contract_origin() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
 			EVM::create_nft_contract(
-				Origin::signed(AccountId32::from([1u8; 32])),
+				RuntimeOrigin::signed(AccountId32::from([1u8; 32])),
 				contract,
 				0,
 				1000000,
@@ -831,7 +831,7 @@ fn create_predeploy_contract_works() {
 
 		// deploy contract
 		assert_ok!(EVM::create_predeploy_contract(
-			Origin::signed(NetworkContractAccount::get()),
+			RuntimeOrigin::signed(NetworkContractAccount::get()),
 			addr,
 			contract.clone(),
 			0,
@@ -842,7 +842,7 @@ fn create_predeploy_contract_works() {
 
 		assert_eq!(Pallet::<Runtime>::is_account_empty(&addr), false);
 
-		System::assert_has_event(Event::EVM(crate::Event::Created {
+		System::assert_has_event(RuntimeEvent::EVM(crate::Event::Created {
 			from: NetworkContractSource::get(),
 			contract: addr,
 			logs: vec![],
@@ -850,11 +850,11 @@ fn create_predeploy_contract_works() {
 			used_storage: 284,
 		}));
 
-		System::assert_last_event(Event::EVM(crate::Event::ContractPublished { contract: addr }));
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::ContractPublished { contract: addr }));
 
 		assert_noop!(
 			EVM::create_predeploy_contract(
-				Origin::signed(NetworkContractAccount::get()),
+				RuntimeOrigin::signed(NetworkContractAccount::get()),
 				addr,
 				vec![],
 				0,
@@ -869,7 +869,7 @@ fn create_predeploy_contract_works() {
 		let token_addr = H160::from_str("2222222222222222222222222222222222222222").unwrap();
 		assert_noop!(
 			EVM::create_predeploy_contract(
-				Origin::signed(NetworkContractAccount::get()),
+				RuntimeOrigin::signed(NetworkContractAccount::get()),
 				token_addr,
 				vec![],
 				0,
@@ -927,23 +927,23 @@ fn should_transfer_maintainer() {
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 		// transfer_maintainer
 		assert_ok!(EVM::transfer_maintainer(
-			Origin::signed(alice_account_id.clone()),
+			RuntimeOrigin::signed(alice_account_id.clone()),
 			contract_address,
 			bob()
 		));
-		System::assert_last_event(Event::EVM(crate::Event::TransferredMaintainer {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::TransferredMaintainer {
 			contract: contract_address,
 			new_maintainer: bob(),
 		}));
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 
 		assert_noop!(
-			EVM::transfer_maintainer(Origin::signed(bob_account_id), H160::default(), alice()),
+			EVM::transfer_maintainer(RuntimeOrigin::signed(bob_account_id), H160::default(), alice()),
 			Error::<Runtime>::ContractNotFound
 		);
 
 		assert_noop!(
-			EVM::transfer_maintainer(Origin::signed(alice_account_id), contract_address, bob()),
+			EVM::transfer_maintainer(RuntimeOrigin::signed(alice_account_id), contract_address, bob()),
 			Error::<Runtime>::NoPermission
 		);
 		assert_eq!(balance(alice()), alice_balance);
@@ -968,7 +968,7 @@ fn should_publish() {
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
 		// contract not created yet
-		assert_noop!(EVM::publish_contract(Origin::signed(alice_account_id.clone()), H160::default()), Error::<Runtime>::ContractNotFound);
+		assert_noop!(EVM::publish_contract(RuntimeOrigin::signed(alice_account_id.clone()), H160::default()), Error::<Runtime>::ContractNotFound);
 
 		// if the contract not exists, evm will return ExitSucceed::Stopped.
 		let result = <Runtime as Config>::Runner::call(
@@ -1014,7 +1014,7 @@ fn should_publish() {
 
 		// call method `multiply` will fail, not published yet
 		assert_eq!(EVM::call(
-			Origin::signed(bob_account_id.clone()),
+			RuntimeOrigin::signed(bob_account_id.clone()),
 			contract_address,
 			multiply.clone(),
 			0,
@@ -1022,7 +1022,7 @@ fn should_publish() {
 			1000000,
 			vec![],
 		), Ok(PostDispatchInfo { actual_weight: None, pays_fee: Pays::Yes }));
-		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::ExecutedFailed {
 			from: bob(),
 			contract: contract_address,
 			exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(Error::<Runtime>::NoPermission).into())),
@@ -1033,7 +1033,7 @@ fn should_publish() {
 		}));
 
 		// developer can call the unpublished contract
-		assert_ok!(EVM::enable_contract_development(Origin::signed(bob_account_id.clone())));
+		assert_ok!(EVM::enable_contract_development(RuntimeOrigin::signed(bob_account_id.clone())));
 		assert_ok!(<Runtime as Config>::Runner::call(
 			bob(),
 			bob(),
@@ -1047,9 +1047,9 @@ fn should_publish() {
 		));
 
 		// not maintainer
-		assert_noop!(EVM::publish_contract(Origin::signed(bob_account_id), contract_address), Error::<Runtime>::NoPermission);
+		assert_noop!(EVM::publish_contract(RuntimeOrigin::signed(bob_account_id), contract_address), Error::<Runtime>::NoPermission);
 
-		assert_ok!(EVM::publish_contract(Origin::signed(alice_account_id.clone()), contract_address));
+		assert_ok!(EVM::publish_contract(RuntimeOrigin::signed(alice_account_id.clone()), contract_address));
 		let code_size = Accounts::<Runtime>::get(contract_address).map_or(0, |account_info| -> u32 {
 			account_info.contract_info.map_or(0, |contract_info| CodeInfos::<Runtime>::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
 		});
@@ -1070,7 +1070,7 @@ fn should_publish() {
 		));
 
 		// contract already published
-		assert_noop!(EVM::publish_contract(Origin::signed(alice_account_id), contract_address), Error::<Runtime>::ContractAlreadyPublished);
+		assert_noop!(EVM::publish_contract(RuntimeOrigin::signed(alice_account_id), contract_address), Error::<Runtime>::ContractAlreadyPublished);
 	});
 }
 
@@ -1089,7 +1089,7 @@ fn should_publish_free() {
 
 	new_test_ext().execute_with(|| {
 		// contract not created yet
-		assert_noop!(EVM::publish_free(Origin::signed(CouncilAccount::get()), H160::default()), Error::<Runtime>::ContractNotFound);
+		assert_noop!(EVM::publish_free(RuntimeOrigin::signed(CouncilAccount::get()), H160::default()), Error::<Runtime>::ContractNotFound);
 
 		// create contract
 		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![], <Runtime as Config>::config()).unwrap();
@@ -1103,7 +1103,7 @@ fn should_publish_free() {
 		// call method `multiply` will fail, not published yet
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 		assert_eq!(EVM::call(
-			Origin::signed(bob_account_id),
+			RuntimeOrigin::signed(bob_account_id),
 			contract_address,
 			multiply.clone(),
 			0,
@@ -1111,7 +1111,7 @@ fn should_publish_free() {
 			1000000,
 			vec![],
 		), Ok(PostDispatchInfo { actual_weight: None, pays_fee: Pays::Yes }));
-		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::ExecutedFailed {
 			from: bob(),
 			contract: contract_address,
 			exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(Error::<Runtime>::NoPermission).into())),
@@ -1121,7 +1121,7 @@ fn should_publish_free() {
 			used_storage: 0,
 		}));
 
-		assert_ok!(EVM::publish_free(Origin::signed(CouncilAccount::get()), contract_address));
+		assert_ok!(EVM::publish_free(RuntimeOrigin::signed(CouncilAccount::get()), contract_address));
 
 		// call method `multiply`
 		assert_ok!(<Runtime as Config>::Runner::call(
@@ -1137,7 +1137,7 @@ fn should_publish_free() {
 		));
 
 		// contract already published
-		assert_noop!(EVM::publish_free(Origin::signed(CouncilAccount::get()), contract_address), Error::<Runtime>::ContractAlreadyPublished);
+		assert_noop!(EVM::publish_free(RuntimeOrigin::signed(CouncilAccount::get()), contract_address), Error::<Runtime>::ContractAlreadyPublished);
 	});
 }
 
@@ -1146,7 +1146,9 @@ fn should_enable_contract_development() {
 	new_test_ext().execute_with(|| {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		assert_eq!(reserved_balance(alice()), 0);
-		assert_ok!(EVM::enable_contract_development(Origin::signed(alice_account_id)));
+		assert_ok!(EVM::enable_contract_development(RuntimeOrigin::signed(
+			alice_account_id
+		)));
 		assert_eq!(reserved_balance(alice()), DEVELOPER_DEPOSIT);
 		assert_eq!(balance(alice()), INITIAL_BALANCE - DEVELOPER_DEPOSIT);
 	});
@@ -1159,14 +1161,14 @@ fn should_disable_contract_development() {
 
 		// contract development is not enabled yet
 		assert_noop!(
-			EVM::disable_contract_development(Origin::signed(alice_account_id.clone())),
+			EVM::disable_contract_development(RuntimeOrigin::signed(alice_account_id.clone())),
 			Error::<Runtime>::ContractDevelopmentNotEnabled
 		);
 		assert_eq!(balance(alice()), INITIAL_BALANCE);
 
 		// enable contract development
 		assert_eq!(reserved_balance(alice()), 0);
-		assert_ok!(EVM::enable_contract_development(Origin::signed(
+		assert_ok!(EVM::enable_contract_development(RuntimeOrigin::signed(
 			alice_account_id.clone()
 		)));
 		assert_eq!(reserved_balance(alice()), DEVELOPER_DEPOSIT);
@@ -1175,7 +1177,7 @@ fn should_disable_contract_development() {
 		assert_eq!(balance(alice()), INITIAL_BALANCE - DEVELOPER_DEPOSIT);
 
 		// disable contract development
-		assert_ok!(EVM::disable_contract_development(Origin::signed(
+		assert_ok!(EVM::disable_contract_development(RuntimeOrigin::signed(
 			alice_account_id.clone()
 		)));
 		// deposit unreserved
@@ -1183,7 +1185,7 @@ fn should_disable_contract_development() {
 
 		// contract development already disabled
 		assert_noop!(
-			EVM::disable_contract_development(Origin::signed(alice_account_id)),
+			EVM::disable_contract_development(RuntimeOrigin::signed(alice_account_id)),
 			Error::<Runtime>::ContractDevelopmentNotEnabled
 		);
 	});
@@ -1249,15 +1251,19 @@ fn should_set_code() {
 		);
 
 		assert_noop!(
-			EVM::set_code(Origin::signed(bob_account_id), contract_address, contract.clone()),
+			EVM::set_code(
+				RuntimeOrigin::signed(bob_account_id),
+				contract_address,
+				contract.clone()
+			),
 			Error::<Runtime>::NoPermission
 		);
 		assert_ok!(EVM::set_code(
-			Origin::signed(alice_account_id.clone()),
+			RuntimeOrigin::signed(alice_account_id.clone()),
 			contract_address,
 			contract.clone()
 		));
-		assert_ok!(EVM::set_code(Origin::root(), contract_address, contract));
+		assert_ok!(EVM::set_code(RuntimeOrigin::root(), contract_address, contract));
 
 		assert_eq!(reserved_balance(contract_address), 4150);
 
@@ -1284,7 +1290,7 @@ fn should_set_code() {
 		assert_eq!(Codes::<Runtime>::contains_key(&code_hash), false);
 		assert_eq!(Codes::<Runtime>::contains_key(&new_code_hash), true);
 
-		assert_ok!(EVM::set_code(Origin::root(), contract_address, vec![]));
+		assert_ok!(EVM::set_code(RuntimeOrigin::root(), contract_address, vec![]));
 		let new_code_hash = H256::from_str("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").unwrap();
 		assert_eq!(
 			Accounts::<Runtime>::get(&contract_address),
@@ -1308,7 +1314,7 @@ fn should_set_code() {
 
 		assert_noop!(
 			EVM::set_code(
-				Origin::signed(alice_account_id.clone()),
+				RuntimeOrigin::signed(alice_account_id.clone()),
 				contract_address,
 				[8u8; (MaxCodeSize::get() + 1) as usize].to_vec(),
 			),
@@ -1316,19 +1322,19 @@ fn should_set_code() {
 		);
 
 		assert_ok!(EVM::publish_free(
-			Origin::signed(CouncilAccount::get()),
+			RuntimeOrigin::signed(CouncilAccount::get()),
 			contract_address
 		));
 
 		assert_noop!(
-			EVM::set_code(Origin::signed(alice_account_id), contract_address, contract_err),
+			EVM::set_code(RuntimeOrigin::signed(alice_account_id), contract_address, contract_err),
 			Error::<Runtime>::ContractAlreadyPublished
 		);
 	});
 }
 
 #[test]
-fn should_selfdestruct() {
+fn should_selfdestruct_without_schedule_task() {
 	// pragma solidity ^0.5.0;
 	//
 	// contract Test {
@@ -1358,7 +1364,7 @@ fn should_selfdestruct() {
 		// create contract
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
-			contract,
+			contract.clone(),
 			convert_decimals_to_evm(amount),
 			1000000,
 			100000,
@@ -1390,57 +1396,196 @@ fn should_selfdestruct() {
 		assert!(Codes::<Runtime>::contains_key(&code_hash));
 
 		assert_noop!(
-			EVM::selfdestruct(Origin::signed(bob_account_id), contract_address),
+			EVM::selfdestruct(RuntimeOrigin::signed(bob_account_id), contract_address),
 			Error::<Runtime>::NoPermission
 		);
 		let contract_account_id = <Runtime as Config>::AddressMapping::get_account_id(&contract_address);
 		assert_eq!(System::providers(&contract_account_id), 2);
-		assert_ok!(EVM::selfdestruct(Origin::signed(alice_account_id), contract_address));
+		assert_ok!(EVM::selfdestruct(
+			RuntimeOrigin::signed(alice_account_id),
+			contract_address
+		));
 
-		assert_eq!(System::providers(&contract_account_id), 1);
-		assert!(System::account_exists(&contract_account_id));
-		assert!(Accounts::<Runtime>::contains_key(&contract_address));
+		assert_eq!(System::providers(&contract_account_id), 0);
+		assert!(!System::account_exists(&contract_account_id));
+		assert!(!Accounts::<Runtime>::contains_key(&contract_address));
 		assert!(!ContractStorageSizes::<Runtime>::contains_key(&contract_address));
-		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 1);
+		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 0);
 		assert!(!CodeInfos::<Runtime>::contains_key(&code_hash));
 		assert!(!Codes::<Runtime>::contains_key(&code_hash));
 
-		assert_eq!(balance(alice()), alice_balance);
-		assert_eq!(balance(contract_address), 1000);
-
 		let reserved_amount = 287 * EVM::get_storage_deposit_per_byte();
-		assert_eq!(reserved_balance(contract_address), reserved_amount);
-
-		// can't publish at the same address
-		assert_noop!(
-			EVM::create_predeploy_contract(
-				Origin::signed(NetworkContractAccount::get()),
-				contract_address,
-				vec![],
-				0,
-				1000000,
-				1000000,
-				vec![],
-			),
-			DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: None,
-					pays_fee: Pays::Yes,
-				},
-				error: Error::<Runtime>::ContractAlreadyExisted.into()
-			}
-		);
-
-		IdleScheduler::on_idle(0, 1_000_000_000_000);
 
 		// refund storage deposit
 		assert_eq!(balance(alice()), alice_balance + amount + reserved_amount);
 		assert_eq!(balance(contract_address), 0);
 		assert_eq!(reserved_balance(contract_address), 0);
 
+		// can publish at the same address
+		assert_ok!(EVM::create_predeploy_contract(
+			RuntimeOrigin::signed(NetworkContractAccount::get()),
+			contract_address,
+			contract,
+			0,
+			1000000,
+			1000000,
+			vec![],
+		));
+	});
+}
+
+#[test]
+fn should_selfdestruct_with_schedule_task() {
+	// pragma solidity ^0.8.0;
+	//
+	// contract Test {
+	//     mapping(uint256 => uint256) private data;
+	//
+	//     constructor() public payable {}
+	//
+	//     function setValue(uint256 key, uint256 value) public {
+	//         data[key] = value;
+	//     }
+	// }
+	let contract = from_hex(
+		"0x6080604052610105806100136000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c80637b8d56e314602d575b600080fd5b60436004803603810190603f91906096565b6045565b005b80600080848152602001908152602001600020819055505050565b600080fd5b6000819050919050565b6076816065565b8114608057600080fd5b50565b600081359050609081606f565b92915050565b6000806040838503121560aa5760a96060565b5b600060b6858286016083565b925050602060c5858286016083565b915050925092905056fea26469706673582212201cbfb5695481e8cf4c7a1206d22d0a707cb85907a10b47038ac14af0c386344464736f6c63430008120033"
+	).unwrap();
+
+	new_test_ext().execute_with(|| {
+		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
+
+		let amount = 1000u128;
+
+		// create contract
+		let result = <Runtime as Config>::Runner::create(
+			alice(),
+			contract,
+			convert_decimals_to_evm(amount),
+			1000000,
+			100000,
+			vec![],
+			<Runtime as Config>::config(),
+		)
+		.unwrap();
+
+		let contract_address = result.value;
+		assert_eq!(result.used_storage, 361);
+		let alice_balance = INITIAL_BALANCE - 361 * EVM::get_storage_deposit_per_byte() - amount;
+
+		assert_eq!(balance(alice()), alice_balance);
+
+		let code_hash = H256::from_str("7c96b02b6e32519ac1f47de5dd18efa07efd70b7eb57fc7a3d599eafa8329cd1").unwrap();
+		let code_size = 261u32;
+		assert_eq!(
+			Accounts::<Runtime>::get(&contract_address)
+				.unwrap()
+				.contract_info
+				.unwrap()
+				.code_hash,
+			code_hash
+		);
+
+		assert_eq!(
+			ContractStorageSizes::<Runtime>::get(&contract_address),
+			code_size + NEW_CONTRACT_EXTRA_BYTES
+		);
+		assert_eq!(
+			CodeInfos::<Runtime>::get(&code_hash),
+			Some(CodeInfo {
+				code_size,
+				ref_count: 1,
+			})
+		);
+		assert!(Codes::<Runtime>::contains_key(&code_hash));
+
+		let storage_count: u32 = REMOVE_LIMIT + 1;
+		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 0);
+		for i in 1..=storage_count {
+			// setValue
+			let mut input: Vec<u8> = from_hex("0x7b8d56e3").unwrap();
+
+			let mut buf = [0u8; 32];
+			U256::from(i).to_big_endian(&mut buf);
+			input.append(&mut H256::from_slice(&buf).as_bytes().to_vec()); // key
+			input.append(&mut H256::from_slice(&buf).as_bytes().to_vec()); // value
+
+			assert_ok!(EVM::call(
+				RuntimeOrigin::signed(alice_account_id.clone()),
+				contract_address,
+				input,
+				0,
+				1000000000,
+				1000,
+				vec![],
+			));
+		}
+		assert_eq!(
+			AccountStorages::<Runtime>::iter_prefix(&contract_address).count(),
+			storage_count as usize
+		);
+
+		assert_noop!(
+			EVM::selfdestruct(RuntimeOrigin::signed(bob_account_id), contract_address),
+			Error::<Runtime>::NoPermission
+		);
+		let contract_account_id = <Runtime as Config>::AddressMapping::get_account_id(&contract_address);
+		assert_eq!(System::providers(&contract_account_id), 2);
+		assert_ok!(EVM::selfdestruct(
+			RuntimeOrigin::signed(alice_account_id),
+			contract_address
+		));
+
+		// TODO: wait new host function. Keys in the overlay are deleted without counting towards the
+		// `limit`. assert_eq!(System::providers(&contract_account_id), 1);
+		// assert!(System::account_exists(&contract_account_id));
+		// assert!(Accounts::<Runtime>::contains_key(&contract_address));
+		// assert!(!ContractStorageSizes::<Runtime>::contains_key(&contract_address));
+		// assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 101);
+		// assert!(!CodeInfos::<Runtime>::contains_key(&code_hash));
+		// assert!(!Codes::<Runtime>::contains_key(&code_hash));
+
+		// let reserved_amount = (storage_count * STORAGE_SIZE) as u128 *
+		// EVM::get_storage_deposit_per_byte(); assert_eq!(balance(alice()), alice_balance -
+		// reserved_amount); assert_eq!(balance(contract_address), 1000);
+		// assert_eq!(
+		// 	reserved_balance(contract_address),
+		// 	reserved_amount + 361 * EVM::get_storage_deposit_per_byte()
+		// );
+
+		// // can't publish at the same address
+		// assert_noop!(
+		// 	EVM::create_predeploy_contract(
+		// 		RuntimeOrigin::signed(NetworkContractAccount::get()),
+		// 		contract_address,
+		// 		vec![],
+		// 		0,
+		// 		1000000,
+		// 		1000000,
+		// 		vec![],
+		// 	),
+		// 	DispatchErrorWithPostInfo {
+		// 		post_info: PostDispatchInfo {
+		// 			actual_weight: None,
+		// 			pays_fee: Pays::Yes,
+		// 		},
+		// 		error: Error::<Runtime>::ContractAlreadyExisted.into()
+		// 	}
+		// );
+
+		// IdleScheduler::on_idle(0, Weight::from_parts(1_000_000_000_000, 0));
+
+		// refund storage deposit
+		assert_eq!(
+			balance(alice()),
+			alice_balance + amount + 361 * EVM::get_storage_deposit_per_byte()
+		);
+		assert_eq!(balance(contract_address), 0);
+		assert_eq!(reserved_balance(contract_address), 0);
+
 		assert_eq!(System::providers(&contract_account_id), 0);
 		assert!(!System::account_exists(&contract_account_id));
-		assert!(Accounts::<Runtime>::contains_key(&contract_address));
+		assert!(!Accounts::<Runtime>::contains_key(&contract_address));
 		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 0);
 	});
 }
@@ -1499,7 +1644,7 @@ fn storage_limit_should_work() {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		assert_eq!(
 			EVM::call(
-				Origin::signed(alice_account_id.clone()),
+				RuntimeOrigin::signed(alice_account_id.clone()),
 				factory_contract_address,
 				create_contract,
 				amount,
@@ -1512,7 +1657,7 @@ fn storage_limit_should_work() {
 				pays_fee: Pays::Yes
 			})
 		);
-		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::ExecutedFailed {
 			from: alice(),
 			contract: factory_contract_address,
 			exit_reason: ExitReason::Error(ExitError::Other(
@@ -1553,7 +1698,7 @@ fn storage_limit_should_work() {
 			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000002").unwrap();
 		assert_eq!(
 			EVM::call(
-				Origin::signed(alice_account_id),
+				RuntimeOrigin::signed(alice_account_id),
 				factory_contract_address,
 				create_contract,
 				amount,
@@ -1566,7 +1711,7 @@ fn storage_limit_should_work() {
 				pays_fee: Pays::Yes
 			})
 		);
-		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::ExecutedFailed {
 			from: alice(),
 			contract: factory_contract_address,
 			exit_reason: ExitReason::Error(ExitError::Other(
@@ -1869,7 +2014,7 @@ fn should_update_storage() {
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 		assert_eq!(
 			EVM::call(
-				Origin::signed(bob_account_id),
+				RuntimeOrigin::signed(bob_account_id),
 				contract_address,
 				from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b").unwrap(),
 				0,
@@ -1882,7 +2027,7 @@ fn should_update_storage() {
 				pays_fee: Pays::Yes
 			})
 		);
-		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::ExecutedFailed {
 			from: bob(),
 			contract: contract_address,
 			exit_reason: ExitReason::Error(ExitError::Other(
@@ -1951,7 +2096,7 @@ fn convert_decimals_should_not_work() {
 	new_test_ext().execute_with(|| {
 		assert_eq!(
 			EVM::create(
-				Origin::signed(alice_account_id.clone()),
+				RuntimeOrigin::signed(alice_account_id.clone()),
 				vec![],
 				1,
 				1000000,
@@ -1963,7 +2108,7 @@ fn convert_decimals_should_not_work() {
 				pays_fee: Pays::Yes
 			})
 		);
-		System::assert_last_event(Event::EVM(crate::Event::CreatedFailed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::CreatedFailed {
 			from: alice(),
 			contract: H160::default(),
 			exit_reason: ExitReason::Error(ExitError::Other(
@@ -1975,7 +2120,7 @@ fn convert_decimals_should_not_work() {
 		}));
 		assert_eq!(
 			EVM::create2(
-				Origin::signed(alice_account_id.clone()),
+				RuntimeOrigin::signed(alice_account_id.clone()),
 				vec![],
 				H256::default(),
 				1,
@@ -1988,7 +2133,7 @@ fn convert_decimals_should_not_work() {
 				pays_fee: Pays::Yes
 			})
 		);
-		System::assert_last_event(Event::EVM(crate::Event::CreatedFailed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::CreatedFailed {
 			from: alice(),
 			contract: H160::default(),
 			exit_reason: ExitReason::Error(ExitError::Other(
@@ -2000,7 +2145,7 @@ fn convert_decimals_should_not_work() {
 		}));
 		assert_eq!(
 			EVM::call(
-				Origin::signed(alice_account_id.clone()),
+				RuntimeOrigin::signed(alice_account_id.clone()),
 				H160::default(),
 				vec![],
 				1,
@@ -2013,7 +2158,7 @@ fn convert_decimals_should_not_work() {
 				pays_fee: Pays::Yes
 			})
 		);
-		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::ExecutedFailed {
 			from: alice(),
 			contract: H160::default(),
 			exit_reason: ExitReason::Error(ExitError::Other(
@@ -2024,14 +2169,6 @@ fn convert_decimals_should_not_work() {
 			used_gas: 1000000,
 			used_storage: 0,
 		}));
-	});
-}
-
-#[test]
-fn remove_empty_account_works() {
-	new_test_ext().execute_with(|| {
-		let address = H160::from([1; 20]);
-		assert_ok!(Pallet::<Runtime>::remove_account(&address));
 	});
 }
 
@@ -2076,7 +2213,7 @@ fn remove_account_works() {
 				contract_info: None,
 			},
 		);
-		assert_ok!(Pallet::<Runtime>::remove_account(&address));
+		Pallet::<Runtime>::remove_account(&address);
 		assert_eq!(Accounts::<Runtime>::contains_key(&address), false);
 	});
 }
@@ -2090,7 +2227,7 @@ fn auto_publish_works() {
 	new_test_ext().execute_with(|| {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		assert_ok!(EVM::create(
-			Origin::signed(alice_account_id.clone()),
+			RuntimeOrigin::signed(alice_account_id.clone()),
 			code,
 			0,
 			2_100_000,
@@ -2099,7 +2236,7 @@ fn auto_publish_works() {
 		));
 
 		let factory = H160::from_str("0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap();
-		System::assert_last_event(Event::EVM(crate::Event::Created {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::Created {
 			from: alice(),
 			contract: factory,
 			logs: vec![],
@@ -2109,7 +2246,7 @@ fn auto_publish_works() {
 
 		// call method `createContract()`
 		assert_ok!(EVM::call(
-			Origin::signed(alice_account_id.clone()),
+			RuntimeOrigin::signed(alice_account_id.clone()),
 			factory,
 			from_hex("0x412a5a6d").unwrap(),
 			0,
@@ -2117,7 +2254,7 @@ fn auto_publish_works() {
 			10000,
 			vec![],
 		));
-		System::assert_last_event(Event::EVM(crate::Event::Executed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::Executed {
 			from: alice(),
 			contract: factory,
 			logs: vec![
@@ -2175,11 +2312,11 @@ fn auto_publish_works() {
 		);
 
 		// publish the factory
-		assert_ok!(EVM::publish_free(Origin::signed(CouncilAccount::get()), factory));
+		assert_ok!(EVM::publish_free(RuntimeOrigin::signed(CouncilAccount::get()), factory));
 
 		// call method `createContract()`
 		assert_ok!(EVM::call(
-			Origin::signed(alice_account_id.clone()),
+			RuntimeOrigin::signed(alice_account_id.clone()),
 			factory,
 			from_hex("0x412a5a6d").unwrap(),
 			0,
@@ -2187,7 +2324,7 @@ fn auto_publish_works() {
 			10000,
 			vec![],
 		));
-		System::assert_last_event(Event::EVM(crate::Event::Executed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::Executed {
 			from: alice(),
 			contract: factory,
 			logs: vec![
@@ -2246,7 +2383,7 @@ fn auto_publish_works() {
 
 		// call method `callContract()`
 		assert_ok!(EVM::call(
-			Origin::signed(alice_account_id.clone()),
+			RuntimeOrigin::signed(alice_account_id.clone()),
 			factory,
 			from_hex("0x0f24df3a").unwrap(),
 			0,
@@ -2254,7 +2391,7 @@ fn auto_publish_works() {
 			10000,
 			vec![],
 		));
-		System::assert_last_event(Event::EVM(crate::Event::Executed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::Executed {
 			from: alice(),
 			contract: factory,
 			logs: vec![crate::Log {
@@ -2347,18 +2484,18 @@ fn strict_call_works() {
 
 		assert_eq!(
 			Utility::batch_all(
-				Origin::signed(bob_account_id.clone()),
+				RuntimeOrigin::signed(bob_account_id.clone()),
 				vec![
-					Call::Balances(pallet_balances::Call::transfer {
+					RuntimeCall::Balances(pallet_balances::Call::transfer {
 						dest: bob_account_id.clone(),
 						value: 5
 					}),
-					Call::Balances(pallet_balances::Call::transfer {
+					RuntimeCall::Balances(pallet_balances::Call::transfer {
 						dest: bob_account_id.clone(),
 						value: 6
 					}),
 					// call method `set(123)`
-					Call::EVM(evm_mod::Call::strict_call {
+					RuntimeCall::EVM(evm_mod::Call::strict_call {
 						target: contract_address,
 						input: from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b")
 							.unwrap(),
@@ -2371,7 +2508,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(1530107298),
+					actual_weight: Some(Weight::from_parts(1417384352, 7186)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::NoPermission.into(),
@@ -2380,18 +2517,18 @@ fn strict_call_works() {
 
 		assert_eq!(
 			Utility::batch_all(
-				Origin::signed(alice_account_id.clone()),
+				RuntimeOrigin::signed(alice_account_id.clone()),
 				vec![
-					Call::Balances(pallet_balances::Call::transfer {
+					RuntimeCall::Balances(pallet_balances::Call::transfer {
 						dest: bob_account_id.clone(),
 						value: 5
 					}),
-					Call::Balances(pallet_balances::Call::transfer {
+					RuntimeCall::Balances(pallet_balances::Call::transfer {
 						dest: bob_account_id.clone(),
 						value: 6
 					}),
 					// call undefined method
-					Call::EVM(evm_mod::Call::strict_call {
+					RuntimeCall::EVM(evm_mod::Call::strict_call {
 						target: contract_address,
 						input: from_hex("0x00000000000000000000000000000000000000000000000000000000000000000000007b")
 							.unwrap(),
@@ -2404,7 +2541,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(1529151000),
+					actual_weight: Some(Weight::from_parts(1416428054, 7186)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::StrictCallFailed.into(),
@@ -2412,18 +2549,18 @@ fn strict_call_works() {
 		);
 
 		assert_ok!(Utility::batch_all(
-			Origin::signed(alice_account_id.clone()),
+			RuntimeOrigin::signed(alice_account_id.clone()),
 			vec![
-				Call::Balances(pallet_balances::Call::transfer {
+				RuntimeCall::Balances(pallet_balances::Call::transfer {
 					dest: bob_account_id.clone(),
 					value: 5
 				}),
-				Call::Balances(pallet_balances::Call::transfer {
+				RuntimeCall::Balances(pallet_balances::Call::transfer {
 					dest: bob_account_id.clone(),
 					value: 6
 				}),
 				// call method `set(123)`
-				Call::EVM(evm_mod::Call::strict_call {
+				RuntimeCall::EVM(evm_mod::Call::strict_call {
 					target: contract_address,
 					input: from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b")
 						.unwrap(),
@@ -2511,7 +2648,7 @@ fn aggregated_storage_logs_works() {
 		frame_system::Pallet::<Runtime>::reset_events();
 
 		assert_ok!(EVM::call(
-			Origin::signed(alice_account_id.clone()),
+			RuntimeOrigin::signed(alice_account_id.clone()),
 			contract_address,
 			// loop_insert(100)
 			hex! {"
@@ -2524,7 +2661,7 @@ fn aggregated_storage_logs_works() {
 			10000,
 			vec![],
 		));
-		System::assert_last_event(Event::EVM(crate::Event::Executed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::Executed {
 			from: alice(),
 			contract: contract_address,
 			logs: vec![],
@@ -2533,26 +2670,26 @@ fn aggregated_storage_logs_works() {
 		}));
 
 		let amount = 10000 * cost_per_byte;
-		System::assert_has_event(Event::Balances(pallet_balances::Event::Reserved {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Reserved {
 			who: alice_account_id.clone(),
 			amount,
 		}));
 		let amount = 6400 * cost_per_byte;
-		System::assert_has_event(Event::Balances(pallet_balances::Event::Unreserved {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
 			who: alice_account_id.clone(),
 			amount,
 		}));
-		System::assert_has_event(Event::Balances(pallet_balances::Event::Transfer {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Transfer {
 			from: alice_account_id.clone(),
 			to: contract_acc.clone(),
 			amount,
 		}));
-		System::assert_has_event(Event::Balances(pallet_balances::Event::Reserved {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Reserved {
 			who: contract_acc.clone(),
 			amount,
 		}));
 		// unreserved remaining storage
-		System::assert_has_event(Event::Balances(pallet_balances::Event::Unreserved {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
 			who: alice_account_id.clone(),
 			amount: (10000 - 6400) * cost_per_byte,
 		}));
@@ -2560,7 +2697,7 @@ fn aggregated_storage_logs_works() {
 		frame_system::Pallet::<Runtime>::reset_events();
 
 		assert_ok!(EVM::call(
-			Origin::signed(alice_account_id.clone()),
+			RuntimeOrigin::signed(alice_account_id.clone()),
 			contract_address,
 			// loop_remove(100)
 			hex! {"
@@ -2573,7 +2710,7 @@ fn aggregated_storage_logs_works() {
 			0,
 			vec![],
 		));
-		System::assert_last_event(Event::EVM(crate::Event::Executed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::Executed {
 			from: alice(),
 			contract: contract_address,
 			logs: vec![],
@@ -2582,13 +2719,13 @@ fn aggregated_storage_logs_works() {
 		}));
 
 		let amount = 6400 * cost_per_byte;
-		System::assert_has_event(Event::Balances(pallet_balances::Event::ReserveRepatriated {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::ReserveRepatriated {
 			from: contract_acc.clone(),
 			to: alice_account_id.clone(),
 			amount,
 			destination_status: BalanceStatus::Reserved,
 		}));
-		System::assert_has_event(Event::Balances(pallet_balances::Event::Unreserved {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
 			who: alice_account_id.clone(),
 			amount,
 		}));
@@ -2596,7 +2733,7 @@ fn aggregated_storage_logs_works() {
 		frame_system::Pallet::<Runtime>::reset_events();
 
 		assert_ok!(EVM::call(
-			Origin::signed(alice_account_id.clone()),
+			RuntimeOrigin::signed(alice_account_id.clone()),
 			contract_address,
 			// loop_insert_and_remove(10, 5)
 			hex! {"
@@ -2610,7 +2747,7 @@ fn aggregated_storage_logs_works() {
 			320,
 			vec![],
 		));
-		System::assert_last_event(Event::EVM(crate::Event::Executed {
+		System::assert_last_event(RuntimeEvent::EVM(crate::Event::Executed {
 			from: alice(),
 			contract: contract_address,
 			logs: vec![],
@@ -2618,20 +2755,20 @@ fn aggregated_storage_logs_works() {
 			used_storage: 320, // storage (+10 - 5) * 64
 		}));
 		let amount = 320 * cost_per_byte;
-		System::assert_has_event(Event::Balances(pallet_balances::Event::Reserved {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Reserved {
 			who: alice_account_id.clone(),
 			amount,
 		}));
-		System::assert_has_event(Event::Balances(pallet_balances::Event::Unreserved {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
 			who: alice_account_id.clone(),
 			amount,
 		}));
-		System::assert_has_event(Event::Balances(pallet_balances::Event::Transfer {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Transfer {
 			from: alice_account_id.clone(),
 			to: contract_acc.clone(),
 			amount,
 		}));
-		System::assert_has_event(Event::Balances(pallet_balances::Event::Reserved {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Reserved {
 			who: contract_acc.clone(),
 			amount,
 		}));

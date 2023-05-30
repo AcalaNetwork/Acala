@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -49,7 +49,7 @@ pub fn migrate<T: homa::Config, P: GetStorageVersion + PalletInfoAccess>() -> We
 			"Attempted to apply migration to v1 but failed because storage version is {:?}",
 			on_chain_storage_version,
 		);
-		0
+		Weight::zero()
 	}
 }
 

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -78,7 +78,7 @@ impl TestNode {
 	/// Submit an extrinsic to transaction pool.
 	pub async fn submit_extrinsic(
 		&self,
-		function: impl Into<runtime::Call>,
+		function: impl Into<runtime::RuntimeCall>,
 		caller: Option<Sr25519Keyring>,
 		nonce: Nonce,
 	) -> Result<H256, sc_transaction_pool::error::Error> {
@@ -101,7 +101,7 @@ impl TestNode {
 		nonce: Nonce,
 	) -> Result<(), sc_transaction_pool::error::Error>
 	where
-		T: Into<runtime::Call>,
+		T: Into<runtime::RuntimeCall>,
 	{
 		let extrinsics = functions
 			.into_iter()
@@ -125,17 +125,18 @@ impl TestNode {
 		<TFullCallExecutor<Block, NativeElseWasmExecutor<RuntimeExecutor>> as CallExecutor<Block>>::Error:
 			std::fmt::Debug,
 	{
-		let id = BlockId::Hash(self.client.info().best_hash);
+		let hash = self.client.info().best_hash;
+		let number = self.client.info().best_number.saturated_into();
 		let mut overlay = OverlayedChanges::default();
 		let mut cache = StorageTransactionCache::<Block, <TFullBackend<Block> as Backend<Block>>::State>::default();
-		let mut extensions = self
-			.client
-			.execution_extensions()
-			.extensions(&id, ExecutionContext::BlockConstruction);
+		let mut extensions =
+			self.client
+				.execution_extensions()
+				.extensions(hash, number, ExecutionContext::BlockConstruction);
 		let state_backend = self
 			.backend
-			.state_at(id)
-			.unwrap_or_else(|_| panic!("State at block {} not found", id));
+			.state_at(hash)
+			.unwrap_or_else(|_| panic!("State at block {} not found", hash));
 
 		let mut ext = Ext::new(&mut overlay, &mut cache, &state_backend, Some(&mut extensions));
 		sp_externalities::set_and_run_with_externalities(&mut ext, closure)
@@ -144,7 +145,7 @@ impl TestNode {
 	/// Send an extrinsic to this node.
 	pub async fn send_extrinsic(
 		&self,
-		function: impl Into<runtime::Call>,
+		function: impl Into<runtime::RuntimeCall>,
 		caller: Sr25519Keyring,
 		nonce: Nonce,
 	) -> Result<RpcTransactionOutput, RpcTransactionError> {
@@ -160,7 +161,7 @@ impl TestNode {
 		self.send_extrinsic(
 			pallet_sudo::Call::sudo_unchecked_weight {
 				call: Box::new(call.into()),
-				weight: 1_000,
+				weight: Weight::from_parts(1_000, 0),
 			},
 			Sr25519Keyring::Alice,
 			nonce,
@@ -177,7 +178,7 @@ impl TestNode {
 		value: Balance,
 		nonce: Nonce,
 	) -> Result<(), RpcTransactionError> {
-		let function = node_runtime::Call::Balances(pallet_balances::Call::transfer_keep_alive {
+		let function = node_runtime::RuntimeCall::Balances(pallet_balances::Call::transfer_keep_alive {
 			dest: MultiAddress::Id(dest.public().into_account().into()),
 			value,
 		});

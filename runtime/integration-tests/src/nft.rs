@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -36,7 +36,7 @@ fn test_nft_module() {
 			);
 			assert_eq!(Balances::reserved_balance(AccountId::from(ALICE)), 0);
 			assert_ok!(NFT::create_class(
-				Origin::signed(AccountId::from(ALICE)),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				metadata.clone(),
 				Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 				Default::default(),
@@ -61,28 +61,28 @@ fn test_nft_module() {
 				1 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
 			));
 			assert_ok!(NFT::mint(
-				Origin::signed(NftPalletId::get().into_sub_account_truncating(0)),
+				RuntimeOrigin::signed(NftPalletId::get().into_sub_account_truncating(0)),
 				MultiAddress::Id(AccountId::from(BOB)),
 				0,
 				metadata.clone(),
 				Default::default(),
 				1
 			));
-			assert_ok!(NFT::burn(Origin::signed(AccountId::from(BOB)), (0, 0)));
+			assert_ok!(NFT::burn(RuntimeOrigin::signed(AccountId::from(BOB)), (0, 0)));
 			assert_eq!(
 				Balances::free_balance(AccountId::from(BOB)),
 				CreateTokenDeposit::get() + DataDepositPerByte::get()
 			);
 			assert_noop!(
 				NFT::destroy_class(
-					Origin::signed(NftPalletId::get().into_sub_account_truncating(0)),
+					RuntimeOrigin::signed(NftPalletId::get().into_sub_account_truncating(0)),
 					0,
 					MultiAddress::Id(AccountId::from(BOB))
 				),
 				pallet_proxy::Error::<Runtime>::NotFound
 			);
 			assert_ok!(NFT::destroy_class(
-				Origin::signed(NftPalletId::get().into_sub_account_truncating(0)),
+				RuntimeOrigin::signed(NftPalletId::get().into_sub_account_truncating(0)),
 				0,
 				MultiAddress::Id(AccountId::from(ALICE))
 			));

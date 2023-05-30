@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -26,9 +26,8 @@ use frame_support::{
 };
 use module_evm::{ExitReason, ExitSucceed};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitive_types::H256;
 use primitives::{evm::EvmAddress, Balance};
-use sp_core::{H160, U256};
+use sp_core::{H160, H256, U256};
 use sp_runtime::{ArithmeticError, SaturatedConversion};
 use sp_std::vec::Vec;
 use support::{
@@ -254,6 +253,26 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 
 	fn set_origin(origin: AccountIdOf<T>) {
 		T::EVM::set_origin(origin);
+	}
+
+	fn kill_origin() {
+		T::EVM::kill_origin();
+	}
+
+	fn push_xcm_origin(origin: AccountIdOf<T>) {
+		T::EVM::push_xcm_origin(origin);
+	}
+
+	fn pop_xcm_origin() {
+		T::EVM::pop_xcm_origin();
+	}
+
+	fn kill_xcm_origin() {
+		T::EVM::kill_xcm_origin();
+	}
+
+	fn get_real_or_xcm_origin() -> Option<AccountIdOf<T>> {
+		T::EVM::get_real_or_xcm_origin()
 	}
 }
 

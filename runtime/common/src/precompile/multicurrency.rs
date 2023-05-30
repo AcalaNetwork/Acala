@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -187,7 +187,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Multicurrency Transfer failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -552,7 +552,7 @@ mod tests {
 				MultiCurrencyPrecompile::execute(&input, Some(100_000), &context, false),
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "BalanceTooLow".into(),
+					output: "Multicurrency Transfer failed: BalanceTooLow".into(),
 					cost: target_gas_limit(Some(100_000)).unwrap(),
 				}
 			);

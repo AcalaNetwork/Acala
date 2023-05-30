@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -93,7 +93,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Currency for transfer currencies
 		type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -125,7 +125,7 @@ pub mod module {
 		type DEXIncentives: DEXIncentives<Self::AccountId, CurrencyId, Balance>;
 
 		/// The origin which may list, enable or disable trading pairs.
-		type ListingOrigin: EnsureOrigin<Self::Origin>;
+		type ListingOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The extended provisioning blocks since the `not_before` of provisioning.
 		#[pallet::constant]
@@ -358,6 +358,7 @@ pub mod module {
 		/// - `path`: trading path.
 		/// - `supply_amount`: exact supply amount.
 		/// - `min_target_amount`: acceptable minimum target amount.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(path.len() as u32))]
 		#[transactional]
 		pub fn swap_with_exact_supply(
@@ -376,6 +377,7 @@ pub mod module {
 		/// - `path`: trading path.
 		/// - `target_amount`: exact target amount.
 		/// - `max_supply_amount`: acceptable maximum supply amount.
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target(path.len() as u32))]
 		#[transactional]
 		pub fn swap_with_exact_target(
@@ -402,6 +404,7 @@ pub mod module {
 		/// - `min_share_increment`: minimum acceptable share amount.
 		/// - `stake_increment_share`: indicates whether to stake increased dex share to earn
 		///   incentives
+		#[pallet::call_index(2)]
 		#[pallet::weight(if *stake_increment_share {
 			<T as Config>::WeightInfo::add_liquidity_and_stake()
 		} else {
@@ -438,6 +441,7 @@ pub mod module {
 		/// - `currency_id_b`: currency id B.
 		/// - `amount_a`: provision amount for currency_id_a.
 		/// - `amount_b`: provision amount for currency_id_b.
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::add_provision())]
 		#[transactional]
 		pub fn add_provision(
@@ -457,6 +461,7 @@ pub mod module {
 		/// - `owner`: founder account.
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::claim_dex_share())]
 		#[transactional]
 		pub fn claim_dex_share(
@@ -480,6 +485,7 @@ pub mod module {
 		/// - `min_withdrawn_a`: minimum acceptable withrawn for currency_id_a.
 		/// - `min_withdrawn_b`: minimum acceptable withrawn for currency_id_b.
 		/// - `by_unstake`: this flag indicates whether to withdraw share which is on incentives.
+		#[pallet::call_index(5)]
 		#[pallet::weight(if *by_unstake {
 			<T as Config>::WeightInfo::remove_liquidity_by_unstake()
 		} else {
@@ -509,6 +515,7 @@ pub mod module {
 		}
 
 		/// List a new provisioning trading pair.
+		#[pallet::call_index(6)]
 		#[pallet::weight((<T as Config>::WeightInfo::list_provisioning(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn list_provisioning(
@@ -576,6 +583,7 @@ pub mod module {
 
 		/// List a new trading pair, trading pair will become Enabled status
 		/// after provision process.
+		#[pallet::call_index(7)]
 		#[pallet::weight((<T as Config>::WeightInfo::update_provisioning_parameters(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn update_provisioning_parameters(
@@ -622,6 +630,7 @@ pub mod module {
 		}
 
 		/// Enable a Provisioning trading pair if meet the condition.
+		#[pallet::call_index(8)]
 		#[pallet::weight((<T as Config>::WeightInfo::end_provisioning(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn end_provisioning(
@@ -701,6 +710,7 @@ pub mod module {
 		/// Enable a trading pair
 		/// if the status of trading pair is `Disabled`, or `Provisioning` without any accumulated
 		/// provision, enable it directly.
+		#[pallet::call_index(9)]
 		#[pallet::weight((<T as Config>::WeightInfo::enable_trading_pair(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn enable_trading_pair(
@@ -729,6 +739,7 @@ pub mod module {
 		}
 
 		/// Disable a `Enabled` trading pair.
+		#[pallet::call_index(10)]
 		#[pallet::weight((<T as Config>::WeightInfo::disable_trading_pair(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn disable_trading_pair(
@@ -757,6 +768,7 @@ pub mod module {
 		/// - `owner`: founder account.
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
+		#[pallet::call_index(11)]
 		#[pallet::weight(<T as Config>::WeightInfo::refund_provision())]
 		#[transactional]
 		pub fn refund_provision(
@@ -803,6 +815,7 @@ pub mod module {
 		}
 
 		/// Abort provision when it's don't meet the target and expired.
+		#[pallet::call_index(12)]
 		#[pallet::weight((<T as Config>::WeightInfo::abort_provisioning(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn abort_provisioning(
@@ -938,7 +951,7 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::InvalidContributionIncrement
 		);
 
-		ProvisioningPool::<T>::try_mutate_exists(trading_pair, &who, |maybe_pool| -> DispatchResult {
+		ProvisioningPool::<T>::try_mutate_exists(trading_pair, who, |maybe_pool| -> DispatchResult {
 			let existed = maybe_pool.is_some();
 			let mut pool = maybe_pool.unwrap_or_default();
 			pool.0 = pool.0.checked_add(contribution_0).ok_or(ArithmeticError::Overflow)?;

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -37,16 +37,16 @@ use std::str::FromStr;
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
-	type Origin = Origin;
+	type RuntimeOrigin = RuntimeOrigin;
 	type Index = u64;
 	type BlockNumber = u64;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type Hash = sp_runtime::testing::H256;
 	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
 	type Header = sp_runtime::testing::Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -65,7 +65,7 @@ impl frame_system::Config for Runtime {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<1>;
 	type AccountStore = System;
 	type MaxLocks = ();
@@ -99,7 +99,7 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = ConstU32<1>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<10>;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = ();
@@ -127,7 +127,7 @@ parameter_types! {
 	pub const KSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 }
 impl asset_registry::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type StakingCurrencyId = KSMCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
@@ -178,9 +178,16 @@ pub fn deploy_contracts() {
 	let json: serde_json::Value =
 		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
-	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000, vec![]));
+	assert_ok!(EVM::create(
+		RuntimeOrigin::signed(alice()),
+		code,
+		0,
+		2_100_000,
+		10000,
+		vec![]
+	));
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+	System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::Created {
 		from: alice_evm_addr(),
 		contract: erc20_address(),
 		logs: vec![module_evm::Log {
@@ -196,12 +203,12 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1306611,
-		used_storage: 5462,
+		used_gas: 1235081,
+		used_storage: 5131,
 	}));
 
 	assert_ok!(EVM::publish_free(
-		Origin::signed(CouncilAccount::get()),
+		RuntimeOrigin::signed(CouncilAccount::get()),
 		erc20_address()
 	));
 }
@@ -212,7 +219,7 @@ pub fn deploy_contracts_same_prefix() {
 		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
 	assert_ok!(EVM::create_predeploy_contract(
-		Origin::signed(NetworkContractAccount::get()),
+		RuntimeOrigin::signed(NetworkContractAccount::get()),
 		erc20_address_same_prefix(),
 		code,
 		0,
@@ -221,7 +228,7 @@ pub fn deploy_contracts_same_prefix() {
 		vec![]
 	));
 
-	System::assert_has_event(Event::EVM(module_evm::Event::Created {
+	System::assert_has_event(RuntimeEvent::EVM(module_evm::Event::Created {
 		from: alice_evm_addr(),
 		contract: erc20_address_same_prefix(),
 		logs: vec![module_evm::Log {
@@ -237,11 +244,11 @@ pub fn deploy_contracts_same_prefix() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1306611,
-		used_storage: 5462,
+		used_gas: 1235081,
+		used_storage: 5131,
 	}));
 
-	System::assert_last_event(Event::EVM(module_evm::Event::ContractPublished {
+	System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::ContractPublished {
 		contract: erc20_address_same_prefix(),
 	}));
 }

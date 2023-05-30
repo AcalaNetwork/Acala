@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -41,7 +41,7 @@ pub mod time {
 /// Fee-related
 pub mod fee {
 	use frame_support::weights::{
-		constants::{ExtrinsicBaseWeight, WEIGHT_PER_SECOND},
+		constants::{ExtrinsicBaseWeight, WEIGHT_REF_TIME_PER_SECOND},
 		WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 	};
 	use primitives::Balance;
@@ -70,7 +70,7 @@ pub mod fee {
 		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
 			// in Acala, extrinsic base weight (smallest non-zero weight) is mapped to 1/10 CENT:
 			let p = base_tx_in_aca(); // 1_000_000_000;
-			let q = Balance::from(ExtrinsicBaseWeight::get()); // 125_000_000
+			let q = Balance::from(ExtrinsicBaseWeight::get().ref_time()); // 125_000_000
 			smallvec![WeightToFeeCoefficient {
 				degree: 1,
 				negative: false,
@@ -81,8 +81,8 @@ pub mod fee {
 	}
 
 	pub fn aca_per_second() -> u128 {
-		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
-		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
+		let base_weight = Balance::from(ExtrinsicBaseWeight::get().ref_time());
+		let base_tx_per_second = (WEIGHT_REF_TIME_PER_SECOND as u128) / base_weight;
 		base_tx_per_second * base_tx_in_aca()
 	}
 
@@ -99,9 +99,9 @@ mod tests {
 	#[test]
 	fn check_weight() {
 		let p = base_tx_in_aca();
-		let q = Balance::from(ExtrinsicBaseWeight::get());
+		let q = Balance::from(ExtrinsicBaseWeight::get().ref_time());
 
 		assert_eq!(p, 1_000_000_000);
-		assert_eq!(q, 86_298_000);
+		assert_eq!(q, 99_840_000);
 	}
 }

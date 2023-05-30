@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use cumulus_primitives_core::ParaId;
+use futures::join;
 use sp_keyring::Sr25519Keyring::*;
 use sp_runtime::{traits::IdentifyAccount, MultiSigner};
 use test_service::{initial_head_data, run_relay_chain_validator_node};
@@ -34,11 +35,13 @@ async fn test_full_node_catching_up() {
 
 	let tokio_handle = tokio::runtime::Handle::current();
 
+	let ws_port = portpicker::pick_unused_port().expect("No free ports");
+
 	// start relay chain node: alice
-	let alice = run_relay_chain_validator_node(tokio_handle.clone(), Alice, || {}, Vec::new());
+	let alice = run_relay_chain_validator_node(tokio_handle.clone(), Alice, || {}, Vec::new(), Some(ws_port));
 
 	// start relay chain node: bob
-	let bob = run_relay_chain_validator_node(tokio_handle.clone(), Bob, || {}, vec![alice.addr.clone()]);
+	let bob = run_relay_chain_validator_node(tokio_handle.clone(), Bob, || {}, vec![alice.addr.clone()], None);
 
 	// register parachain
 	alice
@@ -52,21 +55,30 @@ async fn test_full_node_catching_up() {
 		.await
 		.unwrap();
 
-	// run a parachain collator
-	let para_collator = test_service::TestNodeBuilder::new(para_id, tokio_handle.clone(), Alice)
+	// run cumulus charlie (a parachain collator)
+	let charlie = test_service::TestNodeBuilder::new(para_id, tokio_handle.clone(), Charlie)
 		.enable_collator()
 		.connect_to_relay_chain_nodes(vec![&alice, &bob])
 		.build()
 		.await;
-	para_collator.wait_for_blocks(5).await;
+	charlie.wait_for_blocks(5).await;
 
-	// run a parachain full node and wait for it to sync some blocks
-	let para_full = test_service::TestNodeBuilder::new(para_id, tokio_handle, Dave)
-		.connect_to_parachain_node(&para_collator)
+	// run cumulus dave (a parachain full node) and wait for it to sync some blocks
+	let dave = test_service::TestNodeBuilder::new(para_id, tokio_handle.clone(), Dave)
+		.connect_to_parachain_node(&charlie)
 		.connect_to_relay_chain_nodes(vec![&alice, &bob])
 		.build()
 		.await;
-	para_full.wait_for_blocks(7).await;
+
+	// run cumulus dave (a parachain full node) and wait for it to sync some blocks
+	let eve = test_service::TestNodeBuilder::new(para_id, tokio_handle, Eve)
+		.connect_to_parachain_node(&charlie)
+		.connect_to_relay_chain_nodes(vec![&alice, &bob])
+		.use_external_relay_chain_node_at_port(ws_port)
+		.build()
+		.await;
+
+	join!(dave.wait_for_blocks(7), eve.wait_for_blocks(7));
 }
 
 /// this testcase will take too long to running, test with command:
@@ -82,11 +94,13 @@ async fn simple_balances_test() {
 
 	let tokio_handle = tokio::runtime::Handle::current();
 
+	let ws_port = portpicker::pick_unused_port().expect("No free ports");
+
 	// start alice
-	let alice = run_relay_chain_validator_node(tokio_handle.clone(), Alice, || {}, Vec::new());
+	let alice = run_relay_chain_validator_node(tokio_handle.clone(), Alice, || {}, Vec::new(), Some(ws_port));
 
 	// start bob
-	let bob = run_relay_chain_validator_node(tokio_handle.clone(), Bob, || {}, vec![alice.addr.clone()]);
+	let bob = run_relay_chain_validator_node(tokio_handle.clone(), Bob, || {}, vec![alice.addr.clone()], None);
 
 	// register parachain
 	alice
@@ -100,13 +114,22 @@ async fn simple_balances_test() {
 		.await
 		.unwrap();
 
-	// run a parachain collator
-	let node = test_service::TestNodeBuilder::new(para_id, tokio_handle.clone(), Alice)
+	// run cumulus charlie (a parachain collator)
+	let charlie = test_service::TestNodeBuilder::new(para_id, tokio_handle.clone(), Charlie)
 		.enable_collator()
 		.connect_to_relay_chain_nodes(vec![&alice, &bob])
 		.build()
 		.await;
-	node.wait_for_blocks(2).await;
+
+	// run cumulus dave (a parachain full node)
+	let dave = test_service::TestNodeBuilder::new(para_id, tokio_handle, Dave)
+		.connect_to_parachain_node(&charlie)
+		.connect_to_relay_chain_nodes(vec![&alice, &bob])
+		.build()
+		.await;
+
+	// Wait for 2 blocks to be produced
+	dave.wait_for_blocks(2).await;
 
 	let bob = MultiSigner::from(Bob.public());
 	let bob_account_id = bob.into_account();
@@ -115,12 +138,12 @@ async fn simple_balances_test() {
 	type Balances = pallet_balances::Pallet<node_runtime::Runtime>;
 
 	// the function with_state allows us to read state, pretty cool right? :D
-	let old_balance = node.with_state(|| Balances::free_balance(bob_account_id.clone()));
+	let old_balance = dave.with_state(|| Balances::free_balance(bob_account_id.clone()));
 
-	node.transfer(Alice, Bob, amount, 0).await.unwrap();
+	dave.transfer(Alice, Bob, amount, 0).await.unwrap();
 
-	node.wait_for_blocks(3).await;
+	dave.wait_for_blocks(3).await;
 	// we can check the new state :D
-	let new_balance = node.with_state(|| Balances::free_balance(bob_account_id));
+	let new_balance = dave.with_state(|| Balances::free_balance(bob_account_id));
 	assert_eq!(old_balance + amount, new_balance);
 }

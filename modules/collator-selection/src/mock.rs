@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -48,7 +48,7 @@ frame_support::construct_runtime!(
 		Aura: pallet_aura::{Pallet, Storage, Config<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		CollatorSelection: collator_selection::{Pallet, Call, Storage, Event<T>},
-		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
+		Authorship: pallet_authorship::{Pallet, Storage},
 	}
 );
 
@@ -57,8 +57,8 @@ impl frame_system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
-	type Origin = Origin;
-	type Call = Call;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
 	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
@@ -66,7 +66,7 @@ impl frame_system::Config for Test {
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -81,7 +81,7 @@ impl frame_system::Config for Test {
 
 impl pallet_balances::Config for Test {
 	type Balance = u64;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU64<5>;
 	type AccountStore = System;
@@ -103,8 +103,6 @@ impl FindAuthor<u64> for Author4 {
 
 impl pallet_authorship::Config for Test {
 	type FindAuthor = Author4;
-	type UncleGenerations = ();
-	type FilterUncle = ();
 	type EventHandler = CollatorSelection;
 }
 
@@ -155,7 +153,7 @@ impl pallet_session::SessionHandler<u64> for TestSessionHandler {
 }
 pub const PERIOD: u64 = 10;
 impl pallet_session::Config for Test {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	// we don't have stash and controller, thus we don't need the convert as well.
 	type ValidatorIdOf = IdentityCollator;
@@ -177,7 +175,7 @@ parameter_types! {
 }
 
 impl Config for Test {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureSignedBy<RootAccount, u64>;

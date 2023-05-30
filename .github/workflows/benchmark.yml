@@ -1,0 +1,120 @@
+name: Benchmark
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  pull-requests: write
+  contents: write
+jobs:
+  benchmark:
+    name: Benchmark
+    if: ${{ github.event.issue.pull_request && contains(fromJson('["MEMBER", "OWNER"]'), github.event.comment.author_association) && startsWith(github.event.comment.body, '/bench ') }}
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/github-script@v6
+        name: Get PR branch
+        id: issue
+        with:
+          script: |
+            const pr = context.payload.issue.number
+            const data = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr
+            })
+            return {
+              ref: data.data.head.ref,
+              sha: data.data.head.sha,
+            }
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          ref: ${{ fromJson(steps.issue.outputs.result).sha }}
+      - uses: actions/github-script@v6
+        name: Prepare command
+        id: command
+        with:
+          result-encoding: string
+          script: |
+            const [, , cmd, ...args] = context.payload.comment.body.split(/\W+/)
+            switch (cmd) {
+              case 'runtime': {
+                const [runtime, pallet] = args
+                if (!['acala', 'karura', 'mandala'].includes(runtime)) throw new Error('Invalid runtime')
+                return `make benchmark-${runtime} options="--quiet --color=never" pallet=${pallet ?? "*"}`
+              }
+              case 'module':
+                const [pallet] = args
+                // pallet folder should be just the name of the pallet, without the leading
+                // "pallet_" or "frame_", then separated with "-"
+                const palletFolder = pallet.split('_').slice(1).join('-').trim()
+                return `make benchmark-module options="--quiet --color=never" pallet=${pallet} pallet_folder=${palletFolder}`
+              case 'evm':
+                return 'make bench-evm'
+              default:
+                throw new Error('Invalid command')
+            }
+      - uses: actions/github-script@v6
+        name: Post comment
+        id: comment
+        with:
+          script: |
+            const data = await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+              **Request**: \`${context.payload.comment.body}\`
+              **Command**: \`${{steps.command.outputs.result}}\`
+
+              Running...
+              `
+            })
+            return data.data.id
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2023-03-04
+          components: rustfmt
+          target: wasm32-unknown-unknown
+          default: true
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16.x
+      - name: Run benchmarks
+        run: ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
+      - name: Commit
+        run: |
+          git config user.email "hello@acala.network"
+          git config user.name "Acala Github Action Bot"
+          git add .
+          git commit -m '${{github.event.comment.body}}' --allow-empty
+          git push origin HEAD:${{ fromJson(steps.issue.outputs.result).ref }}
+      - uses: actions/github-script@v6
+        name: Update comment
+        with:
+          script: |
+            const fs = require('fs')
+            const id = `${{steps.comment.outputs.result}}`
+            const body = fs.readFileSync('${{runner.temp}}/out.txt').toString()
+            github.rest.issues.updateComment({
+              comment_id: id,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+              **Request**: \`${context.payload.comment.body}\`
+              **Command**: \`${{steps.command.outputs.result}}\`
+
+              <details>
+              <summary>Results</summary>
+
+              \`\`\`
+              ${body.trim()}
+              \`\`\`
+              </details>
+              `
+            })

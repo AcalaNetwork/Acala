@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,22 +17,22 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::utils::{dollar, inject_liquidity, LIQUID, NATIVE, STABLECOIN, STAKING};
-use crate::{AccountId, Currencies, CurrencyId, Dex, Event, ExtendedProvisioningBlocks, Runtime, System};
+use crate::{AccountId, Currencies, CurrencyId, Dex, ExtendedProvisioningBlocks, Runtime, RuntimeEvent, System};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_dex::TradingPairStatus;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::TradingPair;
-use runtime_common::{BNC, RENBTC, VSKSM};
+use runtime_common::{BNC, VSKSM};
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 
-const CURRENCY_LIST: [CurrencyId; 7] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC, VSKSM, RENBTC];
+const CURRENCY_LIST: [CurrencyId; 6] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC, VSKSM];
 
-fn assert_last_event(generic_event: Event) {
+fn assert_last_event(generic_event: RuntimeEvent) {
 	System::assert_last_event(generic_event.into());
 }
 

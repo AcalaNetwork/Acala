@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -48,7 +48,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type Currency: LockableCurrency<Self::AccountId, Balance = Balance>;
 
@@ -127,6 +127,7 @@ pub mod module {
 		/// Bond tokens by locking them up to `amount`.
 		/// If user available balances is less than amount, then all the remaining balances will be
 		/// locked.
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::bond())]
 		#[transactional]
 		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -147,6 +148,7 @@ pub mod module {
 		/// Start unbonding tokens up to `amount`.
 		/// If bonded amount is less than `amount`, then all the remaining bonded tokens will start
 		/// unbonding. Token will finish unbonding after `UnbondingPeriod` blocks.
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::unbond())]
 		#[transactional]
 		pub fn unbond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -169,6 +171,7 @@ pub mod module {
 		/// Unbond up to `amount` tokens instantly by paying a `InstantUnstakeFee` fee.
 		/// If bonded amount is less than `amount`, then all the remaining bonded tokens will be
 		/// unbonded. This will not unbond tokens during unbonding period.
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::unbond_instant())]
 		#[transactional]
 		pub fn unbond_instant(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -199,6 +202,7 @@ pub mod module {
 		/// Rebond up to `amount` tokens from unbonding period.
 		/// If unbonded amount is less than `amount`, then all the remaining unbonded tokens will be
 		/// rebonded.
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::rebond())]
 		#[transactional]
 		pub fn rebond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -218,6 +222,7 @@ pub mod module {
 		}
 
 		/// Withdraw all unbonded tokens.
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
 		#[transactional]
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResult {

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,7 @@ use mock::*;
 fn bond_below_min_bond_threshold() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			NomineesElectionModule::bond(Origin::signed(ALICE), 4),
+			NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 4),
 			Error::<Runtime>::BelowMinBondThreshold,
 		);
 	});
@@ -37,7 +37,7 @@ fn bond_below_min_bond_threshold() {
 #[test]
 fn bond_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(ALICE), 50));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 50));
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 50);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 50);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 50);
@@ -47,7 +47,7 @@ fn bond_work() {
 #[test]
 fn bond_amount_over_remain_free() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(ALICE), 2000));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 2000));
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 1000);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 1000);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 1000);
@@ -57,13 +57,13 @@ fn bond_amount_over_remain_free() {
 #[test]
 fn unbond_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(ALICE), 200));
-		assert_ok!(NomineesElectionModule::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 200));
+		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 200);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 100);
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 200);
 		NomineesElectionModule::on_new_era(4);
-		assert_ok!(NomineesElectionModule::withdraw_unbonded(Origin::signed(ALICE)));
+		assert_ok!(NomineesElectionModule::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 100);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 100);
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 100);
@@ -73,15 +73,15 @@ fn unbond_work() {
 #[test]
 fn unbond_exceed_max_unlock_chunk() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(ALICE), 1000));
-		assert_ok!(NomineesElectionModule::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 1000));
+		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
 		NomineesElectionModule::on_new_era(1);
-		assert_ok!(NomineesElectionModule::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
 		NomineesElectionModule::on_new_era(2);
-		assert_ok!(NomineesElectionModule::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
 		NomineesElectionModule::on_new_era(3);
 		assert_noop!(
-			NomineesElectionModule::unbond(Origin::signed(ALICE), 100),
+			NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100),
 			Error::<Runtime>::MaxUnlockChunksExceeded,
 		);
 	});
@@ -90,13 +90,13 @@ fn unbond_exceed_max_unlock_chunk() {
 #[test]
 fn unbond_amount_over_active() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(ALICE), 1000));
-		assert_ok!(NomineesElectionModule::unbond(Origin::signed(ALICE), 1500));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 1000));
+		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 1500));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 1000);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 0);
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 1000);
 		NomineesElectionModule::on_new_era(4);
-		assert_ok!(NomineesElectionModule::withdraw_unbonded(Origin::signed(ALICE)));
+		assert_ok!(NomineesElectionModule::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 0);
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).free, 1000);
 	});
@@ -105,9 +105,9 @@ fn unbond_amount_over_active() {
 #[test]
 fn unbond_remain_below_threshold() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(ALICE), 1000));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 1000));
 		assert_noop!(
-			NomineesElectionModule::unbond(Origin::signed(ALICE), 996),
+			NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 996),
 			Error::<Runtime>::BelowMinBondThreshold,
 		);
 	});
@@ -119,31 +119,31 @@ fn rebond_work() {
 		System::set_block_number(1);
 
 		assert_noop!(
-			NomineesElectionModule::rebond(Origin::signed(ALICE), 100),
+			NomineesElectionModule::rebond(RuntimeOrigin::signed(ALICE), 100),
 			Error::<Runtime>::NotBonded,
 		);
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(ALICE), 1000));
-		assert_ok!(NomineesElectionModule::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 1000));
+		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
 		NomineesElectionModule::on_new_era(1);
-		assert_ok!(NomineesElectionModule::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
 		NomineesElectionModule::on_new_era(2);
-		assert_ok!(NomineesElectionModule::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
 		NomineesElectionModule::on_new_era(3);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 1000);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 700);
-		assert_ok!(NomineesElectionModule::rebond(Origin::signed(ALICE), 150));
-		System::assert_last_event(mock::Event::NomineesElectionModule(crate::Event::Rebond {
+		assert_ok!(NomineesElectionModule::rebond(RuntimeOrigin::signed(ALICE), 150));
+		System::assert_last_event(mock::RuntimeEvent::NomineesElectionModule(crate::Event::Rebond {
 			who: ALICE,
 			amount: 150,
 		}));
 		NomineesElectionModule::on_new_era(4);
-		assert_ok!(NomineesElectionModule::withdraw_unbonded(Origin::signed(ALICE)));
+		assert_ok!(NomineesElectionModule::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 900);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 850);
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 900);
 
-		assert_ok!(NomineesElectionModule::rebond(Origin::signed(ALICE), 200));
-		System::assert_last_event(mock::Event::NomineesElectionModule(crate::Event::Rebond {
+		assert_ok!(NomineesElectionModule::rebond(RuntimeOrigin::signed(ALICE), 200));
+		System::assert_last_event(mock::RuntimeEvent::NomineesElectionModule(crate::Event::Rebond {
 			who: ALICE,
 			amount: 50,
 		}));
@@ -157,16 +157,16 @@ fn rebond_work() {
 fn withdraw_unbonded_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(NomineesElectionModule::current_era(), 0);
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(ALICE), 1000));
-		assert_ok!(NomineesElectionModule::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 1000));
+		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 1000);
 		NomineesElectionModule::on_new_era(3);
-		assert_ok!(NomineesElectionModule::withdraw_unbonded(Origin::signed(ALICE)));
+		assert_ok!(NomineesElectionModule::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 1000);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().unlocking_len(), 1);
-		assert_ok!(NomineesElectionModule::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
 		NomineesElectionModule::on_new_era(4);
-		assert_ok!(NomineesElectionModule::withdraw_unbonded(Origin::signed(ALICE)));
+		assert_ok!(NomineesElectionModule::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 900);
 	});
 }
@@ -175,32 +175,32 @@ fn withdraw_unbonded_work() {
 fn nominate_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			NomineesElectionModule::nominate(Origin::signed(ALICE), vec![1, 2, 3, 4, 5]),
+			NomineesElectionModule::nominate(RuntimeOrigin::signed(ALICE), vec![1, 2, 3, 4, 5]),
 			Error::<Runtime>::NotBonded,
 		);
 
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(ALICE), 500));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 500));
 
 		assert_noop!(
-			NomineesElectionModule::nominate(Origin::signed(ALICE), vec![]),
+			NomineesElectionModule::nominate(RuntimeOrigin::signed(ALICE), vec![]),
 			Error::<Runtime>::InvalidTargetsLength,
 		);
 		assert_noop!(
-			NomineesElectionModule::nominate(Origin::signed(ALICE), vec![1, 2, 3, 4, 5, 6]),
+			NomineesElectionModule::nominate(RuntimeOrigin::signed(ALICE), vec![1, 2, 3, 4, 5, 6]),
 			Error::<Runtime>::InvalidTargetsLength,
 		);
 
 		assert_eq!(NomineesElectionModule::nominations(&ALICE), vec![]);
 		assert_eq!(NomineesElectionModule::votes(1), 0);
 		assert_ok!(NomineesElectionModule::nominate(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			vec![1, 2, 3, 4, 5]
 		));
 		assert_eq!(NomineesElectionModule::nominations(&ALICE), vec![1, 2, 3, 4, 5]);
 		assert_eq!(NomineesElectionModule::votes(1), 500);
 		assert_eq!(NomineesElectionModule::votes(2), 500);
 		assert_ok!(NomineesElectionModule::nominate(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			vec![2, 3, 4, 5, 6]
 		));
 		assert_eq!(NomineesElectionModule::nominations(&ALICE), vec![2, 3, 4, 5, 6]);
@@ -212,15 +212,15 @@ fn nominate_work() {
 #[test]
 fn chill_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(ALICE), 500));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 500));
 		assert_ok!(NomineesElectionModule::nominate(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			vec![1, 2, 3, 4, 5]
 		));
 		assert_eq!(NomineesElectionModule::nominations(&ALICE), vec![1, 2, 3, 4, 5]);
 		assert_eq!(NomineesElectionModule::votes(1), 500);
 		assert_eq!(NomineesElectionModule::votes(2), 500);
-		assert_ok!(NomineesElectionModule::chill(Origin::signed(ALICE)));
+		assert_ok!(NomineesElectionModule::chill(RuntimeOrigin::signed(ALICE)));
 		assert_eq!(NomineesElectionModule::nominations(&ALICE), vec![]);
 		assert_eq!(NomineesElectionModule::votes(1), 0);
 		assert_eq!(NomineesElectionModule::votes(2), 0);
@@ -230,9 +230,9 @@ fn chill_work() {
 #[test]
 fn rebalance_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(ALICE), 500));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 500));
 		assert_ok!(NomineesElectionModule::nominate(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			vec![1, 2, 3, 4, 5]
 		));
 		assert_eq!(NomineesElectionModule::nominees(), vec![]);
@@ -240,9 +240,9 @@ fn rebalance_work() {
 		NomineesElectionModule::rebalance();
 		assert_eq!(NomineesElectionModule::nominees().len(), 5);
 		assert!(NomineesElectionModule::nominees().contains(&1));
-		assert_ok!(NomineesElectionModule::bond(Origin::signed(BOB), 600));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(BOB), 600));
 		assert_ok!(NomineesElectionModule::nominate(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			vec![2, 3, 4, 5, 6]
 		));
 		NomineesElectionModule::rebalance();

@@ -18,13 +18,11 @@ jobs:
           submodules: recursive
           persist-credentials: false
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
-          toolchain: nightly-2022-08-05
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: update tokens
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -26,27 +26,33 @@ use frame_support::assert_ok;
 pub use orml_traits::GetByKey;
 use polkadot_parachain::primitives::Sibling;
 use primitives::currency::AssetMetadata;
-use xcm::v1::{Junction, MultiLocation};
+use xcm::v3::{Junction, MultiLocation};
 use xcm_emulator::TestExt;
 
 pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE: Balance = 50_000_000;
-pub const FEE_STATEMINT: Balance = 46_351_012;
+pub const FEE_STATEMINT: Balance = 10_143_569;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
-		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
+		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((Parent, Parachain(1000)).into()));
 	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
-		Origin::root(),
-		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(50_000_000),)],
+		RuntimeOrigin::root(),
+		vec![(
+			xcm_operation.clone(),
+			Some(XcmWeight::from_parts(4_000_000_000, 0)),
+			Some(50_000_000),
+		)],
 	));
-	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmDestWeightUpdated {
-		xcm_operation: xcm_operation.clone(),
-		new_xcm_dest_weight: 4_000_000_000,
-	}));
-	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
+	System::assert_has_event(RuntimeEvent::XcmInterface(
+		module_xcm_interface::Event::XcmDestWeightUpdated {
+			xcm_operation: xcm_operation.clone(),
+			new_xcm_dest_weight: XcmWeight::from_parts(4_000_000_000, 0),
+		},
+	));
+	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
 		xcm_operation,
 		new_xcm_dest_weight: 50_000_000,
 	}));
@@ -58,10 +64,10 @@ fn statemint_min_xcm_fee_matched() {
 		use frame_support::weights::{IdentityFee, WeightToFee};
 
 		init_statemine_xcm_interface();
-		let weight = FEE_WEIGHT as u64;
+		let weight = Weight::from_parts(FEE_WEIGHT as u64, 0);
 
 		let fee: Balance = IdentityFee::weight_to_fee(&weight);
-		let statemine: MultiLocation = (1, Parachain(parachains::statemint::ID)).into();
+		let statemine: MultiLocation = (Parent, Parachain(parachains::statemint::ID)).into();
 		assert_eq!(fee, 4_000_000_000);
 
 		let statemine_fee: u128 = ParachainMinFee::get(&statemine).unwrap();
@@ -73,16 +79,9 @@ fn statemint_min_xcm_fee_matched() {
 fn teleport_from_relay_chain() {
 	PolkadotNet::execute_with(|| {
 		assert_ok!(polkadot_runtime::XcmPallet::teleport_assets(
-			polkadot_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(1000).into().into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
+			Box::new(Parachain(1000).into_versioned()),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((Here, dollar(DOT)).into()),
 			0
 		));
@@ -105,7 +104,8 @@ fn acala_statemint_transfer_works() {
 
 	// minimum asset should be: FEE_WEIGHT+FEE_KUSAMA+max(KUSAMA_ED,STATEMINE_ED+FEE_STATEMINE).
 	// but due to current half fee, sender asset should at lease: FEE_WEIGHT + 2 * FEE_KUSAMA
-	let asset = FEE_WEIGHT + 2 * 31_488_122;
+	// let asset = FEE_WEIGHT + 2 * 31_488_122;
+	let asset = FEE_WEIGHT + 2 * 31_488_122; // 4_062_976_244
 
 	statemint_side(UNIT);
 
@@ -130,8 +130,8 @@ fn acala_statemint_transfer_works() {
 		// and withdraw sibling parachain sovereign account
 		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
 
-		assert_eq!(1000003648988, Balances::free_balance(&AccountId::from(BOB)));
-		assert_eq!(1003447207780, Balances::free_balance(&para_2000));
+		assert_eq!(1_000_036_921_836, Balances::free_balance(&AccountId::from(BOB)));
+		assert_eq!(1_003_569_584_455, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -141,14 +141,14 @@ fn acala_side(fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			TEN - 92696000,
+			TEN - 80_128_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough DOT balance to be charged as fee
 		assert_ok!(Tokens::deposit(DOT, &AccountId::from(BOB), TEN));
 
 		assert_ok!(XTokens::transfer_multicurrencies(
-			Origin::signed(BOB.into()),
+			RuntimeOrigin::signed(BOB.into()),
 			vec![(CurrencyId::ForeignAsset(0), UNIT), (DOT, fee_amount)],
 			1,
 			Box::new(
@@ -157,18 +157,18 @@ fn acala_side(fee_amount: u128) {
 					X2(
 						Parachain(1000),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			FEE_WEIGHT as u64
+			WeightLimit::Unlimited
 		));
 
 		assert_eq!(
-			TEN - UNIT - 92696000,
+			TEN - UNIT - 80_128_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - fee_amount, Tokens::free_balance(DOT, &AccountId::from(BOB)));
@@ -184,14 +184,14 @@ fn statemint_side(para_2000_init_amount: u128) {
 	Statemint::execute_with(|| {
 		use statemint_runtime::*;
 
-		let origin = Origin::signed(ALICE.into());
+		let origin = RuntimeOrigin::signed(ALICE.into());
 		Balances::make_free_balance_be(&ALICE.into(), TEN);
 		Balances::make_free_balance_be(&BOB.into(), UNIT);
 
 		// create custom asset cost 1 DOT
 		assert_ok!(Assets::create(
 			origin.clone(),
-			0,
+			0.into(),
 			MultiAddress::Id(ALICE.into()),
 			UNIT / 100
 		));
@@ -199,7 +199,7 @@ fn statemint_side(para_2000_init_amount: u128) {
 
 		assert_ok!(Assets::mint(
 			origin.clone(),
-			0,
+			0.into(),
 			MultiAddress::Id(ALICE.into()),
 			1000 * UNIT
 		));
@@ -207,19 +207,13 @@ fn statemint_side(para_2000_init_amount: u128) {
 		// need to have some DOT to be able to receive user assets
 		Balances::make_free_balance_be(&para_acc, para_2000_init_amount);
 
-		assert_ok!(PolkadotXcm::reserve_transfer_assets(
+		assert_ok!(PolkadotXcm::limited_reserve_transfer_assets(
 			origin.clone(),
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((X2(PalletInstance(50), GeneralIndex(0)), TEN).into()),
-			0
+			0,
+			WeightLimit::Unlimited
 		));
 
 		assert_eq!(0, Assets::balance(0, &AccountId::from(BOB)));
@@ -237,7 +231,7 @@ fn register_asset() {
 	Acala::execute_with(|| {
 		// register foreign asset
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Box::new(MultiLocation::new(1, X3(Parachain(1000), PalletInstance(50), GeneralIndex(0))).into()),
 			Box::new(AssetMetadata {
 				name: b"Sibling Token".to_vec(),

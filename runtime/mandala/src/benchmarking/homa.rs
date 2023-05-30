@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,9 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-	AccountId, ActiveSubAccountsIndexList, Balance, Currencies, Homa, Rate, RelaychainBlockNumberProvider, Runtime,
-};
+use crate::{AccountId, ActiveSubAccountsIndexList, Balance, Currencies, Homa, Rate, RelaychainDataProvider, Runtime};
 
 use super::utils::{set_balance, LIQUID, STAKING};
 use frame_benchmarking::{account, whitelisted_caller};
@@ -59,7 +57,7 @@ runtime_benchmarks! {
 			Some(Rate::saturating_from_rational(20, 100)),
 			None,
 		)?;
-		RelaychainBlockNumberProvider::<Runtime>::set_block_number(10);
+		RelaychainDataProvider::<Runtime>::set_block_number(10);
 		Homa::update_bump_era_params(RawOrigin::Root.into(), None, Some(1))?;
 
 		Homa::mint(RawOrigin::Signed(minter).into(), 100_000_000_000_000)?;
@@ -134,7 +132,7 @@ runtime_benchmarks! {
 		Some(Rate::saturating_from_rational(1, 100)))
 
 	update_bump_era_params {
-		RelaychainBlockNumberProvider::<Runtime>::set_block_number(10000);
+		RelaychainDataProvider::<Runtime>::set_block_number(10000);
 	}: _(RawOrigin::Root, Some(3000), Some(7200))
 
 	reset_ledgers {

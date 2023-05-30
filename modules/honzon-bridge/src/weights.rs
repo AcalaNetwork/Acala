@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -28,13 +28,13 @@
 // --chain=karura-dev
 // --steps=50
 // --repeat=20
-// --pallet=module-homa-lite
+// --pallet=module-honzon-bridge
 // --extrinsic=*
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --template=./templates/module-weight-template.hbs
-// --output=./modules/homa-lite/src/weights.rs
+// --output=./modules/honzon-bridge/src/weights.rs
 
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
@@ -45,36 +45,36 @@
 use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use sp_std::marker::PhantomData;
 
-/// Weight functions needed for module_homa_lite.
+/// Weight functions needed for module_honzon_bridge.
 pub trait WeightInfo {
 	fn set_bridged_stable_coin_address() -> Weight;
 	fn to_bridged() -> Weight;
 	fn from_bridged() -> Weight;
 }
 
-/// Weights for module_homa_lite using the Acala node and recommended hardware.
+/// Weights for module_honzon_bridge using the Acala node and recommended hardware.
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn set_bridged_stable_coin_address() -> Weight {
-		(8_000_000 as Weight)
+		Weight::from_parts(8_000_000, 0)
 	}
 	fn to_bridged() -> Weight {
-		(8_000_000 as Weight)
+		Weight::from_parts(8_000_000, 0)
 	}
 	fn from_bridged() -> Weight {
-		(8_000_000 as Weight)
+		Weight::from_parts(8_000_000, 0)
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn set_bridged_stable_coin_address() -> Weight {
-		(8_000_000 as Weight)
+		Weight::from_parts(8_000_000, 0)
 	}
 	fn to_bridged() -> Weight {
-		(8_000_000 as Weight)
+		Weight::from_parts(8_000_000, 0)
 	}
 	fn from_bridged() -> Weight {
-		(8_000_000 as Weight)
+		Weight::from_parts(8_000_000, 0)
 	}
 }

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@
 
 use crate::{
 	runner::{
-		state::{Accessed, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
+		state::{Accessed, CustomStackState, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
 		Runner as RunnerT, RunnerExtended,
 	},
 	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, One, Pallet,
@@ -37,13 +37,12 @@ use module_evm_utility::{
 	ethereum::Log,
 	evm::{self, backend::Backend as BackendT, ExitError, ExitReason, Transfer},
 };
-use module_support::AddressMapping;
+use module_support::{AddressMapping, EVM};
 pub use primitives::{
 	evm::{convert_decimals_from_evm, EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START},
 	ReserveIdentifier,
 };
-use sha3::{Digest, Keccak256};
-use sp_core::{H160, H256, U256};
+use sp_core::{defer, H160, H256, U256};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::{
 	boxed::Box,
@@ -281,10 +280,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 				let address = executor
 					.create_address(evm::CreateScheme::Legacy { caller: source })
 					.unwrap_or_default(); // transact_create will check the address
-				(
-					executor.transact_create(source, value, init, gas_limit, access_list),
-					address,
-				)
+				let (reason, _) = executor.transact_create(source, value, init, gas_limit, access_list);
+				(reason, address)
 			},
 		)
 	}
@@ -303,7 +300,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	) -> Result<CreateInfo, DispatchError> {
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
+		let code_hash = H256::from(sp_io::hashing::keccak_256(&init));
 		Self::execute(
 			source,
 			source,
@@ -321,10 +318,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 						salt,
 					})
 					.unwrap_or_default(); // transact_create2 will check the address
-				(
-					executor.transact_create2(source, value, init, salt, gas_limit, access_list),
-					address,
-				)
+				let (reason, _) = executor.transact_create2(source, value, init, salt, gas_limit, access_list);
+				(reason, address)
 			},
 		)
 	}
@@ -353,10 +348,9 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			false,
 			&precompiles,
 			|executor| {
-				(
-					executor.transact_create_at_address(source, address, value, init, gas_limit, access_list),
-					address,
-				)
+				let (reason, _) =
+					executor.transact_create_at_address(source, address, value, init, gas_limit, access_list);
+				(reason, address)
 			},
 		)
 	}
@@ -376,6 +370,10 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 		access_list: Vec<(H160, Vec<H256>)>,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
+		// Ensure eth_call has evm origin, otherwise xcm charge rent fee will fail.
+		Pallet::<T>::set_origin(T::AddressMapping::get_account_id(&origin));
+		defer!(Pallet::<T>::kill_origin());
+
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(
@@ -417,10 +415,8 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 				let address = executor
 					.create_address(evm::CreateScheme::Legacy { caller: source })
 					.unwrap_or_default(); // transact_create will check the address
-				(
-					executor.transact_create(source, value, init, gas_limit, access_list),
-					address,
-				)
+				let (reason, _) = executor.transact_create(source, value, init, gas_limit, access_list);
+				(reason, address)
 			},
 		)
 	}
@@ -624,7 +620,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_hash(&self, number: U256) -> H256 {
-		if number > U256::from(u32::max_value()) {
+		if number > U256::from(u32::MAX) {
 			H256::default()
 		} else {
 			let number = T::BlockNumber::from(number.as_u32());
@@ -682,7 +678,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
-		AccountStorages::<T>::get(&address, index)
+		AccountStorages::<T>::get(address, index)
 	}
 
 	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
@@ -732,7 +728,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn inc_nonce(&mut self, address: H160) {
-		Accounts::<T>::mutate(&address, |maybe_account| {
+		Accounts::<T>::mutate(address, |maybe_account| {
 			if let Some(account) = maybe_account.as_mut() {
 				account.nonce += One::one()
 			} else {
@@ -919,5 +915,15 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	fn is_storage_cold(&self, address: H160, key: H256) -> bool {
 		self.substate
 			.recursive_is_cold(&|a: &Accessed| a.accessed_storage.contains(&(address, key)))
+	}
+}
+
+impl<'vicinity, 'config, T: Config> CustomStackState for SubstrateStackState<'vicinity, 'config, T> {
+	fn code_hash_at_address(&self, address: H160) -> H256 {
+		Pallet::<T>::code_hash_at_address(&address)
+	}
+
+	fn code_size_at_address(&self, address: H160) -> U256 {
+		Pallet::<T>::code_size_at_address(&address)
 	}
 }

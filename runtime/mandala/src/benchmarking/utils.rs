@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,22 +17,27 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Balance, Currencies, CurrencyId, Dex, ExistentialDeposits,
-	GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumCount,
-	NativeTokenExistentialDeposit, OperatorMembershipAcala, Origin, Price, Runtime, StableAsset,
+	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Aura, Balance, Currencies, CurrencyId, Dex,
+	ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId,
+	MinimumCount, NativeTokenExistentialDeposit, OperatorMembershipAcala, Price, Runtime, RuntimeOrigin, StableAsset,
+	System, Timestamp,
 };
 
+pub use codec::Encode;
 use frame_benchmarking::account;
-use frame_support::traits::tokens::fungibles;
-use frame_support::{assert_ok, traits::Contains};
+use frame_support::{
+	assert_ok,
+	traits::{tokens::fungibles, Contains, OnInitialize},
+};
 use frame_system::RawOrigin;
 use module_support::{AggregatedSwapPath, Erc20InfoMapping};
 use orml_traits::{GetByKey, MultiCurrencyExtended};
 use primitives::currency::AssetMetadata;
 use runtime_common::{TokenInfo, LCDOT};
+use sp_consensus_aura::AURA_ENGINE_ID;
 use sp_runtime::{
 	traits::{SaturatedConversion, StaticLookup, UniqueSaturatedInto},
-	DispatchResult,
+	Digest, DigestItem, DispatchResult, MultiAddress,
 };
 use sp_std::prelude::*;
 
@@ -56,7 +61,7 @@ pub fn register_native_asset(assets: Vec<CurrencyId>) {
 			ExistentialDeposits::get(&asset)
 		};
 		assert_ok!(AssetRegistry::register_native_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			*asset,
 			Box::new(AssetMetadata {
 				name: asset.name().unwrap().as_bytes().to_vec(),
@@ -80,13 +85,23 @@ pub fn feed_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	for i in 0..MinimumCount::get() {
 		let oracle: AccountId = account("oracle", 0, i);
 		if !OperatorMembershipAcala::contains(&oracle) {
-			OperatorMembershipAcala::add_member(RawOrigin::Root.into(), oracle.clone())?;
+			OperatorMembershipAcala::add_member(RawOrigin::Root.into(), MultiAddress::Id(oracle.clone()))?;
 		}
 		AcalaOracle::feed_values(RawOrigin::Signed(oracle).into(), prices.to_vec())
 			.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 	}
 
 	Ok(())
+}
+
+pub fn set_block_number_timestamp(block_number: u32, timestamp: u64) {
+	let slot = timestamp / Aura::slot_duration();
+	let digest = Digest {
+		logs: vec![DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode())],
+	};
+	System::initialize(&block_number, &Default::default(), &digest);
+	Aura::on_initialize(block_number);
+	Timestamp::set_timestamp(timestamp);
 }
 
 #[allow(dead_code)]

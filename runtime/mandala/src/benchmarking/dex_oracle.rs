@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,8 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{dollar, inject_liquidity, NATIVE, STABLECOIN, STAKING};
-use crate::{AccountId, DexOracle, Runtime, Timestamp};
+use super::utils::{dollar, inject_liquidity, set_block_number_timestamp, NATIVE, STABLECOIN, STAKING};
+use crate::{AccountId, DexOracle, Runtime};
 use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
@@ -48,7 +48,7 @@ runtime_benchmarks! {
 			DexOracle::update_average_price_interval(RawOrigin::Root.into(), update_pair.first(), update_pair.second(), 24000)?;
 		}
 	}: {
-		Timestamp::set_timestamp(24000);
+		set_block_number_timestamp(1, 24000);
 		DexOracle::on_initialize(1)
 	}
 

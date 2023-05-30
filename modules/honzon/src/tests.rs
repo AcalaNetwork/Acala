@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Event, *};
+use mock::{RuntimeEvent, *};
 use orml_traits::{Change, MultiCurrency};
 use sp_runtime::FixedPointNumber;
 use support::{Rate, Ratio};
@@ -32,19 +32,19 @@ fn authorize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_eq!(PalletBalances::reserved_balance(ALICE), 0);
-		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
+		assert_ok!(HonzonModule::authorize(RuntimeOrigin::signed(ALICE), BTC, BOB));
 		assert_eq!(
 			PalletBalances::reserved_balance(ALICE),
 			<<Runtime as Config>::DepositPerAuthorization as sp_runtime::traits::Get<u128>>::get()
 		);
-		System::assert_last_event(Event::HonzonModule(crate::Event::Authorization {
+		System::assert_last_event(RuntimeEvent::HonzonModule(crate::Event::Authorization {
 			authorizer: ALICE,
 			authorizee: BOB,
 			collateral_type: BTC,
 		}));
 		assert_ok!(HonzonModule::check_authorization(&ALICE, &BOB, BTC));
 		assert_noop!(
-			HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB),
+			HonzonModule::authorize(RuntimeOrigin::signed(ALICE), BTC, BOB),
 			Error::<Runtime>::AlreadyAuthorized
 		);
 	});
@@ -54,16 +54,16 @@ fn authorize_should_work() {
 fn unauthorize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
+		assert_ok!(HonzonModule::authorize(RuntimeOrigin::signed(ALICE), BTC, BOB));
 		assert_eq!(
 			PalletBalances::reserved_balance(ALICE),
 			<<Runtime as Config>::DepositPerAuthorization as sp_runtime::traits::Get<u128>>::get()
 		);
 		assert_ok!(HonzonModule::check_authorization(&ALICE, &BOB, BTC));
 
-		assert_ok!(HonzonModule::unauthorize(Origin::signed(ALICE), BTC, BOB));
+		assert_ok!(HonzonModule::unauthorize(RuntimeOrigin::signed(ALICE), BTC, BOB));
 		assert_eq!(PalletBalances::reserved_balance(ALICE), 0);
-		System::assert_last_event(Event::HonzonModule(crate::Event::UnAuthorization {
+		System::assert_last_event(RuntimeEvent::HonzonModule(crate::Event::UnAuthorization {
 			authorizer: ALICE,
 			authorizee: BOB,
 			collateral_type: BTC,
@@ -73,7 +73,7 @@ fn unauthorize_should_work() {
 			Error::<Runtime>::NoPermission
 		);
 		assert_noop!(
-			HonzonModule::unauthorize(Origin::signed(ALICE), BTC, BOB),
+			HonzonModule::unauthorize(RuntimeOrigin::signed(ALICE), BTC, BOB),
 			Error::<Runtime>::AuthorizationNotExists
 		);
 	});
@@ -83,12 +83,12 @@ fn unauthorize_should_work() {
 fn unauthorize_all_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
-		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), DOT, CAROL));
+		assert_ok!(HonzonModule::authorize(RuntimeOrigin::signed(ALICE), BTC, BOB));
+		assert_ok!(HonzonModule::authorize(RuntimeOrigin::signed(ALICE), DOT, CAROL));
 		assert_eq!(PalletBalances::reserved_balance(ALICE), 200);
-		assert_ok!(HonzonModule::unauthorize_all(Origin::signed(ALICE)));
+		assert_ok!(HonzonModule::unauthorize_all(RuntimeOrigin::signed(ALICE)));
 		assert_eq!(PalletBalances::reserved_balance(ALICE), 0);
-		System::assert_last_event(Event::HonzonModule(crate::Event::UnAuthorizationAll {
+		System::assert_last_event(RuntimeEvent::HonzonModule(crate::Event::UnAuthorizationAll {
 			authorizer: ALICE,
 		}));
 
@@ -107,7 +107,7 @@ fn unauthorize_all_should_work() {
 fn transfer_loan_from_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -115,9 +115,9 @@ fn transfer_loan_from_should_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
-		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
-		assert_ok!(HonzonModule::transfer_loan_from(Origin::signed(BOB), BTC, ALICE));
+		assert_ok!(HonzonModule::adjust_loan(RuntimeOrigin::signed(ALICE), BTC, 100, 50));
+		assert_ok!(HonzonModule::authorize(RuntimeOrigin::signed(ALICE), BTC, BOB));
+		assert_ok!(HonzonModule::transfer_loan_from(RuntimeOrigin::signed(BOB), BTC, ALICE));
 		assert_eq!(LoansModule::positions(BTC, BOB).collateral, 100);
 		assert_eq!(LoansModule::positions(BTC, BOB).debit, 50);
 	});
@@ -127,7 +127,7 @@ fn transfer_loan_from_should_work() {
 fn transfer_unauthorization_loans_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			HonzonModule::transfer_loan_from(Origin::signed(ALICE), BTC, BOB),
+			HonzonModule::transfer_loan_from(RuntimeOrigin::signed(ALICE), BTC, BOB),
 			Error::<Runtime>::NoPermission,
 		);
 	});
@@ -137,7 +137,7 @@ fn transfer_unauthorization_loans_should_not_work() {
 fn adjust_loan_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -145,7 +145,7 @@ fn adjust_loan_should_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
+		assert_ok!(HonzonModule::adjust_loan(RuntimeOrigin::signed(ALICE), BTC, 100, 50));
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 50);
 	});
@@ -155,7 +155,7 @@ fn adjust_loan_should_work() {
 fn adjust_loan_by_debit_value_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -165,7 +165,7 @@ fn adjust_loan_by_debit_value_should_work() {
 		));
 
 		assert_ok!(HonzonModule::adjust_loan_by_debit_value(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			100,
 			50
@@ -174,7 +174,7 @@ fn adjust_loan_by_debit_value_should_work() {
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
 
 		assert_ok!(HonzonModule::adjust_loan_by_debit_value(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			-10,
 			-5
@@ -189,15 +189,15 @@ fn on_emergency_shutdown_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		mock_shutdown();
 		assert_noop!(
-			HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50),
+			HonzonModule::adjust_loan(RuntimeOrigin::signed(ALICE), BTC, 100, 50),
 			Error::<Runtime>::AlreadyShutdown,
 		);
 		assert_noop!(
-			HonzonModule::transfer_loan_from(Origin::signed(ALICE), BTC, BOB),
+			HonzonModule::transfer_loan_from(RuntimeOrigin::signed(ALICE), BTC, BOB),
 			Error::<Runtime>::AlreadyShutdown,
 		);
 		assert_noop!(
-			HonzonModule::close_loan_has_debit_by_dex(Origin::signed(ALICE), BTC, 100),
+			HonzonModule::close_loan_has_debit_by_dex(RuntimeOrigin::signed(ALICE), BTC, 100),
 			Error::<Runtime>::AlreadyShutdown,
 		);
 	});
@@ -207,7 +207,7 @@ fn on_emergency_shutdown_should_work() {
 fn close_loan_has_debit_by_dex_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -215,12 +215,12 @@ fn close_loan_has_debit_by_dex_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
+		assert_ok!(HonzonModule::adjust_loan(RuntimeOrigin::signed(ALICE), BTC, 100, 50));
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 50);
 
 		assert_ok!(HonzonModule::close_loan_has_debit_by_dex(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			100,
 		));
@@ -234,7 +234,7 @@ fn transfer_debit_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -243,7 +243,7 @@ fn transfer_debit_works() {
 			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			DOT,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -253,42 +253,42 @@ fn transfer_debit_works() {
 		));
 
 		// set up two loans
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 500));
+		assert_ok!(HonzonModule::adjust_loan(RuntimeOrigin::signed(ALICE), BTC, 100, 500));
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
 
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), DOT, 100, 500));
+		assert_ok!(HonzonModule::adjust_loan(RuntimeOrigin::signed(ALICE), DOT, 100, 500));
 		assert_eq!(LoansModule::positions(DOT, ALICE).collateral, 100);
 		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 500);
 
 		// Will not work for account with no open CDP
 		assert_noop!(
-			HonzonModule::transfer_debit(Origin::signed(BOB), BTC, DOT, 1000),
+			HonzonModule::transfer_debit(RuntimeOrigin::signed(BOB), BTC, DOT, 1000),
 			ArithmeticError::Underflow
 		);
 		// Won't work when transfering more debit than is present
 		assert_noop!(
-			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 10_000),
+			HonzonModule::transfer_debit(RuntimeOrigin::signed(ALICE), BTC, DOT, 10_000),
 			ArithmeticError::Underflow
 		);
 		// Below minimum collateral threshold for the BTC CDP
 		assert_noop!(
-			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 500),
+			HonzonModule::transfer_debit(RuntimeOrigin::signed(ALICE), BTC, DOT, 500),
 			cdp_engine::Error::<Runtime>::BelowRequiredCollateralRatio
 		);
 		// Too large of a transfer
 		assert_noop!(
-			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, u128::MAX),
+			HonzonModule::transfer_debit(RuntimeOrigin::signed(ALICE), BTC, DOT, u128::MAX),
 			ArithmeticError::Overflow
 		);
 		// Won't work for currency that is not collateral
 		assert_noop!(
-			HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, ACA, 50),
+			HonzonModule::transfer_debit(RuntimeOrigin::signed(ALICE), BTC, ACA, 50),
 			cdp_engine::Error::<Runtime>::InvalidCollateralType
 		);
 
-		assert_ok!(HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 50));
-		System::assert_last_event(Event::HonzonModule(crate::Event::<Runtime>::TransferDebit {
+		assert_ok!(HonzonModule::transfer_debit(RuntimeOrigin::signed(ALICE), BTC, DOT, 50));
+		System::assert_last_event(RuntimeEvent::HonzonModule(crate::Event::<Runtime>::TransferDebit {
 			from_currency: BTC,
 			to_currency: DOT,
 			amount: 50,
@@ -307,7 +307,7 @@ fn transfer_debit_no_ausd() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			BTC,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -316,7 +316,7 @@ fn transfer_debit_no_ausd() {
 			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::set_collateral_params(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			DOT,
 			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -326,18 +326,18 @@ fn transfer_debit_no_ausd() {
 		));
 
 		// set up two loans
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 500));
+		assert_ok!(HonzonModule::adjust_loan(RuntimeOrigin::signed(ALICE), BTC, 100, 500));
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
 
-		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), DOT, 100, 500));
+		assert_ok!(HonzonModule::adjust_loan(RuntimeOrigin::signed(ALICE), DOT, 100, 500));
 		assert_eq!(LoansModule::positions(DOT, ALICE).collateral, 100);
 		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 500);
 
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 100);
-		assert_ok!(Currencies::transfer(Origin::signed(ALICE), BOB, AUSD, 100));
+		assert_ok!(Currencies::transfer(RuntimeOrigin::signed(ALICE), BOB, AUSD, 100));
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
-		assert_ok!(HonzonModule::transfer_debit(Origin::signed(ALICE), BTC, DOT, 5));
+		assert_ok!(HonzonModule::transfer_debit(RuntimeOrigin::signed(ALICE), BTC, DOT, 5));
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 0);
 	});
 }

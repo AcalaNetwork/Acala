@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -58,7 +58,7 @@ pub mod module {
 		>;
 
 		/// Origin represented Governance
-		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The alternative swap path joint list for DEX swap
 		#[pallet::constant]
@@ -92,7 +92,6 @@ pub mod module {
 		StorageMap<_, Twox64Concat, (CurrencyId, CurrencyId), BoundedVec<SwapPath, T::SwapPathLimit>, OptionQuery>;
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
@@ -106,6 +105,7 @@ pub mod module {
 		/// - `paths`: aggregated swap path.
 		/// - `supply_amount`: exact supply amount.
 		/// - `min_target_amount`: acceptable minimum target amount.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(
 			paths.iter().fold(0, |u, swap_path| match swap_path {
 				SwapPath::Dex(v) => u + (v.len() as u32),
@@ -126,6 +126,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target(
 			paths.iter().fold(0, |u, swap_path| match swap_path {
 				SwapPath::Dex(v) => u + (v.len() as u32),
@@ -152,6 +153,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `updates`:  Vec<((TokenA, TokenB), Option<Vec<SwapPath>>)>
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_aggregated_swap_paths(updates.len() as u32))]
 		#[transactional]
 		pub fn update_aggregated_swap_paths(

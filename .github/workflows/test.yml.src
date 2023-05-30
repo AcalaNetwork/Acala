@@ -29,7 +29,6 @@ jobs:
     runs-on:
       [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
@@ -37,15 +36,21 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - &toolchain
         name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
-          toolchain: nightly-2022-08-05
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build
@@ -85,7 +90,7 @@ jobs:
       - *checkout
       - *toolchain
       - name: Use Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: 16.x
       - name: Run ts tests

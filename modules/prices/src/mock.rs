@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -42,7 +42,7 @@ pub type BlockNumber = u64;
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
+pub const TAI: CurrencyId = CurrencyId::Token(TokenSymbol::TAI);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
@@ -58,16 +58,16 @@ mod prices {
 }
 
 impl frame_system::Config for Runtime {
-	type Origin = Origin;
+	type RuntimeOrigin = RuntimeOrigin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -98,7 +98,7 @@ impl DataProvider<CurrencyId, Price> for MockDataProvider {
 		if CHANGED.with(|v| *v.borrow_mut()) {
 			match *currency_id {
 				AUSD => None,
-				BTC => Some(Price::saturating_from_integer(40000)),
+				TAI => Some(Price::saturating_from_integer(40000)),
 				DOT => Some(Price::saturating_from_integer(10)),
 				ACA => Some(Price::saturating_from_integer(30)),
 				KSM => Some(Price::saturating_from_integer(200)),
@@ -107,7 +107,7 @@ impl DataProvider<CurrencyId, Price> for MockDataProvider {
 		} else {
 			match *currency_id {
 				AUSD => Some(Price::saturating_from_rational(99, 100)),
-				BTC => Some(Price::saturating_from_integer(50000)),
+				TAI => Some(Price::saturating_from_integer(50000)),
 				DOT => Some(Price::saturating_from_integer(100)),
 				ACA => Some(Price::zero()),
 				KSM => None,
@@ -200,19 +200,17 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
+	type CurrencyHooks = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
 }
 
 impl BlockNumberProvider for MockRelayBlockNumberProvider {
@@ -258,7 +256,7 @@ parameter_types! {
 }
 
 impl Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Source = MockDataProvider;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;

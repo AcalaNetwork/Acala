@@ -16,7 +16,6 @@ on:
 env:
   TARPAULIN_VERSION: 0.19.1
   # LIBCLANG_PATH: "/usr/lib/llvm-11/lib" # default `llvm-config --prefix`
-  # SCCACHE_CACHE_SIZE: "100G"
   CARGO_INCREMENTAL: 0
 jobs:
   clean-up-actions:
@@ -37,20 +36,22 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: nightly-2022-08-05
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
-      # - name: Install additional dependencies
-      #   run: |
-      #       sudo apt update -y &&
-      #       sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run cargo-tarpaulin
         run: |
           wget https://github.com/xd009642/tarpaulin/releases/download/${{ env.TARPAULIN_VERSION }}/cargo-tarpaulin-${{ env.TARPAULIN_VERSION }}-travis.tar.gz
@@ -64,7 +65,7 @@ jobs:
             test-service \
             --exclude-files **/mock.rs **/weights.rs **/weights/*
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true # optional (default = false)

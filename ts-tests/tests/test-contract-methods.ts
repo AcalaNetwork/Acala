@@ -3,17 +3,17 @@ import { expect } from "chai";
 import Block from "../build/Block.json"
 import { describeWithAcala, nextBlock } from "./util";
 import { deployContract } from "ethereum-waffle";
-import { Signer } from "@acala-network/bodhi";
+import { BodhiSigner } from "@acala-network/bodhi";
 import { Contract } from "ethers";
 
 describeWithAcala("Acala RPC (Contract Methods)", (context) => {
-	let alice: Signer;
+	let alice: BodhiSigner;
 	let contract: Contract;
 
 	before("create the contract", async function () {
 		this.timeout(15000);
-		[alice] = await context.provider.getWallets();
-		contract = await deployContract(alice as any, Block);
+		[alice] = context.wallets;
+		contract = await deployContract(alice, Block);
 	});
 
 	it("should return contract method result", async function () {
@@ -84,7 +84,7 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 			}
 		], alice);
 
-		await expect(mock.multiply()).to.be.rejectedWith('-32603: VM Exception while processing transaction: execution revert: 0x');
+		await expect(mock.multiply()).to.be.rejectedWith('VM Exception while processing transaction: execution revert:  0x');
 	});
 
 	// Requires error handling
@@ -99,7 +99,7 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 			}
 		], alice);
 
-		await expect(mock.multiply(3, 4)).to.be.rejectedWith('-32603: VM Exception while processing transaction: execution revert: 0x');
+		await expect(mock.multiply(3, 4)).to.be.rejectedWith('VM Exception while processing transaction: execution revert:  0x');
 	});
 
 	// Requires error handling
@@ -113,6 +113,6 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 			}
 		], alice);
 
-		await expect(mock.multiply("0x0123456789012345678901234567890123456789")).to.be.rejectedWith('-32603: VM Exception while processing transaction: execution revert: 0x');
+		await expect(mock.multiply("0x0123456789012345678901234567890123456789")).to.be.rejectedWith('VM Exception while processing transaction: execution revert:  0x');
 	});
 });

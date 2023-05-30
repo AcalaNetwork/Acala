@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -126,11 +126,11 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + loans::Config + SendTransactionTypes<Call<Self>> {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The origin which may update risk management parameters. Root can
 		/// always do this.
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The default liquidation ratio for all collateral types of CDP
 		#[pallet::constant]
@@ -191,7 +191,7 @@ pub mod module {
 		type Swap: Swap<Self::AccountId, Balance, CurrencyId>;
 
 		/// The origin for liquidation contracts registering and deregistering.
-		type LiquidationContractsUpdateOrigin: EnsureOrigin<Self::Origin>;
+		type LiquidationContractsUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// When settle collateral with smart contracts, the acceptable max slippage for the price
 		/// from oracle.
@@ -431,6 +431,7 @@ pub mod module {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::liquidate_by_auction(<T as Config>::CDPTreasury::max_auction()))]
 		#[transactional]
 		pub fn liquidate(
@@ -451,6 +452,7 @@ pub mod module {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::settle())]
 		#[transactional]
 		pub fn settle(
@@ -479,6 +481,7 @@ pub mod module {
 		/// - `required_collateral_ratio`: required collateral ratio, `None` means do not update,
 		///   `Some(None)` means update it to `None`.
 		/// - `maximum_total_debit_value`: maximum total debit value.
+		#[pallet::call_index(2)]
 		#[pallet::weight((<T as Config>::WeightInfo::set_collateral_params(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn set_collateral_params(
@@ -546,6 +549,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::register_liquidation_contract())]
 		#[transactional]
 		pub fn register_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
@@ -555,6 +559,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::deregister_liquidation_contract())]
 		#[transactional]
 		pub fn deregister_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
@@ -894,7 +899,7 @@ impl<T: Config> Pallet<T> {
 		debit_adjustment: Amount,
 	) -> DispatchResult {
 		ensure!(
-			CollateralParams::<T>::contains_key(&currency_id),
+			CollateralParams::<T>::contains_key(currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 		<LoansOf<T>>::adjust_position(who, currency_id, collateral_adjustment, debit_adjustment)?;
@@ -973,7 +978,7 @@ impl<T: Config> Pallet<T> {
 		min_increase_collateral: Balance,
 	) -> DispatchResult {
 		ensure!(
-			CollateralParams::<T>::contains_key(&currency_id),
+			CollateralParams::<T>::contains_key(currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 		let loans_module_account = <LoansOf<T>>::account_id();
@@ -1032,7 +1037,7 @@ impl<T: Config> Pallet<T> {
 		let debit_adjustment = <LoansOf<T>>::amount_try_from_balance(increase_debit_balance)?;
 		<LoansOf<T>>::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
-		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
+		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, who);
 		// check the CDP if is still at valid risk
 		Self::check_position_valid(currency_id, collateral, debit, false)?;
 		// debit cap check due to new issued stable coin
@@ -1054,13 +1059,13 @@ impl<T: Config> Pallet<T> {
 		min_decrease_debit_value: Balance,
 	) -> DispatchResult {
 		ensure!(
-			CollateralParams::<T>::contains_key(&currency_id),
+			CollateralParams::<T>::contains_key(currency_id),
 			Error::<T>::InvalidCollateralType,
 		);
 
 		let loans_module_account = <LoansOf<T>>::account_id();
 		let stable_currency_id = T::GetStableCurrencyId::get();
-		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
+		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, who);
 
 		// ensure collateral of CDP is enough
 		ensure!(decrease_collateral <= collateral, Error::<T>::CollateralNotEnough);

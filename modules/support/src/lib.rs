@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -23,12 +23,12 @@
 
 use codec::FullCodec;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
-use primitives::{task::TaskResult, Balance, CurrencyId, Multiplier, ReserveIdentifier};
+use primitives::{task::TaskResult, Balance, CurrencyId, Multiplier, Nonce, ReserveIdentifier};
 use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
 use sp_std::{prelude::*, result::Result};
-use xcm::latest::prelude::*;
+use xcm::{prelude::*, v3::Weight as XcmWeight};
 
 pub mod bounded;
 pub mod dex;
@@ -96,24 +96,14 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 	fn apply_multiplier_to_fee(fee: Balance, multiplier: Option<Multiplier>) -> Balance;
 }
 
-/// Used to interface with the Compound's Cash module
-pub trait CompoundCashTrait<Balance, Moment> {
-	fn set_future_yield(next_cash_yield: Balance, yield_index: u128, timestamp_effective: Moment) -> DispatchResult;
-}
-
 pub trait CallBuilder {
 	type AccountId: FullCodec;
 	type Balance: FullCodec;
 	type RelayChainCall: FullCodec;
 
-	/// Execute multiple calls in a batch.
-	/// Param:
-	/// - calls: List of calls to be executed
-	fn utility_batch_call(calls: Vec<Self::RelayChainCall>) -> Self::RelayChainCall;
-
 	/// Execute a call, replacing the `Origin` with a sub-account.
 	///  params:
-	/// - call: The call to be executed. Can be nested with `utility_batch_call`
+	/// - call: The call to be executed.
 	/// - index: The index of sub-account to be used as the new origin.
 	fn utility_as_derivative_call(call: Self::RelayChainCall, index: u16) -> Self::RelayChainCall;
 
@@ -138,13 +128,25 @@ pub trait CallBuilder {
 	/// - amount: The amount of staking currency to be transferred.
 	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall;
 
-	/// Wrap the final calls into the Xcm format.
+	/// Wrap the final call into the Xcm format.
 	///  params:
 	/// - call: The call to be executed
-	/// - extra_fee: Extra fee (in staking currency) used for buy the `weight` and `debt`.
+	/// - extra_fee: Extra fee (in staking currency) used for buy the `weight`.
 	/// - weight: the weight limit used for XCM.
-	/// - debt: the weight limit used to process the `call`.
-	fn finalize_call_into_xcm_message(call: Self::RelayChainCall, extra_fee: Self::Balance, weight: Weight) -> Xcm<()>;
+	fn finalize_call_into_xcm_message(
+		call: Self::RelayChainCall,
+		extra_fee: Self::Balance,
+		weight: XcmWeight,
+	) -> Xcm<()>;
+
+	/// Wrap the final multiple calls into the Xcm format.
+	///  params:
+	/// - calls: the multiple calls and its weight limit to be executed
+	/// - extra_fee: Extra fee (in staking currency) used for buy the `weight`.
+	fn finalize_multiple_calls_into_xcm_message(
+		calls: Vec<(Self::RelayChainCall, XcmWeight)>,
+		extra_fee: Self::Balance,
+	) -> Xcm<()>;
 }
 
 /// Dispatchable tasks
@@ -154,7 +156,8 @@ pub trait DispatchableTask {
 
 /// Idle scheduler trait
 pub trait IdleScheduler<Task> {
-	fn schedule(task: Task) -> DispatchResult;
+	fn schedule(task: Task) -> Result<Nonce, DispatchError>;
+	fn dispatch(id: Nonce, weight: Weight) -> Weight;
 }
 
 #[cfg(feature = "std")]
@@ -166,7 +169,10 @@ impl DispatchableTask for () {
 
 #[cfg(feature = "std")]
 impl<Task> IdleScheduler<Task> for () {
-	fn schedule(_task: Task) -> DispatchResult {
+	fn schedule(_task: Task) -> Result<Nonce, DispatchError> {
+		unimplemented!()
+	}
+	fn dispatch(_id: Nonce, _weight: Weight) -> Weight {
 		unimplemented!()
 	}
 }

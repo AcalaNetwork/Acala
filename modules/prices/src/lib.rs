@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -54,7 +54,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The data source, such as Oracle.
 		type Source: DataProvider<CurrencyId, Price> + DataFeeder<CurrencyId, Price, Self::AccountId>;
@@ -76,7 +76,7 @@ pub mod module {
 		type GetLiquidCurrencyId: Get<CurrencyId>;
 
 		/// The origin which may lock and unlock prices feed to system.
-		type LockOrigin: EnsureOrigin<Self::Origin>;
+		type LockOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The provider of the exchange rate between liquid currency and
 		/// staking currency.
@@ -150,6 +150,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `LockOrigin`.
 		///
 		/// - `currency_id`: currency type.
+		#[pallet::call_index(0)]
 		#[pallet::weight((T::WeightInfo::lock_price(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn lock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
@@ -163,6 +164,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `LockOrigin`.
 		///
 		/// - `currency_id`: currency type.
+		#[pallet::call_index(1)]
 		#[pallet::weight((T::WeightInfo::unlock_price(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn unlock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -30,8 +30,8 @@ use frame_support::weights::constants::*;
 fn sanity_check_weight_per_time_constants_are_as_expected() {
 	// These values comes from Substrate, we want to make sure that if it
 	// ever changes we don't accidently break Polkadot
-	assert_eq!(WEIGHT_PER_SECOND, 1_000_000_000_000);
-	assert_eq!(WEIGHT_PER_MILLIS, WEIGHT_PER_SECOND / 1000);
-	assert_eq!(WEIGHT_PER_MICROS, WEIGHT_PER_MILLIS / 1000);
-	assert_eq!(WEIGHT_PER_NANOS, WEIGHT_PER_MICROS / 1000);
+	assert_eq!(WEIGHT_REF_TIME_PER_SECOND, 1_000_000_000_000);
+	assert_eq!(WEIGHT_REF_TIME_PER_MILLIS, WEIGHT_REF_TIME_PER_SECOND / 1000);
+	assert_eq!(WEIGHT_REF_TIME_PER_MICROS, WEIGHT_REF_TIME_PER_MILLIS / 1000);
+	assert_eq!(WEIGHT_REF_TIME_PER_NANOS, WEIGHT_REF_TIME_PER_MICROS / 1000);
 }

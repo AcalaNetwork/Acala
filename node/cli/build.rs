@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,5 +17,17 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 fn main() {
-	orml_build_script_utils::generate_cargo_keys();
+	substrate_build_script_utils::generate_cargo_keys();
+	orml_build_script_utils::check_file_licenses(
+		"../..",
+		include_bytes!("../../HEADER-GPL3"),
+		&[
+			"../../evm-tests",
+			"../../ecosystem-modules/stable-asset",
+			"../../launch",
+			"../../orml",
+			"../../predeploy-contracts",
+			"../../ts-tests",
+		],
+	);
 }

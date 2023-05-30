@@ -3,14 +3,14 @@ import { expect } from "chai";
 import Block from "../build/Block.json"
 import { describeWithAcala } from "./util";
 import { deployContract } from "ethereum-waffle";
-import { BigNumber } from "ethers";
+import { BodhiSigner } from "@acala-network/bodhi";
 
 describeWithAcala("Acala RPC (Gas)", (context) => {
-	let alice: Signer;
+	let alice: BodhiSigner;
 
 	before("create the contract", async function () {
 		this.timeout(15000);
-		[alice] = await context.provider.getWallets();
+		[alice] = context.wallets;
 	});
 
 	it("eth_estimateGas for contract creation", async function () {
@@ -27,26 +27,26 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 			data: "0x" + Block.bytecode,
 		});
 
-		expect(data.gas.toNumber()).to.be.eq(273373);
-		expect(data.storage.toNumber()).to.be.eq(10921);
-		expect(data.weightFee.toNumber()).to.be.eq(5793819306195);
+		expect(data.usedGas.toNumber()).to.be.eq(251726);
+		expect(data.gasLimit.toNumber()).to.be.eq(273373);
+		expect(data.usedStorage.toNumber()).to.be.eq(10921);
 	});
 
 	it("eth_estimateGas for contract call", async function () {
-		const contract = await deployContract(alice as any, Block);
+		const contract = await deployContract(alice, Block);
 		const gas = await contract.estimateGas.multiply(3);
 		expect(gas.toNumber()).to.be.eq(342409);
 	});
 
 	it("eth_estimateResources for contract call", async function () {
-		const contract = await deployContract(alice as any, Block);
+		const contract = await deployContract(alice, Block);
 
 		const data = await context.provider.estimateResources(
 			await contract.populateTransaction.multiply(3)
 		);
 
-		expect(data.gas.toNumber()).to.be.eq(22409);
-		expect(data.storage.toNumber()).to.be.eq(0);
-		expect(data.weightFee.toNumber()).to.be.eq(5793791439374);
+		expect(data.usedGas.toNumber()).to.be.eq(22038);
+		expect(data.gasLimit.toNumber()).to.be.eq(22409);
+		expect(data.usedStorage.toNumber()).to.be.eq(0);
 	});
 });

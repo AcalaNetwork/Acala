@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -26,15 +26,18 @@
 use codec::{Decode, Encode, FullCodec};
 use sp_runtime::traits::StaticLookup;
 
-use frame_support::{traits::Get, weights::Weight, RuntimeDebug};
+use frame_support::{traits::Get, RuntimeDebug};
 use module_support::CallBuilder;
 use primitives::Balance;
 use sp_std::{boxed::Box, marker::PhantomData, prelude::*};
 
 pub use cumulus_primitives_core::ParaId;
-use xcm::latest::prelude::*;
+use xcm::{prelude::*, v3::Weight as XcmWeight};
 
 use frame_system::Config;
+
+// * Since XCM V3, relaychain configs 'SafeCallFilter' to filter the call in Transact:
+// * https://github.com/paritytech/polkadot/blob/master/runtime/polkadot/src/xcm_config.rs
 
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum BalancesCall<T: Config> {
@@ -49,8 +52,6 @@ pub enum BalancesCall<T: Config> {
 pub enum UtilityCall<RelayChainCall> {
 	#[codec(index = 1)]
 	AsDerivative(u16, RelayChainCall),
-	#[codec(index = 2)]
-	BatchAll(Vec<RelayChainCall>),
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
@@ -116,10 +117,6 @@ where
 	type Balance = Balance;
 	type RelayChainCall = RelayChainCall<T>;
 
-	fn utility_batch_call(calls: Vec<Self::RelayChainCall>) -> Self::RelayChainCall {
-		RelayChainCall::Utility(Box::new(UtilityCall::BatchAll(calls)))
-	}
-
 	fn utility_as_derivative_call(call: Self::RelayChainCall, index: u16) -> Self::RelayChainCall {
 		RelayChainCall::Utility(Box::new(UtilityCall::AsDerivative(index, call)))
 	}
@@ -140,7 +137,11 @@ where
 		RelayChainCall::Balances(BalancesCall::TransferKeepAlive(T::Lookup::unlookup(to), amount))
 	}
 
-	fn finalize_call_into_xcm_message(call: Self::RelayChainCall, extra_fee: Self::Balance, weight: Weight) -> Xcm<()> {
+	fn finalize_call_into_xcm_message(
+		call: Self::RelayChainCall,
+		extra_fee: Self::Balance,
+		weight: XcmWeight,
+	) -> Xcm<()> {
 		let asset = MultiAsset {
 			id: Concrete(MultiLocation::here()),
 			fun: Fungibility::Fungible(extra_fee),
@@ -152,19 +153,59 @@ where
 				weight_limit: Unlimited,
 			},
 			Transact {
-				origin_type: OriginKind::SovereignAccount,
+				origin_kind: OriginKind::SovereignAccount,
 				require_weight_at_most: weight,
 				call: call.encode().into(),
 			},
 			RefundSurplus,
 			DepositAsset {
-				assets: All.into(),
-				max_assets: u32::max_value(),
+				assets: AllCounted(1).into(), // there is only 1 asset on relaychain
 				beneficiary: MultiLocation {
 					parents: 0,
 					interior: X1(Parachain(ParachainId::get().into())),
 				},
 			},
 		])
+	}
+
+	fn finalize_multiple_calls_into_xcm_message(
+		calls: Vec<(Self::RelayChainCall, XcmWeight)>,
+		extra_fee: Self::Balance,
+	) -> Xcm<()> {
+		let asset = MultiAsset {
+			id: Concrete(MultiLocation::here()),
+			fun: Fungibility::Fungible(extra_fee),
+		};
+
+		let transacts = calls
+			.iter()
+			.map(|(call, weight)| Transact {
+				origin_kind: OriginKind::SovereignAccount,
+				require_weight_at_most: *weight,
+				call: call.encode().into(),
+			})
+			.collect();
+
+		Xcm([
+			vec![
+				WithdrawAsset(asset.clone().into()),
+				BuyExecution {
+					fees: asset,
+					weight_limit: Unlimited,
+				},
+			],
+			transacts,
+			vec![
+				RefundSurplus,
+				DepositAsset {
+					assets: AllCounted(1).into(), // there is only 1 asset on relaychain
+					beneficiary: MultiLocation {
+						parents: 0,
+						interior: X1(Parachain(ParachainId::get().into())),
+					},
+				},
+			],
+		]
+		.concat())
 	}
 }

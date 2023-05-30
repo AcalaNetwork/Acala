@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -39,7 +39,7 @@ decl_test_relay_chain! {
 decl_test_parachain! {
 	pub struct Karura {
 		Runtime = Runtime,
-		Origin = Origin,
+		RuntimeOrigin = RuntimeOrigin,
 		XcmpMessageHandler = karura_runtime::XcmpQueue,
 		DmpMessageHandler = karura_runtime::DmpQueue,
 		new_ext = para_ext(2000),
@@ -49,7 +49,7 @@ decl_test_parachain! {
 decl_test_parachain! {
 	pub struct MockBifrost {
 		Runtime = Runtime,
-		Origin = Origin,
+		RuntimeOrigin = RuntimeOrigin,
 		XcmpMessageHandler = karura_runtime::XcmpQueue,
 		DmpMessageHandler = karura_runtime::DmpQueue,
 		new_ext = para_ext(2001),
@@ -59,7 +59,7 @@ decl_test_parachain! {
 decl_test_parachain! {
 	pub struct Sibling {
 		Runtime = Runtime,
-		Origin = Origin,
+		RuntimeOrigin = RuntimeOrigin,
 		XcmpMessageHandler = karura_runtime::XcmpQueue,
 		DmpMessageHandler = karura_runtime::DmpQueue,
 		new_ext = para_ext(2002),
@@ -69,7 +69,7 @@ decl_test_parachain! {
 decl_test_parachain! {
 	pub struct Statemine {
 		Runtime = statemine_runtime::Runtime,
-		Origin = statemine_runtime::Origin,
+		RuntimeOrigin = statemine_runtime::RuntimeOrigin,
 		XcmpMessageHandler = statemine_runtime::XcmpQueue,
 		DmpMessageHandler = statemine_runtime::DmpQueue,
 		new_ext = para_ext(1000),
@@ -103,7 +103,7 @@ fn default_parachains_host_configuration() -> HostConfiguration<BlockNumber> {
 		max_upward_queue_count: 8,
 		max_upward_queue_size: 1024 * 1024,
 		max_downward_message_size: 1024,
-		ump_service_total_weight: 4 * 1_000_000_000,
+		ump_service_total_weight: Weight::from_parts(4 * 1_000_000_000, 0),
 		max_upward_message_size: 50 * 1024,
 		max_upward_message_num_per_candidate: 5,
 		hrmp_sender_deposit: 0,

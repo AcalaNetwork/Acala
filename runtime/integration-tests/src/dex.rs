@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,7 @@
 
 use crate::setup::*;
 use primitives::currency::AssetMetadata;
+use sp_core::bounded::BoundedVec;
 
 #[test]
 fn test_dex_module() {
@@ -54,7 +55,7 @@ fn test_dex_module() {
 
 			assert_noop!(
 				Dex::add_liquidity(
-					Origin::signed(AccountId::from(ALICE)),
+					RuntimeOrigin::signed(AccountId::from(ALICE)),
 					RELAY_CHAIN_CURRENCY,
 					USD_CURRENCY,
 					0,
@@ -66,7 +67,7 @@ fn test_dex_module() {
 			);
 
 			assert_ok!(Dex::add_liquidity(
-				Origin::signed(AccountId::from(ALICE)),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				RELAY_CHAIN_CURRENCY,
 				USD_CURRENCY,
 				10_000 * dollar(RELAY_CHAIN_CURRENCY),
@@ -75,7 +76,7 @@ fn test_dex_module() {
 				false,
 			));
 
-			let add_liquidity_event = Event::Dex(module_dex::Event::AddLiquidity {
+			let add_liquidity_event = RuntimeEvent::Dex(module_dex::Event::AddLiquidity {
 				who: AccountId::from(ALICE),
 				currency_0: USD_CURRENCY,
 				pool_0: 10_000_000 * dollar(USD_CURRENCY),
@@ -97,7 +98,7 @@ fn test_dex_module() {
 				20_000_000 * dollar(USD_CURRENCY)
 			);
 			assert_ok!(Dex::add_liquidity(
-				Origin::signed(AccountId::from(BOB)),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
 				RELAY_CHAIN_CURRENCY,
 				USD_CURRENCY,
 				1 * dollar(RELAY_CHAIN_CURRENCY),
@@ -116,7 +117,7 @@ fn test_dex_module() {
 			);
 			assert_noop!(
 				Dex::add_liquidity(
-					Origin::signed(AccountId::from(BOB)),
+					RuntimeOrigin::signed(AccountId::from(BOB)),
 					RELAY_CHAIN_CURRENCY,
 					USD_CURRENCY,
 					1,
@@ -136,7 +137,7 @@ fn test_dex_module() {
 				2_000 * dollar(USD_CURRENCY)
 			);
 			assert_ok!(Dex::add_liquidity(
-				Origin::signed(AccountId::from(BOB)),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
 				RELAY_CHAIN_CURRENCY,
 				USD_CURRENCY,
 				2 * dollar(RELAY_CHAIN_CURRENCY),
@@ -149,7 +150,7 @@ fn test_dex_module() {
 				(10_002 * dollar(RELAY_CHAIN_CURRENCY), 10_002_000 * dollar(USD_CURRENCY))
 			);
 			assert_ok!(Dex::add_liquidity(
-				Origin::signed(AccountId::from(BOB)),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
 				RELAY_CHAIN_CURRENCY,
 				USD_CURRENCY,
 				1 * dollar(RELAY_CHAIN_CURRENCY),
@@ -195,7 +196,7 @@ fn test_trading_pair() {
 
 			// CurrencyId::DexShare(Token, LiquidCrowdloan)
 			assert_ok!(Dex::list_provisioning(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				USD_CURRENCY,
 				CurrencyId::LiquidCrowdloan(1),
 				10,
@@ -207,7 +208,7 @@ fn test_trading_pair() {
 
 			// CurrencyId::DexShare(LiquidCrowdloan, Token)
 			assert_ok!(Dex::list_provisioning(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				CurrencyId::LiquidCrowdloan(2),
 				USD_CURRENCY,
 				10,
@@ -218,9 +219,16 @@ fn test_trading_pair() {
 			));
 
 			assert_ok!(AssetRegistry::register_foreign_asset(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				Box::new(
-					MultiLocation::new(1, X2(Parachain(2002), GeneralKey(KAR.encode().try_into().unwrap()))).into()
+					MultiLocation::new(
+						1,
+						X2(
+							Parachain(2002),
+							Junction::from(BoundedVec::try_from(KAR.encode()).unwrap())
+						)
+					)
+					.into()
 				),
 				Box::new(AssetMetadata {
 					name: b"Sibling Token".to_vec(),
@@ -232,7 +240,7 @@ fn test_trading_pair() {
 
 			// CurrencyId::DexShare(Token, ForeignAsset)
 			assert_ok!(Dex::list_provisioning(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				USD_CURRENCY,
 				CurrencyId::ForeignAsset(0),
 				10,
@@ -244,7 +252,7 @@ fn test_trading_pair() {
 
 			// CurrencyId::DexShare(ForeignAsset, Token)
 			assert_ok!(Dex::list_provisioning(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				CurrencyId::ForeignAsset(0),
 				RELAY_CHAIN_CURRENCY,
 				10,

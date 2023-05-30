@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -30,6 +30,7 @@ use sp_core::H160;
 use sp_runtime::DispatchResult;
 use sp_std::{prelude::*, vec::Vec};
 
+pub mod migrations;
 mod mock;
 mod tests;
 pub mod weights;
@@ -43,10 +44,10 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The origin which may set filter.
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -102,6 +103,7 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::pause_transaction())]
 		#[transactional]
 		pub fn pause_transaction(origin: OriginFor<T>, pallet_name: Vec<u8>, function_name: Vec<u8>) -> DispatchResult {
@@ -126,6 +128,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::unpause_transaction())]
 		#[transactional]
 		pub fn unpause_transaction(
@@ -143,11 +146,12 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::pause_evm_precompile())]
 		#[transactional]
 		pub fn pause_evm_precompile(origin: OriginFor<T>, address: H160) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			PausedEvmPrecompiles::<T>::mutate_exists(&address, |maybe_paused| {
+			PausedEvmPrecompiles::<T>::mutate_exists(address, |maybe_paused| {
 				if maybe_paused.is_none() {
 					*maybe_paused = Some(());
 					Self::deposit_event(Event::EvmPrecompilePaused { address });
@@ -156,11 +160,12 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::unpause_evm_precompile())]
 		#[transactional]
 		pub fn unpause_evm_precompile(origin: OriginFor<T>, address: H160) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			if PausedEvmPrecompiles::<T>::take(&address).is_some() {
+			if PausedEvmPrecompiles::<T>::take(address).is_some() {
 				Self::deposit_event(Event::EvmPrecompileUnpaused { address });
 			};
 			Ok(())
@@ -169,11 +174,11 @@ pub mod module {
 }
 
 pub struct PausedTransactionFilter<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> Contains<T::Call> for PausedTransactionFilter<T>
+impl<T: Config> Contains<T::RuntimeCall> for PausedTransactionFilter<T>
 where
-	<T as frame_system::Config>::Call: GetCallMetadata,
+	<T as frame_system::Config>::RuntimeCall: GetCallMetadata,
 {
-	fn contains(call: &T::Call) -> bool {
+	fn contains(call: &T::RuntimeCall) -> bool {
 		let CallMetadata {
 			function_name,
 			pallet_name,
@@ -185,6 +190,6 @@ where
 pub struct PausedPrecompileFilter<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> module_support::PrecompilePauseFilter for PausedPrecompileFilter<T> {
 	fn is_paused(address: H160) -> bool {
-		PausedEvmPrecompiles::<T>::contains_key(&address)
+		PausedEvmPrecompiles::<T>::contains_key(address)
 	}
 }

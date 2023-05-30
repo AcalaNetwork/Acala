@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 
 use crate::{ExchangeRate, Rate};
 use sp_runtime::DispatchResult;
-use xcm::latest::prelude::*;
+use xcm::v3::prelude::*;
 
 pub trait HomaSubAccountXcm<AccountId, Balance> {
 	/// Cross-chain transfer staking currency to sub account on relaychain.

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -103,7 +103,7 @@ where
 				>>::adjust_loan(&who, currency_id, collateral_adjustment, debit_adjustment).map_err(|e|
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Honzon AdjustLoan failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				)?;
@@ -134,7 +134,7 @@ where
 				>>::close_loan_by_dex(who, currency_id, max_collateral_amount).map_err(|e|
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Honzon CloseLoanByDex failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				)?;
@@ -306,8 +306,8 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{
-		alice, alice_evm_addr, new_test_ext, CDPEngine, Currencies, DexModule, Honzon, Loans, One, Origin, Test, AUSD,
-		BOB, DOT,
+		alice, alice_evm_addr, new_test_ext, CDPEngine, Currencies, DexModule, Honzon, Loans, One, RuntimeOrigin, Test,
+		AUSD, BOB, DOT,
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
@@ -321,7 +321,7 @@ mod tests {
 	fn adjust_loan_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -330,7 +330,7 @@ mod tests {
 				Change::NewValue(10000)
 			));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				alice(),
 				DOT,
 				1_000_000_000_000
@@ -365,7 +365,7 @@ mod tests {
 	fn close_loan_by_dex_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -374,23 +374,37 @@ mod tests {
 				Change::NewValue(1_000_000_000)
 			));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				alice(),
 				DOT,
 				1_000_000_000_000
 			));
 			assert_ok!(Honzon::adjust_loan(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				DOT,
 				100_000_000_000,
 				1_000_000
 			));
 
-			assert_ok!(DexModule::enable_trading_pair(Origin::signed(One::get()), DOT, AUSD));
-			assert_ok!(Currencies::update_balance(Origin::root(), BOB, AUSD, 1_000_000_000_000));
-			assert_ok!(Currencies::update_balance(Origin::root(), BOB, DOT, 1_000_000_000_000));
+			assert_ok!(DexModule::enable_trading_pair(
+				RuntimeOrigin::signed(One::get()),
+				DOT,
+				AUSD
+			));
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
+				BOB,
+				AUSD,
+				1_000_000_000_000
+			));
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
+				BOB,
+				DOT,
+				1_000_000_000_000
+			));
 			assert_ok!(DexModule::add_liquidity(
-				Origin::signed(BOB),
+				RuntimeOrigin::signed(BOB),
 				DOT,
 				AUSD,
 				1_000_000_000,
@@ -430,7 +444,7 @@ mod tests {
 	fn get_position_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -439,13 +453,13 @@ mod tests {
 				Change::NewValue(1_000_000_000)
 			));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				alice(),
 				DOT,
 				1_000_000_000_000
 			));
 			assert_ok!(Honzon::adjust_loan(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				DOT,
 				100_000_000_000,
 				1_000_000
@@ -481,7 +495,7 @@ mod tests {
 	fn get_collateral_parameters_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -529,7 +543,7 @@ mod tests {
 	fn get_current_collateral_ratio_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -538,13 +552,13 @@ mod tests {
 				Change::NewValue(1_000_000_000)
 			));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				alice(),
 				DOT,
 				1_000_000_000_000
 			));
 			assert_ok!(Honzon::adjust_loan(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				DOT,
 				100_000_000_000,
 				1_000_000
@@ -578,7 +592,7 @@ mod tests {
 	fn get_debit_exchange_rate_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(CDPEngine::set_collateral_params(
-				Origin::signed(One::get()),
+				RuntimeOrigin::signed(One::get()),
 				DOT,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),

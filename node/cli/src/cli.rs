@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,8 @@
 
 //! Acala CLI library.
 
+#![allow(clippy::large_enum_variant)]
+
 use clap::Parser;
 use sc_cli::{KeySubcommand, SignCmd, VanityCmd, VerifyCmd};
 use std::path::PathBuf;
@@ -34,7 +36,7 @@ pub enum Subcommand {
 	ExportGenesisWasm(cumulus_client_cli::ExportGenesisWasmCommand),
 
 	/// Key management cli utilities
-	#[clap(subcommand)]
+	#[command(subcommand)]
 	Key(KeySubcommand),
 
 	/// The custom inspect subcommmand for decoding blocks and extrinsics.
@@ -45,7 +47,7 @@ pub enum Subcommand {
 	Inspect(inspect::cli::InspectCmd),
 
 	/// The custom benchmark subcommmand benchmarking runtime modules.
-	#[clap(subcommand)]
+	#[command(subcommand)]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
 
 	/// Try some experimental command on the runtime. This includes migration and runtime-upgrade
@@ -94,16 +96,16 @@ pub enum Subcommand {
 )]
 pub struct Cli {
 	/// Possible subcommand with parameters.
-	#[clap(subcommand)]
+	#[command(subcommand)]
 	pub subcommand: Option<Subcommand>,
 
 	#[allow(missing_docs)]
 	#[clap(flatten)]
 	pub run: cumulus_client_cli::RunCmd,
 
-	/// Relaychain arguments
+	/// Relay chain arguments
 	#[clap(raw = true)]
-	pub relaychain_args: Vec<String>,
+	pub relay_chain_args: Vec<String>,
 
 	/// Instant block sealing
 	///

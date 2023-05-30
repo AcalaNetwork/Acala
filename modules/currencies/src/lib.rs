@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -35,9 +35,9 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use orml_traits::{
 	arithmetic::{Signed, SimpleArithmetic},
-	currency::TransferAll,
+	currency::{OnDust, TransferAll},
 	BalanceStatus, BasicCurrency, BasicCurrencyExtended, BasicLockableCurrency, BasicReservableCurrency,
-	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency, OnDust,
+	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
 use primitives::{evm::EvmAddress, CurrencyId};
 use sp_io::hashing::blake2_256;
@@ -65,7 +65,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type MultiCurrency: TransferAll<Self::AccountId>
 			+ MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId>
 			+ MultiLockableCurrency<Self::AccountId, CurrencyId = CurrencyId>
@@ -105,7 +105,7 @@ pub mod module {
 		type GasToWeight: Convert<u64, Weight>;
 
 		/// The AccountId that can perform a sweep dust.
-		type SweepOrigin: EnsureOrigin<Self::Origin>;
+		type SweepOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Handler to burn or transfer account's dust
 		type OnDust: OnDust<Self::AccountId, CurrencyId, BalanceOf<Self>>;
@@ -169,8 +169,9 @@ pub mod module {
 		///
 		/// The dispatch origin for this call must be `Signed` by the
 		/// transactor.
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::transfer_non_native_currency()
-			.saturating_add(if currency_id.is_erc20_currency_id() { T::GasToWeight::convert(erc20::TRANSFER.gas) } else { 0 })
+			.saturating_add(if currency_id.is_erc20_currency_id() { T::GasToWeight::convert(erc20::TRANSFER.gas) } else { Weight::zero() })
 		)]
 		pub fn transfer(
 			origin: OriginFor<T>,
@@ -187,6 +188,7 @@ pub mod module {
 		///
 		/// The dispatch origin for this call must be `Signed` by the
 		/// transactor.
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::transfer_native_currency())]
 		pub fn transfer_native_currency(
 			origin: OriginFor<T>,
@@ -201,6 +203,7 @@ pub mod module {
 		/// Update amount of account `who` under `currency_id`.
 		///
 		/// The dispatch origin of this call must be _Root_.
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::update_balance_non_native_currency())]
 		pub fn update_balance(
 			origin: OriginFor<T>,
@@ -213,6 +216,7 @@ pub mod module {
 			<Self as MultiCurrencyExtended<T::AccountId>>::update_balance(currency_id, &dest, amount)
 		}
 
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::sweep_dust(accounts.len() as u32))]
 		pub fn sweep_dust(
 			origin: OriginFor<T>,
@@ -247,6 +251,7 @@ pub mod module {
 		/// Set lock by lock_id
 		///
 		/// The dispatch origin of this call must be _Root_.
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::force_set_lock())]
 		pub fn force_set_lock(
 			origin: OriginFor<T>,
@@ -263,6 +268,7 @@ pub mod module {
 		/// Remove lock by lock_id
 		///
 		/// The dispatch origin of this call must be _Root_.
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::force_remove_lock())]
 		pub fn force_remove_lock(
 			origin: OriginFor<T>,
@@ -274,6 +280,13 @@ pub mod module {
 			let who = T::Lookup::lookup(who)?;
 			<Self as MultiLockableCurrency<T::AccountId>>::remove_lock(lock_id, currency_id, &who)
 		}
+	}
+}
+
+impl<T: Config> Pallet<T> {
+	fn get_evm_origin() -> Result<EvmAddress, DispatchError> {
+		let origin = T::EVMBridge::get_real_or_xcm_origin().ok_or(Error::<T>::RealOriginNotFound)?;
+		Ok(T::AddressMapping::get_or_create_evm_address(&origin))
 	}
 }
 
@@ -376,14 +389,12 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
 				let sender = T::AddressMapping::get_evm_address(from).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
-				let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
 				let address = T::AddressMapping::get_or_create_evm_address(to);
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
 						sender,
-						origin: origin_address,
+						origin: Self::get_evm_origin()?,
 					},
 					address,
 					amount,
@@ -409,8 +420,8 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
 				// deposit from erc20 holding account to receiver(who). in xcm case which receive erc20 from sibling
-				// parachain, we choose receiver to charge storage fee. we must make sure receiver has enough native
-				// token to charge storage fee.
+				// parachain, we choose sibling parachain sovereign account to charge storage fee. we must make sure
+				// sibling parachain sovereign account has enough native token to charge storage fee.
 				let sender = T::Erc20HoldingAccount::get();
 				let from = T::AddressMapping::get_account_id(&sender);
 				ensure!(
@@ -422,7 +433,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					InvokeContext {
 						contract,
 						sender,
-						origin: receiver,
+						origin: Self::get_evm_origin().unwrap_or(receiver),
 					},
 					receiver,
 					amount,
@@ -461,7 +472,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					InvokeContext {
 						contract,
 						sender,
-						origin: sender,
+						origin: Self::get_evm_origin().unwrap_or(sender),
 					},
 					receiver,
 					amount,
@@ -605,7 +616,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 					InvokeContext {
 						contract,
 						sender: address,
-						origin: address,
+						origin: Self::get_evm_origin().unwrap_or(address),
 					},
 					reserve_address(address),
 					value,
@@ -638,7 +649,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 						InvokeContext {
 							contract,
 							sender,
-							origin: address,
+							origin: Self::get_evm_origin().unwrap_or(address),
 						},
 						address,
 						actual,
@@ -698,7 +709,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 						InvokeContext {
 							contract,
 							sender: slashed_reserve_address,
-							origin: slashed_address,
+							origin: Self::get_evm_origin().unwrap_or(slashed_address),
 						},
 						beneficiary_address,
 						actual,
@@ -707,7 +718,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 						InvokeContext {
 							contract,
 							sender: slashed_reserve_address,
-							origin: slashed_address,
+							origin: Self::get_evm_origin().unwrap_or(slashed_address),
 						},
 						beneficiary_reserve_address,
 						actual,
@@ -802,6 +813,19 @@ impl<T: Config> fungibles::Inspect<T::AccountId> for Pallet<T> {
 				<T::NativeCurrency as fungible::Inspect<_>>::can_withdraw(who, amount)
 			}
 			_ => <T::MultiCurrency as fungibles::Inspect<_>>::can_withdraw(asset_id, who, amount),
+		}
+	}
+
+	fn asset_exists(asset_id: Self::AssetId) -> bool {
+		match asset_id {
+			CurrencyId::Erc20(contract) => T::EVMBridge::symbol(InvokeContext {
+				contract,
+				sender: Default::default(),
+				origin: Default::default(),
+			})
+			.is_ok(),
+			id if id == T::GetNativeCurrencyId::get() => true,
+			_ => <T::MultiCurrency as fungibles::Inspect<_>>::asset_exists(asset_id),
 		}
 	}
 }

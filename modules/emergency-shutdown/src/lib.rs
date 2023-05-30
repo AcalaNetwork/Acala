@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -52,7 +52,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + loans::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The list of valid collateral currency types
 		type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
@@ -69,7 +69,7 @@ pub mod module {
 
 		/// The origin which may trigger emergency shutdown. Root can always do
 		/// this.
-		type ShutdownOrigin: EnsureOrigin<Self::Origin>;
+		type ShutdownOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -129,6 +129,7 @@ pub mod module {
 		/// Start emergency shutdown
 		///
 		/// The dispatch origin of this call must be `ShutdownOrigin`.
+		#[pallet::call_index(0)]
 		#[pallet::weight((T::WeightInfo::emergency_shutdown(T::CollateralCurrencyIds::get().len() as u32), DispatchClass::Operational))]
 		#[transactional]
 		pub fn emergency_shutdown(origin: OriginFor<T>) -> DispatchResult {
@@ -154,6 +155,7 @@ pub mod module {
 		/// Open final redemption if settlement is completed.
 		///
 		/// The dispatch origin of this call must be `ShutdownOrigin`.
+		#[pallet::call_index(1)]
 		#[pallet::weight((T::WeightInfo::open_collateral_refund(), DispatchClass::Operational))]
 		#[transactional]
 		pub fn open_collateral_refund(origin: OriginFor<T>) -> DispatchResult {
@@ -189,6 +191,7 @@ pub mod module {
 		/// Refund a basket of remaining collateral assets to caller
 		///
 		/// - `amount`: stable currency amount used to refund.
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::refund_collaterals(T::CollateralCurrencyIds::get().len() as u32))]
 		#[transactional]
 		pub fn refund_collaterals(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {

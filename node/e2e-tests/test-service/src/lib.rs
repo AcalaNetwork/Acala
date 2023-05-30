@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -25,11 +25,18 @@ mod rpc;
 mod service;
 
 use futures::channel::{mpsc, oneshot};
-use std::{future::Future, sync::Arc, time::Duration};
+use std::{
+	future::Future,
+	net::{IpAddr, Ipv4Addr, SocketAddr},
+	sync::Arc,
+	time::Duration,
+};
 
 use cumulus_client_cli::{generate_genesis_block, CollatorOptions};
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
-use cumulus_client_consensus_common::{ParachainCandidate, ParachainConsensus};
+use cumulus_client_consensus_common::{
+	ParachainBlockImport as TParachainBlockImport, ParachainCandidate, ParachainConsensus,
+};
 use cumulus_client_network::BlockAnnounceValidator;
 use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
@@ -37,30 +44,30 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_inprocess_interface::RelayChainInProcessInterface;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
-use cumulus_relay_chain_rpc_interface::{create_client_and_start_worker, RelayChainRpcInterface};
+use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node;
 
+use crate::runtime::Weight;
 use frame_system_rpc_runtime_api::AccountNonceApi;
 use futures::{channel::mpsc::Sender, SinkExt};
 use jsonrpsee::RpcModule;
 use polkadot_primitives::v2::{CollatorPair, Hash as PHash, HeadData, PersistedValidationData};
 use sc_client_api::{execution_extensions::ExecutionStrategies, Backend, CallExecutor, ExecutorProvider};
-use sc_consensus::LongestChain;
+use sc_consensus::{ImportQueue, LongestChain};
 use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
 use sc_consensus_manual_seal::{
 	rpc::{ManualSeal, ManualSealApiServer},
 	EngineCommand,
 };
-use sc_executor::{NativeElseWasmExecutor, WasmExecutionMethod, WasmtimeInstantiationStrategy};
-use sc_network::{config::TransportConfig, multiaddr, NetworkService};
-use sc_network_common::service::{NetworkBlock, NetworkStateInfo};
+use sc_executor::NativeElseWasmExecutor;
+use sc_network::{config::TransportConfig, multiaddr, NetworkBlock, NetworkService, NetworkStateInfo};
 pub use sc_rpc::SubscriptionTaskExecutor;
 use sc_service::{
 	config::{
 		BlocksPruning, DatabaseSource, KeystoreConfig, MultiaddrWithPeerId, NetworkConfiguration, OffchainWorkerConfig,
-		PruningMode,
+		PruningMode, WasmExecutionMethod,
 	},
-	BasePath, ChainSpec, Configuration, PartialComponents, Role, RpcHandlers, SpawnTasksParams, TFullBackend,
-	TFullCallExecutor, TFullClient, TaskManager,
+	BasePath, ChainSpec, Configuration, Error as ServiceError, PartialComponents, Role, RpcHandlers, SpawnTasksParams,
+	TFullBackend, TFullCallExecutor, TFullClient, TaskManager,
 };
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
@@ -71,7 +78,6 @@ use sp_core::{ExecutionContext, Pair, H256};
 use sp_keyring::Sr25519Keyring;
 use sp_runtime::{
 	codec::Encode,
-	generic,
 	generic::Era,
 	traits::{BlakeTwo256, Block as BlockT, Extrinsic, IdentifyAccount},
 	transaction_validity::TransactionSource,
@@ -128,11 +134,16 @@ impl sc_executor::NativeExecutionDispatch for RuntimeExecutor {
 /// The client type being used by the test service.
 pub type Client = TFullClient<runtime::Block, runtime::RuntimeApi, NativeElseWasmExecutor<RuntimeExecutor>>;
 
+/// The backend type being used by the test service.
+pub type ParachainBackend = TFullBackend<Block>;
+
 /// Transaction pool type used by the test service
 pub type TxPool = Arc<sc_transaction_pool::FullPool<Block, Client>>;
 
+type ParachainBlockImport = TParachainBlockImport<Block, Arc<Client>, ParachainBackend>;
+
 /// Maybe Mandala Dev full select chain.
-type MaybeFullSelectChain = Option<LongestChain<TFullBackend<Block>, Block>>;
+type MaybeFullSelectChain = Option<LongestChain<ParachainBackend, Block>>;
 
 pub enum Consensus {
 	/// Use the relay-chain provided consensus.
@@ -150,6 +161,8 @@ pub enum SealMode {
 	/// Dev aura seal
 	DevAuraSeal,
 	/// Parachain aura seal
+	/// https://github.com/paritytech/cumulus/blob/27721d794ee63aae42317a7eeda21595dd3200d9/client/consensus/common/src/lib.rs#L93-L120
+	/// NOTE: ParaSeal doesn't work with `ParachainBlockImport` anymore
 	ParaSeal,
 }
 
@@ -158,14 +171,14 @@ pub fn fetch_nonce(client: &Client, account: sp_core::sr25519::Public) -> u32 {
 	let best_hash = client.chain_info().best_hash;
 	client
 		.runtime_api()
-		.account_nonce(&generic::BlockId::Hash(best_hash), account.into())
+		.account_nonce(best_hash, account.into())
 		.expect("Fetching account nonce works; qed")
 }
 
 /// Construct an extrinsic that can be applied to the test runtime.
 pub fn construct_extrinsic(
 	client: &Client,
-	function: impl Into<runtime::Call>,
+	function: impl Into<runtime::RuntimeCall>,
 	caller: sp_core::sr25519::Pair,
 	nonce: Option<u32>,
 ) -> runtime::UncheckedExtrinsic {
@@ -222,8 +235,13 @@ pub fn run_relay_chain_validator_node(
 	key: Sr25519Keyring,
 	storage_update_func: impl Fn(),
 	boot_nodes: Vec<MultiaddrWithPeerId>,
+	websocket_port: Option<u16>,
 ) -> polkadot_test_service::PolkadotTestNode {
-	let config = polkadot_test_service::node_config(storage_update_func, tokio_handle, key, boot_nodes, true);
+	let mut config = polkadot_test_service::node_config(storage_update_func, tokio_handle, key, boot_nodes, true);
+
+	if let Some(port) = websocket_port {
+		config.rpc_ws = Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port));
+	}
 
 	polkadot_test_service::run_validator_node(
 		config,

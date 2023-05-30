@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -27,31 +27,37 @@ pub use orml_traits::GetByKey;
 use polkadot_parachain::primitives::Sibling;
 use primitives::currency::AssetMetadata;
 use sp_runtime::traits::AccountIdConversion;
-use xcm::v1::{Junction, MultiLocation};
+use xcm::v3::{Junction, MultiLocation};
 use xcm_emulator::TestExt;
 
 pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
-pub const FEE_WEIGHT: Balance = 4_000_000_000;
-pub const FEE: Balance = 20_000_000;
-pub const FEE_STATEMINE: Balance = 15_450_332;
+pub const FEE_WEIGHT: Balance = 40_000_000_000;
+pub const FEE: Balance = 200_000_000;
+pub const FEE_STATEMINE: Balance = 43_543_101;
 pub const FEE_KUSAMA: Balance = 11_492_737;
 const ASSET_ID: u32 = 100;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
-		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
+		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((Parent, Parachain(1000)).into()));
 	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
-		Origin::root(),
-		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(20_000_000),)],
+		RuntimeOrigin::root(),
+		vec![(
+			xcm_operation.clone(),
+			Some(XcmWeight::from_parts(4_000_000_000, 0)),
+			Some(200_000_000),
+		)],
 	));
-	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmDestWeightUpdated {
-		xcm_operation: xcm_operation.clone(),
-		new_xcm_dest_weight: 4_000_000_000,
-	}));
-	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
+	System::assert_has_event(RuntimeEvent::XcmInterface(
+		module_xcm_interface::Event::XcmDestWeightUpdated {
+			xcm_operation: xcm_operation.clone(),
+			new_xcm_dest_weight: XcmWeight::from_parts(4_000_000_000, 0),
+		},
+	));
+	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
 		xcm_operation,
-		new_xcm_dest_weight: 20_000_000,
+		new_xcm_dest_weight: 200_000_000,
 	}));
 }
 
@@ -63,9 +69,9 @@ fn statemine_min_xcm_fee_matched() {
 		init_statemine_xcm_interface();
 		let weight = FEE_WEIGHT as u64;
 
-		let fee: Balance = IdentityFee::weight_to_fee(&weight);
-		let statemine: MultiLocation = (1, Parachain(parachains::statemine::ID)).into();
-		let bifrost: MultiLocation = (1, Parachain(parachains::bifrost::ID)).into();
+		let fee: Balance = IdentityFee::weight_to_fee(&Weight::from_parts(weight, 0));
+		let statemine: MultiLocation = (Parent, Parachain(parachains::statemine::ID)).into();
+		let bifrost: MultiLocation = (Parent, Parachain(parachains::bifrost::ID)).into();
 
 		let statemine_fee: u128 = ParachainMinFee::get(&statemine).unwrap();
 		assert_eq!(statemine_fee, FEE);
@@ -94,21 +100,15 @@ fn statemine_reserve_transfer_ksm_to_karura_should_not_allowed() {
 		// source chain(Statemine).
 		Balances::make_free_balance_be(&sibling_2000, 2 * UNIT);
 
-		assert_ok!(statemine_runtime::PolkadotXcm::reserve_transfer_assets(
-			statemine_runtime::Origin::signed(ALICE.into()),
+		assert_ok!(statemine_runtime::PolkadotXcm::limited_reserve_transfer_assets(
+			statemine_runtime::RuntimeOrigin::signed(ALICE.into()),
 			// Unlike Statemine reserve transfer to relaychain is not allowed,
 			// Here Statemine reserve transfer to parachain. let's see what happened.
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((Parent, UNIT).into()),
-			0
+			0,
+			WeightLimit::Unlimited
 		));
 
 		// In sender xcm execution is successed, sender account is withdrawn.
@@ -143,7 +143,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 	// Karura transfer KSM to Statemine, it's `NonRerserve` scene(A->[B]->C).
 	Karura::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			KSM,
 			UNIT,
 			Box::new(
@@ -152,14 +152,14 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 					X2(
 						Parachain(1000),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			4_000_000_000
+			WeightLimit::Limited(XcmWeight::from_parts(4_000_000_000, 0))
 		));
 
 		assert_eq!(9 * UNIT, Tokens::free_balance(KSM, &AccountId::from(ALICE)));
@@ -170,7 +170,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 		// source parachain sovereign account withrawn.
 		assert_eq!(UNIT, kusama_runtime::Balances::free_balance(&child_2000));
 		// destination parachain sovereign account deposited.
-		assert_eq!(999_970_357_090, kusama_runtime::Balances::free_balance(&child_1000));
+		assert_eq!(999_758_308_574, kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	// In receiver, xm execution error: UntrustedReserveLocation.
@@ -200,7 +200,7 @@ fn karura_transfer_asset_to_statemine_works() {
 
 		// https://github.com/paritytech/cumulus/pull/1278 support using self sufficient asset
 		// for paying xcm execution fee on Statemine.
-		assert_eq!(953_648_999_365, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
+		assert_eq!(988_423_297_485, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
 	});
 }
 
@@ -213,7 +213,7 @@ fn karura_statemine_transfer_use_ksm_as_fee() {
 
 	// minimum asset should be: FEE_WEIGHT+FEE_KUSAMA+max(KUSAMA_ED,STATEMINE_ED+FEE_STATEMINE).
 	// but due to current half fee, sender asset should at lease: FEE_WEIGHT + 2 * FEE_KUSAMA
-	let asset = FEE_WEIGHT + 2 * 31_488_122;
+	let asset = FEE_WEIGHT + 2 * 31_488_122; //  40_062_976_244
 
 	// Alice on Statemine send USDT to Bob on Karura
 	statemine_transfer_asset_to_karura();
@@ -242,7 +242,7 @@ fn karura_statemine_transfer_use_ksm_as_fee() {
 			UNIT + FEE - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(1_003_977_888_486, Balances::free_balance(&para_2000));
+		assert_eq!(1_039_387_546_047, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -254,7 +254,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			9_999_907_304_000,
+			9_999_919_872_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough KSM balance to be charged as fee
@@ -263,7 +263,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 		if ksm_fee_amount == 0 {
 			// use custom asset(USDT on Statemine) as fee
 			assert_ok!(XTokens::transfer(
-				Origin::signed(BOB.into()),
+				RuntimeOrigin::signed(BOB.into()),
 				CurrencyId::ForeignAsset(0),
 				UNIT,
 				Box::new(
@@ -272,19 +272,19 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 						X2(
 							Parachain(1000),
 							Junction::AccountId32 {
-								network: NetworkId::Any,
+								network: None,
 								id: BOB.into(),
 							}
 						)
 					)
 					.into()
 				),
-				FEE_WEIGHT as u64
+				WeightLimit::Limited(XcmWeight::from_parts(FEE_WEIGHT as u64, 0))
 			));
 		} else {
 			// use KSM as fee
 			assert_ok!(XTokens::transfer_multicurrencies(
-				Origin::signed(BOB.into()),
+				RuntimeOrigin::signed(BOB.into()),
 				vec![(CurrencyId::ForeignAsset(0), UNIT), (KSM, ksm_fee_amount)],
 				1,
 				Box::new(
@@ -293,19 +293,20 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 						X2(
 							Parachain(1000),
 							Junction::AccountId32 {
-								network: NetworkId::Any,
+								network: None,
 								id: BOB.into(),
 							}
 						)
 					)
 					.into()
 				),
-				FEE_WEIGHT as u64
+				//WeightLimit::Limited(XcmWeight::from_parts(400_000_000, 0))
+				WeightLimit::Unlimited
 			));
 		}
 
 		assert_eq!(
-			8_999_907_304_000,
+			8_999_919_872_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - ksm_fee_amount, Tokens::free_balance(KSM, &AccountId::from(BOB)));
@@ -323,15 +324,15 @@ fn statemine_transfer_asset_to_karura() {
 	Statemine::execute_with(|| {
 		use statemine_runtime::*;
 
-		let origin = Origin::signed(ALICE.into());
+		let origin = RuntimeOrigin::signed(ALICE.into());
 		Balances::make_free_balance_be(&ALICE.into(), TEN);
 		Balances::make_free_balance_be(&BOB.into(), UNIT);
 
 		// If using non root, create custom asset cost 0.1 KSM
 		// We're using force_create here to make sure asset is sufficient.
 		assert_ok!(Assets::force_create(
-			Origin::root(),
-			ASSET_ID,
+			RuntimeOrigin::root(),
+			ASSET_ID.into(),
 			MultiAddress::Id(ALICE.into()),
 			true,
 			UNIT / 100
@@ -339,7 +340,7 @@ fn statemine_transfer_asset_to_karura() {
 
 		assert_ok!(Assets::mint(
 			origin.clone(),
-			ASSET_ID,
+			ASSET_ID.into(),
 			MultiAddress::Id(ALICE.into()),
 			1000 * UNIT
 		));
@@ -347,19 +348,13 @@ fn statemine_transfer_asset_to_karura() {
 		// need to have some KSM to be able to receive user assets
 		Balances::make_free_balance_be(&para_2000, UNIT);
 
-		assert_ok!(PolkadotXcm::reserve_transfer_assets(
+		assert_ok!(PolkadotXcm::limited_reserve_transfer_assets(
 			origin.clone(),
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
-			Box::new(
-				Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any
-				}
-				.into()
-				.into()
-			),
+			Box::new(Junction::AccountId32 { id: BOB, network: None }.into_versioned()),
 			Box::new((X2(PalletInstance(50), GeneralIndex(ASSET_ID as u128)), TEN).into()),
-			0
+			0,
+			WeightLimit::Unlimited
 		));
 
 		assert_eq!(990 * UNIT, Assets::balance(ASSET_ID, &AccountId::from(ALICE)));
@@ -378,7 +373,7 @@ fn register_asset() {
 	Karura::execute_with(|| {
 		// register foreign asset
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Box::new(
 				MultiLocation::new(
 					1,

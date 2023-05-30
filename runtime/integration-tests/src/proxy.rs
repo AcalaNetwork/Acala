@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
+use sp_runtime::MultiAddress;
 
 type SystemError = frame_system::Error<Runtime>;
 
@@ -32,14 +33,14 @@ fn proxy_behavior_correct() {
 			// proxy fails for account with no NATIVE_CURRENCY
 			assert_noop!(
 				Proxy::add_proxy(
-					Origin::signed(AccountId::from([21; 32])),
-					AccountId::from(ALICE),
+					RuntimeOrigin::signed(AccountId::from([21; 32])),
+					MultiAddress::Id(AccountId::from(ALICE)),
 					ProxyType::Any,
 					0
 				),
 				pallet_balances::Error::<Runtime, _>::InsufficientBalance
 			);
-			let call = Box::new(Call::Currencies(module_currencies::Call::transfer {
+			let call = Box::new(RuntimeCall::Currencies(module_currencies::Call::transfer {
 				dest: AccountId::from(ALICE).into(),
 				currency_id: NATIVE_CURRENCY,
 				amount: 10 * dollar(NATIVE_CURRENCY),
@@ -47,8 +48,8 @@ fn proxy_behavior_correct() {
 
 			// Alice has all Bob's permissions now
 			assert_ok!(Proxy::add_proxy(
-				Origin::signed(AccountId::from(BOB)),
-				AccountId::from(ALICE),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
+				MultiAddress::Id(AccountId::from(ALICE)),
 				ProxyType::Any,
 				0
 			));
@@ -57,8 +58,8 @@ fn proxy_behavior_correct() {
 
 			// alice can now make calls for bob's account
 			assert_ok!(Proxy::proxy(
-				Origin::signed(AccountId::from(ALICE)),
-				AccountId::from(BOB),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				MultiAddress::Id(AccountId::from(BOB)),
 				None,
 				call.clone()
 			));
@@ -69,15 +70,15 @@ fn proxy_behavior_correct() {
 
 			// alice cannot make calls for bob's account anymore
 			assert_ok!(Proxy::remove_proxy(
-				Origin::signed(AccountId::from(BOB)),
-				AccountId::from(ALICE),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
+				MultiAddress::Id(AccountId::from(ALICE)),
 				ProxyType::Any,
 				0
 			));
 			assert_noop!(
 				Proxy::proxy(
-					Origin::signed(AccountId::from(ALICE)),
-					AccountId::from(BOB),
+					RuntimeOrigin::signed(AccountId::from(ALICE)),
+					MultiAddress::Id(AccountId::from(BOB)),
 					None,
 					call.clone()
 				),
@@ -116,7 +117,7 @@ fn proxy_permissions_correct() {
 			let min_debit: Balance = 100 * MinimumDebitValue::get();
 			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(100, 1))]);
 			assert_ok!(CdpEngine::set_collateral_params(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				RELAY_CHAIN_CURRENCY,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 10000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
@@ -125,7 +126,7 @@ fn proxy_permissions_correct() {
 				Change::NewValue(1_000_000 * dollar(USD_CURRENCY)),
 			));
 			assert_ok!(Dex::add_liquidity(
-				Origin::signed(AccountId::from(BOB)),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
 				RELAY_CHAIN_CURRENCY,
 				USD_CURRENCY,
 				5 * dollar(RELAY_CHAIN_CURRENCY),
@@ -135,40 +136,40 @@ fn proxy_permissions_correct() {
 			));
 			// Alice has all Bob's permissions now
 			assert_ok!(Proxy::add_proxy(
-				Origin::signed(AccountId::from(BOB)),
-				AccountId::from(ALICE),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
+				MultiAddress::Id(AccountId::from(ALICE)),
 				ProxyType::Any,
 				0
 			));
-			let root_call = Box::new(Call::Currencies(module_currencies::Call::update_balance {
+			let root_call = Box::new(RuntimeCall::Currencies(module_currencies::Call::update_balance {
 				who: AccountId::from(ALICE).into(),
 				currency_id: NATIVE_CURRENCY,
 				amount: 1000 * dollar(NATIVE_CURRENCY) as i128,
 			}));
-			let gov_call = Box::new(Call::Tips(pallet_tips::Call::report_awesome {
+			let gov_call = Box::new(RuntimeCall::Tips(pallet_tips::Call::report_awesome {
 				reason: b"bob is awesome".to_vec(),
-				who: AccountId::from(BOB),
+				who: MultiAddress::Id(AccountId::from(BOB)),
 			}));
-			let transfer_call = Box::new(Call::Currencies(module_currencies::Call::transfer {
+			let transfer_call = Box::new(RuntimeCall::Currencies(module_currencies::Call::transfer {
 				dest: AccountId::from(BOB).into(),
 				currency_id: NATIVE_CURRENCY,
 				amount: 10 * dollar(NATIVE_CURRENCY),
 			}));
-			let adjust_loan_call = Box::new(Call::Honzon(module_honzon::Call::adjust_loan {
+			let adjust_loan_call = Box::new(RuntimeCall::Honzon(module_honzon::Call::adjust_loan {
 				currency_id: RELAY_CHAIN_CURRENCY,
 				collateral_adjustment: 10 * dollar(RELAY_CHAIN_CURRENCY) as i128,
 				debit_adjustment: min_debit as i128,
 			}));
-			let authorize_loan_call = Box::new(Call::Honzon(module_honzon::Call::authorize {
+			let authorize_loan_call = Box::new(RuntimeCall::Honzon(module_honzon::Call::authorize {
 				currency_id: RELAY_CHAIN_CURRENCY,
 				to: AccountId::from(BOB).into(),
 			}));
-			let dex_swap_call = Box::new(Call::Dex(module_dex::Call::swap_with_exact_target {
+			let dex_swap_call = Box::new(RuntimeCall::Dex(module_dex::Call::swap_with_exact_target {
 				path: vec![RELAY_CHAIN_CURRENCY, USD_CURRENCY],
 				target_amount: dollar(USD_CURRENCY),
 				max_supply_amount: dollar(RELAY_CHAIN_CURRENCY),
 			}));
-			let dex_add_liquidity_call = Box::new(Call::Dex(module_dex::Call::add_liquidity {
+			let dex_add_liquidity_call = Box::new(RuntimeCall::Dex(module_dex::Call::add_liquidity {
 				currency_id_a: RELAY_CHAIN_CURRENCY,
 				currency_id_b: USD_CURRENCY,
 				max_amount_a: 10 * dollar(RELAY_CHAIN_CURRENCY),
@@ -179,8 +180,8 @@ fn proxy_permissions_correct() {
 
 			// Proxy calls do not bypass root permision
 			assert_ok!(Proxy::proxy(
-				Origin::signed(AccountId::from(ALICE)),
-				AccountId::from(BOB),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				MultiAddress::Id(AccountId::from(BOB)),
 				None,
 				root_call.clone()
 			));
@@ -192,15 +193,15 @@ fn proxy_permissions_correct() {
 
 			// Alice's gives governance permissions to Bob
 			assert_ok!(Proxy::add_proxy(
-				Origin::signed(AccountId::from(ALICE)),
-				AccountId::from(BOB),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				MultiAddress::Id(AccountId::from(BOB)),
 				ProxyType::Governance,
 				0
 			));
 			// Bob can be a proxy for alice gov call
 			assert_ok!(Proxy::proxy(
-				Origin::signed(AccountId::from(BOB)),
-				AccountId::from(ALICE),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
+				MultiAddress::Id(AccountId::from(ALICE)),
 				Some(ProxyType::Governance),
 				gov_call.clone()
 			));
@@ -210,7 +211,11 @@ fn proxy_permissions_correct() {
 				System::events()
 					.into_iter()
 					.map(|r| r.event)
-					.filter_map(|e| if let Event::Tips(inner) = e { Some(inner) } else { None })
+					.filter_map(|e| if let RuntimeEvent::Tips(inner) = e {
+						Some(inner)
+					} else {
+						None
+					})
 					.last()
 					.unwrap(),
 				pallet_tips::Event::<Runtime>::NewTip { tip_hash: hash }
@@ -218,8 +223,8 @@ fn proxy_permissions_correct() {
 
 			// Bob can't proxy for alice in a non gov call, once again proxy call works but nested call fails
 			assert_ok!(Proxy::proxy(
-				Origin::signed(AccountId::from(BOB)),
-				AccountId::from(ALICE),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
+				MultiAddress::Id(AccountId::from(ALICE)),
 				Some(ProxyType::Governance),
 				transfer_call.clone()
 			));
@@ -227,14 +232,14 @@ fn proxy_permissions_correct() {
 			assert!(Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)) < 100 * dollar(NATIVE_CURRENCY));
 
 			assert_ok!(Proxy::add_proxy(
-				Origin::signed(AccountId::from(ALICE)),
-				AccountId::from(BOB),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				MultiAddress::Id(AccountId::from(BOB)),
 				ProxyType::Loan,
 				0
 			));
 			assert_ok!(Proxy::proxy(
-				Origin::signed(AccountId::from(BOB)),
-				AccountId::from(ALICE),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
+				MultiAddress::Id(AccountId::from(ALICE)),
 				Some(ProxyType::Loan),
 				adjust_loan_call.clone()
 			));
@@ -248,8 +253,8 @@ fn proxy_permissions_correct() {
 			);
 			// authorize call is part of the Honzon module but is not in the Loan ProxyType filter
 			assert_ok!(Proxy::proxy(
-				Origin::signed(AccountId::from(BOB)),
-				AccountId::from(ALICE),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
+				MultiAddress::Id(AccountId::from(ALICE)),
 				Some(ProxyType::Loan),
 				authorize_loan_call.clone()
 			));
@@ -263,16 +268,16 @@ fn proxy_permissions_correct() {
 
 			// gives Bob ability to proxy alice's account for dex swaps
 			assert_ok!(Proxy::add_proxy(
-				Origin::signed(AccountId::from(ALICE)),
-				AccountId::from(BOB),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				MultiAddress::Id(AccountId::from(BOB)),
 				ProxyType::Swap,
 				0
 			));
 
 			let pre_swap = Currencies::free_balance(USD_CURRENCY, &AccountId::from(ALICE));
 			assert_ok!(Proxy::proxy(
-				Origin::signed(AccountId::from(BOB)),
-				AccountId::from(ALICE),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
+				MultiAddress::Id(AccountId::from(ALICE)),
 				Some(ProxyType::Swap),
 				dex_swap_call.clone()
 			));
@@ -280,8 +285,8 @@ fn proxy_permissions_correct() {
 			assert_eq!(post_swap - pre_swap, dollar(USD_CURRENCY));
 
 			assert_ok!(Proxy::proxy(
-				Origin::signed(AccountId::from(BOB)),
-				AccountId::from(ALICE),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
+				MultiAddress::Id(AccountId::from(ALICE)),
 				Some(ProxyType::Swap),
 				dex_add_liquidity_call.clone()
 			));
@@ -296,8 +301,8 @@ fn proxy_permissions_correct() {
 
 			// Tests that adding more ProxyType permssions does not effect others
 			assert_ok!(Proxy::proxy(
-				Origin::signed(AccountId::from(BOB)),
-				AccountId::from(ALICE),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
+				MultiAddress::Id(AccountId::from(ALICE)),
 				Some(ProxyType::Loan),
 				adjust_loan_call.clone()
 			));
@@ -312,15 +317,15 @@ fn proxy_permissions_correct() {
 
 			// remove proxy works
 			assert_ok!(Proxy::remove_proxy(
-				Origin::signed(AccountId::from(ALICE)),
-				AccountId::from(BOB),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
+				MultiAddress::Id(AccountId::from(BOB)),
 				ProxyType::Loan,
 				0
 			));
 			assert_noop!(
 				Proxy::proxy(
-					Origin::signed(AccountId::from(BOB)),
-					AccountId::from(ALICE),
+					RuntimeOrigin::signed(AccountId::from(BOB)),
+					MultiAddress::Id(AccountId::from(ALICE)),
 					Some(ProxyType::Loan),
 					adjust_loan_call.clone()
 				),

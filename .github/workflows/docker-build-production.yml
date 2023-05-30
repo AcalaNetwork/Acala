@@ -1,5 +1,5 @@
 # Runs when `release-*` branch is created or push changes into `release-*` branch.
-name: Build Release
+name: Docker Build Production Release
 on:
   create:
   push:
@@ -18,11 +18,9 @@ jobs:
   clean-up-actions:
     runs-on: ubuntu-latest
     # Skip non-release branches
-    if: contains(github.ref, 'release-')
+    if: startsWith(github.ref_name, 'release-')
     steps:
       - name: Cancel Previous Runs
-        # Only cancel non-master branch runs
-        if: ${{ github.ref != 'refs/heads/master' }}
         uses: styfle/cancel-workflow-action@0.11.0
         with:
           access_token: ${{ github.token }}
@@ -70,7 +68,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v4
         with:
           # list of Docker images to use as base name for tags
           images: |
@@ -81,7 +79,7 @@ jobs:
             type=ref,event=pr
             type=sha
       - name: Build and push Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           platforms: linux/amd64
@@ -98,7 +96,7 @@ jobs:
 
   trigger:
     needs: build-image
-    if: ${{ contains(github.ref, 'release') }}
+    if: ${{ startsWith(github.ref_name, 'release-') }}
     uses: ./.github/workflows/extrinsic-ordering-check-on-release.yml
     secrets: inherit
     with:

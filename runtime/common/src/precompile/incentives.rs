@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -117,7 +117,7 @@ where
 				>>::deposit_dex_share(&who, lp_currency_id, amount)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Incentives DepositDexShare failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -141,7 +141,7 @@ where
 				>>::withdraw_dex_share(&who, lp_currency_id, amount)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Incentives WithdrawDexShare failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -166,7 +166,7 @@ where
 				>>::claim_rewards(who, pool_id)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Incentives ClaimRewards failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -343,8 +343,8 @@ fn init_pool_id(
 mod tests {
 	use super::*;
 	use crate::precompile::mock::{
-		alice, alice_evm_addr, bob, new_test_ext, Currencies, Incentives, Origin, Rewards, Test, Tokens, ACA, ALICE,
-		AUSD, DOT, LP_ACA_AUSD,
+		alice, alice_evm_addr, bob, new_test_ext, Currencies, Incentives, Rewards, RuntimeOrigin, Test, Tokens, ACA,
+		ALICE, AUSD, DOT, LP_ACA_AUSD,
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
@@ -365,7 +365,7 @@ mod tests {
 			};
 
 			assert_ok!(Incentives::update_incentive_rewards(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Loans(DOT), vec![(DOT, 100)])]
 			));
 
@@ -441,7 +441,7 @@ mod tests {
 
 			assert_ok!(Currencies::deposit(LP_ACA_AUSD, &alice(), 1_000_000_000));
 			assert_ok!(Incentives::deposit_dex_share(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				LP_ACA_AUSD,
 				100_000
 			));
@@ -489,15 +489,15 @@ mod tests {
 			assert_ok!(Tokens::deposit(AUSD, &Incentives::account_id(), 1_000_000));
 
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(20, 100)),]
 			));
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(40, 100)),]
 			));
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(50, 100)),]
 			));
 			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
@@ -551,7 +551,7 @@ mod tests {
 			};
 
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Dex(LP_ACA_AUSD), FixedU128::saturating_from_rational(1, 10))]
 			));
 
@@ -590,15 +590,15 @@ mod tests {
 			assert_ok!(Tokens::deposit(AUSD, &Incentives::account_id(), 1_000_000));
 
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(20, 100)),]
 			));
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(40, 100)),]
 			));
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(50, 100)),]
 			));
 
