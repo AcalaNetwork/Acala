@@ -75,21 +75,15 @@ impl SubstrateCli for Cli {
 			#[cfg(feature = "with-mandala-runtime")]
 			"local" => Box::new(chain_spec::mandala::local_testnet_config()?),
 			#[cfg(feature = "with-mandala-runtime")]
-			"mandala" => Box::new(chain_spec::mandala::mandala_testnet_config()?),
-			#[cfg(feature = "with-mandala-runtime")]
 			"mandala-latest" => Box::new(chain_spec::mandala::latest_mandala_testnet_config()?),
 			#[cfg(feature = "with-karura-runtime")]
 			"karura" => Box::new(chain_spec::karura::karura_config()?),
-			#[cfg(feature = "with-karura-runtime")]
-			"karura-rococo" => Box::new(chain_spec::karura::karura_rococo_config()?),
 			#[cfg(feature = "with-karura-runtime")]
 			"karura-dev" => Box::new(chain_spec::karura::karura_dev_config()?),
 			#[cfg(feature = "with-karura-runtime")]
 			"karura-local" => Box::new(chain_spec::karura::karura_local_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),
-			#[cfg(feature = "with-acala-runtime")]
-			"wendala" => Box::new(chain_spec::acala::wendala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala-dev" => Box::new(chain_spec::acala::acala_dev_config()?),
 			#[cfg(feature = "with-acala-runtime")]
@@ -180,14 +174,7 @@ impl SubstrateCli for RelayChainCli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		if id == "rococo-mandala" {
-			let spec = sc_service::GenericChainSpec::<(), polkadot_service::chain_spec::Extensions>::from_json_bytes(
-				&include_bytes!("../../../resources/rococo-mandala.json")[..],
-			)?;
-			Ok(Box::new(spec))
-		} else {
-			polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
-		}
+		polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
 	}
 
 	fn native_runtime_version(chain_spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
