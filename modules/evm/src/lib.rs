@@ -634,7 +634,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			match T::Runner::call(
+			let outcome = T::Runner::call(
 				source,
 				source,
 				target,
@@ -644,9 +644,12 @@ pub mod module {
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
-			) {
+			);
+
+			Self::inc_nonce_if_needed(&source, &outcome);
+
+			match outcome {
 				Err(e) => {
-					Self::inc_nonce(&source);
 					Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
 						from: source,
 						contract: target,
@@ -671,7 +674,6 @@ pub mod module {
 							used_storage: info.used_storage,
 						});
 					} else {
-						Self::inc_nonce(&source);
 						Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
 							from: source,
 							contract: target,
@@ -819,7 +821,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			match T::Runner::create(
+			let outcome = T::Runner::create(
 				source,
 				input,
 				value,
@@ -827,9 +829,12 @@ pub mod module {
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
-			) {
+			);
+
+			Self::inc_nonce_if_needed(&source, &outcome);
+
+			match outcome {
 				Err(e) => {
-					Self::inc_nonce(&source);
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 						from: source,
 						contract: H160::default(),
@@ -853,7 +858,6 @@ pub mod module {
 							used_storage: info.used_storage,
 						});
 					} else {
-						Self::inc_nonce(&source);
 						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 							from: source,
 							contract: info.value,
@@ -895,7 +899,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			match T::Runner::create2(
+			let outcome = T::Runner::create2(
 				source,
 				input,
 				salt,
@@ -904,9 +908,12 @@ pub mod module {
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
-			) {
+			);
+
+			Self::inc_nonce_if_needed(&source, &outcome);
+
+			match outcome {
 				Err(e) => {
-					Self::inc_nonce(&source);
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 						from: source,
 						contract: H160::default(),
@@ -930,7 +937,6 @@ pub mod module {
 							used_storage: info.used_storage,
 						});
 					} else {
-						Self::inc_nonce(&source);
 						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 							from: source,
 							contract: info.value,
@@ -995,7 +1001,6 @@ pub mod module {
 				T::config(),
 			) {
 				Err(e) => {
-					Self::inc_nonce(&source);
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 						from: source,
 						contract: H160::default(),
@@ -1021,7 +1026,6 @@ pub mod module {
 							used_storage: info.used_storage,
 						});
 					} else {
-						Self::inc_nonce(&source);
 						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 							from: source,
 							contract: info.value,
@@ -1088,7 +1092,6 @@ pub mod module {
 				T::config(),
 			) {
 				Err(e) => {
-					Self::inc_nonce(&source);
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 						from: source,
 						contract: H160::default(),
@@ -1113,7 +1116,6 @@ pub mod module {
 							used_storage: info.used_storage,
 						});
 					} else {
-						Self::inc_nonce(&source);
 						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 							from: source,
 							contract,
@@ -1283,13 +1285,10 @@ pub mod module {
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
 			) {
-				Err(e) => {
-					Self::inc_nonce(&source);
-					Err(DispatchErrorWithPostInfo {
-						post_info: ().into(),
-						error: e,
-					})
-				}
+				Err(e) => Err(DispatchErrorWithPostInfo {
+					post_info: ().into(),
+					error: e,
+				}),
 				Ok(info) => {
 					let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -1312,7 +1311,6 @@ pub mod module {
 							"batch_call failed: [from: {:?}, contract: {:?}, exit_reason: {:?}, output: {:?}, logs: {:?}, used_gas: {:?}]",
 							source, target, info.exit_reason, info.value, info.logs, used_gas
 						);
-						Self::inc_nonce(&source);
 						Err(DispatchErrorWithPostInfo {
 							post_info: PostDispatchInfo {
 								actual_weight: Some(call_weight::<T>(used_gas)),
@@ -1882,8 +1880,20 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	fn inc_nonce(caller: &H160) {
-		Accounts::<T>::mutate(caller, |account| {
+	fn inc_nonce_if_needed<Output>(origin: &H160, outcome: &Result<ExecutionInfo<Output>, DispatchError>) {
+		if matches!(
+			outcome,
+			Ok(ExecutionInfo {
+				exit_reason: ExitReason::Succeed(_),
+				..
+			})
+		) {
+			// nonce increased by EVM
+			return;
+		}
+
+		// EVM changes reverted, increase nonce by ourselves
+		Accounts::<T>::mutate(origin, |account| {
 			if let Some(info) = account.as_mut() {
 				info.nonce = info.nonce.saturating_add(T::Index::one());
 			} else {

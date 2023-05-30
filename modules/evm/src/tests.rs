@@ -35,6 +35,44 @@ use sp_runtime::{traits::BadOrigin, AccountId32};
 use std::str::FromStr;
 
 #[test]
+fn inc_nonce_if_needed() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(1));
+
+		let mut call_info = CallInfo {
+			exit_reason: ExitReason::Succeed(ExitSucceed::Returned),
+			value: vec![],
+			used_gas: Default::default(),
+			used_storage: 0,
+			logs: vec![],
+		};
+
+		// succeed call won't inc nonce
+		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(1));
+
+		call_info.exit_reason = ExitReason::Revert(ExitRevert::Reverted);
+		// revert call will inc nonce
+		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(2));
+
+		call_info.exit_reason = ExitReason::Fatal(ExitFatal::NotSupported);
+		// fatal call will inc nonce
+		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(3));
+
+		call_info.exit_reason = ExitReason::Error(ExitError::OutOfGas);
+		// error call will inc nonce
+		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(4));
+
+		// dispatch error will inc nonce
+		Pallet::<Runtime>::inc_nonce_if_needed::<H160>(&alice(), &Err(Error::<Runtime>::InvalidDecimals.into()));
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(5));
+	});
+}
+
+#[test]
 fn fail_call_return_ok_and_inc_nonce() {
 	new_test_ext().execute_with(|| {
 		let mut data = [0u8; 32];
