@@ -14,6 +14,10 @@ on:
       - release-**
     paths-ignore:
       - '**/README.md'
+
+env:
+  CARGO_INCREMENTAL: 1
+
 jobs:
   clean-up-actions:
     runs-on: ubuntu-latest
@@ -88,8 +92,6 @@ jobs:
         run: make test-benchmarking
   checks-and-tests:
     runs-on: [self-hosted, linux]
-    env:
-      CARGO_INCREMENTAL: 1
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
@@ -123,8 +125,6 @@ jobs:
         run: make check-runtimes
   e2e-tests:
     runs-on: [self-hosted, linux]
-    env:
-      CARGO_INCREMENTAL: 1
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3

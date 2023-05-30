@@ -16,6 +16,7 @@ on:
 env:
   TARPAULIN_VERSION: 0.19.1
   # LIBCLANG_PATH: "/usr/lib/llvm-11/lib" # default `llvm-config --prefix`
+  CARGO_INCREMENTAL: 1
 jobs:
   clean-up-actions:
     runs-on: ubuntu-latest
