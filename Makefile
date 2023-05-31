@@ -151,10 +151,10 @@ test-evm: githooks
 
 .PHONY: test-runtimes
 test-runtimes:
-	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime
-	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-mandala-runtime
-	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-karura-runtime
-	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-acala-runtime
+	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime --lib
+	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-mandala-runtime --lib
+	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-karura-runtime --lib
+	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-acala-runtime --lib
 
 .PHONY: test-e2e
 test-e2e:
