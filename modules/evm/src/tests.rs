@@ -26,7 +26,7 @@ use crate::runner::{
 	state::{StackExecutor, StackState, StackSubstateMetadata},
 };
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchErrorWithPostInfo};
-use module_support::AddressMapping;
+use module_support::{mocks::MockAddressMapping, AddressMapping};
 use sp_core::{
 	bytes::{from_hex, to_hex},
 	H160,
@@ -35,23 +35,77 @@ use sp_runtime::{traits::BadOrigin, AccountId32};
 use std::str::FromStr;
 
 #[test]
-fn fail_call_return_ok() {
+fn inc_nonce_if_needed() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(1));
+
+		let mut call_info = CallInfo {
+			exit_reason: ExitReason::Succeed(ExitSucceed::Returned),
+			value: vec![],
+			used_gas: Default::default(),
+			used_storage: 0,
+			logs: vec![],
+		};
+
+		// succeed call won't inc nonce
+		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(1));
+
+		call_info.exit_reason = ExitReason::Revert(ExitRevert::Reverted);
+		// revert call will inc nonce
+		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(2));
+
+		call_info.exit_reason = ExitReason::Fatal(ExitFatal::NotSupported);
+		// fatal call will inc nonce
+		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(3));
+
+		call_info.exit_reason = ExitReason::Error(ExitError::OutOfGas);
+		// error call will inc nonce
+		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(4));
+
+		// dispatch error will inc nonce
+		Pallet::<Runtime>::inc_nonce_if_needed::<H160>(&alice(), &Err(Error::<Runtime>::InvalidDecimals.into()));
+		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(5));
+	});
+}
+
+#[test]
+fn fail_call_return_ok_and_inc_nonce() {
 	new_test_ext().execute_with(|| {
 		let mut data = [0u8; 32];
 		data[0..4].copy_from_slice(b"evm:");
 		let signer: AccountId32 = AccountId32::from(data);
-
+		let alice = MockAddressMapping::get_or_create_evm_address(&signer);
 		let origin = RuntimeOrigin::signed(signer);
+
+		// nonce 0
+		assert_eq!(EVM::account_basic(&alice).nonce, U256::zero());
+
+		// out of gas
+		assert_ok!(EVM::call(origin.clone(), contract_a(), Vec::new(), 0, 100, 0, vec![]));
+		// nonce inc by 1
+		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(1));
+
+		// success call
 		assert_ok!(EVM::call(
 			origin.clone(),
-			contract_a(),
+			contract_b(),
 			Vec::new(),
 			0,
 			1000000,
 			0,
 			vec![]
 		));
-		assert_ok!(EVM::call(origin, contract_b(), Vec::new(), 0, 1000000, 0, vec![]));
+		// nonce inc by 1
+		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(2));
+
+		// invalid decimals
+		assert_ok!(EVM::call(origin, contract_b(), Vec::new(), 1111, 1000000, 0, vec![]));
+		// nonce inc by 1
+		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(3));
 	});
 }
 

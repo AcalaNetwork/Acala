@@ -73,7 +73,7 @@ use sp_core::{H160, H256, U256};
 use sp_runtime::{
 	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto, Zero},
 	transaction_validity::TransactionValidityError,
-	Either, SaturatedConversion, TransactionOutcome,
+	Either, SaturatedConversion, Saturating, TransactionOutcome,
 };
 use sp_std::{cmp, collections::btree_map::BTreeMap, fmt::Debug, marker::PhantomData, prelude::*};
 
@@ -634,7 +634,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			match T::Runner::call(
+			let outcome = T::Runner::call(
 				source,
 				source,
 				target,
@@ -644,7 +644,11 @@ pub mod module {
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
-			) {
+			);
+
+			Self::inc_nonce_if_needed(&source, &outcome);
+
+			match outcome {
 				Err(e) => {
 					Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
 						from: source,
@@ -817,7 +821,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			match T::Runner::create(
+			let outcome = T::Runner::create(
 				source,
 				input,
 				value,
@@ -825,7 +829,11 @@ pub mod module {
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
-			) {
+			);
+
+			Self::inc_nonce_if_needed(&source, &outcome);
+
+			match outcome {
 				Err(e) => {
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 						from: source,
@@ -891,7 +899,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			match T::Runner::create2(
+			let outcome = T::Runner::create2(
 				source,
 				input,
 				salt,
@@ -900,7 +908,11 @@ pub mod module {
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
-			) {
+			);
+
+			Self::inc_nonce_if_needed(&source, &outcome);
+
+			match outcome {
 				Err(e) => {
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 						from: source,
@@ -1299,7 +1311,6 @@ pub mod module {
 							"batch_call failed: [from: {:?}, contract: {:?}, exit_reason: {:?}, output: {:?}, logs: {:?}, used_gas: {:?}]",
 							source, target, info.exit_reason, info.value, info.logs, used_gas
 						);
-
 						Err(DispatchErrorWithPostInfo {
 							post_info: PostDispatchInfo {
 								actual_weight: Some(call_weight::<T>(used_gas)),
@@ -1867,6 +1878,31 @@ impl<T: Config> Pallet<T> {
 		T::TransferAll::transfer_all(&contract_acc, &dest)?;
 
 		Ok(())
+	}
+
+	fn inc_nonce_if_needed<Output>(origin: &H160, outcome: &Result<ExecutionInfo<Output>, DispatchError>) {
+		if matches!(
+			outcome,
+			Ok(ExecutionInfo {
+				exit_reason: ExitReason::Succeed(_),
+				..
+			})
+		) {
+			// nonce increased by EVM
+			return;
+		}
+
+		// EVM changes reverted, increase nonce by ourselves
+		Accounts::<T>::mutate(origin, |account| {
+			if let Some(info) = account.as_mut() {
+				info.nonce = info.nonce.saturating_add(T::Index::one());
+			} else {
+				*account = Some(AccountInfo {
+					nonce: T::Index::one(),
+					contract_info: None,
+				});
+			}
+		});
 	}
 }
 
