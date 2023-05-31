@@ -364,89 +364,112 @@ impl<T: Config> Pallet<T> {
 				continue;
 			}
 
-			let res = T::Currency::transfer(
-				reward_currency_id,
-				&T::RewardsSource::get(),
-				&Self::account_id(),
-				reward_amount,
-			);
-
-			match res {
-				Ok(_) => {
-					let _ = <orml_rewards::Pallet<T>>::accumulate_reward(
-						&pool_id,
-						reward_currency_id,
-						reward_amount,
-					)
-					.map_err(|e| {
-						log::error!(
-							target: "incentives",
-							"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
-							pool_id, reward_currency_id, reward_amount, e
-						);
-					});
-				}
-				Err(e) => {
+			// ignore result so that failure will not block accumulate other type reward for the pool
+			let _ =
+				Self::transfer_rewards_and_update_records(pool_id, reward_currency_id, reward_amount).map_err(|e| {
 					log::warn!(
 						target: "incentives",
-						"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
-						This is unexpected but should be safe",
-						reward_amount, reward_currency_id, T::RewardsSource::get(), Self::account_id(), e
+						"accumulate_incentives: failed to accumulate {:?} {:?} rewards for pool {:?} : {:?}",
+						reward_amount, reward_currency_id, pool_id, e
 					);
-				}
-			}
+				});
 		}
+	}
+
+	/// Ensure atomic
+	#[transactional]
+	fn transfer_rewards_and_update_records(
+		pool_id: PoolId,
+		reward_currency_id: CurrencyId,
+		reward_amount: Balance,
+	) -> DispatchResult {
+		T::Currency::transfer(
+			reward_currency_id,
+			&T::RewardsSource::get(),
+			&Self::account_id(),
+			reward_amount,
+		)?;
+		<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, reward_currency_id, reward_amount)?;
+		Ok(())
 	}
 
 	fn do_claim_rewards(who: T::AccountId, pool_id: PoolId) -> DispatchResult {
 		// orml_rewards will claim rewards for all currencies rewards
 		<orml_rewards::Pallet<T>>::claim_rewards(&who, &pool_id);
 
-		let pending_multi_rewards: BTreeMap<CurrencyId, Balance> = PendingMultiRewards::<T>::take(pool_id, &who);
-		let deduction_rate = Self::claim_reward_deduction_rates(&pool_id);
+		PendingMultiRewards::<T>::mutate_exists(pool_id, &who, |maybe_pending_multi_rewards| {
+			if let Some(pending_multi_rewards) = maybe_pending_multi_rewards {
+				let deduction_rate = Self::claim_reward_deduction_rates(&pool_id);
 
-		for (currency_id, pending_reward) in pending_multi_rewards {
-			if pending_reward.is_zero() {
-				continue;
-			}
-			// calculate actual rewards and deduction amount
-			let (actual_amount, deduction_amount) = {
-				let deduction_amount = deduction_rate.saturating_mul_int(pending_reward).min(pending_reward);
-				if !deduction_amount.is_zero() {
-					// re-accumulate deduction to rewards pool if deduction amount is not zero
-					let _ = <orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, deduction_amount).map_err(|e| {
-						log::error!(
-							target: "incentives",
-							"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
-							pool_id, currency_id, deduction_amount, e
-						);
-					});
+				for (currency_id, pending_reward) in pending_multi_rewards.iter_mut() {
+					if pending_reward.is_zero() {
+						continue;
+					}
+
+					let (payout_amount, deduction_amount) = {
+						let should_deduction_amount = deduction_rate.saturating_mul_int(*pending_reward);
+						(
+							pending_reward.saturating_sub(should_deduction_amount),
+							should_deduction_amount,
+						)
+					};
+
+					// payout reward to claimer and re-accumuated reward.
+					match Self::payout_reward_and_reaccumulate_reward(
+						pool_id,
+						&who,
+						*currency_id,
+						payout_amount,
+						deduction_amount,
+					) {
+						Ok(_) => {
+							// update state
+							*pending_reward = Zero::zero();
+
+							Self::deposit_event(Event::ClaimRewards {
+								who: who.clone(),
+								pool: pool_id,
+								reward_currency_id: *currency_id,
+								actual_amount: payout_amount,
+								deduction_amount,
+							});
+						}
+						Err(e) => {
+							log::error!(
+								target: "incentives",
+								"payout_reward_and_reaccumulate_reward: failed to payout {:?} to {:?} and re-accumulate {:?} {:?} to pool {:?}: {:?}",
+								payout_amount, who, deduction_amount, currency_id, pool_id, e
+							);
+						}
+					};
 				}
-				(pending_reward.saturating_sub(deduction_amount), deduction_amount)
-			};
 
-			// transfer to `who` maybe fail because of the reward amount is below ED and `who` is not alive.
-			// if transfer failed, do not throw err directly and try to put the tiny reward back to pool.
-			let res = T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount);
-			if res.is_err() {
-				let _ = <orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, actual_amount).map_err(|e| {
-					log::error!(
-						target: "incentives",
-						"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency_id {:?}, reward_amount {:?}: {:?}",
-						pool_id, currency_id, actual_amount, e
-					);
-				});
+				// clear zero value item of BTreeMap
+				pending_multi_rewards.retain(|_, v| *v != 0);
+
+				// if pending_multi_rewards is default, clear the storage
+				if pending_multi_rewards.is_empty() {
+					*maybe_pending_multi_rewards = None;
+				}
 			}
+		});
 
-			Self::deposit_event(Event::ClaimRewards {
-				who: who.clone(),
-				pool: pool_id,
-				reward_currency_id: currency_id,
-				actual_amount,
-				deduction_amount,
-			});
+		Ok(())
+	}
+
+	/// Ensure atomic
+	#[transactional]
+	fn payout_reward_and_reaccumulate_reward(
+		pool_id: PoolId,
+		who: &T::AccountId,
+		reward_currency_id: CurrencyId,
+		payout_amount: Balance,
+		reaccumulate_amount: Balance,
+	) -> DispatchResult {
+		if !reaccumulate_amount.is_zero() {
+			<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, reward_currency_id, reaccumulate_amount)?;
 		}
-
+		T::Currency::transfer(reward_currency_id, &Self::account_id(), who, payout_amount)?;
 		Ok(())
 	}
 }
