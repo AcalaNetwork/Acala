@@ -75,9 +75,9 @@ fn transfer_to_relay_chain() {
 	use frame_support::weights::WeightToFee as WeightToFeeT;
 	use kusama_runtime_constants::fee::WeightToFee;
 
-	let weight: XcmWeight = XcmWeight::from_ref_time(299_506_000);
+	let weight: XcmWeight = XcmWeight::from_parts(299_506_000, 0);
 	let fee = WeightToFee::weight_to_fee(&weight);
-	assert_eq!(90_287_436, fee);
+	assert_eq!(94_172_727, fee);
 
 	Karura::execute_with(|| {
 		assert_ok!(XTokens::transfer(
@@ -142,7 +142,7 @@ fn transfer_native_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
@@ -169,7 +169,7 @@ fn transfer_native_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 5 * dollar - bnc_fee);
@@ -237,7 +237,7 @@ fn transfer_sibling_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
 		));
 
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar);
@@ -283,7 +283,7 @@ fn transfer_sibling_chain_asset() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
 		));
 
 		assert_eq!(
@@ -411,7 +411,7 @@ fn asset_registry_module_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
 		));
 
 		assert_eq!(
@@ -456,7 +456,7 @@ fn asset_registry_module_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
 		));
 
 		assert_eq!(
@@ -545,7 +545,7 @@ fn stable_asset_xtokens_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(8_000_000_000, 0)),
 		));
 
 		assert_eq!(Tokens::free_balance(stable_asset, &AccountId::from(BOB)), 5 * dollar);
@@ -578,7 +578,7 @@ fn stable_asset_xtokens_works() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(8_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(8_000_000_000, 0)),
 		));
 	});
 
@@ -652,7 +652,7 @@ fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
 fn xcm_transfer_execution_barrier_trader_works() {
 	let unit_instruction_weight: XcmWeight = karura_runtime::xcm_config::UnitWeightCost::get();
 	let expect_weight_limit = unit_instruction_weight.saturating_mul(3);
-	let weight_limit_too_low = expect_weight_limit.saturating_sub(XcmWeight::from_ref_time(1));
+	let weight_limit_too_low = expect_weight_limit.saturating_sub(XcmWeight::from_parts(1, 0));
 	let trap_asset_limit: Balance = relay_per_second_as_fee(3);
 
 	// relay-chain use normal account to send xcm, destination para-chain can't pass Barrier check
@@ -859,7 +859,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 		let transfer_call =
 			RelayChainCallBuilder::<ParachainInfo>::balances_transfer_keep_alive(AccountId::from(BOB), dollar_n);
 		let batch_call = RelayChainCallBuilder::<ParachainInfo>::utility_as_derivative_call(transfer_call, 0);
-		let weight = XcmWeight::from_ref_time(10_000_000_000);
+		let weight = XcmWeight::from_parts(10_000_000_000, 0);
 		// Fee to transfer into the hold register
 		let asset = MultiAsset {
 			id: Concrete(MultiLocation::here()),
@@ -903,7 +903,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 		let finalized_call = RelayChainCallBuilder::<ParachainInfo>::finalize_call_into_xcm_message(
 			batch_call,
 			dollar_n,
-			XcmWeight::from_ref_time(10_000_000_000),
+			XcmWeight::from_parts(10_000_000_000, 0),
 		);
 
 		assert_ok!(PolkadotXcm::send_xcm(Here, Parent, finalized_call));
@@ -922,7 +922,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 		// Unspent fund from the 1 dollar XCM fee is returned to the sovereign account.
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1_000 * dollar_r + 996_891_014_868
+			1_000 * dollar_r + 996_757_227_594
 		);
 	});
 }
@@ -938,7 +938,7 @@ fn trapped_asset() -> MultiAsset {
 			AccountId::from(BOB),
 			dollar(NATIVE_CURRENCY),
 		);
-		let weight = XcmWeight::from_ref_time(100);
+		let weight = XcmWeight::from_parts(100, 0);
 		let xcm_msg = Xcm(vec![
 			WithdrawAsset(asset.clone().into()),
 			BuyExecution {
@@ -960,14 +960,14 @@ fn trapped_asset() -> MultiAsset {
 		));
 	});
 
-	let asset = MultiAsset {
+	let trapped_asset = MultiAsset {
 		id: Concrete(MultiLocation::here()),
-		fun: Fungibility::Fungible(999_950_959_651),
+		fun: Fungibility::Fungible(999_948_849_324),
 	};
 
 	KusamaNet::execute_with(|| {
 		let location = MultiLocation::new(0, X1(Parachain(KARURA_ID)));
-		let versioned = xcm::VersionedMultiAssets::from(MultiAssets::from(vec![asset.clone()]));
+		let versioned = xcm::VersionedMultiAssets::from(MultiAssets::from(vec![trapped_asset.clone()]));
 		let hash = BlakeTwo256::hash_of(&(&location, &versioned));
 		kusama_runtime::System::assert_has_event(kusama_runtime::RuntimeEvent::XcmPallet(
 			pallet_xcm::Event::AssetsTrapped(hash, location, versioned),
@@ -984,7 +984,7 @@ fn trapped_asset() -> MultiAsset {
 		kusama_runtime::System::reset_events();
 	});
 
-	asset
+	trapped_asset
 }
 
 fn claim_asset(asset: MultiAsset, recipient: [u8; 32]) {
@@ -1020,7 +1020,7 @@ fn claim_asset(asset: MultiAsset, recipient: [u8; 32]) {
 
 #[test]
 fn claim_trapped_asset_works() {
-	let claimed_amount = 999_865_607_628;
+	let claimed_amount = 999_859_824_394;
 	let asset = trapped_asset();
 	claim_asset(asset, BOB.into());
 
@@ -1082,7 +1082,7 @@ fn trap_assets_larger_than_ed_works() {
 			WithdrawAsset(assets.clone().into()),
 			BuyExecution {
 				fees: assets,
-				weight_limit: Limited(XcmWeight::from_ref_time(800_000_000)),
+				weight_limit: Limited(XcmWeight::from_parts(800_000_000, 0)),
 			},
 			WithdrawAsset(
 				(
@@ -1137,7 +1137,7 @@ fn trap_assets_lower_than_ed_works() {
 			WithdrawAsset(assets.clone().into()),
 			BuyExecution {
 				fees: assets,
-				weight_limit: Limited(XcmWeight::from_ref_time(800_000_000)),
+				weight_limit: Limited(XcmWeight::from_parts(800_000_000, 0)),
 			},
 			WithdrawAsset(
 				(

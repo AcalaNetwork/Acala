@@ -27,17 +27,24 @@ jobs:
   build:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2022-10-30
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
       - name: Setup cmake
@@ -59,17 +66,24 @@ jobs:
   benchmarking:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2022-10-30
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
       - name: Setup cmake
@@ -79,17 +93,24 @@ jobs:
   checks-and-tests:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2022-10-30
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
       - name: Setup cmake
@@ -107,17 +128,24 @@ jobs:
   e2e-tests:
     runs-on: [self-hosted, linux]
     env:
-      SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2022-10-30
+          toolchain: nightly-2023-03-04
           components: rustfmt
           target: wasm32-unknown-unknown
       - name: Setup cmake

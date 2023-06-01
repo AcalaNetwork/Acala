@@ -42,7 +42,7 @@ pub type BlockNumber = u64;
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
+pub const TAI: CurrencyId = CurrencyId::Token(TokenSymbol::TAI);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
@@ -98,7 +98,7 @@ impl DataProvider<CurrencyId, Price> for MockDataProvider {
 		if CHANGED.with(|v| *v.borrow_mut()) {
 			match *currency_id {
 				AUSD => None,
-				BTC => Some(Price::saturating_from_integer(40000)),
+				TAI => Some(Price::saturating_from_integer(40000)),
 				DOT => Some(Price::saturating_from_integer(10)),
 				ACA => Some(Price::saturating_from_integer(30)),
 				KSM => Some(Price::saturating_from_integer(200)),
@@ -107,7 +107,7 @@ impl DataProvider<CurrencyId, Price> for MockDataProvider {
 		} else {
 			match *currency_id {
 				AUSD => Some(Price::saturating_from_rational(99, 100)),
-				BTC => Some(Price::saturating_from_integer(50000)),
+				TAI => Some(Price::saturating_from_integer(50000)),
 				DOT => Some(Price::saturating_from_integer(100)),
 				ACA => Some(Price::zero()),
 				KSM => None,

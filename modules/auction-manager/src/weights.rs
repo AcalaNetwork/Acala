@@ -54,7 +54,7 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn cancel_collateral_auction() -> Weight {
-		Weight::from_ref_time(78_000_000)
+		Weight::from_parts(78_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(9 as u64))
 			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
@@ -63,7 +63,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn cancel_collateral_auction() -> Weight {
-		Weight::from_ref_time(78_000_000)
+		Weight::from_parts(78_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(9 as u64))
 			.saturating_add(RocksDbWeight::get().writes(7 as u64))
 	}

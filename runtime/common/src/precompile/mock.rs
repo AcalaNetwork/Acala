@@ -52,7 +52,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
 	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill,
 };
-use sp_std::{cell::RefCell, prelude::*};
+use sp_std::prelude::*;
 use xcm::{prelude::*, v3::Xcm};
 use xcm_builder::FixedWeightBounds;
 
@@ -157,7 +157,6 @@ impl pallet_balances::Config for Test {
 }
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const RENBTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
@@ -214,7 +213,7 @@ impl BlockNumberProvider for MockBlockNumberProvider {
 }
 
 parameter_types! {
-	pub MinimumWeightRemainInBlock: Weight = Weight::from_ref_time(0);
+	pub MinimumWeightRemainInBlock: Weight = Weight::from_parts(0, 0);
 }
 
 impl module_idle_scheduler::Config for Test {
@@ -570,7 +569,7 @@ ord_parameter_types! {
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(a: u64) -> Weight {
-		Weight::from_ref_time(a)
+		Weight::from_parts(a, 0)
 	}
 }
 
@@ -822,18 +821,6 @@ parameter_type_with_key! {
 	};
 }
 
-thread_local! {
-	pub static TRACE: RefCell<Vec<(Xcm<RuntimeCall>, Outcome)>> = RefCell::new(Vec::new());
-}
-pub fn take_trace() -> Vec<(Xcm<RuntimeCall>, Outcome)> {
-	TRACE.with(|q| {
-		let q = &mut *q.borrow_mut();
-		let r = q.clone();
-		q.clear();
-		r
-	})
-}
-
 pub enum Weightless {}
 impl PreparedMessage for Weightless {
 	fn weight_of(&self) -> Weight {
@@ -879,7 +866,6 @@ impl ExecuteXcm<RuntimeCall> for MockExec {
 				XcmError::Unimplemented,
 			),
 		};
-		TRACE.with(|q| q.borrow_mut().push((message, o.clone())));
 		o
 	}
 
@@ -1042,7 +1028,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut storage)
 	.unwrap();
 	module_asset_registry::GenesisConfig::<Test> {
-		assets: vec![(ACA, ExistenceRequirement::get()), (RENBTC, 0)],
+		assets: vec![(ACA, ExistenceRequirement::get()), (DOT, 0)],
 	}
 	.assimilate_storage(&mut storage)
 	.unwrap();
@@ -1055,7 +1041,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		assert_ok!(Currencies::update_balance(
 			RuntimeOrigin::root(),
 			ALICE,
-			RENBTC,
+			DOT,
 			1_000_000_000_000
 		));
 		assert_ok!(Currencies::update_balance(
@@ -1068,7 +1054,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		assert_ok!(Currencies::update_balance(
 			RuntimeOrigin::root(),
 			EvmAddressMapping::<Test>::get_account_id(&alice_evm_addr()),
-			RENBTC,
+			DOT,
 			1_000_000_000
 		));
 

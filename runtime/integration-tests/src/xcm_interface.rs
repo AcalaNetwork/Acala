@@ -30,11 +30,11 @@ use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
 
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
-const XCM_WEIGHT: XcmWeight = XcmWeight::from_ref_time(20_000_000_000);
-const XCM_FEE: Balance = 10_000_000_000;
-const XCM_BOND_FEE: Balance = 6_123_530_292;
-const XCM_UNBOND_FEE: Balance = 4_661_427_850;
-const XCM_TRANSFER_FEE: Balance = 90_287_436;
+const XCM_WEIGHT: XcmWeight = XcmWeight::from_parts(50_000_000_000, 1024 * 128);
+const XCM_FEE: Balance = 50_000_000_000;
+const XCM_BOND_FEE: Balance = 15_819_846_206;
+const XCM_UNBOND_FEE: Balance = 14_296_609_562;
+const XCM_TRANSFER_FEE: Balance = 94_172_727;
 
 fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Balance>)> {
 	vec![
@@ -48,12 +48,11 @@ fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Bal
 		// Xcm weight = 14_000_000_000, fee = XCM_BOND_FEE
 		(
 			XcmInterfaceOperation::HomaWithdrawUnbonded,
-			Some(XcmWeight::from_parts(14_000_000_000, 65536)),
+			Some(XCM_WEIGHT),
 			Some(XCM_FEE),
 		),
 		// Xcm weight = 14_000_000_000, fee = XCM_BOND_FEE
 		(XcmInterfaceOperation::HomaBondExtra, Some(XCM_WEIGHT), Some(XCM_FEE)),
-		// Xcm weight = 14_000_000_000, fee = XCM_UNBOND_FEE
 		(XcmInterfaceOperation::HomaUnbond, Some(XCM_WEIGHT), Some(XCM_FEE)),
 	]
 }
@@ -94,6 +93,11 @@ fn configure_homa_and_xcm_interface() {
 		XcmInterface::get_parachain_fee(MultiLocation::new(1, Parachain(1000))),
 		XCM_FEE
 	);
+	assert_ok!(PolkadotXcm::force_xcm_version(
+		RuntimeOrigin::root(),
+		Box::new(MultiLocation::new(1, Here)),
+		3
+	));
 }
 
 #[test]
@@ -150,7 +154,7 @@ fn xcm_interface_transfer_staking_to_sub_account_works() {
 		// 1000 dollars (minus fee) are transferred into the Kusama chain
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-			999_999_909_712_564
+			1_000 * dollar(RELAY_CHAIN_CURRENCY) - XCM_TRANSFER_FEE
 		);
 		// XCM fee is paid by the parachain account.
 		assert_eq!(
@@ -243,7 +247,7 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1_001_991_460_734_703
+			1_001_968_454_536_282
 		);
 	});
 }
@@ -435,6 +439,7 @@ fn xcm_interface_unbond_on_sub_account_works() {
 			10_000 * dollar(LIQUID_CURRENCY),
 			false,
 		));
+
 		// Process the redeem request and unbond funds on the relaychain.
 		assert_ok!(Homa::process_redeem_requests(1));
 	});
@@ -607,8 +612,8 @@ fn homa_mint_and_redeem_works() {
 		let unbonding_era = Homa::relay_chain_current_era() + bonding_duration;
 		assert_eq!(unbonding_era, 30);
 
-		assert_eq!(Homa::unbondings(&alice(), unbonding_era), 999_995_000_000_000);
-		assert_eq!(Homa::unbondings(&bob(), unbonding_era), 999_995_000_000_000);
+		assert_eq!(Homa::unbondings(&alice(), unbonding_era), 999_975_000_000_000);
+		assert_eq!(Homa::unbondings(&bob(), unbonding_era), 999_975_000_000_000);
 
 		assert_eq!(Homa::get_total_bonded(), 0);
 		assert_eq!(Homa::get_total_staking_currency(), 0);
@@ -659,11 +664,11 @@ fn homa_mint_and_redeem_works() {
 		assert_eq!(Homa::get_total_staking_currency(), 0);
 		assert_eq!(
 			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(alice())),
-			999_995_000_000_000
+			999_975_000_000_000
 		);
 		assert_eq!(
 			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(bob())),
-			999_995_000_000_000
+			999_975_000_000_000
 		);
 		assert_eq!(Tokens::free_balance(LIQUID_CURRENCY, &AccountId::from(alice())), 0);
 		assert_eq!(Tokens::free_balance(LIQUID_CURRENCY, &AccountId::from(bob())), 0);

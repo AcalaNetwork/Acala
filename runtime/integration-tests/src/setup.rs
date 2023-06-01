@@ -27,7 +27,7 @@ pub use module_support::{
 	mocks::MockAddressMapping, AddressMapping, CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager,
 };
 
-pub use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
+pub use cumulus_pallet_parachain_system::RelaychainDataProvider;
 pub use orml_traits::{location::RelativeLocations, Change, GetByKey, MultiCurrency};
 
 pub use primitives::{
@@ -301,15 +301,6 @@ impl ExtBuilder {
 		let native_currency_id = GetNativeCurrencyId::get();
 		let existential_deposit = NativeTokenExistentialDeposit::get();
 		let initial_enabled_trading_pairs = EnabledTradingPairs::get();
-
-		#[cfg(feature = "with-mandala-runtime")]
-		GenesisBuild::<Runtime>::assimilate_storage(
-			&ecosystem_renvm_bridge::GenesisConfig {
-				ren_vm_public_key: hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
-			},
-			&mut t,
-		)
-		.unwrap();
 
 		module_asset_registry::GenesisConfig::<Runtime> {
 			assets: vec![

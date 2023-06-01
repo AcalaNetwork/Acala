@@ -31,17 +31,16 @@ use frame_support::{
 	RuntimeDebug,
 };
 use frame_system::{limits, EnsureRoot};
-use module_evm::GenesisAccount;
 use orml_traits::{currency::MutationHooks, GetByKey};
 use polkadot_parachain::primitives::RelayChainBlockNumber;
 use primitives::{
 	evm::{is_system_contract, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},
-	Balance, CurrencyId, Nonce,
+	Balance, CurrencyId,
 };
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
 use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
-use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, prelude::*};
+use sp_std::{marker::PhantomData, prelude::*};
 use static_assertions::const_assert;
 
 pub use check_nonce::CheckNonce;
@@ -51,17 +50,17 @@ pub use precompile::{
 	SchedulePrecompile, StableAssetPrecompile,
 };
 pub use primitives::{
-	currency::{
-		TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, TAI, TAP, VSKSM,
-	},
+	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, TAI, TAP, VSKSM},
 	AccountId,
 };
 pub use xcm_impl::{local_currency_location, native_currency_location, AcalaDropAssets, FixedRateOfAsset, XcmExecutor};
 
 #[cfg(feature = "std")]
+use module_evm::GenesisAccount;
+#[cfg(feature = "std")]
 use sp_core::bytes::from_hex;
 #[cfg(feature = "std")]
-use std::str::FromStr;
+use std::{collections::btree_map::BTreeMap, str::FromStr};
 
 pub mod bench;
 pub mod check_nonce;
@@ -92,7 +91,6 @@ parameter_types! {
 		.expect("Check that there is no overflow here");
 	pub CdpEngineUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 1000;
 	pub AuctionManagerUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 2000;
-	pub RenvmBridgeUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 3000;
 }
 
 /// The call is allowed only if caller is a system contract.
@@ -107,7 +105,7 @@ impl PrecompileCallerFilter for SystemContractsFilter {
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(gas: u64) -> Weight {
-		Weight::from_ref_time(gas.saturating_mul(gas_to_weight_ratio::RATIO))
+		Weight::from_parts(gas.saturating_mul(gas_to_weight_ratio::RATIO), 0)
 	}
 }
 
@@ -164,7 +162,9 @@ const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(70);
 /// We allow for 0.5 seconds of compute with a 12 second average block time.
 pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
 	WEIGHT_REF_TIME_PER_SECOND.saturating_div(2),
-	polkadot_primitives::v2::MAX_POV_SIZE as u64,
+	// TODO: drop `* 10` after https://github.com/paritytech/substrate/issues/13501
+	// and the benchmarked size is not 10x of the measured size
+	polkadot_primitives::v2::MAX_POV_SIZE as u64 * 10,
 );
 
 const_assert!(NORMAL_DISPATCH_RATIO.deconstruct() >= AVERAGE_ON_INITIALIZE_RATIO.deconstruct());
@@ -404,7 +404,7 @@ where
 
 #[cfg(feature = "std")]
 /// Returns `evm_genesis_accounts`
-pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
+pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, primitives::Nonce>> {
 	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();

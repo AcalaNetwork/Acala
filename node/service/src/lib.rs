@@ -34,16 +34,17 @@ use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvid
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainInterface, RelayChainResult};
 use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node;
-pub use futures::stream::StreamExt;
+use futures::{channel::oneshot, FutureExt, StreamExt};
 use jsonrpsee::RpcModule;
+use polkadot_primitives::{CollatorPair, OccupiedCoreAssumption};
 use sc_consensus::{ImportQueue, LongestChain};
 use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
 use sc_executor::WasmExecutor;
-use sc_network::NetworkService;
-use sc_network_common::service::NetworkBlock;
+use sc_network::{config::SyncMode, NetworkBlock};
+use sc_network_sync::SyncingService;
 pub use sc_service::{
 	config::{DatabaseSource, PrometheusConfig},
-	ChainSpec,
+	ChainSpec, SpawnTaskHandle, WarpSyncParams,
 };
 use sc_service::{
 	error::Error as ServiceError, Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager,
@@ -52,19 +53,20 @@ use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerH
 pub use sp_api::ConstructRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_consensus_aura::sr25519::{AuthorityId as AuraId, AuthorityPair as AuraPair};
+use sp_core::Decode;
 use sp_keystore::SyncCryptoStorePtr;
-use sp_runtime::traits::BlakeTwo256;
+use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 use sp_trie::PrefixedMemoryDB;
 use std::{sync::Arc, time::Duration};
 use substrate_prometheus_endpoint::Registry;
 
 pub use client::*;
 
-use polkadot_service::CollatorPair;
-
 pub mod chain_spec;
 mod client;
 pub mod instant_finalize;
+
+const LOG_TARGET_SYNC: &str = "sync::cumulus";
 
 #[cfg(not(feature = "runtime-benchmarks"))]
 type HostFunctions = sp_io::SubstrateHostFunctions;
@@ -154,7 +156,7 @@ pub trait IdentifyVariant {
 
 impl IdentifyVariant for Box<dyn ChainSpec> {
 	fn is_acala(&self) -> bool {
-		self.id().starts_with("acala") || self.id().starts_with("wendala")
+		self.id().starts_with("acala")
 	}
 
 	fn is_karura(&self) -> bool {
@@ -400,7 +402,7 @@ where
 		&TaskManager,
 		Arc<dyn RelayChainInterface>,
 		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>>,
-		Arc<NetworkService<Block, Hash>>,
+		Arc<SyncingService<Block>>,
 		SyncCryptoStorePtr,
 		bool,
 	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
@@ -424,22 +426,32 @@ where
 	.await
 	.map_err(|e| sc_service::Error::Application(Box::new(e) as Box<_>))?;
 
+	let spawn_handle = task_manager.spawn_handle();
+
 	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), para_id);
+
+	let warp_sync_params = match parachain_config.network.sync_mode {
+		SyncMode::Warp => {
+			let target_block = warp_sync_get::<Block, _>(para_id, relay_chain_interface.clone(), spawn_handle.clone());
+			Some(WarpSyncParams::WaitForTarget(target_block))
+		}
+		_ => None,
+	};
 
 	let force_authoring = parachain_config.force_authoring;
 	let validator = parachain_config.role.is_authority();
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
 	let import_queue_service = params.import_queue.service();
-	let (network, system_rpc_tx, tx_handler_controller, start_network) =
+	let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &parachain_config,
 			client: client.clone(),
 			transaction_pool: transaction_pool.clone(),
-			spawn_handle: task_manager.spawn_handle(),
+			spawn_handle,
 			import_queue: params.import_queue,
 			block_announce_validator_builder: Some(Box::new(|_| Box::new(block_announce_validator))),
-			warp_sync: None,
+			warp_sync_params,
 		})?;
 
 	let rpc_builder = {
@@ -479,14 +491,19 @@ where
 		tx_handler_controller,
 		config: parachain_config,
 		telemetry: telemetry.as_mut(),
+		sync_service: sync_service.clone(),
 	})?;
 
 	let announce_block = {
-		let network = network.clone();
-		Arc::new(move |hash, data| network.announce_block(hash, data))
+		let sync_service = sync_service.clone();
+		Arc::new(move |hash, data| sync_service.announce_block(hash, data))
 	};
 
 	let relay_chain_slot_duration = Duration::from_secs(6);
+
+	let overseer_handle = relay_chain_interface
+		.overseer_handle()
+		.map_err(|e| sc_service::Error::Application(Box::new(e)))?;
 
 	if validator {
 		let parachain_consensus = build_consensus(
@@ -497,7 +514,7 @@ where
 			&task_manager,
 			relay_chain_interface.clone(),
 			transaction_pool,
-			network,
+			sync_service,
 			params.keystore_container.sync_keystore(),
 			force_authoring,
 		)?;
@@ -516,6 +533,7 @@ where
 			import_queue: import_queue_service,
 			collator_key: collator_key.expect("Command line arguments do not allow this. qed"),
 			relay_chain_slot_duration,
+			recovery_handle: Box::new(overseer_handle),
 		};
 
 		start_collator(params).await?;
@@ -528,6 +546,7 @@ where
 			relay_chain_interface,
 			relay_chain_slot_duration,
 			import_queue: import_queue_service,
+			recovery_handle: Box::new(overseer_handle),
 		};
 
 		start_full_node(params)?;
@@ -711,7 +730,7 @@ where
 		other: (_, _, _),
 	} = new_partial::<RuntimeApi>(&config, true, instant_sealing)?;
 
-	let (network, system_rpc_tx, tx_handler_controller, start_network) =
+	let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
 			client: client.clone(),
@@ -719,7 +738,7 @@ where
 			spawn_handle: task_manager.spawn_handle(),
 			import_queue,
 			block_announce_validator_builder: None,
-			warp_sync: None,
+			warp_sync_params: None,
 		})?;
 
 	if config.offchain_worker.enabled {
@@ -865,8 +884,8 @@ where
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
-				sync_oracle: network.clone(),
-				justification_sync_link: network.clone(),
+				sync_oracle: sync_service.clone(),
+				justification_sync_link: sync_service.clone(),
 				// We got around 500ms for proposing
 				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
 				// And a maximum of 750ms if slots are skipped
@@ -915,9 +934,87 @@ where
 		system_rpc_tx,
 		tx_handler_controller,
 		telemetry: None,
+		sync_service,
 	})?;
 
 	start_network.start_network();
 
 	Ok(task_manager)
+}
+
+/// Creates a new background task to wait for the relay chain to sync up and retrieve the parachain
+/// header
+fn warp_sync_get<B, RCInterface>(
+	para_id: ParaId,
+	relay_chain_interface: RCInterface,
+	spawner: SpawnTaskHandle,
+) -> oneshot::Receiver<<B as BlockT>::Header>
+where
+	B: BlockT + 'static,
+	RCInterface: RelayChainInterface + 'static,
+{
+	let (sender, receiver) = oneshot::channel::<B::Header>();
+	spawner.spawn(
+		"cumulus-parachain-wait-for-target-block",
+		None,
+		async move {
+			log::debug!(
+				target: "cumulus-network",
+				"waiting for announce block in a background task...",
+			);
+
+			let _ = wait_for_target_block::<B, _>(sender, para_id, relay_chain_interface)
+				.await
+				.map_err(|e| {
+					log::error!(
+						target: LOG_TARGET_SYNC,
+						"Unable to determine parachain target block {:?}",
+						e
+					)
+				});
+		}
+		.boxed(),
+	);
+
+	receiver
+}
+/// Waits for the relay chain to have finished syncing and then gets the parachain header that
+/// corresponds to the last finalized relay chain block.
+async fn wait_for_target_block<B, RCInterface>(
+	sender: oneshot::Sender<<B as BlockT>::Header>,
+	para_id: ParaId,
+	relay_chain_interface: RCInterface,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+where
+	B: BlockT + 'static,
+	RCInterface: RelayChainInterface + Send + 'static,
+{
+	let mut imported_blocks = relay_chain_interface.import_notification_stream().await?.fuse();
+	while imported_blocks.next().await.is_some() {
+		let is_syncing = relay_chain_interface.is_major_syncing().await.map_err(|e| {
+			Box::<dyn std::error::Error + Send + Sync>::from(format!("Unable to determine sync status. {e}"))
+		})?;
+
+		if !is_syncing {
+			let relay_chain_best_hash = relay_chain_interface
+				.finalized_block_hash()
+				.await
+				.map_err(|e| Box::new(e) as Box<_>)?;
+
+			let validation_data = relay_chain_interface
+				.persisted_validation_data(relay_chain_best_hash, para_id, OccupiedCoreAssumption::TimedOut)
+				.await
+				.map_err(|e| format!("{e:?}"))?
+				.ok_or("Could not find parachain head in relay chain")?;
+
+			let target_block = B::Header::decode(&mut &validation_data.parent_head.0[..])
+				.map_err(|e| format!("Failed to decode parachain head: {e}"))?;
+
+			log::debug!(target: LOG_TARGET_SYNC, "Target block reached {:?}", target_block);
+			let _ = sender.send(target_block);
+			return Ok(());
+		}
+	}
+
+	Err("Stopping following imported blocks. Could not determine parachain target block".into())
 }

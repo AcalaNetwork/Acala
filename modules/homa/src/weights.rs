@@ -66,7 +66,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Homa LastEraBumpedBlock (r:1 w:0)
 	// Storage: Homa BumpEraFrequency (r:1 w:0)
 	fn on_initialize() -> Weight {
-		Weight::from_ref_time(5_281_000)
+		Weight::from_parts(5_281_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 	}
 	// Storage: ParachainSystem ValidationData (r:1 w:0)
@@ -93,7 +93,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Homa Unbondings (r:1 w:1)
 	// Storage: Homa TotalVoidLiquid (r:0 w:1)
 	fn on_initialize_with_bump_era() -> Weight {
-		Weight::from_ref_time(253_506_000)
+		Weight::from_parts(253_506_000, 0)
 			.saturating_add(T::DbWeight::get().reads(31 as u64))
 			.saturating_add(T::DbWeight::get().writes(18 as u64))
 	}
@@ -107,7 +107,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Homa TotalVoidLiquid (r:1 w:1)
 	// Storage: Homa EstimatedRewardRatePerEra (r:1 w:0)
 	fn mint() -> Weight {
-		Weight::from_ref_time(88_950_000)
+		Weight::from_parts(88_950_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11 as u64))
 			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
@@ -116,7 +116,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Tokens Accounts (r:2 w:2)
 	// Storage: System Account (r:1 w:1)
 	fn request_redeem() -> Weight {
-		Weight::from_ref_time(53_493_000)
+		Weight::from_parts(53_493_000, 0)
 			.saturating_add(T::DbWeight::get().reads(5 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
@@ -130,9 +130,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Tokens Accounts (r:3 w:3)
 	// Storage: System Account (r:2 w:2)
 	fn fast_match_redeems(n: u32, ) -> Weight {
-		Weight::from_ref_time(7_082_000)
+		Weight::from_parts(7_082_000, 0)
 			// Standard Error: 88_000
-			.saturating_add(Weight::from_ref_time(63_412_000).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(63_412_000, 0).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(9 as u64))
 			.saturating_add(T::DbWeight::get().reads((3 as u64).saturating_mul(n as u64)))
 			.saturating_add(T::DbWeight::get().writes(6 as u64))
@@ -146,7 +146,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: System Account (r:2 w:2)
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn claim_redemption() -> Weight {
-		Weight::from_ref_time(75_705_000)
+		Weight::from_parts(75_705_000, 0)
 			.saturating_add(T::DbWeight::get().reads(10 as u64))
 			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
@@ -156,7 +156,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Homa CommissionRate (r:0 w:1)
 	// Storage: Homa EstimatedRewardRatePerEra (r:0 w:1)
 	fn update_homa_params() -> Weight {
-		Weight::from_ref_time(25_806_000)
+		Weight::from_parts(25_806_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
@@ -164,7 +164,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Homa LastEraBumpedBlock (r:0 w:1)
 	// Storage: Homa BumpEraFrequency (r:0 w:1)
 	fn update_bump_era_params() -> Weight {
-		Weight::from_ref_time(16_926_000)
+		Weight::from_parts(16_926_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
@@ -172,9 +172,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Homa StakingLedgers (r:1 w:1)
 	// Storage: Homa TotalStakingBonded (r:1 w:1)
 	fn reset_ledgers(n: u32, ) -> Weight {
-		Weight::from_ref_time(9_399_000)
+		Weight::from_parts(9_399_000, 0)
 			// Standard Error: 72_000
-			.saturating_add(Weight::from_ref_time(10_515_000).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(10_515_000, 0).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
@@ -183,7 +183,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Homa RelayChainCurrentEra (r:1 w:1)
 	fn reset_current_era() -> Weight {
-		Weight::from_ref_time(14_275_000)
+		Weight::from_parts(14_275_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
@@ -192,59 +192,59 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_initialize() -> Weight {
-		Weight::from_ref_time(5_281_000)
+		Weight::from_parts(5_281_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 	}
 	fn on_initialize_with_bump_era() -> Weight {
-		Weight::from_ref_time(253_506_000)
+		Weight::from_parts(253_506_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(31 as u64))
 			.saturating_add(RocksDbWeight::get().writes(18 as u64))
 	}
 	fn mint() -> Weight {
-		Weight::from_ref_time(88_950_000)
+		Weight::from_parts(88_950_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(11 as u64))
 			.saturating_add(RocksDbWeight::get().writes(8 as u64))
 	}
 	fn request_redeem() -> Weight {
-		Weight::from_ref_time(53_493_000)
+		Weight::from_parts(53_493_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(5 as u64))
 			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	fn fast_match_redeems(n: u32, ) -> Weight {
-		Weight::from_ref_time(7_082_000)
+		Weight::from_parts(7_082_000, 0)
 			// Standard Error: 88_000
-			.saturating_add(Weight::from_ref_time(63_412_000).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(63_412_000, 0).saturating_mul(n as u64))
 			.saturating_add(RocksDbWeight::get().reads(9 as u64))
 			.saturating_add(RocksDbWeight::get().reads((3 as u64).saturating_mul(n as u64)))
 			.saturating_add(RocksDbWeight::get().writes(6 as u64))
 			.saturating_add(RocksDbWeight::get().writes((3 as u64).saturating_mul(n as u64)))
 	}
 	fn claim_redemption() -> Weight {
-		Weight::from_ref_time(75_705_000)
+		Weight::from_parts(75_705_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(10 as u64))
 			.saturating_add(RocksDbWeight::get().writes(7 as u64))
 	}
 	fn update_homa_params() -> Weight {
-		Weight::from_ref_time(25_806_000)
+		Weight::from_parts(25_806_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(5 as u64))
 	}
 	fn update_bump_era_params() -> Weight {
-		Weight::from_ref_time(16_926_000)
+		Weight::from_parts(16_926_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 	fn reset_ledgers(n: u32, ) -> Weight {
-		Weight::from_ref_time(9_399_000)
+		Weight::from_parts(9_399_000, 0)
 			// Standard Error: 72_000
-			.saturating_add(Weight::from_ref_time(10_515_000).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(10_515_000, 0).saturating_mul(n as u64))
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(n as u64)))
 	}
 	fn reset_current_era() -> Weight {
-		Weight::from_ref_time(14_275_000)
+		Weight::from_parts(14_275_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}

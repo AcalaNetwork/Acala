@@ -58,7 +58,7 @@ impl<T: frame_system::Config> module_liquid_crowdloan::WeightInfo for WeightInfo
 	// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	fn redeem() -> Weight {
 		// Minimum execution time: 74_075 nanoseconds.
-		Weight::from_ref_time(75_261_000)
+		Weight::from_parts(75_261_000, 0)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -78,7 +78,7 @@ impl<T: frame_system::Config> module_liquid_crowdloan::WeightInfo for WeightInfo
 	// Proof Skipped: ParachainSystem PendingUpwardMessages (max_values: Some(1), max_size: None, mode: Measured)
 	fn transfer_from_crowdloan_vault() -> Weight {
 		// Minimum execution time: 54_143 nanoseconds.
-		Weight::from_ref_time(55_589_000)
+		Weight::from_parts(55_589_000, 0)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}

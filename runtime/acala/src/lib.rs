@@ -32,7 +32,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::{Decode, DecodeLimit, Encode};
 use scale_info::TypeInfo;
-use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
@@ -49,7 +48,7 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
-use frame_system::{EnsureRoot, RawOrigin};
+use frame_system::{EnsureRoot, EnsureSigned, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::BasicCurrencyAdapter;
@@ -59,10 +58,9 @@ use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 
-use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
-use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
-};
+use cumulus_pallet_parachain_system::RelaychainDataProvider;
+use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
+use orml_utilities::simulate_execution;
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 pub use frame_support::{
@@ -109,7 +107,7 @@ pub use runtime_common::{
 	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	MaxTipsOfPriority, OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price,
 	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, RENBTC, TAP,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, TAP,
 };
 pub use xcm::v3::prelude::*;
 
@@ -126,7 +124,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2160,
+	spec_version: 2180,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -391,6 +389,7 @@ impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -419,6 +418,7 @@ impl pallet_collective::Config<FinancialCouncilInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -447,6 +447,7 @@ impl pallet_collective::Config<HomaCouncilInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -475,6 +476,7 @@ impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -670,6 +672,7 @@ impl pallet_democracy::Config for Runtime {
 	type Preimages = Preimage;
 	type MaxDeposits = ConstU32<100>;
 	type MaxBlacklisted = ConstU32<100>;
+	type SubmitOrigin = EnsureSigned<AccountId>;
 }
 
 impl orml_auction::Config for Runtime {
@@ -738,15 +741,13 @@ parameter_type_with_key! {
 				TokenSymbol::KUSD |
 				TokenSymbol::KSM |
 				TokenSymbol::LKSM |
-				TokenSymbol::RENBTC |
 				TokenSymbol::BNC |
 				TokenSymbol::PHA |
 				TokenSymbol::VSKSM |
 				TokenSymbol::ACA |
 				TokenSymbol::KBTC |
 				TokenSymbol::KINT |
-				TokenSymbol::TAI |
-				TokenSymbol::CASH => Balance::max_value() // unsupported
+				TokenSymbol::TAI => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
 				let currency_id_0: CurrencyId = (*dex_share_0).into();
@@ -839,7 +840,7 @@ impl module_prices::Config for Runtime {
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
-	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type PricingPegged = PricingPegged;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
@@ -909,7 +910,7 @@ impl orml_vesting::Config for Runtime {
 	type VestedTransferOrigin = EnsureAcalaFoundation;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 	type MaxVestingSchedules = ConstU32<100>;
-	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	type BlockNumberProvider = RelaychainDataProvider<Runtime>;
 }
 
 parameter_types! {
@@ -1502,7 +1503,7 @@ impl module_homa::Config for Runtime {
 	type BondingDuration = ConstU32<28>;
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
-	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
@@ -1585,7 +1586,7 @@ impl module_idle_scheduler::Config for Runtime {
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
-	type RelayChainBlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumberProvider = RelaychainDataProvider<Runtime>;
 	// Number of relay chain blocks produced with no parachain blocks finalized,
 	// once this number is reached idle scheduler is disabled as block production is slow
 	type DisableBlockThreshold = ConstU32<6>;
@@ -1604,9 +1605,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LDOT) => {
-				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
-			}
+			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate().saturating_mul_int(balance),
 			_ => balance,
 		}
 	}
@@ -1616,7 +1615,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate()
 				.reciprocal()
 				.and_then(|x| x.checked_mul_int(balance))
-				.unwrap_or_default(),
+				.unwrap_or_else(Bounded::max_value),
 			_ => balance,
 		}
 	}
@@ -1878,7 +1877,7 @@ mod benches {
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]
-impl_runtime_apis! {
+sp_api::impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
 			VERSION
@@ -2009,6 +2008,8 @@ impl_runtime_apis! {
 		Balance,
 	> for Runtime {
 		fn query_existential_deposit(key: CurrencyId) -> Balance {
+			use orml_traits::GetByKey;
+
 			if key == GetNativeCurrencyId::get() {
 				NativeTokenExistentialDeposit::get()
 			} else {
@@ -2035,17 +2036,20 @@ impl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 			_estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			<Runtime as module_evm::Config>::Runner::rpc_call(
-				from,
-				from,
-				to,
-				data,
-				value,
-				gas_limit,
-				storage_limit,
-				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-				<Runtime as module_evm::Config>::config(),
-			)
+			// Fix xtokens: Transfer failed: Transactional(NoLayer)
+			simulate_execution(|| {
+				<Runtime as module_evm::Config>::Runner::rpc_call(
+					from,
+					from,
+					to,
+					data,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+					<Runtime as module_evm::Config>::config(),
+				)
+			})
 		}
 
 		fn create(

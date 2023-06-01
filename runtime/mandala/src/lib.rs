@@ -31,7 +31,7 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::{Decode, DecodeLimit, Encode};
-use cumulus_pallet_parachain_system::RelaychainBlockNumberProvider;
+use cumulus_pallet_parachain_system::RelaychainDataProvider;
 use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime,
@@ -49,8 +49,7 @@ pub use frame_support::{
 	},
 	PalletId, RuntimeDebug, StorageValue,
 };
-use frame_system::{EnsureRoot, RawOrigin};
-use hex_literal::hex;
+use frame_system::{EnsureRoot, EnsureSigned, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::{BasicCurrencyAdapter, Currency};
@@ -65,6 +64,7 @@ use orml_tokens::CurrencyAdapter;
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
 };
+use orml_utilities::simulate_execution;
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
 	define_combined_task,
@@ -113,7 +113,7 @@ pub use runtime_common::{
 	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	MaxTipsOfPriority, OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price,
 	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LCDOT, LDOT, RENBTC,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LCDOT, LDOT,
 };
 pub use xcm::{prelude::*, v3::Weight as XcmWeight};
 
@@ -133,7 +133,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2160,
+	spec_version: 2180,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -345,7 +345,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-	pub TransactionByteFee: Balance = 10 * millicent(ACA);
+	pub TransactionByteFee: Balance = millicent(ACA);
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
 	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
 	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
@@ -371,6 +371,7 @@ impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -399,6 +400,7 @@ impl pallet_collective::Config<FinancialCouncilInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -427,6 +429,7 @@ impl pallet_collective::Config<HomaCouncilInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -455,6 +458,7 @@ impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 	type MaxProposals = CouncilDefaultMaxProposals;
 	type MaxMembers = CouncilDefaultMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 
@@ -663,6 +667,7 @@ impl pallet_democracy::Config for Runtime {
 	type Preimages = Preimage;
 	type MaxDeposits = ConstU32<100>;
 	type MaxBlacklisted = ConstU32<100>;
+	type SubmitOrigin = EnsureSigned<AccountId>;
 }
 
 impl orml_auction::Config for Runtime {
@@ -748,8 +753,9 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type DesiredRunnersUp = ConstU32<7>;
 	type LoserCandidate = ();
 	type KickedMember = ();
-	type MaxVoters = ConstU32<10000>;
-	type MaxCandidates = ConstU32<1000>;
+	type MaxVoters = ConstU32<100>;
+	type MaxCandidates = ConstU32<20>;
+	type MaxVotesPerVoter = ConstU32<5>;
 	type WeightInfo = ();
 }
 
@@ -807,14 +813,12 @@ parameter_type_with_key! {
 				TokenSymbol::KUSD |
 				TokenSymbol::KSM |
 				TokenSymbol::LKSM |
-				TokenSymbol::RENBTC |
 				TokenSymbol::KINT |
 				TokenSymbol::KBTC |
 				TokenSymbol::TAI => 10 * millicent(*currency_id),
 				TokenSymbol::TAP => 10 * millicent(*currency_id),
 				TokenSymbol::ACA |
-				TokenSymbol::KAR |
-				TokenSymbol::CASH => Balance::max_value() // unsupported
+				TokenSymbol::KAR => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
 				let currency_id_0: CurrencyId = (*dex_share_0).into();
@@ -897,7 +901,7 @@ impl module_prices::Config for Runtime {
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
-	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type PricingPegged = PricingPegged;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
@@ -956,7 +960,7 @@ impl orml_vesting::Config for Runtime {
 	type VestedTransferOrigin = EnsureRootOrTreasury;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 	type MaxVestingSchedules = ConstU32<100>;
-	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	type BlockNumberProvider = RelaychainDataProvider<Runtime>;
 }
 
 parameter_types! {
@@ -1146,7 +1150,6 @@ parameter_types! {
 		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
 		TradingPair::from_currency_ids(DOT, LDOT).unwrap(),
-		TradingPair::from_currency_ids(AUSD, RENBTC).unwrap(),
 		TradingPair::from_currency_ids(DOT, ACA).unwrap(),
 	];
 	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
@@ -1222,7 +1225,7 @@ impl module_transaction_pause::Config for Runtime {
 }
 
 parameter_types! {
-	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT, RENBTC];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT];
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
@@ -1376,7 +1379,7 @@ impl module_homa::Config for Runtime {
 	type BondingDuration = ConstU32<28>;
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
-	type RelayChainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
@@ -1555,20 +1558,6 @@ impl pallet_proxy::Config for Runtime {
 }
 
 parameter_types! {
-	pub const RENBTCCurrencyId: CurrencyId = RENBTC;
-	pub const RENBTCIdentifier: [u8; 32] = hex!["f6b5b360905f856404bd4cf39021b82209908faa44159e68ea207ab8a5e13197"];
-}
-
-impl ecosystem_renvm_bridge::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Balances;
-	type BridgedTokenCurrency = Currency<Runtime, RENBTCCurrencyId>;
-	type CurrencyIdentifier = RENBTCIdentifier;
-	type UnsignedPriority = runtime_common::RenvmBridgeUnsignedPriority;
-	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
-}
-
-parameter_types! {
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub PrecompilesValue: AllPrecompiles<Runtime, module_transaction_pause::PausedPrecompileFilter<Runtime>> = AllPrecompiles::<_, _>::mandala();
 }
@@ -1705,24 +1694,17 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LDOT) => {
-				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
-			}
+			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate().saturating_mul_int(balance),
 			_ => balance,
 		}
 	}
 
 	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
-		/*
-		 * When overflow occurs, it's better to return 0 than max because returning zero will fail the
-		 * current transaction. If returning max here, the current transaction won't fail but latter
-		 * transactions have a possibility to fail, and this is undesirable.
-		 */
 		match asset_id {
 			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate()
 				.reciprocal()
 				.and_then(|x| x.checked_mul_int(balance))
-				.unwrap_or_default(),
+				.unwrap_or_else(Bounded::max_value),
 			_ => balance,
 		}
 	}
@@ -1780,7 +1762,7 @@ impl module_idle_scheduler::Config for Runtime {
 	type WeightInfo = weights::module_idle_scheduler::WeightInfo<Runtime>;
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
-	type RelayChainBlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumberProvider = RelaychainDataProvider<Runtime>;
 	// Number of relay chain blocks produced with no parachain blocks finalized,
 	// once this number is reached idle scheduler is disabled as block production is slow
 	type DisableBlockThreshold = ConstU32<6>;
@@ -2080,9 +2062,6 @@ construct_runtime!(
 		AssetRegistry: module_asset_registry = 142,
 		LiquidCrowdloan: module_liquid_crowdloan = 143,
 
-		// Ecosystem modules
-		RenVmBridge: ecosystem_renvm_bridge = 150,
-
 		// Parachain
 		ParachainInfo: parachain_info exclude_parts { Call } = 161,
 
@@ -2320,17 +2299,20 @@ impl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 			_estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			<Runtime as module_evm::Config>::Runner::rpc_call(
-				from,
-				from,
-				to,
-				data,
-				value,
-				gas_limit,
-				storage_limit,
-				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-				<Runtime as module_evm::Config>::config(),
-			)
+			// Fix xtokens: Transfer failed: Transactional(NoLayer)
+			simulate_execution(|| {
+				<Runtime as module_evm::Config>::Runner::rpc_call(
+					from,
+					from,
+					to,
+					data,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+					<Runtime as module_evm::Config>::config(),
+				)
+			})
 		}
 
 		fn create(

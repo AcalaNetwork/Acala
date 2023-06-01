@@ -75,7 +75,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateXcmDestWeightAndFee<T> {
 		for (old_key, old_value) in old_data {
 			weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 			let new_key: XcmInterfaceOperation = old_key.try_into().expect("Stored xcm::v2::MultiLocation");
-			let new_value: (XcmWeight, Balance) = (XcmWeight::from_ref_time(old_value.0), old_value.1);
+			let new_value: (XcmWeight, Balance) = (XcmWeight::from_parts(old_value.0, 128 * 1024), old_value.1);
 			XcmDestWeightAndFee::<T>::insert(new_key, new_value);
 		}
 

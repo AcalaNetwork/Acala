@@ -1,11 +1,15 @@
-import { TestProvider } from "@acala-network/bodhi";
-import { WsProvider } from "@polkadot/api";
+import { BodhiProvider, BodhiSigner, getTestUtils } from "@acala-network/bodhi";
 import { Option } from '@polkadot/types/codec';
 import { EvmAccountInfo } from '@acala-network/types/interfaces';
 import { spawn, ChildProcess } from "child_process";
 import chaiAsPromised from "chai-as-promised";
 import chai from "chai";
 import getPort from 'get-port';
+
+export interface TestContext {
+	provider: BodhiProvider;
+	wallets: BodhiSigner[];
+};
 
 chai.use(chaiAsPromised);
 
@@ -16,7 +20,7 @@ export const ACALA_BUILD = process.env.ACALA_BUILD || "debug";
 export const BINARY_PATH = `../target/${ACALA_BUILD}/acala`;
 export const SPAWNING_TIME = 120000;
 
-export async function startAcalaNode(): Promise<{ provider: TestProvider; binary: ChildProcess }> {
+export async function startAcalaNode(autoClaim = true): Promise<{ binary: ChildProcess; } & TestContext> {
 	const P2P_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
 	const RPC_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
 	const WS_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
@@ -54,37 +58,31 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 		process.exit(1);
 	});
 
-	let provider: TestProvider;
-	const binaryLogs = [];
-	await new Promise<void>((resolve, reject) => {
+	const binaryLogs = [] as any;
+	const { provider, wallets } = await new Promise<TestContext>((resolve, reject) => {
 		const timer = setTimeout(() => {
 			console.error(`\x1b[31m Failed to start Acala Node.\x1b[0m`);
 			console.error(`Command: ${cmd} ${args.join(" ")}`);
 			console.error(`Logs:`);
-			console.error(binaryLogs.map((chunk) => chunk.toString()).join("\n"));
+			console.error(binaryLogs.map((chunk: any) => chunk.toString()).join("\n"));
 			process.exit(1);
 		}, SPAWNING_TIME - 2000);
 
-		const onData = async (chunk) => {
+		const onData = async (chunk: any) => {
 			if (DISPLAY_LOG) {
 				console.log(chunk.toString());
 			}
 			binaryLogs.push(chunk);
 			if (chunk.toString().match(/best: #0/)) {
 				try {
-					provider = new TestProvider({
-						provider: new WsProvider(`ws://localhost:${WS_PORT}`),
-					});
-
-					// This is needed as the EVM runtime needs to warmup with a first call
-					await provider.getNetwork();
+					const { provider, wallets } = await getTestUtils(`ws://localhost:${WS_PORT}`, autoClaim);
 
 					clearTimeout(timer);
 					if (!DISPLAY_LOG) {
 						binary.stderr.off("data", onData);
 						binary.stdout.off("data", onData);
 					}
-					resolve();
+					resolve({ provider, wallets });
 				} catch(e) {
 					binary.kill();
 					reject(e);
@@ -95,19 +93,29 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 		binary.stdout.on("data", onData);
 	});
 
-	return { provider, binary };
+	return { provider, wallets, binary };
 }
 
-export function describeWithAcala(title: string, cb: (context: { provider: TestProvider }) => void) {
+export function describeWithAcala(title: string, cb: (context: TestContext) => void) {
+	let context = {} as TestContext;
+
 	describe(title, () => {
-		let context: { provider: TestProvider } = { provider: null };
 		let binary: ChildProcess;
 		// Making sure the Acala node has started
 		before("Starting Acala Test Node", async function () {
+			console.log('starting acala node ...')
 			this.timeout(SPAWNING_TIME);
-			const init = await startAcalaNode();
-			context.provider = init.provider;
+
+			const autoClaim =
+				title !== 'Acala RPC (Claim Account Eip712)' &&
+				title !== 'Acala RPC (Block)';
+			const init = await startAcalaNode(autoClaim);
+
+			context.provider = init.provider,
+			context.wallets = init.wallets,
 			binary = init.binary;
+
+			console.log('acala node started!')
 		});
 
 		after(async function () {
@@ -120,11 +128,11 @@ export function describeWithAcala(title: string, cb: (context: { provider: TestP
 	});
 }
 
-export async function nextBlock(context: { provider: TestProvider }) {
+export async function nextBlock(context: TestContext) {
 	return new Promise(async (resolve) => {
-		let [alice] = await context.provider.getWallets();
+		let [alice] = context.wallets;
 		let block_number = await context.provider.api.query.system.number();
-		context.provider.api.tx.system.remark(block_number.toString(16)).signAndSend(await alice.getSubstrateAddress(), (result) => {
+		context.provider.api.tx.system.remark(block_number.toString(16)).signAndSend(alice.substrateAddress, (result) => {
 			if (result.status.isFinalized || result.status.isInBlock) {
 				resolve(undefined);
 			}
@@ -132,7 +140,7 @@ export async function nextBlock(context: { provider: TestProvider }) {
 	});
 }
 
-export async function transfer(context: { provider: TestProvider }, from: string, to: string, amount: number) {
+export async function transfer(context: TestContext, from: string, to: string, amount: number) {
 	return new Promise(async (resolve) => {
 		context.provider.api.tx.balances.transfer(to, amount).signAndSend(from, (result) => {
 			if (result.status.isFinalized || result.status.isInBlock) {
@@ -142,7 +150,7 @@ export async function transfer(context: { provider: TestProvider }, from: string
 	});
 }
 
-export async function getEvmNonce(provider: TestProvider, address: string): Promise<number> {
+export async function getEvmNonce(provider: BodhiProvider, address: string): Promise<number> {
 	const evm_account = await provider.api.query.evm.accounts<Option<EvmAccountInfo>>(address);
 	const nonce = evm_account.isEmpty ? 0 : evm_account.unwrap().nonce.toNumber();
 	return nonce;

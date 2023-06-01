@@ -107,8 +107,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1237365,
-		used_storage: 15139,
+		used_gas: 1235081,
+		used_storage: 15130,
 	}));
 
 	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address_0()));
@@ -143,8 +143,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1237365,
-		used_storage: 15139,
+		used_gas: 1235081,
+		used_storage: 15130,
 	}));
 
 	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address_1()));
@@ -238,7 +238,7 @@ fn dex_module_works_with_evm_contract() {
 				0,
 			));
 
-			<EVM as EVMTrait<AccountId>>::push_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
+			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
 			assert_ok!(Dex::add_provision(
 				RuntimeOrigin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
@@ -261,7 +261,7 @@ fn dex_module_works_with_evm_contract() {
 			);
 
 			// CurrencyId::DexShare(Erc20, Erc20)
-			<EVM as EVMTrait<AccountId>>::push_origin(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()));
+			<EVM as EVMTrait<AccountId>>::set_origin(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()));
 
 			assert_ok!(Dex::add_provision(
 				RuntimeOrigin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
@@ -431,7 +431,7 @@ fn test_multicurrency_precompile_module() {
 			));
 
 			// CurrencyId::DexShare(Erc20, Erc20)
-			<EVM as EVMTrait<AccountId>>::push_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
+			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
 			assert_ok!(Dex::add_provision(
 				RuntimeOrigin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
@@ -665,15 +665,8 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			#[cfg(feature = "with-ethereum-compatibility")]
 			assert_eq!(System::providers(&contract_account_id), 0);
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			assert_eq!(System::providers(&contract_account_id), 1);
-
-			// contract account will hang around until storage is cleared
-			assert_eq!(EVM::accounts(contract), Some(module_evm::AccountInfo{ nonce: 1, contract_info: None}));
-
-			// use IdleScheduler to remove contract
-			run_to_block(System::block_number() + 1);
-
 			assert_eq!(System::providers(&contract_account_id), 0);
+
 			// contract account should be gone
 			assert_eq!(EVM::accounts(contract), None);
 
@@ -765,7 +758,7 @@ fn test_default_evm_address_in_evm_accounts_module() {
 			assert!(EvmAccounts::evm_addresses(AccountId::from(ALICE)).is_some());
 
 			// get_or_create_evm_address
-			<EVM as EVMTrait<AccountId>>::push_origin(alice());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 			assert_ok!(Currencies::transfer(
 				RuntimeOrigin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
@@ -861,7 +854,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 				0,
 			));
 
-			<EVM as EVMTrait<AccountId>>::push_origin(alice_evm_account.clone());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
 			assert_ok!(Dex::add_provision(
 				RuntimeOrigin::signed(alice_evm_account.clone()),
 				erc20_token,
@@ -875,7 +868,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			assert_eq!(Currencies::free_balance(dex_share, &alice_evm_account), 0);
 
 			// CurrencyId::DexShare(Erc20, ACA)
-			<EVM as EVMTrait<AccountId>>::push_origin(alice_evm_account.clone());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
 			assert_ok!(Dex::add_provision(
 				RuntimeOrigin::signed(alice_evm_account.clone()),
 				erc20_token,
@@ -972,26 +965,16 @@ fn transaction_payment_module_works_with_evm_contract() {
 					amount: 1,
 				});
 			let info: DispatchInfo = DispatchInfo {
-				weight: Weight::from_ref_time(100),
+				weight: Weight::from_parts(100, 0),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};
 			let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(len, &info, 0);
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(fee, 16_000_001_002);
-			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(fee, 2_500_001_002);
-			#[cfg(feature = "with-acala-runtime")]
 			assert_eq!(fee, 2_500_001_002);
 
 			let surplus_perc = Percent::from_percent(50); // CustomFeeSurplus
 			let fee_surplus = surplus_perc.mul_ceil(fee);
 			let fee = fee + fee_surplus;
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(fee, 24_000_001_503);
-			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(fee, 3_750_001_503);
-			#[cfg(feature = "with-acala-runtime")]
 			assert_eq!(fee, 3_750_001_503);
 
 			// empty_account use payment non wrapped call to charge fee by erc20 fee pool.
@@ -1006,7 +989,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			);
 			let erc20_fee = Currencies::free_balance(erc20_token, &sub_account);
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(erc20_fee, 12_413_541_067);
+			assert_eq!(erc20_fee, 10_386_329_747);
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(erc20_fee, 10_407_164_913);
 			#[cfg(feature = "with-acala-runtime")]
@@ -1061,7 +1044,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-acala-runtime")]
 			let (erc20_with_fee, native_with_fee) = (376162732, 3750001503);
 			#[cfg(feature = "with-mandala-runtime")]
-			let (erc20_with_fee, native_with_fee) = (2402620973, 24000001503);
+			let (erc20_with_fee, native_with_fee) = (375409653, 3750001503);
 			assert_eq!(
 				Currencies::free_balance(erc20_token, &sub_account),
 				erc20_fee * 2 + erc20_with_fee
@@ -1162,7 +1145,7 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 #[test]
 fn evm_limits() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 29_990_016);
+		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 33_322_240);
 		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_storage_limit(), 3_670_016);
 	});
 }
@@ -1252,7 +1235,7 @@ fn honzon_works_with_evm_contract() {
 				.map(|n| n.saturating_mul_int(MinimumDebitValue::get()))
 				.unwrap();
 
-			<EVM as EVMTrait<AccountId>>::push_origin(alice_evm_account.clone());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
 			// 1.Honzon::adjust_loan
 			assert_ok!(Honzon::adjust_loan(
 				RuntimeOrigin::signed(alice_evm_account.clone()),

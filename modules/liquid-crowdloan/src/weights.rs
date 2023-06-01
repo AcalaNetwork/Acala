@@ -64,7 +64,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	fn redeem() -> Weight {
 		// Minimum execution time: 108_353 nanoseconds.
-		Weight::from_ref_time(110_248_000)
+		Weight::from_parts(110_248_000, 0)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -78,7 +78,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Proof Skipped: ParachainSystem PendingUpwardMessages (max_values: Some(1), max_size: None, mode: Measured)
 	fn transfer_from_crowdloan_vault() -> Weight {
 		// Minimum execution time: 42_218 nanoseconds.
-		Weight::from_ref_time(43_024_000)
+		Weight::from_parts(43_024_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -96,7 +96,7 @@ impl WeightInfo for () {
 	// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	fn redeem() -> Weight {
 		// Minimum execution time: 108_353 nanoseconds.
-		Weight::from_ref_time(110_248_000)
+		Weight::from_parts(110_248_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(7))
 			.saturating_add(RocksDbWeight::get().writes(5))
 	}
@@ -110,7 +110,7 @@ impl WeightInfo for () {
 	// Proof Skipped: ParachainSystem PendingUpwardMessages (max_values: Some(1), max_size: None, mode: Measured)
 	fn transfer_from_crowdloan_vault() -> Weight {
 		// Minimum execution time: 42_218 nanoseconds.
-		Weight::from_ref_time(43_024_000)
+		Weight::from_parts(43_024_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(4))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}

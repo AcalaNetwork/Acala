@@ -33,6 +33,7 @@ pub struct TestNodeBuilder {
 	consensus: Consensus,
 	seal_mode: SealMode,
 	relay_chain_full_node_url: Vec<Url>,
+	offchain_worker: bool,
 }
 
 impl TestNodeBuilder {
@@ -57,6 +58,7 @@ impl TestNodeBuilder {
 			consensus: Consensus::Aura,
 			seal_mode: SealMode::DevAuraSeal,
 			relay_chain_full_node_url: vec![],
+			offchain_worker: true,
 		}
 	}
 
@@ -64,6 +66,12 @@ impl TestNodeBuilder {
 	pub fn enable_collator(mut self) -> Self {
 		let collator_key = CollatorPair::generate().0;
 		self.collator_key = Some(collator_key);
+		self
+	}
+
+	/// Disable offchain worker for this node.
+	pub fn disable_offchain_worker(mut self) -> Self {
+		self.offchain_worker = false;
 		self
 	}
 
@@ -167,7 +175,7 @@ impl TestNodeBuilder {
 
 	/// Build the [`TestNode`].
 	pub async fn build(self) -> TestNode {
-		let parachain_config = node_config(
+		let mut parachain_config = node_config(
 			self.storage_update_func_parachain.unwrap_or_else(|| Box::new(|| ())),
 			self.tokio_handle.clone(),
 			self.key,
@@ -176,6 +184,8 @@ impl TestNodeBuilder {
 			self.collator_key.is_some(),
 		)
 		.expect("could not generate Configuration");
+
+		parachain_config.offchain_worker.enabled = self.offchain_worker;
 
 		// start relay-chain full node inside para-chain
 		let mut relay_chain_config = polkadot_test_service::node_config(
@@ -247,11 +257,10 @@ pub fn node_config(
 	nodes: Vec<MultiaddrWithPeerId>,
 	nodes_exlusive: bool,
 	is_collator: bool,
-) -> Result<Configuration, sc_service::Error> {
-	// Always return the same path now.
+) -> Result<Configuration, ServiceError> {
 	// https://github.com/paritytech/substrate/blob/f465fee723c87b734/client/service/src/config.rs#L280-L290
 	// let base_path = BasePath::new_temp_dir()?;
-	let base_path = BasePath::new(PathBuf::from(
+	let base_path = BasePath::new(std::path::PathBuf::from(
 		tempfile::Builder::new().prefix("substrate").tempdir()?.path(),
 	));
 	let root = base_path.path().join(format!("cumulus_test_service_{}", key));
@@ -276,7 +285,7 @@ pub fn node_config(
 
 	if nodes_exlusive {
 		network_config.default_peers_set.reserved_nodes = nodes;
-		network_config.default_peers_set.non_reserved_mode = sc_network_common::config::NonReservedPeerMode::Deny;
+		network_config.default_peers_set.non_reserved_mode = sc_network::config::NonReservedPeerMode::Deny;
 	} else {
 		network_config.boot_nodes = nodes;
 	}
@@ -306,9 +315,7 @@ pub fn node_config(
 		state_pruning: Some(PruningMode::ArchiveAll),
 		blocks_pruning: BlocksPruning::KeepAll,
 		chain_spec: spec,
-		wasm_method: WasmExecutionMethod::Compiled {
-			instantiation_strategy: WasmtimeInstantiationStrategy::PoolingCopyOnWrite,
-		},
+		wasm_method: WasmExecutionMethod::Interpreted,
 		// NOTE: we enforce the use of the native runtime to make the errors more debuggable
 		execution_strategies: ExecutionStrategies {
 			syncing: sc_client_api::ExecutionStrategy::NativeWhenPossible,

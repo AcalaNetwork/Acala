@@ -316,7 +316,7 @@ fn cancel_schedule_test() {
 			5,
 		));
 		let council_call = RuntimeCall::CdpEngine(module_cdp_engine::Call::set_collateral_params {
-			currency_id: RENBTC,
+			currency_id: DOT,
 			interest_rate_per_sec: Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 			liquidation_ratio: Change::NewValue(Some(Ratio::saturating_from_rational(5, 2))),
 			liquidation_penalty: Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),

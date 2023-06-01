@@ -80,7 +80,7 @@ fn transfer_from_crowdloan_vault_works() {
 			RuntimeOrigin::root(),
 			vec![(
 				XcmInterfaceOperation::ProxyReserveTransferAssets,
-				Some(XcmWeight::from_ref_time(20_000_000_000)),
+				Some(XcmWeight::from_parts(20_000_000_000, 0)),
 				Some(100_000_000_000)
 			)]
 		));

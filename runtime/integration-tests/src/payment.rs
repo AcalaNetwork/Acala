@@ -101,12 +101,12 @@ const CALL: <Runtime as frame_system::Config>::RuntimeCall =
 		amount: 12,
 	});
 pub const INFO: DispatchInfo = DispatchInfo {
-	weight: Weight::from_ref_time(100),
+	weight: Weight::from_parts(100, 0),
 	class: DispatchClass::Normal,
 	pays_fee: Pays::Yes,
 };
 pub const POST_INFO: PostDispatchInfo = PostDispatchInfo {
-	actual_weight: Some(Weight::from_ref_time(80)),
+	actual_weight: Some(Weight::from_parts(80, 0)),
 	pays_fee: Pays::Yes,
 };
 
@@ -227,7 +227,7 @@ fn trader_works() {
 		ClearOrigin,
 		BuyExecution {
 			fees: (Parent, 100).into(),
-			weight_limit: Limited(Weight::from_ref_time(100)),
+			weight_limit: Limited(Weight::from_parts(100, 0)),
 		},
 		DepositAsset {
 			assets: AllCounted(1).into(),
@@ -555,7 +555,7 @@ fn with_fee_call_works(
 			#[cfg(feature = "with-acala-runtime")]
 			let amount = 12_726_949_852u128;
 			#[cfg(feature = "with-mandala-runtime")]
-			let amount = 13_264_589_848u128;
+			let amount = 12_701_470_473u128;
 
 			System::assert_has_event(RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
 				currency_id: USD_CURRENCY,

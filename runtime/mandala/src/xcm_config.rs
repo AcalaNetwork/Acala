@@ -18,9 +18,9 @@
 
 use super::{
 	constants::fee::*, AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert,
-	Currencies, CurrencyId, ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit, ParachainInfo,
-	ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, TreasuryAccount, UnknownTokens,
-	XcmpQueue, ACA,
+	Currencies, CurrencyId, EvmAddressMapping, ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit,
+	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, TreasuryAccount,
+	UnknownTokens, XcmpQueue, ACA,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -37,8 +37,8 @@ use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use primitives::evm::is_system_contract;
 use runtime_common::{
-	local_currency_location, native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
-	FixedRateOfAsset,
+	local_currency_location, native_currency_location, xcm_impl::AccountKey20Aliases, AcalaDropAssets,
+	EnsureRootOrHalfGeneralCouncil, FixedRateOfAsset,
 };
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 pub use xcm_builder::{
@@ -66,6 +66,8 @@ pub type LocationToAccountId = (
 	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
 	AccountId32Aliases<RelayNetwork, AccountId>,
+	// Convert `AccountKey20` to `AccountId`
+	AccountKey20Aliases<RelayNetwork, AccountId, EvmAddressMapping<Runtime>>,
 );
 
 /// This is the type we use to convert an (incoming) XCM origin into a local `RuntimeOrigin`
@@ -118,7 +120,7 @@ impl TakeRevenue for ToTreasury {
 
 parameter_types! {
 	// One XCM operation is 1_000_000 weight - almost certainly a conservative estimate.
-	pub UnitWeightCost: XcmWeight = XcmWeight::from_ref_time(1_000_000);
+	pub UnitWeightCost: XcmWeight = XcmWeight::from_parts(1_000_000, 0);
 	pub const MaxInstructions: u32 = 100;
 	pub DotPerSecond: (AssetId, u128, u128) = (
 		MultiLocation::parent().into(),
@@ -270,7 +272,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use CurrencyId::{Erc20, ForeignAsset, StableAssetPoolToken, Token};
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
-			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) | Token(TAI) => {
+			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAI) => {
 				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
 			Erc20(address) if !is_system_contract(address) => {
@@ -305,7 +307,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 					// check if `currency_id` is cross-chain asset
 					match currency_id {
-						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) | Token(TAI) => Some(currency_id),
+						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAI) => Some(currency_id),
 						Erc20(address) if !is_system_contract(address) => Some(currency_id),
 						StableAssetPoolToken(_pool_id) => Some(currency_id),
 						_ => None,
@@ -322,7 +324,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				let key = &data[..data.len().min(length as usize)];
 				if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 					match currency_id {
-						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) | Token(TAI) => Some(currency_id),
+						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAI) => Some(currency_id),
 						Erc20(address) if !is_system_contract(address) => Some(currency_id),
 						StableAssetPoolToken(_pool_id) => Some(currency_id),
 						_ => None,
@@ -364,7 +366,7 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 }
 
 parameter_types! {
-	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_ref_time(100_000_000);
+	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_parts(100_000_000, 0);
 	pub const MaxAssetsForTransfer: usize = 2;
 }
 

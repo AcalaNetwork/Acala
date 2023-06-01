@@ -28,7 +28,6 @@ use futures::channel::{mpsc, oneshot};
 use std::{
 	future::Future,
 	net::{IpAddr, Ipv4Addr, SocketAddr},
-	path::PathBuf,
 	sync::Arc,
 	time::Duration,
 };
@@ -59,17 +58,16 @@ use sc_consensus_manual_seal::{
 	rpc::{ManualSeal, ManualSealApiServer},
 	EngineCommand,
 };
-use sc_executor::{NativeElseWasmExecutor, WasmExecutionMethod, WasmtimeInstantiationStrategy};
-use sc_network::{multiaddr, NetworkBlock, NetworkService};
-use sc_network_common::{config::TransportConfig, service::NetworkStateInfo};
+use sc_executor::NativeElseWasmExecutor;
+use sc_network::{config::TransportConfig, multiaddr, NetworkBlock, NetworkService, NetworkStateInfo};
 pub use sc_rpc::SubscriptionTaskExecutor;
 use sc_service::{
 	config::{
 		BlocksPruning, DatabaseSource, KeystoreConfig, MultiaddrWithPeerId, NetworkConfiguration, OffchainWorkerConfig,
-		PruningMode,
+		PruningMode, WasmExecutionMethod,
 	},
-	BasePath, ChainSpec, Configuration, PartialComponents, Role, RpcHandlers, SpawnTasksParams, TFullBackend,
-	TFullCallExecutor, TFullClient, TaskManager,
+	BasePath, ChainSpec, Configuration, Error as ServiceError, PartialComponents, Role, RpcHandlers, SpawnTasksParams,
+	TFullBackend, TFullCallExecutor, TFullClient, TaskManager,
 };
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
@@ -80,7 +78,6 @@ use sp_core::{ExecutionContext, Pair, H256};
 use sp_keyring::Sr25519Keyring;
 use sp_runtime::{
 	codec::Encode,
-	generic,
 	generic::Era,
 	traits::{BlakeTwo256, Block as BlockT, Extrinsic, IdentifyAccount},
 	transaction_validity::TransactionSource,
@@ -174,7 +171,7 @@ pub fn fetch_nonce(client: &Client, account: sp_core::sr25519::Public) -> u32 {
 	let best_hash = client.chain_info().best_hash;
 	client
 		.runtime_api()
-		.account_nonce(&generic::BlockId::Hash(best_hash), account.into())
+		.account_nonce(best_hash, account.into())
 		.expect("Fetching account nonce works; qed")
 }
 

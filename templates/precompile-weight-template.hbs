@@ -30,7 +30,7 @@ impl<T: frame_system::Config> PrecompileWeights<T> {
 	// {{comment}}
 	{{/each}}
 	pub fn {{benchmark.name~}} () -> Weight {
-		Weight::from_ref_time({{underscore benchmark.weight}})
+		Weight::from_parts({{underscore benchmark.weight}}, 0)
 			{{#if (ne benchmark.reads 0)}}
 			.saturating_add(T::DbWeight::get().reads({{benchmark.reads}}))
 			{{/if}}

@@ -59,35 +59,35 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Earning Ledger (r:1 w:1)
 	// Storage: Balances Locks (r:1 w:1)
 	fn bond() -> Weight {
-		Weight::from_ref_time(28_562_000)
+		Weight::from_parts(28_562_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: Earning Ledger (r:1 w:1)
 	// Storage: Balances Locks (r:1 w:1)
 	fn unbond_instant() -> Weight {
-		Weight::from_ref_time(37_276_000)
+		Weight::from_parts(37_276_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: Earning Ledger (r:1 w:1)
 	// Storage: Balances Locks (r:1 w:1)
 	fn unbond() -> Weight {
-		Weight::from_ref_time(26_976_000)
+		Weight::from_parts(26_976_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: Earning Ledger (r:1 w:1)
 	// Storage: Balances Locks (r:1 w:1)
 	fn rebond() -> Weight {
-		Weight::from_ref_time(28_003_000)
+		Weight::from_parts(28_003_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: Earning Ledger (r:1 w:1)
 	// Storage: Balances Locks (r:1 w:1)
 	fn withdraw_unbonded() -> Weight {
-		Weight::from_ref_time(28_656_000)
+		Weight::from_parts(28_656_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
@@ -96,27 +96,27 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn bond() -> Weight {
-		Weight::from_ref_time(28_562_000)
+		Weight::from_parts(28_562_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn unbond_instant() -> Weight {
-		Weight::from_ref_time(37_276_000)
+		Weight::from_parts(37_276_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn unbond() -> Weight {
-		Weight::from_ref_time(26_976_000)
+		Weight::from_parts(26_976_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn rebond() -> Weight {
-		Weight::from_ref_time(28_003_000)
+		Weight::from_parts(28_003_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn withdraw_unbonded() -> Weight {
-		Weight::from_ref_time(28_656_000)
+		Weight::from_parts(28_656_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}

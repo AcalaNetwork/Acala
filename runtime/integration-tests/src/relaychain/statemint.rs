@@ -33,7 +33,7 @@ pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
 pub const FEE: Balance = 50_000_000;
-pub const FEE_STATEMINT: Balance = 1_609_084;
+pub const FEE_STATEMINT: Balance = 10_143_569;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
@@ -42,14 +42,14 @@ fn init_statemine_xcm_interface() {
 		RuntimeOrigin::root(),
 		vec![(
 			xcm_operation.clone(),
-			Some(XcmWeight::from_ref_time(4_000_000_000)),
+			Some(XcmWeight::from_parts(4_000_000_000, 0)),
 			Some(50_000_000),
 		)],
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(
 		module_xcm_interface::Event::XcmDestWeightUpdated {
 			xcm_operation: xcm_operation.clone(),
-			new_xcm_dest_weight: XcmWeight::from_ref_time(4_000_000_000),
+			new_xcm_dest_weight: XcmWeight::from_parts(4_000_000_000, 0),
 		},
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
@@ -64,7 +64,7 @@ fn statemint_min_xcm_fee_matched() {
 		use frame_support::weights::{IdentityFee, WeightToFee};
 
 		init_statemine_xcm_interface();
-		let weight = Weight::from_ref_time(FEE_WEIGHT as u64);
+		let weight = Weight::from_parts(FEE_WEIGHT as u64, 0);
 
 		let fee: Balance = IdentityFee::weight_to_fee(&weight);
 		let statemine: MultiLocation = (Parent, Parachain(parachains::statemint::ID)).into();
@@ -130,8 +130,8 @@ fn acala_statemint_transfer_works() {
 		// and withdraw sibling parachain sovereign account
 		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
 
-		assert_eq!(1_000_044_010_367, Balances::free_balance(&AccountId::from(BOB)));
-		assert_eq!(1_003_598_838_160, Balances::free_balance(&para_2000));
+		assert_eq!(1_000_036_921_836, Balances::free_balance(&AccountId::from(BOB)));
+		assert_eq!(1_003_569_584_455, Balances::free_balance(&para_2000));
 	});
 }
 

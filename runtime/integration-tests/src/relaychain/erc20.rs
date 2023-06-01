@@ -30,7 +30,7 @@ use module_support::EVM as EVMTrait;
 use orml_traits::MultiCurrency;
 use primitives::evm::EvmAddress;
 use runtime_common::precompile::XtokensPrecompile;
-use sp_core::{bounded::BoundedVec, H256, U256};
+use sp_core::{bounded::BoundedVec, defer, H256, U256};
 use std::str::FromStr;
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
@@ -51,6 +51,9 @@ fn sibling_reserve_account() -> AccountId {
 }
 fn karura_reserve_account() -> AccountId {
 	polkadot_parachain::primitives::Sibling::from(KARURA_ID).into_account_truncating()
+}
+fn new_evm_address() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000009999").unwrap()
 }
 
 pub fn deploy_erc20_contracts() {
@@ -83,8 +86,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1237365,
-		used_storage: 15139,
+		used_gas: 1235081,
+		used_storage: 15130,
 	}));
 
 	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address_0()));
@@ -168,9 +171,10 @@ fn erc20_transfer_between_sibling() {
 
 		// `transfer` invoked by `TransferReserveAsset` xcm instruction need to passing origin check.
 		// In frontend/js, when issue xtokens extrinsic, it have `EvmSetOrigin` SignedExtra to
-		// `push_origin`. In testcase, we're manual invoke `push_origin` here. because in erc20 xtokens
+		// `set_origin`. In testcase, we're manual invoke `set_origin` here. because in erc20 xtokens
 		// transfer, the `from` or `to` is not erc20 holding account. so we need make sure origin exists.
-		<EVM as EVMTrait<AccountId>>::push_origin(alith.clone());
+		<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
+		defer!(<EVM as EVMTrait<AccountId>>::kill_origin());
 
 		assert_eq!(
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith),
@@ -195,7 +199,7 @@ fn erc20_transfer_between_sibling() {
 				)
 				.into(),
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
 		));
 
 		// using native token to charge storage fee
@@ -245,7 +249,7 @@ fn erc20_transfer_between_sibling() {
 				)
 				.into(),
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
 		));
 
 		// transfer erc20 token to new account on Karura
@@ -266,11 +270,32 @@ fn erc20_transfer_between_sibling() {
 				)
 				.into(),
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
+		));
+
+		// transfer erc20 token to evm address on Karura
+		assert_ok!(XTokens::transfer(
+			RuntimeOrigin::signed(BOB.into()),
+			CurrencyId::ForeignAsset(0),
+			1_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2000),
+						Junction::AccountKey20 {
+							network: None,
+							key: new_evm_address().into(),
+						},
+					),
+				)
+				.into(),
+			),
+			WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
 		));
 
 		assert_eq!(
-			3_999_198_720_000,
+			2_999_198_720_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});
@@ -278,8 +303,10 @@ fn erc20_transfer_between_sibling() {
 	Karura::execute_with(|| {
 		use karura_runtime::{RuntimeEvent, System};
 		let erc20_holding_account = EvmAddressMapping::<Runtime>::get_account_id(&Erc20HoldingAccount::get());
+		let new_account = EvmAddressMapping::<Runtime>::get_account_id(&new_evm_address());
+
 		assert_eq!(
-			4_000_000_000_000,
+			3_000_000_000_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
 		);
 		assert_eq!(
@@ -287,7 +314,7 @@ fn erc20_transfer_between_sibling() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
 		assert_eq!(
-			16_025_600_000,
+			6_009_600_000 * 4,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &KaruraTreasuryAccount::get())
 		);
 		assert_eq!(
@@ -295,12 +322,16 @@ fn erc20_transfer_between_sibling() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE))
 		);
 		assert_eq!(
+			991_987_200_000,
+			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &new_account)
+		);
+		assert_eq!(
 			0,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &erc20_holding_account)
 		);
-		// withdraw erc20 need charge storage fee for both sibling, BOB and CHARLIE
+		// withdraw erc20 need charge storage fee for both sibling, BOB, CHARLIE and new_account
 		assert_eq!(
-			initial_native_amount - storage_fee * 3,
+			initial_native_amount - storage_fee * 4,
 			Currencies::free_balance(NATIVE_CURRENCY, &sibling_reserve_account())
 		);
 		// no storage fee for BOB
@@ -392,8 +423,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 			EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 		));
 
-		<EVM as EVMTrait<AccountId>>::push_origin(alith.clone());
-
+		<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
 		// use Currencies `transfer` dispatch call to transfer erc20 token to bob.
 		assert_ok!(Currencies::transfer(
 			RuntimeOrigin::signed(alith),
@@ -405,6 +435,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE)),
 			1_000_000_000_000_000
 		);
+		<EVM as EVMTrait<AccountId>>::kill_origin();
 
 		// transfer erc20 token to Karura
 		assert_ok!(XTokens::transfer(
@@ -424,7 +455,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 				)
 				.into(),
 			),
-			WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+			WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
 		));
 
 		assert_eq!(
@@ -523,9 +554,10 @@ fn xtokens_precompile_works() {
 
 		// `transfer` invoked by `TransferReserveAsset` xcm instruction need to passing origin check.
 		// In frontend/js, when issue xtokens extrinsic, it have `EvmSetOrigin` SignedExtra to
-		// `push_origin`. In testcase, we're manual invoke `push_origin` here. because in erc20 xtokens
+		// `set_origin`. In testcase, we're manual invoke `set_origin` here. because in erc20 xtokens
 		// transfer, the `from` or `to` is not erc20 holding account. so we need make sure origin exists.
-		<EVM as EVMTrait<AccountId>>::push_origin(alith.clone());
+		<EVM as EVMTrait<AccountId>>::set_origin(alith.clone());
+		defer!(<EVM as EVMTrait<AccountId>>::kill_origin());
 
 		assert_eq!(
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &alith),
@@ -555,7 +587,7 @@ fn xtokens_precompile_works() {
 		// 		)
 		// 		.into(),
 		// 	),
-		// 	WeightLimit::Limited(XcmWeight::from_ref_time(1_000_000_000)),
+		// 	WeightLimit::Limited(XcmWeight::from_parts(1_000_000_000, 0)),
 		// ));
 
 		let dest: VersionedMultiLocation = MultiLocation::new(
@@ -574,7 +606,7 @@ fn xtokens_precompile_works() {
 			hex!("03010200491f01000505050505050505050505050505050505050505050505050505050505050505")
 		);
 
-		let weight = WeightLimit::Limited(Weight::from_ref_time(1_000_000_000));
+		let weight = WeightLimit::Limited(Weight::from_parts(1_000_000_000, 0));
 		assert_eq!(weight.encode(), hex!("0102286bee00"));
 
 		// transfer(address,address,uint256,bytes,bytes) -> 0xc78fed04

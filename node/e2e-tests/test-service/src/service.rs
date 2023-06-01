@@ -197,7 +197,7 @@ pub async fn start_dev_node(
 		other: block_import,
 	} = new_partial(&config, SealMode::DevInstantSeal)?;
 
-	let (network, system_rpc_tx, tx_handler_controller, network_starter) =
+	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
 			client: client.clone(),
@@ -205,11 +205,13 @@ pub async fn start_dev_node(
 			spawn_handle: task_manager.spawn_handle(),
 			import_queue,
 			block_announce_validator_builder: None,
-			warp_sync: None,
+			warp_sync_params: None,
 		})?;
 
 	// offchain workers
-	sc_service::build_offchain_workers(&config, task_manager.spawn_handle(), client.clone(), network.clone());
+	if config.offchain_worker.enabled {
+		sc_service::build_offchain_workers(&config, task_manager.spawn_handle(), client.clone(), network.clone());
+	}
 
 	let force_authoring = config.force_authoring;
 	let backoff_authoring_blocks: Option<()> = None;
@@ -318,8 +320,8 @@ pub async fn start_dev_node(
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
-				sync_oracle: network.clone(),
-				justification_sync_link: network.clone(),
+				sync_oracle: sync_service.clone(),
+				justification_sync_link: sync_service.clone(),
 				// We got around 500ms for proposing
 				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
 				// And a maximum of 750ms if slots are skipped
@@ -363,6 +365,7 @@ pub async fn start_dev_node(
 		system_rpc_tx,
 		tx_handler_controller,
 		telemetry: None,
+		sync_service,
 	})?;
 
 	network_starter.start_network();
@@ -405,10 +408,12 @@ async fn build_relay_chain_interface(
 	Ok(Arc::new(RelayChainInProcessInterface::new(
 		relay_chain_full_node.client.clone(),
 		relay_chain_full_node.backend.clone(),
-		Arc::new(relay_chain_full_node.network.clone()),
+		relay_chain_full_node.sync_service.clone(),
 		relay_chain_full_node
 			.overseer_handle
-			.ok_or_else(|| RelayChainError::GenericError("Overseer should be running in full node.".to_string()))?,
+			.ok_or(RelayChainError::GenericError(
+				"Overseer should be running in full node.".to_string(),
+			))?,
 	)))
 }
 
@@ -468,7 +473,7 @@ where
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 
 	let import_queue_service = params.import_queue.service();
-	let (network, system_rpc_tx, tx_handler_controller, start_network) =
+	let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &parachain_config,
 			client: client.clone(),
@@ -476,7 +481,7 @@ where
 			spawn_handle: task_manager.spawn_handle(),
 			import_queue: params.import_queue,
 			block_announce_validator_builder: Some(Box::new(block_announce_validator_builder)),
-			warp_sync: None,
+			warp_sync_params: None,
 		})?;
 
 	if parachain_config.offchain_worker.enabled {
@@ -506,11 +511,12 @@ where
 		system_rpc_tx,
 		tx_handler_controller,
 		telemetry: None,
+		sync_service: sync_service.clone(),
 	})?;
 
 	let announce_block = {
-		let network = network.clone();
-		Arc::new(move |hash, data| network.announce_block(hash, data))
+		let sync_service = sync_service.clone();
+		Arc::new(move |hash, data| sync_service.announce_block(hash, data))
 	};
 
 	let announce_block = wrap_announce_block
@@ -518,6 +524,12 @@ where
 		.unwrap_or_else(|| announce_block);
 
 	let relay_chain_interface_for_closure = relay_chain_interface.clone();
+
+	let overseer_handle = relay_chain_interface
+		.overseer_handle()
+		.map_err(|e| sc_service::Error::Application(Box::new(e)))?;
+
+	let recovery_handle = Box::new(overseer_handle);
 
 	if let Some(collator_key) = collator_key {
 		let parachain_consensus: Box<dyn ParachainConsensus<Block>> = match consensus {
@@ -603,7 +615,7 @@ where
 						block_import,
 						para_client: client.clone(),
 						backoff_authoring_blocks: Option::<()>::None,
-						sync_oracle: network.clone(),
+						sync_oracle: sync_service.clone(),
 						keystore,
 						force_authoring,
 						slot_duration,
@@ -629,6 +641,7 @@ where
 			collator_key,
 			import_queue: import_queue_service,
 			relay_chain_slot_duration: Duration::from_secs(6),
+			recovery_handle,
 		};
 
 		start_collator(params).await?;
@@ -644,6 +657,7 @@ where
 			// the recovery delay of pov-recovery. We don't want to wait for too
 			// long on the full node to recover, so we reduce this time here.
 			relay_chain_slot_duration: Duration::from_millis(6),
+			recovery_handle,
 		};
 
 		start_full_node(params)?;

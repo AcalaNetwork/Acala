@@ -58,26 +58,26 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn schedule_session_duration() -> Weight {
-		Weight::from_ref_time(32_968_000)
+		Weight::from_parts(32_968_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn on_initialize_skip() -> Weight {
-		Weight::from_ref_time(5_399_000)
+		Weight::from_parts(5_399_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn on_initialize() -> Weight {
-		Weight::from_ref_time(8_030_000)
+		Weight::from_parts(8_030_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	fn estimate_current_session_progress() -> Weight {
-		Weight::from_ref_time(6_449_000)
+		Weight::from_parts(6_449_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 	}
 	fn estimate_next_session_rotation() -> Weight {
-		Weight::from_ref_time(6_530_000)
+		Weight::from_parts(6_530_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 	}
 }
@@ -85,26 +85,26 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn schedule_session_duration() -> Weight {
-		Weight::from_ref_time(32_968_000)
+		Weight::from_parts(32_968_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn on_initialize_skip() -> Weight {
-		Weight::from_ref_time(5_399_000)
+		Weight::from_parts(5_399_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn on_initialize() -> Weight {
-		Weight::from_ref_time(8_030_000)
+		Weight::from_parts(8_030_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 	fn estimate_current_session_progress() -> Weight {
-		Weight::from_ref_time(6_449_000)
+		Weight::from_parts(6_449_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 	}
 	fn estimate_next_session_rotation() -> Weight {
-		Weight::from_ref_time(6_530_000)
+		Weight::from_parts(6_530_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 	}
 }

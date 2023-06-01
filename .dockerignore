@@ -10,5 +10,4 @@ audit/
 .github/
 launch/
 evm-bench
-evm-tests
 ts-tests

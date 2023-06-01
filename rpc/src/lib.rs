@@ -20,7 +20,7 @@
 
 #![warn(missing_docs)]
 
-use primitives::{AccountId, Balance, Block, CurrencyId, DataProviderId, Hash, Nonce};
+use primitives::{AccountId, Balance, Block, Hash, Nonce};
 pub use sc_rpc::SubscriptionTaskExecutor;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
@@ -34,13 +34,6 @@ pub use sc_rpc::dev::Dev;
 pub use sc_rpc_api::{dev::DevApiServer, DenyUnsafe};
 use sc_transaction_pool_api::TransactionPool;
 use substrate_frame_rpc_system::{System, SystemApiServer};
-
-/// orml rpc
-use orml_oracle_rpc::{Oracle, OracleApiServer};
-use orml_tokens_rpc::{Tokens, TokensApiServer};
-
-/// module rpc
-pub use evm_rpc::{EVMApiServer, EVMRuntimeRPCApi, EVM};
 
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpsee::RpcModule<()>;
@@ -65,9 +58,6 @@ where
 	C: Send + Sync + 'static,
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
-	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, runtime_common::TimeStampedPrice>,
-	C::Api: orml_tokens_rpc::TokensRuntimeApi<Block, CurrencyId, Balance>,
-	C::Api: EVMRuntimeRPCApi<Block, Balance>,
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + Sync + Send + 'static,
 {
@@ -82,12 +72,6 @@ where
 	module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
 	module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 
-	// Making synchronous calls in light client freezes the browser currently,
-	// more context: https://github.com/paritytech/substrate/pull/3480
-	// These RPCs should use an asynchronous caller instead.
-	module.merge(Oracle::new(client.clone()).into_rpc())?;
-	module.merge(Tokens::new(client.clone()).into_rpc())?;
-	module.merge(EVM::new(client.clone(), deny_unsafe).into_rpc())?;
 	module.merge(Dev::new(client, deny_unsafe).into_rpc())?;
 
 	if let Some(command_sink) = command_sink {

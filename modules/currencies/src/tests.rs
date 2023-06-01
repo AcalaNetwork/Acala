@@ -230,7 +230,7 @@ fn multi_currency_should_work() {
 		.one_hundred_for_alice_n_bob()
 		.build()
 		.execute_with(|| {
-			<EVM as EVMTrait<AccountId>>::push_origin(alice());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 			assert_ok!(Currencies::transfer(Some(alice()).into(), bob(), X_TOKEN_ID, 50));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 50);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 150);
@@ -544,7 +544,7 @@ fn erc20_ensure_withdraw_should_work() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			<EVM as EVMTrait<AccountId>>::push_origin(alice());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 			assert_ok!(Currencies::ensure_can_withdraw(
 				CurrencyId::Erc20(erc20_address()),
 				&alice(),
@@ -583,7 +583,7 @@ fn erc20_transfer_should_work() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			<EVM as EVMTrait<AccountId>>::push_origin(eva());
+			<EVM as EVMTrait<AccountId>>::set_origin(eva());
 
 			assert_ok!(Currencies::transfer(
 				RuntimeOrigin::signed(alice()),
@@ -656,8 +656,8 @@ fn erc20_transfer_should_fail() {
 				Error::<Runtime>::RealOriginNotFound
 			);
 
-			<EVM as EVMTrait<AccountId>>::push_origin(alice());
-			<EVM as EVMTrait<AccountId>>::push_origin(bob());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
+			<EVM as EVMTrait<AccountId>>::set_origin(bob());
 
 			// empty address
 			assert!(Currencies::transfer(
@@ -843,7 +843,7 @@ fn erc20_repatriate_reserved_should_work() {
 		.execute_with(|| {
 			deploy_contracts();
 			let bob_balance = 100;
-			<EVM as EVMTrait<AccountId>>::push_origin(alice());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 			assert_ok!(Currencies::transfer(
 				RuntimeOrigin::signed(alice()),
 				bob(),
@@ -975,7 +975,7 @@ fn erc20_invalid_operation() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			<EVM as EVMTrait<AccountId>>::push_origin(alice());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 
 			assert_noop!(
 				Currencies::update_balance(RuntimeOrigin::root(), alice(), CurrencyId::Erc20(erc20_address()), 1),
@@ -994,7 +994,7 @@ fn erc20_withdraw_deposit_works() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			<EVM as EVMTrait<AccountId>>::push_origin(alice());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 
 			let erc20_holding_account = MockAddressMapping::get_account_id(&Erc20HoldingAccount::get());
 
@@ -1089,7 +1089,7 @@ fn fungible_inspect_trait_should_work() {
 			// Test for Inspect::balance
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(NATIVE_CURRENCY_ID, &alice()),
-				48600
+				48690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(X_TOKEN_ID, &alice()),
@@ -1099,22 +1099,22 @@ fn fungible_inspect_trait_should_work() {
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE
 			);
-			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 48600);
-			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&alice()), 48600);
+			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 48690);
+			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&alice()), 48690);
 
 			// Test for Inspect::reducible_balance. No locks or reserves
 			// With Keep alive
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(NATIVE_CURRENCY_ID, &alice(), true),
-				48598
+				48688
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), true),
-				48598
+				48688
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), true),
-				48598
+				48688
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(X_TOKEN_ID, &alice(), true),
@@ -1133,7 +1133,7 @@ fn fungible_inspect_trait_should_work() {
 			// without Keep alive.
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(NATIVE_CURRENCY_ID, &alice(), false),
-				48600
+				48690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(X_TOKEN_ID, &alice(), false),
@@ -1149,11 +1149,11 @@ fn fungible_inspect_trait_should_work() {
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), false),
-				48600
+				48690
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), false),
-				48600
+				48690
 			);
 
 			// Set some locks
@@ -1163,7 +1163,7 @@ fn fungible_inspect_trait_should_work() {
 			// Test Inspect::reducible_balance with locks
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(NATIVE_CURRENCY_ID, &alice(), true),
-				47600
+				47690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(X_TOKEN_ID, &alice(), true),
@@ -1179,16 +1179,16 @@ fn fungible_inspect_trait_should_work() {
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), true),
-				47600
+				47690
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), true),
-				47600
+				47690
 			);
 
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(NATIVE_CURRENCY_ID, &alice(), false),
-				47600
+				47690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(X_TOKEN_ID, &alice(), false),
@@ -1204,11 +1204,11 @@ fn fungible_inspect_trait_should_work() {
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), false),
-				47600
+				47690
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(&alice(), false),
-				47600
+				47690
 			);
 
 			// Test for Inspect::can_deposit
@@ -1314,11 +1314,11 @@ fn fungible_inspect_trait_should_work() {
 			);
 
 			assert_eq!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 47600 + 1),
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 47690 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 47600 + 1),
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 47690 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(
@@ -1683,7 +1683,7 @@ fn fungible_transfer_trait_should_work() {
 			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&bob()), 20000);
 
 			deploy_contracts();
-			<EVM as EVMTrait<AccountId>>::push_origin(alice());
+			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE
@@ -2575,7 +2575,7 @@ fn transfer_erc20_will_charge_gas() {
 		assert_eq!(
 			dispatch_info.weight,
 			<Runtime as module::Config>::WeightInfo::transfer_non_native_currency()
-				+ Weight::from_ref_time(support::evm::limits::erc20::TRANSFER.gas) // mock GasToWeight is 1:1
+				+ Weight::from_parts(support::evm::limits::erc20::TRANSFER.gas, 0) // mock GasToWeight is 1:1
 		);
 
 		let dispatch_info = module::Call::<Runtime>::transfer {

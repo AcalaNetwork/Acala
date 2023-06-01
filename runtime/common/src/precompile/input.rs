@@ -26,7 +26,7 @@ use module_evm::{runner::state::PrecompileFailure, ExitRevert};
 use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
 use primitives::{Balance, CurrencyId, DexShare};
 use sp_core::{H160, U256};
-use sp_runtime::traits::Convert;
+use sp_runtime::{traits::Convert, DispatchError};
 use sp_std::prelude::*;
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
@@ -278,6 +278,14 @@ impl Output {
 
 	pub fn encode_address_array(b: Vec<H160>) -> Vec<u8> {
 		ethabi::encode(&[Token::Array(b.into_iter().map(Token::Address).collect())])
+	}
+
+	pub fn encode_error_msg(info: &str, err: DispatchError) -> Vec<u8> {
+		let mut msg = Vec::new();
+		msg.extend_from_slice(info.as_bytes());
+		msg.extend_from_slice(": ".as_bytes());
+		msg.extend_from_slice(Into::<&str>::into(err).as_bytes());
+		msg
 	}
 }
 

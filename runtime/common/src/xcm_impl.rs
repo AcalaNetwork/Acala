@@ -22,7 +22,7 @@ use codec::Encode;
 use frame_support::{traits::Get, weights::constants::WEIGHT_REF_TIME_PER_SECOND};
 use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
-use primitives::{Balance, CurrencyId};
+use primitives::{evm::EvmAddress, Balance, CurrencyId};
 use sp_core::bounded::BoundedVec;
 use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
 use sp_std::{marker::PhantomData, prelude::*};
@@ -111,7 +111,7 @@ where
 			X::drop_assets(origin, asset_traps.into(), context);
 		}
 		// TODO #2492: Put the real weight in there.
-		XcmWeight::from_ref_time(0)
+		XcmWeight::from_parts(0, 0)
 	}
 }
 
@@ -256,7 +256,7 @@ impl<
 		let origin = origin.into();
 		let account = AccountIdConvert::convert(origin);
 		let clear = if let Ok(account) = account {
-			EVMBridge::push_origin(account);
+			EVMBridge::push_xcm_origin(account);
 			true
 		} else {
 			false
@@ -265,13 +265,47 @@ impl<
 		let res = xcm_executor::XcmExecutor::<Config>::execute(origin, weighed_message, message_hash, weight_credit);
 
 		if clear {
-			EVMBridge::pop_origin();
+			EVMBridge::pop_xcm_origin();
 		}
 		res
 	}
 
 	fn charge_fees(origin: impl Into<MultiLocation>, fees: MultiAssets) -> XcmResult {
 		xcm_executor::XcmExecutor::<Config>::charge_fees(origin, fees)
+	}
+}
+
+/// Convert `AccountKey20` to `AccountId`
+pub struct AccountKey20Aliases<Network, AccountId, AddressMapping>(PhantomData<(Network, AccountId, AddressMapping)>);
+impl<Network, AccountId, AddressMapping> xcm_executor::traits::Convert<MultiLocation, AccountId>
+	for AccountKey20Aliases<Network, AccountId, AddressMapping>
+where
+	Network: Get<Option<NetworkId>>,
+	AccountId: From<[u8; 32]> + Into<[u8; 32]> + Clone,
+	AddressMapping: module_support::AddressMapping<AccountId>,
+{
+	fn convert(location: MultiLocation) -> Result<AccountId, MultiLocation> {
+		let key = match location {
+			MultiLocation {
+				parents: 0,
+				interior: X1(AccountKey20 { key, network: None }),
+			} => key,
+			MultiLocation {
+				parents: 0,
+				interior: X1(AccountKey20 { key, network }),
+			} if network == Network::get() => key,
+			_ => return Err(location),
+		};
+
+		Ok(AddressMapping::get_account_id(&EvmAddress::from(key)))
+	}
+
+	fn reverse(who: AccountId) -> Result<MultiLocation, AccountId> {
+		// NOTE: Not sure whether to use AccountId32 or AccountKey20, not implemented for now
+		// Ok(AccountKey20 { key: AddressMapping::get_or_create_evm_address(who), network: Network::get()
+		// }.into())
+		// Ok(AccountId32 { id: who.into(), network: Network::get() }.into())
+		Err(who)
 	}
 }
 
@@ -374,11 +408,11 @@ mod tests {
 			let asset: MultiAsset = (Parent, 100).into();
 			let assets: Assets = asset.into();
 			let mut trader = <FixedRateOfAsset<(), (), MockNoneBuyWeightRate>>::new();
-			let buy_weight = trader.buy_weight(XcmWeight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND), assets.clone());
+			let buy_weight = trader.buy_weight(XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0), assets.clone());
 			assert_noop!(buy_weight, XcmError::TooExpensive);
 
 			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockFixedBuyWeightRate<FixedRate>>>::new();
-			let buy_weight = trader.buy_weight(XcmWeight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND), assets.clone());
+			let buy_weight = trader.buy_weight(XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0), assets.clone());
 			let asset: MultiAsset = (Parent, 90).into();
 			let assets: Assets = asset.into();
 			assert_ok!(buy_weight, assets.clone());

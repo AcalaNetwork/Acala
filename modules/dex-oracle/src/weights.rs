@@ -58,27 +58,27 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn on_initialize_with_update_average_prices(n: u32, u: u32,) -> Weight {
-		Weight::from_ref_time(0)
+		Weight::from_parts(0, 0)
 			// Standard Error: 162_000
-			.saturating_add(Weight::from_ref_time(32_749_000).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(32_749_000, 0).saturating_mul(n as u64))
 			// Standard Error: 162_000
-			.saturating_add(Weight::from_ref_time(22_671_000).saturating_mul(u as u64))
+			.saturating_add(Weight::from_parts(22_671_000, 0).saturating_mul(u as u64))
 			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(n as u64)))
 			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
 			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(u as u64)))
 	}
 	fn enable_average_price() -> Weight {
-		Weight::from_ref_time(27_000_000)
+		Weight::from_parts(27_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	fn disable_average_price() -> Weight {
-		Weight::from_ref_time(11_000_000)
+		Weight::from_parts(11_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	fn update_average_price_interval() -> Weight {
-		Weight::from_ref_time(12_000_000)
+		Weight::from_parts(12_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -87,27 +87,27 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_initialize_with_update_average_prices(n: u32, u: u32,) -> Weight {
-		Weight::from_ref_time(0)
+		Weight::from_parts(0, 0)
 			// Standard Error: 162_000
-			.saturating_add(Weight::from_ref_time(32_749_000).saturating_mul(n as u64))
+			.saturating_add(Weight::from_parts(32_749_000, 0).saturating_mul(n as u64))
 			// Standard Error: 162_000
-			.saturating_add(Weight::from_ref_time(22_671_000).saturating_mul(u as u64))
+			.saturating_add(Weight::from_parts(22_671_000, 0).saturating_mul(u as u64))
 			.saturating_add(RocksDbWeight::get().reads((2 as u64).saturating_mul(n as u64)))
 			.saturating_add(RocksDbWeight::get().reads((2 as u64).saturating_mul(u as u64)))
 			.saturating_add(RocksDbWeight::get().writes((2 as u64).saturating_mul(u as u64)))
 	}
 	fn enable_average_price() -> Weight {
-		Weight::from_ref_time(27_000_000)
+		Weight::from_parts(27_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(4 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn disable_average_price() -> Weight {
-		Weight::from_ref_time(11_000_000)
+		Weight::from_parts(11_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn update_average_price_interval() -> Weight {
-		Weight::from_ref_time(12_000_000)
+		Weight::from_parts(12_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}

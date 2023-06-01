@@ -66,7 +66,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Honzon Authorization (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn authorize() -> Weight {
-		Weight::from_ref_time(45_674_000)
+		Weight::from_parts(45_674_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
@@ -74,7 +74,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Honzon Authorization (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	fn unauthorize() -> Weight {
-		Weight::from_ref_time(91_834_000)
+		Weight::from_parts(91_834_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
@@ -82,9 +82,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Balances Reserves (r:1 w:0)
 	// Storage: Honzon Authorization (r:0 w:1)
 	fn unauthorize_all(c: u32, ) -> Weight {
-		Weight::from_ref_time(51_744_000)
+		Weight::from_parts(51_744_000, 0)
 			// Standard Error: 866_000
-			.saturating_add(Weight::from_ref_time(652_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(652_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
@@ -104,7 +104,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: AcalaOracle Values (r:1 w:0)
 	// Storage: AssetRegistry AssetMetadatas (r:2 w:0)
 	fn adjust_loan() -> Weight {
-		Weight::from_ref_time(142_855_000)
+		Weight::from_parts(142_855_000, 0)
 			.saturating_add(T::DbWeight::get().reads(16 as u64))
 			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
@@ -122,7 +122,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: System Account (r:1 w:1)
 	// Storage: Loans TotalPositions (r:1 w:1)
 	fn transfer_loan_from() -> Weight {
-		Weight::from_ref_time(120_478_000)
+		Weight::from_parts(120_478_000, 0)
 			.saturating_add(T::DbWeight::get().reads(17 as u64))
 			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}
@@ -150,7 +150,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: StableAsset Pools (r:1 w:0)
 	// Storage: AggregatedDex AggregatedSwapPaths (r:1 w:0)
 	fn close_loan_has_debit_by_dex() -> Weight {
-		Weight::from_ref_time(349_743_000)
+		Weight::from_parts(349_743_000, 0)
 			.saturating_add(T::DbWeight::get().reads(35 as u64))
 			.saturating_add(T::DbWeight::get().writes(16 as u64))
 	}
@@ -172,7 +172,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: AcalaOracle Values (r:1 w:0)
 	// Storage: AssetRegistry AssetMetadatas (r:2 w:0)
 	fn expand_position_collateral() -> Weight {
-		Weight::from_ref_time(227_393_000)
+		Weight::from_parts(227_393_000, 0)
 			.saturating_add(T::DbWeight::get().reads(23 as u64))
 			.saturating_add(T::DbWeight::get().writes(12 as u64))
 	}
@@ -191,7 +191,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Loans TotalPositions (r:1 w:1)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	fn shrink_position_debit() -> Weight {
-		Weight::from_ref_time(230_779_000)
+		Weight::from_parts(230_779_000, 0)
 			.saturating_add(T::DbWeight::get().reads(19 as u64))
 			.saturating_add(T::DbWeight::get().writes(13 as u64))
 	}
@@ -209,7 +209,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Homa ToBondPool (r:1 w:0)
 	// Storage: Homa TotalVoidLiquid (r:1 w:0)
 	fn transfer_debit() -> Weight {
-		Weight::from_ref_time(196_453_000)
+		Weight::from_parts(196_453_000, 0)
 			.saturating_add(T::DbWeight::get().reads(21 as u64))
 			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
@@ -223,7 +223,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Homa TotalVoidLiquid (r:1 w:0)
 	// Storage: CdpEngine DebitExchangeRate (r:1 w:0)
 	fn precompile_get_current_collateral_ratio() -> Weight {
-		Weight::from_ref_time(44_244_000)
+		Weight::from_parts(44_244_000, 0)
 			.saturating_add(T::DbWeight::get().reads(11 as u64))
 	}
 }
@@ -231,55 +231,55 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn authorize() -> Weight {
-		Weight::from_ref_time(45_674_000)
+		Weight::from_parts(45_674_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 	fn unauthorize() -> Weight {
-		Weight::from_ref_time(91_834_000)
+		Weight::from_parts(91_834_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 	fn unauthorize_all(c: u32, ) -> Weight {
-		Weight::from_ref_time(51_744_000)
+		Weight::from_parts(51_744_000, 0)
 			// Standard Error: 866_000
-			.saturating_add(Weight::from_ref_time(652_000).saturating_mul(c as u64))
+			.saturating_add(Weight::from_parts(652_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	fn adjust_loan() -> Weight {
-		Weight::from_ref_time(142_855_000)
+		Weight::from_parts(142_855_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(16 as u64))
 			.saturating_add(RocksDbWeight::get().writes(8 as u64))
 	}
 	fn transfer_loan_from() -> Weight {
-		Weight::from_ref_time(120_478_000)
+		Weight::from_parts(120_478_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(17 as u64))
 			.saturating_add(RocksDbWeight::get().writes(8 as u64))
 	}
 	fn close_loan_has_debit_by_dex() -> Weight {
-		Weight::from_ref_time(349_743_000)
+		Weight::from_parts(349_743_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(35 as u64))
 			.saturating_add(RocksDbWeight::get().writes(16 as u64))
 	}
 	fn expand_position_collateral() -> Weight {
-		Weight::from_ref_time(227_393_000)
+		Weight::from_parts(227_393_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(23 as u64))
 			.saturating_add(RocksDbWeight::get().writes(12 as u64))
 	}
 	fn shrink_position_debit() -> Weight {
-		Weight::from_ref_time(230_779_000)
+		Weight::from_parts(230_779_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(19 as u64))
 			.saturating_add(RocksDbWeight::get().writes(13 as u64))
 	}
 	fn transfer_debit() -> Weight {
-		Weight::from_ref_time(196_453_000)
+		Weight::from_parts(196_453_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(21 as u64))
 			.saturating_add(RocksDbWeight::get().writes(7 as u64))
 	}
 	fn precompile_get_current_collateral_ratio() -> Weight {
-		Weight::from_ref_time(44_244_000)
+		Weight::from_parts(44_244_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(11 as u64))
 	}
 }

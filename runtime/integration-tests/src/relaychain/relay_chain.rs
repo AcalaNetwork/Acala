@@ -29,6 +29,7 @@ mod karura_tests {
 	use codec::Decode;
 	use module_relaychain::RelayChainCallBuilder;
 	use module_support::CallBuilder;
+	use pallet_staking::StakingLedger;
 	use xcm_emulator::TestExt;
 
 	type KusamaCallBuilder = RelayChainCallBuilder<ParachainInfo>;
@@ -37,7 +38,7 @@ mod karura_tests {
 	/// Tests the staking_withdraw_unbonded call.
 	/// Also tests utility_as_derivative call.
 	fn relaychain_staking_withdraw_unbonded_works() {
-		let homa_lite_sub_account: AccountId =
+		let homa_sub_account: AccountId =
 			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 		KusamaNet::execute_with(|| {
 			kusama_runtime::Staking::trigger_new_era(0, BoundedVec::default());
@@ -45,21 +46,21 @@ mod karura_tests {
 			// Transfer some KSM into the parachain.
 			assert_ok!(kusama_runtime::Balances::transfer(
 				kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-				MultiAddress::Id(homa_lite_sub_account.clone()),
+				MultiAddress::Id(homa_sub_account.clone()),
 				1_001_000_000_000_000
 			));
 
 			// bond and unbond some fund for staking
 			assert_ok!(kusama_runtime::Staking::bond(
-				kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
-				MultiAddress::Id(homa_lite_sub_account.clone()),
+				kusama_runtime::RuntimeOrigin::signed(homa_sub_account.clone()),
+				MultiAddress::Id(homa_sub_account.clone()),
 				1_000_000_000_000_000,
 				pallet_staking::RewardDestination::<AccountId>::Staked,
 			));
 
 			kusama_runtime::System::set_block_number(100);
 			assert_ok!(kusama_runtime::Staking::unbond(
-				kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
+				kusama_runtime::RuntimeOrigin::signed(homa_sub_account.clone()),
 				1_000_000_000_000_000
 			));
 
@@ -71,14 +72,14 @@ mod karura_tests {
 			}
 
 			assert_eq!(
-				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
+				kusama_runtime::Balances::free_balance(&homa_sub_account.clone()),
 				1_001_000_000_000_000
 			);
 
 			// Transfer fails because liquidity is locked.
 			assert_noop!(
 				kusama_runtime::Balances::transfer(
-					kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
+					kusama_runtime::RuntimeOrigin::signed(homa_sub_account.clone()),
 					MultiAddress::Id(ALICE.into()),
 					1_000_000_000_000_000
 				),
@@ -88,19 +89,26 @@ mod karura_tests {
 			// Uncomment this to test if withdraw_unbonded and transfer_keep_alive
 			// work without XCM. Used to isolate error when the test fails.
 			// assert_ok!(kusama_runtime::Staking::withdraw_unbonded(
-			// 	kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+			// 	kusama_runtime::Origin::signed(homa_sub_account.clone()),
 			// 	5
 			// ));
 		});
 
 		Karura::execute_with(|| {
+			// send v3 xcm message to relaychain
+			assert_ok!(PolkadotXcm::force_xcm_version(
+				RuntimeOrigin::root(),
+				Box::new(MultiLocation::new(1, Here)),
+				3
+			));
+
 			// Call withdraw_unbonded as the homa subaccount
-			let xcm_message =
+			let transact_call =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 0);
 			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
-				xcm_message,
-				20_000_000_000,
-				XcmWeight::from_ref_time(10_000_000_000),
+				transact_call,
+				10_000_000_000,
+				XcmWeight::from_parts(10_000_000_000, 1024 * 128),
 			);
 
 			// Withdraw unbonded
@@ -109,18 +117,161 @@ mod karura_tests {
 
 		KusamaNet::execute_with(|| {
 			assert_eq!(
-				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
+				kusama_runtime::Balances::free_balance(&homa_sub_account.clone()),
 				1_001_000_000_000_000
 			);
 
 			assert_ok!(kusama_runtime::Balances::transfer(
-				kusama_runtime::RuntimeOrigin::signed(homa_lite_sub_account.clone()),
+				kusama_runtime::RuntimeOrigin::signed(homa_sub_account.clone()),
 				MultiAddress::Id(ALICE.into()),
 				1_000_000_000_000_000
 			));
 			assert_eq!(
-				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
+				kusama_runtime::Balances::free_balance(&homa_sub_account.clone()),
 				1_000_000_000_000
+			);
+		});
+	}
+
+	#[test]
+	/// Tests the staking_bond_extra call.
+	/// Also tests utility_as_derivative call.
+	fn relaychain_staking_bond_extra_works() {
+		let homa_sub_account: AccountId =
+			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+		KusamaNet::execute_with(|| {
+			kusama_runtime::Staking::trigger_new_era(0, BoundedVec::default());
+
+			// Transfer some KSM into the parachain.
+			assert_ok!(kusama_runtime::Balances::transfer(
+				kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
+				MultiAddress::Id(homa_sub_account.clone()),
+				1_001_000_000_000_000
+			));
+
+			// bond some fund for staking
+			assert_ok!(kusama_runtime::Staking::bond(
+				kusama_runtime::RuntimeOrigin::signed(homa_sub_account.clone()),
+				MultiAddress::Id(homa_sub_account.clone()),
+				2_000_000_000_000,
+				pallet_staking::RewardDestination::<AccountId>::Staked,
+			));
+
+			assert_eq!(
+				kusama_runtime::Staking::ledger(&homa_sub_account),
+				Some(StakingLedger {
+					stash: homa_sub_account.clone(),
+					total: 2_000_000_000_000,
+					active: 2_000_000_000_000,
+					unlocking: BoundedVec::default(),
+					claimed_rewards: BoundedVec::default(),
+				})
+			);
+		});
+
+		Karura::execute_with(|| {
+			// send v3 xcm message to relaychain
+			assert_ok!(PolkadotXcm::force_xcm_version(
+				RuntimeOrigin::root(),
+				Box::new(MultiLocation::new(1, Here)),
+				3
+			));
+
+			// Call bond_extra as the homa subaccount
+			let transact_call = KusamaCallBuilder::utility_as_derivative_call(
+				KusamaCallBuilder::staking_bond_extra(5_000_000_000_000),
+				0,
+			);
+			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
+				transact_call,
+				10_000_000_000,
+				XcmWeight::from_parts(20_000_000_000, 1024 * 128),
+			);
+
+			// bond_extra
+			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
+		});
+
+		KusamaNet::execute_with(|| {
+			assert_eq!(
+				kusama_runtime::Staking::ledger(&homa_sub_account),
+				Some(StakingLedger {
+					stash: homa_sub_account.clone(),
+					total: 7_000_000_000_000,
+					active: 7_000_000_000_000,
+					unlocking: BoundedVec::default(),
+					claimed_rewards: BoundedVec::default(),
+				})
+			);
+
+			assert_eq!(
+				kusama_runtime::Balances::free_balance(&homa_sub_account.clone()),
+				1_001_000_000_000_000
+			);
+		});
+	}
+
+	#[test]
+	/// Tests the staking_unbond call.
+	/// Also tests utility_as_derivative call.
+	fn relaychain_staking_unbond_works() {
+		let homa_sub_account: AccountId =
+			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+		KusamaNet::execute_with(|| {
+			kusama_runtime::Staking::trigger_new_era(0, BoundedVec::default());
+
+			// Transfer some KSM into the parachain.
+			assert_ok!(kusama_runtime::Balances::transfer(
+				kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
+				MultiAddress::Id(homa_sub_account.clone()),
+				1_001_000_000_000_000
+			));
+
+			// bond some fund for staking
+			assert_ok!(kusama_runtime::Staking::bond(
+				kusama_runtime::RuntimeOrigin::signed(homa_sub_account.clone()),
+				MultiAddress::Id(homa_sub_account.clone()),
+				1_000_000_000_000_000,
+				pallet_staking::RewardDestination::<AccountId>::Staked,
+			));
+
+			assert_eq!(
+				kusama_runtime::Staking::ledger(&homa_sub_account),
+				Some(StakingLedger {
+					stash: homa_sub_account.clone(),
+					total: 1_000_000_000_000_000,
+					active: 1_000_000_000_000_000,
+					unlocking: BoundedVec::default(),
+					claimed_rewards: BoundedVec::default(),
+				})
+			);
+		});
+
+		Karura::execute_with(|| {
+			// send v3 xcm message to relaychain
+			assert_ok!(PolkadotXcm::force_xcm_version(
+				RuntimeOrigin::root(),
+				Box::new(MultiLocation::new(1, Here)),
+				3
+			));
+
+			// Call unbond as the homa subaccount
+			let transact_call =
+				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_unbond(50_000_000_000_000), 0);
+			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
+				transact_call,
+				10_000_000_000,
+				XcmWeight::from_parts(20_000_000_000, 1024 * 128),
+			);
+
+			// unbond
+			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
+		});
+
+		KusamaNet::execute_with(|| {
+			assert_eq!(
+				kusama_runtime::Staking::ledger(&homa_sub_account).unwrap().active,
+				950_000_000_000_000
 			);
 		});
 	}
@@ -144,13 +295,20 @@ mod karura_tests {
 		});
 
 		Karura::execute_with(|| {
+			// send v3 xcm message to relaychain
+			assert_ok!(PolkadotXcm::force_xcm_version(
+				RuntimeOrigin::root(),
+				Box::new(MultiLocation::new(1, Here)),
+				3
+			));
+
 			// Transfer all remaining, but leave enough fund to pay for the XCM transaction.
 			let xcm_message = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1_970_000_000_000);
 
 			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
 				xcm_message,
-				20_000_000_000,
-				XcmWeight::from_ref_time(10_000_000_000),
+				10_000_000_000,
+				XcmWeight::from_parts(20_000_000_000, 1024 * 128),
 			);
 
 			// Withdraw unbonded
@@ -165,7 +323,7 @@ mod karura_tests {
 			// Only leftover XCM fee remains in the account
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				26_891_014_868
+				23_612_959_144
 			);
 		});
 	}
