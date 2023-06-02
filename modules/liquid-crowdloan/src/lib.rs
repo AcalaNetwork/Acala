@@ -48,7 +48,7 @@ pub mod module {
 
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		/// Liquid crowdloan currency Id, i.e. LDOT for Polkadot.
+		/// Liquid crowdloan currency Id, i.e. LCDOT for Polkadot.
 		#[pallet::constant]
 		type LiquidCrowdloanCurrencyId: Get<CurrencyId>;
 
