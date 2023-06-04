@@ -46,7 +46,7 @@ where
 	RebaseTokenAmountConvertor: ConvertBalance<Balance, Balance, AssetId = CurrencyId>,
 	ErrorConvertor: Convert<RebasedStableAssetError, DispatchError>,
 	CurrencyId: Copy,
-	Balance: Copy,
+	Balance: Copy + sp_runtime::traits::Bounded,
 {
 	type AssetId = CurrencyId;
 	type AtLeast64BitUnsigned = Balance;
@@ -106,17 +106,17 @@ where
 	) -> DispatchResult {
 		let pool_info = StableAsset::pool(pool_id)
 			.ok_or_else(|| ErrorConvertor::convert(RebasedStableAssetError::InvalidPoolId))?;
-		let rebased_amounts: Vec<Self::Balance> = amounts
-			.iter()
-			.enumerate()
-			.map(|(index, amount)| {
-				if let Some(currency_id) = pool_info.assets.get(index) {
-					RebaseTokenAmountConvertor::convert_balance(*amount, *currency_id)
-				} else {
-					*amount
-				}
-			})
-			.collect();
+
+		let mut rebased_amounts: Vec<Self::Balance> = vec![];
+		for (index, amount) in amounts.iter().enumerate() {
+			let converted_balance = if let Some(currency_id) = pool_info.assets.get(index) {
+				RebaseTokenAmountConvertor::convert_balance(*amount, *currency_id)?
+			} else {
+				*amount
+			};
+
+			rebased_amounts.push(converted_balance);
+		}
 
 		StableAsset::mint(who, pool_id, rebased_amounts, min_mint_amount)
 	}
@@ -146,16 +146,16 @@ where
 			pool_id,
 			i,
 			j,
-			RebaseTokenAmountConvertor::convert_balance(dx, *input_currency_id),
-			RebaseTokenAmountConvertor::convert_balance(min_dy, *output_currency_id),
+			RebaseTokenAmountConvertor::convert_balance(dx, *input_currency_id)?,
+			RebaseTokenAmountConvertor::convert_balance(min_dy, *output_currency_id)?,
 			asset_length,
 		)
 		.map(|(dx, dy)| {
-			(
-				RebaseTokenAmountConvertor::convert_balance_back(dx, *input_currency_id),
-				RebaseTokenAmountConvertor::convert_balance_back(dy, *output_currency_id),
-			)
-		})
+			Ok((
+				RebaseTokenAmountConvertor::convert_balance_back(dx, *input_currency_id)?,
+				RebaseTokenAmountConvertor::convert_balance_back(dy, *output_currency_id)?,
+			))
+		})?
 	}
 
 	fn redeem_proportion(
@@ -166,17 +166,15 @@ where
 	) -> DispatchResult {
 		let pool_info = StableAsset::pool(pool_id)
 			.ok_or_else(|| ErrorConvertor::convert(RebasedStableAssetError::InvalidPoolId))?;
-		let rebased_min_redeem_amounts: Vec<Self::Balance> = min_redeem_amounts
-			.iter()
-			.enumerate()
-			.map(|(index, redeem_amount)| {
-				if let Some(currency_id) = pool_info.assets.get(index) {
-					RebaseTokenAmountConvertor::convert_balance(*redeem_amount, *currency_id)
-				} else {
-					*redeem_amount
-				}
-			})
-			.collect();
+		let mut rebased_min_redeem_amounts: Vec<Self::Balance> = vec![];
+		for (index, redeem_amount) in min_redeem_amounts.iter().enumerate() {
+			let converted_balance = if let Some(currency_id) = pool_info.assets.get(index) {
+				RebaseTokenAmountConvertor::convert_balance(*redeem_amount, *currency_id)?
+			} else {
+				*redeem_amount
+			};
+			rebased_min_redeem_amounts.push(converted_balance);
+		}
 
 		StableAsset::redeem_proportion(who, pool_id, amount, rebased_min_redeem_amounts)
 	}
@@ -195,7 +193,7 @@ where
 			.assets
 			.get(i as usize)
 			.ok_or_else(|| ErrorConvertor::convert(RebasedStableAssetError::InvalidTokenIndex))?;
-		let rebased_min_redeem_amount = RebaseTokenAmountConvertor::convert_balance(min_redeem_amount, *currency_id);
+		let rebased_min_redeem_amount = RebaseTokenAmountConvertor::convert_balance(min_redeem_amount, *currency_id)?;
 
 		StableAsset::redeem_single(who, pool_id, amount, i, rebased_min_redeem_amount, asset_length)
 	}
@@ -208,17 +206,15 @@ where
 	) -> DispatchResult {
 		let pool_info = StableAsset::pool(pool_id)
 			.ok_or_else(|| ErrorConvertor::convert(RebasedStableAssetError::InvalidPoolId))?;
-		let rebased_amounts: Vec<Self::Balance> = amounts
-			.iter()
-			.enumerate()
-			.map(|(index, amount)| {
-				if let Some(currency_id) = pool_info.assets.get(index) {
-					RebaseTokenAmountConvertor::convert_balance(*amount, *currency_id)
-				} else {
-					*amount
-				}
-			})
-			.collect();
+		let mut rebased_amounts: Vec<Self::Balance> = vec![];
+		for (index, amount) in amounts.iter().enumerate() {
+			let converted_balance = if let Some(currency_id) = pool_info.assets.get(index) {
+				RebaseTokenAmountConvertor::convert_balance(*amount, *currency_id)?
+			} else {
+				*amount
+			};
+			rebased_amounts.push(converted_balance);
+		}
 
 		StableAsset::redeem_multi(who, pool_id, rebased_amounts, max_redeem_amount)
 	}
@@ -321,21 +317,21 @@ where
 		amount_bal: Self::Balance,
 	) -> Option<RedeemProportionResult<Self::Balance>> {
 		StableAsset::get_redeem_proportion_amount(pool_info, amount_bal).map(|mut r| {
-			r.amounts = r
-				.amounts
-				.iter()
-				.enumerate()
-				.map(|(index, amount)| {
-					if let Some(currency_id) = pool_info.assets.get(index) {
-						RebaseTokenAmountConvertor::convert_balance_back(*amount, *currency_id)
-					} else {
-						*amount
-					}
-				})
-				.collect();
+			let mut rebased_amounts: Vec<Self::Balance> = vec![];
+			for (index, amount) in r.amounts.iter().enumerate() {
+				let converted_balance = if let Some(currency_id) = pool_info.assets.get(index) {
+					RebaseTokenAmountConvertor::convert_balance_back(*amount, *currency_id).ok()?
+				} else {
+					*amount
+				};
 
-			r
-		})
+				rebased_amounts.push(converted_balance);
+			}
+
+			r.amounts = rebased_amounts;
+
+			Some(r)
+		})?
 	}
 
 	fn get_best_route(
@@ -346,12 +342,12 @@ where
 		StableAsset::get_best_route(
 			input_asset,
 			output_asset,
-			RebaseTokenAmountConvertor::convert_balance(input_amount, input_asset),
+			RebaseTokenAmountConvertor::convert_balance(input_amount, input_asset).ok()?,
 		)
 		.map(|mut tuple| {
-			tuple.3 = RebaseTokenAmountConvertor::convert_balance_back(tuple.3, output_asset);
-			tuple
-		})
+			tuple.3 = RebaseTokenAmountConvertor::convert_balance_back(tuple.3, output_asset).ok()?;
+			Some(tuple)
+		})?
 	}
 
 	fn get_swap_output_amount(
@@ -368,13 +364,15 @@ where
 			pool_id,
 			input_index,
 			output_index,
-			RebaseTokenAmountConvertor::convert_balance(dx_bal, *input_currency_id),
+			RebaseTokenAmountConvertor::convert_balance(dx_bal, *input_currency_id).ok()?,
 		)
 		.map(|mut swap_result| {
-			swap_result.dx = RebaseTokenAmountConvertor::convert_balance_back(swap_result.dx, *input_currency_id);
-			swap_result.dy = RebaseTokenAmountConvertor::convert_balance_back(swap_result.dy, *output_currency_id);
-			swap_result
-		})
+			swap_result.dx =
+				RebaseTokenAmountConvertor::convert_balance_back(swap_result.dx, *input_currency_id).ok()?;
+			swap_result.dy =
+				RebaseTokenAmountConvertor::convert_balance_back(swap_result.dy, *output_currency_id).ok()?;
+			Some(swap_result)
+		})?
 	}
 
 	fn get_swap_input_amount(
@@ -391,12 +389,14 @@ where
 			pool_id,
 			input_index,
 			output_index,
-			RebaseTokenAmountConvertor::convert_balance(dy_bal, *output_currency_id),
+			RebaseTokenAmountConvertor::convert_balance(dy_bal, *output_currency_id).ok()?,
 		)
 		.map(|mut swap_result| {
-			swap_result.dx = RebaseTokenAmountConvertor::convert_balance_back(swap_result.dx, *input_currency_id);
-			swap_result.dy = RebaseTokenAmountConvertor::convert_balance_back(swap_result.dy, *output_currency_id);
-			swap_result
-		})
+			swap_result.dx =
+				RebaseTokenAmountConvertor::convert_balance_back(swap_result.dx, *input_currency_id).ok()?;
+			swap_result.dy =
+				RebaseTokenAmountConvertor::convert_balance_back(swap_result.dy, *output_currency_id).ok()?;
+			Some(swap_result)
+		})?
 	}
 }

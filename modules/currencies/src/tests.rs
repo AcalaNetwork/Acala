@@ -1376,7 +1376,7 @@ fn fungible_inspect_trait_should_work() {
 					&alice(),
 					Bounded::max_value()
 				),
-				WithdrawConsequence::NoFunds
+				WithdrawConsequence::BalanceLow
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::can_withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 100),
@@ -1594,7 +1594,7 @@ fn fungible_transfer_trait_should_work() {
 			);
 
 			System::reset_events();
-			assert_ok!(<Currencies as fungibles::Transfer<_>>::transfer(
+			assert_ok!(<Currencies as fungibles::Mutate<_>>::transfer(
 				NATIVE_CURRENCY_ID,
 				&alice(),
 				&bob(),
@@ -1614,7 +1614,7 @@ fn fungible_transfer_trait_should_work() {
 			}));
 
 			assert_noop!(
-				<Currencies as fungibles::Transfer<_>>::transfer(NATIVE_CURRENCY_ID, &alice(), &bob(), 489_999, true),
+				<Currencies as fungibles::Mutate<_>>::transfer(NATIVE_CURRENCY_ID, &alice(), &bob(), 489_999, true),
 				DispatchError::Module(ModuleError {
 					index: 1,
 					error: [4, 0, 0, 0],
@@ -1637,7 +1637,7 @@ fn fungible_transfer_trait_should_work() {
 			);
 			assert_eq!(<Currencies as fungibles::Inspect<_>>::balance(X_TOKEN_ID, &bob()), 0);
 			System::reset_events();
-			assert_ok!(<Currencies as fungibles::Transfer<_>>::transfer(
+			assert_ok!(<Currencies as fungibles::Mutate<_>>::transfer(
 				X_TOKEN_ID,
 				&alice(),
 				&bob(),
@@ -1670,7 +1670,7 @@ fn fungible_transfer_trait_should_work() {
 				490000
 			);
 			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&bob()), 10000);
-			assert_ok!(<AdaptedBasicCurrency as fungible::Transfer<_>>::transfer(
+			assert_ok!(<AdaptedBasicCurrency as fungible::Mutate<_>>::transfer(
 				&alice(),
 				&bob(),
 				10000,
@@ -1692,7 +1692,7 @@ fn fungible_transfer_trait_should_work() {
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &bob()),
 				0
 			);
-			assert_ok!(<Currencies as fungibles::Transfer<_>>::transfer(
+			assert_ok!(<Currencies as fungibles::Mutate<_>>::transfer(
 				CurrencyId::Erc20(erc20_address()),
 				&alice(),
 				&bob(),
