@@ -82,7 +82,7 @@ use sp_runtime::{
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
+	ApplyExtrinsicResult, ArithmeticError, DispatchResult, FixedPointNumber,
 };
 use sp_std::prelude::*;
 
@@ -1689,20 +1689,22 @@ pub struct ConvertBalanceHoma;
 impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 	type AssetId = CurrencyId;
 
-	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
+	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Result<Balance, ArithmeticError> {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate().saturating_mul_int(balance),
-			_ => balance,
+			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate()
+				.checked_mul_int(balance)
+				.ok_or(ArithmeticError::Overflow),
+			_ => Ok(balance),
 		}
 	}
 
-	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
+	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Result<Balance, ArithmeticError> {
 		match asset_id {
 			CurrencyId::Token(TokenSymbol::LDOT) => Homa::get_exchange_rate()
 				.reciprocal()
-				.and_then(|x| x.checked_mul_int(balance))
-				.unwrap_or_else(Bounded::max_value),
-			_ => balance,
+				.ok_or(ArithmeticError::DivisionByZero)
+				.and_then(|x| x.checked_mul_int(balance).ok_or(ArithmeticError::Overflow)),
+			_ => Ok(balance),
 		}
 	}
 }
