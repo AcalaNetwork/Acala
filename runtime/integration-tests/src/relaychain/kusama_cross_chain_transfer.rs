@@ -856,11 +856,9 @@ fn unspent_xcm_fee_is_returned_correctly() {
 
 	Karura::execute_with(|| {
 		// Construct a transfer XCM call with returning the deposit
-		let transfer_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::balances_transfer_keep_alive(
-			AccountId::from(BOB),
-			dollar_n,
-		);
-		let batch_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::utility_as_derivative_call(transfer_call, 0);
+		let transfer_call =
+			RelayChainCallBuilder::<ParachainInfo>::balances_transfer_keep_alive(AccountId::from(BOB), dollar_n);
+		let batch_call = RelayChainCallBuilder::<ParachainInfo>::utility_as_derivative_call(transfer_call, 0);
 		let weight = XcmWeight::from_parts(10_000_000_000, 0);
 		// Fee to transfer into the hold register
 		let asset = MultiAsset {
@@ -899,12 +897,10 @@ fn unspent_xcm_fee_is_returned_correctly() {
 
 	Karura::execute_with(|| {
 		// Construct a transfer using the RelaychainCallBuilder
-		let transfer_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::balances_transfer_keep_alive(
-			AccountId::from(BOB),
-			dollar_n,
-		);
-		let batch_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::utility_as_derivative_call(transfer_call, 0);
-		let finalized_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::finalize_call_into_xcm_message(
+		let transfer_call =
+			RelayChainCallBuilder::<ParachainInfo>::balances_transfer_keep_alive(AccountId::from(BOB), dollar_n);
+		let batch_call = RelayChainCallBuilder::<ParachainInfo>::utility_as_derivative_call(transfer_call, 0);
+		let finalized_call = RelayChainCallBuilder::<ParachainInfo>::finalize_call_into_xcm_message(
 			batch_call,
 			dollar_n,
 			XcmWeight::from_parts(10_000_000_000, 0),
@@ -938,7 +934,7 @@ fn trapped_asset() -> MultiAsset {
 	};
 
 	Karura::execute_with(|| {
-		let transfer_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::balances_transfer_keep_alive(
+		let transfer_call = RelayChainCallBuilder::<ParachainInfo>::balances_transfer_keep_alive(
 			AccountId::from(BOB),
 			dollar(NATIVE_CURRENCY),
 		);

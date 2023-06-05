@@ -32,7 +32,7 @@ mod karura_tests {
 	use pallet_staking::StakingLedger;
 	use xcm_emulator::TestExt;
 
-	type KusamaCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
+	type KusamaCallBuilder = RelayChainCallBuilder<ParachainInfo>;
 
 	#[test]
 	/// Tests the staking_withdraw_unbonded call.

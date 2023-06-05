@@ -125,6 +125,7 @@ module-session-manager = { path = "../../modules/session-manager", default-featu
 module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["polkadot"]}
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
 module-aggregated-dex = { path = "../../modules/aggregated-dex", default-features = false }
+module-liquid-crowdloan = { path = "../../modules/liquid-crowdloan", default-features = false }
 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
@@ -270,6 +271,7 @@ std = [
 	"module-transaction-pause/std",
 	"module-transaction-payment/std",
 	"module-xcm-interface/std",
+	"module-liquid-crowdloan/std",
 	"primitives/std",
 	"runtime-common/std",
 
@@ -418,6 +420,7 @@ try-runtime = [
 	"module-transaction-pause/try-runtime",
 	"module-transaction-payment/try-runtime",
 	"module-xcm-interface/try-runtime",
+	"module-liquid-crowdloan/try-runtime",
 
 	"primitives/try-runtime",
 

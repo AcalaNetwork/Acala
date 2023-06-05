@@ -1549,8 +1549,10 @@ impl module_xcm_interface::Config for Runtime {
 	type ParachainAccount = ParachainAccount;
 	type RelayChainUnbondingSlashingSpans = ConstU32<5>;
 	type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
-	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
+	type RelayChainCallBuilder = RelayChainCallBuilder<ParachainInfo>;
 	type XcmTransfer = XTokens;
+	type SelfLocation = xcm_config::SelfLocation;
+	type AccountIdToMultiLocation = xcm_config::AccountIdToMultiLocation;
 }
 
 impl orml_unknown_tokens::Config for Runtime {

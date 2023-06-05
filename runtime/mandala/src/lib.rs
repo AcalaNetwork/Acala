@@ -113,7 +113,7 @@ pub use runtime_common::{
 	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	MaxTipsOfPriority, OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price,
 	ProxyType, Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LCDOT, LDOT,
 };
 pub use xcm::{prelude::*, v3::Weight as XcmWeight};
 
@@ -180,6 +180,7 @@ parameter_types! {
 	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
 	// because transaction payment pallet will ensure the accounts always have enough ED.
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
+	pub const LiquidCrowdloanPalletId: PalletId = PalletId(*b"aca/lqcl");
 	// Ecosystem modules
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 	// lock identifier for earning module
@@ -1401,8 +1402,10 @@ impl module_xcm_interface::Config for Runtime {
 	type ParachainAccount = ParachainAccount;
 	type RelayChainUnbondingSlashingSpans = ConstU32<5>;
 	type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
-	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
+	type RelayChainCallBuilder = RelayChainCallBuilder<ParachainInfo>;
 	type XcmTransfer = XTokens;
+	type SelfLocation = xcm_config::SelfLocation;
+	type AccountIdToMultiLocation = xcm_config::AccountIdToMultiLocation;
 }
 
 parameter_types! {
@@ -1767,6 +1770,24 @@ impl module_idle_scheduler::Config for Runtime {
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
+parameter_types!(
+	// Crowdloan vault address: `132zsjMwGjNaUXF5XjUCDs2cDEq9Qao51TsL9RSUTGZbinVK`
+	pub CrowdloanVault: AccountId = AccountId::from(hex_literal::hex!("59fe89295c2e57d7b4d4d8be9e00a3802e513703ab4b5b424ed0a646e899d3c9"));
+	pub const LiquidCrowdloanCurrencyId: CurrencyId = LCDOT;
+);
+
+impl module_liquid_crowdloan::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Currencies;
+	type LiquidCrowdloanCurrencyId = LiquidCrowdloanCurrencyId;
+	type RelayChainCurrencyId = GetStakingCurrencyId;
+	type PalletId = LiquidCrowdloanPalletId;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type CrowdloanVault = CrowdloanVault;
+	type XcmTransfer = XcmInterface;
+	type WeightInfo = weights::module_liquid_crowdloan::WeightInfo<Runtime>;
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct ConvertEthereumTx;
 
@@ -2039,6 +2060,7 @@ construct_runtime!(
 		Incentives: module_incentives = 140,
 		NFT: module_nft = 141,
 		AssetRegistry: module_asset_registry = 142,
+		LiquidCrowdloan: module_liquid_crowdloan = 143,
 
 		// Parachain
 		ParachainInfo: parachain_info exclude_parts { Call } = 161,
@@ -2107,6 +2129,7 @@ mod benches {
 		[module_evm_accounts, benchmarking::evm_accounts]
 		[module_currencies, benchmarking::currencies]
 		[module_session_manager, benchmarking::session_manager]
+		[module_liquid_crowdloan, benchmarking::liquid_crowdloan]
 		[orml_tokens, benchmarking::tokens]
 		[orml_vesting, benchmarking::vesting]
 		[orml_auction, benchmarking::auction]

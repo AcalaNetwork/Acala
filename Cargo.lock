@@ -154,6 +154,7 @@ dependencies = [
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
+ "module-liquid-crowdloan",
  "module-loans",
  "module-nft",
  "module-prices",
@@ -5760,6 +5761,7 @@ dependencies = [
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
+ "module-liquid-crowdloan",
  "module-loans",
  "module-nft",
  "module-nominees-election",
@@ -6553,6 +6555,26 @@ dependencies = [
  "frame-system",
  "module-support",
  "orml-rewards",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-liquid-crowdloan"
+version = "2.16.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-support",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",

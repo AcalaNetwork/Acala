@@ -28,6 +28,8 @@ pub mod kusama_test_net;
 mod statemine;
 
 #[cfg(feature = "with-acala-runtime")]
+mod liquid_crowdloan;
+#[cfg(feature = "with-acala-runtime")]
 mod polkadot_cross_chain_transfer;
 #[cfg(feature = "with-acala-runtime")]
 pub mod polkadot_test_net;

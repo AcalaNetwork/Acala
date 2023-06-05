@@ -34,6 +34,7 @@ pub mod module_evm_accounts;
 pub mod module_homa;
 pub mod module_honzon;
 pub mod module_incentives;
+pub mod module_liquid_crowdloan;
 pub mod module_nft;
 pub mod module_prices;
 pub mod module_session_manager;
