@@ -236,7 +236,8 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				pallet_xcm::Call::force_xcm_version { .. }
 				| pallet_xcm::Call::force_default_xcm_version { .. }
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. }
+				| pallet_xcm::Call::force_suspension { .. } => {
 					return true;
 				}
 				pallet_xcm::Call::__Ignore { .. } => {
@@ -347,9 +348,18 @@ parameter_types! {
 	pub const MaxLocks: u32 = 50;
 }
 
+type CreditOf = frame_support::traits::fungible::Credit<<Runtime as frame_system::Config>::AccountId, Balances>;
+pub struct DustRemovalAdapter;
+impl OnUnbalanced<CreditOf> for DustRemovalAdapter {
+	fn on_nonzero_unbalanced(amount: CreditOf) {
+		let new_amount = NegativeImbalance::new(amount.peek());
+		Treasury::on_nonzero_unbalanced(new_amount);
+	}
+}
+
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
-	type DustRemoval = Treasury;
+	type DustRemoval = DustRemovalAdapter;
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
@@ -357,6 +367,10 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 parameter_types! {
@@ -387,6 +401,7 @@ parameter_types! {
 	pub const GeneralCouncilMotionDuration: BlockNumber = 3 * DAYS;
 	pub const CouncilDefaultMaxProposals: u32 = 20;
 	pub const CouncilDefaultMaxMembers: u32 = 30;
+	pub MaxProposalWeight: Weight = Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
@@ -399,6 +414,7 @@ impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
+	type MaxProposalWeight = MaxProposalWeight;
 }
 
 impl pallet_membership::Config<GeneralCouncilMembershipInstance> for Runtime {
@@ -428,6 +444,7 @@ impl pallet_collective::Config<FinancialCouncilInstance> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
+	type MaxProposalWeight = MaxProposalWeight;
 }
 
 impl pallet_membership::Config<FinancialCouncilMembershipInstance> for Runtime {
@@ -457,6 +474,7 @@ impl pallet_collective::Config<HomaCouncilInstance> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
+	type MaxProposalWeight = MaxProposalWeight;
 }
 
 impl pallet_membership::Config<HomaCouncilMembershipInstance> for Runtime {
@@ -486,6 +504,7 @@ impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
+	type MaxProposalWeight = MaxProposalWeight;
 }
 
 impl pallet_membership::Config<TechnicalCommitteeMembershipInstance> for Runtime {
@@ -732,7 +751,7 @@ create_median_value_data_provider!(
 );
 // Aggregated data provider cannot feed.
 impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
-	fn feed_value(_: AccountId, _: CurrencyId, _: Price) -> DispatchResult {
+	fn feed_value(_: Option<AccountId>, _: CurrencyId, _: Price) -> DispatchResult {
 		Err("Not supported".into())
 	}
 }
@@ -1899,6 +1918,14 @@ impl_runtime_apis! {
 	impl sp_api::Metadata<Block> for Runtime {
 		fn metadata() -> OpaqueMetadata {
 			OpaqueMetadata::new(Runtime::metadata().into())
+		}
+
+		fn metadata_at_version(version: u32) -> Option<OpaqueMetadata> {
+			Runtime::metadata_at_version(version)
+		}
+
+		fn metadata_versions() -> sp_std::vec::Vec<u32> {
+			Runtime::metadata_versions()
 		}
 	}
 

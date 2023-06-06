@@ -22,7 +22,7 @@ use nutsfinance_stable_asset::{
 };
 use orml_tokens::ConvertBalance;
 use sp_runtime::{traits::Convert, DispatchError, DispatchResult};
-use sp_std::vec::Vec;
+use sp_std::{prelude::*, vec::Vec};
 
 pub enum RebasedStableAssetError {
 	InvalidPoolId,

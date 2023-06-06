@@ -118,7 +118,7 @@ impl DataProvider<CurrencyId, Price> for MockDataProvider {
 }
 
 impl DataFeeder<CurrencyId, Price, AccountId> for MockDataProvider {
-	fn feed_value(_: AccountId, _: CurrencyId, _: Price) -> sp_runtime::DispatchResult {
+	fn feed_value(_: Option<AccountId>, _: CurrencyId, _: Price) -> sp_runtime::DispatchResult {
 		Ok(())
 	}
 }

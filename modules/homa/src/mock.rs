@@ -134,6 +134,10 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;

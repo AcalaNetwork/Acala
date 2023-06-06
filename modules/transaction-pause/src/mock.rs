@@ -76,6 +76,10 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ();
 	type WeightInfo = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 parameter_type_with_key! {

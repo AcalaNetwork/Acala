@@ -26,7 +26,7 @@ use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 };
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_traits::xcm_transfer::Transferred;
 use primitives::{CurrencyId, TokenSymbol};
 use sp_core::H256;
@@ -76,6 +76,10 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 parameter_types! {
@@ -121,6 +125,7 @@ impl pallet_xcm::Config for Runtime {
 	type WeightInfo = pallet_xcm::TestWeightInfo;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ReachableDest = ReachableDest;
+	type AdminOrigin = EnsureRoot<AccountId>;
 }
 
 ord_parameter_types! {

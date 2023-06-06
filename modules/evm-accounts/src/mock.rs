@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU128, ConstU64, Everything, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 };
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
@@ -77,6 +77,10 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 parameter_type_with_key! {
