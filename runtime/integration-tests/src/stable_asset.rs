@@ -126,7 +126,7 @@ fn stable_asset_mint_overflow() {
 
 			assert_noop!(
 				StableAsset::mint(RuntimeOrigin::signed(AccountId::from(ALICE)), 0, amounts, 0u128),
-				orml_tokens::Error::<Runtime>::BalanceTooLow
+				sp_runtime::ArithmeticError::Overflow
 			);
 		});
 }
