@@ -42,7 +42,7 @@ use polkadot_parachain::primitives::Sibling;
 use primitives::evm::is_system_contract;
 use runtime_common::{
 	local_currency_location, native_currency_location, xcm_impl::AccountKey20Aliases, AcalaDropAssets,
-	EnsureRootOrHalfGeneralCouncil, FixedRateOfAsset,
+	EnsureRootOrHalfGeneralCouncil, EnsureRootOrThreeFourthsGeneralCouncil, FixedRateOfAsset,
 };
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 pub use xcm_builder::{
@@ -243,6 +243,7 @@ impl pallet_xcm::Config for Runtime {
 	type WeightInfo = crate::weights::pallet_xcm::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ReachableDest = ReachableDest;
+	type AdminOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
