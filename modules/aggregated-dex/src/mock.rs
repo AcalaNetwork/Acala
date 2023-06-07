@@ -33,7 +33,7 @@ use primitives::{Amount, TokenSymbol, TradingPair};
 use sp_runtime::{
 	testing::{Header, H256},
 	traits::{Bounded, IdentityLookup},
-	AccountId32, FixedPointNumber,
+	AccountId32, ArithmeticError, FixedPointNumber,
 };
 pub use support::{ExchangeRate, RebasedStableAsset};
 
@@ -133,21 +133,24 @@ pub struct ConvertBalanceHoma;
 impl ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 	type AssetId = CurrencyId;
 
-	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
+	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> sp_std::result::Result<Balance, ArithmeticError> {
 		match asset_id {
 			LDOT => ExchangeRate::saturating_from_rational(1, 10)
 				.checked_mul_int(balance)
-				.unwrap_or(Bounded::max_value()),
-			_ => balance,
+				.ok_or(ArithmeticError::Overflow),
+			_ => Ok(balance),
 		}
 	}
 
-	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
+	fn convert_balance_back(
+		balance: Balance,
+		asset_id: CurrencyId,
+	) -> sp_std::result::Result<Balance, ArithmeticError> {
 		match asset_id {
 			LDOT => ExchangeRate::saturating_from_rational(10, 1)
 				.checked_mul_int(balance)
-				.unwrap_or(Bounded::max_value()),
-			_ => balance,
+				.ok_or(ArithmeticError::Overflow),
+			_ => Ok(balance),
 		}
 	}
 }
