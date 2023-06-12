@@ -1688,7 +1688,7 @@ impl module_earning::Config for Runtime {
 	type InstantUnstakeFee = InstantUnstakeFee;
 	type MaxUnbondingChunks = ConstU32<10>;
 	type LockIdentifier = EarningLockIdentifier;
-	type WeightInfo = weights::module_earning::WeightInfo<Runtime>;
+	type WeightInfo = ();
 }
 
 construct_runtime!(
