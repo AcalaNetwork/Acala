@@ -192,13 +192,13 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
-	// Returns an Etherum public key derived from an Ethereum secret key.
+	// Returns an Ethereum public key derived from an Ethereum secret key.
 	pub fn eth_public(secret: &libsecp256k1::SecretKey) -> libsecp256k1::PublicKey {
 		libsecp256k1::PublicKey::from_secret_key(secret)
 	}
 
 	#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
-	// Returns an Etherum address derived from an Ethereum secret key.
+	// Returns an Ethereum address derived from an Ethereum secret key.
 	// Only for tests
 	pub fn eth_address(secret: &libsecp256k1::SecretKey) -> EvmAddress {
 		EvmAddress::from_slice(&keccak_256(&Self::eth_public(secret).serialize()[1..65])[12..])
@@ -266,7 +266,7 @@ fn recover_signer(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<H160> {
 		.ok()
 }
 
-// Creates a an EvmAddress from an AccountId by appending the bytes "evm:" to
+// Creates an EvmAddress from an AccountId by appending the bytes "evm:" to
 // the account_id and hashing it.
 fn account_to_default_evm_address(account_id: &impl Encode) -> EvmAddress {
 	let payload = (b"evm:", account_id);
