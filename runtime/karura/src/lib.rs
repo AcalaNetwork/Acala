@@ -1661,6 +1661,27 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
+parameter_types! {
+	pub const InstantUnstakeFee: Permill = Permill::from_perthousand(2);
+	pub MinBond: Balance = 10 * dollar(KAR);
+	pub const UnbondingPeriod: BlockNumber = 8 * DAYS;
+	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
+}
+
+impl module_earning::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
+	type OnUnbonded = module_incentives::OnEarningUnbonded<Runtime>;
+	type OnUnstakeFee = Treasury; // fee goes to treasury
+	type MinBond = MinBond;
+	type UnbondingPeriod = UnbondingPeriod;
+	type InstantUnstakeFee = InstantUnstakeFee;
+	type MaxUnbondingChunks = ConstU32<10>;
+	type LockIdentifier = EarningLockIdentifier;
+	type WeightInfo = weights::module_earning::WeightInfo<Runtime>;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1739,6 +1760,7 @@ construct_runtime!(
 		Dex: module_dex = 91,
 		DexOracle: module_dex_oracle = 92,
 		AggregatedDex: module_aggregated_dex = 93,
+		Earning: module_earning = 94,
 
 		// Honzon
 		AuctionManager: module_auction_manager = 100,

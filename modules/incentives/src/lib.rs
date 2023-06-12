@@ -575,7 +575,7 @@ pub struct OnEarningBonded<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningBonded<T> {
 	fn happened((who, amount): &(T::AccountId, Balance)) {
 		let share = amount.saturating_add(T::EarnShareBooster::get() * *amount);
-		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Loans(T::NativeCurrencyId::get()), share);
+		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), share);
 	}
 }
 
@@ -583,6 +583,6 @@ pub struct OnEarningUnbonded<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningUnbonded<T> {
 	fn happened((who, amount): &(T::AccountId, Balance)) {
 		let share = amount.saturating_add(T::EarnShareBooster::get() * *amount);
-		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Loans(T::NativeCurrencyId::get()), share);
+		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), share);
 	}
 }
