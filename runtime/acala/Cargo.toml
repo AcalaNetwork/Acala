@@ -372,6 +372,7 @@ try-runtime = [
 	"module-currencies/try-runtime",
 	"module-dex-oracle/try-runtime",
 	"module-dex/try-runtime",
+	"module-earning/try-runtime",
 	"module-emergency-shutdown/try-runtime",
 	"module-evm-accounts/try-runtime",
 	"module-evm-bridge/try-runtime",
@@ -380,6 +381,7 @@ try-runtime = [
 	"module-honzon/try-runtime",
 	"module-idle-scheduler/try-runtime",
 	"module-incentives/try-runtime",
+	"module-liquid-crowdloan/try-runtime",
 	"module-loans/try-runtime",
 	"module-nft/try-runtime",
 	"module-prices/try-runtime",
@@ -387,7 +389,6 @@ try-runtime = [
 	"module-transaction-pause/try-runtime",
 	"module-transaction-payment/try-runtime",
 	"module-xcm-interface/try-runtime",
-	"module-liquid-crowdloan/try-runtime",
 
 	"primitives/try-runtime",
 
