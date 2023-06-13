@@ -1072,67 +1072,41 @@ fn on_initialize_should_work() {
 }
 
 #[test]
-fn earning_booster_should_work() {
+fn earning_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), ACA, 100, 0));
-		assert_eq!(
-			RewardsModule::pool_infos(PoolId::Loans(ACA)),
-			PoolInfo {
-				total_shares: 100,
-				..Default::default()
-			}
-		);
-		assert_eq!(
-			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(ACA), ALICE::get()),
-			(100, Default::default())
-		);
-
 		OnEarningBonded::<Runtime>::happened(&(ALICE::get(), 80));
 		assert_eq!(
-			RewardsModule::pool_infos(PoolId::Loans(ACA)),
+			RewardsModule::pool_infos(PoolId::Earning(ACA)),
 			PoolInfo {
-				total_shares: 100 + 80 + 40,
+				total_shares: 80,
 				..Default::default()
 			}
 		);
 		assert_eq!(
-			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(ACA), ALICE::get()),
-			(100 + 80 + 40, Default::default())
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::Earning(ACA), ALICE::get()),
+			(80, Default::default())
 		);
 
 		OnEarningUnbonded::<Runtime>::happened(&(ALICE::get(), 20));
 		assert_eq!(
-			RewardsModule::pool_infos(PoolId::Loans(ACA)),
+			RewardsModule::pool_infos(PoolId::Earning(ACA)),
 			PoolInfo {
-				total_shares: 100 + 60 + 30,
+				total_shares: 60,
 				..Default::default()
 			}
 		);
 		assert_eq!(
-			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(ACA), ALICE::get()),
-			(100 + 60 + 30, Default::default())
-		);
-
-		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), ACA, -100, 100));
-		assert_eq!(
-			RewardsModule::pool_infos(PoolId::Loans(ACA)),
-			PoolInfo {
-				total_shares: 60 + 30,
-				..Default::default()
-			}
-		);
-		assert_eq!(
-			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(ACA), ALICE::get()),
-			(60 + 30, Default::default())
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::Earning(ACA), ALICE::get()),
+			(60, Default::default())
 		);
 
 		OnEarningUnbonded::<Runtime>::happened(&(ALICE::get(), 60));
 		assert_eq!(
-			RewardsModule::pool_infos(PoolId::Loans(ACA)),
+			RewardsModule::pool_infos(PoolId::Earning(ACA)),
 			PoolInfo { ..Default::default() }
 		);
 		assert_eq!(
-			RewardsModule::shares_and_withdrawn_rewards(PoolId::Loans(ACA), ALICE::get()),
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::Earning(ACA), ALICE::get()),
 			(0, Default::default())
 		);
 	});

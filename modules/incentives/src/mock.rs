@@ -140,7 +140,6 @@ parameter_types! {
 
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT::get();
-	pub const EarnShareBooster: Permill = Permill::from_percent(50);
 }
 
 impl Config for Runtime {
@@ -148,7 +147,6 @@ impl Config for Runtime {
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = ConstU64<10>;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type EarnShareBooster = EarnShareBooster;
 	type UpdateOrigin = EnsureSignedBy<ROOT, AccountId>;
 	type Currency = TokensModule;
 	type EmergencyShutdown = MockEmergencyShutdown;

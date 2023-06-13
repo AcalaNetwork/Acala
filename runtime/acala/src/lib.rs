@@ -1243,20 +1243,12 @@ impl orml_rewards::Config for Runtime {
 
 parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = MINUTES;
-	pub const EarnShareBooster: Permill = Permill::from_percent(30);
-	pub const GetAusdIbtcPoolId: PoolId = PoolId::Dex(
-		CurrencyId::DexShare(
-			DexShare::Token(TokenSymbol::AUSD),
-			DexShare::ForeignAsset(3)
-		)
-	);
 }
 
 impl module_incentives::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type EarnShareBooster = EarnShareBooster;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type Currency = Currencies;

@@ -45,7 +45,7 @@ use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},
-	DispatchResult, FixedPointNumber, Permill,
+	DispatchResult, FixedPointNumber,
 };
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 use support::{DEXIncentives, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate};
@@ -79,10 +79,6 @@ pub mod module {
 		/// The source account for native token rewards.
 		#[pallet::constant]
 		type RewardsSource: Get<Self::AccountId>;
-
-		/// Additional share amount from earning
-		#[pallet::constant]
-		type EarnShareBooster: Get<Permill>;
 
 		/// The origin which may update incentive related params
 		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
@@ -574,15 +570,13 @@ impl<T: Config> RewardHandler<T::AccountId, CurrencyId> for Pallet<T> {
 pub struct OnEarningBonded<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningBonded<T> {
 	fn happened((who, amount): &(T::AccountId, Balance)) {
-		let share = amount.saturating_add(T::EarnShareBooster::get() * *amount);
-		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), share);
+		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), *amount);
 	}
 }
 
 pub struct OnEarningUnbonded<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningUnbonded<T> {
 	fn happened((who, amount): &(T::AccountId, Balance)) {
-		let share = amount.saturating_add(T::EarnShareBooster::get() * *amount);
-		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), share);
+		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), *amount);
 	}
 }

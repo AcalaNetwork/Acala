@@ -50,7 +50,7 @@ use scale_info::TypeInfo;
 use sp_core::{H160, H256};
 use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
-	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill,
+	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent,
 };
 use sp_std::prelude::*;
 use xcm::{prelude::*, v3::Xcm};
@@ -740,7 +740,6 @@ parameter_types! {
 }
 
 ord_parameter_types! {
-	pub const EarnShareBooster: Permill = Permill::from_percent(50);
 	pub const RewardsSource: AccountId = REWARDS_SOURCE;
 }
 
@@ -749,7 +748,6 @@ impl module_incentives::Config for Test {
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = ConstU32<10>;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type EarnShareBooster = EarnShareBooster;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type Currency = Tokens;
 	type EmergencyShutdown = MockEmergencyShutdown;
