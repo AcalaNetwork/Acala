@@ -1663,7 +1663,7 @@ impl module_liquid_crowdloan::Config for Runtime {
 }
 
 parameter_types! {
-	pub const InstantUnstakeFee: Permill = Permill::from_percent(1);
+	pub const InstantUnstakeFee: Option<Permill> = None;
 	pub MinBond: Balance = 100 * dollar(ACA);
 	pub const UnbondingPeriod: BlockNumber = 28 * DAYS;
 	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";

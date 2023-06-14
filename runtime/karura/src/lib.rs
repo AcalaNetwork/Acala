@@ -1660,7 +1660,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 }
 
 parameter_types! {
-	pub const InstantUnstakeFee: Permill = Permill::from_perthousand(2);
+	pub const InstantUnstakeFee: Option<Permill> = None;
 	pub MinBond: Balance = 10 * dollar(KAR);
 	pub const UnbondingPeriod: BlockNumber = 8 * DAYS;
 	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
