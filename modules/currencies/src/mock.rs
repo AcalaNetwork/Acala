@@ -131,7 +131,7 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 	type HoldIdentifier = ();
 	type FreezeIdentifier = ();
-	type MaxHolds = ();
+	type MaxHolds = ConstU32<1>;
 	type MaxFreezes = ();
 }
 
@@ -282,7 +282,7 @@ pub fn deploy_contracts() {
 		code,
 		0,
 		2_100_000,
-		10000,
+		10_000,
 		vec![]
 	));
 

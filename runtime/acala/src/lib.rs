@@ -362,6 +362,7 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 	type HoldIdentifier = ();
 	type FreezeIdentifier = ();
+	// need config this to support fungible::MutateHold
 	type MaxHolds = ();
 	type MaxFreezes = ();
 }

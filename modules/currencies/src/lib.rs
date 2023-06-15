@@ -299,7 +299,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 	fn minimum_balance(currency_id: Self::CurrencyId) -> Self::Balance {
 		match currency_id {
-			CurrencyId::Erc20(_) => Default::default(),
+			CurrencyId::Erc20(_) => Zero::zero(),
 			id if id == T::GetNativeCurrencyId::get() => <T::NativeCurrency as BasicCurrency<_>>::minimum_balance(),
 			_ => <T::MultiCurrency as MultiCurrency<_>>::minimum_balance(currency_id),
 		}
@@ -320,16 +320,10 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 	fn total_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
-			CurrencyId::Erc20(contract) => {
-				if let Some(address) = T::AddressMapping::get_evm_address(who) {
-					let context = InvokeContext {
-						contract,
-						sender: Default::default(),
-						origin: Default::default(),
-					};
-					return T::EVMBridge::balance_of(context, address).unwrap_or_default();
-				}
-				Default::default()
+			CurrencyId::Erc20(_) => {
+				let free_balance = Self::free_balance(currency_id, who);
+				let reserved_balance = <Self as MultiReservableCurrency<_>>::reserved_balance(currency_id, who);
+				free_balance.saturating_add(reserved_balance)
 			}
 			id if id == T::GetNativeCurrencyId::get() => <T::NativeCurrency as BasicCurrency<_>>::total_balance(who),
 			_ => <T::MultiCurrency as MultiCurrency<_>>::total_balance(currency_id, who),
@@ -362,7 +356,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 				}
 
 				let address = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let balance = T::EVMBridge::balance_of(
+				let free_balance = T::EVMBridge::balance_of(
 					InvokeContext {
 						contract,
 						sender: Default::default(),
@@ -371,7 +365,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					address,
 				)
 				.unwrap_or_default();
-				ensure!(balance >= amount, Error::<T>::BalanceTooLow);
+				ensure!(free_balance >= amount, Error::<T>::BalanceTooLow);
 				Ok(())
 			}
 			id if id == T::GetNativeCurrencyId::get() => {
@@ -424,6 +418,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		if amount.is_zero() {
 			return Ok(());
 		}
+
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
 				// deposit from erc20 holding account to receiver(who). in xcm case which receive erc20 from sibling
@@ -795,7 +790,7 @@ impl<T: Config> fungibles::Inspect<T::AccountId> for Pallet<T> {
 
 	fn balance(asset_id: Self::AssetId, who: &T::AccountId) -> Self::Balance {
 		match asset_id {
-			CurrencyId::Erc20(_) => <Self as MultiCurrency<_>>::total_balance(asset_id, who),
+			CurrencyId::Erc20(_) => <Self as MultiCurrency<_>>::free_balance(asset_id, who),
 			id if id == T::GetNativeCurrencyId::get() => <T::NativeCurrency as fungible::Inspect<_>>::balance(who),
 			_ => <T::MultiCurrency as fungibles::Inspect<_>>::balance(asset_id, who),
 		}
@@ -803,7 +798,7 @@ impl<T: Config> fungibles::Inspect<T::AccountId> for Pallet<T> {
 
 	fn total_balance(asset_id: Self::AssetId, who: &T::AccountId) -> Self::Balance {
 		match asset_id {
-			CurrencyId::Erc20(_) => <Self as MultiCurrency<_>>::free_balance(asset_id, who),
+			CurrencyId::Erc20(_) => <Self as MultiCurrency<_>>::total_balance(asset_id, who),
 			id if id == T::GetNativeCurrencyId::get() => {
 				<T::NativeCurrency as fungible::Inspect<_>>::total_balance(who)
 			}
@@ -895,8 +890,10 @@ impl<T: Config> fungibles::Unbalanced<T::AccountId> for Pallet<T> {
 	fn handle_dust(_dust: fungibles::Dust<T::AccountId, Self>) {
 		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/support/src/traits/tokens/fungibles/regular.rs#L124
 		// Note: currently the field of Dust type is private and there is no constructor for it, so
-		// we can't construct a Dust value and pass it. Do nothing here. If you want use fungible
-		// trait, you should know the effect of this.
+		// we can't construct a Dust value and pass it. Do nothing here.
+		// `Pallet<T>` overwrites these functions which can be called as user-level operation of
+		// fungibles traits when calling these functions, it will not actually reach
+		// `Unbalanced::handle_dust`.
 	}
 
 	fn write_balance(
@@ -1327,10 +1324,12 @@ where
 	GetCurrencyId: Get<CurrencyId>,
 {
 	fn handle_dust(_dust: fungible::Dust<T::AccountId, Self>) {
-		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/support/src/traits/tokens/fungible/regular.rs#L111
+		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/support/src/traits/tokens/fungibles/regular.rs#L124
 		// Note: currently the field of Dust type is private and there is no constructor for it, so
-		// we can't construct a Dust value and pass it. Do nothing here. If you want use fungible
-		// trait for `Currency` adaptor, you should know the effect of this.
+		// we can't construct a Dust value and pass it. Do nothing here.
+		// `Pallet<T>` overwrites these functions which can be called as user-level operation of
+		// fungibles traits when calling these functions, it will not actually reach
+		// `Unbalanced::handle_dust`.
 	}
 
 	fn write_balance(who: &T::AccountId, amount: Self::Balance) -> Result<Option<Self::Balance>, DispatchError> {
@@ -1648,10 +1647,12 @@ where
 	T: Config,
 {
 	fn handle_dust(_dust: fungible::Dust<T::AccountId, Self>) {
-		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/support/src/traits/tokens/fungible/regular.rs#L111
+		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/support/src/traits/tokens/fungibles/regular.rs#L124
 		// Note: currently the field of Dust type is private and there is no constructor for it, so
-		// we can't construct a Dust value and pass it. Do nothing here. If you want use fungible
-		// trait for `BasicCurrencyAdapter`, you should know the effect of this.
+		// we can't construct a Dust value and pass it.
+		// `BasicCurrencyAdapter` overwrites these functions which can be called as user-level
+		// operation of fungible traits when calling these functions, it will not actually reach
+		// `Unbalanced::handle_dust`.
 	}
 
 	fn write_balance(who: &T::AccountId, amount: Self::Balance) -> Result<Option<Self::Balance>, DispatchError> {
