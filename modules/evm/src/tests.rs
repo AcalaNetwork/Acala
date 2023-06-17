@@ -921,18 +921,32 @@ fn create_predeploy_contract_works() {
 
 		// deploy empty contract
 		let token_addr = H160::from_str("2222222222222222222222222222222222222222").unwrap();
-		assert_noop!(
-			EVM::create_predeploy_contract(
-				RuntimeOrigin::signed(NetworkContractAccount::get()),
-				token_addr,
-				vec![],
-				0,
-				1000000,
-				1000000,
-				vec![],
-			),
-			Error::<Runtime>::ContractNotFound
-		);
+
+		// NOTE: call is ok, but create constract failed for:
+		// empty contract will not inc the provider of contract account.
+		// when charge storage, contract account reserve the received amount will failed for the new
+		// provider mechanism: https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
+		// TODO: this is unexpected but acceptable, should we change the inc provider mechanism on evm?
+		assert_ok!(EVM::create_predeploy_contract(
+			RuntimeOrigin::signed(NetworkContractAccount::get()),
+			token_addr,
+			vec![],
+			0,
+			1000000,
+			1000000,
+			vec![],
+		));
+
+		System::assert_has_event(RuntimeEvent::EVM(crate::Event::CreatedFailed {
+			from: NetworkContractSource::get(),
+			contract: H160::default(),
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::ChargeStorageFailed).into(),
+			)),
+			logs: vec![],
+			used_gas: 1000000,
+			used_storage: 0,
+		}));
 
 		assert_eq!(CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&token_addr)), None);
 	});
@@ -2482,6 +2496,10 @@ fn reserve_deposit_makes_user_developer() {
 
 		assert_eq!(Pallet::<Runtime>::is_developer_or_contract(&addr), false);
 
+		// mock deploy contract, will inc provider for the account of contract address before transfer and
+		// reserved
+		System::inc_providers(&who);
+
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
 			GetNativeCurrencyId::get(),
 			&<Runtime as Config>::AddressMapping::get_account_id(&alice()),
@@ -2562,7 +2580,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1417384352, 7186)),
+					actual_weight: Some(Weight::from_parts(1468769052, 7186)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::NoPermission.into(),
@@ -2595,7 +2613,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1416428054, 7186)),
+					actual_weight: Some(Weight::from_parts(1467812754, 7186)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::StrictCallFailed.into(),

@@ -227,8 +227,19 @@ pub mod module {
 			let deposit = class_deposit.saturating_add(data_deposit);
 			let total_deposit = proxy_deposit.saturating_add(deposit);
 
+			// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
+			// Now the pallet-balances judges whether does provider is based on the `free balance` (refer to
+			// `total balance` before). If `free balance` is zero and `reserved balance` is not zero, it doesn't
+			// provider but does consumer, so at least other providers are needed.
+			// If has no provider, add ED to make sure the following `reserve` is available.
+			let total_transfer_amount = if frame_system::Pallet::<T>::providers(&owner).is_zero() {
+				total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance())
+			} else {
+				total_deposit
+			};
+
 			// ensure enough token for proxy deposit + class deposit + data deposit
-			<T as module::Config>::Currency::transfer(&who, &owner, total_deposit, KeepAlive)?;
+			<T as module::Config>::Currency::transfer(&who, &owner, total_transfer_amount, KeepAlive)?;
 
 			<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &owner, deposit)?;
 
@@ -404,9 +415,22 @@ impl<T: Config> Pallet<T> {
 
 		orml_nft::Pallet::<T>::transfer(from, to, token)?;
 
-		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, from, token_info.data.deposit);
-		<T as module::Config>::Currency::transfer(from, to, token_info.data.deposit, AllowDeath)?;
-		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, token_info.data.deposit)?;
+		let reserve_balance = token_info.data.deposit;
+
+		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
+		// Now the pallet-balances judges whether does provider is based on the `free balance` (refer to
+		// `total balance` before). If `free balance` is zero and `reserved balance` is not zero, it doesn't
+		// provider but does consumer, so at least other providers are needed.
+		// If has no provider, add ED to make sure the following `reserve` is available.
+		let transfer_amount = if frame_system::Pallet::<T>::providers(&to).is_zero() {
+			reserve_balance.saturating_add(<T as module::Config>::Currency::minimum_balance())
+		} else {
+			reserve_balance
+		};
+
+		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, from, reserve_balance);
+		<T as module::Config>::Currency::transfer(from, to, transfer_amount, AllowDeath)?;
+		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, reserve_balance)?;
 
 		Self::deposit_event(Event::TransferredToken {
 			from: from.clone(),
@@ -439,9 +463,20 @@ impl<T: Config> Pallet<T> {
 		let deposit = T::CreateTokenDeposit::get().saturating_add(data_deposit);
 		let total_deposit = deposit.saturating_mul(quantity.into());
 
+		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
+		// Now the pallet-balances judges whether does provider is based on the `free balance` (refer to
+		// `total balance` before). If `free balance` is zero and `reserved balance` is not zero, it doesn't
+		// provider but does consumer, so at least other providers are needed.
+		// If has no provider, add ED to make sure the following `reserve` is available.
+		let total_transfer_amount = if frame_system::Pallet::<T>::providers(&to).is_zero() {
+			total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance())
+		} else {
+			total_deposit
+		};
+
 		// `repatriate_reserved` will check `to` account exist and may return
 		// `DeadAccount`.
-		<T as module::Config>::Currency::transfer(who, to, total_deposit, KeepAlive)?;
+		<T as module::Config>::Currency::transfer(who, to, total_transfer_amount, KeepAlive)?;
 		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, total_deposit)?;
 
 		let mut token_ids = Vec::with_capacity(quantity as usize);

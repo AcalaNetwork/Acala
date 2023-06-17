@@ -115,6 +115,7 @@ impl orml_oracle::Config for Test {
 	type Members = Members;
 	type WeightInfo = ();
 	type MaxHasDispatchedSize = ConstU32<40>;
+	type MaxFeedValues = ConstU32<10>;
 }
 
 impl pallet_timestamp::Config for Test {

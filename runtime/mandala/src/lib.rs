@@ -782,6 +782,7 @@ parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 1 hours
 	pub RootOperatorAccountId: AccountId = AccountId::from([0xffu8; 32]);
+	pub const MaxFeedValues: u32 = 10; // max 10 values allowd to feed in one call.
 }
 
 type AcalaDataProvider = orml_oracle::Instance1;
@@ -796,6 +797,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type Members = OperatorMembershipAcala;
 	type MaxHasDispatchedSize = ConstU32<40>;
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
+	type MaxFeedValues = MaxFeedValues;
 }
 
 create_median_value_data_provider!(

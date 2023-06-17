@@ -482,7 +482,11 @@ fn call_event_should_work() {
 #[test]
 fn erc20_total_issuance_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100002)])
+		.balances(vec![(
+			alice(),
+			NATIVE_CURRENCY_ID,
+			100000 + Balances::minimum_balance(),
+		)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -496,7 +500,11 @@ fn erc20_total_issuance_should_work() {
 #[test]
 fn erc20_free_balance_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100002)])
+		.balances(vec![(
+			alice(),
+			NATIVE_CURRENCY_ID,
+			100000 + Balances::minimum_balance(),
+		)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -518,7 +526,11 @@ fn erc20_free_balance_should_work() {
 #[test]
 fn erc20_total_balance_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100002)])
+		.balances(vec![(
+			alice(),
+			NATIVE_CURRENCY_ID,
+			100000 + Balances::minimum_balance(),
+		)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -540,7 +552,11 @@ fn erc20_total_balance_should_work() {
 #[test]
 fn erc20_ensure_withdraw_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100002)])
+		.balances(vec![(
+			alice(),
+			NATIVE_CURRENCY_ID,
+			100000 + Balances::minimum_balance(),
+		)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -576,7 +592,7 @@ fn erc20_ensure_withdraw_should_work() {
 fn erc20_transfer_should_work() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice(), NATIVE_CURRENCY_ID, 100002),
+			(alice(), NATIVE_CURRENCY_ID, 100000 + Balances::minimum_balance()),
 			(bob(), NATIVE_CURRENCY_ID, 100000),
 			(eva(), NATIVE_CURRENCY_ID, 100000),
 		])
@@ -638,7 +654,7 @@ fn erc20_transfer_should_work() {
 fn erc20_transfer_should_fail() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice(), NATIVE_CURRENCY_ID, 100002),
+			(alice(), NATIVE_CURRENCY_ID, 100000 + Balances::minimum_balance()),
 			(bob(), NATIVE_CURRENCY_ID, 100000),
 		])
 		.build()
@@ -682,7 +698,11 @@ fn erc20_transfer_should_fail() {
 #[test]
 fn erc20_can_reserve_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100002)])
+		.balances(vec![(
+			alice(),
+			NATIVE_CURRENCY_ID,
+			100000 + Balances::minimum_balance(),
+		)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -693,7 +713,11 @@ fn erc20_can_reserve_should_work() {
 #[test]
 fn erc20_slash_reserve_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100002)])
+		.balances(vec![(
+			alice(),
+			NATIVE_CURRENCY_ID,
+			100000 + Balances::minimum_balance(),
+		)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -712,7 +736,11 @@ fn erc20_slash_reserve_should_work() {
 #[test]
 fn erc20_reserve_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100002)])
+		.balances(vec![(
+			alice(),
+			NATIVE_CURRENCY_ID,
+			100000 + Balances::minimum_balance(),
+		)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -741,7 +769,11 @@ fn erc20_reserve_should_work() {
 #[test]
 fn erc20_unreserve_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100002)])
+		.balances(vec![(
+			alice(),
+			NATIVE_CURRENCY_ID,
+			100000 + Balances::minimum_balance(),
+		)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -800,7 +832,11 @@ fn erc20_unreserve_should_work() {
 #[test]
 fn erc20_should_not_slash() {
 	ExtBuilder::default()
-		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100002)])
+		.balances(vec![(
+			alice(),
+			NATIVE_CURRENCY_ID,
+			100000 + Balances::minimum_balance(),
+		)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -813,7 +849,11 @@ fn erc20_should_not_slash() {
 #[test]
 fn erc20_should_not_be_lockable() {
 	ExtBuilder::default()
-		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100002)])
+		.balances(vec![(
+			alice(),
+			NATIVE_CURRENCY_ID,
+			100000 + Balances::minimum_balance(),
+		)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -836,7 +876,7 @@ fn erc20_should_not_be_lockable() {
 fn erc20_repatriate_reserved_should_work() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice(), NATIVE_CURRENCY_ID, 100002),
+			(alice(), NATIVE_CURRENCY_ID, 100000 + Balances::minimum_balance()),
 			(bob(), NATIVE_CURRENCY_ID, 100000),
 		])
 		.build()
@@ -971,7 +1011,11 @@ fn erc20_repatriate_reserved_should_work() {
 #[test]
 fn erc20_invalid_operation() {
 	ExtBuilder::default()
-		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 100002)])
+		.balances(vec![(
+			alice(),
+			NATIVE_CURRENCY_ID,
+			100000 + Balances::minimum_balance(),
+		)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -988,7 +1032,7 @@ fn erc20_invalid_operation() {
 fn erc20_withdraw_deposit_works() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice(), NATIVE_CURRENCY_ID, 100002),
+			(alice(), NATIVE_CURRENCY_ID, 100000 + Balances::minimum_balance()),
 			(bob(), NATIVE_CURRENCY_ID, 100000),
 		])
 		.build()

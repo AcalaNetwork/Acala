@@ -1493,6 +1493,11 @@ impl<T: Config> Pallet<T> {
 			}
 		});
 
+		// NOTE: inc providers occurs before receive and reserve storage fee for this `address`,
+		// it will directly `NewAccount` and:
+		// So before receive amount and reserve this amount for address, the (provider, consumer) of
+		// `address` is (1, 0) after receive storage fee, the (provider, consumer) is (2, 0)
+		// so `address` reserves the received amount that is equal to the received amount will success.
 		frame_system::Pallet::<T>::inc_providers(&T::AddressMapping::get_account_id(&address));
 	}
 
@@ -1829,7 +1834,9 @@ impl<T: Config> Pallet<T> {
 			// but otherwise we will just ignore the issue here.
 			let err_amount = T::Currency::unreserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount);
 			debug_assert!(err_amount.is_zero());
+
 			T::Currency::transfer(&user, &contract_acc, amount, ExistenceRequirement::AllowDeath)?;
+
 			T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &contract_acc, amount)?;
 		} else {
 			// user can't be a dead account
