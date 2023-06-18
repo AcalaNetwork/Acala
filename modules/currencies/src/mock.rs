@@ -41,6 +41,9 @@ use sp_runtime::{
 use sp_std::str::FromStr;
 use support::{mocks::MockAddressMapping, AddressMapping};
 
+pub const CHARLIE: AccountId = AccountId32::new([66u8; 32]);
+pub const DAVE: AccountId = AccountId32::new([88u8; 32]);
+
 pub type AccountId = AccountId32;
 impl frame_system::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;

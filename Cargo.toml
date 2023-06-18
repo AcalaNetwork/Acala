@@ -325,6 +325,10 @@ xcm = { git = "https://github.com/paritytech//polkadot", rev = "9b1fc27cec47f01a
 xcm-builder = { git = "https://github.com/paritytech//polkadot", rev = "9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef" }
 xcm-executor = { git = "https://github.com/paritytech//polkadot", rev = "9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef" }
 xcm-simulator = { git = "https://github.com/paritytech//polkadot", rev = "9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef" }
+polkadot-node-core-runtime-api = { git = "https://github.com/paritytech//polkadot", rev = "9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef" }
+polkadot-node-collation-generation = { git = "https://github.com/paritytech//polkadot", rev = "9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef" }
+polkadot-collator-protocol = { git = "https://github.com/paritytech//polkadot", rev = "9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef" }
+polkadot-availability-recovery = { git = "https://github.com/paritytech//polkadot", rev = "9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef" }
 
 [patch."https://github.com/paritytech/cumulus"]
 cumulus-client-cli = { git = "https://github.com/paritytech//cumulus", rev = "f603a61ff370fc33740c9373833c3c6ba1486846" }

@@ -370,7 +370,7 @@ fn should_publish_payable_contract() {
 
 		let alice_balance = INITIAL_BALANCE - amount - 287 * EVM::get_storage_deposit_per_byte();
 		assert_eq!(balance(alice()), alice_balance);
-		assert_eq!(balance(contract_address), amount);
+		assert_eq!(balance(contract_address), amount + Balances::minimum_balance());
 
 		// call getValue()
 		let result = <Runtime as Config>::Runner::call(
@@ -391,7 +391,7 @@ fn should_publish_payable_contract() {
 		assert_eq!(result.used_storage, 0);
 
 		assert_eq!(balance(alice()), alice_balance - amount);
-		assert_eq!(balance(contract_address), 2 * amount);
+		assert_eq!(balance(contract_address), 2 * amount + Balances::minimum_balance());
 
 		assert_eq!(
 			AccountStorages::<Runtime>::iter_prefix(&contract_address).collect::<Vec<_>>(),
@@ -647,7 +647,7 @@ fn contract_should_publish_contracts() {
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		publish_free(factory_contract_address);
 
-		assert_eq!(balance(factory_contract_address), 0);
+		assert_eq!(balance(factory_contract_address), Balances::minimum_balance());
 		assert_eq!(
 			reserved_balance(factory_contract_address),
 			467 * EVM::get_storage_deposit_per_byte()
@@ -675,13 +675,13 @@ fn contract_should_publish_contracts() {
 			balance(alice()),
 			alice_balance - amount - 281 * EVM::get_storage_deposit_per_byte()
 		);
-		assert_eq!(balance(factory_contract_address), amount);
+		assert_eq!(balance(factory_contract_address), amount + Balances::minimum_balance());
 		assert_eq!(
 			reserved_balance(factory_contract_address),
 			(467 + 128) * EVM::get_storage_deposit_per_byte()
 		);
 		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
-		assert_eq!(balance(contract_address), 0);
+		assert_eq!(balance(contract_address), Balances::minimum_balance());
 		assert_eq!(
 			reserved_balance(contract_address),
 			153 * EVM::get_storage_deposit_per_byte()
@@ -723,7 +723,7 @@ fn contract_should_publish_contracts_without_payable() {
 
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
-		assert_eq!(balance(factory_contract_address), 0);
+		assert_eq!(balance(factory_contract_address), Balances::minimum_balance());
 		assert_eq!(reserved_balance(factory_contract_address), 4640);
 
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
@@ -749,7 +749,7 @@ fn contract_should_publish_contracts_without_payable() {
 			balance(alice()),
 			alice_balance - (result.used_storage as u128 * EVM::get_storage_deposit_per_byte())
 		);
-		assert_eq!(balance(factory_contract_address), 0);
+		assert_eq!(balance(factory_contract_address), Balances::minimum_balance());
 		assert_eq!(
 			reserved_balance(factory_contract_address),
 			(464 + 128) * EVM::get_storage_deposit_per_byte()
@@ -1485,7 +1485,10 @@ fn should_selfdestruct_without_schedule_task() {
 		let reserved_amount = 287 * EVM::get_storage_deposit_per_byte();
 
 		// refund storage deposit
-		assert_eq!(balance(alice()), alice_balance + amount + reserved_amount);
+		assert_eq!(
+			balance(alice()),
+			alice_balance + amount + reserved_amount + Balances::minimum_balance()
+		);
 		assert_eq!(balance(contract_address), 0);
 		assert_eq!(reserved_balance(contract_address), 0);
 
@@ -1646,7 +1649,7 @@ fn should_selfdestruct_with_schedule_task() {
 		// refund storage deposit
 		assert_eq!(
 			balance(alice()),
-			alice_balance + amount + 361 * EVM::get_storage_deposit_per_byte()
+			alice_balance + amount + 361 * EVM::get_storage_deposit_per_byte() + Balances::minimum_balance()
 		);
 		assert_eq!(balance(contract_address), 0);
 		assert_eq!(reserved_balance(contract_address), 0);
@@ -1699,7 +1702,7 @@ fn storage_limit_should_work() {
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		publish_free(factory_contract_address);
 
-		assert_eq!(balance(factory_contract_address), 0);
+		assert_eq!(balance(factory_contract_address), Balances::minimum_balance());
 		assert_eq!(
 			reserved_balance(factory_contract_address),
 			516 * EVM::get_storage_deposit_per_byte()

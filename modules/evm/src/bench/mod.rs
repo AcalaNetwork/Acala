@@ -57,7 +57,7 @@ fn get_bench_info(name: &str) -> (Vec<u8>, H160, Vec<u8>, u64, Vec<u8>) {
 
 fn faucet(address: &H160) {
 	let account_id = MockAddressMapping::get_account_id(&address);
-	assert_ok!(Balances::set_balance(
+	assert_ok!(Balances::set_balance_deprecated(
 		RuntimeOrigin::root(),
 		account_id,
 		1_000_000_000_000_000,

@@ -96,7 +96,7 @@ fn oracle_get_price(b: &mut Bencher) {
 	};
 
 	let price = Price::from(30_000);
-	assert_ok!(Oracle::feed_value(ALICE, DOT, price));
+	assert_ok!(Oracle::feed_value(Some(ALICE), DOT, price));
 
 	assert_ok!(AssetRegistry::register_native_asset(
 		RuntimeOrigin::signed(CouncilAccount::get()),

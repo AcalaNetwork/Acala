@@ -1145,7 +1145,7 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 #[test]
 fn evm_limits() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 33_322_240);
+		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 33_320_706);
 		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_storage_limit(), 3_670_016);
 	});
 }

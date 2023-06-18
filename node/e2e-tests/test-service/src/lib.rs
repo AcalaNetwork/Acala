@@ -50,7 +50,7 @@ use crate::runtime::Weight;
 use frame_system_rpc_runtime_api::AccountNonceApi;
 use futures::{channel::mpsc::Sender, SinkExt};
 use jsonrpsee::RpcModule;
-use polkadot_primitives::v2::{CollatorPair, Hash as PHash, HeadData, PersistedValidationData};
+use polkadot_primitives::v4::{CollatorPair, Hash as PHash, HeadData, PersistedValidationData};
 use sc_client_api::{execution_extensions::ExecutionStrategies, Backend, CallExecutor, ExecutorProvider};
 use sc_consensus::{ImportQueue, LongestChain};
 use sc_consensus_aura::{ImportQueueParams, StartAuraParams};

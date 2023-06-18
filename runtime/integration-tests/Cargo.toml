@@ -136,7 +136,7 @@ polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "r
 polkadot-runtime-constants = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.42" }
 polkadot-test-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.42" }
 
-xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "bea35c799d725a4233db6b9108ee2ed5bbfc1aed" }
+xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "d011e5ca62b93e8f688c2042c1f92cdbafc5d1d0" }
 
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 module-aggregated-dex = { path = "../../modules/aggregated-dex" }

@@ -45,7 +45,7 @@ fn test_nft_module() {
 				Proxy::deposit(1u32) + CreateClassDeposit::get() + DataDepositPerByte::get() * (metadata.len() as u128);
 			assert_eq!(
 				Balances::free_balance(&NftPalletId::get().into_sub_account_truncating(0)),
-				0
+				Balances::minimum_balance()
 			);
 			assert_eq!(
 				Balances::reserved_balance(&NftPalletId::get().into_sub_account_truncating(0)),
@@ -53,12 +53,12 @@ fn test_nft_module() {
 			);
 			assert_eq!(
 				Balances::free_balance(AccountId::from(ALICE)),
-				1_000 * dollar(NATIVE_CURRENCY) - deposit
+				1_000 * dollar(NATIVE_CURRENCY) - deposit - Balances::minimum_balance()
 			);
 			assert_eq!(Balances::reserved_balance(AccountId::from(ALICE)), 0);
 			assert_ok!(Balances::deposit_into_existing(
 				&NftPalletId::get().into_sub_account_truncating(0),
-				1 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
+				1 * (CreateTokenDeposit::get() + DataDepositPerByte::get()) + Balances::minimum_balance()
 			));
 			assert_ok!(NFT::mint(
 				RuntimeOrigin::signed(NftPalletId::get().into_sub_account_truncating(0)),
@@ -71,7 +71,7 @@ fn test_nft_module() {
 			assert_ok!(NFT::burn(RuntimeOrigin::signed(AccountId::from(BOB)), (0, 0)));
 			assert_eq!(
 				Balances::free_balance(AccountId::from(BOB)),
-				CreateTokenDeposit::get() + DataDepositPerByte::get()
+				CreateTokenDeposit::get() + DataDepositPerByte::get() + Balances::minimum_balance()
 			);
 			assert_noop!(
 				NFT::destroy_class(
@@ -88,7 +88,7 @@ fn test_nft_module() {
 			));
 			assert_eq!(
 				Balances::free_balance(AccountId::from(BOB)),
-				CreateTokenDeposit::get() + DataDepositPerByte::get()
+				CreateTokenDeposit::get() + DataDepositPerByte::get() + Balances::minimum_balance()
 			);
 			assert_eq!(Balances::reserved_balance(AccountId::from(BOB)), 0);
 			assert_eq!(

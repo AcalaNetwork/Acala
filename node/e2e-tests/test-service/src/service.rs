@@ -319,7 +319,7 @@ pub async fn start_dev_node(
 				},
 				force_authoring,
 				backoff_authoring_blocks,
-				keystore: keystore_container.sync_keystore(),
+				keystore: keystore_container.keystore(),
 				sync_oracle: sync_service.clone(),
 				justification_sync_link: sync_service.clone(),
 				// We got around 500ms for proposing
@@ -358,7 +358,7 @@ pub async fn start_dev_node(
 		client: client.clone(),
 		backend: backend.clone(),
 		task_manager: &mut task_manager,
-		keystore: keystore_container.sync_keystore(),
+		keystore: keystore_container.keystore(),
 		transaction_pool: transaction_pool.clone(),
 		rpc_builder: Box::new(rpc_builder),
 		network: network.clone(),
@@ -446,7 +446,7 @@ where
 	let parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial(&parachain_config, seal_mode)?;
-	let keystore = params.keystore_container.sync_keystore();
+	let keystore = params.keystore_container.keystore();
 	let force_authoring = parachain_config.force_authoring;
 
 	let transaction_pool = params.transaction_pool.clone();
@@ -505,7 +505,7 @@ where
 		transaction_pool: transaction_pool.clone(),
 		task_manager: &mut task_manager,
 		config: parachain_config,
-		keystore: params.keystore_container.sync_keystore(),
+		keystore: params.keystore_container.keystore(),
 		backend,
 		network: network.clone(),
 		system_rpc_tx,
@@ -642,6 +642,7 @@ where
 			import_queue: import_queue_service,
 			relay_chain_slot_duration: Duration::from_secs(6),
 			recovery_handle,
+			sync_service: sync_service.clone(),
 		};
 
 		start_collator(params).await?;
@@ -658,6 +659,7 @@ where
 			// long on the full node to recover, so we reduce this time here.
 			relay_chain_slot_duration: Duration::from_millis(6),
 			recovery_handle,
+			sync_service: sync_service.clone(),
 		};
 
 		start_full_node(params)?;

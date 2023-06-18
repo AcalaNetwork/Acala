@@ -183,7 +183,7 @@ impl FindAuthor<AccountId32> for AuthorGiven {
 }
 
 parameter_types! {
-	pub NetworkContractSource: H160 = alice();
+	pub NetworkContractSource: H160 = dave();
 }
 
 ord_parameter_types! {
@@ -266,6 +266,10 @@ pub fn charlie() -> H160 {
 	H160::from_str("1000000000000000000000000000000000000003").unwrap()
 }
 
+pub fn dave() -> H160 {
+	H160::from_str("1000000000000000000000000000000000000004").unwrap()
+}
+
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
@@ -298,6 +302,14 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	);
 	accounts.insert(
 		bob(),
+		GenesisAccount {
+			nonce: 1,
+			balance: INITIAL_BALANCE,
+			..Default::default()
+		},
+	);
+	accounts.insert(
+		dave(),
 		GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,

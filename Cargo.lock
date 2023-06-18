@@ -2388,12 +2388,12 @@ dependencies = [
  "cumulus-relay-chain-rpc-interface",
  "futures 0.3.28",
  "lru 0.9.0",
- "polkadot-availability-recovery 0.9.42 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.42)",
- "polkadot-collator-protocol 0.9.42 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.42)",
+ "polkadot-availability-recovery",
+ "polkadot-collator-protocol",
  "polkadot-core-primitives",
  "polkadot-network-bridge",
- "polkadot-node-collation-generation 0.9.42 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.42)",
- "polkadot-node-core-runtime-api 0.9.42 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.42)",
+ "polkadot-node-collation-generation",
+ "polkadot-node-core-runtime-api",
  "polkadot-node-network-protocol",
  "polkadot-node-subsystem-util",
  "polkadot-overseer",
@@ -9378,7 +9378,7 @@ version = "0.9.42"
 source = "git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
 dependencies = [
  "futures 0.3.28",
- "polkadot-node-jaeger 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-jaeger",
  "polkadot-node-metrics",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
@@ -9412,7 +9412,7 @@ dependencies = [
  "futures 0.3.28",
  "lru 0.9.0",
  "parity-scale-codec",
- "polkadot-erasure-coding 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-erasure-coding",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
@@ -9428,34 +9428,13 @@ dependencies = [
 [[package]]
 name = "polkadot-availability-recovery"
 version = "0.9.42"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.42#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
-dependencies = [
- "fatality",
- "futures 0.3.28",
- "lru 0.9.0",
- "parity-scale-codec",
- "polkadot-erasure-coding 0.9.42 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.42)",
- "polkadot-node-network-protocol",
- "polkadot-node-primitives",
- "polkadot-node-subsystem",
- "polkadot-node-subsystem-util",
- "polkadot-primitives",
- "rand 0.8.5",
- "sc-network",
- "thiserror",
- "tracing-gum",
-]
-
-[[package]]
-name = "polkadot-availability-recovery"
-version = "0.9.42"
 source = "git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
 dependencies = [
  "fatality",
  "futures 0.3.28",
  "lru 0.9.0",
  "parity-scale-codec",
- "polkadot-erasure-coding 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-erasure-coding",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
@@ -9542,28 +9521,6 @@ dependencies = [
 [[package]]
 name = "polkadot-collator-protocol"
 version = "0.9.42"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.42#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
-dependencies = [
- "always-assert",
- "bitvec 1.0.1",
- "fatality",
- "futures 0.3.28",
- "futures-timer",
- "polkadot-node-network-protocol",
- "polkadot-node-primitives",
- "polkadot-node-subsystem",
- "polkadot-node-subsystem-util",
- "polkadot-primitives",
- "sp-core",
- "sp-keystore",
- "sp-runtime",
- "thiserror",
- "tracing-gum",
-]
-
-[[package]]
-name = "polkadot-collator-protocol"
-version = "0.9.42"
 source = "git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
 dependencies = [
  "always-assert",
@@ -9607,7 +9564,7 @@ dependencies = [
  "indexmap",
  "lru 0.9.0",
  "parity-scale-codec",
- "polkadot-erasure-coding 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-erasure-coding",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
@@ -9618,20 +9575,6 @@ dependencies = [
  "sp-keystore",
  "thiserror",
  "tracing-gum",
-]
-
-[[package]]
-name = "polkadot-erasure-coding"
-version = "0.9.42"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.42#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
-dependencies = [
- "parity-scale-codec",
- "polkadot-node-primitives",
- "polkadot-primitives",
- "reed-solomon-novelpoly",
- "sp-core",
- "sp-trie",
- "thiserror",
 ]
 
 [[package]]
@@ -9694,29 +9637,11 @@ dependencies = [
 [[package]]
 name = "polkadot-node-collation-generation"
 version = "0.9.42"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.42#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
-dependencies = [
- "futures 0.3.28",
- "parity-scale-codec",
- "polkadot-erasure-coding 0.9.42 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.42)",
- "polkadot-node-primitives",
- "polkadot-node-subsystem",
- "polkadot-node-subsystem-util",
- "polkadot-primitives",
- "sp-core",
- "sp-maybe-compressed-blob",
- "thiserror",
- "tracing-gum",
-]
-
-[[package]]
-name = "polkadot-node-collation-generation"
-version = "0.9.42"
 source = "git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
 dependencies = [
  "futures 0.3.28",
  "parity-scale-codec",
- "polkadot-erasure-coding 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-erasure-coding",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
@@ -9740,7 +9665,7 @@ dependencies = [
  "lru 0.9.0",
  "merlin",
  "parity-scale-codec",
- "polkadot-node-jaeger 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-jaeger",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
@@ -9766,7 +9691,7 @@ dependencies = [
  "futures-timer",
  "kvdb",
  "parity-scale-codec",
- "polkadot-erasure-coding 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-erasure-coding",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
@@ -9785,7 +9710,7 @@ dependencies = [
  "bitvec 1.0.1",
  "fatality",
  "futures 0.3.28",
- "polkadot-erasure-coding 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-erasure-coding",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
@@ -10021,49 +9946,16 @@ dependencies = [
 [[package]]
 name = "polkadot-node-core-runtime-api"
 version = "0.9.42"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.42#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
-dependencies = [
- "futures 0.3.28",
- "lru 0.9.0",
- "polkadot-node-metrics",
- "polkadot-node-subsystem",
- "polkadot-node-subsystem-types 0.9.42 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.42)",
- "polkadot-primitives",
- "sp-consensus-babe",
- "tracing-gum",
-]
-
-[[package]]
-name = "polkadot-node-core-runtime-api"
-version = "0.9.42"
 source = "git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
 dependencies = [
  "futures 0.3.28",
  "lru 0.9.0",
  "polkadot-node-metrics",
  "polkadot-node-subsystem",
- "polkadot-node-subsystem-types 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-subsystem-types",
  "polkadot-primitives",
  "sp-consensus-babe",
  "tracing-gum",
-]
-
-[[package]]
-name = "polkadot-node-jaeger"
-version = "0.9.42"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.42#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
-dependencies = [
- "lazy_static",
- "log",
- "mick-jaeger",
- "parity-scale-codec",
- "parking_lot 0.12.1",
- "polkadot-node-primitives",
- "polkadot-primitives",
- "sc-network",
- "sp-core",
- "thiserror",
- "tokio",
 ]
 
 [[package]]
@@ -10114,7 +10006,7 @@ dependencies = [
  "futures 0.3.28",
  "hex",
  "parity-scale-codec",
- "polkadot-node-jaeger 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-jaeger",
  "polkadot-node-primitives",
  "polkadot-primitives",
  "rand 0.8.5",
@@ -10152,32 +10044,9 @@ name = "polkadot-node-subsystem"
 version = "0.9.42"
 source = "git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
 dependencies = [
- "polkadot-node-jaeger 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
- "polkadot-node-subsystem-types 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-jaeger",
+ "polkadot-node-subsystem-types",
  "polkadot-overseer",
-]
-
-[[package]]
-name = "polkadot-node-subsystem-types"
-version = "0.9.42"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.42#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
-dependencies = [
- "async-trait",
- "derive_more",
- "futures 0.3.28",
- "orchestra",
- "polkadot-node-jaeger 0.9.42 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.42)",
- "polkadot-node-network-protocol",
- "polkadot-node-primitives",
- "polkadot-primitives",
- "polkadot-statement-table",
- "sc-network",
- "smallvec",
- "sp-api",
- "sp-authority-discovery",
- "sp-consensus-babe",
- "substrate-prometheus-endpoint",
- "thiserror",
 ]
 
 [[package]]
@@ -10189,7 +10058,7 @@ dependencies = [
  "derive_more",
  "futures 0.3.28",
  "orchestra",
- "polkadot-node-jaeger 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-jaeger",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
  "polkadot-primitives",
@@ -10220,7 +10089,7 @@ dependencies = [
  "parity-scale-codec",
  "parking_lot 0.11.2",
  "pin-project",
- "polkadot-node-jaeger 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-jaeger",
  "polkadot-node-metrics",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
@@ -10250,7 +10119,7 @@ dependencies = [
  "polkadot-node-metrics",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
- "polkadot-node-subsystem-types 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-subsystem-types",
  "polkadot-primitives",
  "sc-client-api",
  "sp-api",
@@ -10284,7 +10153,7 @@ dependencies = [
  "env_logger 0.9.3",
  "kusama-runtime",
  "log",
- "polkadot-erasure-coding 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-erasure-coding",
  "polkadot-node-core-pvf-worker 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
  "polkadot-node-primitives",
  "polkadot-primitives",
@@ -10587,13 +10456,13 @@ dependencies = [
  "polkadot-approval-distribution",
  "polkadot-availability-bitfield-distribution",
  "polkadot-availability-distribution",
- "polkadot-availability-recovery 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-availability-recovery",
  "polkadot-client",
- "polkadot-collator-protocol 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-collator-protocol",
  "polkadot-dispute-distribution",
  "polkadot-gossip-support",
  "polkadot-network-bridge",
- "polkadot-node-collation-generation 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-collation-generation",
  "polkadot-node-core-approval-voting",
  "polkadot-node-core-av-store",
  "polkadot-node-core-backing",
@@ -10605,11 +10474,11 @@ dependencies = [
  "polkadot-node-core-parachains-inherent",
  "polkadot-node-core-provisioner",
  "polkadot-node-core-pvf-checker",
- "polkadot-node-core-runtime-api 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-core-runtime-api",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
- "polkadot-node-subsystem-types 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-subsystem-types",
  "polkadot-node-subsystem-util",
  "polkadot-overseer",
  "polkadot-parachain",
@@ -15469,7 +15338,7 @@ name = "tracing-gum"
 version = "0.9.42"
 source = "git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef#9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef"
 dependencies = [
- "polkadot-node-jaeger 0.9.42 (git+https://github.com/paritytech//polkadot?rev=9b1fc27cec47f01a2c229532ee7ab79cc5bb28ef)",
+ "polkadot-node-jaeger",
  "polkadot-primitives",
  "tracing",
  "tracing-gum-proc-macro",
@@ -17017,7 +16886,7 @@ dependencies = [
 [[package]]
 name = "xcm-emulator"
 version = "0.1.0"
-source = "git+https://github.com/shaunxw/xcm-simulator?rev=bea35c799d725a4233db6b9108ee2ed5bbfc1aed#bea35c799d725a4233db6b9108ee2ed5bbfc1aed"
+source = "git+https://github.com/shaunxw/xcm-simulator?rev=d011e5ca62b93e8f688c2042c1f92cdbafc5d1d0#d011e5ca62b93e8f688c2042c1f92cdbafc5d1d0"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",

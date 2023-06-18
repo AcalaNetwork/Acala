@@ -1493,12 +1493,29 @@ impl<T: Config> Pallet<T> {
 			}
 		});
 
+		let contract_account = T::AddressMapping::get_account_id(&address);
+
 		// NOTE: inc providers occurs before receive and reserve storage fee for this `address`,
-		// it will directly `NewAccount` and:
-		// So before receive amount and reserve this amount for address, the (provider, consumer) of
-		// `address` is (1, 0) after receive storage fee, the (provider, consumer) is (2, 0)
-		// so `address` reserves the received amount that is equal to the received amount will success.
-		frame_system::Pallet::<T>::inc_providers(&T::AddressMapping::get_account_id(&address));
+		// it will directly `NewAccount`.
+		frame_system::Pallet::<T>::inc_providers(&contract_account);
+
+		let native_ed = T::Currency::minimum_balance();
+		let ed_supplier = T::AddressMapping::get_account_id(&T::NetworkContractSource::get());
+		let result = T::Currency::transfer(
+			&ed_supplier,
+			&contract_account,
+			native_ed,
+			ExistenceRequirement::KeepAlive,
+		);
+		if let Err(e) = result {
+			log::error!(
+				target: "evm",
+				"transfer native ED {:?} from {:?} to
+				contract {:?} account failed. error: {:?}. \
+				This is unexpected, need extra action.",
+				native_ed, ed_supplier, address, e,
+			);
+		}
 	}
 
 	/// Get the account basic in EVM format.

@@ -26,7 +26,8 @@ use frame_support::{assert_noop, assert_ok, dispatch::GetDispatchInfo, traits::W
 use mock::{
 	alice, bob, deploy_contracts, erc20_address, erc20_address_not_exist, eva, AccountId, AdaptedBasicCurrency,
 	Balances, CouncilAccount, Currencies, DustAccount, ExtBuilder, NativeCurrency, PalletBalances, Runtime,
-	RuntimeEvent, RuntimeOrigin, System, Tokens, ALICE_BALANCE, DOT, EVM, ID_1, NATIVE_CURRENCY_ID, X_TOKEN_ID,
+	RuntimeEvent, RuntimeOrigin, System, Tokens, ALICE_BALANCE, CHARLIE, DAVE, DOT, EVM, ID_1, NATIVE_CURRENCY_ID,
+	X_TOKEN_ID,
 };
 use sp_core::H160;
 use sp_runtime::{
@@ -35,6 +36,126 @@ use sp_runtime::{
 };
 use support::mocks::MockAddressMapping;
 use support::EVM as EVMTrait;
+
+#[test]
+fn test_balances_provider() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(System::account_exists(&DAVE), false);
+		assert_eq!(System::inc_providers(&DAVE), frame_system::IncRefStatus::Created);
+		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 0));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+			),
+			(0, 0)
+		);
+
+		<Balances as PalletCurrency<_>>::deposit_creating(&CHARLIE, 10000);
+		assert_eq!((System::providers(&CHARLIE), System::consumers(&CHARLIE)), (1, 0));
+
+		assert_ok!(<Balances as PalletCurrency<_>>::transfer(
+			&CHARLIE,
+			&DAVE,
+			100,
+			ExistenceRequirement::AllowDeath
+		));
+		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (2, 0));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+			),
+			(100, 0)
+		);
+
+		assert_ok!(<Balances as PalletReservableCurrency<_>>::reserve(&DAVE, 100));
+		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+			),
+			(0, 100)
+		);
+
+		assert_ok!(<Balances as PalletCurrency<_>>::transfer(
+			&CHARLIE,
+			&DAVE,
+			100,
+			ExistenceRequirement::AllowDeath
+		));
+		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (2, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+			),
+			(100, 100)
+		);
+
+		assert_ok!(<Balances as PalletReservableCurrency<_>>::reserve(&DAVE, 100));
+		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+			),
+			(0, 200)
+		);
+
+		// assert_eq!(<Balances as PalletReservableCurrency<_>>::unreserve(&DAVE, 100), 0);
+		// assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (2, 1));
+		// assert_eq!(
+		// 	(
+		// 		<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+		// 		<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+		// 	),
+		// 	(100, 100)
+		// );
+
+		// assert_eq!(<Balances as PalletReservableCurrency<_>>::unreserve(&DAVE, 100), 0);
+		// assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (2, 0));
+		// assert_eq!(
+		// 	(
+		// 		<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+		// 		<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+		// 	),
+		// 	(200, 0)
+		// );
+
+		assert_eq!(
+			<Balances as PalletReservableCurrency<_>>::repatriate_reserved(
+				&DAVE,
+				&CHARLIE,
+				10,
+				BalanceStatus::Reserved,
+			),
+			Ok(0)
+		);
+		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+			),
+			(0, 190)
+		);
+
+		assert_noop!(
+			<Balances as PalletCurrency<_>>::transfer(&CHARLIE, &DAVE, 1, ExistenceRequirement::AllowDeath),
+			TokenError::BelowMinimum,
+		);
+		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+			),
+			(0, 190)
+		);
+	});
+}
 
 #[test]
 fn force_set_lock_and_force_remove_lock_should_work() {

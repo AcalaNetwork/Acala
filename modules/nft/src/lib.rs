@@ -231,14 +231,11 @@ pub mod module {
 			// Now the pallet-balances judges whether does provider is based on the `free balance` (refer to
 			// `total balance` before). If `free balance` is zero and `reserved balance` is not zero, it doesn't
 			// provider but does consumer, so at least other providers are needed.
-			// If has no provider, add ED to make sure the following `reserve` is available.
-			let total_transfer_amount = if frame_system::Pallet::<T>::providers(&owner).is_zero() {
-				total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance())
-			} else {
-				total_deposit
-			};
+			// Here transfer an additional ED to make sure the following `reserve` is able to succeed.
+			let total_transfer_amount =
+				total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance());
 
-			// ensure enough token for proxy deposit + class deposit + data deposit
+			// ensure enough token for proxy deposit + class deposit + data deposit + ed
 			<T as module::Config>::Currency::transfer(&who, &owner, total_transfer_amount, KeepAlive)?;
 
 			<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &owner, deposit)?;
@@ -421,8 +418,11 @@ impl<T: Config> Pallet<T> {
 		// Now the pallet-balances judges whether does provider is based on the `free balance` (refer to
 		// `total balance` before). If `free balance` is zero and `reserved balance` is not zero, it doesn't
 		// provider but does consumer, so at least other providers are needed.
-		// If has no provider, add ED to make sure the following `reserve` is available.
-		let transfer_amount = if frame_system::Pallet::<T>::providers(&to).is_zero() {
+		// If receiver account has not enough ed, transfer an additional ED to make sure the subsequent
+		// reserve.
+		let transfer_amount = if <T as module::Config>::Currency::free_balance(&to)
+			< <T as module::Config>::Currency::minimum_balance()
+		{
 			reserve_balance.saturating_add(<T as module::Config>::Currency::minimum_balance())
 		} else {
 			reserve_balance
@@ -467,8 +467,11 @@ impl<T: Config> Pallet<T> {
 		// Now the pallet-balances judges whether does provider is based on the `free balance` (refer to
 		// `total balance` before). If `free balance` is zero and `reserved balance` is not zero, it doesn't
 		// provider but does consumer, so at least other providers are needed.
-		// If has no provider, add ED to make sure the following `reserve` is available.
-		let total_transfer_amount = if frame_system::Pallet::<T>::providers(&to).is_zero() {
+		// If receiver account has not enough ed, transfer an additional ED to make sure the subsequent
+		// reserve.
+		let total_transfer_amount = if <T as module::Config>::Currency::free_balance(&to)
+			< <T as module::Config>::Currency::minimum_balance()
+		{
 			total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance())
 		} else {
 			total_deposit
