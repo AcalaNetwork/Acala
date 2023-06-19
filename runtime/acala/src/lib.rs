@@ -360,10 +360,9 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-	type HoldIdentifier = ();
+	type HoldIdentifier = ReserveIdentifier;
 	type FreezeIdentifier = ();
-	// need config this to support fungible::MutateHold
-	type MaxHolds = ();
+	type MaxHolds = MaxReserves;
 	type MaxFreezes = ();
 }
 

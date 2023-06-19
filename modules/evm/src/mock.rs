@@ -74,7 +74,7 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
-	type ExistentialDeposit = ConstU128<1>;
+	type ExistentialDeposit = ConstU128<2>;
 	type AccountStore = System;
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
@@ -183,7 +183,7 @@ impl FindAuthor<AccountId32> for AuthorGiven {
 }
 
 parameter_types! {
-	pub NetworkContractSource: H160 = dave();
+	pub NetworkContractSource: H160 = alice();
 }
 
 ord_parameter_types! {
@@ -266,10 +266,6 @@ pub fn charlie() -> H160 {
 	H160::from_str("1000000000000000000000000000000000000003").unwrap()
 }
 
-pub fn dave() -> H160 {
-	H160::from_str("1000000000000000000000000000000000000004").unwrap()
-}
-
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
@@ -302,14 +298,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	);
 	accounts.insert(
 		bob(),
-		GenesisAccount {
-			nonce: 1,
-			balance: INITIAL_BALANCE,
-			..Default::default()
-		},
-	);
-	accounts.insert(
-		dave(),
 		GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,

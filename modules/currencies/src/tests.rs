@@ -51,7 +51,7 @@ fn test_balances_provider() {
 			(0, 0)
 		);
 
-		<Balances as PalletCurrency<_>>::deposit_creating(&CHARLIE, 10000);
+		let _ = <Balances as PalletCurrency<_>>::deposit_creating(&CHARLIE, 10000);
 		assert_eq!((System::providers(&CHARLIE), System::consumers(&CHARLIE)), (1, 0));
 
 		assert_ok!(<Balances as PalletCurrency<_>>::transfer(
@@ -104,25 +104,10 @@ fn test_balances_provider() {
 			(0, 200)
 		);
 
-		// assert_eq!(<Balances as PalletReservableCurrency<_>>::unreserve(&DAVE, 100), 0);
-		// assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (2, 1));
-		// assert_eq!(
-		// 	(
-		// 		<Balances as PalletCurrency<_>>::free_balance(&DAVE),
-		// 		<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
-		// 	),
-		// 	(100, 100)
-		// );
-
-		// assert_eq!(<Balances as PalletReservableCurrency<_>>::unreserve(&DAVE, 100), 0);
-		// assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (2, 0));
-		// assert_eq!(
-		// 	(
-		// 		<Balances as PalletCurrency<_>>::free_balance(&DAVE),
-		// 		<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
-		// 	),
-		// 	(200, 0)
-		// );
+		assert_noop!(
+			<Balances as PalletCurrency<_>>::transfer(&CHARLIE, &DAVE, 1, ExistenceRequirement::AllowDeath),
+			TokenError::BelowMinimum
+		);
 
 		assert_eq!(
 			<Balances as PalletReservableCurrency<_>>::repatriate_reserved(
@@ -603,11 +588,7 @@ fn call_event_should_work() {
 #[test]
 fn erc20_total_issuance_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(
-			alice(),
-			NATIVE_CURRENCY_ID,
-			100000 + Balances::minimum_balance(),
-		)])
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 200000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -621,11 +602,7 @@ fn erc20_total_issuance_should_work() {
 #[test]
 fn erc20_free_balance_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(
-			alice(),
-			NATIVE_CURRENCY_ID,
-			100000 + Balances::minimum_balance(),
-		)])
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 200000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -647,11 +624,7 @@ fn erc20_free_balance_should_work() {
 #[test]
 fn erc20_total_balance_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(
-			alice(),
-			NATIVE_CURRENCY_ID,
-			100000 + Balances::minimum_balance(),
-		)])
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 200000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -673,11 +646,7 @@ fn erc20_total_balance_should_work() {
 #[test]
 fn erc20_ensure_withdraw_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(
-			alice(),
-			NATIVE_CURRENCY_ID,
-			100000 + Balances::minimum_balance(),
-		)])
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 200000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -713,7 +682,7 @@ fn erc20_ensure_withdraw_should_work() {
 fn erc20_transfer_should_work() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice(), NATIVE_CURRENCY_ID, 100000 + Balances::minimum_balance()),
+			(alice(), NATIVE_CURRENCY_ID, 200000),
 			(bob(), NATIVE_CURRENCY_ID, 100000),
 			(eva(), NATIVE_CURRENCY_ID, 100000),
 		])
@@ -775,7 +744,7 @@ fn erc20_transfer_should_work() {
 fn erc20_transfer_should_fail() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice(), NATIVE_CURRENCY_ID, 100000 + Balances::minimum_balance()),
+			(alice(), NATIVE_CURRENCY_ID, 200000),
 			(bob(), NATIVE_CURRENCY_ID, 100000),
 		])
 		.build()
@@ -819,11 +788,7 @@ fn erc20_transfer_should_fail() {
 #[test]
 fn erc20_can_reserve_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(
-			alice(),
-			NATIVE_CURRENCY_ID,
-			100000 + Balances::minimum_balance(),
-		)])
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 200000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -834,11 +799,7 @@ fn erc20_can_reserve_should_work() {
 #[test]
 fn erc20_slash_reserve_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(
-			alice(),
-			NATIVE_CURRENCY_ID,
-			100000 + Balances::minimum_balance(),
-		)])
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 200000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -857,14 +818,11 @@ fn erc20_slash_reserve_should_work() {
 #[test]
 fn erc20_reserve_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(
-			alice(),
-			NATIVE_CURRENCY_ID,
-			100000 + Balances::minimum_balance(),
-		)])
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 200000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
+
 			assert_eq!(
 				Currencies::reserved_balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				0
@@ -890,11 +848,7 @@ fn erc20_reserve_should_work() {
 #[test]
 fn erc20_unreserve_should_work() {
 	ExtBuilder::default()
-		.balances(vec![(
-			alice(),
-			NATIVE_CURRENCY_ID,
-			100000 + Balances::minimum_balance(),
-		)])
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 200000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -953,11 +907,7 @@ fn erc20_unreserve_should_work() {
 #[test]
 fn erc20_should_not_slash() {
 	ExtBuilder::default()
-		.balances(vec![(
-			alice(),
-			NATIVE_CURRENCY_ID,
-			100000 + Balances::minimum_balance(),
-		)])
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 200000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -970,11 +920,7 @@ fn erc20_should_not_slash() {
 #[test]
 fn erc20_should_not_be_lockable() {
 	ExtBuilder::default()
-		.balances(vec![(
-			alice(),
-			NATIVE_CURRENCY_ID,
-			100000 + Balances::minimum_balance(),
-		)])
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 200000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -997,7 +943,7 @@ fn erc20_should_not_be_lockable() {
 fn erc20_repatriate_reserved_should_work() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice(), NATIVE_CURRENCY_ID, 100000 + Balances::minimum_balance()),
+			(alice(), NATIVE_CURRENCY_ID, 200000),
 			(bob(), NATIVE_CURRENCY_ID, 100000),
 		])
 		.build()
@@ -1132,11 +1078,7 @@ fn erc20_repatriate_reserved_should_work() {
 #[test]
 fn erc20_invalid_operation() {
 	ExtBuilder::default()
-		.balances(vec![(
-			alice(),
-			NATIVE_CURRENCY_ID,
-			100000 + Balances::minimum_balance(),
-		)])
+		.balances(vec![(alice(), NATIVE_CURRENCY_ID, 200000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
@@ -1153,7 +1095,7 @@ fn erc20_invalid_operation() {
 fn erc20_withdraw_deposit_works() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice(), NATIVE_CURRENCY_ID, 100000 + Balances::minimum_balance()),
+			(alice(), NATIVE_CURRENCY_ID, 200000),
 			(bob(), NATIVE_CURRENCY_ID, 100000),
 		])
 		.build()
@@ -1215,7 +1157,7 @@ fn erc20_withdraw_deposit_works() {
 fn fungible_inspect_trait_should_work() {
 	ExtBuilder::default()
 		.balances(vec![
-			(alice(), NATIVE_CURRENCY_ID, 100000),
+			(alice(), NATIVE_CURRENCY_ID, 200000),
 			(alice(), X_TOKEN_ID, 200000),
 		])
 		.build()
@@ -1225,7 +1167,7 @@ fn fungible_inspect_trait_should_work() {
 			// Test for Inspect::total_issuance
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::total_issuance(NATIVE_CURRENCY_ID),
-				100000
+				200000
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::total_issuance(X_TOKEN_ID),
@@ -1235,8 +1177,8 @@ fn fungible_inspect_trait_should_work() {
 				<Currencies as fungibles::Inspect<_>>::total_issuance(CurrencyId::Erc20(erc20_address())),
 				ALICE_BALANCE
 			);
-			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::total_issuance(), 100000);
-			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::total_issuance(), 100000);
+			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::total_issuance(), 200000);
+			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::total_issuance(), 200000);
 
 			// Test for Inspect::minimum_balance
 			assert_eq!(
@@ -1254,11 +1196,11 @@ fn fungible_inspect_trait_should_work() {
 			// Test for Inspect::balance and Inspect::total_balance
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(NATIVE_CURRENCY_ID, &alice()),
-				48690
+				148688
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::total_balance(NATIVE_CURRENCY_ID, &alice()),
-				48690
+				148688
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(X_TOKEN_ID, &alice()),
@@ -1268,8 +1210,11 @@ fn fungible_inspect_trait_should_work() {
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE
 			);
-			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 48690);
-			assert_eq!(<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&alice()), 48690);
+			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 148688);
+			assert_eq!(
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&alice()),
+				148688
+			);
 
 			// Test for Inspect::reducible_balance. No locks or reserves
 			// With Keep alive
@@ -1280,7 +1225,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				48688
+				148686
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1288,7 +1233,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				48688
+				148686
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1296,7 +1241,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				48688
+				148686
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1326,7 +1271,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				48690
+				148688
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1352,7 +1297,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				48690
+				148688
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1360,7 +1305,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				48690
+				148688
 			);
 
 			// Set some locks
@@ -1375,7 +1320,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				47690
+				147688
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1401,7 +1346,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				47690
+				147688
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1409,7 +1354,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				47690
+				147688
 			);
 
 			assert_eq!(
@@ -1419,7 +1364,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				47690
+				147688
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1445,7 +1390,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				47690
+				147688
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1453,7 +1398,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				47690
+				147688
 			);
 
 			// Test for Inspect::can_deposit
@@ -1578,11 +1523,11 @@ fn fungible_inspect_trait_should_work() {
 			);
 
 			assert_eq!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 47690 + 1),
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 147688 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 47690 + 1),
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 147688 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(

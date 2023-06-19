@@ -155,9 +155,9 @@ impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
-	type HoldIdentifier = ();
+	type HoldIdentifier = ReserveIdentifier;
 	type FreezeIdentifier = ();
-	type MaxHolds = ();
+	type MaxHolds = ConstU32<50>;
 	type MaxFreezes = ();
 }
 

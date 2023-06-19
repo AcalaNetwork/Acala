@@ -1498,24 +1498,6 @@ impl<T: Config> Pallet<T> {
 		// NOTE: inc providers occurs before receive and reserve storage fee for this `address`,
 		// it will directly `NewAccount`.
 		frame_system::Pallet::<T>::inc_providers(&contract_account);
-
-		let native_ed = T::Currency::minimum_balance();
-		let ed_supplier = T::AddressMapping::get_account_id(&T::NetworkContractSource::get());
-		let result = T::Currency::transfer(
-			&ed_supplier,
-			&contract_account,
-			native_ed,
-			ExistenceRequirement::KeepAlive,
-		);
-		if let Err(e) = result {
-			log::error!(
-				target: "evm",
-				"transfer native ED {:?} from {:?} to
-				contract {:?} account failed. error: {:?}. \
-				This is unexpected, need extra action.",
-				native_ed, ed_supplier, address, e,
-			);
-		}
 	}
 
 	/// Get the account basic in EVM format.
@@ -1836,6 +1818,26 @@ impl<T: Config> Pallet<T> {
 		let user = T::AddressMapping::get_account_id(caller);
 		let contract_acc = T::AddressMapping::get_account_id(contract);
 		let amount = Self::get_storage_deposit_per_byte().saturating_mul(storage.unsigned_abs().into());
+
+		let contract_free_balance = T::Currency::free_balance(&contract_acc);
+		let native_ed = T::Currency::minimum_balance();
+
+		// Usually only occurs once when create contract phase.
+		if contract_free_balance < native_ed {
+			// transfer ED to contract account so that receive and reserve storage will not be blocked by
+			// `pallet-balances` rule: `TokenError::BelowMinimum` will throw when call `Currency::transfer` and
+			// meet `dest_free_amount + transfer_amount < ED` even if the dest account is already alive status.
+			// NOTE: it's take extra Native TOKEN from caller outside the storage limit mechanism.
+			if let Err(e) = T::Currency::transfer(&user, &contract_acc, native_ed, ExistenceRequirement::AllowDeath) {
+				log::error!(
+					target: "evm",
+					"charge storage: caller account {:?} try transfer native ED {:?} to contract account {:?} failed. \
+					Error: {:?}. \
+					This is unexpected, need extra action.",
+					user.clone(), native_ed, contract_acc.clone(), e,
+				);
+			}
+		}
 
 		log::debug!(
 			target: "evm",
