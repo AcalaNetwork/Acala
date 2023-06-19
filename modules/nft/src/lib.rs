@@ -228,10 +228,11 @@ pub mod module {
 			let total_deposit = proxy_deposit.saturating_add(deposit);
 
 			// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
-			// Now the pallet-balances judges whether does provider is based on the `free balance` (refer to
-			// `total balance` before). If `free balance` is zero and `reserved balance` is not zero, it doesn't
-			// provider but does consumer, so at least other providers are needed.
-			// Here transfer an additional ED to make sure the following `reserve` is able to succeed.
+			// Now the pallet-balances judges whether does provider is based on the `free balance` instead of
+			// `total balance`. When there's no other providers, error will throw in following reserve
+			// operation, which want to make `free balance` is zero and `reserved balance` is not zero.
+			// If receiver account has not enough ed, transfer an additional ED to make sure the subsequent
+			// reserve operation.
 			let total_transfer_amount =
 				total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance());
 
@@ -415,18 +416,17 @@ impl<T: Config> Pallet<T> {
 		let reserve_balance = token_info.data.deposit;
 
 		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
-		// Now the pallet-balances judges whether does provider is based on the `free balance` (refer to
-		// `total balance` before). If `free balance` is zero and `reserved balance` is not zero, it doesn't
-		// provider but does consumer, so at least other providers are needed.
+		// Now the pallet-balances judges whether does provider is based on the `free balance` instead of
+		// `total balance`. When there's no other providers, error will throw in following reserve
+		// operation, which want to make `free balance` is zero and `reserved balance` is not zero.
 		// If receiver account has not enough ed, transfer an additional ED to make sure the subsequent
-		// reserve.
-		let transfer_amount = if <T as module::Config>::Currency::free_balance(&to)
-			< <T as module::Config>::Currency::minimum_balance()
-		{
-			reserve_balance.saturating_add(<T as module::Config>::Currency::minimum_balance())
-		} else {
-			reserve_balance
-		};
+		// reserve operation.
+		let transfer_amount =
+			if <T as module::Config>::Currency::free_balance(to) < <T as module::Config>::Currency::minimum_balance() {
+				reserve_balance.saturating_add(<T as module::Config>::Currency::minimum_balance())
+			} else {
+				reserve_balance
+			};
 
 		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, from, reserve_balance);
 		<T as module::Config>::Currency::transfer(from, to, transfer_amount, AllowDeath)?;
@@ -464,18 +464,17 @@ impl<T: Config> Pallet<T> {
 		let total_deposit = deposit.saturating_mul(quantity.into());
 
 		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
-		// Now the pallet-balances judges whether does provider is based on the `free balance` (refer to
-		// `total balance` before). If `free balance` is zero and `reserved balance` is not zero, it doesn't
-		// provider but does consumer, so at least other providers are needed.
+		// Now the pallet-balances judges whether does provider is based on the `free balance` instead of
+		// `total balance`. When there's no other providers, error will throw in following reserve
+		// operation, which want to make `free balance` is zero and `reserved balance` is not zero.
 		// If receiver account has not enough ed, transfer an additional ED to make sure the subsequent
-		// reserve.
-		let total_transfer_amount = if <T as module::Config>::Currency::free_balance(&to)
-			< <T as module::Config>::Currency::minimum_balance()
-		{
-			total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance())
-		} else {
-			total_deposit
-		};
+		// reserve operation.
+		let total_transfer_amount =
+			if <T as module::Config>::Currency::free_balance(to) < <T as module::Config>::Currency::minimum_balance() {
+				total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance())
+			} else {
+				total_deposit
+			};
 
 		// `repatriate_reserved` will check `to` account exist and may return
 		// `DeadAccount`.

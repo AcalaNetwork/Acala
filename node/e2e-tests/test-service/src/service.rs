@@ -21,6 +21,7 @@
 
 use super::*;
 use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
+use sc_executor::{HeapAllocStrategy, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY};
 
 /// Starts a `ServiceBuilder` for a full service.
 ///
@@ -40,11 +41,19 @@ pub fn new_partial(
 	>,
 	sc_service::Error,
 > {
-	let executor = NativeElseWasmExecutor::<RuntimeExecutor>::new(
-		config.wasm_method,
-		config.default_heap_pages,
-		config.max_runtime_instances,
-		config.runtime_cache_size,
+	let heap_pages = config
+		.default_heap_pages
+		.map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static {
+			extra_pages: h as _,
+		});
+	let executor = NativeElseWasmExecutor::<RuntimeExecutor>::new_with_wasm_executor(
+		WasmExecutor::builder()
+			.with_execution_method(config.wasm_method)
+			.with_onchain_heap_alloc_strategy(heap_pages)
+			.with_offchain_heap_alloc_strategy(heap_pages)
+			.with_max_runtime_instances(config.max_runtime_instances)
+			.with_runtime_cache_size(config.runtime_cache_size)
+			.build(),
 	);
 
 	let (client, backend, keystore_container, task_manager) =
