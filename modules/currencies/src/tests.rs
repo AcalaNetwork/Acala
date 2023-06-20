@@ -26,7 +26,7 @@ use frame_support::{assert_noop, assert_ok, dispatch::GetDispatchInfo, traits::W
 use mock::{
 	alice, bob, deploy_contracts, erc20_address, erc20_address_not_exist, eva, AccountId, AdaptedBasicCurrency,
 	Balances, CouncilAccount, Currencies, DustAccount, ExtBuilder, NativeCurrency, PalletBalances, Runtime,
-	RuntimeEvent, RuntimeOrigin, System, Tokens, ALICE_BALANCE, CHARLIE, DAVE, DOT, EVM, ID_1, NATIVE_CURRENCY_ID,
+	RuntimeEvent, RuntimeOrigin, System, Tokens, ALICE_BALANCE, CHARLIE, DAVE, DOT, EVE, EVM, ID_1, NATIVE_CURRENCY_ID,
 	X_TOKEN_ID,
 };
 use sp_core::H160;
@@ -99,10 +99,19 @@ fn test_balances_provider() {
 			),
 			(9899, 1)
 		);
+		assert_ok!(<Balances as PalletReservableCurrency<_>>::reserve(&CHARLIE, 899));
+		assert_eq!((System::providers(&CHARLIE), System::consumers(&CHARLIE)), (1, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&CHARLIE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&CHARLIE)
+			),
+			(9000, 900)
+		);
 
 		// reserve and after free_balance below ED for CHARLIE
 		assert_noop!(
-			<Balances as PalletReservableCurrency<_>>::reserve(&CHARLIE, 9898),
+			<Balances as PalletReservableCurrency<_>>::reserve(&CHARLIE, 8999),
 			DispatchError::ConsumerRemaining
 		);
 
@@ -146,17 +155,79 @@ fn test_balances_provider() {
 			TokenError::BelowMinimum
 		);
 
-		// unreserve after free_balance is still below ED for DAVE, will not inc provider
-		// will not dust.
-		assert_eq!(<Balances as PalletReservableCurrency<_>>::unreserve(&DAVE, 1,), 0);
+		// can use repatriate_reserved to transfer reserved balance to receiver's free， even if
+		// free_balance + repatriate amount < ED, it will succeed!
+		assert_eq!(
+			<Balances as PalletReservableCurrency<_>>::repatriate_reserved(&CHARLIE, &DAVE, 1, BalanceStatus::Free),
+			Ok(0)
+		);
 		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
 		assert_eq!(
 			(
 				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
 				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
 			),
-			(1, 99)
+			(1, 100)
 		);
+		assert_eq!((System::providers(&CHARLIE), System::consumers(&CHARLIE)), (1, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&CHARLIE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&CHARLIE)
+			),
+			(9000, 899)
+		);
+
+		assert_eq!(System::account_exists(&EVE), false);
+		assert_eq!((System::providers(&EVE), System::consumers(&EVE)), (0, 0));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&EVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&EVE)
+			),
+			(0, 0)
+		);
+
+		// inc_provider to initialize EVE
+		assert_eq!(System::inc_providers(&EVE), frame_system::IncRefStatus::Created);
+		assert_eq!(System::account_exists(&EVE), true);
+		assert_eq!((System::providers(&EVE), System::consumers(&EVE)), (1, 0));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&EVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&EVE)
+			),
+			(0, 0)
+		);
+
+		// repatriate_reserved try to transfer reserved balance to EVE's reserved balance, EVE's system
+		// account is existed, but it's BalanceAccountData is Default::default(), repatriate_reserved will
+		// act EVE as a new account, will fail!
+		assert_eq!(
+			<Balances as PalletReservableCurrency<_>>::repatriate_reserved(&CHARLIE, &EVE, 10, BalanceStatus::Reserved),
+			Err(pallet_balances::Error::<Runtime>::DeadAccount.into())
+		);
+		assert_eq!(System::account_exists(&EVE), true);
+		assert_eq!((System::providers(&EVE), System::consumers(&EVE)), (1, 0));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&EVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&EVE)
+			),
+			(0, 0)
+		);
+
+		// // unreserve after free_balance is still below ED for DAVE, will not inc provider
+		// // will not dust.
+		// assert_eq!(<Balances as PalletReservableCurrency<_>>::unreserve(&DAVE, 1,), 0);
+		// assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
+		// assert_eq!(
+		// 	(
+		// 		<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+		// 		<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+		// 	),
+		// 	(1, 99)
+		// );
 	});
 }
 
