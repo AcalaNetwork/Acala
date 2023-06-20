@@ -37,11 +37,16 @@ use sp_runtime::{
 use support::mocks::MockAddressMapping;
 use support::EVM as EVMTrait;
 
+// this test displays the ED and provider/consumer behavior of current pallet-balances
 #[test]
 fn test_balances_provider() {
 	ExtBuilder::default().build().execute_with(|| {
+		// inc_providers to initialize a account directly (it occurs create contract)
 		assert_eq!(System::account_exists(&DAVE), false);
+		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (0, 0));
 		assert_eq!(System::inc_providers(&DAVE), frame_system::IncRefStatus::Created);
+		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 0));
+		assert_eq!(System::account_exists(&DAVE), true);
 		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 0));
 		assert_eq!(
 			(
@@ -51,9 +56,24 @@ fn test_balances_provider() {
 			(0, 0)
 		);
 
+		// creat CHARLIE by creating
 		let _ = <Balances as PalletCurrency<_>>::deposit_creating(&CHARLIE, 10000);
 		assert_eq!((System::providers(&CHARLIE), System::consumers(&CHARLIE)), (1, 0));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&CHARLIE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&CHARLIE)
+			),
+			(10000, 0)
+		);
 
+		// transfer to already existed DAVE but receive amount + free_balance < ED
+		assert_noop!(
+			<Balances as PalletCurrency<_>>::transfer(&CHARLIE, &DAVE, 1, ExistenceRequirement::AllowDeath),
+			TokenError::BelowMinimum
+		);
+
+		// transfer to already existed DAVE but receive amount + free_balance >= ED
 		assert_ok!(<Balances as PalletCurrency<_>>::transfer(
 			&CHARLIE,
 			&DAVE,
@@ -69,7 +89,48 @@ fn test_balances_provider() {
 			(100, 0)
 		);
 
-		assert_ok!(<Balances as PalletReservableCurrency<_>>::reserve(&DAVE, 100));
+		// reserve and after reserved_amount below ED for CHARLIE
+		assert_ok!(<Balances as PalletReservableCurrency<_>>::reserve(&CHARLIE, 1));
+		assert_eq!((System::providers(&CHARLIE), System::consumers(&CHARLIE)), (1, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&CHARLIE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&CHARLIE)
+			),
+			(9899, 1)
+		);
+
+		// reserve and after free_balance below ED for CHARLIE
+		assert_noop!(
+			<Balances as PalletReservableCurrency<_>>::reserve(&CHARLIE, 9898),
+			DispatchError::ConsumerRemaining
+		);
+
+		// reserve and after reserved_amount below ED for DAVE
+		assert_ok!(<Balances as PalletReservableCurrency<_>>::reserve(&DAVE, 1));
+		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (2, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+			),
+			(99, 1)
+		);
+
+		// reserve and after free_balance is below ED for DAVE, will dec provider
+		// but not dust.
+		assert_ok!(<Balances as PalletReservableCurrency<_>>::reserve(&DAVE, 98));
+		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
+			),
+			(1, 99)
+		);
+
+		// reserve and after free_balance is zero for DAVE
+		assert_ok!(<Balances as PalletReservableCurrency<_>>::reserve(&DAVE, 1));
 		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
 		assert_eq!(
 			(
@@ -79,65 +140,22 @@ fn test_balances_provider() {
 			(0, 100)
 		);
 
-		assert_ok!(<Balances as PalletCurrency<_>>::transfer(
-			&CHARLIE,
-			&DAVE,
-			100,
-			ExistenceRequirement::AllowDeath
-		));
-		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (2, 1));
-		assert_eq!(
-			(
-				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
-				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
-			),
-			(100, 100)
-		);
-
-		assert_ok!(<Balances as PalletReservableCurrency<_>>::reserve(&DAVE, 100));
-		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
-		assert_eq!(
-			(
-				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
-				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
-			),
-			(0, 200)
-		);
-
+		// transfer to DAVE but receive amount + free_balance < ED
 		assert_noop!(
 			<Balances as PalletCurrency<_>>::transfer(&CHARLIE, &DAVE, 1, ExistenceRequirement::AllowDeath),
 			TokenError::BelowMinimum
 		);
 
-		assert_eq!(
-			<Balances as PalletReservableCurrency<_>>::repatriate_reserved(
-				&DAVE,
-				&CHARLIE,
-				10,
-				BalanceStatus::Reserved,
-			),
-			Ok(0)
-		);
+		// unreserve after free_balance is still below ED for DAVE, will not inc provider
+		// will not dust.
+		assert_eq!(<Balances as PalletReservableCurrency<_>>::unreserve(&DAVE, 1,), 0);
 		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
 		assert_eq!(
 			(
 				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
 				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
 			),
-			(0, 190)
-		);
-
-		assert_noop!(
-			<Balances as PalletCurrency<_>>::transfer(&CHARLIE, &DAVE, 1, ExistenceRequirement::AllowDeath),
-			TokenError::BelowMinimum,
-		);
-		assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
-		assert_eq!(
-			(
-				<Balances as PalletCurrency<_>>::free_balance(&DAVE),
-				<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
-			),
-			(0, 190)
+			(1, 99)
 		);
 	});
 }
