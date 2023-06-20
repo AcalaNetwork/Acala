@@ -101,7 +101,7 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<1>;
-	type AccountStore = frame_system::Pallet<Runtime>;
+	type AccountStore = module_support::SystemAccountStore<Runtime>;
 	type MaxLocks = ();
 	type WeightInfo = ();
 	type MaxReserves = ConstU32<50>;

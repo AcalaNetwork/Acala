@@ -365,11 +365,11 @@ fn test_evm_module() {
 
 			// test EvmAccounts Lookup
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 998_863_300_000_000);
+			assert_eq!(Balances::free_balance(alice()), 998_963_300_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 998_863_300_000_000);
+			assert_eq!(Balances::free_balance(alice()), 998_963_300_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 996_789_900_000_000);
+			assert_eq!(Balances::free_balance(alice()), 996_889_900_000_000);
 			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(NATIVE_CURRENCY));
 			let to = EvmAccounts::eth_address(&alice_key());
 			assert_ok!(Currencies::transfer(
@@ -379,11 +379,11 @@ fn test_evm_module() {
 				10 * dollar(NATIVE_CURRENCY)
 			));
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_008_863_300_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_008_963_300_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_008_863_300_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_008_963_300_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_006_789_900_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_006_889_900_000_000);
 			assert_eq!(
 				Balances::free_balance(bob()),
 				1_000 * dollar(NATIVE_CURRENCY) - 10 * dollar(NATIVE_CURRENCY)
@@ -656,7 +656,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			#[cfg(feature = "with-ethereum-compatibility")]
 			assert_eq!(System::providers(&contract_account_id), 1);
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			assert_eq!(System::providers(&contract_account_id), 2);
+			assert_eq!(System::providers(&contract_account_id), 1);
 			assert!(EVM::accounts(contract).is_some());
 
 			// call kill
@@ -1115,17 +1115,18 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 				Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
 			));
 
-			assert_ok!(deploy_contract(AccountId::from(BOB)));
-
 			#[cfg(feature = "with-karura-runtime")]
 			{
+				let contract_address = deploy_contract(AccountId::from(BOB)).unwrap();
 				System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Reserved {
 					who: AccountId::from(BOB),
 					amount: 10_000_000_000_000,
 				}));
-				System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
-					who: AccountId::from(BOB),
+				System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::ReserveRepatriated {
+					from: AccountId::from(BOB),
+					to: MockAddressMapping::get_account_id(&contract_address),
 					amount: 1_036_700_000_000,
+					destination_status: frame_support::traits::BalanceStatus::Reserved,
 				}));
 				System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
 					who: AccountId::from(BOB),

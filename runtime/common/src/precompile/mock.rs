@@ -150,7 +150,7 @@ impl pallet_balances::Config for Test {
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ExistenceRequirement;
-	type AccountStore = System;
+	type AccountStore = module_support::SystemAccountStore<Test>;
 	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;

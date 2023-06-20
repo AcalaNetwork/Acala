@@ -288,7 +288,7 @@ fn call_reverts_with_message() {
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		let alice_balance = INITIAL_BALANCE - 323 * EVM::get_storage_deposit_per_byte() - Balances::minimum_balance();	// addtional ED is taken when deploy contract
+		let alice_balance = INITIAL_BALANCE - 323 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -455,7 +455,7 @@ fn should_transfer_from_contract() {
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_storage, 1198);
 
-		let alice_balance = INITIAL_BALANCE - 1198 * EVM::get_storage_deposit_per_byte() - Balances::minimum_balance(); // addtional ED is taken when deploy contract
+		let alice_balance = INITIAL_BALANCE - 1198 * EVM::get_storage_deposit_per_byte();
 		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(
 			eth_balance(alice()),
@@ -639,7 +639,7 @@ fn contract_should_publish_contracts() {
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_storage, 467);
 
-		let alice_balance = INITIAL_BALANCE - 467 * EVM::get_storage_deposit_per_byte() - Balances::minimum_balance(); // addtional ED is taken when deploy contract
+		let alice_balance = INITIAL_BALANCE - 467 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
@@ -647,7 +647,7 @@ fn contract_should_publish_contracts() {
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		publish_free(factory_contract_address);
 
-		assert_eq!(balance(factory_contract_address), Balances::minimum_balance());	// addtional ED is received when deploy contract
+		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
 			467 * EVM::get_storage_deposit_per_byte()
@@ -673,15 +673,15 @@ fn contract_should_publish_contracts() {
 
 		assert_eq!(
 			balance(alice()),
-			alice_balance - amount - 281 * EVM::get_storage_deposit_per_byte() - Balances::minimum_balance() // addtional ED is taken when deploy contract
+			alice_balance - amount - 281 * EVM::get_storage_deposit_per_byte()
 		);
-		assert_eq!(balance(factory_contract_address), amount + Balances::minimum_balance()); // addtional ED is received when deploy contract
+		assert_eq!(balance(factory_contract_address), amount);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
 			(467 + 128) * EVM::get_storage_deposit_per_byte()
 		);
 		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
-		assert_eq!(balance(contract_address), Balances::minimum_balance());	// addtional ED is received when deploy contract
+		assert_eq!(balance(contract_address), 0);
 		assert_eq!(
 			reserved_balance(contract_address),
 			153 * EVM::get_storage_deposit_per_byte()
@@ -719,11 +719,11 @@ fn contract_should_publish_contracts_without_payable() {
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		let alice_balance = INITIAL_BALANCE - 464 * EVM::get_storage_deposit_per_byte() - Balances::minimum_balance(); // addtional ED is taken when deploy contract
+		let alice_balance = INITIAL_BALANCE - 464 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
-		assert_eq!(balance(factory_contract_address), Balances::minimum_balance()); // addtional ED is received when deploy contract
+		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(reserved_balance(factory_contract_address), 4640);
 
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
@@ -747,11 +747,9 @@ fn contract_should_publish_contracts_without_payable() {
 		assert_eq!(result.used_storage, 290);
 		assert_eq!(
 			balance(alice()),
-			alice_balance
-				- (result.used_storage as u128 * EVM::get_storage_deposit_per_byte())
-				- Balances::minimum_balance() // addtional ED is taken when deploy contract
+			alice_balance - (result.used_storage as u128 * EVM::get_storage_deposit_per_byte())
 		);
-		assert_eq!(balance(factory_contract_address), Balances::minimum_balance()); // addtional ED is received when deploy contract
+		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
 			(464 + 128) * EVM::get_storage_deposit_per_byte()
@@ -795,10 +793,7 @@ fn publish_factory() {
 		assert_eq!(result.used_storage, 461);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE
-				- (result.used_storage as u128 * EVM::get_storage_deposit_per_byte())
-				- 2 * Balances::minimum_balance() /* addtional 2 * ED is taken from caller when deploy the factory
-			                                   * contract and the contract */
+			INITIAL_BALANCE - (result.used_storage as u128 * EVM::get_storage_deposit_per_byte())
 		);
 	});
 }
@@ -927,18 +922,28 @@ fn create_predeploy_contract_works() {
 		// deploy empty contract
 		let token_addr = H160::from_str("2222222222222222222222222222222222222222").unwrap();
 
-		assert_noop!(
-			EVM::create_predeploy_contract(
-				RuntimeOrigin::signed(NetworkContractAccount::get()),
-				token_addr,
-				vec![],
-				0,
-				1000000,
-				1000000,
-				vec![],
-			),
-			Error::<Runtime>::ContractNotFound
-		);
+		// the call is ok, but actually deploy failed, will trige CreatedFailed event
+		// if contract is empty, will skip inc_provider for contract account, so it
+		// fail at charge storage.
+		assert_ok!(EVM::create_predeploy_contract(
+			RuntimeOrigin::signed(NetworkContractAccount::get()),
+			token_addr,
+			vec![],
+			0,
+			1000000,
+			1000000,
+			vec![],
+		));
+		System::assert_has_event(RuntimeEvent::EVM(crate::Event::CreatedFailed {
+			from: NetworkContractSource::get(),
+			contract: H160::from_str("0000000000000000000000000000000000000000").unwrap(),
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::ChargeStorageFailed).into(),
+			)),
+			logs: vec![],
+			used_gas: 1000000,
+			used_storage: 0,
+		}));
 
 		assert_eq!(CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&token_addr)), None);
 	});
@@ -977,8 +982,7 @@ fn should_transfer_maintainer() {
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_storage, 461);
-		let alice_balance =
-			INITIAL_BALANCE - 461 * EVM::get_storage_deposit_per_byte() - 2 * Balances::minimum_balance(); // addtional 2 * ED is taken from caller when deploy the factory contract and the contract
+		let alice_balance = INITIAL_BALANCE - 461 * EVM::get_storage_deposit_per_byte();
 		let contract_address = result.value;
 
 		assert_eq!(balance(alice()), alice_balance);
@@ -1051,7 +1055,7 @@ fn should_publish() {
 		let contract_address = result.value;
 
 		assert_eq!(result.used_storage, 284);
-		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte() - Balances::minimum_balance(); // addtional ED is taken when deploy contract
+		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -1114,7 +1118,7 @@ fn should_publish() {
 		let code_size = Accounts::<Runtime>::get(contract_address).map_or(0, |account_info| -> u32 {
 			account_info.contract_info.map_or(0, |contract_info| CodeInfos::<Runtime>::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
 		});
-		assert_eq!(balance(alice()), INITIAL_BALANCE - PUBLICATION_FEE - ((NEW_CONTRACT_EXTRA_BYTES + code_size) as u128* EVM::get_storage_deposit_per_byte()) - Balances::minimum_balance());	 // addtional ED is taken when deploy contract
+		assert_eq!(balance(alice()), INITIAL_BALANCE - PUBLICATION_FEE - ((NEW_CONTRACT_EXTRA_BYTES + code_size) as u128* EVM::get_storage_deposit_per_byte()));
 		assert_eq!(Balances::free_balance(TreasuryAccount::get()), INITIAL_BALANCE + PUBLICATION_FEE);
 
 		// call method `multiply` will work
@@ -1286,7 +1290,7 @@ fn should_set_code() {
 		.unwrap();
 		let contract_address = result.value;
 		assert_eq!(result.used_storage, 284);
-		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte() - Balances::minimum_balance(); // addtional ED is taken when deploy contract
+		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(reserved_balance(contract_address), 2840);
@@ -1684,7 +1688,7 @@ fn storage_limit_should_work() {
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_storage, 516);
-		let alice_balance = INITIAL_BALANCE - 516 * EVM::get_storage_deposit_per_byte() - Balances::minimum_balance(); // addtional ED is taken when deploy contract
+		let alice_balance = INITIAL_BALANCE - 516 * EVM::get_storage_deposit_per_byte();
 		assert_eq!(balance(alice()), alice_balance);
 
 		let factory_contract_address = result.value;
@@ -1692,7 +1696,7 @@ fn storage_limit_should_work() {
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		publish_free(factory_contract_address);
 
-		assert_eq!(balance(factory_contract_address), Balances::minimum_balance()); // addtional ED is taken from caller when deploy contract
+		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
 			516 * EVM::get_storage_deposit_per_byte()
@@ -1831,8 +1835,7 @@ fn evm_execute_mode_should_work() {
 	).unwrap();
 
 	new_test_ext().execute_with(|| {
-		let mut alice_balance =
-			INITIAL_BALANCE - 516 * EVM::get_storage_deposit_per_byte() - Balances::minimum_balance(); // addtional ED is taken when deploy contract
+		let mut alice_balance = INITIAL_BALANCE - 516 * EVM::get_storage_deposit_per_byte();
 
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
@@ -1991,7 +1994,6 @@ fn evm_execute_mode_should_work() {
 		assert_eq!(storage_count, 2);
 
 		alice_balance -= expected_used_storage as u128 * EVM::get_storage_deposit_per_byte();
-		alice_balance -= Balances::minimum_balance(); // addtional ED is taken when deploy contract
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -2742,18 +2744,11 @@ fn aggregated_storage_logs_works() {
 			amount,
 		}));
 		let amount = 6400 * cost_per_byte;
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
-			who: alice_account_id.clone(),
-			amount,
-		}));
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Transfer {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::ReserveRepatriated {
 			from: alice_account_id.clone(),
 			to: contract_acc.clone(),
 			amount,
-		}));
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Reserved {
-			who: contract_acc.clone(),
-			amount,
+			destination_status: BalanceStatus::Reserved,
 		}));
 		// unreserved remaining storage
 		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
@@ -2826,18 +2821,11 @@ fn aggregated_storage_logs_works() {
 			who: alice_account_id.clone(),
 			amount,
 		}));
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
-			who: alice_account_id.clone(),
-			amount,
-		}));
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Transfer {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::ReserveRepatriated {
 			from: alice_account_id.clone(),
 			to: contract_acc.clone(),
 			amount,
-		}));
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Reserved {
-			who: contract_acc.clone(),
-			amount,
+			destination_status: BalanceStatus::Reserved,
 		}));
 	})
 }

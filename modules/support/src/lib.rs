@@ -54,6 +54,40 @@ pub type ExchangeRate = FixedU128;
 pub type Ratio = FixedU128;
 pub type Rate = FixedU128;
 
+/// Implement this StoredMap to replace https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/system/src/lib.rs#L1679
+/// NOTE: If use module-evm, need regards the account where the system account exists as its
+/// balances accounts also exist(This kind of account is usually created by inc_provider),
+/// even if it's AccountData is default.
+pub struct SystemAccountStore<T>(sp_std::marker::PhantomData<T>);
+impl<T: frame_system::Config> frame_support::traits::StoredMap<T::AccountId, T::AccountData> for SystemAccountStore<T> {
+	fn get(k: &T::AccountId) -> T::AccountData {
+		frame_system::Account::<T>::get(k).data
+	}
+
+	fn try_mutate_exists<R, E: From<DispatchError>>(
+		k: &T::AccountId,
+		f: impl FnOnce(&mut Option<T::AccountData>) -> Result<R, E>,
+	) -> Result<R, E> {
+		let account = frame_system::Account::<T>::get(k);
+		let is_default = account.data == T::AccountData::default();
+
+		// if System Account exists, act its Balances Account also exists.
+		let mut some_data = if is_default && !frame_system::Pallet::<T>::account_exists(k) {
+			None
+		} else {
+			Some(account.data)
+		};
+
+		let result = f(&mut some_data)?;
+		if frame_system::Pallet::<T>::providers(k) > 0 || frame_system::Pallet::<T>::sufficients(k) > 0 {
+			frame_system::Account::<T>::mutate(k, |a| a.data = some_data.unwrap_or_default());
+		} else {
+			frame_system::Account::<T>::remove(k)
+		}
+		Ok(result)
+	}
+}
+
 pub trait PriceProvider<CurrencyId> {
 	fn get_price(currency_id: CurrencyId) -> Option<Price>;
 	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {

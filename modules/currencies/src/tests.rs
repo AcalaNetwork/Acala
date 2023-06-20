@@ -26,8 +26,8 @@ use frame_support::{assert_noop, assert_ok, dispatch::GetDispatchInfo, traits::W
 use mock::{
 	alice, bob, deploy_contracts, erc20_address, erc20_address_not_exist, eva, AccountId, AdaptedBasicCurrency,
 	Balances, CouncilAccount, Currencies, DustAccount, ExtBuilder, NativeCurrency, PalletBalances, Runtime,
-	RuntimeEvent, RuntimeOrigin, System, Tokens, ALICE_BALANCE, CHARLIE, DAVE, DOT, EVE, EVM, ID_1, NATIVE_CURRENCY_ID,
-	X_TOKEN_ID,
+	RuntimeEvent, RuntimeOrigin, System, Tokens, ALICE_BALANCE, CHARLIE, DAVE, DOT, EVE, EVM, FERDIE, ID_1,
+	NATIVE_CURRENCY_ID, X_TOKEN_ID,
 };
 use sp_core::H160;
 use sp_runtime::{
@@ -200,34 +200,63 @@ fn test_balances_provider() {
 			(0, 0)
 		);
 
-		// repatriate_reserved try to transfer reserved balance to EVE's reserved balance, EVE's system
-		// account is existed, but it's BalanceAccountData is Default::default(), repatriate_reserved will
-		// act EVE as a new account, will fail!
+		// repatriate_reserved try to transfer amount reserved balance to EVE's reserved balance
+		// will succeed, even if reserved_balance + amount < ED. the benificiary will not be dust
+		// for its non-zero reserved balance
 		assert_eq!(
-			<Balances as PalletReservableCurrency<_>>::repatriate_reserved(&CHARLIE, &EVE, 10, BalanceStatus::Reserved),
-			Err(pallet_balances::Error::<Runtime>::DeadAccount.into())
+			<Balances as PalletReservableCurrency<_>>::repatriate_reserved(&CHARLIE, &EVE, 1, BalanceStatus::Reserved),
+			Ok(0)
 		);
-		assert_eq!(System::account_exists(&EVE), true);
-		assert_eq!((System::providers(&EVE), System::consumers(&EVE)), (1, 0));
+		assert_eq!((System::providers(&EVE), System::consumers(&EVE)), (1, 1));
 		assert_eq!(
 			(
 				<Balances as PalletCurrency<_>>::free_balance(&EVE),
 				<Balances as PalletReservableCurrency<_>>::reserved_balance(&EVE)
 			),
+			(0, 1)
+		);
+		assert_eq!((System::providers(&CHARLIE), System::consumers(&CHARLIE)), (1, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&CHARLIE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&CHARLIE)
+			),
+			(9000, 898)
+		);
+
+		assert_eq!(System::inc_providers(&FERDIE), frame_system::IncRefStatus::Created);
+		assert_eq!(System::account_exists(&FERDIE), true);
+		assert_eq!((System::providers(&FERDIE), System::consumers(&FERDIE)), (1, 0));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&FERDIE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&FERDIE)
+			),
 			(0, 0)
 		);
 
-		// // unreserve after free_balance is still below ED for DAVE, will not inc provider
-		// // will not dust.
-		// assert_eq!(<Balances as PalletReservableCurrency<_>>::unreserve(&DAVE, 1,), 0);
-		// assert_eq!((System::providers(&DAVE), System::consumers(&DAVE)), (1, 1));
-		// assert_eq!(
-		// 	(
-		// 		<Balances as PalletCurrency<_>>::free_balance(&DAVE),
-		// 		<Balances as PalletReservableCurrency<_>>::reserved_balance(&DAVE)
-		// 	),
-		// 	(1, 99)
-		// );
+		// repatriate_reserved try to transfer amount reserved balance to FERDIE's free balance
+		// will succeed, but if free_balance + amount < ED. the benificiary will be act as dust.
+		assert_eq!(
+			<Balances as PalletReservableCurrency<_>>::repatriate_reserved(&CHARLIE, &FERDIE, 1, BalanceStatus::Free),
+			Ok(0)
+		);
+		assert_eq!((System::providers(&FERDIE), System::consumers(&FERDIE)), (1, 0));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&FERDIE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&FERDIE)
+			),
+			(0, 0)
+		);
+		assert_eq!((System::providers(&CHARLIE), System::consumers(&CHARLIE)), (1, 1));
+		assert_eq!(
+			(
+				<Balances as PalletCurrency<_>>::free_balance(&CHARLIE),
+				<Balances as PalletReservableCurrency<_>>::reserved_balance(&CHARLIE)
+			),
+			(9000, 897)
+		);
 	});
 }
 
@@ -1285,11 +1314,11 @@ fn fungible_inspect_trait_should_work() {
 			// Test for Inspect::balance and Inspect::total_balance
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(NATIVE_CURRENCY_ID, &alice()),
-				148688
+				148690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::total_balance(NATIVE_CURRENCY_ID, &alice()),
-				148688
+				148690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(X_TOKEN_ID, &alice()),
@@ -1299,10 +1328,10 @@ fn fungible_inspect_trait_should_work() {
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE
 			);
-			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 148688);
+			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 148690);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&alice()),
-				148688
+				148690
 			);
 
 			// Test for Inspect::reducible_balance. No locks or reserves
@@ -1314,7 +1343,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				148686
+				148688
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1322,7 +1351,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				148686
+				148688
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1330,7 +1359,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				148686
+				148688
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1360,7 +1389,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				148688
+				148690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1386,7 +1415,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				148688
+				148690
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1394,7 +1423,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				148688
+				148690
 			);
 
 			// Set some locks
@@ -1409,7 +1438,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				147688
+				147690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1435,7 +1464,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				147688
+				147690
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1443,7 +1472,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				147688
+				147690
 			);
 
 			assert_eq!(
@@ -1453,7 +1482,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				147688
+				147690
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1479,7 +1508,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				147688
+				147690
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1487,7 +1516,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				147688
+				147690
 			);
 
 			// Test for Inspect::can_deposit
@@ -1612,11 +1641,11 @@ fn fungible_inspect_trait_should_work() {
 			);
 
 			assert_eq!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 147688 + 1),
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 147690 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 147688 + 1),
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 147690 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(

@@ -355,7 +355,7 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = DustRemovalAdapter;
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
-	type AccountStore = frame_system::Pallet<Runtime>;
+	type AccountStore = module_support::SystemAccountStore<Runtime>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;

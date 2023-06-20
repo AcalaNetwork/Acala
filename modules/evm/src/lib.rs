@@ -1819,26 +1819,6 @@ impl<T: Config> Pallet<T> {
 		let contract_acc = T::AddressMapping::get_account_id(contract);
 		let amount = Self::get_storage_deposit_per_byte().saturating_mul(storage.unsigned_abs().into());
 
-		let contract_free_balance = T::Currency::free_balance(&contract_acc);
-		let native_ed = T::Currency::minimum_balance();
-
-		// Usually only occurs once when create contract phase.
-		if contract_free_balance < native_ed {
-			// transfer ED to contract account so that receive and reserve storage will not be blocked by
-			// `pallet-balances` rule: `TokenError::BelowMinimum` will throw when call `Currency::transfer` and
-			// meet `dest_free_amount + transfer_amount < ED` even if the dest account is already alive status.
-			// NOTE: it's take extra Native TOKEN from caller outside the storage limit mechanism.
-			if let Err(e) = T::Currency::transfer(&user, &contract_acc, native_ed, ExistenceRequirement::AllowDeath) {
-				log::error!(
-					target: "evm",
-					"charge storage: caller account {:?} try transfer native ED {:?} to contract account {:?} failed. \
-					Error: {:?}. \
-					This is unexpected, need extra action.",
-					user.clone(), native_ed, contract_acc.clone(), e,
-				);
-			}
-		}
-
 		log::debug!(
 			target: "evm",
 			"charge_storage: [from: {:?}, account: {:?}, contract: {:?}, contract_acc: {:?}, storage: {:?}, amount: {:?}]",
@@ -1846,17 +1826,17 @@ impl<T: Config> Pallet<T> {
 		);
 
 		if storage.is_positive() {
-			// `repatriate_reserved` requires beneficiary is an existing account but
-			// contract_acc could be a new account so we need to do
-			// unreserve/transfer/reserve.
-			// should always be able to unreserve the amount
-			// but otherwise we will just ignore the issue here.
-			let err_amount = T::Currency::unreserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount);
+			// `repatriate_reserved` requires beneficiary is an existing account, and create_contract did
+			// inc_provider for contract account. So here we can use `repatriate_reserved` instead of
+			// `unreserve` + `transfer` + `reserve`.
+			let err_amount = T::Currency::repatriate_reserved_named(
+				&RESERVE_ID_STORAGE_DEPOSIT,
+				&user,
+				&contract_acc,
+				amount,
+				BalanceStatus::Reserved,
+			)?;
 			debug_assert!(err_amount.is_zero());
-
-			T::Currency::transfer(&user, &contract_acc, amount, ExistenceRequirement::AllowDeath)?;
-
-			T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &contract_acc, amount)?;
 		} else {
 			// user can't be a dead account
 			let val = T::Currency::repatriate_reserved_named(

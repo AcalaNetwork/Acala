@@ -6841,6 +6841,7 @@ version = "2.18.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
+ "frame-system",
  "impl-trait-for-tuples",
  "nutsfinance-stable-asset",
  "orml-tokens",
