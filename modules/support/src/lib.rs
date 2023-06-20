@@ -55,9 +55,10 @@ pub type Ratio = FixedU128;
 pub type Rate = FixedU128;
 
 /// Implement this StoredMap to replace https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/system/src/lib.rs#L1679
-/// NOTE: If use module-evm, need regards the account where the system account exists as its
-/// balances accounts also exist(This kind of account is usually created by inc_provider),
-/// even if it's AccountData is default.
+/// NOTE: If use module-evm, need regards existed `frame_system::Account` also exists
+/// `pallet_balances::Account`, even if it's AccountData is default. (This kind of account is
+/// usually created by inc_provider), so that `repatriate_reserved` can transfer reserved balance to
+/// contract account, which is created by `inc_provider`.
 pub struct SystemAccountStore<T>(sp_std::marker::PhantomData<T>);
 impl<T: frame_system::Config> frame_support::traits::StoredMap<T::AccountId, T::AccountData> for SystemAccountStore<T> {
 	fn get(k: &T::AccountId) -> T::AccountData {
