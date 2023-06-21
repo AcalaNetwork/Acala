@@ -324,6 +324,7 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
+// pallet-treasury did not impl OnUnbalanced<Credit>, need an adapter to handle dust.
 type CreditOf = frame_support::traits::fungible::Credit<<Runtime as frame_system::Config>::AccountId, Balances>;
 pub struct DustRemovalAdapter;
 impl OnUnbalanced<CreditOf> for DustRemovalAdapter {

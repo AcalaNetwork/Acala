@@ -333,6 +333,7 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
+// pallet-treasury did not impl OnUnbalanced<Credit>, need an adapter to handle dust.
 type CreditOf = frame_support::traits::fungible::Credit<<Runtime as frame_system::Config>::AccountId, Balances>;
 pub struct DustRemovalAdapter;
 impl OnUnbalanced<CreditOf> for DustRemovalAdapter {
@@ -1856,6 +1857,7 @@ pub type Executive = frame_executive::Executive<
 		pallet_xcm::migration::v1::MigrateToV1<Runtime>,
 		orml_unknown_tokens::Migration<Runtime>,
 		// Note: The following Migrations do not use the StorageVersion feature, must to be removed after the upgrade
+		// TODO: if Acala runtime has upgraded to 2180, review following migrations and delete these.
 		module_asset_registry::migrations::MigrateV1MultiLocationToV3<Runtime>,
 		module_xcm_interface::migrations::MigrateXcmDestWeightAndFee<Runtime>,
 		module_transaction_pause::migrations::MigrateEvmPrecompile<Runtime>,
