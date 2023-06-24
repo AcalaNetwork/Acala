@@ -39,7 +39,7 @@ on:
         required: false
 
 env:
-  SUBWASM_VERSION: 0.19.1
+  SUBWASM_VERSION: 0.20.0
   CHAIN: ${{ github.event.inputs.chain }}
   SCOPE: ${{ github.event.inputs.scope }}
 
