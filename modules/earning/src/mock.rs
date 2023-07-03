@@ -74,7 +74,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-	pub const InstantUnstakeFee: Permill = Permill::from_percent(10);
+	pub const InstantUnstakeFee: Option<Permill> = Some(Permill::from_percent(10));
 	pub const EarningLockIdentifier: LockIdentifier = *b"12345678";
 }
 

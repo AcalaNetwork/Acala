@@ -1243,20 +1243,12 @@ impl orml_rewards::Config for Runtime {
 
 parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = MINUTES;
-	pub const EarnShareBooster: Permill = Permill::from_percent(30);
-	pub const GetAusdIbtcPoolId: PoolId = PoolId::Dex(
-		CurrencyId::DexShare(
-			DexShare::Token(TokenSymbol::AUSD),
-			DexShare::ForeignAsset(3)
-		)
-	);
 }
 
 impl module_incentives::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type EarnShareBooster = EarnShareBooster;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type Currency = Currencies;
@@ -1672,6 +1664,27 @@ impl module_liquid_crowdloan::Config for Runtime {
 	type WeightInfo = weights::module_liquid_crowdloan::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+	pub const InstantUnstakeFee: Option<Permill> = None;
+	pub MinBond: Balance = 100 * dollar(ACA);
+	pub const UnbondingPeriod: BlockNumber = 28 * DAYS;
+	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
+}
+
+impl module_earning::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
+	type OnUnbonded = module_incentives::OnEarningUnbonded<Runtime>;
+	type OnUnstakeFee = Treasury; // fee goes to treasury
+	type MinBond = MinBond;
+	type UnbondingPeriod = UnbondingPeriod;
+	type InstantUnstakeFee = InstantUnstakeFee;
+	type MaxUnbondingChunks = ConstU32<10>;
+	type LockIdentifier = EarningLockIdentifier;
+	type WeightInfo = ();
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1750,6 +1763,7 @@ construct_runtime!(
 		Dex: module_dex = 91,
 		DexOracle: module_dex_oracle = 92,
 		AggregatedDex: module_aggregated_dex = 93,
+		Earning: module_earning = 94,
 
 		// Honzon
 		AuctionManager: module_auction_manager = 100,
