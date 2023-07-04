@@ -36,7 +36,7 @@ runtime_benchmarks_instance! {
 		for i in 0 .. c {
 			values.push((currency_ids[i as usize], Price::one()));
 		}
-	}: _(RuntimeOrigin::root(), values)
+	}: _(RuntimeOrigin::root(), values.try_into().unwrap())
 
 	on_finalize {
 		let currency_ids = get_benchmarking_collateral_currency_ids();
@@ -46,7 +46,7 @@ runtime_benchmarks_instance! {
 			values.push((currency_id, Price::one()));
 		}
 		System::set_block_number(1);
-		AcalaOracle::feed_values(RuntimeOrigin::root(), values)?;
+		AcalaOracle::feed_values(RuntimeOrigin::root(), values.try_into().unwrap())?;
 	}: {
 		AcalaOracle::on_finalize(System::block_number());
 	}

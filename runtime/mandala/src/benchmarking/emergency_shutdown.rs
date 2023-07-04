@@ -42,7 +42,7 @@ runtime_benchmarks! {
 		for i in 0 .. c {
 			values.push((currency_ids[i as usize], Price::one()));
 		}
-		feed_price(values)?;
+		feed_price(values.try_into().unwrap())?;
 	}: _(RawOrigin::Root)
 
 	open_collateral_refund {

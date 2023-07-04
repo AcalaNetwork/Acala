@@ -90,7 +90,9 @@ async fn transaction_pool_priority_order_test() {
 			pallet_sudo::Call::sudo {
 				call: Box::new(
 					orml_oracle::Call::feed_values {
-						values: vec![(CurrencyId::Token(TokenSymbol::ACA), Price::from_rational(10, 1)).into()],
+						values: vec![(CurrencyId::Token(TokenSymbol::ACA), Price::from_rational(10, 1)).into()]
+							.try_into()
+							.unwrap(),
 					}
 					.into(),
 				),
@@ -129,7 +131,9 @@ async fn transaction_pool_priority_order_test() {
 		pallet_sudo::Call::sudo {
 			call: Box::new(
 				orml_oracle::Call::feed_values {
-					values: vec![(CurrencyId::Token(TokenSymbol::ACA), Price::from_rational(1, 10)).into()],
+					values: vec![(CurrencyId::Token(TokenSymbol::ACA), Price::from_rational(1, 10)).into()]
+						.try_into()
+						.unwrap(),
 				}
 				.into(),
 			),

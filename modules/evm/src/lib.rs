@@ -1493,7 +1493,15 @@ impl<T: Config> Pallet<T> {
 			}
 		});
 
-		frame_system::Pallet::<T>::inc_providers(&T::AddressMapping::get_account_id(&address));
+		let contract_account = T::AddressMapping::get_account_id(&address);
+
+		// NOTE: inc providers occurs before receive and reserve storage fee for this `address`,
+		// it will directly `NewAccount`. If config `type AccountStore = System` when impl pallet_balances
+		// Config, System::Account exists, Balances::Account doesn't exist if AccountData is default(). So
+		// if runtime integrates module-evm, plz confirm config `type AccountStore =
+		// module_support::SystemAccountStore` for pallet_balances, it regards Balances::Account exists when
+		// System::Account exists.
+		frame_system::Pallet::<T>::inc_providers(&contract_account);
 	}
 
 	/// Get the account basic in EVM format.
@@ -1822,15 +1830,17 @@ impl<T: Config> Pallet<T> {
 		);
 
 		if storage.is_positive() {
-			// `repatriate_reserved` requires beneficiary is an existing account but
-			// contract_acc could be a new account so we need to do
-			// unreserve/transfer/reserve.
-			// should always be able to unreserve the amount
-			// but otherwise we will just ignore the issue here.
-			let err_amount = T::Currency::unreserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount);
+			// `repatriate_reserved` requires beneficiary is an existing account, and create_contract did
+			// inc_provider for contract account. So here we can use `repatriate_reserved` instead of
+			// `unreserve` + `transfer` + `reserve`.
+			let err_amount = T::Currency::repatriate_reserved_named(
+				&RESERVE_ID_STORAGE_DEPOSIT,
+				&user,
+				&contract_acc,
+				amount,
+				BalanceStatus::Reserved,
+			)?;
 			debug_assert!(err_amount.is_zero());
-			T::Currency::transfer(&user, &contract_acc, amount, ExistenceRequirement::AllowDeath)?;
-			T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &contract_acc, amount)?;
 		} else {
 			// user can't be a dead account
 			let val = T::Currency::repatriate_reserved_named(

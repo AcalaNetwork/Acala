@@ -29,7 +29,7 @@ fn test_vesting_use_relaychain_block_number() {
 		#[cfg(feature = "with-acala-runtime")]
 		let signer: AccountId = AcalaFoundationAccounts::get()[0].clone();
 
-		assert_ok!(Balances::set_balance(
+		assert_ok!(Balances::set_balance_deprecated(
 			RuntimeOrigin::root(),
 			signer.clone().into(),
 			1_000 * dollar(ACA),

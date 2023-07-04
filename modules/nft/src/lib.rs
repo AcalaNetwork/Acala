@@ -227,8 +227,17 @@ pub mod module {
 			let deposit = class_deposit.saturating_add(data_deposit);
 			let total_deposit = proxy_deposit.saturating_add(deposit);
 
-			// ensure enough token for proxy deposit + class deposit + data deposit
-			<T as module::Config>::Currency::transfer(&who, &owner, total_deposit, KeepAlive)?;
+			// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
+			// Now the pallet-balances judges whether does provider is based on the `free balance` instead of
+			// `total balance`. When there's no other providers, error will throw in following reserve
+			// operation, which want to make `free balance` is zero and `reserved balance` is not zero.
+			// If receiver account has not enough ed, transfer an additional ED to make sure the subsequent
+			// reserve operation.
+			let total_transfer_amount =
+				total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance());
+
+			// ensure enough token for proxy deposit + class deposit + data deposit + ed
+			<T as module::Config>::Currency::transfer(&who, &owner, total_transfer_amount, KeepAlive)?;
 
 			<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &owner, deposit)?;
 
@@ -404,9 +413,24 @@ impl<T: Config> Pallet<T> {
 
 		orml_nft::Pallet::<T>::transfer(from, to, token)?;
 
-		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, from, token_info.data.deposit);
-		<T as module::Config>::Currency::transfer(from, to, token_info.data.deposit, AllowDeath)?;
-		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, token_info.data.deposit)?;
+		let reserve_balance = token_info.data.deposit;
+
+		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
+		// Now the pallet-balances judges whether does provider is based on the `free balance` instead of
+		// `total balance`. When there's no other providers, error will throw in following reserve
+		// operation, which want to make `free balance` is zero and `reserved balance` is not zero.
+		// If receiver account has not enough ed, transfer an additional ED to make sure the subsequent
+		// reserve operation.
+		let transfer_amount =
+			if <T as module::Config>::Currency::free_balance(to) < <T as module::Config>::Currency::minimum_balance() {
+				reserve_balance.saturating_add(<T as module::Config>::Currency::minimum_balance())
+			} else {
+				reserve_balance
+			};
+
+		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, from, reserve_balance);
+		<T as module::Config>::Currency::transfer(from, to, transfer_amount, AllowDeath)?;
+		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, reserve_balance)?;
 
 		Self::deposit_event(Event::TransferredToken {
 			from: from.clone(),
@@ -439,9 +463,22 @@ impl<T: Config> Pallet<T> {
 		let deposit = T::CreateTokenDeposit::get().saturating_add(data_deposit);
 		let total_deposit = deposit.saturating_mul(quantity.into());
 
+		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
+		// Now the pallet-balances judges whether does provider is based on the `free balance` instead of
+		// `total balance`. When there's no other providers, error will throw in following reserve
+		// operation, which want to make `free balance` is zero and `reserved balance` is not zero.
+		// If receiver account has not enough ed, transfer an additional ED to make sure the subsequent
+		// reserve operation.
+		let total_transfer_amount =
+			if <T as module::Config>::Currency::free_balance(to) < <T as module::Config>::Currency::minimum_balance() {
+				total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance())
+			} else {
+				total_deposit
+			};
+
 		// `repatriate_reserved` will check `to` account exist and may return
 		// `DeadAccount`.
-		<T as module::Config>::Currency::transfer(who, to, total_deposit, KeepAlive)?;
+		<T as module::Config>::Currency::transfer(who, to, total_transfer_amount, KeepAlive)?;
 		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, total_deposit)?;
 
 		let mut token_ids = Vec::with_capacity(quantity as usize);

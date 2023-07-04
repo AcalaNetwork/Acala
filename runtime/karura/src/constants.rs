@@ -124,6 +124,6 @@ mod tests {
 		let q = Balance::from(ExtrinsicBaseWeight::get().ref_time());
 
 		assert_eq!(p, 1_000_000_000);
-		assert_eq!(q, 99_840_000);
+		assert_eq!(q, 113_638_000);
 	}
 }

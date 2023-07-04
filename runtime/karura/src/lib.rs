@@ -236,7 +236,8 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				pallet_xcm::Call::force_xcm_version { .. }
 				| pallet_xcm::Call::force_default_xcm_version { .. }
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. }
+				| pallet_xcm::Call::force_suspension { .. } => {
 					return true;
 				}
 				pallet_xcm::Call::__Ignore { .. } => {
@@ -339,6 +340,16 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
+// pallet-treasury did not impl OnUnbalanced<Credit>, need an adapter to handle dust.
+type CreditOf = frame_support::traits::fungible::Credit<<Runtime as frame_system::Config>::AccountId, Balances>;
+pub struct DustRemovalAdapter;
+impl OnUnbalanced<CreditOf> for DustRemovalAdapter {
+	fn on_nonzero_unbalanced(amount: CreditOf) {
+		let new_amount = NegativeImbalance::new(amount.peek());
+		Treasury::on_nonzero_unbalanced(new_amount);
+	}
+}
+
 parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(KAR);	// 0.1 KAR
 	pub const MaxReserves: u32 = ReserveIdentifier::Count as u32;
@@ -349,14 +360,18 @@ parameter_types! {
 
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
-	type DustRemoval = Treasury;
+	type DustRemoval = DustRemovalAdapter;
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
-	type AccountStore = frame_system::Pallet<Runtime>;
+	type AccountStore = module_support::SystemAccountStore<Runtime>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
+	type HoldIdentifier = ReserveIdentifier;
+	type FreezeIdentifier = ();
+	type MaxHolds = MaxReserves;
+	type MaxFreezes = ();
 }
 
 parameter_types! {
@@ -387,6 +402,7 @@ parameter_types! {
 	pub const GeneralCouncilMotionDuration: BlockNumber = 3 * DAYS;
 	pub const CouncilDefaultMaxProposals: u32 = 20;
 	pub const CouncilDefaultMaxMembers: u32 = 30;
+	pub MaxProposalWeight: Weight = Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
@@ -399,6 +415,7 @@ impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
+	type MaxProposalWeight = MaxProposalWeight;
 }
 
 impl pallet_membership::Config<GeneralCouncilMembershipInstance> for Runtime {
@@ -428,6 +445,7 @@ impl pallet_collective::Config<FinancialCouncilInstance> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
+	type MaxProposalWeight = MaxProposalWeight;
 }
 
 impl pallet_membership::Config<FinancialCouncilMembershipInstance> for Runtime {
@@ -457,6 +475,7 @@ impl pallet_collective::Config<HomaCouncilInstance> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
+	type MaxProposalWeight = MaxProposalWeight;
 }
 
 impl pallet_membership::Config<HomaCouncilMembershipInstance> for Runtime {
@@ -486,6 +505,7 @@ impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
+	type MaxProposalWeight = MaxProposalWeight;
 }
 
 impl pallet_membership::Config<TechnicalCommitteeMembershipInstance> for Runtime {
@@ -707,6 +727,7 @@ parameter_types! {
 	pub const MinimumCount: u32 = 5;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 1 hours
 	pub RootOperatorAccountId: AccountId = AccountId::from([0xffu8; 32]);
+	pub const MaxFeedValues: u32 = 10; // max 10 values allowd to feed in one call.
 }
 
 type AcalaDataProvider = orml_oracle::Instance1;
@@ -721,6 +742,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type Members = OperatorMembershipAcala;
 	type MaxHasDispatchedSize = ConstU32<20>;
 	type WeightInfo = ();
+	type MaxFeedValues = MaxFeedValues;
 }
 
 create_median_value_data_provider!(
@@ -732,7 +754,7 @@ create_median_value_data_provider!(
 );
 // Aggregated data provider cannot feed.
 impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
-	fn feed_value(_: AccountId, _: CurrencyId, _: Price) -> DispatchResult {
+	fn feed_value(_: Option<AccountId>, _: CurrencyId, _: Price) -> DispatchResult {
 		Err("Not supported".into())
 	}
 }
@@ -1833,25 +1855,8 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	(
-		pallet_balances::migration::MigrateToTrackInactive<Runtime, xcm_config::CheckingAccount>,
-		pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
-		// "Use 2D weights in XCM v3" <https://github.com/paritytech/polkadot/pull/6134>
-		pallet_xcm::migration::v1::MigrateToV1<Runtime>,
-		orml_unknown_tokens::Migration<Runtime>,
-		// Note: The following Migrations do not use the StorageVersion feature, must to be removed after the upgrade
-		module_asset_registry::migrations::MigrateV1MultiLocationToV3<Runtime>,
-		module_xcm_interface::migrations::MigrateXcmDestWeightAndFee<Runtime>,
-		module_transaction_pause::migrations::MigrateEvmPrecompile<Runtime>,
-		MigrateSetXcmVersionForKusama,
-	),
->;
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 pub struct MigrateSetXcmVersionForKusama;
 impl OnRuntimeUpgrade for MigrateSetXcmVersionForKusama {
@@ -1921,6 +1926,14 @@ impl_runtime_apis! {
 	impl sp_api::Metadata<Block> for Runtime {
 		fn metadata() -> OpaqueMetadata {
 			OpaqueMetadata::new(Runtime::metadata().into())
+		}
+
+		fn metadata_at_version(version: u32) -> Option<OpaqueMetadata> {
+			Runtime::metadata_at_version(version)
+		}
+
+		fn metadata_versions() -> sp_std::vec::Vec<u32> {
+			Runtime::metadata_versions()
 		}
 	}
 

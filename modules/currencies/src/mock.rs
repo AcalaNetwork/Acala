@@ -41,6 +41,11 @@ use sp_runtime::{
 use sp_std::str::FromStr;
 use support::{mocks::MockAddressMapping, AddressMapping};
 
+pub const CHARLIE: AccountId = AccountId32::new([6u8; 32]);
+pub const DAVE: AccountId = AccountId32::new([7u8; 32]);
+pub const EVE: AccountId = AccountId32::new([8u8; 32]);
+pub const FERDIE: AccountId = AccountId32::new([9u8; 32]);
+
 pub type AccountId = AccountId32;
 impl frame_system::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
@@ -124,11 +129,15 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<2>;
-	type AccountStore = System;
+	type AccountStore = support::SystemAccountStore<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ConstU32<1>;
+	type MaxFreezes = ();
 }
 
 pub type PalletBalances = pallet_balances::Pallet<Runtime>;
@@ -278,7 +287,7 @@ pub fn deploy_contracts() {
 		code,
 		0,
 		2_100_000,
-		10000,
+		10_000,
 		vec![]
 	));
 

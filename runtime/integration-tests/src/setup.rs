@@ -405,23 +405,23 @@ pub fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) {
 	AcalaOracle::on_finalize(0);
 	assert_ok!(AcalaOracle::feed_values(
 		RuntimeOrigin::signed(AccountId::from(ORACLE1)),
-		prices.clone(),
+		prices.clone().try_into().unwrap(),
 	));
 	assert_ok!(AcalaOracle::feed_values(
 		RuntimeOrigin::signed(AccountId::from(ORACLE2)),
-		prices.clone(),
+		prices.clone().try_into().unwrap(),
 	));
 	assert_ok!(AcalaOracle::feed_values(
 		RuntimeOrigin::signed(AccountId::from(ORACLE3)),
-		prices.clone(),
+		prices.clone().try_into().unwrap(),
 	));
 	assert_ok!(AcalaOracle::feed_values(
 		RuntimeOrigin::signed(AccountId::from(ORACLE4)),
-		prices.clone(),
+		prices.clone().try_into().unwrap(),
 	));
 	assert_ok!(AcalaOracle::feed_values(
 		RuntimeOrigin::signed(AccountId::from(ORACLE5)),
-		prices,
+		prices.try_into().unwrap(),
 	));
 }
 

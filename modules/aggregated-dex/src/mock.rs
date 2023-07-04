@@ -32,7 +32,7 @@ pub use orml_traits::{parameter_type_with_key, MultiCurrency};
 use primitives::{Amount, TokenSymbol, TradingPair};
 use sp_runtime::{
 	testing::{Header, H256},
-	traits::{Bounded, IdentityLookup},
+	traits::IdentityLookup,
 	AccountId32, ArithmeticError, FixedPointNumber,
 };
 pub use support::{ExchangeRate, RebasedStableAsset};

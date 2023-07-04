@@ -33,8 +33,8 @@ use xcm_emulator::TestExt;
 pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 40_000_000_000;
-pub const FEE: Balance = 200_000_000;
-pub const FEE_STATEMINE: Balance = 43_543_101;
+pub const FEE: Balance = 250_000_000;
+pub const FEE_STATEMINE: Balance = 239_533_333;
 pub const FEE_KUSAMA: Balance = 11_492_737;
 const ASSET_ID: u32 = 100;
 
@@ -46,7 +46,7 @@ fn init_statemine_xcm_interface() {
 		vec![(
 			xcm_operation.clone(),
 			Some(XcmWeight::from_parts(4_000_000_000, 0)),
-			Some(200_000_000),
+			Some(250_000_000),
 		)],
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(
@@ -57,7 +57,7 @@ fn init_statemine_xcm_interface() {
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
 		xcm_operation,
-		new_xcm_dest_weight: 200_000_000,
+		new_xcm_dest_weight: 250_000_000,
 	}));
 }
 
@@ -170,7 +170,7 @@ fn karura_transfer_ksm_to_statemine_should_not_allowed() {
 		// source parachain sovereign account withrawn.
 		assert_eq!(UNIT, kusama_runtime::Balances::free_balance(&child_2000));
 		// destination parachain sovereign account deposited.
-		assert_eq!(999_758_308_574, kusama_runtime::Balances::free_balance(&child_1000));
+		assert_eq!(999_769_002_864, kusama_runtime::Balances::free_balance(&child_1000));
 	});
 
 	// In receiver, xm execution error: UntrustedReserveLocation.
@@ -200,7 +200,7 @@ fn karura_transfer_asset_to_statemine_works() {
 
 		// https://github.com/paritytech/cumulus/pull/1278 support using self sufficient asset
 		// for paying xcm execution fee on Statemine.
-		assert_eq!(988_423_297_485, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
+		assert_eq!(964_069_999_541, Assets::balance(ASSET_ID, &AccountId::from(BOB)));
 	});
 }
 
@@ -242,7 +242,7 @@ fn karura_statemine_transfer_use_ksm_as_fee() {
 			UNIT + FEE - FEE_STATEMINE,
 			Balances::free_balance(&AccountId::from(BOB))
 		);
-		assert_eq!(1_039_387_546_047, Balances::free_balance(&para_2000));
+		assert_eq!(1_039_327_124_828, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -254,7 +254,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			9_999_919_872_000,
+			9_999_929_608_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough KSM balance to be charged as fee
@@ -306,7 +306,7 @@ fn karura_transfer_asset_to_statemine(ksm_fee_amount: u128) {
 		}
 
 		assert_eq!(
-			8_999_919_872_000,
+			8_999_929_608_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - ksm_fee_amount, Tokens::free_balance(KSM, &AccountId::from(BOB)));

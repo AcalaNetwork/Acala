@@ -32,9 +32,9 @@ use xcm_emulator::TestExt;
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
 const XCM_WEIGHT: XcmWeight = XcmWeight::from_parts(50_000_000_000, 1024 * 128);
 const XCM_FEE: Balance = 50_000_000_000;
-const XCM_BOND_FEE: Balance = 15_819_846_206;
-const XCM_UNBOND_FEE: Balance = 14_296_609_562;
-const XCM_TRANSFER_FEE: Balance = 94_172_727;
+const XCM_BOND_FEE: Balance = 15_119_854_333;
+const XCM_UNBOND_FEE: Balance = 13_652_826_154;
+const XCM_TRANSFER_FEE: Balance = 90_005_800;
 
 fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Balance>)> {
 	vec![
@@ -247,7 +247,7 @@ fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 		// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1_001_968_454_536_282
+			1_001_969_850_350_626
 		);
 	});
 }

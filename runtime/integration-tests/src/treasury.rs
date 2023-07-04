@@ -23,11 +23,11 @@ fn treasury_should_take_xcm_execution_revenue() {
 	ExtBuilder::default().build().execute_with(|| {
 		let dot_amount = 1000 * dollar(RELAY_CHAIN_CURRENCY);
 		#[cfg(feature = "with-mandala-runtime")] // Mandala uses DOT, which has 10 d.p. accuracy.
-		let actual_amount = 9_999_999_699_520;
+		let actual_amount = 9_999_999_736_030;
 		#[cfg(feature = "with-karura-runtime")] // Karura uses KSM, which has 12 d.p. accuracy.
-		let actual_amount = 999_999_879_808_000;
+		let actual_amount = 999_999_894_412_000;
 		#[cfg(feature = "with-acala-runtime")] // Acala uses DOT, which has 10 d.p. accuracy.
-		let actual_amount = 9_999_998_798_080;
+		let actual_amount = 9_999_998_944_120;
 
 		#[cfg(feature = "with-mandala-runtime")]
 		let shallow_weight = 3_000_000;
