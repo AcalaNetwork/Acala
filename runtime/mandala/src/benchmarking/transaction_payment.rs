@@ -126,7 +126,7 @@ runtime_benchmarks! {
 
 	set_alternative_fee_swap_path {
 		let caller: AccountId = whitelisted_caller();
-		set_balance(NATIVE, &caller, NativeTokenExistentialDeposit::get());
+		set_balance(NATIVE, &caller, 2 * NativeTokenExistentialDeposit::get());
 	}: _(RawOrigin::Signed(caller.clone()), Some(vec![STABLECOIN, NATIVE]))
 	verify {
 		assert_eq!(TransactionPayment::alternative_fee_swap_path(&caller).unwrap().into_inner(), vec![STABLECOIN, NATIVE]);

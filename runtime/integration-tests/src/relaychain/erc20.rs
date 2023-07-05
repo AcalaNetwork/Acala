@@ -227,7 +227,7 @@ fn erc20_transfer_between_sibling() {
 	Sibling::execute_with(|| {
 		// Sibling will take (1, 2000, GeneralKey{ data:Erc20(address), ..} as foreign asset
 		assert_eq!(
-			9_999_198_720_000,
+			9_999_296_080_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 
@@ -295,7 +295,7 @@ fn erc20_transfer_between_sibling() {
 		));
 
 		assert_eq!(
-			2_999_198_720_000,
+			2_999_296_080_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});
@@ -310,19 +310,19 @@ fn erc20_transfer_between_sibling() {
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sibling_reserve_account())
 		);
 		assert_eq!(
-			4_991_987_200_000,
+			4_992_960_800_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(BOB))
 		);
 		assert_eq!(
-			6_009_600_000 * 4,
+			5_279_400_000 * 4,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &KaruraTreasuryAccount::get())
 		);
 		assert_eq!(
-			991_987_200_000,
+			992_960_800_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &AccountId::from(CHARLIE))
 		);
 		assert_eq!(
-			991_987_200_000,
+			992_960_800_000,
 			Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &new_account)
 		);
 		assert_eq!(
@@ -357,13 +357,13 @@ fn erc20_transfer_between_sibling() {
 		System::assert_has_event(RuntimeEvent::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
 			who: AccountId::from(BOB),
-			amount: 4_991_987_200_000,
+			amount: 4_992_960_800_000,
 		}));
 		// TakeRevenue deposit from erc20 holding account to treasury account
 		System::assert_has_event(RuntimeEvent::Currencies(module_currencies::Event::Deposited {
 			currency_id: CurrencyId::Erc20(erc20_address_0()),
 			who: KaruraTreasuryAccount::get(),
-			amount: 8_012_800_000,
+			amount: 7_039_200_000,
 		}));
 	});
 }
@@ -475,7 +475,7 @@ fn sibling_erc20_to_self_as_foreign_asset() {
 
 	Karura::execute_with(|| {
 		assert_eq!(
-			9_999_198_720_000,
+			9_999_296_080_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});
@@ -665,7 +665,7 @@ fn xtokens_precompile_works() {
 	Sibling::execute_with(|| {
 		// Sibling will take (1, 2000, GeneralKey(Erc20(address))) as foreign asset
 		assert_eq!(
-			9_999_198_720_000,
+			9_999_296_080_000,
 			Currencies::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 	});

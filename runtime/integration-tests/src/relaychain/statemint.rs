@@ -32,8 +32,8 @@ use xcm_emulator::TestExt;
 pub const UNIT: Balance = 1_000_000_000_000;
 pub const TEN: Balance = 10_000_000_000_000;
 pub const FEE_WEIGHT: Balance = 4_000_000_000;
-pub const FEE: Balance = 50_000_000;
-pub const FEE_STATEMINT: Balance = 10_143_569;
+pub const FEE: Balance = 80_000_000;
+pub const FEE_STATEMINT: Balance = 1_433_579;
 
 fn init_statemine_xcm_interface() {
 	let xcm_operation =
@@ -43,7 +43,7 @@ fn init_statemine_xcm_interface() {
 		vec![(
 			xcm_operation.clone(),
 			Some(XcmWeight::from_parts(4_000_000_000, 0)),
-			Some(50_000_000),
+			Some(80_000_000),
 		)],
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(
@@ -54,7 +54,7 @@ fn init_statemine_xcm_interface() {
 	));
 	System::assert_has_event(RuntimeEvent::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
 		xcm_operation,
-		new_xcm_dest_weight: 50_000_000,
+		new_xcm_dest_weight: 80_000_000,
 	}));
 }
 
@@ -71,7 +71,7 @@ fn statemint_min_xcm_fee_matched() {
 		assert_eq!(fee, 4_000_000_000);
 
 		let statemine_fee: u128 = ParachainMinFee::get(&statemine).unwrap();
-		assert_eq!(statemine_fee, 50_000_000);
+		assert_eq!(statemine_fee, 80_000_000);
 	});
 }
 
@@ -104,7 +104,6 @@ fn acala_statemint_transfer_works() {
 
 	// minimum asset should be: FEE_WEIGHT+FEE_KUSAMA+max(KUSAMA_ED,STATEMINE_ED+FEE_STATEMINE).
 	// but due to current half fee, sender asset should at lease: FEE_WEIGHT + 2 * FEE_KUSAMA
-	// let asset = FEE_WEIGHT + 2 * 31_488_122;
 	let asset = FEE_WEIGHT + 2 * 31_488_122; // 4_062_976_244
 
 	statemint_side(UNIT);
@@ -125,13 +124,14 @@ fn acala_statemint_transfer_works() {
 
 	Statemint::execute_with(|| {
 		use statemint_runtime::*;
+
 		// Karura send back custom asset to Statemint, ensure recipient got custom asset
 		assert_eq!(UNIT, Assets::balance(0, &AccountId::from(BOB)));
 		// and withdraw sibling parachain sovereign account
 		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
 
-		assert_eq!(1_000_036_921_836, Balances::free_balance(&AccountId::from(BOB)));
-		assert_eq!(1_003_569_584_455, Balances::free_balance(&para_2000));
+		assert_eq!(1_000_008_140_000, Balances::free_balance(&AccountId::from(BOB)));
+		assert_eq!(1_003_537_121_141, Balances::free_balance(&para_2000));
 	});
 }
 
@@ -141,7 +141,7 @@ fn acala_side(fee_amount: u128) {
 		init_statemine_xcm_interface();
 
 		assert_eq!(
-			TEN - 80_128_000,
+			TEN - 70_392_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		// ensure sender has enough DOT balance to be charged as fee
@@ -168,7 +168,7 @@ fn acala_side(fee_amount: u128) {
 		));
 
 		assert_eq!(
-			TEN - UNIT - 80_128_000,
+			TEN - UNIT - 70_392_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
 		assert_eq!(TEN - fee_amount, Tokens::free_balance(DOT, &AccountId::from(BOB)));

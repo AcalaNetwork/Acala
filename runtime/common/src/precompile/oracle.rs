@@ -177,7 +177,7 @@ mod tests {
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
-			assert_ok!(Oracle::feed_value(ALICE, DOT, price));
+			assert_ok!(Oracle::feed_value(Some(ALICE), DOT, price));
 			assert_eq!(
 				Oracle::get(&DOT),
 				Some(orml_oracle::TimestampedValue {

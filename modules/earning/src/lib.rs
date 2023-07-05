@@ -61,7 +61,7 @@ pub mod module {
 		#[pallet::constant]
 		type UnbondingPeriod: Get<Self::BlockNumber>;
 		#[pallet::constant]
-		type InstantUnstakeFee: Get<Permill>;
+		type InstantUnstakeFee: Get<Option<Permill>>;
 		#[pallet::constant]
 		type MaxUnbondingChunks: Get<u32>;
 		#[pallet::constant]
@@ -80,6 +80,7 @@ pub mod module {
 		BelowMinBondThreshold,
 		MaxUnlockChunksExceeded,
 		NotBonded,
+		NotAllowed,
 	}
 
 	#[pallet::event]
@@ -177,11 +178,13 @@ pub mod module {
 		pub fn unbond_instant(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			let fee_ratio = T::InstantUnstakeFee::get().ok_or(Error::<T>::NotAllowed)?;
+
 			let change = <Self as BondingController>::unbond_instant(&who, amount)?;
 
 			if let Some(change) = change {
 				let amount = change.change;
-				let fee = T::InstantUnstakeFee::get().mul_ceil(amount);
+				let fee = fee_ratio.mul_ceil(amount);
 				let final_amount = amount.saturating_sub(fee);
 
 				let unbalance =

@@ -921,18 +921,29 @@ fn create_predeploy_contract_works() {
 
 		// deploy empty contract
 		let token_addr = H160::from_str("2222222222222222222222222222222222222222").unwrap();
-		assert_noop!(
-			EVM::create_predeploy_contract(
-				RuntimeOrigin::signed(NetworkContractAccount::get()),
-				token_addr,
-				vec![],
-				0,
-				1000000,
-				1000000,
-				vec![],
-			),
-			Error::<Runtime>::ContractNotFound
-		);
+
+		// the call is ok, but actually deploy failed, will trige CreatedFailed event
+		// if contract is empty, will skip inc_provider for contract account, so it
+		// fail at charge storage.
+		assert_ok!(EVM::create_predeploy_contract(
+			RuntimeOrigin::signed(NetworkContractAccount::get()),
+			token_addr,
+			vec![],
+			0,
+			1000000,
+			1000000,
+			vec![],
+		));
+		System::assert_has_event(RuntimeEvent::EVM(crate::Event::CreatedFailed {
+			from: NetworkContractSource::get(),
+			contract: H160::from_str("0000000000000000000000000000000000000000").unwrap(),
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::ChargeStorageFailed).into(),
+			)),
+			logs: vec![],
+			used_gas: 1000000,
+			used_storage: 0,
+		}));
 
 		assert_eq!(CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&token_addr)), None);
 	});
@@ -2482,6 +2493,10 @@ fn reserve_deposit_makes_user_developer() {
 
 		assert_eq!(Pallet::<Runtime>::is_developer_or_contract(&addr), false);
 
+		// mock deploy contract, will inc provider for the account of contract address before transfer and
+		// reserved
+		System::inc_providers(&who);
+
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
 			GetNativeCurrencyId::get(),
 			&<Runtime as Config>::AddressMapping::get_account_id(&alice()),
@@ -2562,7 +2577,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1417384352, 7186)),
+					actual_weight: Some(Weight::from_parts(1468769052, 7186)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::NoPermission.into(),
@@ -2595,7 +2610,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1416428054, 7186)),
+					actual_weight: Some(Weight::from_parts(1467812754, 7186)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::StrictCallFailed.into(),
@@ -2729,18 +2744,11 @@ fn aggregated_storage_logs_works() {
 			amount,
 		}));
 		let amount = 6400 * cost_per_byte;
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
-			who: alice_account_id.clone(),
-			amount,
-		}));
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Transfer {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::ReserveRepatriated {
 			from: alice_account_id.clone(),
 			to: contract_acc.clone(),
 			amount,
-		}));
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Reserved {
-			who: contract_acc.clone(),
-			amount,
+			destination_status: BalanceStatus::Reserved,
 		}));
 		// unreserved remaining storage
 		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
@@ -2813,18 +2821,11 @@ fn aggregated_storage_logs_works() {
 			who: alice_account_id.clone(),
 			amount,
 		}));
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
-			who: alice_account_id.clone(),
-			amount,
-		}));
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Transfer {
+		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::ReserveRepatriated {
 			from: alice_account_id.clone(),
 			to: contract_acc.clone(),
 			amount,
-		}));
-		System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Reserved {
-			who: contract_acc.clone(),
-			amount,
+			destination_status: BalanceStatus::Reserved,
 		}));
 	})
 }

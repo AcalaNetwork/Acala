@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, Amount, CdpEngine, CurrencyId, DepositPerAuthorization, ExistentialDeposits, Honzon, Price, Rate, Ratio,
-	Runtime,
+	AccountId, Amount, CdpEngine, CurrencyId, DepositPerAuthorization, ExistentialDeposits, Honzon,
+	NativeTokenExistentialDeposit, Price, Rate, Ratio, Runtime,
 };
 
 use super::{
@@ -49,7 +49,7 @@ runtime_benchmarks! {
 		let to_lookup = AccountIdLookup::unlookup(to);
 
 		// set balance
-		set_balance(NATIVE, &caller, DepositPerAuthorization::get());
+		set_balance(NATIVE, &caller, DepositPerAuthorization::get() + NativeTokenExistentialDeposit::get());
 	}: _(RawOrigin::Signed(caller), STAKING, to_lookup)
 
 	unauthorize {
@@ -58,7 +58,7 @@ runtime_benchmarks! {
 		let to_lookup = AccountIdLookup::unlookup(to);
 
 		// set balance
-		set_balance(NATIVE, &caller, DepositPerAuthorization::get());
+		set_balance(NATIVE, &caller, DepositPerAuthorization::get() + NativeTokenExistentialDeposit::get());
 		Honzon::authorize(
 			RawOrigin::Signed(caller.clone()).into(),
 			STAKING,
@@ -75,7 +75,7 @@ runtime_benchmarks! {
 		let to_lookup = AccountIdLookup::unlookup(to);
 
 		// set balance
-		set_balance(NATIVE, &caller, DepositPerAuthorization::get().saturating_mul(c.into()));
+		set_balance(NATIVE, &caller, DepositPerAuthorization::get().saturating_mul(c.into()) + NativeTokenExistentialDeposit::get());
 		for i in 0 .. c {
 			Honzon::authorize(
 				RawOrigin::Signed(caller.clone()).into(),
@@ -132,7 +132,7 @@ runtime_benchmarks! {
 
 		// set balance
 		set_balance(currency_id, &sender, collateral_amount * 2);
-		set_balance(NATIVE, &sender, DepositPerAuthorization::get());
+		set_balance(NATIVE, &sender, DepositPerAuthorization::get() + NativeTokenExistentialDeposit::get());
 
 		// feed price
 		feed_price(vec![(currency_id, Price::one())])?;

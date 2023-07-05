@@ -83,7 +83,7 @@ mod karura_tests {
 					MultiAddress::Id(ALICE.into()),
 					1_000_000_000_000_000
 				),
-				pallet_balances::Error::<kusama_runtime::Runtime>::LiquidityRestrictions
+				sp_runtime::TokenError::Frozen
 			);
 
 			// Uncomment this to test if withdraw_unbonded and transfer_keep_alive
@@ -323,7 +323,7 @@ mod karura_tests {
 			// Only leftover XCM fee remains in the account
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				23_612_959_144
+				23_895_571_037
 			);
 		});
 	}

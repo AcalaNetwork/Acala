@@ -77,7 +77,7 @@ fn transfer_to_relay_chain() {
 
 	let weight: XcmWeight = XcmWeight::from_parts(299_506_000, 0);
 	let fee = WeightToFee::weight_to_fee(&weight);
-	assert_eq!(94_172_727, fee);
+	assert_eq!(90_005_800, fee);
 
 	Karura::execute_with(|| {
 		assert_ok!(XTokens::transfer(
@@ -922,7 +922,7 @@ fn unspent_xcm_fee_is_returned_correctly() {
 		// Unspent fund from the 1 dollar XCM fee is returned to the sovereign account.
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-			1_000 * dollar_r + 996_757_227_594
+			1_000 * dollar_r + 996_900_712_827
 		);
 	});
 }
@@ -962,7 +962,7 @@ fn trapped_asset() -> MultiAsset {
 
 	let trapped_asset = MultiAsset {
 		id: Concrete(MultiLocation::here()),
-		fun: Fungibility::Fungible(999_948_849_324),
+		fun: Fungibility::Fungible(999_951_112_624),
 	};
 
 	KusamaNet::execute_with(|| {
@@ -1020,7 +1020,7 @@ fn claim_asset(asset: MultiAsset, recipient: [u8; 32]) {
 
 #[test]
 fn claim_trapped_asset_works() {
-	let claimed_amount = 999_859_824_394;
+	let claimed_amount = 999_866_026_842;
 	let asset = trapped_asset();
 	claim_asset(asset, BOB.into());
 

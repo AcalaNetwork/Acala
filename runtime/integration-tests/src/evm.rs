@@ -656,7 +656,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			#[cfg(feature = "with-ethereum-compatibility")]
 			assert_eq!(System::providers(&contract_account_id), 1);
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			assert_eq!(System::providers(&contract_account_id), 2);
+			assert_eq!(System::providers(&contract_account_id), 1);
 			assert!(EVM::accounts(contract).is_some());
 
 			// call kill
@@ -970,12 +970,12 @@ fn transaction_payment_module_works_with_evm_contract() {
 				pays_fee: Pays::Yes,
 			};
 			let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(len, &info, 0);
-			assert_eq!(fee, 2_500_001_002);
+			assert_eq!(fee, 2_500_000_880);
 
 			let surplus_perc = Percent::from_percent(50); // CustomFeeSurplus
 			let fee_surplus = surplus_perc.mul_ceil(fee);
 			let fee = fee + fee_surplus;
-			assert_eq!(fee, 3_750_001_503);
+			assert_eq!(fee, 3_750_001_320);
 
 			// empty_account use payment non wrapped call to charge fee by erc20 fee pool.
 			assert_eq!(Currencies::free_balance(erc20_token, &sub_account), 0);
@@ -989,11 +989,11 @@ fn transaction_payment_module_works_with_evm_contract() {
 			);
 			let erc20_fee = Currencies::free_balance(erc20_token, &sub_account);
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(erc20_fee, 10_386_329_747);
+			assert_eq!(erc20_fee, 10_386_329_729);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(erc20_fee, 10_407_164_913);
+			assert_eq!(erc20_fee, 10_407_164_895);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(erc20_fee, 10_407_164_913);
+			assert_eq!(erc20_fee, 10_407_164_895);
 
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
@@ -1040,11 +1040,11 @@ fn transaction_payment_module_works_with_evm_contract() {
 				)
 			);
 			#[cfg(feature = "with-karura-runtime")]
-			let (erc20_with_fee, native_with_fee) = (376162732, 3750001503);
+			let (erc20_with_fee, native_with_fee) = (376162714, 3750001320);
 			#[cfg(feature = "with-acala-runtime")]
-			let (erc20_with_fee, native_with_fee) = (376162732, 3750001503);
+			let (erc20_with_fee, native_with_fee) = (376162714, 3750001320);
 			#[cfg(feature = "with-mandala-runtime")]
-			let (erc20_with_fee, native_with_fee) = (375409653, 3750001503);
+			let (erc20_with_fee, native_with_fee) = (375409635, 3750001320);
 			assert_eq!(
 				Currencies::free_balance(erc20_token, &sub_account),
 				erc20_fee * 2 + erc20_with_fee
@@ -1115,17 +1115,18 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 				Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
 			));
 
-			assert_ok!(deploy_contract(AccountId::from(BOB)));
-
 			#[cfg(feature = "with-karura-runtime")]
 			{
+				let contract_address = deploy_contract(AccountId::from(BOB)).unwrap();
 				System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Reserved {
 					who: AccountId::from(BOB),
 					amount: 10_000_000_000_000,
 				}));
-				System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
-					who: AccountId::from(BOB),
+				System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::ReserveRepatriated {
+					from: AccountId::from(BOB),
+					to: MockAddressMapping::get_account_id(&contract_address),
 					amount: 1_036_700_000_000,
+					destination_status: frame_support::traits::BalanceStatus::Reserved,
 				}));
 				System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
 					who: AccountId::from(BOB),
@@ -1145,7 +1146,7 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 #[test]
 fn evm_limits() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 33_322_240);
+		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 33_320_706);
 		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_storage_limit(), 3_670_016);
 	});
 }

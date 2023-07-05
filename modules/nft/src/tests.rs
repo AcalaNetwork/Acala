@@ -26,7 +26,7 @@ use frame_support::{assert_noop, assert_ok};
 use mock::{RuntimeEvent, *};
 use orml_nft::TokenInfo;
 use primitives::Balance;
-use sp_runtime::{traits::BlakeTwo256, ArithmeticError};
+use sp_runtime::{traits::BlakeTwo256, ArithmeticError, TokenError};
 use sp_std::collections::btree_map::BTreeMap;
 
 fn free_balance(who: &AccountId) -> Balance {
@@ -95,7 +95,7 @@ fn create_class_should_fail() {
 				Properties(ClassProperty::Transferable | ClassProperty::Burnable),
 				Default::default(),
 			),
-			pallet_balances::Error::<Runtime, _>::InsufficientBalance
+			TokenError::FundsUnavailable
 		);
 
 		let mut large_attr: Attributes = BTreeMap::new();
@@ -128,10 +128,13 @@ fn mint_should_work() {
 			owner: class_id_account(),
 			class_id: CLASS_ID,
 		}));
-		assert_ok!(Balances::deposit_into_existing(
-			&class_id_account(),
-			2 * (CREATE_TOKEN_DEPOSIT + ((metadata_2.len() as u128 + TEST_ATTR_LEN) * DATA_DEPOSIT_PER_BYTE))
-		));
+		assert_eq!(Balances::free_balance(&class_id_account()), 1);
+		assert_eq!(Balances::reserved_balance(&class_id_account()), 282);
+
+		let mint_token_deposit =
+			2 * (CREATE_TOKEN_DEPOSIT + ((metadata_2.len() as u128 + TEST_ATTR_LEN) * DATA_DEPOSIT_PER_BYTE));
+		let transfer_amount = mint_token_deposit + Balances::minimum_balance();
+		assert_ok!(Balances::deposit_into_existing(&class_id_account(), transfer_amount));
 		assert_ok!(NFTModule::mint(
 			RuntimeOrigin::signed(class_id_account()),
 			BOB,
@@ -236,7 +239,7 @@ fn mint_should_fail() {
 		});
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
+			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE) + Balances::minimum_balance()
 		));
 		assert_noop!(
 			NFTModule::mint(
@@ -289,7 +292,7 @@ fn transfer_should_work() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
+			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE) + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
 			RuntimeOrigin::signed(class_id_account()),
@@ -356,7 +359,7 @@ fn transfer_should_fail() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
 			RuntimeOrigin::signed(class_id_account()),
@@ -390,7 +393,7 @@ fn transfer_should_fail() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
 			RuntimeOrigin::signed(class_id_account()),
@@ -419,7 +422,7 @@ fn burn_should_work() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
 			RuntimeOrigin::signed(class_id_account()),
@@ -454,7 +457,7 @@ fn burn_should_fail() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
 			RuntimeOrigin::signed(class_id_account()),
@@ -493,7 +496,7 @@ fn burn_should_fail() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
 			RuntimeOrigin::signed(class_id_account()),
@@ -522,7 +525,7 @@ fn burn_with_remark_should_work() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
 			RuntimeOrigin::signed(class_id_account()),
@@ -558,6 +561,7 @@ fn burn_with_remark_should_work() {
 fn destroy_class_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
+
 		assert_ok!(NFTModule::create_class(
 			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
@@ -566,15 +570,16 @@ fn destroy_class_should_work() {
 		));
 
 		let deposit = Proxy::deposit(1u32) + CREATE_CLASS_DEPOSIT + DATA_DEPOSIT_PER_BYTE * (metadata.len() as u128);
-		assert_eq!(free_balance(&ALICE), 100000 - deposit);
+		let transfer = deposit + Balances::minimum_balance();
+		assert_eq!(free_balance(&ALICE), 100000 - transfer);
 		assert_eq!(reserved_balance(&ALICE), 0);
-		assert_eq!(free_balance(&class_id_account()), 0);
+		assert_eq!(free_balance(&class_id_account()), Balances::minimum_balance());
 		assert_eq!(reserved_balance(&class_id_account()), deposit);
 		assert_eq!(free_balance(&BOB), 0);
 		assert_eq!(reserved_balance(&BOB), 0);
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
 			RuntimeOrigin::signed(class_id_account()),
@@ -598,7 +603,10 @@ fn destroy_class_should_work() {
 		assert_eq!(reserved_balance(&class_id_account()), 0);
 		assert_eq!(free_balance(&ALICE), 100000);
 		assert_eq!(reserved_balance(&ALICE), 0);
-		assert_eq!(free_balance(&BOB), CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE);
+		assert_eq!(
+			free_balance(&BOB),
+			CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
+		);
 		assert_eq!(reserved_balance(&BOB), 0);
 	});
 }
@@ -615,7 +623,7 @@ fn destroy_class_should_fail() {
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
 			RuntimeOrigin::signed(class_id_account()),

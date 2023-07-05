@@ -31,6 +31,9 @@ pub enum PoolId {
 
 	/// Rewards and shares pool for DEX makers who stake LP token(LPCurrencyId)
 	Dex(CurrencyId),
+
+	/// Rewards and shares pool for earning module
+	Earning(CurrencyId),
 }
 
 pub trait IncentivesManager<AccountId, Balance, CurrencyId, PoolId> {

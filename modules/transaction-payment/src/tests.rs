@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate::mock::{AlternativeFeeSurplus, AusdFeeSwapPath, CustomFeeSurplus, DotFeeSwapPath};
+use crate::mock::{AlternativeFeeSurplus, AusdFeeSwapPath, CustomFeeSurplus, DotFeeSwapPath, PalletBalances};
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::{DispatchClass, DispatchInfo, Pays},
@@ -872,8 +872,9 @@ fn charges_fee_when_validate_with_fee_currency_call_use_pool() {
 			50
 		));
 		assert_eq!(sub_dot_aca - fee_amount, Currencies::free_balance(ACA, &dot_acc));
-		assert_eq!(sub_dot_dot + fee_amount / 10, Currencies::free_balance(DOT, &dot_acc)); // 1 DOT = 10
-		                                                                            // ACA
+		assert_eq!(sub_dot_dot + fee_amount / 10, Currencies::free_balance(DOT, &dot_acc));
+		// 1 DOT = 10
+		// ACA
 	});
 }
 
@@ -1149,7 +1150,9 @@ fn charge_fee_by_alternative_swap_first_priority() {
 			RuntimeOrigin::root(),
 			BOB,
 			ACA,
-			alternative_fee_swap_deposit.try_into().unwrap(),
+			(alternative_fee_swap_deposit + PalletBalances::minimum_balance())
+				.try_into()
+				.unwrap(),
 		));
 
 		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
@@ -1162,20 +1165,24 @@ fn charge_fee_by_alternative_swap_first_priority() {
 		);
 		// the `AlternativeFeeSwapDeposit` amount balance is in user reserve balance,
 		// user reserve balance is not consider when check native is enough or not.
-		assert_eq!(alternative_fee_swap_deposit, Currencies::total_balance(ACA, &BOB));
+		assert_eq!(
+			alternative_fee_swap_deposit + PalletBalances::minimum_balance(),
+			Currencies::total_balance(ACA, &BOB)
+		);
 
 		// charge fee token use `DefaultFeeTokens` as `AlternativeFeeSwapPath` condition is failed.
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 300));
-		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB),
+			PalletBalances::minimum_balance()
+		);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(DOT, &BOB), 300);
 
-		// use user's total_balance to check native is enough or not:
-		// fee=500*2+1000=2000ACA, surplus=2000*0.25=500ACA, fee_amount=2500ACA
 		// use user's free_balance to check native is enough or not:
-		// fee=500*2+1000+10=2010ACA, surplus=2000*0.25=500ACA, fee_amount=2510ACA
+		// fee=500*2+1000=2000ACA, surplus=2000*0.25=500ACA, fee_amount=2500ACA
 		let surplus: u128 = AlternativeFeeSurplus::get().mul_ceil(2000);
-		let fee_surplus: u128 = 2000 + ed + surplus;
+		let fee_surplus: u128 = 2000 + surplus;
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
 				.validate(&BOB, &CALL2, &INFO, 500)
@@ -1186,14 +1193,14 @@ fn charge_fee_by_alternative_swap_first_priority() {
 		System::assert_has_event(crate::mock::RuntimeEvent::DEXModule(module_dex::Event::Swap {
 			trader: BOB,
 			path: vec![DOT, AUSD, ACA],
-			liquidity_changes: vec![51, 336, fee_surplus],
+			liquidity_changes: vec![51, 334, fee_surplus],
 		}));
 
 		assert_eq!(Currencies::free_balance(ACA, &BOB), ed);
 		assert_eq!(Currencies::free_balance(AUSD, &BOB), 0);
 		assert_eq!(Currencies::free_balance(DOT, &BOB), 249);
-		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (7490, 1336));
-		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (151, 664));
+		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (7500, 1334));
+		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (151, 666));
 		assert_eq!(Currencies::free_balance(ACA, &sub_account), init_balance,);
 		assert_eq!(Currencies::free_balance(DOT, &sub_account), dot_ed);
 	});
@@ -1213,7 +1220,9 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 			RuntimeOrigin::root(),
 			BOB,
 			ACA,
-			alternative_fee_swap_deposit.try_into().unwrap(),
+			(alternative_fee_swap_deposit + PalletBalances::minimum_balance())
+				.try_into()
+				.unwrap(),
 		));
 
 		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
@@ -1226,11 +1235,17 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 		);
 		// the `AlternativeFeeSwapDeposit` amount balance is in user reserve balance,
 		// user reserve balance is not consider when check native is enough or not.
-		assert_eq!(alternative_fee_swap_deposit, Currencies::total_balance(ACA, &BOB));
+		assert_eq!(
+			alternative_fee_swap_deposit + PalletBalances::minimum_balance(),
+			Currencies::total_balance(ACA, &BOB)
+		);
 
 		// charge fee token use `AlternativeFeeSwapPath`, although the swap path is invalid.
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 300));
-		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
+		assert_eq!(
+			<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB),
+			PalletBalances::minimum_balance()
+		);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(DOT, &BOB), 300);
 		assert_eq!(Currencies::free_balance(ACA, &sub_account), init_balance,);
@@ -1238,10 +1253,8 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 
 		// use user's total_balance to check native is enough or not:
 		// fee=500*2+1000=2000ACA, surplus=2000*0.25=500ACA, fee_amount=2500ACA
-		// use user's free_balance to check native is enough or not:
-		// fee=500*2+1000+10=2010ACA, surplus=2000*0.25=500ACA, fee_amount=2510ACA
 		let surplus: u128 = AlternativeFeeSurplus::get().mul_ceil(2000);
-		let fee_surplus = 2000 + surplus + 10;
+		let fee_surplus = 2000 + surplus;
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
 				.validate(&BOB, &CALL2, &INFO, 500)
@@ -1253,14 +1266,14 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 		System::assert_has_event(crate::mock::RuntimeEvent::DEXModule(module_dex::Event::Swap {
 			trader: BOB,
 			path: vec![DOT, AUSD, ACA],
-			liquidity_changes: vec![51, 336, fee_surplus],
+			liquidity_changes: vec![51, 334, fee_surplus],
 		}));
 
 		assert_eq!(Currencies::free_balance(ACA, &BOB), ed);
 		assert_eq!(Currencies::free_balance(AUSD, &BOB), 0);
 		assert_eq!(Currencies::free_balance(DOT, &BOB), 249);
-		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (7490, 1336));
-		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (151, 664));
+		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (7500, 1334));
+		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (151, 666));
 		// sub-account balance not changed, because not passing through sub-account.
 		assert_eq!(Currencies::free_balance(ACA, &sub_account), init_balance,);
 		assert_eq!(Currencies::free_balance(DOT, &sub_account), dot_ed);
