@@ -49,7 +49,6 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
-use frame_support::pallet_prelude::InvalidTransaction;
 use frame_system::{EnsureRoot, EnsureSigned, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
@@ -68,9 +67,11 @@ use orml_utilities::simulate_execution;
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 pub use frame_support::{
-	construct_runtime, log, parameter_types,
+	construct_runtime, log,
+	pallet_prelude::InvalidTransaction,
+	parameter_types,
 	traits::{
-		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency,
+		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency, Currency,
 		EnsureOrigin, EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType,
 		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
 		U128CurrencyToVote,
@@ -585,8 +586,8 @@ parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub ProposalBondMinimum: Balance = 5 * dollar(KAR);
 	pub ProposalBondMaximum: Balance = 25 * dollar(KAR);
-	pub const SpendPeriod: BlockNumber = 7 * DAYS;
-	pub const Burn: Permill = Permill::from_percent(0);
+	pub const SpendPeriod: BlockNumber = 30 * DAYS;
+	pub const Burn: Permill = Permill::from_percent(1);
 
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(5);
@@ -1210,8 +1211,11 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 			if let Some(tips) = fees_then_tips.next() {
 				tips.merge_into(&mut fees);
 			}
-			// for fees and tips, 100% to treasury
-			Treasury::on_unbalanced(fees);
+			// for fees and tips, 100% to treasury reserve
+			<Balances as Currency<AccountId>>::resolve_creating(
+				&TreasuryReservePalletId::get().into_account_truncating(),
+				fees,
+			);
 		}
 	}
 }
@@ -1466,7 +1470,7 @@ impl module_evm::Config for Runtime {
 	type PrecompilesValue = PrecompilesValue;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
-	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
+	type NetworkContractOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;
 	type PublicationFee = PublicationFee;

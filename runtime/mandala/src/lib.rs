@@ -1643,7 +1643,7 @@ impl module_evm::Config for Runtime {
 	type PrecompilesValue = PrecompilesValue;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
-	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
+	type NetworkContractOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;
 	type PublicationFee = PublicationFee;
