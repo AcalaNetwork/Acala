@@ -16,7 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, LiquidCrowdloan, LiquidCrowdloanCurrencyId, PolkadotXcm, Runtime, RuntimeOrigin, System};
+use crate::{
+	AccountId, GetLiquidCurrencyId, LiquidCrowdloan, LiquidCrowdloanCurrencyId, PolkadotXcm, Runtime, RuntimeOrigin,
+	System,
+};
 
 use super::utils::{set_balance, STAKING};
 use frame_benchmarking::whitelisted_caller;
@@ -44,6 +47,9 @@ runtime_benchmarks! {
 	verify {
 		System::assert_last_event(module_liquid_crowdloan::Event::TransferFromCrowdloanVaultRequested { amount }.into());
 	}
+
+	set_redeem_currency_id {
+	}: _(RawOrigin::Root, GetLiquidCurrencyId::get())
 }
 
 #[cfg(test)]
