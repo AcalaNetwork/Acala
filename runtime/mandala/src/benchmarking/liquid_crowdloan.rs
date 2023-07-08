@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, GetLiquidCurrencyId, LiquidCrowdloan, LiquidCrowdloanCurrencyId, PolkadotXcm, Runtime, RuntimeOrigin,
-	System,
+	AccountId, GetLiquidCurrencyId, GetStakingCurrencyId, LiquidCrowdloan, LiquidCrowdloanCurrencyId, PolkadotXcm,
+	Runtime, RuntimeOrigin, System,
 };
 
 use super::utils::{set_balance, STAKING};
@@ -37,7 +37,7 @@ runtime_benchmarks! {
 		set_balance(STAKING, &LiquidCrowdloan::account_id(), amount);
 	}: _(RawOrigin::Signed(caller), amount)
 	verify {
-		System::assert_last_event(module_liquid_crowdloan::Event::Redeemed { amount }.into());
+		System::assert_last_event(module_liquid_crowdloan::Event::Redeemed { currency_id: GetStakingCurrencyId::get(), amount }.into());
 	}
 
 	transfer_from_crowdloan_vault {
