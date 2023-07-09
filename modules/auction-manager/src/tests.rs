@@ -33,7 +33,7 @@ fn run_to_block_offchain(n: u64) {
 		System::set_block_number(System::block_number() + 1);
 		AuctionManagerModule::offchain_worker(System::block_number());
 		// this unlocks the concurrency storage lock so offchain_worker will fire next block
-		offchain::sleep_until(offchain::timestamp().add(Duration::from_millis(LOCK_DURATION + 200)));
+		offchain::sleep_until(offchain::timestamp().add(Duration::from_millis(LOCK_DURATION + 1000)));
 	}
 }
 
