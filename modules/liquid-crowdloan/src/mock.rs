@@ -41,6 +41,7 @@ pub type BlockNumber = u64;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+pub const LCDOT: CurrencyId = CurrencyId::LiquidCrowdloan(13);
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
@@ -116,8 +117,9 @@ parameter_types! {
 	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
 	pub CrowdloanVault: AccountId = VAULT;
 	pub LiquidCrowdloanPalletId: PalletId = PalletId(*b"aca/lqcl");
-	pub const Ldot: CurrencyId = LDOT;
-	pub const Dot: CurrencyId = DOT;
+	pub const GetLDOT: CurrencyId = LDOT;
+	pub const GetDOT: CurrencyId = DOT;
+	pub const GetLCDOT: CurrencyId = LCDOT;
 }
 
 impl module_currencies::Config for Runtime {
@@ -162,8 +164,8 @@ ord_parameter_types! {
 impl liquid_crowdloan::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
-	type LiquidCrowdloanCurrencyId = Ldot;
-	type RelayChainCurrencyId = Dot;
+	type LiquidCrowdloanCurrencyId = GetLCDOT;
+	type RelayChainCurrencyId = GetDOT;
 	type PalletId = LiquidCrowdloanPalletId;
 	type GovernanceOrigin = EnsureSignedBy<Alice, AccountId>;
 	type CrowdloanVault = CrowdloanVault;

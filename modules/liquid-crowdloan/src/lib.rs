@@ -27,7 +27,7 @@ use frame_support::{pallet_prelude::*, traits::EnsureOrigin, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId};
-use sp_runtime::traits::AccountIdConversion;
+use sp_runtime::{traits::AccountIdConversion, ArithmeticError};
 
 use support::CrowdloanVaultXcm;
 
@@ -79,10 +79,16 @@ pub mod module {
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Liquid Crowdloan asset was redeemed.
-		Redeemed { amount: Balance },
+		Redeemed { currency_id: CurrencyId, amount: Balance },
 		/// The transfer from relay chain crowdloan vault was requested.
 		TransferFromCrowdloanVaultRequested { amount: Balance },
+		/// The redeem currency id was updated.
+		RedeemCurrencyIdUpdated { currency_id: CurrencyId },
 	}
+
+	/// The redeem currency id.
+	#[pallet::storage]
+	pub(crate) type RedeemCurrencyId<T: Config> = StorageValue<_, CurrencyId, OptionQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -94,11 +100,33 @@ pub mod module {
 		pub fn redeem(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			let (currency_id, redeem_amount) = if let Some(redeem_currency_id) = RedeemCurrencyId::<T>::get() {
+				// redeem the RedeemCurrencyId
+				// amount_pect = amount / lcdot_total_supply
+				// amount_redeem = amount_pect * redeem_currency_balance
+
+				let redeem_currency_balance = T::Currency::free_balance(redeem_currency_id, &Self::account_id());
+				let lcdot_total_supply = T::Currency::total_issuance(T::LiquidCrowdloanCurrencyId::get());
+
+				let amount_redeem = amount
+					.checked_mul(redeem_currency_balance)
+					.and_then(|x| x.checked_div(lcdot_total_supply))
+					.ok_or(ArithmeticError::Overflow)?;
+
+				(redeem_currency_id, amount_redeem)
+			} else {
+				// redeem DOT
+				let currency_id = T::RelayChainCurrencyId::get();
+				(currency_id, amount)
+			};
+
 			T::Currency::withdraw(T::LiquidCrowdloanCurrencyId::get(), &who, amount)?;
+			T::Currency::transfer(currency_id, &Self::account_id(), &who, redeem_amount)?;
 
-			T::Currency::transfer(T::RelayChainCurrencyId::get(), &Self::account_id(), &who, amount)?;
-
-			Self::deposit_event(Event::Redeemed { amount });
+			Self::deposit_event(Event::Redeemed {
+				currency_id,
+				amount: redeem_amount,
+			});
 
 			Ok(())
 		}
@@ -122,6 +150,21 @@ pub mod module {
 			)?;
 
 			Self::deposit_event(Event::TransferFromCrowdloanVaultRequested { amount });
+
+			Ok(())
+		}
+
+		/// Set the redeem currency id.
+		///
+		/// This call requires `GovernanceOrigin`.
+		#[pallet::call_index(2)]
+		#[pallet::weight(<T as Config>::WeightInfo::set_redeem_currency_id())]
+		pub fn set_redeem_currency_id(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			<RedeemCurrencyId<T>>::put(currency_id);
+
+			Self::deposit_event(Event::RedeemCurrencyIdUpdated { currency_id });
 
 			Ok(())
 		}

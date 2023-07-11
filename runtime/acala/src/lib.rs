@@ -1683,7 +1683,7 @@ impl module_liquid_crowdloan::Config for Runtime {
 	type LiquidCrowdloanCurrencyId = LiquidCrowdloanCurrencyId;
 	type RelayChainCurrencyId = GetStakingCurrencyId;
 	type PalletId = LiquidCrowdloanPalletId;
-	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type GovernanceOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type CrowdloanVault = CrowdloanVault;
 	type XcmTransfer = XcmInterface;
 	type WeightInfo = weights::module_liquid_crowdloan::WeightInfo<Runtime>;

@@ -88,4 +88,14 @@ impl<T: frame_system::Config> module_liquid_crowdloan::WeightInfo for WeightInfo
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
+
+	fn set_redeem_currency_id() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1392`
+		//  Estimated: `22711`
+		// Minimum execution time: 56_316 nanoseconds.
+		Weight::from_parts(57_458_000, 22711)
+			.saturating_add(T::DbWeight::get().reads(7))
+			.saturating_add(T::DbWeight::get().writes(2))
+	}
 }
