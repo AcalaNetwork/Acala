@@ -171,8 +171,8 @@ impl<T: Config> Pallet<T> {
 			(currency_id, amount)
 		};
 
-		T::Currency::withdraw(T::LiquidCrowdloanCurrencyId::get(), &who, amount)?;
-		T::Currency::transfer(currency_id, &Self::account_id(), &who, redeem_amount)?;
+		T::Currency::withdraw(T::LiquidCrowdloanCurrencyId::get(), who, amount)?;
+		T::Currency::transfer(currency_id, &Self::account_id(), who, redeem_amount)?;
 
 		Self::deposit_event(Event::Redeemed {
 			currency_id,
@@ -183,6 +183,6 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn redeem_currency() -> CurrencyId {
-		RedeemCurrencyId::<T>::get().unwrap_or_else(|| T::RelayChainCurrencyId::get())
+		RedeemCurrencyId::<T>::get().unwrap_or_else(T::RelayChainCurrencyId::get)
 	}
 }
