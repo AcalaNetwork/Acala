@@ -11591,6 +11591,7 @@ dependencies = [
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
+ "module-liquid-crowdloan",
  "module-loans",
  "module-nft",
  "module-prices",

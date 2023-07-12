@@ -34,9 +34,9 @@ use module_cdp_engine::CollateralCurrencyIds;
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
-	mocks::MockStableAsset, AddressMapping as AddressMappingT, AuctionManager, DEXIncentives, DispatchableTask,
-	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId, PriceProvider,
-	Rate, SpecificJointsSwap,
+	mocks::MockStableAsset, AddressMapping as AddressMappingT, AuctionManager, CrowdloanVaultXcm, DEXIncentives,
+	DispatchableTask, EmergencyShutdown, ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId,
+	PriceProvider, Rate, SpecificJointsSwap,
 };
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 pub use primitives::{
@@ -165,6 +165,7 @@ pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+pub const LCDOT: CurrencyId = CurrencyId::LiquidCrowdloan(13);
 pub const LP_ACA_AUSD: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::ACA), DexShare::Token(TokenSymbol::AUSD));
 
@@ -902,6 +903,35 @@ impl orml_xtokens::Config for Test {
 	type ReserveProvider = AbsoluteReserveProvider;
 }
 
+parameter_types!(
+	pub CrowdloanVault: AccountId = AccountId::new([0u8; 32]);
+	pub const LiquidCrowdloanCurrencyId: CurrencyId = LCDOT;
+	pub LiquidCrowdloanPalletId: PalletId = PalletId(*b"aca/lqcl");
+);
+
+pub struct MockXcmTransfer;
+impl CrowdloanVaultXcm<AccountId, Balance> for MockXcmTransfer {
+	fn transfer_to_liquid_crowdloan_module_account(
+		_vault: AccountId,
+		_recipient: AccountId,
+		_amount: Balance,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
+impl module_liquid_crowdloan::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Currencies;
+	type LiquidCrowdloanCurrencyId = LiquidCrowdloanCurrencyId;
+	type RelayChainCurrencyId = GetStakingCurrencyId;
+	type PalletId = LiquidCrowdloanPalletId;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type CrowdloanVault = CrowdloanVault;
+	type XcmTransfer = MockXcmTransfer;
+	type WeightInfo = ();
+}
+
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const EVA: AccountId = AccountId::new([5u8; 32]);
@@ -980,6 +1010,7 @@ frame_support::construct_runtime!(
 		Rewards: orml_rewards,
 		XTokens: orml_xtokens,
 		StableAsset: nutsfinance_stable_asset,
+		LiquidCrowdloan: module_liquid_crowdloan,
 	}
 );
 
