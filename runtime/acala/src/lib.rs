@@ -31,6 +31,7 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::{Decode, DecodeLimit, Encode};
+use runtime_common::precompile::AcalaPrecompiles;
 use scale_info::TypeInfo;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
@@ -1407,7 +1408,9 @@ parameter_types! {
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub DeveloperDeposit: Balance = 50 * dollar(ACA);
 	pub PublicationFee: Balance = 10 * dollar(ACA);
-	pub PrecompilesValue: AllPrecompiles<Runtime, module_transaction_pause::PausedPrecompileFilter<Runtime>> = AllPrecompiles::<_, _>::acala();
+	pub PrecompilesValue: AllPrecompiles<
+		Runtime, module_transaction_pause::PausedPrecompileFilter<Runtime>, AcalaPrecompiles<Runtime>
+	> = AllPrecompiles::<_, _, _>::acala();
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
@@ -1448,7 +1451,8 @@ impl module_evm::Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
 	type RuntimeEvent = RuntimeEvent;
-	type PrecompilesType = AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>>;
+	type PrecompilesType =
+		AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>, AcalaPrecompiles<Self>>;
 	type PrecompilesValue = PrecompilesValue;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;

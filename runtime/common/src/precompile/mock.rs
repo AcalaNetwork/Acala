@@ -562,7 +562,7 @@ pub type EvmErc20InfoMapping = module_asset_registry::EvmErc20InfoMapping<Test>;
 
 parameter_types! {
 	pub NetworkContractSource: H160 = alice_evm_addr();
-	pub PrecompilesValue: AllPrecompiles<Test, module_transaction_pause::PausedPrecompileFilter<Test>> = AllPrecompiles::<_, _>::mandala();
+	pub PrecompilesValue: AllPrecompiles<Test, module_transaction_pause::PausedPrecompileFilter<Test>, ()> = AllPrecompiles::<_, _, _>::mandala();
 }
 
 ord_parameter_types! {
@@ -587,7 +587,7 @@ impl module_evm::Config for Test {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<10>;
 	type RuntimeEvent = RuntimeEvent;
-	type PrecompilesType = AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>>;
+	type PrecompilesType = AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>, ()>;
 	type PrecompilesValue = PrecompilesValue;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
