@@ -92,7 +92,11 @@ where
 			Action::GetRedeemCurrency => {
 				let currency_id = <module_liquid_crowdloan::Pallet<Runtime>>::redeem_currency();
 				let address = <Runtime as module_prices::Config>::Erc20InfoMapping::encode_evm_address(currency_id)
-					.unwrap_or_default();
+					.ok_or_else(|| PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "LiquidCrowdloan redeem currency not found".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					})?;
 
 				log::debug!(target: "evm", "liuqid_crowdloan: GetRedeemCurrency output: {:?}", currency_id);
 				Ok(PrecompileOutput {
