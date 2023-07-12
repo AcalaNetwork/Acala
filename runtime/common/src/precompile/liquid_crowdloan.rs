@@ -35,12 +35,6 @@ use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 /// The `LiquidCrowdloan` impl precompile.
-///
-///
-/// `input` data starts with `action`.
-///
-/// Actions:
-/// - Get price. Rest `input` bytes: `currency_id`.
 pub struct LiquidCrowdloanPrecompile<R>(PhantomData<R>);
 
 #[module_evm_utility_macro::generate_function_selector]
