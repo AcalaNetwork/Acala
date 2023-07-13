@@ -67,6 +67,7 @@ module-cdp-engine = { path = "../../modules/cdp-engine", default-features = fals
 module-cdp-treasury = { path = "../../modules/cdp-treasury", default-features = false, optional = true }
 module-incentives = { path = "../../modules/incentives", default-features = false }
 module-transaction-pause = { path = "../../modules/transaction-pause", default-features = false }
+module-liquid-crowdloan = { path = "../../modules/liquid-crowdloan", default-features = false }
 
 # orml
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -142,6 +143,7 @@ std = [
 	"module-support/std",
 	"module-transaction-pause/std",
 	"module-transaction-payment/std",
+	"module-liquid-crowdloan/std",
 	"primitives/std",
 
 	"nutsfinance-stable-asset/std",

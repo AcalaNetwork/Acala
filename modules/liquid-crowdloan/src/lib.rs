@@ -76,7 +76,7 @@ pub mod module {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(fn deposit_event)]
+	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Liquid Crowdloan asset was redeemed.
 		Redeemed { currency_id: CurrencyId, amount: Balance },
@@ -100,33 +100,7 @@ pub mod module {
 		pub fn redeem(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let (currency_id, redeem_amount) = if let Some(redeem_currency_id) = RedeemCurrencyId::<T>::get() {
-				// redeem the RedeemCurrencyId
-				// amount_pect = amount / lcdot_total_supply
-				// amount_redeem = amount_pect * redeem_currency_balance
-
-				let redeem_currency_balance = T::Currency::free_balance(redeem_currency_id, &Self::account_id());
-				let lcdot_total_supply = T::Currency::total_issuance(T::LiquidCrowdloanCurrencyId::get());
-
-				let amount_redeem = amount
-					.checked_mul(redeem_currency_balance)
-					.and_then(|x| x.checked_div(lcdot_total_supply))
-					.ok_or(ArithmeticError::Overflow)?;
-
-				(redeem_currency_id, amount_redeem)
-			} else {
-				// redeem DOT
-				let currency_id = T::RelayChainCurrencyId::get();
-				(currency_id, amount)
-			};
-
-			T::Currency::withdraw(T::LiquidCrowdloanCurrencyId::get(), &who, amount)?;
-			T::Currency::transfer(currency_id, &Self::account_id(), &who, redeem_amount)?;
-
-			Self::deposit_event(Event::Redeemed {
-				currency_id,
-				amount: redeem_amount,
-			});
+			Self::do_redeem(&who, amount)?;
 
 			Ok(())
 		}
@@ -174,5 +148,41 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	pub fn account_id() -> T::AccountId {
 		T::PalletId::get().into_account_truncating()
+	}
+
+	pub fn do_redeem(who: &T::AccountId, amount: Balance) -> Result<Balance, DispatchError> {
+		let (currency_id, redeem_amount) = if let Some(redeem_currency_id) = RedeemCurrencyId::<T>::get() {
+			// redeem the RedeemCurrencyId
+			// amount_pect = amount / lcdot_total_supply
+			// amount_redeem = amount_pect * redeem_currency_balance
+
+			let redeem_currency_balance = T::Currency::free_balance(redeem_currency_id, &Self::account_id());
+			let lcdot_total_supply = T::Currency::total_issuance(T::LiquidCrowdloanCurrencyId::get());
+
+			let amount_redeem = amount
+				.checked_mul(redeem_currency_balance)
+				.and_then(|x| x.checked_div(lcdot_total_supply))
+				.ok_or(ArithmeticError::Overflow)?;
+
+			(redeem_currency_id, amount_redeem)
+		} else {
+			// redeem DOT
+			let currency_id = T::RelayChainCurrencyId::get();
+			(currency_id, amount)
+		};
+
+		T::Currency::withdraw(T::LiquidCrowdloanCurrencyId::get(), who, amount)?;
+		T::Currency::transfer(currency_id, &Self::account_id(), who, redeem_amount)?;
+
+		Self::deposit_event(Event::Redeemed {
+			currency_id,
+			amount: redeem_amount,
+		});
+
+		Ok(redeem_amount)
+	}
+
+	pub fn redeem_currency() -> CurrencyId {
+		RedeemCurrencyId::<T>::get().unwrap_or_else(T::RelayChainCurrencyId::get)
 	}
 }

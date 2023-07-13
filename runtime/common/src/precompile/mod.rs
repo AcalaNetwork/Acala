@@ -46,6 +46,7 @@ pub mod homa;
 pub mod honzon;
 pub mod incentives;
 pub mod input;
+pub mod liquid_crowdloan;
 pub mod multicurrency;
 pub mod nft;
 pub mod oracle;
@@ -60,6 +61,7 @@ pub use evm_accounts::EVMAccountsPrecompile;
 pub use homa::HomaPrecompile;
 pub use honzon::HonzonPrecompile;
 pub use incentives::IncentivesPrecompile;
+pub use liquid_crowdloan::LiquidCrowdloanPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
@@ -95,19 +97,21 @@ pub const EVM_ACCOUNTS: H160 = H160(hex!("00000000000000000000000000000000000004
 pub const HONZON: H160 = H160(hex!("0000000000000000000000000000000000000409"));
 pub const INCENTIVES: H160 = H160(hex!("000000000000000000000000000000000000040a"));
 pub const XTOKENS: H160 = H160(hex!("000000000000000000000000000000000000040b"));
+pub const LIQUID_CROWDLOAN: H160 = H160(hex!("000000000000000000000000000000000000040c"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
 	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
 }
 
-pub struct AllPrecompiles<R, F> {
+pub struct AllPrecompiles<R, F, E> {
 	set: BTreeSet<H160>,
-	_marker: PhantomData<(R, F)>,
+	_marker: PhantomData<(R, F, E)>,
 }
 
-impl<R, F> AllPrecompiles<R, F>
+impl<R, F, E> AllPrecompiles<R, F, E>
 where
 	R: module_evm::Config,
+	E: PrecompileSet,
 {
 	pub fn acala() -> Self {
 		Self {
@@ -138,6 +142,7 @@ where
 				HONZON,
 				INCENTIVES,
 				XTOKENS,
+				LIQUID_CROWDLOAN,
 			]),
 			_marker: Default::default(),
 		}
@@ -172,6 +177,7 @@ where
 				HONZON,
 				INCENTIVES,
 				XTOKENS,
+				// LIQUID_CROWDLOAN,
 			]),
 			_marker: Default::default(),
 		}
@@ -206,15 +212,17 @@ where
 				HONZON,
 				INCENTIVES,
 				XTOKENS,
+				// LIQUID_CROWDLOAN,
 			]),
 			_marker: Default::default(),
 		}
 	}
 }
 
-impl<R, PausedPrecompile> PrecompileSet for AllPrecompiles<R, PausedPrecompile>
+impl<R, PausedPrecompile, E> PrecompileSet for AllPrecompiles<R, PausedPrecompile, E>
 where
 	R: module_evm::Config,
+	E: PrecompileSet + Default,
 	PausedPrecompile: PrecompilePauseFilter,
 	MultiCurrencyPrecompile<R>: Precompile,
 	NFTPrecompile<R>: Precompile,
@@ -347,7 +355,7 @@ where
 			} else if address == XTOKENS {
 				Some(XtokensPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else {
-				None
+				E::execute(&Default::default(), address, input, target_gas, context, is_static)
 			}
 		};
 
@@ -359,7 +367,39 @@ where
 	}
 
 	fn is_precompile(&self, address: H160) -> bool {
-		self.set.contains(&address)
+		self.set.contains(&address) || E::is_precompile(&Default::default(), address)
+	}
+}
+
+pub struct AcalaPrecompiles<R>(sp_std::marker::PhantomData<R>);
+
+impl<R> Default for AcalaPrecompiles<R> {
+	fn default() -> Self {
+		Self(sp_std::marker::PhantomData)
+	}
+}
+
+impl<R> PrecompileSet for AcalaPrecompiles<R>
+where
+	LiquidCrowdloanPrecompile<R>: Precompile,
+{
+	fn execute(
+		&self,
+		address: H160,
+		input: &[u8],
+		gas_limit: Option<u64>,
+		context: &Context,
+		is_static: bool,
+	) -> Option<PrecompileResult> {
+		if address == LIQUID_CROWDLOAN {
+			Some(LiquidCrowdloanPrecompile::execute(input, gas_limit, context, is_static))
+		} else {
+			None
+		}
+	}
+
+	fn is_precompile(&self, address: H160) -> bool {
+		address == LIQUID_CROWDLOAN
 	}
 }
 
