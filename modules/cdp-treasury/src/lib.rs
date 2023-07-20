@@ -154,7 +154,7 @@ pub mod module {
 	pub type DebitOffsetBuffer<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	#[pallet::genesis_config]
-	#[cfg_attr(feature = "std", derive(Default))]
+	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig {
 		pub expected_collateral_auction_size: Vec<(CurrencyId, Balance)>,
 	}

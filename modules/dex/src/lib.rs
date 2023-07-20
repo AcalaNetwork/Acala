@@ -282,21 +282,11 @@ pub mod module {
 		StorageMap<_, Twox64Concat, TradingPair, (ExchangeRate, ExchangeRate), ValueQuery>;
 
 	#[pallet::genesis_config]
+	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
 		pub initial_listing_trading_pairs: Vec<(TradingPair, (Balance, Balance), (Balance, Balance), T::BlockNumber)>,
 		pub initial_enabled_trading_pairs: Vec<TradingPair>,
 		pub initial_added_liquidity_pools: Vec<(T::AccountId, Vec<(TradingPair, (Balance, Balance))>)>,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				initial_listing_trading_pairs: vec![],
-				initial_enabled_trading_pairs: vec![],
-				initial_added_liquidity_pools: vec![],
-			}
-		}
 	}
 
 	#[pallet::genesis_build]

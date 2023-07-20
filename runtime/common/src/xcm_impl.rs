@@ -237,7 +237,7 @@ impl<
 		Config: xcm_executor::Config,
 		AccountId: Clone,
 		Balance,
-		AccountIdConvert: xcm_executor::traits::Convert<MultiLocation, AccountId>,
+		AccountIdConvert: xcm_executor::traits::ConvertLocation<AccountId>,
 		EVMBridge: module_support::EVMBridge<AccountId, Balance>,
 	> ExecuteXcm<Config::RuntimeCall> for XcmExecutor<Config, AccountId, Balance, AccountIdConvert, EVMBridge>
 {
@@ -250,12 +250,12 @@ impl<
 	fn execute(
 		origin: impl Into<MultiLocation>,
 		weighed_message: Self::Prepared,
-		message_hash: XcmHash,
+		message_hash: &mut XcmHash,
 		weight_credit: XcmWeight,
 	) -> Outcome {
 		let origin = origin.into();
-		let account = AccountIdConvert::convert(origin);
-		let clear = if let Ok(account) = account {
+		let account = AccountIdConvert::convert_location(&origin);
+		let clear = if let Some(account) = account {
 			EVMBridge::push_xcm_origin(account);
 			true
 		} else {
@@ -277,14 +277,14 @@ impl<
 
 /// Convert `AccountKey20` to `AccountId`
 pub struct AccountKey20Aliases<Network, AccountId, AddressMapping>(PhantomData<(Network, AccountId, AddressMapping)>);
-impl<Network, AccountId, AddressMapping> xcm_executor::traits::Convert<MultiLocation, AccountId>
+impl<Network, AccountId, AddressMapping> xcm_executor::traits::ConvertLocation<AccountId>
 	for AccountKey20Aliases<Network, AccountId, AddressMapping>
 where
 	Network: Get<Option<NetworkId>>,
 	AccountId: From<[u8; 32]> + Into<[u8; 32]> + Clone,
 	AddressMapping: module_support::AddressMapping<AccountId>,
 {
-	fn convert(location: MultiLocation) -> Result<AccountId, MultiLocation> {
+	fn convert_location(location: &MultiLocation) -> Option<AccountId> {
 		let key = match location {
 			MultiLocation {
 				parents: 0,
@@ -293,19 +293,11 @@ where
 			MultiLocation {
 				parents: 0,
 				interior: X1(AccountKey20 { key, network }),
-			} if network == Network::get() => key,
-			_ => return Err(location),
+			} if *network == Network::get() => key,
+			_ => return None,
 		};
 
-		Ok(AddressMapping::get_account_id(&EvmAddress::from(key)))
-	}
-
-	fn reverse(who: AccountId) -> Result<MultiLocation, AccountId> {
-		// NOTE: Not sure whether to use AccountId32 or AccountKey20, not implemented for now
-		// Ok(AccountKey20 { key: AddressMapping::get_or_create_evm_address(who), network: Network::get()
-		// }.into())
-		// Ok(AccountId32 { id: who.into(), network: Network::get() }.into())
-		Err(who)
+		Some(AddressMapping::get_account_id(&EvmAddress::from(key)))
 	}
 }
 

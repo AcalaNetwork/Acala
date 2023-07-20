@@ -175,17 +175,9 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::genesis_config]
+	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
 		pub assets: Vec<(CurrencyId, BalanceOf<T>)>,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				assets: Default::default(),
-			}
-		}
 	}
 
 	#[pallet::genesis_build]

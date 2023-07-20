@@ -164,7 +164,7 @@ pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
 	WEIGHT_REF_TIME_PER_SECOND.saturating_div(2),
 	// TODO: drop `* 10` after https://github.com/paritytech/substrate/issues/13501
 	// and the benchmarked size is not 10x of the measured size
-	polkadot_primitives::v4::MAX_POV_SIZE as u64 * 10,
+	polkadot_primitives::v5::MAX_POV_SIZE as u64 * 10,
 );
 
 const_assert!(NORMAL_DISPATCH_RATIO.deconstruct() >= AVERAGE_ON_INITIALIZE_RATIO.deconstruct());

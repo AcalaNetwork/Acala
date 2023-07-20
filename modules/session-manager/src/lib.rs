@@ -101,17 +101,9 @@ pub mod module {
 		StorageMap<_, Twox64Concat, T::BlockNumber, (SessionIndex, T::BlockNumber), ValueQuery>;
 
 	#[pallet::genesis_config]
+	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
 		pub session_duration: T::BlockNumber,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				session_duration: Default::default(),
-			}
-		}
 	}
 
 	#[pallet::genesis_build]
