@@ -205,7 +205,7 @@ mod mock {
 		type MaxReserves = ConstU32<50>;
 		type ReserveIdentifier = ReserveIdentifier;
 		type WeightInfo = ();
-		type HoldIdentifier = ();
+		type RuntimeHoldReason = ();
 		type FreezeIdentifier = ();
 		type MaxHolds = ();
 		type MaxFreezes = ();

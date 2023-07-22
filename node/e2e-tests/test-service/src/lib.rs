@@ -50,7 +50,7 @@ use crate::runtime::Weight;
 use frame_system_rpc_runtime_api::AccountNonceApi;
 use futures::{channel::mpsc::Sender, SinkExt};
 use jsonrpsee::RpcModule;
-use polkadot_primitives::v4::{CollatorPair, Hash as PHash, HeadData, PersistedValidationData};
+use polkadot_primitives::v5::{CollatorPair, Hash as PHash, HeadData, PersistedValidationData};
 use sc_client_api::{execution_extensions::ExecutionStrategies, Backend, CallExecutor, ExecutorProvider};
 use sc_consensus::{ImportQueue, LongestChain};
 use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
@@ -64,7 +64,7 @@ pub use sc_rpc::SubscriptionTaskExecutor;
 use sc_service::{
 	config::{
 		BlocksPruning, DatabaseSource, KeystoreConfig, MultiaddrWithPeerId, NetworkConfiguration, OffchainWorkerConfig,
-		PruningMode, WasmExecutionMethod,
+		PruningMode,
 	},
 	BasePath, ChainSpec, Configuration, Error as ServiceError, PartialComponents, Role, RpcHandlers, SpawnTasksParams,
 	TFullBackend, TFullCallExecutor, TFullClient, TaskManager,
@@ -240,7 +240,7 @@ pub fn run_relay_chain_validator_node(
 	let mut config = polkadot_test_service::node_config(storage_update_func, tokio_handle, key, boot_nodes, true);
 
 	if let Some(port) = websocket_port {
-		config.rpc_ws = Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port));
+		config.rpc_addr = Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port));
 	}
 
 	polkadot_test_service::run_validator_node(

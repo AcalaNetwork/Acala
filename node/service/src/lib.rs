@@ -21,7 +21,7 @@
 
 //! Acala service. Specialized wrapper over substrate service.
 
-use acala_primitives::{Block, Hash};
+pub use acala_primitives::{Block, Hash};
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::{ParachainBlockImport as TParachainBlockImport, ParachainConsensus};
@@ -417,6 +417,7 @@ where
 
 	let params = new_partial(&parachain_config, false, false)?;
 	let (block_import, mut telemetry, telemetry_worker_handle) = params.other;
+	let net_config = sc_network::config::FullNetworkConfiguration::new(&parachain_config.network);
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
@@ -452,6 +453,7 @@ where
 	let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &parachain_config,
+			net_config,
 			client: client.clone(),
 			transaction_pool: transaction_pool.clone(),
 			spawn_handle,
@@ -738,9 +740,12 @@ where
 		other: (_, _, _),
 	} = new_partial::<RuntimeApi>(&config, true, instant_sealing)?;
 
+	let net_config = sc_network::config::FullNetworkConfiguration::new(&config.network);
+
 	let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
+			net_config,
 			client: client.clone(),
 			transaction_pool: transaction_pool.clone(),
 			spawn_handle: task_manager.spawn_handle(),

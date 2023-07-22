@@ -45,7 +45,7 @@ use tiny_keccak::{Hasher, Keccak};
 
 use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
-pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
+pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::RuntimeGenesisConfig, Extensions>;
 
 pub const PARA_ID: u32 = 2000;
 
@@ -310,7 +310,7 @@ fn testnet_genesis(
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 	evm_accounts: Vec<H160>,
-) -> mandala_runtime::GenesisConfig {
+) -> mandala_runtime::RuntimeGenesisConfig {
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
 	let initial_balance: u128 = 10_000_000 * dollar(ACA);
@@ -344,7 +344,7 @@ fn testnet_genesis(
 
 	let member = vec![root_key.clone()];
 
-	mandala_runtime::GenesisConfig {
+	mandala_runtime::RuntimeGenesisConfig {
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
@@ -492,7 +492,7 @@ fn mandala_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, AuraId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
-) -> mandala_runtime::GenesisConfig {
+) -> mandala_runtime::RuntimeGenesisConfig {
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
 	let initial_balance: u128 = 1_000_000 * dollar(ACA);
@@ -526,7 +526,7 @@ fn mandala_genesis(
 
 	let member = vec![root_key.clone()];
 
-	mandala_runtime::GenesisConfig {
+	mandala_runtime::RuntimeGenesisConfig {
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),

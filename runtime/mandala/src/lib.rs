@@ -41,7 +41,7 @@ pub use frame_support::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency,
 		EnsureOrigin, EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType,
 		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
-		U128CurrencyToVote, WithdrawReasons,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
@@ -252,6 +252,7 @@ impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<32>;
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 }
 
 impl pallet_authorship::Config for Runtime {
@@ -352,7 +353,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-	type HoldIdentifier = ReserveIdentifier;
+	type RuntimeHoldReason = ReserveIdentifier;
 	type FreezeIdentifier = ();
 	type MaxHolds = MaxReserves;
 	type MaxFreezes = ();
@@ -369,6 +370,7 @@ parameter_types! {
 impl pallet_sudo::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -761,7 +763,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type PalletId = PhragmenElectionPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = CurrencyAdapter<Runtime, GetLiquidCurrencyId>;
-	type CurrencyToVote = U128CurrencyToVote;
+	type CurrencyToVote = sp_staking::currency_to_vote::U128CurrencyToVote;
 	type ChangeMembers = HomaCouncil;
 	type InitializeMembers = HomaCouncil;
 	type CandidacyBond = CandidacyBond;

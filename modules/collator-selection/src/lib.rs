@@ -96,7 +96,7 @@ pub mod pallet {
 	use pallet_session::SessionManager;
 	use primitives::ReserveIdentifier;
 	use sp_staking::SessionIndex;
-	use sp_std::{ops::Div, vec};
+	use sp_std::{ops::Div, prelude::*};
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::CollatorSelection;
 	pub const POINT_PER_BLOCK: u32 = 10;
@@ -222,7 +222,10 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			let duplicate_invulnerables = self.invulnerables.iter().collect::<std::collections::BTreeSet<_>>();
+			let duplicate_invulnerables = self
+				.invulnerables
+				.iter()
+				.collect::<sp_std::collections::btree_set::BTreeSet<_>>();
 			assert_eq!(
 				duplicate_invulnerables.len(),
 				self.invulnerables.len(),

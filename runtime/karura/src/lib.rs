@@ -74,7 +74,6 @@ pub use frame_support::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency, Currency,
 		EnsureOrigin, EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType,
 		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
-		U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, ConstantMultiplier, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
@@ -285,6 +284,7 @@ impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<32>;
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 }
 
 impl pallet_authorship::Config for Runtime {
@@ -369,7 +369,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-	type HoldIdentifier = ReserveIdentifier;
+	type RuntimeHoldReason = ReserveIdentifier;
 	type FreezeIdentifier = ();
 	type MaxHolds = MaxReserves;
 	type MaxFreezes = ();
@@ -397,6 +397,7 @@ pub type SlowAdjustingFeeUpdate<R> =
 impl pallet_sudo::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
+	type WeightInfo = ();
 }
 
 parameter_types! {

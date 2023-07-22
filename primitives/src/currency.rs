@@ -27,7 +27,6 @@ use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
 macro_rules! create_currency_id {
@@ -403,8 +402,7 @@ create_currency_id! {
 	// 128 - 147: Karura & Kusama native tokens
 	// 148 - 167: Reserved for future usage
 	// 168 - 255: Kusama parachain tokens
-	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Serialize, Deserialize)]
 	#[repr(u8)]
 	pub enum TokenSymbol {
 		// 0 - 19: Acala & Polkadot native tokens

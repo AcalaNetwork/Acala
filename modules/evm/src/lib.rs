@@ -66,7 +66,6 @@ pub use primitives::{
 	Balance, CurrencyId, Nonce, ReserveIdentifier,
 };
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
@@ -275,8 +274,7 @@ pub mod module {
 		pub ref_count: u32,
 	}
 
-	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Serialize, Deserialize)]
 	/// Account definition used for genesis block construction.
 	pub struct GenesisAccount<Balance, Index> {
 		/// Account nonce.

@@ -14,7 +14,7 @@ codec = { package = "parity-scale-codec", version = "3.0.0", default-features = 
 hex-literal = { version = "0.3.1" }
 ripemd160 = { version = "0.9", default-features = false }
 rlp = { version = "0.5.2", default-features = false }
-serde = { version = "1.0.145", optional = true, features = ["derive"] }
+serde = { version = "1.0.145", default-features = false, features = ["alloc", "derive"] }
 sha3 = { version = "0.9.1", default-features = false }
 tiny-keccak = { version = "2.0", features = ["fips202"] }
 scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
@@ -55,7 +55,7 @@ pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "po
 [features]
 default = ["std"]
 std = [
-	"serde",
+	"serde/std",
 
 	"codec/std",
 	"frame-support/std",
