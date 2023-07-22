@@ -6709,6 +6709,7 @@ version = "2.19.0"
 dependencies = [
  "acala-primitives",
  "env_logger 0.9.3",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex",

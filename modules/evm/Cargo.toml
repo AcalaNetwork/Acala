@@ -46,6 +46,9 @@ module-dex = { path = "../dex", default-features = false, optional = true }
 
 xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v1.0.0", default-features = false }
 
+# we don't directly depends on this but need frame-benchmarking/std to fix build
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "release-v1.0.0" , default-features = false, optional = true }
+
 [dev-dependencies]
 hex = "0.4"
 env_logger = "0.9.0"
@@ -81,7 +84,8 @@ std = [
 	"sp-io/std",
 	"sp-runtime/std",
 	"sp-std/std",
-	"xcm-builder/std"
+	"xcm-builder/std",
+	"frame-benchmarking/std",
 ]
 with-ethereum-compatibility = []
 try-runtime = [
@@ -108,7 +112,7 @@ bench = [
 	"pallet-balances",
 	"serde_json",
 	"sp-runtime/runtime-benchmarks",
-	"xcm-builder/runtime-benchmarks"
+	"xcm-builder/runtime-benchmarks",
 ]
 evm-tests = [
 	"primitives/evm-tests"
