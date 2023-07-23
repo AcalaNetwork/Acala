@@ -286,6 +286,7 @@ substrate-test-utils = { git = "https://github.com/paritytech//substrate", rev =
 substrate-test-utils-derive = { git = "https://github.com/paritytech//substrate", rev = "6d28d2eb6fa1589105e970ff1b97555d91a1495b" }
 substrate-wasm-builder = { git = "https://github.com/paritytech//substrate", rev = "6d28d2eb6fa1589105e970ff1b97555d91a1495b" }
 try-runtime-cli = { git = "https://github.com/paritytech//substrate", rev = "6d28d2eb6fa1589105e970ff1b97555d91a1495b" }
+pallet-glutton = { git = "https://github.com/paritytech//substrate", rev = "6d28d2eb6fa1589105e970ff1b97555d91a1495b" }
 
 [patch."https://github.com/paritytech/polkadot"]
 kusama-runtime = { git = "https://github.com/paritytech//polkadot", rev = "1ed6e2e50a4ce61f6cda46a730efc11a07b6ebb3" }
@@ -353,3 +354,4 @@ parachain-info = { git = "https://github.com/paritytech//cumulus", rev = "a188eb
 parachains-common  = { git = "https://github.com/paritytech//cumulus", rev = "a188eb95c522f3ca4c43ef7fed19a6107224217c" }
 asset-hub-kusama-runtime  = { git = "https://github.com/paritytech//cumulus", rev = "a188eb95c522f3ca4c43ef7fed19a6107224217c" }
 asset-hub-polkadot-runtime  = { git = "https://github.com/paritytech//cumulus", rev = "a188eb95c522f3ca4c43ef7fed19a6107224217c" }
+xcm-emulator = { git = "https://github.com/paritytech//cumulus", rev = "a188eb95c522f3ca4c43ef7fed19a6107224217c" }

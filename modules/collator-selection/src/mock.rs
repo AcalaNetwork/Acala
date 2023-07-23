@@ -28,7 +28,7 @@ use primitives::ReserveIdentifier;
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, UintAuthorityId},
-	traits::{BlakeTwo256, IdentityLookup, OpaqueKeys},
+	traits::{BlakeTwo256, ConstBool, IdentityLookup, OpaqueKeys},
 	Permill, RuntimeAppPublic,
 };
 
@@ -121,6 +121,7 @@ impl pallet_aura::Config for Test {
 	type AuthorityId = sp_consensus_aura::sr25519::AuthorityId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<32>;
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 }
 
 sp_runtime::impl_opaque_keys! {

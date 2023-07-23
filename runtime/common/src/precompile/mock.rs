@@ -840,7 +840,12 @@ impl ExecuteXcm<RuntimeCall> for MockExec {
 		unreachable!()
 	}
 
-	fn execute(_origin: impl Into<MultiLocation>, _pre: Weightless, _hash: XcmHash, _weight_credit: Weight) -> Outcome {
+	fn execute(
+		_origin: impl Into<MultiLocation>,
+		_pre: Weightless,
+		_hash: &mut XcmHash,
+		_weight_credit: Weight,
+	) -> Outcome {
 		unreachable!()
 	}
 

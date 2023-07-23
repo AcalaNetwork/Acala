@@ -34,7 +34,7 @@ use karura_runtime::{
 };
 use runtime_common::TokenInfo;
 
-pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
+pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::RuntimeGenesisConfig, Extensions>;
 
 pub const PARA_ID: u32 = 2000;
 
@@ -142,8 +142,8 @@ fn karura_dev_genesis(
 	initial_allocation: Vec<(AccountId, Balance)>,
 	vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)>,
 	general_councils: Vec<AccountId>,
-) -> karura_runtime::GenesisConfig {
-	karura_runtime::GenesisConfig {
+) -> karura_runtime::RuntimeGenesisConfig {
+	karura_runtime::RuntimeGenesisConfig {
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),

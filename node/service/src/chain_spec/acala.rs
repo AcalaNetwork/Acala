@@ -34,7 +34,7 @@ use acala_runtime::{
 };
 use runtime_common::TokenInfo;
 
-pub type ChainSpec = sc_service::GenericChainSpec<acala_runtime::GenesisConfig, Extensions>;
+pub type ChainSpec = sc_service::GenericChainSpec<acala_runtime::RuntimeGenesisConfig, Extensions>;
 
 pub const PARA_ID: u32 = 2000;
 
@@ -142,8 +142,8 @@ fn acala_dev_genesis(
 	initial_allocation: Vec<(AccountId, Balance)>,
 	vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)>,
 	general_councils: Vec<AccountId>,
-) -> acala_runtime::GenesisConfig {
-	acala_runtime::GenesisConfig {
+) -> acala_runtime::RuntimeGenesisConfig {
+	acala_runtime::RuntimeGenesisConfig {
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
