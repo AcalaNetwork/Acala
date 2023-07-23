@@ -18,20 +18,20 @@
 
 use codec::{Decode, Encode};
 use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
 use frame_support::RuntimeDebug;
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
-use enumflags2::BitFlags;
+use enumflags2::{bitflags, BitFlags};
 
 pub type NFTBalance = u128;
 pub type CID = Vec<u8>;
 pub type Attributes = BTreeMap<Vec<u8>, Vec<u8>>;
 
+#[bitflags]
 #[repr(u8)]
-#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq, TypeInfo)]
+#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum ClassProperty {
 	/// Is token transferable
 	Transferable = 0b00000001,
@@ -43,8 +43,7 @@ pub enum ClassProperty {
 	ClassPropertiesMutable = 0b00001000,
 }
 
-#[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, PartialEq, Default, RuntimeDebug, Serialize, Deserialize)]
 pub struct Properties(pub BitFlags<ClassProperty>);
 
 impl Eq for Properties {}

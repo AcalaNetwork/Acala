@@ -34,6 +34,8 @@ use sp_runtime::{
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	AccountId32, RuntimeDebug,
 };
+#[cfg(not(feature = "std"))]
+use sp_std::alloc::format;
 use sp_std::{marker::PhantomData, prelude::*};
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
@@ -249,7 +251,6 @@ where
 	}
 }
 
-#[cfg(feature = "std")]
 impl<Call: Encode, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 	serde::Serialize
 	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
@@ -262,7 +263,6 @@ impl<Call: Encode, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, 
 	}
 }
 
-#[cfg(feature = "std")]
 impl<'a, Call: Decode, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 	serde::Deserialize<'a>
 	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>

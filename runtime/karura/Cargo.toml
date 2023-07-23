@@ -156,6 +156,7 @@ std = [
 	"frame-try-runtime/std",
 	"pallet-aura/std",
 	"pallet-authorship/std",
+	"pallet-bags-list/std",
 	"pallet-balances/std",
 	"pallet-bounties/std",
 	"pallet-bounties/std",

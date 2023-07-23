@@ -5,7 +5,7 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-serde = { version = "1.0.145", optional = true }
+serde = { version = "1.0.145", default-features = false, features = ["alloc", "derive"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
 scale-info = { version = "2.1", default-features = false, features = ["derive"] }
 
@@ -33,7 +33,7 @@ support = { package = "module-support", path = "../../modules/support" }
 [features]
 default = ["std"]
 std = [
-	"serde",
+	"serde/std",
 
 	"codec/std",
 	"frame-benchmarking/std",

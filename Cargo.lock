@@ -72,7 +72,7 @@ name = "acala-primitives"
 version = "2.19.0"
 dependencies = [
  "bstringify",
- "enumflags2 0.6.4",
+ "enumflags2",
  "frame-support",
  "hex-literal 0.3.4",
  "module-evm-utility",
@@ -3187,32 +3187,12 @@ dependencies = [
 
 [[package]]
 name = "enumflags2"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83c8d82922337cd23a15f88b70d8e4ef5f11da38dd7cdb55e84dd5de99695da0"
-dependencies = [
- "enumflags2_derive 0.6.4",
- "serde",
-]
-
-[[package]]
-name = "enumflags2"
 version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c041f5090df68b32bcd905365fd51769c8b9d553fe87fde0b683534f10c01bd2"
 dependencies = [
- "enumflags2_derive 0.7.7",
-]
-
-[[package]]
-name = "enumflags2_derive"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "946ee94e3dbf58fdd324f9ce245c7b238d46a66f00e86a020b71996349e46cce"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
+ "enumflags2_derive",
+ "serde",
 ]
 
 [[package]]
@@ -5397,7 +5377,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "520baa32708c4e957d2fc3a186bc5bd8d26637c33137f399ddfc202adb240068"
 dependencies = [
- "enumflags2 0.7.7",
+ "enumflags2",
  "libc",
  "thiserror",
 ]
@@ -8538,7 +8518,7 @@ name = "pallet-identity"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=6d28d2eb6fa1589105e970ff1b97555d91a1495b#6d28d2eb6fa1589105e970ff1b97555d91a1495b"
 dependencies = [
- "enumflags2 0.7.7",
+ "enumflags2",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -8677,7 +8657,7 @@ name = "pallet-nfts"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=6d28d2eb6fa1589105e970ff1b97555d91a1495b#6d28d2eb6fa1589105e970ff1b97555d91a1495b"
 dependencies = [
- "enumflags2 0.7.7",
+ "enumflags2",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
