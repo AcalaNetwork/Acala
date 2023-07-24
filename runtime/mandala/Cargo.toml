@@ -136,7 +136,6 @@ nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path =
 # benchmarking deps
 libsecp256k1 = { version = "0.7", default-features = false, optional = true }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false, optional = true }
-frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false, optional = true }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", optional = true }
@@ -163,7 +162,6 @@ std = [
 	"frame-benchmarking/std",
 	"frame-executive/std",
 	"frame-support/std",
-	"frame-system-benchmarking/std",
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
 	"frame-try-runtime/std",
@@ -283,7 +281,6 @@ runtime-benchmarks = [
 
 	"frame-benchmarking/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",
-	"frame-system-benchmarking/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-bounties/runtime-benchmarks",
