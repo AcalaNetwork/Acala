@@ -212,7 +212,7 @@ where
 				HONZON,
 				INCENTIVES,
 				XTOKENS,
-				// LIQUID_CROWDLOAN,
+				LIQUID_CROWDLOAN,
 			]),
 			_marker: Default::default(),
 		}
