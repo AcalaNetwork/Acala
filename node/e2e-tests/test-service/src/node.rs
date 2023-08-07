@@ -129,10 +129,7 @@ impl TestNode {
 		let number = self.client.info().best_number.saturated_into();
 		let mut overlay = OverlayedChanges::default();
 		let mut cache = StorageTransactionCache::<Block, <TFullBackend<Block> as Backend<Block>>::State>::default();
-		let mut extensions =
-			self.client
-				.execution_extensions()
-				.extensions(hash, number, ExecutionContext::BlockConstruction);
+		let mut extensions = self.client.execution_extensions().extensions(hash, number);
 		let state_backend = self
 			.backend
 			.state_at(hash)

@@ -37,7 +37,7 @@ use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, Slo
 use cumulus_client_consensus_common::{
 	ParachainBlockImport as TParachainBlockImport, ParachainCandidate, ParachainConsensus,
 };
-use cumulus_client_network::BlockAnnounceValidator;
+use cumulus_client_network::RequireSecondedInBlockAnnounce;
 use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
 };
@@ -51,7 +51,7 @@ use frame_system_rpc_runtime_api::AccountNonceApi;
 use futures::{channel::mpsc::Sender, SinkExt};
 use jsonrpsee::RpcModule;
 use polkadot_primitives::v5::{CollatorPair, Hash as PHash, HeadData, PersistedValidationData};
-use sc_client_api::{execution_extensions::ExecutionStrategies, Backend, CallExecutor, ExecutorProvider};
+use sc_client_api::{Backend, CallExecutor, ExecutorProvider};
 use sc_consensus::{ImportQueue, LongestChain};
 use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
 use sc_consensus_manual_seal::{
@@ -74,7 +74,7 @@ use sp_api::ProvideRuntimeApi;
 use sp_api::{OverlayedChanges, StorageTransactionCache};
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
-use sp_core::{ExecutionContext, Pair, H256};
+use sp_core::{Pair, H256};
 use sp_keyring::Sr25519Keyring;
 use sp_runtime::{
 	codec::Encode,

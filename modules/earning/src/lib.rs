@@ -59,7 +59,7 @@ pub mod module {
 		#[pallet::constant]
 		type MinBond: Get<Balance>;
 		#[pallet::constant]
-		type UnbondingPeriod: Get<Self::BlockNumber>;
+		type UnbondingPeriod: Get<BlockNumberFor<Self>>;
 		#[pallet::constant]
 		type InstantUnstakeFee: Get<Option<Permill>>;
 		#[pallet::constant]
@@ -121,7 +121,7 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -251,7 +251,7 @@ impl<T: Config> Pallet<T> {}
 impl<T: Config> BondingController for Pallet<T> {
 	type MinBond = T::MinBond;
 	type MaxUnbondingChunks = T::MaxUnbondingChunks;
-	type Moment = T::BlockNumber;
+	type Moment = BlockNumberFor<T>;
 	type AccountId = T::AccountId;
 
 	type Ledger = Ledger<T>;

@@ -196,9 +196,6 @@ pub mod module {
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Create NFT class, tokens belong to the class.
@@ -382,7 +379,7 @@ pub mod module {
 				let class_info = class_info.as_mut().ok_or(Error::<T>::ClassIdNotFound)?;
 				ensure!(who == class_info.owner, Error::<T>::NoPermission);
 
-				let mut data = &mut class_info.data;
+				let data = &mut class_info.data;
 				ensure!(
 					data.properties.0.contains(ClassProperty::ClassPropertiesMutable),
 					Error::<T>::Immutable

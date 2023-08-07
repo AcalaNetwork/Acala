@@ -67,13 +67,12 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = Nonce;
-	type BlockNumber = BlockNumber;
+	type Nonce = Nonce;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU32<250>;
 	type DbWeight = frame_support::weights::constants::RocksDbWeight;
@@ -213,7 +212,7 @@ pub struct MockBlockNumberProvider;
 impl BlockNumberProvider for MockBlockNumberProvider {
 	type BlockNumber = u32;
 
-	fn current_block_number() -> Self::BlockNumber {
+	fn current_block_number() -> BlockNumberFor<Self> {
 		Zero::zero()
 	}
 }
@@ -623,7 +622,7 @@ impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 impl BlockNumberProvider for MockRelayBlockNumberProvider {
 	type BlockNumber = BlockNumber;
 
-	fn current_block_number() -> Self::BlockNumber {
+	fn current_block_number() -> BlockNumberFor<Self> {
 		Self::get()
 	}
 }
@@ -982,11 +981,7 @@ pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<Address, R
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Test {
 		System: frame_system,
 		Oracle: orml_oracle,
 		Timestamp: pallet_timestamp,
@@ -1034,7 +1029,9 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	use frame_support::{assert_ok, traits::GenesisBuild};
 	use sp_std::collections::btree_map::BTreeMap;
 
-	let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	let mut storage = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage::<Test>()
+		.unwrap();
 
 	let mut accounts = BTreeMap::new();
 	let mut evm_genesis_accounts = crate::evm_genesis(vec![]);

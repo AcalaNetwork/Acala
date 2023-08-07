@@ -22,6 +22,7 @@ use super::{
 };
 use crate::{precompile::input::InputPricer, WeightToGas};
 use frame_support::traits::Get;
+use frame_system::pallet_prelude::*;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
@@ -63,7 +64,7 @@ where
 		AtLeast64BitUnsigned = Balance,
 		Balance = Balance,
 		AccountId = Runtime::AccountId,
-		BlockNumber = Runtime::BlockNumber,
+		BlockNumber = BlockNumberFor<Runtime>,
 	>,
 {
 	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {

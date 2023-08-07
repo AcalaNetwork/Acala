@@ -93,9 +93,9 @@ pub mod module {
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Emergency shutdown occurs.
-		Shutdown { block_number: T::BlockNumber },
+		Shutdown { block_number: BlockNumberFor<T> },
 		/// The final redemption opened.
-		OpenRefund { block_number: T::BlockNumber },
+		OpenRefund { block_number: BlockNumberFor<T> },
 		/// Refund info.
 		Refund {
 			who: T::AccountId,
@@ -122,7 +122,7 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {

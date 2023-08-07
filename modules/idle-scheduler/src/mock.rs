@@ -41,8 +41,7 @@ pub type AccountId = u32;
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = u64;
-	type BlockNumber = u64;
+	type Nonce = u64;
 	type RuntimeCall = RuntimeCall;
 	type Hash = sp_runtime::testing::H256;
 	type Hashing = sp_runtime::traits::BlakeTwo256;
@@ -70,7 +69,7 @@ pub struct MockBlockNumberProvider;
 impl BlockNumberProvider for MockBlockNumberProvider {
 	type BlockNumber = u32;
 
-	fn current_block_number() -> Self::BlockNumber {
+	fn current_block_number() -> BlockNumberFor<Self> {
 		// gets a local mock storage value
 		u32::decode(&mut &sp_io::storage::get(&RELAY_BLOCK_KEY).unwrap()[..]).unwrap()
 	}
@@ -132,11 +131,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
-	{
+	pub enum Runtime {
 		System: frame_system::{Pallet, Call, Event<T>},
 		IdleScheduler: module_idle_scheduler::{Pallet, Call, Event<T>, Storage},
 	}
@@ -146,8 +141,8 @@ construct_runtime!(
 pub struct ExtBuilder;
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);

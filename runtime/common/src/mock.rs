@@ -52,13 +52,12 @@ impl frame_system::Config for TestRuntime {
 	type BlockLength = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = primitives::Nonce;
-	type BlockNumber = u64;
+	type Nonce = primitives::Nonce;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<10>;
 	type DbWeight = ();
@@ -143,7 +142,7 @@ pub struct MockBlockNumberProvider;
 impl BlockNumberProvider for MockBlockNumberProvider {
 	type BlockNumber = u32;
 
-	fn current_block_number() -> Self::BlockNumber {
+	fn current_block_number() -> BlockNumberFor<Self> {
 		Zero::zero()
 	}
 }
@@ -228,11 +227,7 @@ impl module_evm::Config for TestRuntime {
 }
 
 frame_support::construct_runtime!(
-	pub enum TestRuntime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum TestRuntime {
 		System: frame_system,
 		EVM: module_evm,
 		EvmAccounts: module_evm_accounts,

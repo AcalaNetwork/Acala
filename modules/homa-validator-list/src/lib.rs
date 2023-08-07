@@ -184,7 +184,7 @@ pub mod module {
 		type MinBondAmount: Get<Balance>;
 		#[pallet::constant]
 		/// The number of blocks a token is bonded to a validator for.
-		type BondingDuration: Get<Self::BlockNumber>;
+		type BondingDuration: Get<BlockNumberFor<Self>>;
 		#[pallet::constant]
 		/// The minimum amount of insurance a validator needs.
 		type ValidatorInsuranceThreshold: Get<Balance>;
@@ -203,7 +203,7 @@ pub mod module {
 		type OnDecreaseGuarantee: Happened<(Self::AccountId, Self::RelaychainAccountId, Balance)>;
 
 		// The block number provider
-		type BlockNumberProvider: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
+		type BlockNumberProvider: BlockNumberProvider<BlockNumber = BlockNumberFor<Self>>;
 	}
 
 	#[pallet::error]
@@ -255,7 +255,7 @@ pub mod module {
 		T::RelaychainAccountId,
 		Twox64Concat,
 		T::AccountId,
-		Guarantee<T::BlockNumber>,
+		Guarantee<BlockNumberFor<T>>,
 		OptionQuery,
 	>;
 
@@ -278,7 +278,7 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -519,7 +519,7 @@ impl<T: Config> Pallet<T> {
 	fn update_guarantee(
 		guarantor: &T::AccountId,
 		validator: &T::RelaychainAccountId,
-		f: impl FnOnce(&mut Guarantee<T::BlockNumber>) -> DispatchResult,
+		f: impl FnOnce(&mut Guarantee<BlockNumberFor<T>>) -> DispatchResult,
 	) -> DispatchResult {
 		Guarantees::<T>::try_mutate_exists(validator, guarantor, |maybe_guarantee| -> DispatchResult {
 			let mut guarantee = maybe_guarantee.take().unwrap_or_default();

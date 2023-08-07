@@ -25,7 +25,7 @@ pub use acala_primitives::{Block, Hash};
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::{ParachainBlockImport as TParachainBlockImport, ParachainConsensus};
-use cumulus_client_network::BlockAnnounceValidator;
+use cumulus_client_network::RequireSecondedInBlockAnnounce;
 use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
 };
@@ -37,6 +37,7 @@ use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node;
 use futures::{channel::oneshot, FutureExt, StreamExt};
 use jsonrpsee::RpcModule;
 use polkadot_primitives::{CollatorPair, OccupiedCoreAssumption};
+use sc_client_api::Backend;
 use sc_consensus::{ImportQueue, LongestChain};
 use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
 use sc_executor::{HeapAllocStrategy, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY};
@@ -50,6 +51,7 @@ use sc_service::{
 	error::Error as ServiceError, Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
+use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 pub use sp_api::ConstructRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_consensus_aura::sr25519::{AuthorityId as AuraId, AuthorityPair as AuraPair};
@@ -435,7 +437,7 @@ where
 
 	let spawn_handle = task_manager.spawn_handle();
 
-	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), para_id);
+	let block_announce_validator = RequireSecondedInBlockAnnounce::new(relay_chain_interface.clone(), para_id);
 
 	let warp_sync_params = match parachain_config.network.sync_mode {
 		SyncMode::Warp => {
@@ -479,11 +481,23 @@ where
 	};
 
 	if parachain_config.offchain_worker.enabled {
-		sc_service::build_offchain_workers(
-			&parachain_config,
-			task_manager.spawn_handle(),
-			client.clone(),
-			network.clone(),
+		use futures::FutureExt;
+
+		task_manager.spawn_handle().spawn(
+			"offchain-workers-runner",
+			"offchain-work",
+			sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
+				runtime_api_provider: client.clone(),
+				keystore: Some(params.keystore_container.keystore()),
+				offchain_db: backend.offchain_storage(),
+				transaction_pool: Some(OffchainTransactionPoolFactory::new(transaction_pool.clone())),
+				network_provider: network.clone(),
+				is_validator: parachain_config.role.is_authority(),
+				enable_http_requests: false,
+				custom_extensions: move |_| vec![],
+			})
+			.run(client.clone(), task_manager.spawn_handle())
+			.boxed(),
 		);
 	};
 
@@ -667,7 +681,7 @@ pub const ACALA_RUNTIME_NOT_AVAILABLE: &str =
 
 /// Builds a new object suitable for chain operations.
 pub fn new_chain_ops(
-	mut config: &mut Configuration,
+	config: &mut Configuration,
 ) -> Result<
 	(
 		Arc<Client>,
@@ -755,24 +769,21 @@ where
 		})?;
 
 	if config.offchain_worker.enabled {
-		let offchain_workers = Arc::new(sc_offchain::OffchainWorkers::new_with_options(
-			client.clone(),
-			sc_offchain::OffchainWorkerOptions {
-				enable_http_requests: false,
-			},
-		));
-
-		// Start the offchain workers to have
 		task_manager.spawn_handle().spawn(
-			"offchain-notifications",
-			None,
-			sc_offchain::notification_future(
-				config.role.is_authority(),
-				client.clone(),
-				offchain_workers,
-				task_manager.spawn_handle(),
-				network.clone(),
-			),
+			"offchain-workers-runner",
+			"offchain-work",
+			sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
+				runtime_api_provider: client.clone(),
+				keystore: None,
+				offchain_db: backend.offchain_storage(),
+				transaction_pool: Some(OffchainTransactionPoolFactory::new(transaction_pool.clone())),
+				network_provider: network.clone(),
+				is_validator: config.role.is_authority(),
+				enable_http_requests: false,
+				custom_extensions: move |_| vec![],
+			})
+			.run(client.clone(), task_manager.spawn_handle())
+			.boxed(),
 		);
 	}
 

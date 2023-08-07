@@ -18,6 +18,7 @@
 
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchInfo;
+use frame_system::pallet_prelude::*;
 use module_support::AddressMapping;
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -40,11 +41,11 @@ use sp_std::vec;
 #[scale_info(skip_type_params(T))]
 pub struct CheckNonce<T: frame_system::Config + module_evm::Config> {
 	#[codec(compact)]
-	pub nonce: T::Index,
+	pub nonce: T::Nonce,
 	#[codec(skip)]
 	pub is_eth_tx: bool,
 	#[codec(skip)]
-	pub eth_tx_valid_until: T::BlockNumber,
+	pub eth_tx_valid_until: BlockNumberFor<T>,
 }
 
 impl<T: frame_system::Config + module_evm::Config> Default for CheckNonce<T> {
@@ -59,7 +60,7 @@ impl<T: frame_system::Config + module_evm::Config> Default for CheckNonce<T> {
 
 impl<T: frame_system::Config + module_evm::Config> CheckNonce<T> {
 	/// utility constructor. Used only in client/factory code.
-	pub fn from(nonce: T::Index) -> Self {
+	pub fn from(nonce: T::Nonce) -> Self {
 		Self {
 			nonce,
 			is_eth_tx: false,
@@ -67,7 +68,7 @@ impl<T: frame_system::Config + module_evm::Config> CheckNonce<T> {
 		}
 	}
 
-	pub fn mark_as_ethereum_tx(&mut self, valid_until: T::BlockNumber) {
+	pub fn mark_as_ethereum_tx(&mut self, valid_until: BlockNumberFor<T>) {
 		self.is_eth_tx = true;
 		self.eth_tx_valid_until = valid_until;
 	}
@@ -135,7 +136,7 @@ where
 			}
 			.into());
 		}
-		account.nonce += T::Index::one();
+		account.nonce += T::Nonce::one();
 		frame_system::Account::<T>::insert(who, account);
 		Ok(())
 	}

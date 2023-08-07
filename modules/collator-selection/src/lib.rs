@@ -220,7 +220,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			let duplicate_invulnerables = self
 				.invulnerables
@@ -440,7 +440,7 @@ pub mod pallet {
 
 	/// Keep track of number of authored blocks per authority, uncles are counted as well since
 	/// they're a valid proof of being online.
-	impl<T: Config + pallet_authorship::Config> pallet_authorship::EventHandler<T::AccountId, T::BlockNumber>
+	impl<T: Config + pallet_authorship::Config> pallet_authorship::EventHandler<T::AccountId, BlockNumberFor<T>>
 		for Pallet<T>
 	{
 		fn note_author(author: T::AccountId) {

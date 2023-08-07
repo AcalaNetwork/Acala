@@ -265,9 +265,11 @@ pub fn initialize_swap_pools(maker: AccountId) -> Result<(), &'static str> {
 
 #[cfg(test)]
 pub mod tests {
+	use sp_runtime::BuildStorage;
+
 	pub fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<crate::Runtime>()
+		frame_system::GenesisConfig::<crate::Runtime>::default()
+			.build_storage()
 			.unwrap()
 			.into()
 	}

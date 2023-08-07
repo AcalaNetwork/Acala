@@ -33,6 +33,7 @@ use frame_support::{
 	traits::{Currency, ExistenceRequirement, Get},
 	transactional,
 };
+use frame_system::pallet_prelude::*;
 use module_evm_utility::{
 	ethereum::Log,
 	evm::{self, backend::Backend as BackendT, ExitError, ExitReason, Transfer},
@@ -623,7 +624,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 		if number > U256::from(u32::MAX) {
 			H256::default()
 		} else {
-			let number = T::BlockNumber::from(number.as_u32());
+			let number = BlockNumberFor::<T>::from(number.as_u32());
 			H256::from_slice(frame_system::Pallet::<T>::block_hash(number).as_ref())
 		}
 	}
@@ -732,7 +733,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			if let Some(account) = maybe_account.as_mut() {
 				account.nonce += One::one()
 			} else {
-				let mut account_info = <AccountInfo<T::Index>>::new(Default::default(), None);
+				let mut account_info = <AccountInfo<T::Nonce>>::new(Default::default(), None);
 				account_info.nonce += One::one();
 				*maybe_account = Some(account_info);
 			}

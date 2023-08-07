@@ -222,11 +222,10 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type RuntimeCall = RuntimeCall;
 	type Lookup = (Indices, EvmAccounts);
-	type Index = Nonce;
-	type BlockNumber = BlockNumber;
+	type Nonce = Nonce;
 	type Hash = Hash;
 	type Hashing = BlakeTwo256;
-	type Header = generic::Header<BlockNumber, BlakeTwo256>;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type BlockHashCount = BlockHashCount;
@@ -1999,11 +1998,7 @@ pub type Executive = frame_executive::Executive<
 >;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = primitives::Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
-	{
+	pub enum Runtime {
 		// Core
 		System: frame_system = 0,
 		Timestamp: pallet_timestamp = 1,
@@ -2092,7 +2087,7 @@ construct_runtime!(
 		CumulusXcm: cumulus_pallet_xcm exclude_parts { Call } = 172,
 		DmpQueue: cumulus_pallet_dmp_queue = 173,
 		XTokens: orml_xtokens = 174,
-		UnknownTokens: orml_unknown_tokens exclude_parts { Call } = 175,
+		UnknownTokens: orml_unknown_tokens = 175,
 		OrmlXcm: orml_xcm = 176,
 
 		// Smart contracts
@@ -2689,8 +2684,8 @@ mod tests {
 	}
 
 	fn new_test_ext() -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));

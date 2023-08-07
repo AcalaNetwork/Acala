@@ -59,14 +59,13 @@ mod cdp_treasury {
 
 impl frame_system::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
+	type Nonce = u64;
 	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
@@ -227,11 +226,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Runtime {
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
 		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Config, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call},
@@ -266,8 +261,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
@@ -303,7 +298,8 @@ impl StableAsset for MockStableAsset {
 
 	fn pool(
 		_id: StableAssetPoolId,
-	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
+	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, BlockNumberFor<Self>>>
+	{
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
 			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
@@ -396,7 +392,7 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			Self::BlockNumber,
+			BlockNumberFor<Self>,
 		>,
 	) -> DispatchResult {
 		unimplemented!()
@@ -409,7 +405,7 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			Self::BlockNumber,
+			BlockNumberFor<Self>,
 		>,
 	) -> DispatchResult {
 		unimplemented!()
@@ -422,13 +418,17 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			Self::BlockNumber,
+			BlockNumberFor<Self>,
 		>,
 	) -> DispatchResult {
 		unimplemented!()
 	}
 
-	fn modify_a(_pool_id: StableAssetPoolId, _a: Self::Balance, _future_a_block: Self::BlockNumber) -> DispatchResult {
+	fn modify_a(
+		_pool_id: StableAssetPoolId,
+		_a: Self::Balance,
+		_future_a_block: BlockNumberFor<Self>,
+	) -> DispatchResult {
 		unimplemented!()
 	}
 
@@ -438,9 +438,10 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			Self::BlockNumber,
+			BlockNumberFor<Self>,
 		>,
-	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
+	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, BlockNumberFor<Self>>>
+	{
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
 			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
@@ -467,9 +468,10 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			Self::BlockNumber,
+			BlockNumberFor<Self>,
 		>,
-	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
+	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, BlockNumberFor<Self>>>
+	{
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
 			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
@@ -496,7 +498,7 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			Self::BlockNumber,
+			BlockNumberFor<Self>,
 		>,
 		_amount_bal: Self::Balance,
 	) -> Option<RedeemProportionResult<Self::Balance>> {

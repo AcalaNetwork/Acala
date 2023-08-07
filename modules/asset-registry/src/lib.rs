@@ -181,7 +181,7 @@ pub mod module {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			self.assets.iter().for_each(|(asset, ed)| {
 				frame_support::assert_ok!(Pallet::<T>::do_register_native_asset(

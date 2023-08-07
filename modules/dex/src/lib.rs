@@ -129,7 +129,7 @@ pub mod module {
 
 		/// The extended provisioning blocks since the `not_before` of provisioning.
 		#[pallet::constant]
-		type ExtendedProvisioningBlocks: Get<Self::BlockNumber>;
+		type ExtendedProvisioningBlocks: Get<BlockNumberFor<Self>>;
 
 		/// Event handler which calls when update liquidity pool.
 		type OnLiquidityPoolUpdated: Happened<(TradingPair, Balance, Balance)>;
@@ -262,7 +262,7 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn trading_pair_statuses)]
 	pub type TradingPairStatuses<T: Config> =
-		StorageMap<_, Twox64Concat, TradingPair, TradingPairStatus<Balance, T::BlockNumber>, ValueQuery>;
+		StorageMap<_, Twox64Concat, TradingPair, TradingPairStatus<Balance, BlockNumberFor<T>>, ValueQuery>;
 
 	/// Provision of TradingPair by AccountId.
 	///
@@ -284,13 +284,14 @@ pub mod module {
 	#[pallet::genesis_config]
 	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
-		pub initial_listing_trading_pairs: Vec<(TradingPair, (Balance, Balance), (Balance, Balance), T::BlockNumber)>,
+		pub initial_listing_trading_pairs:
+			Vec<(TradingPair, (Balance, Balance), (Balance, Balance), BlockNumberFor<T>)>,
 		pub initial_enabled_trading_pairs: Vec<TradingPair>,
 		pub initial_added_liquidity_pools: Vec<(T::AccountId, Vec<(TradingPair, (Balance, Balance))>)>,
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			self.initial_listing_trading_pairs.iter().for_each(
 				|(trading_pair, min_contribution, target_provision, not_before)| {
@@ -339,7 +340,7 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -516,7 +517,7 @@ pub mod module {
 			#[pallet::compact] min_contribution_b: Balance,
 			#[pallet::compact] target_provision_a: Balance,
 			#[pallet::compact] target_provision_b: Balance,
-			#[pallet::compact] not_before: T::BlockNumber,
+			#[pallet::compact] not_before: BlockNumberFor<T>,
 		) -> DispatchResult {
 			T::ListingOrigin::ensure_origin(origin)?;
 
@@ -584,7 +585,7 @@ pub mod module {
 			#[pallet::compact] min_contribution_b: Balance,
 			#[pallet::compact] target_provision_a: Balance,
 			#[pallet::compact] target_provision_b: Balance,
-			#[pallet::compact] not_before: T::BlockNumber,
+			#[pallet::compact] not_before: BlockNumberFor<T>,
 		) -> DispatchResult {
 			T::ListingOrigin::ensure_origin(origin)?;
 			let trading_pair =
