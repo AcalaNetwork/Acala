@@ -31,8 +31,8 @@ use orml_traits::parameter_type_with_key;
 use primitives::TokenSymbol;
 use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup},
+	BuildStorage,
 };
 use sp_std::cell::RefCell;
 use std::collections::HashMap;
@@ -257,17 +257,16 @@ impl Config for Runtime {
 	type OnUpdateLoan = MockOnUpdateLoan;
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		LoansModule: loans::{Pallet, Storage, Call, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
-		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
+		System: frame_system,
+		LoansModule: loans,
+		Tokens: orml_tokens,
+		PalletBalances: pallet_balances,
+		Currencies: orml_currencies,
+		CDPTreasuryModule: cdp_treasury,
 	}
 );
 

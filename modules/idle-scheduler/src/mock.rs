@@ -29,6 +29,7 @@ use frame_support::{
 };
 use module_support::DispatchableTask;
 pub use sp_runtime::offchain::storage::StorageValueRef;
+use sp_runtime::BuildStorage;
 
 use super::*;
 use codec::{Decode, Encode};
@@ -47,7 +48,7 @@ impl frame_system::Config for Runtime {
 	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
-	type Header = sp_runtime::testing::Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
@@ -69,7 +70,7 @@ pub struct MockBlockNumberProvider;
 impl BlockNumberProvider for MockBlockNumberProvider {
 	type BlockNumber = u32;
 
-	fn current_block_number() -> BlockNumberFor<Self> {
+	fn current_block_number() -> Self::BlockNumber {
 		// gets a local mock storage value
 		u32::decode(&mut &sp_io::storage::get(&RELAY_BLOCK_KEY).unwrap()[..]).unwrap()
 	}
@@ -127,13 +128,12 @@ define_combined_task! {
 	}
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Event<T>},
-		IdleScheduler: module_idle_scheduler::{Pallet, Call, Event<T>, Storage},
+		System: frame_system,
+		IdleScheduler: module_idle_scheduler,
 	}
 );
 

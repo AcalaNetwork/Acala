@@ -30,7 +30,7 @@ use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::{H160, H256};
-use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
+use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
 use xcm::v3::prelude::*;
 
 pub type AccountId = AccountId32;
@@ -163,7 +163,7 @@ impl module_currencies::Config for Runtime {
 impl BlockNumberProvider for MockRelayBlockNumberProvider {
 	type BlockNumber = BlockNumber;
 
-	fn current_block_number() -> BlockNumberFor<Self> {
+	fn current_block_number() -> Self::BlockNumber {
 		Self::get()
 	}
 }
@@ -203,16 +203,15 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Homa: homa::{Pallet, Call, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Currencies: module_currencies::{Pallet, Call, Event<T>},
+		System: frame_system,
+		Homa: homa,
+		Balances: pallet_balances,
+		Tokens: orml_tokens,
+		Currencies: module_currencies,
 	}
 );
 

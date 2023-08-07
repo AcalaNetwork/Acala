@@ -32,9 +32,9 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Balance, Moment, ReserveIdentifier, TokenSymbol};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
-	testing::{Header, TestXt},
+	testing::TestXt,
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
-	FixedPointNumber,
+	BuildStorage, FixedPointNumber,
 };
 use sp_std::cell::RefCell;
 use support::mocks::MockStableAsset;
@@ -283,7 +283,6 @@ impl cdp_engine::Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 impl Config for Runtime {
@@ -296,16 +295,16 @@ impl Config for Runtime {
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		HonzonModule: honzon::{Pallet, Storage, Call, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
-		LoansModule: loans::{Pallet, Storage, Call, Event<T>},
-		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
-		CDPEngineModule: cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		EvmAccounts: evm_accounts::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		HonzonModule: honzon,
+		Tokens: orml_tokens,
+		PalletBalances: pallet_balances,
+		Currencies: orml_currencies,
+		LoansModule: loans,
+		CDPTreasuryModule: cdp_treasury,
+		CDPEngineModule: cdp_engine,
+		Timestamp: pallet_timestamp,
+		EvmAccounts: evm_accounts,
 	}
 );
 

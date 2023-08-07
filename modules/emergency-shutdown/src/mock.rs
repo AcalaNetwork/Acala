@@ -31,9 +31,8 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup},
-	DispatchResult,
+	BuildStorage, DispatchResult,
 };
 use support::mocks::MockStableAsset;
 use support::{AuctionManager, LockablePrice, RiskManager, SpecificJointsSwap};
@@ -239,18 +238,17 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		EmergencyShutdownModule: emergency_shutdown::{Pallet, Storage, Call, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
-		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
-		Loans: loans::{Pallet, Storage, Call, Event<T>},
+		System: frame_system,
+		EmergencyShutdownModule: emergency_shutdown,
+		Tokens: orml_tokens,
+		PalletBalances: pallet_balances,
+		Currencies: orml_currencies,
+		CDPTreasuryModule: cdp_treasury,
+		Loans: loans,
 	}
 );
 

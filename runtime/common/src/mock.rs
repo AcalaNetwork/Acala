@@ -34,14 +34,10 @@ use primitives::{
 use scale_info::TypeInfo;
 use sp_core::{H160, H256};
 use sp_runtime::traits::Convert;
+use sp_runtime::traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup, Zero};
 pub use sp_runtime::AccountId32;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup, Zero},
-};
 use std::str::FromStr;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 
 type Balance = u128;
@@ -142,7 +138,7 @@ pub struct MockBlockNumberProvider;
 impl BlockNumberProvider for MockBlockNumberProvider {
 	type BlockNumber = u32;
 
-	fn current_block_number() -> BlockNumberFor<Self> {
+	fn current_block_number() -> Self::BlockNumber {
 		Zero::zero()
 	}
 }

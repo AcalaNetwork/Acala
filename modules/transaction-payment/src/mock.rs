@@ -34,9 +34,8 @@ use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
-	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup, One},
-	Perbill,
+	BuildStorage, Perbill,
 };
 use sp_std::cell::RefCell;
 use support::{
@@ -322,17 +321,16 @@ impl WeightToFeePolynomial for WeightToFee {
 	}
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		TransactionPayment: transaction_payment::{Pallet, Call, Storage, Event<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Currencies: module_currencies::{Pallet, Call, Event<T>},
-		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+		System: frame_system,
+		TransactionPayment: transaction_payment,
+		PalletBalances: pallet_balances,
+		Tokens: orml_tokens,
+		Currencies: module_currencies,
+		DEXModule: module_dex,
 	}
 );
 

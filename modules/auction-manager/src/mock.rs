@@ -33,6 +33,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
+	BuildStorage,
 };
 use sp_std::cell::RefCell;
 pub use support::Price;
@@ -220,12 +221,12 @@ pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, Runti
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		AuctionManagerModule: auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		AuctionModule: orml_auction::{Pallet, Storage, Call, Event<T>},
-		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Event<T>},
-		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+		System: frame_system,
+		AuctionManagerModule: auction_manager,
+		Tokens: orml_tokens,
+		AuctionModule: orml_auction,
+		CDPTreasuryModule: cdp_treasury,
+		DEXModule: module_dex,
 	}
 );
 

@@ -30,9 +30,8 @@ use orml_traits::{parameter_type_with_key, DataFeeder};
 use primitives::{currency::DexShare, Amount, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{
-	testing::Header,
 	traits::{IdentityLookup, One as OneT, Zero},
-	DispatchError, FixedPointNumber,
+	BuildStorage, DispatchError, FixedPointNumber,
 };
 use sp_std::cell::RefCell;
 use support::{mocks::MockErc20InfoMapping, ExchangeRate, SwapLimit};
@@ -215,7 +214,7 @@ impl orml_tokens::Config for Runtime {
 impl BlockNumberProvider for MockRelayBlockNumberProvider {
 	type BlockNumber = BlockNumber;
 
-	fn current_block_number() -> BlockNumberFor<Self> {
+	fn current_block_number() -> Self::BlockNumber {
 		Self::get()
 	}
 }
@@ -273,14 +272,13 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		PricesModule: prices::{Pallet, Storage, Call, Event<T>},
-		Tokens: orml_tokens::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		PricesModule: prices,
+		Tokens: orml_tokens,
 	}
 );
 

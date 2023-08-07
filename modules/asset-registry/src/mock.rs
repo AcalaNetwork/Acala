@@ -22,9 +22,7 @@
 
 use crate as asset_registry;
 use frame_support::{
-	assert_ok, construct_runtime, ord_parameter_types,
-	pallet_prelude::GenesisBuild,
-	parameter_types,
+	assert_ok, construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything},
 };
 use frame_system::EnsureSignedBy;
@@ -33,6 +31,7 @@ use primitives::{
 	evm::convert_decimals_to_evm, evm::EvmAddress, AccountId, Balance, CurrencyId, ReserveIdentifier, TokenSymbol,
 };
 use sp_core::{H160, H256, U256};
+use sp_runtime::BuildStorage;
 use std::str::FromStr;
 
 impl frame_system::Config for Runtime {
@@ -44,7 +43,7 @@ impl frame_system::Config for Runtime {
 	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
-	type Header = sp_runtime::testing::Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
@@ -138,16 +137,15 @@ impl asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		AssetRegistry: asset_registry::{Pallet, Call, Event<T>, Storage},
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
-		EVMBridge: module_evm_bridge::{Pallet},
+		System: frame_system,
+		Balances: pallet_balances,
+		AssetRegistry: asset_registry,
+		EVM: module_evm,
+		EVMBridge: module_evm_bridge,
 	}
 );
 

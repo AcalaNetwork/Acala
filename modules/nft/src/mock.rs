@@ -32,8 +32,8 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
-	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	BuildStorage,
 };
 use support::mocks::MockAddressMapping;
 
@@ -213,19 +213,18 @@ impl orml_nft::Config for Runtime {
 
 use frame_system::Call as SystemCall;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		NFTModule: nft::{Pallet, Call, Event<T>},
-		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
-		Utility: pallet_utility::{Pallet, Call, Event},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Currency: module_currencies::{Pallet, Call, Event<T>},
+		System: frame_system,
+		NFTModule: nft,
+		OrmlNFT: orml_nft,
+		Balances: pallet_balances,
+		Proxy: pallet_proxy,
+		Utility: pallet_utility,
+		Tokens: orml_tokens,
+		Currency: module_currencies,
 	}
 );
 

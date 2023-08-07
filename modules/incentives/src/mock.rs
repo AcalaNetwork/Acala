@@ -30,12 +30,11 @@ use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
+use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
 use sp_std::cell::RefCell;
 pub use support::{Price, Ratio, SwapLimit};
 
 pub type AccountId = AccountId32;
-pub type BlockNumber = u64;
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
@@ -153,15 +152,14 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		IncentivesModule: incentives::{Pallet, Storage, Call, Event<T>},
-		TokensModule: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		RewardsModule: orml_rewards::{Pallet, Storage, Call},
+		System: frame_system,
+		IncentivesModule: incentives,
+		TokensModule: orml_tokens,
+		RewardsModule: orml_rewards,
 	}
 );
 

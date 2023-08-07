@@ -24,7 +24,7 @@ pub use crate as module_honzon_bridge;
 
 pub use frame_support::{
 	assert_ok, construct_runtime, ord_parameter_types,
-	pallet_prelude::GenesisBuild,
+	pallet_prelude::*,
 	parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 	PalletId,
@@ -34,7 +34,7 @@ pub use module_evm_accounts::EvmAddressMapping;
 pub use module_support::{mocks::MockAddressMapping, AddressMapping};
 pub use orml_traits::{parameter_type_with_key, MultiCurrency};
 use sp_core::{H160, H256, U256};
-use sp_runtime::traits::AccountIdConversion;
+use sp_runtime::{traits::AccountIdConversion, BuildStorage};
 use std::str::FromStr;
 
 pub use primitives::{
@@ -59,7 +59,7 @@ impl frame_system::Config for Runtime {
 	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
-	type Header = sp_runtime::testing::Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
@@ -203,7 +203,6 @@ impl module_honzon_bridge::Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(

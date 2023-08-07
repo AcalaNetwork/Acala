@@ -29,7 +29,7 @@ use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_runtime::{traits::IdentityLookup, BuildStorage};
 use sp_std::cell::RefCell;
 use std::collections::HashMap;
 use support::ExchangeRate;
@@ -186,7 +186,7 @@ parameter_types! {
 impl BlockNumberProvider for MockBlockNumberProvider {
 	type BlockNumber = u64;
 
-	fn current_block_number() -> BlockNumberFor<Self> {
+	fn current_block_number() -> Self::BlockNumber {
 		Self::get()
 	}
 }
@@ -212,16 +212,15 @@ impl Config for Runtime {
 	type BlockNumberProvider = MockBlockNumberProvider;
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		OrmlCurrencies: orml_currencies::{Pallet, Call},
-		HomaValidatorListModule: homa_validator_list::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		OrmlTokens: orml_tokens,
+		PalletBalances: pallet_balances,
+		OrmlCurrencies: orml_currencies,
+		HomaValidatorListModule: homa_validator_list,
 	}
 );
 

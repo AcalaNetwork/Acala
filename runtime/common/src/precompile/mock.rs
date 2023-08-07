@@ -212,7 +212,7 @@ pub struct MockBlockNumberProvider;
 impl BlockNumberProvider for MockBlockNumberProvider {
 	type BlockNumber = u32;
 
-	fn current_block_number() -> BlockNumberFor<Self> {
+	fn current_block_number() -> Self::BlockNumber {
 		Zero::zero()
 	}
 }
@@ -622,7 +622,7 @@ impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 impl BlockNumberProvider for MockRelayBlockNumberProvider {
 	type BlockNumber = BlockNumber;
 
-	fn current_block_number() -> BlockNumberFor<Self> {
+	fn current_block_number() -> Self::BlockNumber {
 		Self::get()
 	}
 }
@@ -1026,12 +1026,11 @@ where
 // This function basically just builds a genesis storage key/value store
 // according to our desired mockup.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	use frame_support::{assert_ok, traits::GenesisBuild};
+	use frame_support::assert_ok;
+	use sp_runtime::BuildStorage;
 	use sp_std::collections::btree_map::BTreeMap;
 
-	let mut storage = frame_system::GenesisConfig::<Runtime>::default()
-		.build_storage::<Test>()
-		.unwrap();
+	let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 	let mut accounts = BTreeMap::new();
 	let mut evm_genesis_accounts = crate::evm_genesis(vec![]);

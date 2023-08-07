@@ -29,15 +29,13 @@ use frame_system::EnsureSignedBy;
 use primitives::{DexShare, Moment, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{
-	testing::Header,
 	traits::{IdentityLookup, Zero},
-	DispatchError,
+	BuildStorage, DispatchError,
 };
 use sp_std::cell::RefCell;
 use support::SwapLimit;
 
 pub type AccountId = u128;
-pub type BlockNumber = u64;
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
@@ -177,14 +175,13 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		DexOracle: dex_oracle::{Pallet, Call, Storage},
+		System: frame_system,
+		Timestamp: pallet_timestamp,
+		DexOracle: dex_oracle,
 	}
 );
 

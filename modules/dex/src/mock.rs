@@ -29,7 +29,7 @@ use frame_system::EnsureSignedBy;
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_runtime::{traits::IdentityLookup, BuildStorage};
 use sp_std::cell::RefCell;
 use support::{mocks::MockErc20InfoMapping, SpecificJointsSwap};
 
@@ -160,14 +160,13 @@ parameter_types! {
 pub type AUSDJointSwap = SpecificJointsSwap<DexModule, AUSDJoint>;
 pub type ACAJointSwap = SpecificJointsSwap<DexModule, ACAJoint>;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		DexModule: dex::{Pallet, Storage, Call, Event<T>, Config<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		System: frame_system,
+		DexModule: dex,
+		Tokens: orml_tokens,
 	}
 );
 

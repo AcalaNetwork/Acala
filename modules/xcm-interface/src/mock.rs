@@ -30,11 +30,10 @@ use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_traits::xcm_transfer::Transferred;
 use primitives::{CurrencyId, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{traits::IdentityLookup, AccountId32};
+use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
 use xcm_builder::{EnsureXcmOrigin, FixedWeightBounds, SignedToAccountId32};
 
 pub type AccountId = AccountId32;
-pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
@@ -236,7 +235,6 @@ impl Config for Runtime {
 	type AccountIdToMultiLocation = AccountIdToMultiLocation;
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(

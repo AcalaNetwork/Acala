@@ -28,12 +28,11 @@ use frame_support::{
 use frame_system::EnsureSignedBy;
 use primitives::{evm::convert_decimals_to_evm, evm::EvmAddress, ReserveIdentifier};
 use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_runtime::{traits::IdentityLookup, BuildStorage};
 pub use sp_std::str::FromStr;
 use support::{mocks::MockAddressMapping, AddressMapping};
 
 pub type AccountId = AccountId32;
-pub type BlockNumber = u64;
 pub type Balance = u128;
 
 mod evm_bridge {
@@ -131,15 +130,14 @@ impl Config for Runtime {
 	type EVM = EVM;
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		EVMBridge: evm_bridge::{Pallet},
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		System: frame_system,
+		EVMBridge: evm_bridge,
+		EVM: module_evm,
+		Balances: pallet_balances,
 	}
 );
 

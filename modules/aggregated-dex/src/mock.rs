@@ -30,15 +30,10 @@ use frame_system::EnsureSignedBy;
 use orml_tokens::ConvertBalance;
 pub use orml_traits::{parameter_type_with_key, MultiCurrency};
 use primitives::{Amount, TokenSymbol, TradingPair};
-use sp_runtime::{
-	testing::{Header, H256},
-	traits::IdentityLookup,
-	AccountId32, ArithmeticError, FixedPointNumber,
-};
+use sp_runtime::{testing::H256, traits::IdentityLookup, AccountId32, ArithmeticError, BuildStorage, FixedPointNumber};
 pub use support::{ExchangeRate, RebasedStableAsset};
 
 pub type AccountId = AccountId32;
-pub type BlockNumber = u64;
 
 mod aggregated_dex {
 	pub use super::super::*;
@@ -205,16 +200,15 @@ impl Config for Runtime {
 pub type StableAssetWrapper =
 	RebasedStableAsset<StableAsset, ConvertBalanceHoma, RebasedStableAssetErrorConvertor<Runtime>>;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		AggregatedDex: aggregated_dex::{Pallet, Call, Storage},
-		Dex: module_dex::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		AggregatedDex: aggregated_dex,
+		Dex: module_dex,
+		Tokens: orml_tokens,
+		StableAsset: nutsfinance_stable_asset,
 	}
 );
 

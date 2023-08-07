@@ -23,10 +23,9 @@
 use crate as session_manager;
 use frame_support::{
 	construct_runtime,
-	pallet_prelude::GenesisBuild,
 	traits::{ConstU32, ConstU64, Everything},
 };
-use sp_runtime::{testing::UintAuthorityId, traits::OpaqueKeys, RuntimeAppPublic};
+use sp_runtime::{testing::UintAuthorityId, traits::OpaqueKeys, BuildStorage, RuntimeAppPublic};
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
@@ -37,7 +36,7 @@ impl frame_system::Config for Runtime {
 	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = u64;
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
-	type Header = sp_runtime::testing::Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
@@ -101,14 +100,13 @@ impl session_manager::Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Event<T>},
-		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
-		SessionManager: session_manager::{Pallet, Call, Event<T>, Config<T>, Storage},
+		System: frame_system,
+		Session: pallet_session,
+		SessionManager: session_manager,
 	}
 );
 

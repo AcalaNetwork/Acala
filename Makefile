@@ -88,7 +88,7 @@ check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --features with-all-runtime --tests --all
 
 .PHONY: check-all
-check-all: check-runtimes check-benchmarks check-integration-tests
+check-all: check-runtimes check-benchmarks check-tests check-integration-tests
 
 .PHONY: check-runtimes
 check-runtimes:

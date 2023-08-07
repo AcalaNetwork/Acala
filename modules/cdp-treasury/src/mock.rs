@@ -33,7 +33,7 @@ use nutsfinance_stable_asset::{
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol, TradingPair};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_runtime::{traits::IdentityLookup, BuildStorage};
 use sp_std::cell::RefCell;
 use support::SpecificJointsSwap;
 
@@ -222,17 +222,16 @@ impl Config for Runtime {
 	type StableAsset = MockStableAsset;
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Config, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+		System: frame_system,
+		CDPTreasuryModule: cdp_treasury,
+		Currencies: orml_currencies,
+		Tokens: orml_tokens,
+		PalletBalances: pallet_balances,
+		DEXModule: module_dex,
 	}
 );
 
@@ -298,8 +297,7 @@ impl StableAsset for MockStableAsset {
 
 	fn pool(
 		_id: StableAssetPoolId,
-	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, BlockNumberFor<Self>>>
-	{
+	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
 			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
@@ -392,7 +390,7 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			BlockNumberFor<Self>,
+			Self::BlockNumber,
 		>,
 	) -> DispatchResult {
 		unimplemented!()
@@ -405,7 +403,7 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			BlockNumberFor<Self>,
+			Self::BlockNumber,
 		>,
 	) -> DispatchResult {
 		unimplemented!()
@@ -418,17 +416,13 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			BlockNumberFor<Self>,
+			Self::BlockNumber,
 		>,
 	) -> DispatchResult {
 		unimplemented!()
 	}
 
-	fn modify_a(
-		_pool_id: StableAssetPoolId,
-		_a: Self::Balance,
-		_future_a_block: BlockNumberFor<Self>,
-	) -> DispatchResult {
+	fn modify_a(_pool_id: StableAssetPoolId, _a: Self::Balance, _future_a_block: Self::BlockNumber) -> DispatchResult {
 		unimplemented!()
 	}
 
@@ -438,10 +432,9 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			BlockNumberFor<Self>,
+			Self::BlockNumber,
 		>,
-	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, BlockNumberFor<Self>>>
-	{
+	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
 			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
@@ -468,10 +461,9 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			BlockNumberFor<Self>,
+			Self::BlockNumber,
 		>,
-	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, BlockNumberFor<Self>>>
-	{
+	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
 			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
@@ -498,7 +490,7 @@ impl StableAsset for MockStableAsset {
 			Self::Balance,
 			Self::Balance,
 			Self::AccountId,
-			BlockNumberFor<Self>,
+			Self::BlockNumber,
 		>,
 		_amount_bal: Self::Balance,
 	) -> Option<RedeemProportionResult<Self::Balance>> {

@@ -30,7 +30,7 @@ use frame_support::{
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_runtime::{traits::IdentityLookup, BuildStorage};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -145,16 +145,15 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		NomineesElectionModule: nominees_election::{Pallet, Call, Storage, Event<T>},
-		TokensModule: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		OrmlCurrencies: orml_currencies::{Pallet, Call},
+		System: frame_system,
+		NomineesElectionModule: nominees_election,
+		TokensModule: orml_tokens,
+		PalletBalances: pallet_balances,
+		OrmlCurrencies: orml_currencies,
 	}
 );
 

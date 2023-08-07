@@ -293,12 +293,12 @@ mod mock {
 
 	frame_support::construct_runtime!(
 		pub enum Runtime {
-			System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-			Utility: pallet_utility::{Pallet, Call, Event},
-			Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-			Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
-			OrmlNFT: orml_nft::{Pallet, Storage, Config<T>},
-			NFT: nft::{Pallet, Call, Event<T>},
+			System: frame_system,
+			Utility: pallet_utility,
+			Balances: pallet_balances,
+			Proxy: pallet_proxy,
+			OrmlNFT: orml_nft,
+			NFT: nft,
 		}
 	);
 
