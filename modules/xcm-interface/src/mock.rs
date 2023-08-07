@@ -30,7 +30,7 @@ use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_traits::xcm_transfer::Transferred;
 use primitives::{CurrencyId, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
+use sp_runtime::{traits::IdentityLookup, AccountId32};
 use xcm_builder::{EnsureXcmOrigin, FixedWeightBounds, SignedToAccountId32};
 
 pub type AccountId = AccountId32;
@@ -241,10 +241,10 @@ type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
 	pub enum Runtime {
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin},
-		XcmInterface: xcm_interface::{Pallet, Storage, Call, Event<T>},
+		System: frame_system,
+		Balances: pallet_balances,
+		PolkadotXcm: pallet_xcm,
+		XcmInterface: xcm_interface,
 	}
 );
 
