@@ -163,8 +163,8 @@ mod mock {
 	};
 	use sp_core::{crypto::AccountId32, H256};
 	use sp_runtime::{
-		testing::Header,
 		traits::{BlakeTwo256, IdentityLookup},
+		BuildStorage,
 	};
 
 	pub type AccountId = AccountId32;

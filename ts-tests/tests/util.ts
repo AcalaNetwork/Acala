@@ -23,7 +23,6 @@ export const SPAWNING_TIME = 120000;
 export async function startAcalaNode(autoClaim = true): Promise<{ binary: ChildProcess; } & TestContext> {
 	const P2P_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
 	const RPC_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
-	const WS_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
 
 	const cmd = BINARY_PATH;
 	const args = [
@@ -36,8 +35,6 @@ export async function startAcalaNode(autoClaim = true): Promise<{ binary: ChildP
 		`--port=${P2P_PORT}`,
 		`--rpc-port=${RPC_PORT}`,
 		`--rpc-external`,
-		`--ws-port=${WS_PORT}`,
-		`--ws-external`,
 		`--rpc-cors=all`,
 		`--rpc-methods=unsafe`,
 		`--pruning=archive`,
@@ -74,7 +71,7 @@ export async function startAcalaNode(autoClaim = true): Promise<{ binary: ChildP
 			binaryLogs.push(chunk);
 			if (chunk.toString().match(/best: #0/)) {
 				try {
-					const { provider, wallets } = await getTestUtils(`ws://localhost:${WS_PORT}`, autoClaim);
+					const { provider, wallets } = await getTestUtils(`ws://localhost:${RPC_PORT}`, autoClaim);
 
 					clearTimeout(timer);
 					if (!DISPLAY_LOG) {
