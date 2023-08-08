@@ -22,7 +22,6 @@ relaychain:
   flags:
     - --rpc-methods=unsafe
     - --wasm-execution=compiled
-    - --execution=wasm
   nodes:
     - name: alice
     - name: bob
@@ -43,10 +42,8 @@ parachains:
     - --rpc-methods=unsafe
     - --force-authoring
     - --wasm-execution=compiled
-    - --execution=wasm
   relaychainFlags:
     - --wasm-execution=compiled
-    - --execution=wasm
   env:
     RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
   volumePath: /acala/data
@@ -67,10 +64,8 @@ parachains:
     - --rpc-methods=unsafe
     - --force-authoring
     - --wasm-execution=compiled
-    - --execution=wasm
   relaychainFlags:
     - --wasm-execution=compiled
-    - --execution=wasm
   env:
     RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
   volumePath: /data

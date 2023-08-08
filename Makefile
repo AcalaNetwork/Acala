@@ -249,19 +249,19 @@ endif
 ifeq ($(words $(pallet_folder)), 0)
 	$(error pallet_folder not defined)
 endif
-	cargo run $(options) --release --bin=acala --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark pallet --chain=dev --steps=50 --repeat=20 --pallet=$(pallet) --extrinsic="*" --execution=wasm --wasm-execution=compiled --heap-pages=4096 --output=./modules/$(pallet_folder)/src/weights.rs --template=./templates/module-weight-template.hbs
+	cargo run $(options) --release --bin=acala --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark pallet --chain=dev --steps=50 --repeat=20 --pallet=$(pallet) --extrinsic="*" --wasm-execution=compiled --heap-pages=4096 --output=./modules/$(pallet_folder)/src/weights.rs --template=./templates/module-weight-template.hbs
 
 .PHONY: benchmark-mandala
 benchmark-mandala:
-	cargo run $(options) --profile production --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark pallet --chain=dev --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/mandala/src/weights/
+	cargo run $(options) --profile production --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark pallet --chain=dev --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/mandala/src/weights/
 
 .PHONY: benchmark-karura
 benchmark-karura:
-	 cargo run $(options) --profile production --features=runtime-benchmarks --features=with-karura-runtime -- benchmark pallet --chain=karura-dev --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
+	 cargo run $(options) --profile production --features=runtime-benchmarks --features=with-karura-runtime -- benchmark pallet --chain=karura-dev --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
 
 .PHONY: benchmark-acala
 benchmark-acala:
-	 cargo run $(options) --profile production --features=runtime-benchmarks --features=with-acala-runtime -- benchmark pallet --chain=acala-dev --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
+	 cargo run $(options) --profile production --features=runtime-benchmarks --features=with-acala-runtime -- benchmark pallet --chain=acala-dev --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
 
 .PHONY: benchmark-machine
 benchmark-machine:

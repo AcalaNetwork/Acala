@@ -2241,7 +2241,7 @@ version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
 dependencies = [
  "async-trait",
- "cumulus-client-pov-recovery 0.1.0 (git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5)",
+ "cumulus-client-pov-recovery",
  "cumulus-primitives-core",
  "cumulus-relay-chain-interface",
  "dyn-clone",
@@ -2328,30 +2328,6 @@ dependencies = [
 [[package]]
 name = "cumulus-client-pov-recovery"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v1.0.0#a188eb95c522f3ca4c43ef7fed19a6107224217c"
-dependencies = [
- "async-trait",
- "cumulus-primitives-core",
- "cumulus-relay-chain-interface",
- "futures 0.3.28",
- "futures-timer",
- "parity-scale-codec",
- "polkadot-node-primitives",
- "polkadot-node-subsystem",
- "polkadot-overseer",
- "polkadot-primitives",
- "rand 0.8.5",
- "sc-client-api",
- "sc-consensus",
- "sp-consensus",
- "sp-maybe-compressed-blob",
- "sp-runtime",
- "tracing",
-]
-
-[[package]]
-name = "cumulus-client-pov-recovery"
-version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
 dependencies = [
  "async-trait",
@@ -2382,7 +2358,7 @@ dependencies = [
  "cumulus-client-collator",
  "cumulus-client-consensus-common",
  "cumulus-client-network",
- "cumulus-client-pov-recovery 0.1.0 (git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5)",
+ "cumulus-client-pov-recovery",
  "cumulus-primitives-core",
  "cumulus-relay-chain-inprocess-interface",
  "cumulus-relay-chain-interface",
@@ -2793,7 +2769,7 @@ dependencies = [
  "cumulus-client-cli",
  "cumulus-client-consensus-common",
  "cumulus-client-consensus-relay-chain",
- "cumulus-client-pov-recovery 0.1.0 (git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5)",
+ "cumulus-client-pov-recovery",
  "cumulus-client-service",
  "cumulus-pallet-parachain-system",
  "cumulus-primitives-core",
@@ -8312,7 +8288,7 @@ dependencies = [
 [[package]]
 name = "pallet-asset-conversion"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v1.0.0#b8d485fd4942539c438bf25a7823e410360fa053"
+source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -8804,7 +8780,7 @@ dependencies = [
 [[package]]
 name = "pallet-message-queue"
 version = "7.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v1.0.0#b8d485fd4942539c438bf25a7823e410360fa053"
+source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -8856,7 +8832,7 @@ dependencies = [
 [[package]]
 name = "pallet-nft-fractionalization"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v1.0.0#b8d485fd4942539c438bf25a7823e410360fa053"
+source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -15217,7 +15193,7 @@ dependencies = [
  "cumulus-client-consensus-common",
  "cumulus-client-consensus-relay-chain",
  "cumulus-client-network",
- "cumulus-client-pov-recovery 0.1.0 (git+https://github.com/paritytech/cumulus?branch=polkadot-v1.0.0)",
+ "cumulus-client-pov-recovery",
  "cumulus-client-service",
  "cumulus-primitives-core",
  "cumulus-primitives-parachain-inherent",

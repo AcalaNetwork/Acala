@@ -31,7 +31,6 @@ export async function startAcalaNode(autoClaim = true): Promise<{ binary: ChildP
 		`-lruntime=debug`,
 		`-levm=debug`,
 		`--instant-sealing`,
-		`--execution=native`, // Faster execution using native
 		`--no-telemetry`,
 		`--no-prometheus`,
 		`--port=${P2P_PORT}`,
