@@ -555,7 +555,7 @@ fn with_fee_call_works(
 			#[cfg(feature = "with-acala-runtime")]
 			let amount = 12_726_949_837u128;
 			#[cfg(feature = "with-mandala-runtime")]
-			let amount = 12_701_470_458u128;
+			let amount = 12701470448u128;
 
 			System::assert_has_event(RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
 				currency_id: USD_CURRENCY,

@@ -989,7 +989,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			);
 			let erc20_fee = Currencies::free_balance(erc20_token, &sub_account);
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(erc20_fee, 10_386_329_729);
+			assert_eq!(erc20_fee, 10386329718);
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(erc20_fee, 10_407_164_895);
 			#[cfg(feature = "with-acala-runtime")]
@@ -1044,7 +1044,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-acala-runtime")]
 			let (erc20_with_fee, native_with_fee) = (376162714, 3750001320);
 			#[cfg(feature = "with-mandala-runtime")]
-			let (erc20_with_fee, native_with_fee) = (375409635, 3750001320);
+			let (erc20_with_fee, native_with_fee) = (375409624, 3750001206);
 			assert_eq!(
 				Currencies::free_balance(erc20_token, &sub_account),
 				erc20_fee * 2 + erc20_with_fee

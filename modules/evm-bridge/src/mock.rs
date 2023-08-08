@@ -135,7 +135,7 @@ type Block = frame_system::mocking::MockBlock<Runtime>;
 construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
-		EVMBridge: evm_bridge,
+		EVMBridgeModule: evm_bridge,
 		EVM: module_evm,
 		Balances: pallet_balances,
 	}

@@ -433,7 +433,7 @@ mod mandala_only_tests {
 						bytes.len()
 					),
 					Ok(ValidTransaction {
-						priority: 198_255,
+						priority: 235960,
 						requires: vec![],
 						provides: vec![],
 						longevity: 18_446_744_073_709_551_615,
@@ -450,7 +450,7 @@ mod mandala_only_tests {
 						bytes.len()
 					),
 					Ok(ValidTransaction {
-						priority: 198_255_000_000,
+						priority: 235960000000,
 						requires: vec![],
 						provides: vec![],
 						longevity: 18_446_744_073_709_551_615,
@@ -512,7 +512,7 @@ mod mandala_only_tests {
 						bytes.len()
 					),
 					Ok(ValidTransaction {
-						priority: 56_773_627_318_880_000,
+						priority: 51918138056970000,
 						requires: vec![],
 						provides: vec![],
 						longevity: 18_446_744_073_709_551_615,

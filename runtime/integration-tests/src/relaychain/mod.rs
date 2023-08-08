@@ -177,14 +177,11 @@ mod fee_test {
 	#[test]
 	fn mandala_per_second_works() {
 		assert_eq!(relay_per_second_as_fee(4), 321480);
-		assert_eq!(relay_per_second_as_fee(3), 263_970);
-		assert_eq!(native_per_second_as_fee(4), 35_196_000);
+		assert_eq!(relay_per_second_as_fee(3), 241110);
+		assert_eq!(native_per_second_as_fee(4), 32148000);
 
-		assert_eq!(foreign_per_second_as_fee(4, Balances::minimum_balance()), 35_196_000);
-		assert_eq!(
-			foreign_per_second_as_fee(4, Balances::minimum_balance() / 10),
-			3_519_600,
-		);
+		assert_eq!(foreign_per_second_as_fee(4, Balances::minimum_balance()), 32148000);
+		assert_eq!(foreign_per_second_as_fee(4, Balances::minimum_balance() / 10), 3214800,);
 	}
 }
 
