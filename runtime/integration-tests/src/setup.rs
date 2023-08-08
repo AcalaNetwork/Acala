@@ -18,7 +18,7 @@
 
 pub use codec::{Decode, Encode};
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-use frame_support::traits::{GenesisBuild, OnFinalize, OnIdle, OnInitialize};
+use frame_support::traits::{OnFinalize, OnIdle, OnInitialize};
 pub use frame_support::{assert_noop, assert_ok, traits::Currency};
 pub use frame_system::RawOrigin;
 use runtime_common::evm_genesis;
@@ -42,7 +42,8 @@ pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Zero},
-	Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress, Perbill, Permill,
+	BuildStorage, Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress,
+	Perbill, Permill,
 };
 
 pub use xcm::v3::prelude::*;
@@ -379,20 +380,18 @@ impl ExtBuilder {
 			.assimilate_storage(&mut t)
 			.unwrap();
 
-		<parachain_info::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-			&parachain_info::GenesisConfig {
-				parachain_id: self.parachain_id.into(),
-			},
-			&mut t,
-		)
+		parachain_info::GenesisConfig::<Runtime> {
+			_config: Default::default(),
+			parachain_id: self.parachain_id.into(),
+		}
+		.assimilate_storage(&mut t)
 		.unwrap();
 
-		<pallet_xcm::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-			&pallet_xcm::GenesisConfig {
-				safe_xcm_version: Some(2),
-			},
-			&mut t,
-		)
+		pallet_xcm::GenesisConfig::<Runtime> {
+			_config: Default::default(),
+			safe_xcm_version: Some(2),
+		}
+		.assimilate_storage(&mut t)
 		.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
