@@ -74,7 +74,7 @@ dependencies = [
  "bstringify",
  "enumflags2",
  "frame-support",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "module-evm-utility",
  "module-evm-utility-macro",
  "num_enum",
@@ -134,7 +134,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "libsecp256k1",
  "module-aggregated-dex",
  "module-asset-registry",
@@ -260,7 +260,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "futures 0.3.28",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "jsonrpsee",
  "k256 0.11.6",
  "karura-runtime",
@@ -505,12 +505,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anes"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
-
-[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -685,167 +679,6 @@ name = "assert_matches"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
-
-[[package]]
-name = "asset-hub-kusama-runtime"
-version = "0.9.420"
-source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
-dependencies = [
- "assets-common",
- "cumulus-pallet-aura-ext",
- "cumulus-pallet-dmp-queue",
- "cumulus-pallet-parachain-system",
- "cumulus-pallet-session-benchmarking",
- "cumulus-pallet-xcm",
- "cumulus-pallet-xcmp-queue",
- "cumulus-primitives-core",
- "cumulus-primitives-timestamp",
- "cumulus-primitives-utility",
- "frame-benchmarking",
- "frame-executive",
- "frame-support",
- "frame-system",
- "frame-system-benchmarking",
- "frame-system-rpc-runtime-api",
- "hex-literal 0.4.1",
- "kusama-runtime-constants",
- "log",
- "pallet-asset-tx-payment",
- "pallet-assets",
- "pallet-aura",
- "pallet-authorship",
- "pallet-balances",
- "pallet-collator-selection",
- "pallet-multisig",
- "pallet-nft-fractionalization",
- "pallet-nfts",
- "pallet-nfts-runtime-api",
- "pallet-proxy",
- "pallet-session",
- "pallet-state-trie-migration",
- "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
- "pallet-uniques",
- "pallet-utility",
- "pallet-xcm",
- "pallet-xcm-benchmarks",
- "parachain-info",
- "parachains-common",
- "parity-scale-codec",
- "polkadot-core-primitives",
- "polkadot-parachain",
- "polkadot-runtime-common",
- "scale-info",
- "smallvec",
- "sp-api",
- "sp-block-builder",
- "sp-consensus-aura",
- "sp-core",
- "sp-inherents",
- "sp-offchain",
- "sp-runtime",
- "sp-session",
- "sp-std",
- "sp-transaction-pool",
- "sp-version",
- "sp-weights",
- "substrate-wasm-builder",
- "xcm",
- "xcm-builder",
- "xcm-executor",
-]
-
-[[package]]
-name = "asset-hub-polkadot-runtime"
-version = "0.9.420"
-source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
-dependencies = [
- "assets-common",
- "cumulus-pallet-aura-ext",
- "cumulus-pallet-dmp-queue",
- "cumulus-pallet-parachain-system",
- "cumulus-pallet-session-benchmarking",
- "cumulus-pallet-xcm",
- "cumulus-pallet-xcmp-queue",
- "cumulus-primitives-core",
- "cumulus-primitives-timestamp",
- "cumulus-primitives-utility",
- "frame-benchmarking",
- "frame-executive",
- "frame-support",
- "frame-system",
- "frame-system-benchmarking",
- "frame-system-rpc-runtime-api",
- "hex-literal 0.4.1",
- "log",
- "pallet-asset-tx-payment",
- "pallet-assets",
- "pallet-aura",
- "pallet-authorship",
- "pallet-balances",
- "pallet-collator-selection",
- "pallet-multisig",
- "pallet-nfts",
- "pallet-nfts-runtime-api",
- "pallet-proxy",
- "pallet-session",
- "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
- "pallet-uniques",
- "pallet-utility",
- "pallet-xcm",
- "pallet-xcm-benchmarks",
- "parachain-info",
- "parachains-common",
- "parity-scale-codec",
- "polkadot-core-primitives",
- "polkadot-parachain",
- "polkadot-runtime-common",
- "polkadot-runtime-constants",
- "scale-info",
- "smallvec",
- "sp-api",
- "sp-block-builder",
- "sp-consensus-aura",
- "sp-core",
- "sp-inherents",
- "sp-offchain",
- "sp-runtime",
- "sp-session",
- "sp-std",
- "sp-transaction-pool",
- "sp-version",
- "sp-weights",
- "substrate-wasm-builder",
- "xcm",
- "xcm-builder",
- "xcm-executor",
-]
-
-[[package]]
-name = "assets-common"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
-dependencies = [
- "cumulus-primitives-core",
- "frame-support",
- "log",
- "pallet-asset-conversion",
- "pallet-asset-tx-payment",
- "pallet-xcm",
- "parachains-common",
- "parity-scale-codec",
- "scale-info",
- "sp-api",
- "sp-runtime",
- "sp-std",
- "substrate-wasm-builder",
- "xcm",
- "xcm-builder",
- "xcm-executor",
-]
 
 [[package]]
 name = "async-channel"
@@ -1359,15 +1192,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "casey"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "614586263949597dcc18675da12ef9b429135e13628d92eb8b8c6fa50ca5656b"
-dependencies = [
- "syn 1.0.109",
-]
-
-[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1461,33 +1285,6 @@ dependencies = [
  "time 0.1.45",
  "wasm-bindgen",
  "winapi",
-]
-
-[[package]]
-name = "ciborium"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "effd91f6c78e5a4ace8a5d3c0b6bfaec9e2baaef55f3efc00e45fb2e477ee926"
-dependencies = [
- "ciborium-io",
- "ciborium-ll",
- "serde",
-]
-
-[[package]]
-name = "ciborium-io"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdf919175532b369853f5d5e20b26b43112613fd6fe7aee757e35f7a44642656"
-
-[[package]]
-name = "ciborium-ll"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "defaa24ecc093c77630e6c15e17c51f5e187bf35ee514f4e2d67baaa96dae22b"
-dependencies = [
- "ciborium-io",
- "half",
 ]
 
 [[package]]
@@ -1935,7 +1732,7 @@ dependencies = [
  "atty",
  "cast",
  "clap 2.34.0",
- "criterion-plot 0.4.5",
+ "criterion-plot",
  "csv",
  "futures 0.3.28",
  "itertools",
@@ -1955,48 +1752,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "criterion"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2b12d017a929603d80db1831cd3a24082f8137ce19c69e6447f54f5fc8d692f"
-dependencies = [
- "anes",
- "cast",
- "ciborium",
- "clap 4.3.19",
- "criterion-plot 0.5.0",
- "futures 0.3.28",
- "is-terminal",
- "itertools",
- "num-traits",
- "once_cell",
- "oorandom",
- "plotters",
- "rayon",
- "regex",
- "serde",
- "serde_derive",
- "serde_json",
- "tinytemplate",
- "tokio",
- "walkdir",
-]
-
-[[package]]
 name = "criterion-plot"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2673cc8207403546f45f5fd319a974b1e6983ad1a3ee7e6041650013be041876"
-dependencies = [
- "cast",
- "itertools",
-]
-
-[[package]]
-name = "criterion-plot"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b50826342786a51a89e2da3a28f1c32b06e387201bc2d19791f622c673706b1"
 dependencies = [
  "cast",
  "itertools",
@@ -2458,20 +2217,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cumulus-pallet-session-benchmarking"
-version = "3.0.0"
-source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-session",
- "parity-scale-codec",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "cumulus-pallet-xcm"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
@@ -2723,110 +2468,6 @@ source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d
 dependencies = [
  "polkadot-node-core-pvf",
  "toml 0.7.6",
-]
-
-[[package]]
-name = "cumulus-test-runtime"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
-dependencies = [
- "cumulus-pallet-parachain-system",
- "cumulus-primitives-core",
- "cumulus-primitives-timestamp",
- "frame-executive",
- "frame-support",
- "frame-system",
- "frame-system-rpc-runtime-api",
- "pallet-balances",
- "pallet-glutton",
- "pallet-sudo",
- "pallet-timestamp",
- "pallet-transaction-payment",
- "parity-scale-codec",
- "scale-info",
- "sp-api",
- "sp-block-builder",
- "sp-core",
- "sp-inherents",
- "sp-io",
- "sp-offchain",
- "sp-runtime",
- "sp-session",
- "sp-std",
- "sp-transaction-pool",
- "sp-version",
- "substrate-wasm-builder",
-]
-
-[[package]]
-name = "cumulus-test-service"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
-dependencies = [
- "async-trait",
- "clap 4.3.19",
- "criterion 0.5.1",
- "cumulus-client-cli",
- "cumulus-client-consensus-common",
- "cumulus-client-consensus-relay-chain",
- "cumulus-client-pov-recovery",
- "cumulus-client-service",
- "cumulus-pallet-parachain-system",
- "cumulus-primitives-core",
- "cumulus-primitives-parachain-inherent",
- "cumulus-relay-chain-inprocess-interface",
- "cumulus-relay-chain-interface",
- "cumulus-relay-chain-minimal-node",
- "cumulus-test-relay-sproof-builder",
- "cumulus-test-relay-validation-worker-provider",
- "cumulus-test-runtime",
- "frame-system",
- "frame-system-rpc-runtime-api",
- "jsonrpsee",
- "pallet-timestamp",
- "pallet-transaction-payment",
- "parachains-common",
- "parity-scale-codec",
- "polkadot-cli",
- "polkadot-node-subsystem",
- "polkadot-overseer",
- "polkadot-primitives",
- "polkadot-service",
- "polkadot-test-service",
- "rand 0.8.5",
- "sc-basic-authorship",
- "sc-block-builder",
- "sc-chain-spec",
- "sc-cli",
- "sc-client-api",
- "sc-consensus",
- "sc-executor",
- "sc-executor-common",
- "sc-executor-wasmtime",
- "sc-network",
- "sc-service",
- "sc-telemetry",
- "sc-tracing",
- "sc-transaction-pool",
- "sc-transaction-pool-api",
- "serde",
- "sp-api",
- "sp-arithmetic",
- "sp-blockchain",
- "sp-consensus",
- "sp-core",
- "sp-io",
- "sp-keyring",
- "sp-runtime",
- "sp-state-machine",
- "sp-timestamp",
- "sp-tracing",
- "sp-trie",
- "substrate-test-client",
- "tempfile",
- "tokio",
- "tracing",
- "url",
 ]
 
 [[package]]
@@ -5276,7 +4917,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "libsecp256k1",
  "module-aggregated-dex",
  "module-asset-registry",
@@ -6280,7 +5921,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "libsecp256k1",
  "module-aggregated-dex",
  "module-asset-registry",
@@ -6754,7 +6395,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "module-evm",
  "module-evm-bridge",
  "module-support",
@@ -7266,7 +6907,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "module-support",
  "orml-tokens",
  "orml-traits",
@@ -8286,57 +7927,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-asset-conversion"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "sp-api",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-asset-tx-payment"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-transaction-payment",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-assets"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-aura"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
@@ -8522,25 +8112,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-collator-selection"
-version = "3.0.0"
-source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "pallet-authorship",
- "pallet-session",
- "parity-scale-codec",
- "rand 0.8.5",
- "scale-info",
- "sp-runtime",
- "sp-staking",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-collective"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
@@ -8663,24 +8234,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-staking",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-glutton"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
-dependencies = [
- "blake2",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
  "sp-std",
 ]
 
@@ -8827,52 +8380,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "pallet-nft-fractionalization"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "pallet-assets",
- "pallet-nfts",
- "parity-scale-codec",
- "scale-info",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-nfts"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
-dependencies = [
- "enumflags2",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-nfts-runtime-api"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
-dependencies = [
- "frame-support",
- "pallet-nfts",
- "parity-scale-codec",
- "sp-api",
 ]
 
 [[package]]
@@ -9335,21 +8842,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-uniques"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "parity-scale-codec",
- "scale-info",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-utility"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
@@ -9447,35 +8939,6 @@ dependencies = [
  "scale-info",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "parachains-common"
-version = "1.0.0"
-source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
-dependencies = [
- "cumulus-primitives-core",
- "cumulus-primitives-utility",
- "frame-support",
- "frame-system",
- "num-traits",
- "pallet-asset-tx-payment",
- "pallet-assets",
- "pallet-authorship",
- "pallet-balances",
- "pallet-collator-selection",
- "parity-scale-codec",
- "polkadot-primitives",
- "scale-info",
- "sp-consensus-aura",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "substrate-wasm-builder",
- "xcm",
- "xcm-builder",
- "xcm-executor",
 ]
 
 [[package]]
@@ -12033,7 +11496,7 @@ dependencies = [
  "ethabi",
  "frame-support",
  "frame-system",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "log",
  "module-asset-registry",
  "module-cdp-engine",
@@ -12097,8 +11560,6 @@ dependencies = [
  "acala-primitives",
  "acala-runtime",
  "acala-service",
- "asset-hub-kusama-runtime",
- "asset-hub-polkadot-runtime",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -12113,10 +11574,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "karura-runtime",
- "kusama-runtime",
- "kusama-runtime-constants",
  "libsecp256k1",
  "log",
  "mandala-runtime",
@@ -12183,12 +11642,6 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec",
  "polkadot-cli",
- "polkadot-parachain",
- "polkadot-primitives",
- "polkadot-runtime",
- "polkadot-runtime-constants",
- "polkadot-runtime-parachains",
- "polkadot-test-runtime",
  "runtime-common",
  "serde_json",
  "smallvec",
@@ -12205,12 +11658,12 @@ dependencies = [
  "sp-session",
  "sp-staking",
  "sp-std",
+ "sp-tracing",
  "sp-transaction-pool",
  "sp-trie",
  "sp-version",
  "xcm",
  "xcm-builder",
- "xcm-emulator",
  "xcm-executor",
 ]
 
@@ -15187,7 +14640,7 @@ dependencies = [
  "acala-primitives",
  "acala-service",
  "async-trait",
- "criterion 0.3.6",
+ "criterion",
  "cumulus-client-cli",
  "cumulus-client-consensus-aura",
  "cumulus-client-consensus-common",
@@ -15206,7 +14659,7 @@ dependencies = [
  "frame-system",
  "frame-system-rpc-runtime-api",
  "futures 0.3.28",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "jsonrpsee",
  "log",
  "mandala-runtime",
@@ -17180,39 +16633,6 @@ dependencies = [
  "sp-weights",
  "xcm",
  "xcm-executor",
-]
-
-[[package]]
-name = "xcm-emulator"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=0d17cf6bef320f156f2859d6d2b0abd4154ae1d5#0d17cf6bef320f156f2859d6d2b0abd4154ae1d5"
-dependencies = [
- "casey",
- "cumulus-pallet-dmp-queue",
- "cumulus-pallet-parachain-system",
- "cumulus-pallet-xcmp-queue",
- "cumulus-primitives-core",
- "cumulus-primitives-parachain-inherent",
- "cumulus-test-relay-sproof-builder",
- "cumulus-test-service",
- "frame-support",
- "frame-system",
- "log",
- "pallet-balances",
- "pallet-message-queue",
- "parachain-info",
- "parachains-common",
- "parity-scale-codec",
- "paste",
- "polkadot-primitives",
- "polkadot-runtime-parachains",
- "quote",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-std",
- "sp-trie",
- "xcm",
 ]
 
 [[package]]

@@ -93,7 +93,7 @@ pub mod fee {
 }
 
 pub mod parachains {
-	pub mod statemint {
+	pub mod asset_hub_polkadot {
 		pub const ID: u32 = 1000;
 	}
 }

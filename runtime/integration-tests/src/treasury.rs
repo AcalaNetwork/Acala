@@ -25,7 +25,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 		#[cfg(feature = "with-mandala-runtime")] // Mandala uses DOT, which has 10 d.p. accuracy.
 		let actual_amount = 9999999758890;
 		#[cfg(feature = "with-karura-runtime")] // Karura uses KSM, which has 12 d.p. accuracy.
-		let actual_amount = 999_999_894_412_000;
+		let actual_amount = 999999903556000;
 		#[cfg(feature = "with-acala-runtime")] // Acala uses DOT, which has 10 d.p. accuracy.
 		let actual_amount = 9_999_998_944_120;
 

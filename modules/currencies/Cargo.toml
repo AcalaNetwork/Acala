@@ -23,7 +23,7 @@ support = { package = "module-support", path = "../support", default-features = 
 [dev-dependencies]
 serde_json = "1.0.81"
 hex = "0.4"
-hex-literal = "0.3.4"
+hex-literal = "0.4.1"
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }

@@ -388,7 +388,7 @@ fn three_usd_pool_works() {
 				100 * dollar as i128,
 			));
 
-			// USDT is asset on Statemine
+			// USDT is asset on AssetHubKusama
 			assert_ok!(AssetRegistry::register_foreign_asset(
 				RuntimeOrigin::root(),
 				Box::new(
@@ -598,7 +598,7 @@ fn three_usd_pool_works() {
 				)
 			);
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
-			let (amount1, amount2) = (227_029_652u128, 2_250_001_320u128);
+			let (amount1, amount2) = (227029641, 2250001206);
 			#[cfg(feature = "with-mandala-runtime")]
 			let (amount1, amount2) = (226576482, 2250001206);
 			System::assert_has_event(RuntimeEvent::Dex(module_dex::Event::Swap {

@@ -120,7 +120,6 @@ mod karura_imports {
 		TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId,
 		Utility, Vesting, XTokens, XcmInterface, EVM, NFT,
 	};
-	use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 	pub use primitives::TradingPair;
 	pub use runtime_common::{cent, dollar, millicent, FixedRateOfAsset, KAR, KSM, KUSD, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
@@ -147,9 +146,6 @@ mod karura_imports {
 		primitives::DexShare::Token(TokenSymbol::KSM),
 	);
 	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::KAR;
-	pub type Trader = FixedRateOfFungible<KsmPerSecond, ()>;
-	pub type TransactionFeePoolTrader =
-		FixedRateOfAsset<BaseRate, (), BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>;
 	pub const ALTERNATIVE_SURPLUS: Percent = AlternativeFeeSurplus::get();
 }
 
@@ -293,6 +289,14 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
+		let t = self.build_storage();
+
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
+	pub fn build_storage(self) -> sp_core::storage::Storage {
 		let evm_genesis_accounts = evm_genesis(vec![]);
 
 		let mut t = frame_system::GenesisConfig::<Runtime>::default()
@@ -394,9 +398,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
-		ext
+		t
 	}
 }
 

@@ -342,7 +342,7 @@ parameter_type_with_key! {
 	pub ParachainMinFee: |location: MultiLocation| -> Option<u128> {
 		#[allow(clippy::match_ref_pats)] // false positive
 		match (location.parents, location.first_interior()) {
-			(1, Some(Parachain(parachains::statemine::ID))) => Some(XcmInterface::get_parachain_fee(*location)),
+			(1, Some(Parachain(parachains::asset_hub_kusama::ID))) => Some(XcmInterface::get_parachain_fee(*location)),
 			_ => None,
 		}
 	};

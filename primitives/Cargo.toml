@@ -5,7 +5,7 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-hex-literal = "0.3.4"
+hex-literal = "0.4.1"
 bstringify = "0.1.2"
 serde = { version = "1.0.145", default-features = false, features = ["alloc", "derive"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }

@@ -108,7 +108,7 @@ pub mod parachains {
 		pub const KINT_KEY: &[u8] = &[0, 12];
 	}
 
-	pub mod statemine {
+	pub mod asset_hub_kusama {
 		pub const ID: u32 = 1000;
 	}
 }

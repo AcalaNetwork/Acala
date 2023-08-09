@@ -22,13 +22,13 @@
 //! DATE: 2023-02-23, STEPS: `50`, REPEAT: `20`, LOW RANGE: `[]`, HIGH RANGE: `[]`
 //! WORST CASE MAP SIZE: `1000000`
 //! HOSTNAME: `bm6`, CPU: `Intel(R) Core(TM) i7-7700K CPU @ 4.20GHz`
-//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("statemint-dev"), DB CACHE: 1024
+//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("asset_hub_polkadot-dev"), DB CACHE: 1024
 
 // Executed Command:
 // ./artifacts/polkadot-parachain
 // benchmark
 // pallet
-// --chain=statemint-dev
+// --chain=asset_hub_polkadot-dev
 // --execution=wasm
 // --wasm-execution=compiled
 // --pallet=pallet_xcm
@@ -37,7 +37,7 @@
 // --repeat=20
 // --json
 // --header=./file_header.txt
-// --output=./parachains/runtimes/assets/statemint/src/weights/pallet_xcm.rs
+// --output=./parachains/runtimes/assets/asset_hub_polkadot/src/weights/pallet_xcm.rs
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]

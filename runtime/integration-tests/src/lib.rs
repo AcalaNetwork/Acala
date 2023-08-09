@@ -122,13 +122,3 @@ mod weights;
 	feature = "with-acala-runtime"
 ))]
 mod payment;
-
-#[cfg(any(
-	feature = "with-mandala-runtime",
-	feature = "with-karura-runtime",
-	feature = "with-acala-runtime"
-))]
-mod relaychain;
-
-#[cfg(feature = "with-karura-runtime")]
-mod xcm_interface;

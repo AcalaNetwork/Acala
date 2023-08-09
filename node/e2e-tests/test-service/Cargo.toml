@@ -15,7 +15,7 @@ jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 log = "0.4.17"
 futures = { package = "futures", version = "0.3", features = ["compat"] }
 tempfile = "3.7.0"
-hex-literal = "0.3.4"
+hex-literal = "0.4.1"
 url = "2.3.1"
 rlp = "0.5.2"
 sha3 = "0.10"
