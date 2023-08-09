@@ -11642,6 +11642,7 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec",
  "polkadot-cli",
+ "polkadot-test-runtime",
  "runtime-common",
  "serde_json",
  "smallvec",

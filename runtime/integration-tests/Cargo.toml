@@ -126,6 +126,7 @@ cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/c
 cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v1.0.0" }
 
 polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "release-v1.0.0" }
+polkadot-test-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v1.0.0" }
 
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 module-aggregated-dex = { path = "../../modules/aggregated-dex" }
@@ -155,3 +156,6 @@ with-ethereum-compatibility = [
 	"module-evm/with-ethereum-compatibility",
 ]
 std = []
+runtime-benchmarks = [
+ 	"polkadot-test-runtime/runtime-benchmarks",
+ ]
