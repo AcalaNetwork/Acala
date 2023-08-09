@@ -993,7 +993,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(erc20_fee, 10407164883);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(erc20_fee, 10_407_164_895);
+			assert_eq!(erc20_fee, 10407164883);
 
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),

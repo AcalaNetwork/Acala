@@ -94,9 +94,6 @@ mod mandala_imports {
 		primitives::DexShare::Token(TokenSymbol::DOT),
 	);
 	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::ACA;
-	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
-	pub type TransactionFeePoolTrader =
-		FixedRateOfAsset<BaseRate, (), BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>;
 	pub const ALTERNATIVE_SURPLUS: Percent = AlternativeFeeSurplus::get();
 }
 
@@ -198,9 +195,6 @@ mod acala_imports {
 		primitives::DexShare::Token(TokenSymbol::DOT),
 	);
 	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::ACA;
-	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
-	pub type TransactionFeePoolTrader =
-		FixedRateOfAsset<BaseRate, (), BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>;
 	pub const ALTERNATIVE_SURPLUS: Percent = AlternativeFeeSurplus::get();
 }
 
