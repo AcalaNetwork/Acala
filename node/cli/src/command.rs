@@ -25,11 +25,11 @@ use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams, NetworkParams, Result,
-	RuntimeVersion, SharedParams, SubstrateCli,
+	SharedParams, SubstrateCli,
 };
+use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
 use sc_service::config::{BasePath, PrometheusConfig};
 use service::{chain_spec, new_partial, IdentifyVariant};
-use std::net::SocketAddr;
 
 fn chain_name() -> String {
 	"Acala".into()
@@ -121,25 +121,6 @@ impl SubstrateCli for Cli {
 			}
 		})
 	}
-
-	fn native_runtime_version(spec: &Box<dyn sc_service::ChainSpec>) -> &'static RuntimeVersion {
-		if spec.is_acala() {
-			#[cfg(feature = "with-acala-runtime")]
-			return &service::acala_runtime::VERSION;
-			#[cfg(not(feature = "with-acala-runtime"))]
-			panic!("{}", service::ACALA_RUNTIME_NOT_AVAILABLE);
-		} else if spec.is_karura() {
-			#[cfg(feature = "with-karura-runtime")]
-			return &service::karura_runtime::VERSION;
-			#[cfg(not(feature = "with-karura-runtime"))]
-			panic!("{}", service::KARURA_RUNTIME_NOT_AVAILABLE);
-		} else {
-			#[cfg(feature = "with-mandala-runtime")]
-			return &service::mandala_runtime::VERSION;
-			#[cfg(not(feature = "with-mandala-runtime"))]
-			panic!("{}", service::MANDALA_RUNTIME_NOT_AVAILABLE);
-		}
-	}
 }
 
 impl SubstrateCli for RelayChainCli {
@@ -175,10 +156,6 @@ impl SubstrateCli for RelayChainCli {
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 		polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
-	}
-
-	fn native_runtime_version(chain_spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-		polkadot_cli::Cli::native_runtime_version(chain_spec)
 	}
 }
 
@@ -274,7 +251,10 @@ pub fn run() -> sc_cli::Result<()> {
 									.into());
 							}
 
-							cmd.run::<Block, Executor>(config)
+							cmd.run::<Block, ExtendedHostFunctions<
+								sp_io::SubstrateHostFunctions,
+								<Executor as NativeExecutionDispatch>::ExtendHostFunctions,
+							>>(config)
 						}
 						BenchmarkCmd::Block(cmd) => {
 							let partials = new_partial::<RuntimeApi>(&config, true, false)?;
@@ -401,10 +381,9 @@ pub fn run() -> sc_cli::Result<()> {
 			let chain_spec = &runner.config().chain_spec;
 
 			with_runtime_or_err!(chain_spec, {
-				return runner.sync_run(|_config| {
-					let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
-					let state_version = Cli::native_runtime_version(&spec).state_version();
-					cmd.run::<Block>(&*spec, state_version)
+				return runner.sync_run(|config| {
+					let partials = new_partial::<RuntimeApi>(&config, false, false)?;
+					cmd.run::<service::Block>(&*config.chain_spec, &*partials.client)
 				});
 			})
 		}
@@ -419,7 +398,6 @@ pub fn run() -> sc_cli::Result<()> {
 
 		#[cfg(feature = "try-runtime")]
 		Some(Subcommand::TryRuntime(cmd)) => {
-			use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
 			let runner = cli.create_runner(cmd)?;
 			let chain_spec = &runner.config().chain_spec;
 			set_default_ss58_version(chain_spec);
@@ -504,14 +482,6 @@ impl DefaultConfigurationValues for RelayChainCli {
 		30334
 	}
 
-	fn rpc_ws_listen_port() -> u16 {
-		9945
-	}
-
-	fn rpc_http_listen_port() -> u16 {
-		9934
-	}
-
 	fn prometheus_listen_port() -> u16 {
 		9616
 	}
@@ -539,18 +509,6 @@ impl CliConfiguration<Self> for RelayChainCli {
 			.shared_params()
 			.base_path()?
 			.or_else(|| self.base_path.clone().map(Into::into)))
-	}
-
-	fn rpc_http(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
-		self.base.base.rpc_http(default_listen_port)
-	}
-
-	fn rpc_ipc(&self) -> Result<Option<String>> {
-		self.base.base.rpc_ipc()
-	}
-
-	fn rpc_ws(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
-		self.base.base.rpc_ws(default_listen_port)
 	}
 
 	fn prometheus_config(
@@ -598,10 +556,6 @@ impl CliConfiguration<Self> for RelayChainCli {
 
 	fn rpc_methods(&self) -> Result<sc_service::config::RpcMethods> {
 		self.base.base.rpc_methods()
-	}
-
-	fn rpc_ws_max_connections(&self) -> Result<Option<usize>> {
-		self.base.base.rpc_ws_max_connections()
 	}
 
 	fn rpc_cors(&self, is_dev: bool) -> Result<Option<Vec<String>>> {

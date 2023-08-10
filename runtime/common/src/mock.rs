@@ -34,14 +34,10 @@ use primitives::{
 use scale_info::TypeInfo;
 use sp_core::{H160, H256};
 use sp_runtime::traits::Convert;
+use sp_runtime::traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup, Zero};
 pub use sp_runtime::AccountId32;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup, Zero},
-};
 use std::str::FromStr;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 
 type Balance = u128;
@@ -52,13 +48,12 @@ impl frame_system::Config for TestRuntime {
 	type BlockLength = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = primitives::Nonce;
-	type BlockNumber = u64;
+	type Nonce = primitives::Nonce;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<10>;
 	type DbWeight = ();
@@ -86,7 +81,7 @@ impl pallet_balances::Config for TestRuntime {
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
-	type HoldIdentifier = ReserveIdentifier;
+	type RuntimeHoldReason = ReserveIdentifier;
 	type FreezeIdentifier = ();
 	type MaxHolds = ConstU32<50>;
 	type MaxFreezes = ();
@@ -228,11 +223,7 @@ impl module_evm::Config for TestRuntime {
 }
 
 frame_support::construct_runtime!(
-	pub enum TestRuntime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum TestRuntime {
 		System: frame_system,
 		EVM: module_evm,
 		EvmAccounts: module_evm_accounts,

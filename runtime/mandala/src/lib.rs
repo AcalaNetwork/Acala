@@ -41,7 +41,7 @@ pub use frame_support::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency,
 		EnsureOrigin, EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType,
 		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers,
-		U128CurrencyToVote, WithdrawReasons,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
@@ -222,11 +222,10 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type RuntimeCall = RuntimeCall;
 	type Lookup = (Indices, EvmAccounts);
-	type Index = Nonce;
-	type BlockNumber = BlockNumber;
+	type Nonce = Nonce;
 	type Hash = Hash;
 	type Hashing = BlakeTwo256;
-	type Header = generic::Header<BlockNumber, BlakeTwo256>;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type BlockHashCount = BlockHashCount;
@@ -252,6 +251,7 @@ impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<32>;
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 }
 
 impl pallet_authorship::Config for Runtime {
@@ -352,7 +352,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-	type HoldIdentifier = ReserveIdentifier;
+	type RuntimeHoldReason = ReserveIdentifier;
 	type FreezeIdentifier = ();
 	type MaxHolds = MaxReserves;
 	type MaxFreezes = ();
@@ -369,6 +369,7 @@ parameter_types! {
 impl pallet_sudo::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -761,7 +762,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type PalletId = PhragmenElectionPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = CurrencyAdapter<Runtime, GetLiquidCurrencyId>;
-	type CurrencyToVote = U128CurrencyToVote;
+	type CurrencyToVote = sp_staking::currency_to_vote::U128CurrencyToVote;
 	type ChangeMembers = HomaCouncil;
 	type InitializeMembers = HomaCouncil;
 	type CandidacyBond = CandidacyBond;
@@ -1997,11 +1998,7 @@ pub type Executive = frame_executive::Executive<
 >;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = primitives::Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
-	{
+	pub enum Runtime {
 		// Core
 		System: frame_system = 0,
 		Timestamp: pallet_timestamp = 1,
@@ -2090,7 +2087,7 @@ construct_runtime!(
 		CumulusXcm: cumulus_pallet_xcm exclude_parts { Call } = 172,
 		DmpQueue: cumulus_pallet_dmp_queue = 173,
 		XTokens: orml_xtokens = 174,
-		UnknownTokens: orml_unknown_tokens exclude_parts { Call } = 175,
+		UnknownTokens: orml_unknown_tokens = 175,
 		OrmlXcm: orml_xcm = 176,
 
 		// Smart contracts
@@ -2687,8 +2684,8 @@ mod tests {
 	}
 
 	fn new_test_ext() -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));

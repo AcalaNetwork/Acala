@@ -29,7 +29,7 @@ use frame_system::EnsureSignedBy;
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_runtime::{traits::IdentityLookup, BuildStorage};
 use sp_std::cell::RefCell;
 use support::{mocks::MockErc20InfoMapping, SpecificJointsSwap};
 
@@ -56,14 +56,13 @@ mod dex {
 
 impl frame_system::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
+	type Nonce = u64;
 	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
@@ -161,18 +160,13 @@ parameter_types! {
 pub type AUSDJointSwap = SpecificJointsSwap<DexModule, AUSDJoint>;
 pub type ACAJointSwap = SpecificJointsSwap<DexModule, ACAJoint>;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		DexModule: dex::{Pallet, Storage, Call, Event<T>, Config<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+	pub enum Runtime {
+		System: frame_system,
+		DexModule: dex,
+		Tokens: orml_tokens,
 	}
 );
 
@@ -222,8 +216,8 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {

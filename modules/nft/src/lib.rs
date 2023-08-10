@@ -40,7 +40,6 @@ use primitives::{
 };
 use scale_info::TypeInfo;
 
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
 	traits::{AccountIdConversion, Hash, Saturating, StaticLookup, Zero},
@@ -56,8 +55,7 @@ pub mod weights;
 pub use module::*;
 pub use weights::WeightInfo;
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, Serialize, Deserialize)]
 pub struct ClassData<Balance> {
 	/// Deposit reserved to create token class
 	pub deposit: Balance,
@@ -67,8 +65,7 @@ pub struct ClassData<Balance> {
 	pub attributes: Attributes,
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, Serialize, Deserialize)]
 pub struct TokenData<Balance> {
 	/// Deposit reserved to create token
 	pub deposit: Balance,
@@ -198,9 +195,6 @@ pub mod module {
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -385,7 +379,7 @@ pub mod module {
 				let class_info = class_info.as_mut().ok_or(Error::<T>::ClassIdNotFound)?;
 				ensure!(who == class_info.owner, Error::<T>::NoPermission);
 
-				let mut data = &mut class_info.data;
+				let data = &mut class_info.data;
 				ensure!(
 					data.properties.0.contains(ClassProperty::ClassPropertiesMutable),
 					Error::<T>::Immutable

@@ -339,8 +339,8 @@ pub mod module {
 		StorageValue<_, BoundedVec<EvmAddress, T::MaxLiquidationContracts>, ValueQuery>;
 
 	#[pallet::genesis_config]
-	#[cfg_attr(feature = "std", derive(Default))]
-	pub struct GenesisConfig {
+	#[derive(frame_support::DefaultNoBound)]
+	pub struct GenesisConfig<T> {
 		#[allow(clippy::type_complexity)]
 		pub collaterals_params: Vec<(
 			CurrencyId,
@@ -350,10 +350,11 @@ pub mod module {
 			Option<Ratio>,
 			Balance,
 		)>,
+		pub _phantom: PhantomData<T>,
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			self.collaterals_params.iter().for_each(
 				|(
@@ -385,10 +386,10 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		/// Issue interest in stable currency for all types of collateral has
 		/// debit when block end, and update their debit exchange rate
-		fn on_initialize(now: T::BlockNumber) -> Weight {
+		fn on_initialize(now: BlockNumberFor<T>) -> Weight {
 			// only after the block #1, `T::UnixTime::now()` will not report error.
 			// https://github.com/paritytech/substrate/blob/4ff92f10058cfe1b379362673dd369e33a919e66/frame/timestamp/src/lib.rs#L276
 			// so accumulate interest at the beginning of the block #2
@@ -405,7 +406,7 @@ pub mod module {
 
 		/// Runs after every block. Start offchain worker to check CDP and
 		/// submit unsigned tx to trigger liquidation or settlement.
-		fn offchain_worker(now: T::BlockNumber) {
+		fn offchain_worker(now: BlockNumberFor<T>) {
 			if let Err(e) = Self::_offchain_worker() {
 				log::info!(
 					target: "cdp-engine offchain worker",

@@ -25,7 +25,6 @@ use sp_runtime::{
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	MultiAddress, Percent,
 };
-use xcm_executor::{traits::*, Assets, Config};
 
 fn fee_pool_size() -> Balance {
 	5 * dollar(NATIVE_CURRENCY)
@@ -216,64 +215,6 @@ fn initial_charge_fee_pool_works() {
 			),
 			0
 		);
-	});
-}
-
-#[test]
-fn trader_works() {
-	// 4 instructions, each instruction cost 200_000_000
-	let mut message = Xcm(vec![
-		ReserveAssetDeposited((Parent, 100).into()),
-		ClearOrigin,
-		BuyExecution {
-			fees: (Parent, 100).into(),
-			weight_limit: Limited(Weight::from_parts(100, 0)),
-		},
-		DepositAsset {
-			assets: AllCounted(1).into(),
-			beneficiary: Here.into(),
-		},
-	]);
-
-	let total_balance: Balance = 1_000_000_000;
-	let asset: MultiAsset = (Parent, total_balance).into();
-	let assets: Assets = asset.into();
-
-	let expect_unspent: MultiAsset = (Parent, total_balance - crate::relaychain::relay_per_second_as_fee(4)).into();
-	let xcm_weight: XcmWeight = <XcmConfig as Config>::Weigher::weight(&mut message).unwrap();
-
-	ExtBuilder::default().build().execute_with(|| {
-		let mut trader = Trader::new();
-		let result_assets = trader.buy_weight(xcm_weight, assets.clone()).unwrap();
-		let unspent: Vec<MultiAsset> = result_assets.into();
-		assert_eq!(vec![expect_unspent.clone()], unspent);
-
-		let mut period_trader = TransactionFeePoolTrader::new();
-		let result_assets = period_trader.buy_weight(xcm_weight, assets.clone());
-		assert!(result_assets.is_err());
-	});
-
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(add_liquidity(
-			RELAY_CHAIN_CURRENCY,
-			NATIVE_CURRENCY,
-			100 * dollar(RELAY_CHAIN_CURRENCY),
-			10000 * dollar(NATIVE_CURRENCY)
-		));
-
-		assert_ok!(init_charge_fee_pool(RELAY_CHAIN_CURRENCY));
-
-		let relay_exchange_rate: Ratio =
-			module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(RELAY_CHAIN_CURRENCY).unwrap();
-
-		let spent = crate::relaychain::token_per_second_as_fee(4, relay_exchange_rate);
-		let expect_unspent: MultiAsset = (Parent, total_balance - spent as u128).into();
-
-		// the newly `TransactionFeePoolTrader` works fine as first priority
-		let mut period_trader = TransactionFeePoolTrader::new();
-		let result_assets = period_trader.buy_weight(xcm_weight, assets);
-		let unspent: Vec<MultiAsset> = result_assets.unwrap().into();
-		assert_eq!(vec![expect_unspent.clone()], unspent);
 	});
 }
 
@@ -551,11 +492,11 @@ fn with_fee_call_works(
 				)
 			);
 			#[cfg(feature = "with-karura-runtime")]
-			let amount = 12_726_949_837u128;
+			let amount = 12726949827u128;
 			#[cfg(feature = "with-acala-runtime")]
-			let amount = 12_726_949_837u128;
+			let amount = 12726949827u128;
 			#[cfg(feature = "with-mandala-runtime")]
-			let amount = 12_701_470_458u128;
+			let amount = 12701470448u128;
 
 			System::assert_has_event(RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
 				currency_id: USD_CURRENCY,

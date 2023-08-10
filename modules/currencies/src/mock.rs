@@ -25,7 +25,7 @@ pub use crate as currencies;
 
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything, GenesisBuild, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -36,7 +36,7 @@ use sp_core::{H160, U256};
 use sp_runtime::{
 	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup},
-	AccountId32,
+	AccountId32, BuildStorage,
 };
 use sp_std::str::FromStr;
 use support::{mocks::MockAddressMapping, AddressMapping};
@@ -50,13 +50,12 @@ pub type AccountId = AccountId32;
 impl frame_system::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = u64;
-	type BlockNumber = u64;
+	type Nonce = u64;
 	type Hash = H256;
 	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
@@ -134,7 +133,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-	type HoldIdentifier = ();
+	type RuntimeHoldReason = ();
 	type FreezeIdentifier = ();
 	type MaxHolds = ConstU32<1>;
 	type MaxFreezes = ();
@@ -228,17 +227,13 @@ pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, RuntimeCall, u32, SignedExtra>;
 
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-	NodeBlock = Block,
-	UncheckedExtrinsic = UncheckedExtrinsic
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Currencies: currencies::{Pallet, Call, Event<T>},
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
-		EVMBridge: module_evm_bridge::{Pallet},
+	pub enum Runtime {
+		System: frame_system,
+		Balances: pallet_balances,
+		Tokens: tokens,
+		Currencies: currencies,
+		EVM: module_evm,
+		EVMBridge: module_evm_bridge,
 	}
 );
 
@@ -343,8 +338,8 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {

@@ -20,35 +20,30 @@ use super::*;
 use crate as collator_selection;
 use frame_support::{
 	ord_parameter_types, parameter_types,
-	traits::{ConstU16, ConstU32, ConstU64, Everything, FindAuthor, GenesisBuild},
+	traits::{ConstU16, ConstU32, ConstU64, Everything, FindAuthor},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
 use primitives::ReserveIdentifier;
 use sp_core::H256;
 use sp_runtime::{
-	testing::{Header, UintAuthorityId},
-	traits::{BlakeTwo256, IdentityLookup, OpaqueKeys},
-	Permill, RuntimeAppPublic,
+	testing::UintAuthorityId,
+	traits::{BlakeTwo256, ConstBool, IdentityLookup, OpaqueKeys},
+	BuildStorage, Permill, RuntimeAppPublic,
 };
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
-		Aura: pallet_aura::{Pallet, Storage, Config<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		CollatorSelection: collator_selection::{Pallet, Call, Storage, Event<T>},
-		Authorship: pallet_authorship::{Pallet, Storage},
+	pub enum Test {
+		System: frame_system,
+		Timestamp: pallet_timestamp,
+		Session: pallet_session,
+		Aura: pallet_aura,
+		Balances: pallet_balances,
+		CollatorSelection: collator_selection,
+		Authorship: pallet_authorship,
 	}
 );
 
@@ -59,13 +54,12 @@ impl frame_system::Config for Test {
 	type DbWeight = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = u64;
-	type BlockNumber = u64;
+	type Nonce = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
@@ -89,7 +83,7 @@ impl pallet_balances::Config for Test {
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-	type HoldIdentifier = ();
+	type RuntimeHoldReason = ();
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();
@@ -121,6 +115,7 @@ impl pallet_aura::Config for Test {
 	type AuthorityId = sp_consensus_aura::sr25519::AuthorityId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<32>;
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 }
 
 sp_runtime::impl_opaque_keys! {
@@ -195,7 +190,7 @@ impl Config for Test {
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	sp_tracing::try_init_simple();
-	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 	let invulnerables = vec![1, 2];
 	let keys = invulnerables
 		.iter()

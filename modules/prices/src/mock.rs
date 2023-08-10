@@ -30,9 +30,8 @@ use orml_traits::{parameter_type_with_key, DataFeeder};
 use primitives::{currency::DexShare, Amount, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{
-	testing::Header,
 	traits::{IdentityLookup, One as OneT, Zero},
-	DispatchError, FixedPointNumber,
+	BuildStorage, DispatchError, FixedPointNumber,
 };
 use sp_std::cell::RefCell;
 use support::{mocks::MockErc20InfoMapping, ExchangeRate, SwapLimit};
@@ -59,14 +58,13 @@ mod prices {
 
 impl frame_system::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
+	type Nonce = u64;
 	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
@@ -274,18 +272,13 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		PricesModule: prices::{Pallet, Storage, Call, Event<T>},
-		Tokens: orml_tokens::{Pallet, Call, Storage, Event<T>},
+	pub enum Runtime {
+		System: frame_system,
+		PricesModule: prices,
+		Tokens: orml_tokens,
 	}
 );
 
@@ -299,8 +292,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		t.into()

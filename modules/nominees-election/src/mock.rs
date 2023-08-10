@@ -30,7 +30,7 @@ use frame_support::{
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_runtime::{traits::IdentityLookup, BuildStorage};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -42,14 +42,13 @@ pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 impl frame_system::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
+	type Nonce = u64;
 	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
@@ -101,7 +100,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
-	type HoldIdentifier = ();
+	type RuntimeHoldReason = ();
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();
@@ -146,20 +145,15 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		NomineesElectionModule: nominees_election::{Pallet, Call, Storage, Event<T>},
-		TokensModule: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		OrmlCurrencies: orml_currencies::{Pallet, Call},
+	pub enum Runtime {
+		System: frame_system,
+		NomineesElectionModule: nominees_election,
+		TokensModule: orml_tokens,
+		PalletBalances: pallet_balances,
+		OrmlCurrencies: orml_currencies,
 	}
 );
 
@@ -177,8 +171,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {

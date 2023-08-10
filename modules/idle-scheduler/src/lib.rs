@@ -101,8 +101,8 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(_n: T::BlockNumber) -> Weight {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
 			// This is the previous relay block because `on_initialize` is executed
 			// before the inherent that sets the new relay chain block number
 			let previous_relay_block: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number();
@@ -111,7 +111,7 @@ pub mod module {
 			T::WeightInfo::on_initialize()
 		}
 
-		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
+		fn on_idle(_n: BlockNumberFor<T>, remaining_weight: Weight) -> Weight {
 			// Checks if we have skipped enough relay blocks without block production to skip dispatching
 			// scheduled tasks
 			let current_relay_block_number: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number();
@@ -132,7 +132,7 @@ pub mod module {
 			}
 		}
 
-		fn on_finalize(_n: T::BlockNumber) {
+		fn on_finalize(_n: BlockNumberFor<T>) {
 			// Don't commit to storage, needed for the case block is full and `on_idle` isn't called
 			PreviousRelayBlockNumber::<T>::kill();
 		}

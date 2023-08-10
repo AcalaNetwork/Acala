@@ -5,22 +5,22 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-hex-literal = "0.3.4"
+hex-literal = "0.4.1"
 bstringify = "0.1.2"
-serde = { version = "1.0.145", optional = true }
+serde = { version = "1.0.145", default-features = false, features = ["alloc", "derive"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
 num_enum = { version = "0.5.1", default-features = false }
 scale-info = { version = "2.1", default-features = false, features = ["derive"] }
-enumflags2 = { version = "0.6.3" }
+enumflags2 = { version = "0.7.7", features = ["serde"] }
 paste = "1.0"
 
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
-sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
 
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
 
 orml-traits = { path = "../orml/traits", default-features = false }
 
@@ -35,7 +35,7 @@ serde_json = { version = "1.0.85" }
 [features]
 default = ["std"]
 std = [
-	"serde",
+	"serde/std",
 	"codec/std",
 	"num_enum/std",
 	"scale-info/std",

@@ -145,7 +145,7 @@ pub mod module {
 		type RedeemThreshold: Get<Balance>;
 
 		/// Block number provider for the relaychain.
-		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
+		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = BlockNumberFor<Self>>;
 
 		/// The XcmInterface to manage the staking of sub-account on relaychain.
 		type XcmInterface: HomaSubAccountXcm<Self::AccountId, Balance>;
@@ -239,9 +239,9 @@ pub mod module {
 		/// The fast match fee rate has been updated.
 		FastMatchFeeRateUpdated { fast_match_fee_rate: Rate },
 		/// The relaychain block number of last era bumped updated.
-		LastEraBumpedBlockUpdated { last_era_bumped_block: T::BlockNumber },
+		LastEraBumpedBlockUpdated { last_era_bumped_block: BlockNumberFor<T> },
 		/// The frequency to bump era has been updated.
-		BumpEraFrequencyUpdated { frequency: T::BlockNumber },
+		BumpEraFrequencyUpdated { frequency: BlockNumberFor<T> },
 	}
 
 	/// The current era of relaychain
@@ -341,25 +341,25 @@ pub mod module {
 
 	/// The relaychain block number of last era bumped.
 	///
-	/// LastEraBumpedBlock: value: T::BlockNumber
+	/// LastEraBumpedBlock: value: BlockNumberFor<T>
 	#[pallet::storage]
 	#[pallet::getter(fn last_era_bumped_block)]
-	pub type LastEraBumpedBlock<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub type LastEraBumpedBlock<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	/// The internal of relaychain block number of relaychain to bump local current era.
 	///
-	/// LastEraBumpedRelayChainBlock: value: T::BlockNumber
+	/// LastEraBumpedRelayChainBlock: value: BlockNumberFor<T>
 	#[pallet::storage]
 	#[pallet::getter(fn bump_era_frequency)]
-	pub type BumpEraFrequency<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub type BumpEraFrequency<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(_: T::BlockNumber) -> Weight {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(_: BlockNumberFor<T>) -> Weight {
 			let bump_era_number = Self::era_amount_should_to_bump(T::RelayChainBlockNumber::current_block_number());
 			if !bump_era_number.is_zero() {
 				let _ = Self::bump_current_era(bump_era_number);
@@ -537,8 +537,8 @@ pub mod module {
 		#[transactional]
 		pub fn update_bump_era_params(
 			origin: OriginFor<T>,
-			last_era_bumped_block: Option<T::BlockNumber>,
-			frequency: Option<T::BlockNumber>,
+			last_era_bumped_block: Option<BlockNumberFor<T>>,
+			frequency: Option<BlockNumberFor<T>>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
@@ -1097,7 +1097,7 @@ pub mod module {
 			Self::burn_liquid_currency(&Self::account_id(), total_redeem_amount)
 		}
 
-		pub fn era_amount_should_to_bump(relaychain_block_number: T::BlockNumber) -> EraIndex {
+		pub fn era_amount_should_to_bump(relaychain_block_number: BlockNumberFor<T>) -> EraIndex {
 			relaychain_block_number
 				.checked_sub(&Self::last_era_bumped_block())
 				.and_then(|n| n.checked_div(&Self::bump_era_frequency()))

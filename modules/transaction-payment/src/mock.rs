@@ -34,9 +34,8 @@ use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
-	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup, One},
-	Perbill,
+	BuildStorage, Perbill,
 };
 use sp_std::cell::RefCell;
 use support::{
@@ -77,14 +76,13 @@ impl Get<frame_system::limits::BlockWeights> for BlockWeights {
 
 impl frame_system::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
+	type Nonce = u64;
 	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = BlockWeights;
@@ -136,7 +134,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-	type HoldIdentifier = ();
+	type RuntimeHoldReason = ();
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();
@@ -323,21 +321,16 @@ impl WeightToFeePolynomial for WeightToFee {
 	}
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		TransactionPayment: transaction_payment::{Pallet, Call, Storage, Event<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Currencies: module_currencies::{Pallet, Call, Event<T>},
-		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+	pub enum Runtime {
+		System: frame_system,
+		TransactionPayment: transaction_payment,
+		PalletBalances: pallet_balances,
+		Tokens: orml_tokens,
+		Currencies: module_currencies,
+		DEXModule: module_dex,
 	}
 );
 
@@ -392,8 +385,8 @@ impl ExtBuilder {
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
 		self.set_constants();
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {

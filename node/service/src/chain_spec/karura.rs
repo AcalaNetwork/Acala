@@ -34,7 +34,7 @@ use karura_runtime::{
 };
 use runtime_common::TokenInfo;
 
-pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
+pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::RuntimeGenesisConfig, Extensions>;
 
 pub const PARA_ID: u32 = 2000;
 
@@ -142,9 +142,10 @@ fn karura_dev_genesis(
 	initial_allocation: Vec<(AccountId, Balance)>,
 	vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)>,
 	general_councils: Vec<AccountId>,
-) -> karura_runtime::GenesisConfig {
-	karura_runtime::GenesisConfig {
+) -> karura_runtime::RuntimeGenesisConfig {
+	karura_runtime::RuntimeGenesisConfig {
 		system: SystemConfig {
+			_config: Default::default(),
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 		},
@@ -181,9 +182,11 @@ fn karura_dev_genesis(
 		tokens: TokensConfig { balances: vec![] },
 		vesting: VestingConfig { vesting: vesting_list },
 		cdp_treasury: CdpTreasuryConfig {
+			_phantom: Default::default(),
 			expected_collateral_auction_size: vec![],
 		},
 		cdp_engine: CdpEngineConfig {
+			_phantom: Default::default(),
 			collaterals_params: vec![],
 		},
 		asset_registry: Default::default(),
@@ -197,6 +200,7 @@ fn karura_dev_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
+			_config: Default::default(),
 			parachain_id: PARA_ID.into(),
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
@@ -227,6 +231,7 @@ fn karura_dev_genesis(
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
 		polkadot_xcm: PolkadotXcmConfig {
+			_config: Default::default(),
 			safe_xcm_version: Some(2),
 		},
 	}

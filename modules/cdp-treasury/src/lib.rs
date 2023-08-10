@@ -82,7 +82,7 @@ pub mod module {
 			AtLeast64BitUnsigned = Balance,
 			Balance = Balance,
 			AccountId = Self::AccountId,
-			BlockNumber = Self::BlockNumber,
+			BlockNumber = BlockNumberFor<Self>,
 		>;
 
 		/// The cap of lots number when create collateral auction on a
@@ -154,13 +154,14 @@ pub mod module {
 	pub type DebitOffsetBuffer<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	#[pallet::genesis_config]
-	#[cfg_attr(feature = "std", derive(Default))]
-	pub struct GenesisConfig {
+	#[derive(frame_support::DefaultNoBound)]
+	pub struct GenesisConfig<T> {
 		pub expected_collateral_auction_size: Vec<(CurrencyId, Balance)>,
+		pub _phantom: sp_std::marker::PhantomData<T>,
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			self.expected_collateral_auction_size
 				.iter()
@@ -174,9 +175,9 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		/// Handle excessive surplus or debits of system when block end
-		fn on_finalize(_now: T::BlockNumber) {
+		fn on_finalize(_now: BlockNumberFor<T>) {
 			// offset the same amount between debit pool and surplus pool
 			Self::offset_surplus_and_debit();
 		}

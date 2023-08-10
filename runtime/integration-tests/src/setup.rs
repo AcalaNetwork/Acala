@@ -18,7 +18,7 @@
 
 pub use codec::{Decode, Encode};
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-use frame_support::traits::{GenesisBuild, OnFinalize, OnIdle, OnInitialize};
+use frame_support::traits::{OnFinalize, OnIdle, OnInitialize};
 pub use frame_support::{assert_noop, assert_ok, traits::Currency};
 pub use frame_system::RawOrigin;
 use runtime_common::evm_genesis;
@@ -42,7 +42,8 @@ pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Zero},
-	Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress, Perbill, Permill,
+	BuildStorage, Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress,
+	Perbill, Permill,
 };
 
 pub use xcm::v3::prelude::*;
@@ -93,9 +94,6 @@ mod mandala_imports {
 		primitives::DexShare::Token(TokenSymbol::DOT),
 	);
 	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::ACA;
-	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
-	pub type TransactionFeePoolTrader =
-		FixedRateOfAsset<BaseRate, (), BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>;
 	pub const ALTERNATIVE_SURPLUS: Percent = AlternativeFeeSurplus::get();
 }
 
@@ -119,7 +117,6 @@ mod karura_imports {
 		TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId,
 		Utility, Vesting, XTokens, XcmInterface, EVM, NFT,
 	};
-	use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 	pub use primitives::TradingPair;
 	pub use runtime_common::{cent, dollar, millicent, FixedRateOfAsset, KAR, KSM, KUSD, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
@@ -146,9 +143,6 @@ mod karura_imports {
 		primitives::DexShare::Token(TokenSymbol::KSM),
 	);
 	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::KAR;
-	pub type Trader = FixedRateOfFungible<KsmPerSecond, ()>;
-	pub type TransactionFeePoolTrader =
-		FixedRateOfAsset<BaseRate, (), BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>;
 	pub const ALTERNATIVE_SURPLUS: Percent = AlternativeFeeSurplus::get();
 }
 
@@ -201,9 +195,6 @@ mod acala_imports {
 		primitives::DexShare::Token(TokenSymbol::DOT),
 	);
 	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::ACA;
-	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
-	pub type TransactionFeePoolTrader =
-		FixedRateOfAsset<BaseRate, (), BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>;
 	pub const ALTERNATIVE_SURPLUS: Percent = AlternativeFeeSurplus::get();
 }
 
@@ -292,10 +283,18 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
+		let t = self.build_storage();
+
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
+	pub fn build_storage(self) -> sp_core::storage::Storage {
 		let evm_genesis_accounts = evm_genesis(vec![]);
 
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		let native_currency_id = GetNativeCurrencyId::get();
@@ -379,25 +378,21 @@ impl ExtBuilder {
 			.assimilate_storage(&mut t)
 			.unwrap();
 
-		<parachain_info::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-			&parachain_info::GenesisConfig {
-				parachain_id: self.parachain_id.into(),
-			},
-			&mut t,
-		)
+		parachain_info::GenesisConfig::<Runtime> {
+			_config: Default::default(),
+			parachain_id: self.parachain_id.into(),
+		}
+		.assimilate_storage(&mut t)
 		.unwrap();
 
-		<pallet_xcm::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-			&pallet_xcm::GenesisConfig {
-				safe_xcm_version: Some(2),
-			},
-			&mut t,
-		)
+		pallet_xcm::GenesisConfig::<Runtime> {
+			_config: Default::default(),
+			safe_xcm_version: Some(2),
+		}
+		.assimilate_storage(&mut t)
 		.unwrap();
 
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
-		ext
+		t
 	}
 }
 

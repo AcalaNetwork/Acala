@@ -29,6 +29,7 @@ use frame_support::{
 };
 use module_support::DispatchableTask;
 pub use sp_runtime::offchain::storage::StorageValueRef;
+use sp_runtime::BuildStorage;
 
 use super::*;
 use codec::{Decode, Encode};
@@ -41,14 +42,13 @@ pub type AccountId = u32;
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = u64;
-	type BlockNumber = u64;
+	type Nonce = u64;
 	type RuntimeCall = RuntimeCall;
 	type Hash = sp_runtime::testing::H256;
 	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
-	type Header = sp_runtime::testing::Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
@@ -128,17 +128,12 @@ define_combined_task! {
 	}
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
-	{
-		System: frame_system::{Pallet, Call, Event<T>},
-		IdleScheduler: module_idle_scheduler::{Pallet, Call, Event<T>, Storage},
+	pub enum Runtime {
+		System: frame_system,
+		IdleScheduler: module_idle_scheduler,
 	}
 );
 
@@ -146,8 +141,8 @@ construct_runtime!(
 pub struct ExtBuilder;
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);

@@ -33,11 +33,12 @@ use module_support::{
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
-	define_combined_task, Address, Amount, Block, BlockNumber, CurrencyId, Header, Multiplier, ReserveIdentifier,
-	Signature, TokenSymbol,
+	define_combined_task, Address, Amount, BlockNumber, CurrencyId, Header, Multiplier, ReserveIdentifier, Signature,
+	TokenSymbol,
 };
 use sp_core::{H160, H256};
 use sp_runtime::{
+	generic,
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, IdentityLookup},
 	AccountId32, FixedU128, Percent,
 };
@@ -56,13 +57,12 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
+	type Nonce = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU32<250>;
 	type DbWeight = ();
@@ -87,7 +87,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-	type HoldIdentifier = ();
+	type RuntimeHoldReason = ();
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();
@@ -304,20 +304,17 @@ impl module_dex::Config for Runtime {
 
 pub type SignedExtra = (frame_system::CheckWeight<Runtime>,);
 pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		Dex: module_dex::{Pallet, Call, Storage, Event<T>},
-		EVM: evm_mod::{Pallet, Config<T>, Call, Storage, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
-		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>},
+	pub enum Runtime {
+		System: frame_system,
+		Dex: module_dex,
+		EVM: evm_mod,
+		Tokens: orml_tokens,
+		Balances: pallet_balances,
+		Currencies: orml_currencies,
+		IdleScheduler: module_idle_scheduler,
+		TransactionPayment: module_transaction_payment,
 	}
 );

@@ -499,13 +499,13 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		/// `on_initialize` to return the weight used in `on_finalize`.
-		fn on_initialize(_: T::BlockNumber) -> Weight {
+		fn on_initialize(_: BlockNumberFor<T>) -> Weight {
 			<T as Config>::WeightInfo::on_finalize()
 		}
 
-		fn on_finalize(_: T::BlockNumber) {
+		fn on_finalize(_: BlockNumberFor<T>) {
 			NextFeeMultiplier::<T>::mutate(|fm| {
 				*fm = T::FeeMultiplierUpdate::convert(*fm);
 			});

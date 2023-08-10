@@ -370,10 +370,10 @@ mod mandala_only_tests {
 
 			assert_eq!(base_fee, 1_000_000_000);
 			assert_eq!(len_fee, 50_000_000);
-			assert_eq!(adjusted_weight_fee, 22_193_280);
+			assert_eq!(adjusted_weight_fee, 17031845);
 
 			let total_fee = base_fee.saturating_add(len_fee).saturating_add(adjusted_weight_fee);
-			assert_eq!(total_fee, 1_072_193_280);
+			assert_eq!(total_fee, 1067031845);
 		});
 	}
 
@@ -416,7 +416,7 @@ mod mandala_only_tests {
 						bytes.len()
 					),
 					Ok(ValidTransaction {
-						priority: 198_255,
+						priority: 235960,
 						requires: vec![],
 						provides: vec![],
 						longevity: 18_446_744_073_709_551_615,
@@ -433,7 +433,7 @@ mod mandala_only_tests {
 						bytes.len()
 					),
 					Ok(ValidTransaction {
-						priority: 198_255,
+						priority: 235960,
 						requires: vec![],
 						provides: vec![],
 						longevity: 18_446_744_073_709_551_615,
@@ -450,7 +450,7 @@ mod mandala_only_tests {
 						bytes.len()
 					),
 					Ok(ValidTransaction {
-						priority: 198_255_000_000,
+						priority: 235960000000,
 						requires: vec![],
 						provides: vec![],
 						longevity: 18_446_744_073_709_551_615,
@@ -512,7 +512,7 @@ mod mandala_only_tests {
 						bytes.len()
 					),
 					Ok(ValidTransaction {
-						priority: 56_773_627_318_880_000,
+						priority: 51918138056970000,
 						requires: vec![],
 						provides: vec![],
 						longevity: 18_446_744_073_709_551_615,

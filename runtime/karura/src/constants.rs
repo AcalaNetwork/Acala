@@ -108,7 +108,7 @@ pub mod parachains {
 		pub const KINT_KEY: &[u8] = &[0, 12];
 	}
 
-	pub mod statemine {
+	pub mod asset_hub_kusama {
 		pub const ID: u32 = 1000;
 	}
 }
@@ -124,6 +124,6 @@ mod tests {
 		let q = Balance::from(ExtrinsicBaseWeight::get().ref_time());
 
 		assert_eq!(p, 1_000_000_000);
-		assert_eq!(q, 113_638_000);
+		assert_eq!(q, 124_414_000);
 	}
 }

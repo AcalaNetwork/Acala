@@ -54,7 +54,7 @@
 //!   fees are deposited into the Pot.
 //!
 //! Note: Eventually the Pot distribution may be modified as discussed in
-//! [this issue](https://github.com/paritytech/statemint/issues/21#issuecomment-810481073).
+//! [this issue](https://github.com/paritytech/asset_hub_polkadot/issues/21#issuecomment-810481073).
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
@@ -83,7 +83,6 @@ pub mod pallet {
 		},
 	};
 	use frame_support::{
-		inherent::Vec,
 		pallet_prelude::*,
 		storage::bounded_btree_set::BoundedBTreeSet,
 		traits::{
@@ -97,7 +96,7 @@ pub mod pallet {
 	use pallet_session::SessionManager;
 	use primitives::ReserveIdentifier;
 	use sp_staking::SessionIndex;
-	use sp_std::{ops::Div, vec};
+	use sp_std::{ops::Div, prelude::*};
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::CollatorSelection;
 	pub const POINT_PER_BLOCK: u32 = 10;
@@ -213,27 +212,20 @@ pub mod pallet {
 	pub type NonCandidates<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, SessionIndex, ValueQuery>;
 
 	#[pallet::genesis_config]
+	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
 		pub invulnerables: Vec<T::AccountId>,
 		pub candidacy_bond: BalanceOf<T>,
 		pub desired_candidates: u32,
 	}
 
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self {
-				invulnerables: Default::default(),
-				candidacy_bond: Default::default(),
-				desired_candidates: Default::default(),
-			}
-		}
-	}
-
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
-			let duplicate_invulnerables = self.invulnerables.iter().collect::<std::collections::BTreeSet<_>>();
+			let duplicate_invulnerables = self
+				.invulnerables
+				.iter()
+				.collect::<sp_std::collections::btree_set::BTreeSet<_>>();
 			assert_eq!(
 				duplicate_invulnerables.len(),
 				self.invulnerables.len(),
@@ -448,7 +440,7 @@ pub mod pallet {
 
 	/// Keep track of number of authored blocks per authority, uncles are counted as well since
 	/// they're a valid proof of being online.
-	impl<T: Config + pallet_authorship::Config> pallet_authorship::EventHandler<T::AccountId, T::BlockNumber>
+	impl<T: Config + pallet_authorship::Config> pallet_authorship::EventHandler<T::AccountId, BlockNumberFor<T>>
 		for Pallet<T>
 	{
 		fn note_author(author: T::AccountId) {

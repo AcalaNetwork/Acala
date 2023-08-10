@@ -92,10 +92,10 @@ pub mod module {
 		type Erc20InfoMapping: Erc20InfoMapping;
 
 		/// Get the lease block number of relaychain for specific Lease
-		type LiquidCrowdloanLeaseBlockNumber: GetByKey<Lease, Option<Self::BlockNumber>>;
+		type LiquidCrowdloanLeaseBlockNumber: GetByKey<Lease, Option<BlockNumberFor<Self>>>;
 
 		/// Block number provider for the relaychain.
-		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
+		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = BlockNumberFor<Self>>;
 
 		/// The staking reward rate per relaychain block for StakingCurrency.
 		/// In fact, the staking reward is not settled according to the block on relaychain.
@@ -141,7 +141,7 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {

@@ -331,24 +331,9 @@ fn force_set_lock_and_force_remove_lock_should_work() {
 
 			// do nothing
 			assert_ok!(Currencies::force_set_lock(RuntimeOrigin::root(), alice(), DOT, 0, ID_1,));
-			assert_ok!(Currencies::force_set_lock(
-				RuntimeOrigin::root(),
-				alice(),
-				NATIVE_CURRENCY_ID,
-				0,
-				ID_1,
-			));
 			assert_eq!(
 				Tokens::locks(&alice(), DOT)[0],
 				tokens::BalanceLock { id: ID_1, amount: 10 }
-			);
-			assert_eq!(
-				PalletBalances::locks(&alice())[0],
-				pallet_balances::BalanceLock {
-					id: ID_1,
-					amount: 100,
-					reasons: WithdrawReasons::all().into(),
-				}
 			);
 
 			// remove lock

@@ -67,13 +67,12 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = Nonce;
-	type BlockNumber = BlockNumber;
+	type Nonce = Nonce;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU32<250>;
 	type DbWeight = frame_support::weights::constants::RocksDbWeight;
@@ -155,7 +154,7 @@ impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
-	type HoldIdentifier = ReserveIdentifier;
+	type RuntimeHoldReason = ReserveIdentifier;
 	type FreezeIdentifier = ();
 	type MaxHolds = ConstU32<50>;
 	type MaxFreezes = ();
@@ -840,7 +839,12 @@ impl ExecuteXcm<RuntimeCall> for MockExec {
 		unreachable!()
 	}
 
-	fn execute(_origin: impl Into<MultiLocation>, _pre: Weightless, _hash: XcmHash, _weight_credit: Weight) -> Outcome {
+	fn execute(
+		_origin: impl Into<MultiLocation>,
+		_pre: Weightless,
+		_hash: &mut XcmHash,
+		_weight_credit: Weight,
+	) -> Outcome {
 		unreachable!()
 	}
 
@@ -977,11 +981,7 @@ pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<Address, R
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Test {
 		System: frame_system,
 		Oracle: orml_oracle,
 		Timestamp: pallet_timestamp,
@@ -1026,10 +1026,11 @@ where
 // This function basically just builds a genesis storage key/value store
 // according to our desired mockup.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	use frame_support::{assert_ok, traits::GenesisBuild};
+	use frame_support::assert_ok;
+	use sp_runtime::BuildStorage;
 	use sp_std::collections::btree_map::BTreeMap;
 
-	let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 	let mut accounts = BTreeMap::new();
 	let mut evm_genesis_accounts = crate::evm_genesis(vec![]);

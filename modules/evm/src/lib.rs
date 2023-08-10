@@ -66,7 +66,6 @@ pub use primitives::{
 	Balance, CurrencyId, Nonce, ReserveIdentifier,
 };
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
@@ -275,8 +274,7 @@ pub mod module {
 		pub ref_count: u32,
 	}
 
-	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Serialize, Deserialize)]
 	/// Account definition used for genesis block construction.
 	pub struct GenesisAccount<Balance, Index> {
 		/// Account nonce.
@@ -303,7 +301,7 @@ pub mod module {
 	/// Accounts: map EvmAddress => Option<AccountInfo<T>>
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
-	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, AccountInfo<T::Index>, OptionQuery>;
+	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, AccountInfo<T::Nonce>, OptionQuery>;
 
 	/// The storage usage for contracts. Including code size, extra bytes and total AccountStorages
 	/// size.
@@ -359,23 +357,14 @@ pub mod module {
 	pub type XcmOrigin<T: Config> = StorageValue<_, Vec<T::AccountId>, OptionQuery>;
 
 	#[pallet::genesis_config]
+	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
 		pub chain_id: u64,
-		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				chain_id: Default::default(),
-				accounts: Default::default(),
-			}
-		}
+		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Nonce>>,
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			use sp_std::rc::Rc;
 
@@ -386,7 +375,7 @@ pub mod module {
 			self.accounts.iter().for_each(|(address, account)| {
 				let account_id = T::AddressMapping::get_account_id(address);
 
-				let account_info = <AccountInfo<T::Index>>::new(account.nonce, None);
+				let account_info = <AccountInfo<T::Nonce>>::new(account.nonce, None);
 				<Accounts<T>>::insert(address, account_info);
 
 				let amount = if account.balance.is_zero() {
@@ -544,7 +533,7 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn integrity_test() {
 			assert!(convert_decimals_from_evm(T::StorageDepositPerByte::get()).is_some());
 		}
@@ -568,7 +557,7 @@ pub mod module {
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
 			access_list: Vec<AccessListItem>,
-			#[pallet::compact] _valid_until: T::BlockNumber, // checked by tx validation logic
+			#[pallet::compact] _valid_until: BlockNumberFor<T>, // checked by tx validation logic
 		) -> DispatchResultWithPostInfo {
 			match action {
 				TransactionAction::Call(target) => {
@@ -1488,7 +1477,7 @@ impl<T: Config> Pallet<T> {
 			if let Some(account_info) = maybe_account_info.as_mut() {
 				account_info.contract_info = Some(contract_info.clone());
 			} else {
-				let account_info = AccountInfo::<T::Index>::new(Default::default(), Some(contract_info.clone()));
+				let account_info = AccountInfo::<T::Nonce>::new(Default::default(), Some(contract_info.clone()));
 				*maybe_account_info = Some(account_info);
 			}
 		});
@@ -1905,10 +1894,10 @@ impl<T: Config> Pallet<T> {
 		// EVM changes reverted, increase nonce by ourselves
 		Accounts::<T>::mutate(origin, |account| {
 			if let Some(info) = account.as_mut() {
-				info.nonce = info.nonce.saturating_add(T::Index::one());
+				info.nonce = info.nonce.saturating_add(T::Nonce::one());
 			} else {
 				*account = Some(AccountInfo {
-					nonce: T::Index::one(),
+					nonce: T::Nonce::one(),
 					contract_info: None,
 				});
 			}

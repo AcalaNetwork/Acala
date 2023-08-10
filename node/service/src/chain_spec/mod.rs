@@ -51,7 +51,7 @@ pub struct Extensions {
 	pub para_id: u32,
 	/// Known bad block hashes.
 	#[serde(default)]
-	pub bad_blocks: sc_client_api::BadBlocks<polkadot_primitives::v4::Block>,
+	pub bad_blocks: sc_client_api::BadBlocks<polkadot_primitives::v5::Block>,
 }
 
 impl Extensions {

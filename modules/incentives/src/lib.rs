@@ -70,7 +70,7 @@ pub mod module {
 
 		/// The period to accumulate rewards
 		#[pallet::constant]
-		type AccumulatePeriod: Get<Self::BlockNumber>;
+		type AccumulatePeriod: Get<BlockNumberFor<Self>>;
 
 		/// The native currency for earning staking
 		#[pallet::constant]
@@ -176,8 +176,8 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(now: T::BlockNumber) -> Weight {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(now: BlockNumberFor<T>) -> Weight {
 			// accumulate reward periodically
 			if now % T::AccumulatePeriod::get() == Zero::zero() {
 				let mut count: u32 = 0;

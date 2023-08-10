@@ -23,22 +23,20 @@
 use crate as session_manager;
 use frame_support::{
 	construct_runtime,
-	pallet_prelude::GenesisBuild,
 	traits::{ConstU32, ConstU64, Everything},
 };
-use sp_runtime::{testing::UintAuthorityId, traits::OpaqueKeys, RuntimeAppPublic};
+use sp_runtime::{testing::UintAuthorityId, traits::OpaqueKeys, BuildStorage, RuntimeAppPublic};
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = u64;
-	type BlockNumber = u64;
+	type Nonce = u64;
 	type RuntimeCall = RuntimeCall;
 	type Hash = sp_runtime::testing::H256;
 	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = u64;
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
-	type Header = sp_runtime::testing::Header;
+	type Block = Block;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
@@ -102,24 +100,19 @@ impl session_manager::Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
-	{
-		System: frame_system::{Pallet, Call, Event<T>},
-		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
-		SessionManager: session_manager::{Pallet, Call, Event<T>, Config<T>, Storage},
+	pub enum Runtime {
+		System: frame_system,
+		Session: pallet_session,
+		SessionManager: session_manager,
 	}
 );
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let mut t = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 	session_manager::GenesisConfig::<Runtime> { session_duration: 10 }
 		.assimilate_storage(&mut t)

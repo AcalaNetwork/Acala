@@ -21,10 +21,10 @@ use crate::{mock::*, Error, NonCandidates, RESERVE_ID};
 use frame_support::{
 	assert_noop, assert_ok,
 	storage::bounded_btree_set::BoundedBTreeSet,
-	traits::{ConstU32, Currency, GenesisBuild, NamedReservableCurrency, OnInitialize},
+	traits::{ConstU32, Currency, NamedReservableCurrency, OnInitialize},
 };
 use pallet_balances::Error as BalancesError;
-use sp_runtime::{testing::UintAuthorityId, traits::BadOrigin};
+use sp_runtime::{testing::UintAuthorityId, traits::BadOrigin, BuildStorage};
 
 type Collators = BoundedBTreeSet<u64, ConstU32<4>>;
 
@@ -574,7 +574,7 @@ fn exceeding_max_invulnerables_should_fail() {
 #[should_panic = "duplicate invulnerables in genesis."]
 fn cannot_set_genesis_value_twice() {
 	sp_tracing::try_init_simple();
-	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 	let invulnerables = vec![1, 1];
 
 	let collator_selection = collator_selection::GenesisConfig::<Test> {

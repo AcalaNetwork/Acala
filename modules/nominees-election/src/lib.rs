@@ -52,7 +52,7 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config<I: 'static = ()>: frame_system::Config {
 		type RuntimeEvent: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, Balance = Balance>;
+		type Currency: BasicLockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>, Balance = Balance>;
 		type NomineeId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord;
 		#[pallet::constant]
 		type PalletId: Get<LockIdentifier>;
@@ -136,7 +136,7 @@ pub mod module {
 	pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
 
 	#[pallet::hooks]
-	impl<T: Config<I>, I: 'static> Hooks<T::BlockNumber> for Pallet<T, I> {}
+	impl<T: Config<I>, I: 'static> Hooks<BlockNumberFor<T>> for Pallet<T, I> {}
 
 	#[pallet::call]
 	impl<T: Config<I>, I: 'static> Pallet<T, I> {
