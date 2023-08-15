@@ -293,7 +293,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => {
 				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
-			Erc20(address) if !is_system_contract(address) => {
+			Erc20(address) if !is_system_contract(&address) => {
 				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
 			LiquidCrowdloan(_lease) => native_currency_location(ParachainInfo::get().into(), id.encode()),
@@ -328,7 +328,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
 								Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => Some(currency_id),
-								Erc20(address) if !is_system_contract(address) => Some(currency_id),
+								Erc20(address) if !is_system_contract(&address) => Some(currency_id),
 								LiquidCrowdloan(_lease) => Some(currency_id),
 								StableAssetPoolToken(_pool_id) => Some(currency_id),
 								_ => None,
@@ -350,7 +350,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
 					Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => Some(currency_id),
-					Erc20(address) if !is_system_contract(address) => Some(currency_id),
+					Erc20(address) if !is_system_contract(&address) => Some(currency_id),
 					LiquidCrowdloan(_lease) => Some(currency_id),
 					StableAssetPoolToken(_pool_id) => Some(currency_id),
 					_ => None,
