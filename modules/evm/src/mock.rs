@@ -289,7 +289,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		contract_b(),
 		GenesisAccount {
 			nonce: 1,
-			code: contract,
 			..Default::default()
 		},
 	);
