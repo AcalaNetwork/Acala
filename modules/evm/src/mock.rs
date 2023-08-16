@@ -29,7 +29,7 @@ use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{define_combined_task, Amount, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
-use sp_core::{H160, H256};
+use sp_core::{bytes::from_hex, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup},
 	AccountId32, BuildStorage,
@@ -266,10 +266,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	let mut accounts = BTreeMap::new();
 
+	// pragma solidity >=0.8.2 <0.9.0;
+	// contract Test {}
+	let contract = from_hex(
+		"0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220199b6fd928fecd2e7ce866eb76c49927191c7a839fd75192acc84b773e5dbf1e64736f6c63430008120033"
+	).unwrap();
+
 	accounts.insert(
 		contract_a(),
 		GenesisAccount {
 			nonce: 1,
+			code: contract.clone(),
 			..Default::default()
 		},
 	);

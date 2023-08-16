@@ -643,7 +643,7 @@ where
 	fn calculate_rate(location: MultiLocation) -> Option<Ratio> {
 		let currency = key_to_currency(location);
 		match currency {
-			Some(CurrencyId::Erc20(address)) if !is_system_contract(address) => {
+			Some(CurrencyId::Erc20(address)) if !is_system_contract(&address) => {
 				if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::Erc20(address)) {
 					let minimum_balance = asset_metadata.minimal_balance.into();
 					let rate =
@@ -898,7 +898,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 	// If is CurrencyId::DexShare and contain DexShare::Erc20,
 	// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn decode_evm_address(addr: EvmAddress) -> Option<CurrencyId> {
-		if !is_system_contract(addr) {
+		if !is_system_contract(&addr) {
 			return Some(CurrencyId::Erc20(addr));
 		}
 

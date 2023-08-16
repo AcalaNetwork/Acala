@@ -97,7 +97,7 @@ parameter_types! {
 pub struct SystemContractsFilter;
 impl PrecompileCallerFilter for SystemContractsFilter {
 	fn is_allowed(caller: H160) -> bool {
-		is_system_contract(caller)
+		is_system_contract(&caller)
 	}
 }
 

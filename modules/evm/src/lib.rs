@@ -59,8 +59,8 @@ pub use module_support::{
 pub use orml_traits::{currency::TransferAll, MultiCurrency};
 pub use primitives::{
 	evm::{
-		convert_decimals_from_evm, convert_decimals_to_evm, decode_gas_limit, CallInfo, CreateInfo, EvmAddress,
-		ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START,
+		convert_decimals_from_evm, convert_decimals_to_evm, decode_gas_limit, is_system_contract, CallInfo, CreateInfo,
+		EvmAddress, ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START,
 	},
 	task::TaskResult,
 	Balance, CurrencyId, Nonce, ReserveIdentifier,
@@ -526,6 +526,8 @@ pub mod module {
 		InvalidDecimals,
 		/// Strict call failed
 		StrictCallFailed,
+		/// Caller is not externally owned account
+		NotEOA,
 	}
 
 	#[pallet::pallet]
@@ -622,6 +624,8 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
+
+			Self::ensure_eoa(&source)?;
 
 			let outcome = T::Runner::call(
 				source,
@@ -810,6 +814,8 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
+			Self::ensure_eoa(&source)?;
+
 			let outcome = T::Runner::create(
 				source,
 				input,
@@ -887,6 +893,8 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
+
+			Self::ensure_eoa(&source)?;
 
 			let outcome = T::Runner::create2(
 				source,
@@ -1263,6 +1271,8 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
+			Self::ensure_eoa(&source)?;
+
 			match T::Runner::call(
 				source,
 				source,
@@ -1315,6 +1325,20 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	/// EIP-3607: https://eips.ethereum.org/EIPS/eip-3607
+	/// Do not allow transactions for which `tx.sender` has any code deployed.
+	//
+	/// We extend the principle of this EIP to also prevent `tx.sender` to be the address
+	/// of a precompile. While mainnet Ethereum currently only has stateless precompiles,
+	/// Acala EVM+ can have stateful precompiles that can manage funds or
+	/// which calls other contracts that expects this precompile address to be trustworthy.
+	fn ensure_eoa(caller: &EvmAddress) -> DispatchResult {
+		if is_system_contract(caller) || Self::is_contract(caller) {
+			return Err(Error::<T>::NotEOA.into());
+		}
+		Ok(())
+	}
+
 	/// Get StorageDepositPerByte of actual decimals
 	pub fn get_storage_deposit_per_byte() -> BalanceOf<T> {
 		// StorageDepositPerByte decimals is 18, KAR/ACA decimals is 12, convert to 12 here.

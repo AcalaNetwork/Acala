@@ -169,18 +169,18 @@ fn generate_function_selector_works() {
 
 #[test]
 fn is_system_contract_works() {
-	assert!(is_system_contract(H160::from_low_u64_be(0)));
-	assert!(is_system_contract(H160::from_low_u64_be(u64::max_value())));
+	assert!(is_system_contract(&H160::from_low_u64_be(0)));
+	assert!(is_system_contract(&H160::from_low_u64_be(u64::max_value())));
 
 	let mut bytes = [0u8; 20];
 	bytes[SYSTEM_CONTRACT_ADDRESS_PREFIX.len() - 1] = 1u8;
 
-	assert!(!is_system_contract(bytes.into()));
+	assert!(!is_system_contract(&bytes.into()));
 
 	bytes = [0u8; 20];
 	bytes[0] = 1u8;
 
-	assert!(!is_system_contract(bytes.into()));
+	assert!(!is_system_contract(&bytes.into()));
 }
 
 #[test]
