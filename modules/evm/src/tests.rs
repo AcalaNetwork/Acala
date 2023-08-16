@@ -2834,7 +2834,7 @@ fn aggregated_storage_logs_works() {
 #[test]
 fn should_not_allow_contracts_send_tx() {
 	new_test_ext().execute_with(|| {
-		let origin = RuntimeOrigin::signed(MockAddressMapping::get_account_id(&contract_b()));
+		let origin = RuntimeOrigin::signed(MockAddressMapping::get_account_id(&contract_a()));
 		assert_noop!(
 			EVM::eth_call(
 				origin.clone(),
