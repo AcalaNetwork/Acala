@@ -167,7 +167,6 @@ pub mod module {
 		/// - `interval`: the timestamp interval to update average price.
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::enable_average_price())]
-		#[transactional]
 		pub fn enable_average_price(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -214,7 +213,6 @@ pub mod module {
 		/// - `currency_id_b`: another currency_id that forms a trading pair
 		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::disable_average_price())]
-		#[transactional]
 		pub fn disable_average_price(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -239,7 +237,6 @@ pub mod module {
 		/// - `new_interval`: the new interval.
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_average_price_interval())]
-		#[transactional]
 		pub fn update_average_price_interval(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,

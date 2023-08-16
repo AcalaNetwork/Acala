@@ -105,7 +105,6 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::pause_transaction())]
-		#[transactional]
 		pub fn pause_transaction(origin: OriginFor<T>, pallet_name: Vec<u8>, function_name: Vec<u8>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
@@ -130,7 +129,6 @@ pub mod module {
 
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::unpause_transaction())]
-		#[transactional]
 		pub fn unpause_transaction(
 			origin: OriginFor<T>,
 			pallet_name: Vec<u8>,
@@ -148,7 +146,6 @@ pub mod module {
 
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::pause_evm_precompile())]
-		#[transactional]
 		pub fn pause_evm_precompile(origin: OriginFor<T>, address: H160) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			PausedEvmPrecompiles::<T>::mutate_exists(address, |maybe_paused| {
@@ -162,7 +159,6 @@ pub mod module {
 
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::unpause_evm_precompile())]
-		#[transactional]
 		pub fn unpause_evm_precompile(origin: OriginFor<T>, address: H160) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			if PausedEvmPrecompiles::<T>::take(address).is_some() {

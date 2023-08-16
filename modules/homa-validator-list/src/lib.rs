@@ -289,7 +289,6 @@ pub mod module {
 		/// - `amount`: the number of tokens to bond to the given validator
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::bond())]
-		#[transactional]
 		pub fn bond(
 			origin: OriginFor<T>,
 			validator: T::RelaychainAccountId,
@@ -329,7 +328,6 @@ pub mod module {
 		/// - `amount`: the number of tokens to unbond from the given validator
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::unbond())]
-		#[transactional]
 		pub fn unbond(
 			origin: OriginFor<T>,
 			validator: T::RelaychainAccountId,
@@ -366,7 +364,6 @@ pub mod module {
 		/// - `amount`: The amount of tokens to to rebond to the given validator
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::rebond())]
-		#[transactional]
 		pub fn rebond(
 			origin: OriginFor<T>,
 			validator: T::RelaychainAccountId,
@@ -389,7 +386,6 @@ pub mod module {
 		/// - `validator`: The AccountId of a validator on the relay chain to withdraw from
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
-		#[transactional]
 		pub fn withdraw_unbonded(origin: OriginFor<T>, validator: T::RelaychainAccountId) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
 			ensure!(
@@ -421,7 +417,6 @@ pub mod module {
 		/// - `validators`: The AccountIds of the validators on the relay chain to freeze
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::freeze(validators.len() as u32))]
-		#[transactional]
 		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResult {
 			T::FreezeOrigin::ensure_origin(origin)?;
 			validators.iter().for_each(|validator| {
@@ -445,7 +440,6 @@ pub mod module {
 		/// - `validators`: The AccountIds of the validators on the relay chain to unfreeze
 		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::thaw())]
-		#[transactional]
 		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResult {
 			// Using SlashOrigin instead of FreezeOrigin so that un-freezing requires more council members than
 			// freezing
@@ -471,7 +465,6 @@ pub mod module {
 		/// - `slashes`: The SlashInfos of the validators to be slashed
 		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::slash())]
-		#[transactional]
 		pub fn slash(origin: OriginFor<T>, slashes: Vec<SlashInfo<Balance, T::RelaychainAccountId>>) -> DispatchResult {
 			T::SlashOrigin::ensure_origin(origin)?;
 			let liquid_staking_exchange_rate = T::LiquidStakingExchangeRateProvider::get_exchange_rate();

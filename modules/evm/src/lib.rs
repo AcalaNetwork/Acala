@@ -548,7 +548,6 @@ pub mod module {
 			TransactionAction::Call(_) => call_weight::<T>(*gas_limit),
 			TransactionAction::Create => create_weight::<T>(*gas_limit)
 		})]
-		#[transactional]
 		#[allow(deprecated)]
 		#[deprecated(note = "please migrate to `eth_call_v2`")]
 		pub fn eth_call(
@@ -574,7 +573,6 @@ pub mod module {
 			TransactionAction::Call(_) => call_weight::<T>(decode_gas_limit(*gas_limit).0),
 			TransactionAction::Create => create_weight::<T>(decode_gas_limit(*gas_limit).0)
 		})]
-		#[transactional]
 		pub fn eth_call_v2(
 			origin: OriginFor<T>,
 			action: TransactionAction,
@@ -612,7 +610,6 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::call_index(1)]
 		#[pallet::weight(call_weight::<T>(*gas_limit))]
-		#[transactional]
 		pub fn call(
 			origin: OriginFor<T>,
 			target: EvmAddress,
@@ -697,7 +694,6 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
-		#[transactional]
 		// TODO: create benchmark
 		pub fn scheduled_call(
 			origin: OriginFor<T>,
@@ -802,7 +798,6 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::call_index(3)]
 		#[pallet::weight(create_weight::<T>(*gas_limit))]
-		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
 			input: Vec<u8>,
@@ -881,7 +876,6 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::call_index(4)]
 		#[pallet::weight(create2_weight::<T>(*gas_limit))]
-		#[transactional]
 		pub fn create2(
 			origin: OriginFor<T>,
 			input: Vec<u8>,
@@ -961,7 +955,6 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::call_index(5)]
 		#[pallet::weight(create_nft_contract::<T>(*gas_limit))]
-		#[transactional]
 		pub fn create_nft_contract(
 			origin: OriginFor<T>,
 			input: Vec<u8>,
@@ -1051,7 +1044,6 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::call_index(6)]
 		#[pallet::weight(create_predeploy_contract::<T>(*gas_limit))]
-		#[transactional]
 		pub fn create_predeploy_contract(
 			origin: OriginFor<T>,
 			target: EvmAddress,
@@ -1143,7 +1135,6 @@ pub mod module {
 		/// - `new_maintainer`: the address of the new maintainer
 		#[pallet::call_index(7)]
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_maintainer())]
-		#[transactional]
 		pub fn transfer_maintainer(
 			origin: OriginFor<T>,
 			contract: EvmAddress,
@@ -1166,7 +1157,6 @@ pub mod module {
 		///   maintainer
 		#[pallet::call_index(8)]
 		#[pallet::weight(<T as Config>::WeightInfo::publish_contract())]
-		#[transactional]
 		pub fn publish_contract(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			Self::do_publish_contract(who, contract)?;
@@ -1181,7 +1171,6 @@ pub mod module {
 		///   maintainer.
 		#[pallet::call_index(9)]
 		#[pallet::weight(<T as Config>::WeightInfo::publish_free())]
-		#[transactional]
 		pub fn publish_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			T::FreePublicationOrigin::ensure_origin(origin)?;
 			Self::mark_published(contract, None)?;
@@ -1193,7 +1182,6 @@ pub mod module {
 		/// This allows the address to interact with non-published contracts.
 		#[pallet::call_index(10)]
 		#[pallet::weight(<T as Config>::WeightInfo::enable_contract_development())]
-		#[transactional]
 		pub fn enable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			Self::do_enable_contract_development(&who)?;
@@ -1206,7 +1194,6 @@ pub mod module {
 		/// This disallows the address to interact with non-published contracts.
 		#[pallet::call_index(11)]
 		#[pallet::weight(<T as Config>::WeightInfo::disable_contract_development())]
-		#[transactional]
 		pub fn disable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			Self::do_disable_contract_development(&who)?;
@@ -1221,7 +1208,6 @@ pub mod module {
 		/// - `code`: The new ABI bundle for the contract
 		#[pallet::call_index(12)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_code(code.len() as u32))]
-		#[transactional]
 		pub fn set_code(origin: OriginFor<T>, contract: EvmAddress, code: Vec<u8>) -> DispatchResultWithPostInfo {
 			let root_or_signed = Self::ensure_root_or_signed(origin)?;
 			Self::do_set_code(root_or_signed, contract, code)?;
@@ -1236,7 +1222,6 @@ pub mod module {
 		/// - `contract`: The contract to remove, must not be marked as published
 		#[pallet::call_index(13)]
 		#[pallet::weight(<T as Config>::WeightInfo::selfdestruct())]
-		#[transactional]
 		pub fn selfdestruct(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let caller = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
@@ -1258,7 +1243,6 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::call_index(14)]
 		#[pallet::weight(call_weight::<T>(*gas_limit))]
-		#[transactional]
 		pub fn strict_call(
 			origin: OriginFor<T>,
 			target: EvmAddress,

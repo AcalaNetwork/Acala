@@ -187,7 +187,6 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::extract_surplus_to_treasury())]
-		#[transactional]
 		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			T::Currency::transfer(
@@ -215,7 +214,6 @@ pub mod module {
 				T::WeightInfo::auction_collateral(1)
 			}
 		)]
-		#[transactional]
 		pub fn auction_collateral(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -242,7 +240,6 @@ pub mod module {
 		/// - `swap_limit`: target amount
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::exchange_collateral_to_stable())]
-		#[transactional]
 		pub fn exchange_collateral_to_stable(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -263,7 +260,6 @@ pub mod module {
 		/// - `amount`: expected size of per lot collateral auction
 		#[pallet::call_index(3)]
 		#[pallet::weight((T::WeightInfo::set_expected_collateral_auction_size(), DispatchClass::Operational))]
-		#[transactional]
 		pub fn set_expected_collateral_auction_size(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -285,7 +281,6 @@ pub mod module {
 		/// - `amount`: the buffer amount of debit pool
 		#[pallet::call_index(4)]
 		#[pallet::weight((T::WeightInfo::set_expected_collateral_auction_size(), DispatchClass::Operational))]
-		#[transactional]
 		pub fn set_debit_offset_buffer(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			DebitOffsetBuffer::<T>::mutate(|v| {

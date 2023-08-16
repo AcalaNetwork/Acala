@@ -142,7 +142,6 @@ pub mod module {
 	impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::bond())]
-		#[transactional]
 		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -158,7 +157,6 @@ pub mod module {
 
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::bond())]
-		#[transactional]
 		pub fn unbond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -176,7 +174,6 @@ pub mod module {
 
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::rebond(T::MaxUnbondingChunks::get()))]
-		#[transactional]
 		pub fn rebond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -197,7 +194,6 @@ pub mod module {
 
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded(T::MaxUnbondingChunks::get()))]
-		#[transactional]
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -208,7 +204,6 @@ pub mod module {
 
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::nominate(targets.len() as u32))]
-		#[transactional]
 		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::NomineeId>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -243,7 +238,6 @@ pub mod module {
 
 		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::chill(T::NominateesCount::get()))]
-		#[transactional]
 		pub fn chill(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 

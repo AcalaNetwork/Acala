@@ -217,7 +217,6 @@ pub mod module {
 		/// - `amount`: amount to stake
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::deposit_dex_share())]
-		#[transactional]
 		pub fn deposit_dex_share(
 			origin: OriginFor<T>,
 			lp_currency_id: CurrencyId,
@@ -236,7 +235,6 @@ pub mod module {
 		/// - `amount`: amount to unstake
 		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::withdraw_dex_share())]
-		#[transactional]
 		pub fn withdraw_dex_share(
 			origin: OriginFor<T>,
 			lp_currency_id: CurrencyId,
@@ -254,7 +252,6 @@ pub mod module {
 		/// - `pool_id`: pool type
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::claim_rewards())]
-		#[transactional]
 		pub fn claim_rewards(origin: OriginFor<T>, pool_id: PoolId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -270,7 +267,6 @@ pub mod module {
 		#[pallet::weight(<T as Config>::WeightInfo::update_incentive_rewards(
 			updates.iter().fold(0, |count, x| count + x.1.len()) as u32
 		))]
-		#[transactional]
 		pub fn update_incentive_rewards(
 			origin: OriginFor<T>,
 			updates: Vec<(PoolId, Vec<(CurrencyId, Balance)>)>,
@@ -311,7 +307,6 @@ pub mod module {
 		/// - `updates`: Vec<(PoolId, DecutionRate>)>
 		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_claim_reward_deduction_rates(updates.len() as u32))]
-		#[transactional]
 		pub fn update_claim_reward_deduction_rates(
 			origin: OriginFor<T>,
 			updates: Vec<(PoolId, Rate)>,
