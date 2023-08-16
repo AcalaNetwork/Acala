@@ -820,8 +820,6 @@ pub mod module {
 				T::config(),
 			);
 
-			Self::inc_nonce_if_needed(&source, &outcome);
-
 			match outcome {
 				Err(e) => {
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
@@ -898,8 +896,6 @@ pub mod module {
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
 			);
-
-			Self::inc_nonce_if_needed(&source, &outcome);
 
 			match outcome {
 				Err(e) => {
