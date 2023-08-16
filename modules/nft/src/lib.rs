@@ -30,7 +30,7 @@ use frame_support::{
 		ExistenceRequirement::{AllowDeath, KeepAlive},
 		NamedReservableCurrency,
 	},
-	transactional, PalletId,
+	PalletId,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::InspectExtended;

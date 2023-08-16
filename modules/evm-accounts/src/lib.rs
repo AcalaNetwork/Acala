@@ -31,7 +31,6 @@ use frame_support::{
 	ensure,
 	pallet_prelude::*,
 	traits::{Currency, IsType, OnKilledAccount},
-	transactional,
 };
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_evm_utility_macro::keccak256;

@@ -23,7 +23,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 
 use primitives::{currency::KUSD, evm::EvmAddress, Balance, CurrencyId};

@@ -22,7 +22,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::type_complexity)]
 
-use frame_support::{pallet_prelude::*, traits::Time, transactional};
+use frame_support::{pallet_prelude::*, traits::Time};
 use frame_system::pallet_prelude::*;
 use orml_traits::Happened;
 use primitives::{Balance, CurrencyId, TradingPair};

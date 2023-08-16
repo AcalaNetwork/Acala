@@ -28,7 +28,6 @@ use frame_support::{
 	ensure,
 	pallet_prelude::*,
 	traits::{Currency, EnsureOrigin},
-	transactional,
 };
 use frame_system::pallet_prelude::*;
 use module_support::{AssetIdMapping, BuyWeightRate, EVMBridge, Erc20InfoMapping, InvokeContext, Ratio};

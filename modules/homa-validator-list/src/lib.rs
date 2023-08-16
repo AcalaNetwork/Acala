@@ -29,7 +29,7 @@
 #![allow(clippy::collapsible_if)]
 
 use codec::MaxEncodedLen;
-use frame_support::{pallet_prelude::*, traits::Contains, transactional};
+use frame_support::{pallet_prelude::*, traits::Contains};
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency, Happened, LockIdentifier};
 use primitives::Balance;

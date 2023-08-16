@@ -23,7 +23,7 @@ use frame_support::{
 	log,
 	pallet_prelude::*,
 	traits::{Contains, Get, LockIdentifier},
-	transactional, BoundedVec,
+	BoundedVec,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency};

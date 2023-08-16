@@ -29,7 +29,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, traits::NamedReservableCurrency, transactional};
+use frame_support::{pallet_prelude::*, traits::NamedReservableCurrency};
 use frame_system::pallet_prelude::*;
 use primitives::{Amount, Balance, CurrencyId, Position, ReserveIdentifier};
 use sp_core::U256;

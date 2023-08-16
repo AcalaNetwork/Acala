@@ -24,7 +24,6 @@
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement, LockIdentifier, LockableCurrency, OnUnbalanced, WithdrawReasons},
-	transactional,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::Happened;
