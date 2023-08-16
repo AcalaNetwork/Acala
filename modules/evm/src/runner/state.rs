@@ -635,6 +635,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>,
 	) -> (ExitReason, Vec<u8>) {
+		self.state.inc_nonce(caller);
+
 		event!(TransactCall {
 			caller,
 			address,
@@ -659,8 +661,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 			self.initialize_with_access_list(access_list);
 		}
-
-		self.state.inc_nonce(caller);
 
 		let context = Context {
 			caller,
@@ -815,6 +815,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			return Capture::Exit((ExitError::OutOfFund.into(), None, Vec::new()));
 		}
 
+		self.state.inc_nonce(caller);
+
 		let after_gas = if take_l64 && self.config.call_l64_after_gas {
 			if self.config.estimate {
 				let initial_after_gas = self.state.metadata().gasometer.gas();
@@ -832,8 +834,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 		let gas_limit = min(after_gas, target_gas);
 		try_or_fail!(self.state.metadata_mut().gasometer.record_cost(gas_limit));
-
-		self.state.inc_nonce(caller);
 
 		self.enter_substate(gas_limit, false);
 

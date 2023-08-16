@@ -635,10 +635,11 @@ pub mod module {
 				T::config(),
 			);
 
-			Self::inc_nonce_if_needed(&source, &outcome);
-
 			match outcome {
 				Err(e) => {
+					// EVM state changes reverted, increase nonce by ourselves
+					Self::inc_nonce(&source);
+
 					Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
 						from: source,
 						contract: target,
@@ -822,6 +823,9 @@ pub mod module {
 
 			match outcome {
 				Err(e) => {
+					// EVM state changes reverted, increase nonce by ourselves
+					Self::inc_nonce(&source);
+
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 						from: source,
 						contract: H160::default(),
@@ -899,6 +903,9 @@ pub mod module {
 
 			match outcome {
 				Err(e) => {
+					// EVM state changes reverted, increase nonce by ourselves
+					Self::inc_nonce(&source);
+
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 						from: source,
 						contract: H160::default(),
@@ -1875,19 +1882,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	fn inc_nonce_if_needed<Output>(origin: &H160, outcome: &Result<ExecutionInfo<Output>, DispatchError>) {
-		if matches!(
-			outcome,
-			Ok(ExecutionInfo {
-				exit_reason: ExitReason::Succeed(_),
-				..
-			})
-		) {
-			// nonce increased by EVM
-			return;
-		}
-
-		// EVM changes reverted, increase nonce by ourselves
+	fn inc_nonce(origin: &H160) {
 		Accounts::<T>::mutate(origin, |account| {
 			if let Some(info) = account.as_mut() {
 				info.nonce = info.nonce.saturating_add(T::Nonce::one());
