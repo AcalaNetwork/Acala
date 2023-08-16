@@ -75,7 +75,7 @@ fn inc_nonce_if_needed() {
 #[test]
 fn fail_call_return_ok_and_inc_nonce() {
 	new_test_ext().execute_with(|| {
-		let mut data = [0u8; 32];
+		let mut data = [5u8; 32];
 		data[0..4].copy_from_slice(b"evm:");
 		let signer: AccountId32 = AccountId32::from(data);
 		let alice = MockAddressMapping::get_or_create_evm_address(&signer);
@@ -2828,4 +2828,154 @@ fn aggregated_storage_logs_works() {
 			destination_status: BalanceStatus::Reserved,
 		}));
 	})
+}
+
+#[allow(deprecated)]
+#[test]
+fn should_not_allow_contracts_send_tx() {
+	new_test_ext().execute_with(|| {
+		let origin = RuntimeOrigin::signed(MockAddressMapping::get_account_id(&contract_b()));
+		assert_noop!(
+			EVM::eth_call(
+				origin.clone(),
+				TransactionAction::Call(contract_a()),
+				vec![],
+				0,
+				1_000_000,
+				100,
+				vec![],
+				0
+			),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::eth_call(
+				origin.clone(),
+				TransactionAction::Create,
+				vec![],
+				0,
+				1_000_000,
+				100,
+				vec![],
+				0
+			),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::eth_call_v2(
+				origin.clone(),
+				TransactionAction::Call(contract_a()),
+				vec![],
+				0,
+				1_000_000,
+				100,
+				vec![]
+			),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::eth_call_v2(
+				origin.clone(),
+				TransactionAction::Create,
+				vec![],
+				0,
+				1_000_000,
+				100,
+				vec![]
+			),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::call(origin.clone(), contract_a(), vec![], 0, 1_000_000, 100, vec![]),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::create(origin.clone(), vec![], 0, 1_000_000, 100, vec![]),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::create2(origin.clone(), vec![], Default::default(), 0, 1_000_000, 100, vec![]),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::strict_call(origin, contract_a(), vec![], 0, 1_000_000, 100, vec![]),
+			Error::<Runtime>::NotEOA
+		);
+	});
+}
+
+#[allow(deprecated)]
+#[test]
+fn should_not_allow_system_contracts_send_tx() {
+	new_test_ext().execute_with(|| {
+		let origin = RuntimeOrigin::signed(MockAddressMapping::get_account_id(
+			&H160::from_str("000000000000000000ffffffffffffffffffffff").unwrap(),
+		));
+		assert_noop!(
+			EVM::eth_call(
+				origin.clone(),
+				TransactionAction::Call(contract_a()),
+				vec![],
+				0,
+				1_000_000,
+				100,
+				vec![],
+				0
+			),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::eth_call(
+				origin.clone(),
+				TransactionAction::Create,
+				vec![],
+				0,
+				1_000_000,
+				100,
+				vec![],
+				0
+			),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::eth_call_v2(
+				origin.clone(),
+				TransactionAction::Call(contract_a()),
+				vec![],
+				0,
+				1_000_000,
+				100,
+				vec![]
+			),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::eth_call_v2(
+				origin.clone(),
+				TransactionAction::Create,
+				vec![],
+				0,
+				1_000_000,
+				100,
+				vec![]
+			),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::call(origin.clone(), contract_a(), vec![], 0, 1_000_000, 100, vec![]),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::create(origin.clone(), vec![], 0, 1_000_000, 100, vec![]),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::create2(origin.clone(), vec![], Default::default(), 0, 1_000_000, 100, vec![]),
+			Error::<Runtime>::NotEOA
+		);
+		assert_noop!(
+			EVM::strict_call(origin, contract_a(), vec![], 0, 1_000_000, 100, vec![]),
+			Error::<Runtime>::NotEOA
+		);
+	});
 }
