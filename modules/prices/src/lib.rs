@@ -29,7 +29,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 use orml_traits::{DataFeeder, DataProvider, GetByKey, MultiCurrency};
 use primitives::{Balance, CurrencyId, Lease};
@@ -152,7 +152,6 @@ pub mod module {
 		/// - `currency_id`: currency type.
 		#[pallet::call_index(0)]
 		#[pallet::weight((T::WeightInfo::lock_price(), DispatchClass::Operational))]
-		#[transactional]
 		pub fn lock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::LockOrigin::ensure_origin(origin)?;
 			<Pallet<T> as LockablePrice<CurrencyId>>::lock_price(currency_id)?;
@@ -166,7 +165,6 @@ pub mod module {
 		/// - `currency_id`: currency type.
 		#[pallet::call_index(1)]
 		#[pallet::weight((T::WeightInfo::unlock_price(), DispatchClass::Operational))]
-		#[transactional]
 		pub fn unlock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::LockOrigin::ensure_origin(origin)?;
 			<Pallet<T> as LockablePrice<CurrencyId>>::unlock_price(currency_id)?;

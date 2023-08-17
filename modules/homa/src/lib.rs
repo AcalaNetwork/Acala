@@ -384,7 +384,6 @@ pub mod module {
 		/// - `amount`: The amount of staking currency used to mint liquid currency.
 		#[pallet::call_index(0)]
 		#[pallet::weight(< T as Config >::WeightInfo::mint())]
-		#[transactional]
 		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let minter = ensure_signed(origin)?;
 			Self::do_mint(minter, amount)
@@ -406,7 +405,6 @@ pub mod module {
 		///   rate as fee.
 		#[pallet::call_index(1)]
 		#[pallet::weight(< T as Config >::WeightInfo::request_redeem())]
-		#[transactional]
 		pub fn request_redeem(
 			origin: OriginFor<T>,
 			#[pallet::compact] amount: Balance,
@@ -422,7 +420,6 @@ pub mod module {
 		/// - `redeemer_list`: The list of redeem requests to execute fast redeem.
 		#[pallet::call_index(2)]
 		#[pallet::weight(< T as Config >::WeightInfo::fast_match_redeems(redeemer_list.len() as u32))]
-		#[transactional]
 		pub fn fast_match_redeems(origin: OriginFor<T>, redeemer_list: Vec<T::AccountId>) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
@@ -439,7 +436,6 @@ pub mod module {
 		/// - `redeemer`: redeemer.
 		#[pallet::call_index(3)]
 		#[pallet::weight(< T as Config >::WeightInfo::claim_redemption())]
-		#[transactional]
 		pub fn claim_redemption(origin: OriginFor<T>, redeemer: T::AccountId) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
@@ -488,7 +484,6 @@ pub mod module {
 		/// - `fast_match_fee_rate`: the fixed fee rate when redeem request is been fast matched.
 		#[pallet::call_index(4)]
 		#[pallet::weight(< T as Config >::WeightInfo::update_homa_params())]
-		#[transactional]
 		pub fn update_homa_params(
 			origin: OriginFor<T>,
 			soft_bonded_cap_per_sub_account: Option<Balance>,
@@ -534,7 +529,6 @@ pub mod module {
 		/// - `frequency`: the frequency of block number on parachain.
 		#[pallet::call_index(5)]
 		#[pallet::weight(< T as Config >::WeightInfo::update_bump_era_params())]
-		#[transactional]
 		pub fn update_bump_era_params(
 			origin: OriginFor<T>,
 			last_era_bumped_block: Option<BlockNumberFor<T>>,
@@ -580,7 +574,6 @@ pub mod module {
 		/// - `updates`: update list of subaccount.
 		#[pallet::call_index(6)]
 		#[pallet::weight(< T as Config >::WeightInfo::reset_ledgers(updates.len() as u32))]
-		#[transactional]
 		pub fn reset_ledgers(
 			origin: OriginFor<T>,
 			updates: Vec<(u16, Option<Balance>, Option<Vec<UnlockChunk>>)>,
@@ -624,7 +617,6 @@ pub mod module {
 		/// - `era_index`: the latest era index of relaychain.
 		#[pallet::call_index(7)]
 		#[pallet::weight(< T as Config >::WeightInfo::reset_current_era())]
-		#[transactional]
 		pub fn reset_current_era(origin: OriginFor<T>, era_index: EraIndex) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
@@ -653,7 +645,6 @@ pub mod module {
 		/// - `redeemer_list`: The list of redeem requests to execute fast redeem.
 		#[pallet::call_index(9)]
 		#[pallet::weight(< T as Config >::WeightInfo::fast_match_redeems(redeemer_list.len() as u32))]
-		#[transactional]
 		pub fn fast_match_redeems_completely(origin: OriginFor<T>, redeemer_list: Vec<T::AccountId>) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 

@@ -27,7 +27,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{log, pallet_prelude::*, traits::Get, transactional};
+use frame_support::{log, pallet_prelude::*, traits::Get};
 use frame_system::pallet_prelude::*;
 use module_support::{CallBuilder, CrowdloanVaultXcm, HomaSubAccountXcm};
 use orml_traits::XcmTransfer;
@@ -143,7 +143,6 @@ pub mod module {
 		/// - `updates`: vec of tuple: (XcmInterfaceOperation, WeightChange, FeeChange).
 		#[pallet::call_index(0)]
 		#[pallet::weight(frame_support::weights::Weight::from_parts(10_000_000, 0))]
-		#[transactional]
 		pub fn update_xcm_dest_weight_and_fee(
 			origin: OriginFor<T>,
 			updates: Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Balance>)>,

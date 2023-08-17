@@ -351,7 +351,6 @@ pub mod module {
 		/// - `min_target_amount`: acceptable minimum target amount.
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(path.len() as u32))]
-		#[transactional]
 		pub fn swap_with_exact_supply(
 			origin: OriginFor<T>,
 			path: Vec<CurrencyId>,
@@ -370,7 +369,6 @@ pub mod module {
 		/// - `max_supply_amount`: acceptable maximum supply amount.
 		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target(path.len() as u32))]
-		#[transactional]
 		pub fn swap_with_exact_target(
 			origin: OriginFor<T>,
 			path: Vec<CurrencyId>,
@@ -401,7 +399,6 @@ pub mod module {
 		} else {
 			<T as Config>::WeightInfo::add_liquidity()
 		})]
-		#[transactional]
 		pub fn add_liquidity(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -434,7 +431,6 @@ pub mod module {
 		/// - `amount_b`: provision amount for currency_id_b.
 		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::add_provision())]
-		#[transactional]
 		pub fn add_provision(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -454,7 +450,6 @@ pub mod module {
 		/// - `currency_id_b`: currency id B.
 		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::claim_dex_share())]
-		#[transactional]
 		pub fn claim_dex_share(
 			origin: OriginFor<T>,
 			owner: T::AccountId,
@@ -482,7 +477,6 @@ pub mod module {
 		} else {
 			<T as Config>::WeightInfo::remove_liquidity()
 		})]
-		#[transactional]
 		pub fn remove_liquidity(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -508,7 +502,6 @@ pub mod module {
 		/// List a new provisioning trading pair.
 		#[pallet::call_index(6)]
 		#[pallet::weight((<T as Config>::WeightInfo::list_provisioning(), DispatchClass::Operational))]
-		#[transactional]
 		pub fn list_provisioning(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -576,7 +569,6 @@ pub mod module {
 		/// after provision process.
 		#[pallet::call_index(7)]
 		#[pallet::weight((<T as Config>::WeightInfo::update_provisioning_parameters(), DispatchClass::Operational))]
-		#[transactional]
 		pub fn update_provisioning_parameters(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -623,7 +615,6 @@ pub mod module {
 		/// Enable a Provisioning trading pair if meet the condition.
 		#[pallet::call_index(8)]
 		#[pallet::weight((<T as Config>::WeightInfo::end_provisioning(), DispatchClass::Operational))]
-		#[transactional]
 		pub fn end_provisioning(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -703,7 +694,6 @@ pub mod module {
 		/// provision, enable it directly.
 		#[pallet::call_index(9)]
 		#[pallet::weight((<T as Config>::WeightInfo::enable_trading_pair(), DispatchClass::Operational))]
-		#[transactional]
 		pub fn enable_trading_pair(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -732,7 +722,6 @@ pub mod module {
 		/// Disable a `Enabled` trading pair.
 		#[pallet::call_index(10)]
 		#[pallet::weight((<T as Config>::WeightInfo::disable_trading_pair(), DispatchClass::Operational))]
-		#[transactional]
 		pub fn disable_trading_pair(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -761,7 +750,6 @@ pub mod module {
 		/// - `currency_id_b`: currency id B.
 		#[pallet::call_index(11)]
 		#[pallet::weight(<T as Config>::WeightInfo::refund_provision())]
-		#[transactional]
 		pub fn refund_provision(
 			origin: OriginFor<T>,
 			owner: T::AccountId,
@@ -808,7 +796,6 @@ pub mod module {
 		/// Abort provision when it's don't meet the target and expired.
 		#[pallet::call_index(12)]
 		#[pallet::weight((<T as Config>::WeightInfo::abort_provisioning(), DispatchClass::Operational))]
-		#[transactional]
 		pub fn abort_provisioning(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -1363,7 +1350,6 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Ensured atomic.
 	#[transactional]
 	fn do_swap_with_exact_supply(
 		who: &T::AccountId,
@@ -1391,7 +1377,6 @@ impl<T: Config> Pallet<T> {
 		Ok(actual_target_amount)
 	}
 
-	/// Ensured atomic.
 	#[transactional]
 	fn do_swap_with_exact_target(
 		who: &T::AccountId,
@@ -1518,7 +1503,6 @@ impl<T: Config> DEXManager<T::AccountId, Balance, CurrencyId> for Pallet<T> {
 	// `do_add_liquidity` is used in genesis_build,
 	// but transactions are not supported by BasicExternalities,
 	// put `transactional` here
-	/// Ensured atomic.
 	#[transactional]
 	fn add_liquidity(
 		who: &T::AccountId,

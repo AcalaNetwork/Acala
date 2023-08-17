@@ -112,7 +112,6 @@ pub mod module {
 				SwapPath::Taiga(_, _, _) => u + 1
 			})
 		))]
-		#[transactional]
 		pub fn swap_with_exact_supply(
 			origin: OriginFor<T>,
 			paths: Vec<SwapPath>,
@@ -133,7 +132,6 @@ pub mod module {
 				SwapPath::Taiga(_, _, _) => u + 1
 			})
 		))]
-		#[transactional]
 		pub fn swap_with_exact_target(
 			origin: OriginFor<T>,
 			paths: Vec<SwapPath>,
@@ -155,7 +153,6 @@ pub mod module {
 		/// - `updates`:  Vec<((TokenA, TokenB), Option<Vec<SwapPath>>)>
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_aggregated_swap_paths(updates.len() as u32))]
-		#[transactional]
 		pub fn update_aggregated_swap_paths(
 			origin: OriginFor<T>,
 			updates: Vec<((CurrencyId, CurrencyId), Option<Vec<SwapPath>>)>,

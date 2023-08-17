@@ -24,7 +24,6 @@
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement, LockIdentifier, LockableCurrency, OnUnbalanced, WithdrawReasons},
-	transactional,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::Happened;
@@ -130,7 +129,6 @@ pub mod module {
 		/// locked.
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::bond())]
-		#[transactional]
 		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -151,7 +149,6 @@ pub mod module {
 		/// unbonding. Token will finish unbonding after `UnbondingPeriod` blocks.
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::unbond())]
-		#[transactional]
 		pub fn unbond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -174,7 +171,6 @@ pub mod module {
 		/// unbonded. This will not unbond tokens during unbonding period.
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::unbond_instant())]
-		#[transactional]
 		pub fn unbond_instant(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -207,7 +203,6 @@ pub mod module {
 		/// rebonded.
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::rebond())]
-		#[transactional]
 		pub fn rebond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -227,7 +222,6 @@ pub mod module {
 		/// Withdraw all unbonded tokens.
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
-		#[transactional]
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 

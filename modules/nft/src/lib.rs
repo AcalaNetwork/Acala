@@ -30,7 +30,7 @@ use frame_support::{
 		ExistenceRequirement::{AllowDeath, KeepAlive},
 		NamedReservableCurrency,
 	},
-	transactional, PalletId,
+	PalletId,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::InspectExtended;
@@ -204,7 +204,6 @@ pub mod module {
 		/// - `properties`: class property, include `Transferable` `Burnable`
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::create_class())]
-		#[transactional]
 		pub fn create_class(
 			origin: OriginFor<T>,
 			metadata: CID,
@@ -260,7 +259,6 @@ pub mod module {
 		/// - `quantity`: token quantity
 		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::mint(*quantity))]
-		#[transactional]
 		pub fn mint(
 			origin: OriginFor<T>,
 			to: <T::Lookup as StaticLookup>::Source,
@@ -281,7 +279,6 @@ pub mod module {
 		/// - `token`: (class_id, token_id)
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::transfer())]
-		#[transactional]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			to: <T::Lookup as StaticLookup>::Source,
@@ -297,7 +294,6 @@ pub mod module {
 		/// - `token`: (class_id, token_id)
 		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::burn())]
-		#[transactional]
 		pub fn burn(origin: OriginFor<T>, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_burn(who, token, None)
@@ -309,7 +305,6 @@ pub mod module {
 		/// - `remark`: Vec<u8>
 		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::burn_with_remark(remark.len() as u32))]
-		#[transactional]
 		pub fn burn_with_remark(
 			origin: OriginFor<T>,
 			token: (ClassIdOf<T>, TokenIdOf<T>),
@@ -326,7 +321,6 @@ pub mod module {
 		/// - `dest`: The proxy account that will receive free balance
 		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::destroy_class())]
-		#[transactional]
 		pub fn destroy_class(
 			origin: OriginFor<T>,
 			class_id: ClassIdOf<T>,
@@ -368,7 +362,6 @@ pub mod module {
 		/// - `properties`: The new properties
 		#[pallet::call_index(6)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_class_properties())]
-		#[transactional]
 		pub fn update_class_properties(
 			origin: OriginFor<T>,
 			class_id: ClassIdOf<T>,

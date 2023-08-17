@@ -29,7 +29,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, traits::NamedReservableCurrency, transactional};
+use frame_support::{pallet_prelude::*, traits::NamedReservableCurrency};
 use frame_system::pallet_prelude::*;
 use primitives::{Amount, Balance, CurrencyId, Position, ReserveIdentifier};
 use sp_core::U256;
@@ -147,7 +147,6 @@ pub mod module {
 		///   amount of stablecoin to CDP according to to the debit adjustment.
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
-		#[transactional]
 		pub fn adjust_loan(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -166,7 +165,6 @@ pub mod module {
 		/// 	stable token to clear debit.
 		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex())]
-		#[transactional]
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -184,7 +182,6 @@ pub mod module {
 		/// - `from`: authorizer account
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_loan_from())]
-		#[transactional]
 		pub fn transfer_loan_from(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -204,7 +201,6 @@ pub mod module {
 		/// - `to`: authorizee account
 		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::authorize())]
-		#[transactional]
 		pub fn authorize(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -238,7 +234,6 @@ pub mod module {
 		/// - `to`: authorizee account
 		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::unauthorize())]
-		#[transactional]
 		pub fn unauthorize(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -260,7 +255,6 @@ pub mod module {
 		/// Cancel all authorization of caller
 		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::unauthorize_all(T::CollateralCurrencyIds::get().len() as u32))]
-		#[transactional]
 		pub fn unauthorize_all(origin: OriginFor<T>) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			let _ = Authorization::<T>::clear_prefix(&from, u32::MAX, None);
@@ -276,7 +270,6 @@ pub mod module {
 		/// - `min_increase_collateral`: the minimal increased collateral amount for CDP
 		#[pallet::call_index(6)]
 		#[pallet::weight(<T as Config>::WeightInfo::expand_position_collateral())]
-		#[transactional]
 		pub fn expand_position_collateral(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -300,7 +293,6 @@ pub mod module {
 		/// - `min_decrease_debit_value`: the minimal decreased debit value for CDP
 		#[pallet::call_index(7)]
 		#[pallet::weight(<T as Config>::WeightInfo::shrink_position_debit())]
-		#[transactional]
 		pub fn shrink_position_debit(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -327,7 +319,6 @@ pub mod module {
 		///   stablecoin, negative means caller will payback some amount of stablecoin to CDP.
 		#[pallet::call_index(8)]
 		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
-		#[transactional]
 		pub fn adjust_loan_by_debit_value(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -356,7 +347,6 @@ pub mod module {
 		/// - `debit_transfer`: Debit transfered across two CDPs
 		#[pallet::call_index(9)]
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_debit())]
-		#[transactional]
 		pub fn transfer_debit(
 			origin: OriginFor<T>,
 			from_currency: CurrencyId,

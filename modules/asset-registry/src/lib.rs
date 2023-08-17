@@ -28,7 +28,6 @@ use frame_support::{
 	ensure,
 	pallet_prelude::*,
 	traits::{Currency, EnsureOrigin},
-	transactional,
 };
 use frame_system::pallet_prelude::*;
 use module_support::{AssetIdMapping, BuyWeightRate, EVMBridge, Erc20InfoMapping, InvokeContext, Ratio};
@@ -201,7 +200,6 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::register_foreign_asset())]
-		#[transactional]
 		pub fn register_foreign_asset(
 			origin: OriginFor<T>,
 			location: Box<VersionedMultiLocation>,
@@ -222,7 +220,6 @@ pub mod module {
 
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::update_foreign_asset())]
-		#[transactional]
 		pub fn update_foreign_asset(
 			origin: OriginFor<T>,
 			foreign_asset_id: ForeignAssetId,
@@ -244,7 +241,6 @@ pub mod module {
 
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::register_stable_asset())]
-		#[transactional]
 		pub fn register_stable_asset(
 			origin: OriginFor<T>,
 			metadata: Box<AssetMetadata<BalanceOf<T>>>,
@@ -262,7 +258,6 @@ pub mod module {
 
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::update_stable_asset())]
-		#[transactional]
 		pub fn update_stable_asset(
 			origin: OriginFor<T>,
 			stable_asset_id: StableAssetPoolId,
@@ -281,7 +276,6 @@ pub mod module {
 
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::register_erc20_asset())]
-		#[transactional]
 		pub fn register_erc20_asset(
 			origin: OriginFor<T>,
 			contract: EvmAddress,
@@ -300,7 +294,6 @@ pub mod module {
 
 		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::update_erc20_asset())]
-		#[transactional]
 		pub fn update_erc20_asset(
 			origin: OriginFor<T>,
 			contract: EvmAddress,
@@ -319,7 +312,6 @@ pub mod module {
 
 		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::register_native_asset())]
-		#[transactional]
 		pub fn register_native_asset(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -338,7 +330,6 @@ pub mod module {
 
 		#[pallet::call_index(7)]
 		#[pallet::weight(T::WeightInfo::update_native_asset())]
-		#[transactional]
 		pub fn update_native_asset(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,

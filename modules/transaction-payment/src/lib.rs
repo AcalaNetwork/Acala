@@ -562,7 +562,6 @@ pub mod module {
 		/// Set fee swap path
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_alternative_fee_swap_path())]
-		#[transactional]
 		pub fn set_alternative_fee_swap_path(
 			origin: OriginFor<T>,
 			fee_swap_path: Option<Vec<CurrencyId>>,
@@ -590,7 +589,6 @@ pub mod module {
 		/// Enable and initialize charge fee pool.
 		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::enable_charge_fee_pool())]
-		#[transactional]
 		pub fn enable_charge_fee_pool(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -604,7 +602,6 @@ pub mod module {
 		/// Disable charge fee pool.
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::disable_charge_fee_pool())]
-		#[transactional]
 		pub fn disable_charge_fee_pool(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			Self::disable_pool(currency_id)
