@@ -29,6 +29,7 @@ members = [
 	"orml/nft",
 	"orml/oracle",
 	"orml/oracle/rpc",
+	"orml/parameters",
 	"orml/rewards",
 	"orml/tokens",
 	"orml/tokens/rpc",

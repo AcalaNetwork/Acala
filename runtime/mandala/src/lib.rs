@@ -62,7 +62,8 @@ use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
+	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
+	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey,
 };
 use orml_utilities::simulate_execution;
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
@@ -1301,10 +1302,6 @@ impl module_transaction_payment::Config for Runtime {
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
-parameter_types! {
-	pub const InstantUnstakeFee: Permill = Permill::from_percent(10);
-}
-
 impl module_earning::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
@@ -1313,7 +1310,7 @@ impl module_earning::Config for Runtime {
 	type OnUnstakeFee = Treasury; // fee goes to treasury
 	type MinBond = ConstU128<100>;
 	type UnbondingPeriod = ConstU32<3>;
-	type InstantUnstakeFee = InstantUnstakeFee;
+	type ParameterStore = ParameterStoreAdapter<Parameters, module_earning::Parameters>;
 	type MaxUnbondingChunks = ConstU32<3>;
 	type LockIdentifier = EarningLockIdentifier;
 	type WeightInfo = weights::module_earning::WeightInfo<Runtime>;
@@ -1810,6 +1807,19 @@ impl module_liquid_crowdloan::Config for Runtime {
 	type WeightInfo = weights::module_liquid_crowdloan::WeightInfo<Runtime>;
 }
 
+define_aggregrated_parameters! {
+	pub RuntimeParameters = {
+		Earning: module_earning::Parameters = 0,
+	}
+}
+
+impl orml_parameters::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type AggregratedKeyValue = RuntimeParameters;
+	type AdminOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type WeightInfo = ();
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct ConvertEthereumTx;
 
@@ -2058,6 +2068,7 @@ construct_runtime!(
 		Dex: module_dex = 111,
 		DexOracle: module_dex_oracle = 112,
 		AggregatedDex: module_aggregated_dex = 113,
+		Parameters: orml_parameters = 114,
 
 		// Honzon
 		AuctionManager: module_auction_manager = 120,

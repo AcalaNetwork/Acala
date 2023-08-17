@@ -172,6 +172,7 @@ dependencies = [
  "orml-nft",
  "orml-oracle",
  "orml-oracle-rpc-runtime-api",
+ "orml-parameters",
  "orml-rewards",
  "orml-tokens",
  "orml-tokens-rpc-runtime-api",
@@ -4955,6 +4956,7 @@ dependencies = [
  "orml-nft",
  "orml-oracle",
  "orml-oracle-rpc-runtime-api",
+ "orml-parameters",
  "orml-rewards",
  "orml-tokens",
  "orml-tokens-rpc-runtime-api",
@@ -5961,6 +5963,7 @@ dependencies = [
  "orml-nft",
  "orml-oracle",
  "orml-oracle-rpc-runtime-api",
+ "orml-parameters",
  "orml-payments",
  "orml-rewards",
  "orml-tokens",
@@ -7668,6 +7671,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-parameters"
+version = "0.4.1-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "orml-payments"
 version = "0.4.1-dev"
 dependencies = [
@@ -7758,6 +7777,7 @@ dependencies = [
  "num-traits",
  "orml-utilities",
  "parity-scale-codec",
+ "paste",
  "scale-info",
  "serde",
  "sp-core",

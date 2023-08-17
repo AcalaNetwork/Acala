@@ -75,19 +75,20 @@ pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release
 orml-auction = { path = "../../orml/auction", default-features = false }
 orml-authority = { path = "../../orml/authority", default-features = false }
 orml-benchmarking = { path = "../../orml/benchmarking", default-features = false, optional = true }
+orml-nft= { path = "../../orml/nft", default-features = false }
 orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../../orml/oracle/rpc/runtime-api", default-features = false }
+orml-parameters = { path = "../../orml/parameters", default-features = false }
+orml-rewards = { path = "../../orml/rewards", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 orml-tokens-rpc-runtime-api = { path = "../../orml/tokens/rpc/runtime-api", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
-orml-vesting = { path = "../../orml/vesting", default-features = false }
-orml-rewards = { path = "../../orml/rewards", default-features = false }
-orml-nft= { path = "../../orml/nft", default-features = false }
-orml-xtokens = { path = "../../orml/xtokens", default-features = false }
-orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
 orml-unknown-tokens = { path = "../../orml/unknown-tokens", default-features = false }
-orml-xcm = { path = "../../orml/xcm", default-features = false }
 orml-utilities = { path = "../../orml/utilities", default-features = false }
+orml-vesting = { path = "../../orml/vesting", default-features = false }
+orml-xcm = { path = "../../orml/xcm", default-features = false }
+orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
+orml-xtokens = { path = "../../orml/xtokens", default-features = false }
 
 # modules
 module-aggregated-dex = { path = "../../modules/aggregated-dex", default-features = false }
@@ -212,16 +213,17 @@ std = [
 	"orml-nft/std",
 	"orml-oracle-rpc-runtime-api/std",
 	"orml-oracle/std",
+	"orml-parameters/std",
 	"orml-rewards/std",
 	"orml-tokens-rpc-runtime-api/std",
 	"orml-tokens/std",
 	"orml-traits/std",
 	"orml-unknown-tokens/std",
+	"orml-utilities/std",
 	"orml-vesting/std",
 	"orml-xcm-support/std",
 	"orml-xcm/std",
 	"orml-xtokens/std",
-	"orml-utilities/std",
 
 	"module-aggregated-dex/std",
 	"module-asset-registry/std",
@@ -292,6 +294,7 @@ runtime-benchmarks = [
 	"polkadot-runtime/runtime-benchmarks",
 
 	"orml-authority/runtime-benchmarks",
+	"orml-parameters/runtime-benchmarks",
 	"orml-tokens/runtime-benchmarks",
 	"orml-vesting/runtime-benchmarks",
 	"orml-xtokens/runtime-benchmarks",
@@ -356,6 +359,7 @@ try-runtime = [
 	"orml-authority/try-runtime",
 	"orml-nft/try-runtime",
 	"orml-oracle/try-runtime",
+	"orml-parameters/try-runtime",
 	"orml-rewards/try-runtime",
 	"orml-tokens/try-runtime",
 	"orml-unknown-tokens/try-runtime",

@@ -26,7 +26,7 @@ use frame_support::{
 	traits::{Currency, ExistenceRequirement, LockIdentifier, LockableCurrency, OnUnbalanced, WithdrawReasons},
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::Happened;
+use orml_traits::{define_parameters, parameters::ParameterStore, Happened};
 use primitives::{
 	bonding::{self, BondingController},
 	Balance,
@@ -41,6 +41,12 @@ pub mod weights;
 
 pub use weights::WeightInfo;
 
+define_parameters! {
+	pub Parameters = {
+		InstantUnstakeFee: Permill = 1,
+	}
+}
+
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
@@ -51,6 +57,8 @@ pub mod module {
 
 		type Currency: LockableCurrency<Self::AccountId, Balance = Balance>;
 
+		type ParameterStore: ParameterStore<Parameters>;
+
 		type OnBonded: Happened<(Self::AccountId, Balance)>;
 		type OnUnbonded: Happened<(Self::AccountId, Balance)>;
 		type OnUnstakeFee: OnUnbalanced<NegativeImbalanceOf<Self>>;
@@ -59,8 +67,6 @@ pub mod module {
 		type MinBond: Get<Balance>;
 		#[pallet::constant]
 		type UnbondingPeriod: Get<BlockNumberFor<Self>>;
-		#[pallet::constant]
-		type InstantUnstakeFee: Get<Option<Permill>>;
 		#[pallet::constant]
 		type MaxUnbondingChunks: Get<u32>;
 		#[pallet::constant]
@@ -174,7 +180,7 @@ pub mod module {
 		pub fn unbond_instant(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let fee_ratio = T::InstantUnstakeFee::get().ok_or(Error::<T>::NotAllowed)?;
+			let fee_ratio = T::ParameterStore::get(InstantUnstakeFee).ok_or(Error::<T>::NotAllowed)?;
 
 			let change = <Self as BondingController>::unbond_instant(&who, amount)?;
 
