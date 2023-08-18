@@ -86,7 +86,6 @@ jobs:
           toolchain: nightly-2023-04-15
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
       - name: Setup cmake
@@ -116,7 +115,6 @@ jobs:
           toolchain: nightly-2023-04-15
           components: rustfmt
           target: wasm32-unknown-unknown
-          default: true
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
       - name: Setup cmake
