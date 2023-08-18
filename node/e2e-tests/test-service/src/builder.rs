@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -32,7 +32,8 @@ pub struct TestNodeBuilder {
 	storage_update_func_relay_chain: Option<Box<dyn Fn()>>,
 	consensus: Consensus,
 	seal_mode: SealMode,
-	relay_chain_full_node_url: Option<Url>,
+	relay_chain_full_node_url: Vec<Url>,
+	offchain_worker: bool,
 }
 
 impl TestNodeBuilder {
@@ -55,8 +56,9 @@ impl TestNodeBuilder {
 			storage_update_func_parachain: None,
 			storage_update_func_relay_chain: None,
 			consensus: Consensus::Aura,
-			seal_mode: SealMode::ParaSeal,
-			relay_chain_full_node_url: None,
+			seal_mode: SealMode::DevAuraSeal,
+			relay_chain_full_node_url: vec![],
+			offchain_worker: true,
 		}
 	}
 
@@ -64,6 +66,12 @@ impl TestNodeBuilder {
 	pub fn enable_collator(mut self) -> Self {
 		let collator_key = CollatorPair::generate().0;
 		self.collator_key = Some(collator_key);
+		self
+	}
+
+	/// Disable offchain worker for this node.
+	pub fn disable_offchain_worker(mut self) -> Self {
+		self.offchain_worker = false;
 		self
 	}
 
@@ -89,8 +97,8 @@ impl TestNodeBuilder {
 	///
 	/// By default the node will not be connected to any node or will be able to discover any other
 	/// node.
-	pub fn connect_to_parachain_nodes<'a>(mut self, nodes: impl Iterator<Item = &'a TestNode>) -> Self {
-		self.parachain_nodes.extend(nodes.map(|n| n.addr.clone()));
+	pub fn connect_to_parachain_nodes<'a>(mut self, nodes: impl IntoIterator<Item = &'a TestNode>) -> Self {
+		self.parachain_nodes.extend(nodes.into_iter().map(|n| n.addr.clone()));
 		self
 	}
 
@@ -153,13 +161,21 @@ impl TestNodeBuilder {
 
 	/// Connect to full node via RPC.
 	pub fn use_external_relay_chain_node_at_url(mut self, network_address: Url) -> Self {
-		self.relay_chain_full_node_url = Some(network_address);
+		self.relay_chain_full_node_url = vec![network_address];
+		self
+	}
+
+	/// Connect to full node via RPC.
+	pub fn use_external_relay_chain_node_at_port(mut self, port: u16) -> Self {
+		let mut localhost_url = Url::parse("ws://localhost").expect("Should be able to parse localhost Url");
+		localhost_url.set_port(Some(port)).expect("Should be able to set port");
+		self.relay_chain_full_node_url = vec![localhost_url];
 		self
 	}
 
 	/// Build the [`TestNode`].
 	pub async fn build(self) -> TestNode {
-		let parachain_config = node_config(
+		let mut parachain_config = node_config(
 			self.storage_update_func_parachain.unwrap_or_else(|| Box::new(|| ())),
 			self.tokio_handle.clone(),
 			self.key,
@@ -168,6 +184,8 @@ impl TestNodeBuilder {
 			self.collator_key.is_some(),
 		)
 		.expect("could not generate Configuration");
+
+		parachain_config.offchain_worker.enabled = self.offchain_worker;
 
 		// start relay-chain full node inside para-chain
 		let mut relay_chain_config = polkadot_test_service::node_config(
@@ -178,11 +196,11 @@ impl TestNodeBuilder {
 			false,
 		);
 
-		relay_chain_config.network.node_name = format!("{} (relay chain)", relay_chain_config.network.node_name);
-
 		let collator_options = CollatorOptions {
-			relay_chain_rpc_url: self.relay_chain_full_node_url,
+			relay_chain_rpc_urls: self.relay_chain_full_node_url,
 		};
+
+		relay_chain_config.network.node_name = format!("{} (relay chain)", relay_chain_config.network.node_name);
 
 		let multiaddr = parachain_config.network.listen_addresses[0].clone();
 		let (task_manager, client, network, rpc_handlers, transaction_pool, backend, seal_sink) = match self.seal_mode {
@@ -198,11 +216,11 @@ impl TestNodeBuilder {
 					parachain_config,
 					self.collator_key,
 					relay_chain_config,
-					collator_options,
 					self.para_id,
 					self.wrap_announce_block,
 					|_| Ok(RpcModule::new(())),
 					self.consensus,
+					collator_options,
 					self.seal_mode,
 				)
 				.await
@@ -211,10 +229,7 @@ impl TestNodeBuilder {
 		};
 
 		let peer_id = network.local_peer_id();
-		let addr = MultiaddrWithPeerId {
-			multiaddr,
-			peer_id: *peer_id,
-		};
+		let addr = MultiaddrWithPeerId { multiaddr, peer_id };
 
 		TestNode {
 			task_manager,
@@ -242,9 +257,13 @@ pub fn node_config(
 	nodes: Vec<MultiaddrWithPeerId>,
 	nodes_exlusive: bool,
 	is_collator: bool,
-) -> Result<Configuration, sc_service::Error> {
-	let base_path = BasePath::new_temp_dir()?;
-	let root = base_path.path().to_path_buf();
+) -> Result<Configuration, ServiceError> {
+	// https://github.com/paritytech/substrate/blob/f465fee723c87b734/client/service/src/config.rs#L280-L290
+	// let base_path = BasePath::new_temp_dir()?;
+	let base_path = BasePath::new(std::path::PathBuf::from(
+		tempfile::Builder::new().prefix("substrate").tempdir()?.path(),
+	));
+	let root = base_path.path().join(format!("cumulus_test_service_{}", key));
 	let role = if is_collator { Role::Authority } else { Role::Full };
 	let key_seed = key.to_seed();
 	let mut spec = Box::new(dev_testnet_config(None).unwrap());
@@ -287,39 +306,24 @@ pub fn node_config(
 		transaction_pool: Default::default(),
 		network: network_config,
 		keystore: KeystoreConfig::InMemory,
-		keystore_remote: Default::default(),
 		database: DatabaseSource::RocksDb {
 			path: root.join("db"),
 			cache_size: 128,
 		},
-		state_cache_size: 67108864,
-		state_cache_child_ratio: None,
+		trie_cache_maximum_size: Some(64 * 1024 * 1024),
 		state_pruning: Some(PruningMode::ArchiveAll),
-		keep_blocks: KeepBlocks::All,
+		blocks_pruning: BlocksPruning::KeepAll,
 		chain_spec: spec,
-		wasm_method: WasmExecutionMethod::Compiled {
-			instantiation_strategy: WasmtimeInstantiationStrategy::PoolingCopyOnWrite,
-		},
-		// NOTE: we enforce the use of the native runtime to make the errors more debuggable
-		execution_strategies: ExecutionStrategies {
-			syncing: sc_client_api::ExecutionStrategy::NativeWhenPossible,
-			importing: sc_client_api::ExecutionStrategy::NativeWhenPossible,
-			block_construction: sc_client_api::ExecutionStrategy::NativeWhenPossible,
-			offchain_worker: sc_client_api::ExecutionStrategy::NativeWhenPossible,
-			other: sc_client_api::ExecutionStrategy::NativeWhenPossible,
-		},
-		rpc_http: None,
-		rpc_ws: None,
-		rpc_ipc: None,
-		rpc_ws_max_connections: None,
+		wasm_method: Default::default(),
+		rpc_addr: None,
+		rpc_max_connections: Default::default(),
 		rpc_cors: None,
 		rpc_methods: Default::default(),
-		rpc_max_payload: None,
-		rpc_max_request_size: None,
-		rpc_max_response_size: None,
-		rpc_id_provider: None,
-		rpc_max_subs_per_conn: None,
-		ws_max_out_buffer_capacity: None,
+		rpc_max_request_size: Default::default(),
+		rpc_max_response_size: Default::default(),
+		rpc_id_provider: Default::default(),
+		rpc_max_subs_per_conn: Default::default(),
+		rpc_port: 9944,
 		prometheus_config: None,
 		telemetry_endpoints: None,
 		default_heap_pages: None,
@@ -334,9 +338,10 @@ pub fn node_config(
 		tracing_receiver: Default::default(),
 		max_runtime_instances: 8,
 		announce_block: true,
-		base_path: Some(base_path),
+		base_path,
 		informant_output_format: Default::default(),
 		wasm_runtime_overrides: None,
 		runtime_cache_size: 2,
+		data_path: root,
 	})
 }

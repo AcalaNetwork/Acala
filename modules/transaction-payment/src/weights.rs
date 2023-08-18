@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -51,6 +51,7 @@ pub trait WeightInfo {
 	fn disable_charge_fee_pool() -> Weight;
 	fn on_finalize() -> Weight;
 	fn with_fee_path() -> Weight;
+	fn with_fee_aggregated_path() -> Weight;
 	fn with_fee_currency() -> Weight;
 	fn with_fee_paid_by() -> Weight;
 }
@@ -61,9 +62,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Balances Reserves (r:1 w:1)
 	// Storage: TransactionPayment AlternativeFeeSwapPath (r:0 w:1)
 	fn set_alternative_fee_swap_path() -> Weight {
-		(21_367_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_parts(21_367_000, 0)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: TransactionPayment PoolSize (r:1 w:1)
 	// Storage: TransactionPayment AlternativeFeeSwapPath (r:1 w:0)
@@ -74,9 +75,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: TransactionPayment TokenExchangeRate (r:0 w:1)
 	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
 	fn enable_charge_fee_pool() -> Weight {
-		(62_403_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+		Weight::from_parts(62_403_000, 0)
+			.saturating_add(T::DbWeight::get().reads(8 as u64))
+			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
 	// Storage: TransactionPayment TokenExchangeRate (r:1 w:1)
 	// Storage: Tokens Accounts (r:2 w:2)
@@ -87,61 +88,67 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: TransactionPayment PoolSize (r:0 w:1)
 	// Storage: EvmAccounts Accounts (r:0 w:1)
 	fn disable_charge_fee_pool() -> Weight {
-		(66_491_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+		Weight::from_parts(66_491_000, 0)
+			.saturating_add(T::DbWeight::get().reads(7 as u64))
+			.saturating_add(T::DbWeight::get().writes(9 as u64))
 	}
 	fn with_fee_path() -> Weight {
-		(156_000_000 as Weight)
+		Weight::from_parts(156_000_000, 0)
+	}
+	fn with_fee_aggregated_path() -> Weight {
+		Weight::from_parts(156_000_000, 0)
 	}
 	fn with_fee_currency() -> Weight {
-		(193_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+		Weight::from_parts(193_000_000, 0)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
 	}
 	fn with_fee_paid_by() -> Weight {
-		(193_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+		Weight::from_parts(193_000_000, 0)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
 	}
 	// Storage: TransactionPayment NextFeeMultiplier (r:1 w:1)
 	// Storage: System BlockWeight (r:1 w:0)
 	fn on_finalize() -> Weight {
-		(6_779_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_parts(6_779_000, 0)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn set_alternative_fee_swap_path() -> Weight {
-		(21_367_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_parts(21_367_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn enable_charge_fee_pool() -> Weight {
-		(62_403_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
+		Weight::from_parts(62_403_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(8 as u64))
+			.saturating_add(RocksDbWeight::get().writes(7 as u64))
 	}
 	fn disable_charge_fee_pool() -> Weight {
-		(66_491_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(9 as Weight))
+		Weight::from_parts(66_491_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(7 as u64))
+			.saturating_add(RocksDbWeight::get().writes(9 as u64))
 	}
 	fn on_finalize() -> Weight {
-		(6_779_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_parts(6_779_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn with_fee_path() -> Weight {
-		(156_000_000 as Weight)
+		Weight::from_parts(156_000_000, 0)
+	}
+	fn with_fee_aggregated_path() -> Weight {
+		Weight::from_parts(156_000_000, 0)
 	}
 	fn with_fee_currency() -> Weight {
-		(193_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+		Weight::from_parts(193_000_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 	}
 	fn with_fee_paid_by() -> Weight {
-		(193_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+		Weight::from_parts(193_000_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 	}
 }

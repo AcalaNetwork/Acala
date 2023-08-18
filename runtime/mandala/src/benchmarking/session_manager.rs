@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Event, Runtime, SessionManager, System};
+use crate::{Runtime, RuntimeEvent, SessionManager, System};
 
 use frame_support::{
 	assert_ok,
@@ -25,7 +25,7 @@ use frame_support::{
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 
-fn assert_last_event(generic_event: Event) {
+fn assert_last_event(generic_event: RuntimeEvent) {
 	System::assert_last_event(generic_event.into());
 }
 

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,8 @@
 
 //! Acala CLI library.
 
+#![allow(clippy::large_enum_variant)]
+
 use clap::Parser;
 use sc_cli::{KeySubcommand, SignCmd, VanityCmd, VerifyCmd};
 use std::path::PathBuf;
@@ -28,15 +30,13 @@ use service::chain_spec;
 #[derive(Debug, Parser)]
 pub enum Subcommand {
 	/// Export the genesis state of the parachain.
-	#[clap(name = "export-genesis-state")]
-	ExportGenesisState(ExportGenesisStateCommand),
+	ExportGenesisState(cumulus_client_cli::ExportGenesisStateCommand),
 
 	/// Export the genesis wasm of the parachain.
-	#[clap(name = "export-genesis-wasm")]
-	ExportGenesisWasm(ExportGenesisWasmCommand),
+	ExportGenesisWasm(cumulus_client_cli::ExportGenesisWasmCommand),
 
 	/// Key management cli utilities
-	#[clap(subcommand)]
+	#[command(subcommand)]
 	Key(KeySubcommand),
 
 	/// The custom inspect subcommmand for decoding blocks and extrinsics.
@@ -47,7 +47,7 @@ pub enum Subcommand {
 	Inspect(inspect::cli::InspectCmd),
 
 	/// The custom benchmark subcommmand benchmarking runtime modules.
-	#[clap(subcommand)]
+	#[command(subcommand)]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
 
 	/// Try some experimental command on the runtime. This includes migration and runtime-upgrade
@@ -87,38 +87,6 @@ pub enum Subcommand {
 	Revert(sc_cli::RevertCmd),
 }
 
-/// Command for exporting the genesis state of the parachain
-#[derive(Debug, Parser)]
-pub struct ExportGenesisStateCommand {
-	/// Output file name or stdout if unspecified.
-	#[clap(parse(from_os_str))]
-	pub output: Option<PathBuf>,
-
-	/// Write output in binary. Default is to write in hex.
-	#[clap(short, long)]
-	pub raw: bool,
-
-	/// The name of the chain for that the genesis state should be exported.
-	#[clap(long)]
-	pub chain: Option<String>,
-}
-
-/// Command for exporting the genesis wasm file.
-#[derive(Debug, Parser)]
-pub struct ExportGenesisWasmCommand {
-	/// Output file name or stdout if unspecified.
-	#[clap(parse(from_os_str))]
-	pub output: Option<PathBuf>,
-
-	/// Write output in binary. Default is to write in hex.
-	#[clap(short, long)]
-	pub raw: bool,
-
-	/// The name of the chain for that the genesis wasm file should be exported.
-	#[clap(long)]
-	pub chain: Option<String>,
-}
-
 /// An overarching CLI command definition.
 #[derive(Debug, Parser)]
 #[clap(
@@ -128,16 +96,16 @@ pub struct ExportGenesisWasmCommand {
 )]
 pub struct Cli {
 	/// Possible subcommand with parameters.
-	#[clap(subcommand)]
+	#[command(subcommand)]
 	pub subcommand: Option<Subcommand>,
 
 	#[allow(missing_docs)]
 	#[clap(flatten)]
 	pub run: cumulus_client_cli::RunCmd,
 
-	/// Relaychain arguments
+	/// Relay chain arguments
 	#[clap(raw = true)]
-	pub relaychain_args: Vec<String>,
+	pub relay_chain_args: Vec<String>,
 
 	/// Instant block sealing
 	///
@@ -168,18 +136,18 @@ pub struct RelayChainCli {
 }
 
 impl RelayChainCli {
-	/// Parse the relay chain CLI parameters using the parachain `Configuration`.
+	/// Parse the relay chain CLI parameters using the para chain `Configuration`.
 	pub fn new<'a>(
 		para_config: &sc_service::Configuration,
 		relay_chain_args: impl Iterator<Item = &'a String>,
 	) -> Self {
 		let extension = chain_spec::Extensions::try_get(&*para_config.chain_spec);
 		let chain_id = extension.map(|e| e.relay_chain.clone());
-		let base_path = para_config.base_path.as_ref().map(|x| x.path().join("polkadot"));
+		let base_path = para_config.base_path.path().join("polkadot");
 		Self {
-			base_path,
+			base_path: Some(base_path),
 			chain_id,
-			base: polkadot_cli::RunCmd::parse_from(relay_chain_args),
+			base: clap::Parser::parse_from(relay_chain_args),
 		}
 	}
 }

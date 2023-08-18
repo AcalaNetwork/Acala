@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode};
-use frame_support::weights::DispatchInfo;
+use frame_support::dispatch::DispatchInfo;
+use frame_system::pallet_prelude::*;
 use module_support::AddressMapping;
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -40,11 +41,11 @@ use sp_std::vec;
 #[scale_info(skip_type_params(T))]
 pub struct CheckNonce<T: frame_system::Config + module_evm::Config> {
 	#[codec(compact)]
-	pub nonce: T::Index,
+	pub nonce: T::Nonce,
 	#[codec(skip)]
 	pub is_eth_tx: bool,
 	#[codec(skip)]
-	pub eth_tx_valid_until: T::BlockNumber,
+	pub eth_tx_valid_until: BlockNumberFor<T>,
 }
 
 impl<T: frame_system::Config + module_evm::Config> Default for CheckNonce<T> {
@@ -59,7 +60,7 @@ impl<T: frame_system::Config + module_evm::Config> Default for CheckNonce<T> {
 
 impl<T: frame_system::Config + module_evm::Config> CheckNonce<T> {
 	/// utility constructor. Used only in client/factory code.
-	pub fn from(nonce: T::Index) -> Self {
+	pub fn from(nonce: T::Nonce) -> Self {
 		Self {
 			nonce,
 			is_eth_tx: false,
@@ -67,7 +68,7 @@ impl<T: frame_system::Config + module_evm::Config> CheckNonce<T> {
 		}
 	}
 
-	pub fn mark_as_ethereum_tx(&mut self, valid_until: T::BlockNumber) {
+	pub fn mark_as_ethereum_tx(&mut self, valid_until: BlockNumberFor<T>) {
 		self.is_eth_tx = true;
 		self.eth_tx_valid_until = valid_until;
 	}
@@ -91,11 +92,11 @@ impl<T: frame_system::Config + module_evm::Config> sp_std::fmt::Debug for CheckN
 
 impl<T: frame_system::Config + module_evm::Config> SignedExtension for CheckNonce<T>
 where
-	T::Call: Dispatchable<Info = DispatchInfo>,
+	T::RuntimeCall: Dispatchable<Info = DispatchInfo>,
 	T::AddressMapping: AddressMapping<T::AccountId>,
 {
 	type AccountId = T::AccountId;
-	type Call = T::Call;
+	type Call = T::RuntimeCall;
 	type AdditionalSigned = ();
 	type Pre = ();
 	const IDENTIFIER: &'static str = "CheckNonce";
@@ -116,7 +117,7 @@ where
 			// should check evm nonce
 			let address = <T as module_evm::Config>::AddressMapping::get_evm_address(who)
 				.unwrap_or_else(|| <T as module_evm::Config>::AddressMapping::get_default_evm_address(who));
-			let evm_nonce = module_evm::Accounts::<T>::get(&address)
+			let evm_nonce = module_evm::Accounts::<T>::get(address)
 				.map(|x| x.nonce)
 				.unwrap_or_default();
 			if self.nonce != evm_nonce {
@@ -135,7 +136,7 @@ where
 			}
 			.into());
 		}
-		account.nonce += T::Index::one();
+		account.nonce += T::Nonce::one();
 		frame_system::Account::<T>::insert(who, account);
 		Ok(())
 	}
@@ -151,7 +152,7 @@ where
 			// should check evm nonce
 			let address = <T as module_evm::Config>::AddressMapping::get_evm_address(who)
 				.unwrap_or_else(|| <T as module_evm::Config>::AddressMapping::get_default_evm_address(who));
-			let evm_nonce = module_evm::Accounts::<T>::get(&address)
+			let evm_nonce = module_evm::Accounts::<T>::get(address)
 				.map(|x| x.nonce)
 				.unwrap_or_default();
 			if self.nonce < evm_nonce {
@@ -202,12 +203,12 @@ where
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::mock::{new_test_ext, AccountId32, Call, TestRuntime};
+	use crate::mock::{new_test_ext, AccountId32, RuntimeCall, TestRuntime};
 	use frame_support::{assert_noop, assert_ok};
 
 	/// A simple call, which one doesn't matter.
-	pub const CALL: &<TestRuntime as frame_system::Config>::Call =
-		&Call::System(frame_system::Call::set_heap_pages { pages: 0u64 });
+	pub const CALL: &<TestRuntime as frame_system::Config>::RuntimeCall =
+		&RuntimeCall::System(frame_system::Call::set_heap_pages { pages: 0u64 });
 
 	#[test]
 	fn check_nonce_works() {

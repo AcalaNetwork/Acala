@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -27,15 +27,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{log, pallet_prelude::*, transactional, weights::Weight};
+use frame_support::{log, pallet_prelude::*, traits::Get};
 use frame_system::pallet_prelude::*;
-use module_support::{CallBuilder, HomaSubAccountXcm};
+use module_support::{CallBuilder, CrowdloanVaultXcm, HomaSubAccountXcm};
 use orml_traits::XcmTransfer;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
 use sp_runtime::traits::Convert;
 use sp_std::{convert::From, prelude::*, vec, vec::Vec};
-use xcm::latest::prelude::*;
+use xcm::{prelude::*, v3::Weight as XcmWeight};
+
+mod mock;
+mod tests;
 
 pub mod migrations;
 pub use module::*;
@@ -54,14 +57,16 @@ pub mod module {
 		HomaUnbond,
 		// Parachain fee with location info
 		ParachainFee(Box<MultiLocation>),
+		// `XcmPallet::reserve_transfer_assets` call via proxy account
+		ProxyReserveTransferAssets,
 	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_xcm::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Origin represented Governance
-		type UpdateOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+		type UpdateOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The currency id of the Staking asset
 		#[pallet::constant]
@@ -84,6 +89,13 @@ pub mod module {
 
 		/// The interface to Cross-chain transfer.
 		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
+
+		/// Self parachain location.
+		#[pallet::constant]
+		type SelfLocation: Get<MultiLocation>;
+
+		/// Convert AccountId to MultiLocation to build XCM message.
+		type AccountIdToMultiLocation: Convert<Self::AccountId, MultiLocation>;
 	}
 
 	#[pallet::error]
@@ -98,7 +110,7 @@ pub mod module {
 		/// Xcm dest weight has been updated.
 		XcmDestWeightUpdated {
 			xcm_operation: XcmInterfaceOperation,
-			new_xcm_dest_weight: Weight,
+			new_xcm_dest_weight: XcmWeight,
 		},
 		/// Xcm dest weight has been updated.
 		XcmFeeUpdated {
@@ -114,14 +126,14 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn xcm_dest_weight_and_fee)]
 	pub type XcmDestWeightAndFee<T: Config> =
-		StorageMap<_, Twox64Concat, XcmInterfaceOperation, (Weight, Balance), ValueQuery>;
+		StorageMap<_, Twox64Concat, XcmInterfaceOperation, (XcmWeight, Balance), ValueQuery>;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -129,11 +141,11 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `updates`: vec of tuple: (XcmInterfaceOperation, WeightChange, FeeChange).
-		#[pallet::weight(10_000_000)]
-		#[transactional]
+		#[pallet::call_index(0)]
+		#[pallet::weight(frame_support::weights::Weight::from_parts(10_000_000, 0))]
 		pub fn update_xcm_dest_weight_and_fee(
 			origin: OriginFor<T>,
-			updates: Vec<(XcmInterfaceOperation, Option<Weight>, Option<Balance>)>,
+			updates: Vec<(XcmInterfaceOperation, Option<XcmWeight>, Option<Balance>)>,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
@@ -174,25 +186,40 @@ pub mod module {
 				T::StakingCurrencyId::get(),
 				amount,
 				T::SovereignSubAccountLocationConvert::convert(sub_account_index),
-				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0,
+				WeightLimit::Limited(Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0),
 			)
+			.map(|_| ())
 		}
 
 		/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency
 		/// and send it back.
 		fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaWithdrawUnbonded);
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
-				T::RelayChainCallBuilder::utility_as_derivative_call(
-					T::RelayChainCallBuilder::utility_batch_call(vec![
-						T::RelayChainCallBuilder::staking_withdraw_unbonded(T::RelayChainUnbondingSlashingSpans::get()),
-						T::RelayChainCallBuilder::balances_transfer_keep_alive(T::ParachainAccount::get(), amount),
-					]),
-					sub_account_index,
-				),
-				xcm_fee,
-				xcm_dest_weight,
+
+			// TODO: config xcm_dest_weight and fee for withdraw_unbonded and transfer seperately.
+			// Temperarily use double fee.
+			let xcm_message = T::RelayChainCallBuilder::finalize_multiple_calls_into_xcm_message(
+				vec![
+					(
+						T::RelayChainCallBuilder::utility_as_derivative_call(
+							T::RelayChainCallBuilder::staking_withdraw_unbonded(
+								T::RelayChainUnbondingSlashingSpans::get(),
+							),
+							sub_account_index,
+						),
+						xcm_dest_weight,
+					),
+					(
+						T::RelayChainCallBuilder::utility_as_derivative_call(
+							T::RelayChainCallBuilder::balances_transfer_keep_alive(T::ParachainAccount::get(), amount),
+							sub_account_index,
+						),
+						xcm_dest_weight,
+					),
+				],
+				xcm_fee.saturating_mul(2),
 			);
+
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
 			log::debug!(
 				target: "xcm-interface",
@@ -256,6 +283,41 @@ pub mod module {
 		/// The fee of parachain transfer.
 		fn get_parachain_fee(location: MultiLocation) -> Balance {
 			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ParachainFee(Box::new(location))).1
+		}
+	}
+
+	impl<T: Config> CrowdloanVaultXcm<T::AccountId, Balance> for Pallet<T> {
+		fn transfer_to_liquid_crowdloan_module_account(
+			vault: T::AccountId,
+			recipient: T::AccountId,
+			amount: Balance,
+		) -> DispatchResult {
+			let (xcm_dest_weight, xcm_fee) =
+				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ProxyReserveTransferAssets);
+
+			let proxy_call = T::RelayChainCallBuilder::proxy_call(
+				vault.clone(),
+				T::RelayChainCallBuilder::xcm_pallet_reserve_transfer_assets(
+					T::SelfLocation::get(),
+					T::AccountIdToMultiLocation::convert(recipient.clone()),
+					// Note this message is executed in the relay chain context.
+					vec![(Concrete(Here.into()), amount).into()].into(),
+					0,
+				),
+			);
+			let xcm_message =
+				T::RelayChainCallBuilder::finalize_call_into_xcm_message(proxy_call, xcm_fee, xcm_dest_weight);
+
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			log::debug!(
+				target: "xcm-interface",
+				"Send {:?} planck DOT from crowdloan vault {:?} to {:?}, result: {:?}",
+				amount, vault, recipient, result,
+			);
+
+			ensure!(result.is_ok(), Error::<T>::XcmFailed);
+
+			Ok(())
 		}
 	}
 }

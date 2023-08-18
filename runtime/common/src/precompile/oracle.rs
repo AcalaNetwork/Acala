@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -21,8 +21,8 @@ use super::{
 	target_gas_limit,
 	weights::PrecompileWeights,
 };
-use crate::WeightToGas;
-use frame_support::{log, sp_runtime::FixedPointNumber};
+use crate::{Weight, WeightToGas};
+use frame_support::log;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
@@ -131,7 +131,7 @@ where
 				let currency_id = input.currency_id_at(1)?;
 				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
 				let get_price = WeightToGas::convert(PrecompileWeights::<Runtime>::oracle_get_price());
-				WeightToGas::convert(read_currency).saturating_add(get_price)
+				WeightToGas::convert(Weight::from_parts(read_currency, 0)).saturating_add(get_price)
 			}
 		};
 		Ok(Self::BASE_COST.saturating_add(cost))
@@ -142,7 +142,7 @@ where
 mod tests {
 	use super::*;
 
-	use crate::precompile::mock::{alice_evm_addr, new_test_ext, Oracle, Price, Test, ALICE, RENBTC};
+	use crate::precompile::mock::{alice_evm_addr, new_test_ext, Oracle, Price, Test, ALICE, DOT};
 	use frame_support::{assert_noop, assert_ok};
 	use hex_literal::hex;
 	use module_evm::ExitRevert;
@@ -162,10 +162,10 @@ mod tests {
 			let price = Price::from(30_000);
 
 			// getPrice(address) -> 0x41976e09
-			// RENBTC
+			// DOT
 			let input = hex! {"
 				41976e09
-				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000002
 			"};
 
 			// no price yet
@@ -177,9 +177,9 @@ mod tests {
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
-			assert_ok!(Oracle::feed_value(ALICE, RENBTC, price));
+			assert_ok!(Oracle::feed_value(Some(ALICE), DOT, price));
 			assert_eq!(
-				Oracle::get(&RENBTC),
+				Oracle::get(&DOT),
 				Some(orml_oracle::TimestampedValue {
 					value: price,
 					timestamp: 1

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -31,10 +31,9 @@ use mock::*;
 use module_support::mocks::MockAddressMapping;
 use module_support::AddressMapping;
 use orml_bencher::{benches, Bencher};
-use primitive_types::{H256, U256};
 use primitives::evm::Vicinity;
 use serde_json::Value;
-use sp_core::H160;
+use sp_core::{H160, H256, U256};
 use sp_std::{convert::TryInto, prelude::*, rc::Rc, str::FromStr};
 
 fn get_bench_info(name: &str) -> (Vec<u8>, H160, Vec<u8>, u64, Vec<u8>) {
@@ -58,8 +57,8 @@ fn get_bench_info(name: &str) -> (Vec<u8>, H160, Vec<u8>, u64, Vec<u8>) {
 
 fn faucet(address: &H160) {
 	let account_id = MockAddressMapping::get_account_id(&address);
-	assert_ok!(Balances::set_balance(
-		Origin::root(),
+	assert_ok!(Balances::set_balance_deprecated(
+		RuntimeOrigin::root(),
 		account_id,
 		1_000_000_000_000_000,
 		0
@@ -203,7 +202,7 @@ macro_rules! evm_call {
 			);
 			assert_eq!(contract_address, result.value);
 			assert_ok!(EVM::publish_free(
-				Origin::signed(CouncilAccount::get()),
+				RuntimeOrigin::signed(CouncilAccount::get()),
 				contract_address
 			));
 

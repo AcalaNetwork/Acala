@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -32,13 +32,13 @@ mod ripemd;
 mod sha256;
 mod sha3fips;
 
+pub use self::ripemd::Ripemd160;
 pub use blake2::Blake2F;
 pub use bn128::{Bn128Add, Bn128Mul, Bn128Pairing};
 pub use ecrecover::ECRecover;
 pub use ecrecover_publickey::ECRecoverPublicKey;
 pub use identity::Identity;
 pub use modexp::{IstanbulModexp, Modexp};
-pub use ripemd::Ripemd160;
 pub use sha256::Sha256;
 pub use sha3fips::{Sha3FIPS256, Sha3FIPS512};
 

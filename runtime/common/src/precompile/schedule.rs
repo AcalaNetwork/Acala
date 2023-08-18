@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -93,15 +93,15 @@ where
 		+ pallet_scheduler::Config
 		+ Send
 		+ Sync,
-	<Runtime as pallet_scheduler::Config>::Call: Dispatchable + Debug + From<module_evm::Call<Runtime>>,
-	<<Runtime as pallet_scheduler::Config>::Call as Dispatchable>::Origin: IsType<<Runtime as frame_system::Config>::Origin>
+	<Runtime as pallet_scheduler::Config>::RuntimeCall: Dispatchable + Debug + From<module_evm::Call<Runtime>>,
+	<<Runtime as pallet_scheduler::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin: IsType<<Runtime as frame_system::Config>::RuntimeOrigin>
 		+ OriginTrait<
 			AccountId = Runtime::AccountId,
 			PalletsOrigin = <Runtime as pallet_scheduler::Config>::PalletsOrigin,
 		>,
 	pallet_scheduler::Pallet<Runtime>: ScheduleNamed<
 		BlockNumber,
-		<Runtime as pallet_scheduler::Config>::Call,
+		<Runtime as pallet_scheduler::Config>::RuntimeCall,
 		<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 		Address = TaskAddress<BlockNumber>,
 	>,
@@ -133,20 +133,17 @@ where
 				let gas_limit = input.u64_at(4)?;
 				let storage_limit = input.u32_at(5)?;
 				let min_delay = input.u32_at(6)?;
-				// solidity abi encode bytes will add an length at input[7]
-				let input_len = input.u32_at(8)?;
-				let input_data = input.bytes_at(9, input_len as usize)?;
+				let input_data = input.bytes_at(7)?;
 
 				log::debug!(
 					target: "evm",
-					"schedule call: from: {:?}, target: {:?}, value: {:?}, gas_limit: {:?}, storage_limit: {:?}, min_delay: {:?}, input_len: {:?}, input_data: {:?}",
+					"schedule call: from: {:?}, target: {:?}, value: {:?}, gas_limit: {:?}, storage_limit: {:?}, min_delay: {:?}, input_data: {:?}",
 					from,
 					target,
 					value,
 					gas_limit,
 					storage_limit,
 					min_delay,
-					input_len,
 					input_data,
 				);
 
@@ -165,9 +162,11 @@ where
 						fee,
 						None,
 					)
-					.map_err(|e| PrecompileFailure::Revert {
+					.map_err(|_| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: "Scheduler charge failed".into(),
+						// TODO: upgrade schedule::v3::Named
+						// output: Output::encode_error_msg("Scheduler charge failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					})?;
 				}
@@ -207,21 +206,23 @@ where
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
 					BlockNumber,
-					<Runtime as pallet_scheduler::Config>::Call,
+					<Runtime as pallet_scheduler::Config>::RuntimeCall,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::schedule_named(
 					task_id.clone(),
 					DispatchTime::After(min_delay),
 					None,
 					0,
-					<<<Runtime as pallet_scheduler::Config>::Call as Dispatchable>::Origin>::root()
+					<<<Runtime as pallet_scheduler::Config>::RuntimeCall as Dispatchable>::RuntimeOrigin>::root()
 						.caller()
 						.clone(),
 					call,
 				)
 				.map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "Schedule failed".into(),
+					output: "Scheduler schedule failed".into(),
+					// TODO: upgrade schedule::v3::Named
+					// output: Output::encode_error_msg("Scheduler schedule failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -234,9 +235,7 @@ where
 			}
 			Action::Cancel => {
 				let from = input.evm_address_at(1)?;
-				// solidity abi encode bytes will add an length at input[2]
-				let task_id_len = input.u32_at(3)?;
-				let task_id = input.bytes_at(4, task_id_len as usize)?;
+				let task_id = input.bytes_at(2)?;
 
 				log::debug!(
 					target: "evm",
@@ -261,12 +260,14 @@ where
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
 					BlockNumber,
-					<Runtime as pallet_scheduler::Config>::Call,
+					<Runtime as pallet_scheduler::Config>::RuntimeCall,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::cancel_named(task_id)
 				.map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "Cancel schedule failed".into(),
+					output: "Scheduler cancel failed".into(),
+					// TODO: upgrade schedule::v3::Named
+					// output: Output::encode_error_msg("Scheduler cancel failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -291,9 +292,7 @@ where
 			Action::Reschedule => {
 				let from = input.evm_address_at(1)?;
 				let min_delay = input.u32_at(2)?;
-				// solidity abi encode bytes will add an length at input[3]
-				let task_id_len = input.u32_at(4)?;
-				let task_id = input.bytes_at(5, task_id_len as usize)?;
+				let task_id = input.bytes_at(3)?;
 
 				log::debug!(
 					target: "evm",
@@ -319,12 +318,12 @@ where
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
 					BlockNumber,
-					<Runtime as pallet_scheduler::Config>::Call,
+					<Runtime as pallet_scheduler::Config>::RuntimeCall,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::reschedule_named(task_id, DispatchTime::After(min_delay))
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Scheduler reschedule failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -361,7 +360,7 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{
-		alice_evm_addr, bob_evm_addr, new_test_ext, run_to_block, Balances, Event as TestEvent, System, Test,
+		alice_evm_addr, bob_evm_addr, new_test_ext, run_to_block, Balances, RuntimeEvent as TestEvent, System, Test,
 	};
 	use hex_literal::hex;
 	use sp_core::H160;
@@ -397,11 +396,12 @@ mod tests {
 				000000000000000000000000000000000000000000000000 00000000000493e0
 				00000000000000000000000000000000000000000000000000000000 00000064
 				00000000000000000000000000000000000000000000000000000000 00000001
-				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 000000e0
 				00000000000000000000000000000000000000000000000000000000 00000044
 				a9059cbb
 				000000000000000000000000 1000000000000000000000000000000000000002
 				00000000000000000000000000000000 000000000000000000000000000003e8
+				00000000000000000000000000000000000000000000000000000000
 			"};
 
 			let resp = SchedulePrecompile::execute(&input, None, &context, false).unwrap();
@@ -423,9 +423,10 @@ mod tests {
 			let cancel_input = hex! {"
 				93e32661
 				000000000000000000000000 1000000000000000000000000000000000000001
-				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 00000040
 				00000000000000000000000000000000000000000000000000000000 00000029
-				305363686564756c6543616c6c000000001000000000000000000000000000000000000001824f1200
+				305363686564756c6543616c6c00000000100000000000000000000000000000
+				0000000001824f12000000000000000000000000000000000000000000000000
 			"};
 
 			let resp = SchedulePrecompile::execute(&cancel_input, None, &context, false).unwrap();
@@ -456,9 +457,10 @@ mod tests {
 				28302f34
 				000000000000000000000000 1000000000000000000000000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000000002
-				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 00000060
 				00000000000000000000000000000000000000000000000000000000 00000029
-				305363686564756c6543616c6c010000001000000000000000000000000000000000000001824f1200
+				305363686564756c6543616c6c01000000100000000000000000000000000000
+				0000000001824f12000000000000000000000000000000000000000000000000
 			"};
 
 			let resp = SchedulePrecompile::execute(&reschedule_input, None, &context, false).unwrap();
@@ -487,7 +489,7 @@ mod tests {
 			run_to_block(5);
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			{
-				assert_eq!(Balances::free_balance(from_account.clone()), 999999931325);
+				assert_eq!(Balances::free_balance(from_account.clone()), 999999944095);
 				assert_eq!(Balances::reserved_balance(from_account), 0);
 				assert_eq!(Balances::free_balance(to_account), 1000000001000);
 			}
@@ -527,10 +529,10 @@ mod tests {
 				000000000000000000000000000000000000000000000000 00000000000493e0
 				00000000000000000000000000000000000000000000000000000000 00000064
 				00000000000000000000000000000000000000000000000000000000 00000001
-				00000000000000000000000000000000000000000000000000000000 00000000
-				00000000000000000000000000000000000000000000000000000000 00000001
-				00000000000000000000000000000000000000000000000000000000 00000000
-				12000000000000000000000000000000000000000000000000000000
+				00000000000000000000000000000000000000000000000000000000 000000e0
+				00000000000000000000000000000000000000000000000000000000 0000003c
+				0000000000000000000000000000000000000000000000000000000000000000
+				1200000000000000000000000000000000000000000000000000000000000000
 			"};
 
 			let resp = SchedulePrecompile::execute(&input, None, &context, false).unwrap();
@@ -565,9 +567,10 @@ mod tests {
 			let cancel_input = hex! {"
 				93e32661
 				000000000000000000000000 1000000000000000000000000000000000000002
-				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 00000040
 				00000000000000000000000000000000000000000000000000000000 00000029
-				305363686564756c6543616c6c000000001000000000000000000000000000000000000001824f1200
+				305363686564756c6543616c6c00000000100000000000000000000000000000
+				0000000001824f12000000000000000000000000000000000000000000000000
 			"};
 			assert_eq!(
 				SchedulePrecompile::execute(&cancel_input, Some(10_000), &context, false),
@@ -581,7 +584,7 @@ mod tests {
 			run_to_block(4);
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			{
-				assert_eq!(Balances::free_balance(from_account.clone()), 999999978926);
+				assert_eq!(Balances::free_balance(from_account.clone()), 999999978576);
 				assert_eq!(Balances::reserved_balance(from_account), 0);
 				assert_eq!(Balances::free_balance(to_account), 1000000000000);
 			}

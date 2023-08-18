@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -29,9 +29,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, traits::NamedReservableCurrency, transactional};
+use frame_support::{pallet_prelude::*, traits::NamedReservableCurrency};
 use frame_system::pallet_prelude::*;
 use primitives::{Amount, Balance, CurrencyId, Position, ReserveIdentifier};
+use sp_core::U256;
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	ArithmeticError, DispatchResult,
@@ -54,7 +55,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + cdp_engine::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Currency for authorization reserved.
 		type Currency: NamedReservableCurrency<
@@ -131,7 +132,7 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -144,8 +145,8 @@ pub mod module {
 		/// - `debit_adjustment`: signed amount, positive means to issue some amount of stablecoin
 		///   to caller according to the debit adjustment, negative means caller will payback some
 		///   amount of stablecoin to CDP according to to the debit adjustment.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
-		#[transactional]
 		pub fn adjust_loan(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -162,8 +163,8 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `max_collateral_amount`: the max collateral amount which is used to swap enough
 		/// 	stable token to clear debit.
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex())]
-		#[transactional]
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -179,8 +180,8 @@ pub mod module {
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `from`: authorizer account
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_loan_from())]
-		#[transactional]
 		pub fn transfer_loan_from(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -198,8 +199,8 @@ pub mod module {
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `to`: authorizee account
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::authorize())]
-		#[transactional]
 		pub fn authorize(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -231,8 +232,8 @@ pub mod module {
 		///
 		/// - `currency_id`: collateral currency id.
 		/// - `to`: authorizee account
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::unauthorize())]
-		#[transactional]
 		pub fn unauthorize(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -252,11 +253,11 @@ pub mod module {
 		}
 
 		/// Cancel all authorization of caller
+		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::unauthorize_all(T::CollateralCurrencyIds::get().len() as u32))]
-		#[transactional]
 		pub fn unauthorize_all(origin: OriginFor<T>) -> DispatchResult {
 			let from = ensure_signed(origin)?;
-			Authorization::<T>::remove_prefix(&from, None);
+			let _ = Authorization::<T>::clear_prefix(&from, u32::MAX, None);
 			<T as Config>::Currency::unreserve_all_named(&RESERVE_ID, &from);
 			Self::deposit_event(Event::UnAuthorizationAll { authorizer: from });
 			Ok(())
@@ -267,8 +268,8 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `increase_debit_value`: the specific increased debit value for CDP
 		/// - `min_increase_collateral`: the minimal increased collateral amount for CDP
+		#[pallet::call_index(6)]
 		#[pallet::weight(<T as Config>::WeightInfo::expand_position_collateral())]
-		#[transactional]
 		pub fn expand_position_collateral(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -290,8 +291,8 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `decrease_collateral`: the specific decreased collateral amount for CDP
 		/// - `min_decrease_debit_value`: the minimal decreased debit value for CDP
+		#[pallet::call_index(7)]
 		#[pallet::weight(<T as Config>::WeightInfo::shrink_position_debit())]
-		#[transactional]
 		pub fn shrink_position_debit(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -316,8 +317,8 @@ pub mod module {
 		///   into CDP, negative means withdraw collateral currency from CDP.
 		/// - `debit_value_adjustment`: signed amount, positive means to issue some amount of
 		///   stablecoin, negative means caller will payback some amount of stablecoin to CDP.
+		#[pallet::call_index(8)]
 		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
-		#[transactional]
 		pub fn adjust_loan_by_debit_value(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -344,8 +345,8 @@ pub mod module {
 		/// - `from_currency`: Currency id that debit is transfered from
 		/// - `to_currency`: Currency id that debit is transfered to
 		/// - `debit_transfer`: Debit transfered across two CDPs
+		#[pallet::call_index(9)]
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_debit())]
-		#[transactional]
 		pub fn transfer_debit(
 			origin: OriginFor<T>,
 			from_currency: CurrencyId,
@@ -426,12 +427,26 @@ impl<T: Config> HonzonManager<T::AccountId, CurrencyId, Amount, Balance> for Pal
 		<loans::Pallet<T>>::positions(currency_id, who)
 	}
 
-	fn get_liquidation_ratio(currency_id: CurrencyId) -> Option<Ratio> {
-		<cdp_engine::Pallet<T>>::collateral_params(currency_id).and_then(|risk_params| risk_params.liquidation_ratio)
+	fn get_collateral_parameters(currency_id: CurrencyId) -> Vec<U256> {
+		let params = <cdp_engine::Pallet<T>>::collateral_params(currency_id).unwrap_or_default();
+
+		vec![
+			U256::from(params.maximum_total_debit_value),
+			U256::from(
+				params
+					.interest_rate_per_sec
+					.unwrap_or_default()
+					.into_inner()
+					.into_inner(),
+			),
+			U256::from(params.liquidation_ratio.unwrap_or_default().into_inner()),
+			U256::from(params.liquidation_penalty.unwrap_or_default().into_inner().into_inner()),
+			U256::from(params.required_collateral_ratio.unwrap_or_default().into_inner()),
+		]
 	}
 
 	fn get_current_collateral_ratio(who: &T::AccountId, currency_id: CurrencyId) -> Option<Ratio> {
-		let Position { collateral, debit } = <loans::Pallet<T>>::positions(currency_id, &who);
+		let Position { collateral, debit } = <loans::Pallet<T>>::positions(currency_id, who);
 		let stable_currency_id = T::GetStableCurrencyId::get();
 
 		T::PriceSource::get_relative_price(currency_id, stable_currency_id)

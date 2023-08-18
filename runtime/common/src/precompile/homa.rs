@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -32,7 +32,7 @@ use module_support::HomaManager;
 use module_homa::WeightInfo;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::Balance;
-use sp_runtime::{traits::Convert, FixedPointNumber, RuntimeDebug};
+use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 /// The Homa precompile
@@ -100,7 +100,7 @@ where
 				<module_homa::Pallet<Runtime> as HomaManager<Runtime::AccountId, Balance>>::mint(who, amount).map_err(
 					|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
-						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						output: Output::encode_error_msg("Homa Mint failed", e),
 						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					},
 				)?;
@@ -128,7 +128,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Homa RequestRedeem failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -236,11 +236,11 @@ where
 mod tests {
 	use super::*;
 	use crate::precompile::mock::{
-		alice, alice_evm_addr, new_test_ext, Currencies, Homa, HomaAdmin, Origin, StakingCurrencyId, Test, ACA,
+		alice, alice_evm_addr, new_test_ext, Currencies, Homa, HomaAdmin, RuntimeOrigin, StakingCurrencyId, Test, ACA,
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
-	use sp_runtime::FixedU128;
+	use sp_runtime::{FixedPointNumber, FixedU128};
 
 	type HomaPrecompile = super::HomaPrecompile<Test>;
 
@@ -254,16 +254,21 @@ mod tests {
 			};
 
 			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
+				RuntimeOrigin::signed(HomaAdmin::get()),
 				Some(1_000_000_000_000),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 			));
 
-			assert_ok!(Currencies::update_balance(Origin::root(), alice(), ACA, 1_000_000_000));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
+				alice(),
+				ACA,
+				1_000_000_000
+			));
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
 				alice(),
 				StakingCurrencyId::get(),
 				1_000_000_000_000
@@ -288,22 +293,27 @@ mod tests {
 	fn request_redeem_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
+				RuntimeOrigin::signed(HomaAdmin::get()),
 				Some(1_000_000_000_000),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 			));
 
-			assert_ok!(Currencies::update_balance(Origin::root(), alice(), ACA, 1_000_000_000));
 			assert_ok!(Currencies::update_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
+				alice(),
+				ACA,
+				1_000_000_000
+			));
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
 				alice(),
 				StakingCurrencyId::get(),
 				1_000_000_000_000
 			));
 
-			assert_ok!(Homa::mint(Origin::signed(alice()), 1_000_000_000));
+			assert_ok!(Homa::mint(RuntimeOrigin::signed(alice()), 1_000_000_000));
 
 			let context = Context {
 				address: Default::default(),
@@ -361,7 +371,7 @@ mod tests {
 			};
 
 			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
+				RuntimeOrigin::signed(HomaAdmin::get()),
 				None,
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				None,
@@ -392,7 +402,7 @@ mod tests {
 			};
 
 			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
+				RuntimeOrigin::signed(HomaAdmin::get()),
 				None,
 				None,
 				Some(FixedU128::saturating_from_rational(1, 10)),
@@ -421,7 +431,7 @@ mod tests {
 			};
 
 			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
+				RuntimeOrigin::signed(HomaAdmin::get()),
 				None,
 				None,
 				None,

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Event, *};
+use mock::{RuntimeEvent, *};
 
 #[test]
 fn debits_key() {
@@ -106,7 +106,7 @@ fn adjust_position_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 300);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 500);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 150);
-		System::assert_has_event(Event::LoansModule(crate::Event::PositionUpdated {
+		System::assert_has_event(RuntimeEvent::LoansModule(crate::Event::PositionUpdated {
 			owner: ALICE,
 			collateral_type: BTC,
 			collateral_adjustment: 500,
@@ -178,7 +178,7 @@ fn transfer_loan_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
 		assert_eq!(LoansModule::positions(BTC, &BOB).debit, 1100);
 		assert_eq!(LoansModule::positions(BTC, &BOB).collateral, 500);
-		System::assert_last_event(Event::LoansModule(crate::Event::TransferLoan {
+		System::assert_last_event(RuntimeEvent::LoansModule(crate::Event::TransferLoan {
 			from: ALICE,
 			to: BOB,
 			currency_id: BTC,
@@ -194,7 +194,10 @@ fn confiscate_collateral_and_debit_work() {
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
 
 		// have no sufficient balance
-		assert!(!LoansModule::confiscate_collateral_and_debit(&BOB, BTC, 5000, 1000).is_ok(),);
+		assert_noop!(
+			LoansModule::confiscate_collateral_and_debit(&BOB, BTC, 5000, 1000),
+			orml_tokens::Error::<Runtime>::BalanceTooLow
+		);
 
 		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 500, 300));
 		assert_eq!(CDPTreasuryModule::get_total_collaterals(BTC), 0);
@@ -207,7 +210,7 @@ fn confiscate_collateral_and_debit_work() {
 		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 100);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 200);
-		System::assert_last_event(Event::LoansModule(crate::Event::ConfiscateCollateralAndDebit {
+		System::assert_last_event(RuntimeEvent::LoansModule(crate::Event::ConfiscateCollateralAndDebit {
 			owner: ALICE,
 			collateral_type: BTC,
 			confiscated_collateral_amount: 300,

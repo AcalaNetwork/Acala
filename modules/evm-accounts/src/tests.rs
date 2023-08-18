@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,18 +22,18 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{alice, bob, Event, EvmAccountsModule, ExtBuilder, Origin, Runtime, System, ALICE, BOB};
+use mock::{alice, bob, EvmAccountsModule, ExtBuilder, Runtime, RuntimeEvent, RuntimeOrigin, System, ALICE, BOB};
 use std::str::FromStr;
 
 #[test]
 fn claim_account_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(EvmAccountsModule::claim_account(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			EvmAccountsModule::eth_address(&alice()),
 			EvmAccountsModule::eth_sign(&alice(), &ALICE)
 		));
-		System::assert_last_event(Event::EvmAccountsModule(crate::Event::ClaimAccount {
+		System::assert_last_event(RuntimeEvent::EvmAccountsModule(crate::Event::ClaimAccount {
 			account_id: ALICE,
 			evm_address: EvmAccountsModule::eth_address(&alice()),
 		}));
@@ -49,7 +49,7 @@ fn claim_account_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			EvmAccountsModule::claim_account(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				EvmAccountsModule::eth_address(&bob()),
 				EvmAccountsModule::eth_sign(&bob(), &BOB)
 			),
@@ -57,20 +57,20 @@ fn claim_account_should_not_work() {
 		);
 		assert_noop!(
 			EvmAccountsModule::claim_account(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				EvmAccountsModule::eth_address(&bob()),
 				EvmAccountsModule::eth_sign(&alice(), &ALICE)
 			),
 			Error::<Runtime>::InvalidSignature
 		);
 		assert_ok!(EvmAccountsModule::claim_account(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			EvmAccountsModule::eth_address(&alice()),
 			EvmAccountsModule::eth_sign(&alice(), &ALICE)
 		));
 		assert_noop!(
 			EvmAccountsModule::claim_account(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				EvmAccountsModule::eth_address(&alice()),
 				EvmAccountsModule::eth_sign(&alice(), &ALICE)
 			),
@@ -78,7 +78,7 @@ fn claim_account_should_not_work() {
 		);
 		assert_noop!(
 			EvmAccountsModule::claim_account(
-				Origin::signed(BOB),
+				RuntimeOrigin::signed(BOB),
 				EvmAccountsModule::eth_address(&alice()),
 				EvmAccountsModule::eth_sign(&alice(), &BOB)
 			),
@@ -102,7 +102,7 @@ fn evm_get_account_id() {
 		);
 
 		assert_ok!(EvmAccountsModule::claim_account(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			EvmAccountsModule::eth_address(&alice()),
 			EvmAccountsModule::eth_sign(&alice(), &ALICE)
 		));
@@ -130,7 +130,7 @@ fn account_to_evm() {
 		let alice_evm_account = EvmAccountsModule::eth_address(&alice());
 
 		assert_ok!(EvmAccountsModule::claim_account(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			alice_evm_account,
 			EvmAccountsModule::eth_sign(&alice(), &ALICE)
 		));
@@ -159,7 +159,7 @@ fn account_to_evm_with_create_default() {
 			EvmAddressMapping::<Runtime>::get_or_create_evm_address(&ALICE),
 			default_evm_account
 		);
-		System::assert_last_event(Event::EvmAccountsModule(crate::Event::ClaimAccount {
+		System::assert_last_event(RuntimeEvent::EvmAccountsModule(crate::Event::ClaimAccount {
 			account_id: ALICE,
 			evm_address: default_evm_account,
 		}));
@@ -179,7 +179,7 @@ fn account_to_evm_with_create_default() {
 
 		assert_noop!(
 			EvmAccountsModule::claim_account(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				alice_evm_account,
 				EvmAccountsModule::eth_sign(&alice(), &ALICE)
 			),

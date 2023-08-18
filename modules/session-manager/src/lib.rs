@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -50,7 +50,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// A type for retrieving the validators supposed to be online in a session.
 		type ValidatorSet: ValidatorSet<Self::AccountId, ValidatorId = Self::AccountId>;
 		/// Weight information for the extrinsics in this module.
@@ -72,25 +72,25 @@ pub mod module {
 	pub enum Event<T: Config> {
 		/// Scheduled session duration.
 		ScheduledSessionDuration {
-			block_number: T::BlockNumber,
+			block_number: BlockNumberFor<T>,
 			session_index: SessionIndex,
-			session_duration: T::BlockNumber,
+			session_duration: BlockNumberFor<T>,
 		},
 	}
 
 	/// The current session duration.
 	///
-	/// SessionDuration: T::BlockNumber
+	/// SessionDuration: BlockNumberFor<T>
 	#[pallet::storage]
 	#[pallet::getter(fn session_duration)]
-	pub type SessionDuration<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub type SessionDuration<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	/// The current session duration offset.
 	///
-	/// DurationOffset: T::BlockNumber
+	/// DurationOffset: BlockNumberFor<T>
 	#[pallet::storage]
 	#[pallet::getter(fn duration_offset)]
-	pub type DurationOffset<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub type DurationOffset<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	/// Mapping from block number to new session index and duration.
 	///
@@ -98,24 +98,16 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn session_duration_changes)]
 	pub type SessionDurationChanges<T: Config> =
-		StorageMap<_, Twox64Concat, T::BlockNumber, (SessionIndex, T::BlockNumber), ValueQuery>;
+		StorageMap<_, Twox64Concat, BlockNumberFor<T>, (SessionIndex, BlockNumberFor<T>), ValueQuery>;
 
 	#[pallet::genesis_config]
+	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
-		pub session_duration: T::BlockNumber,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				session_duration: Default::default(),
-			}
-		}
+		pub session_duration: BlockNumberFor<T>,
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			assert!(!self.session_duration.is_zero(), "SessionDuration can't be zero");
 			SessionDuration::<T>::put(self.session_duration);
@@ -126,8 +118,8 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(n: T::BlockNumber) -> Weight {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(n: BlockNumberFor<T>) -> Weight {
 			let mut skip = true;
 			SessionDurationChanges::<T>::mutate_exists(n, |maybe_changes| {
 				if let Some((_, duration)) = maybe_changes.take() {
@@ -151,11 +143,12 @@ pub mod module {
 		///
 		/// - `start_session`: the session index that the new change become effective.
 		/// - `duration`:  new session duration.
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::schedule_session_duration())]
 		pub fn schedule_session_duration(
 			origin: OriginFor<T>,
 			#[pallet::compact] start_session: SessionIndex,
-			#[pallet::compact] duration: T::BlockNumber,
+			#[pallet::compact] duration: BlockNumberFor<T>,
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
@@ -174,8 +167,8 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	pub fn do_schedule_session_duration(
 		start_session: SessionIndex,
-		duration: T::BlockNumber,
-	) -> Result<T::BlockNumber, DispatchError> {
+		duration: BlockNumberFor<T>,
+	) -> Result<BlockNumberFor<T>, DispatchError> {
 		let block_number = <frame_system::Pallet<T>>::block_number();
 		let current_session = T::ValidatorSet::session_index();
 
@@ -190,7 +183,7 @@ impl<T: Config> Pallet<T> {
 			.0
 			.ok_or(Error::<T>::EstimateNextSessionFailed)?;
 		let target_block_number =
-			Into::<T::BlockNumber>::into(start_session.saturating_sub(current_session).saturating_sub(1))
+			Into::<BlockNumberFor<T>>::into(start_session.saturating_sub(current_session).saturating_sub(1))
 				.saturating_mul(Self::session_duration())
 				.saturating_add(next_session);
 
@@ -200,8 +193,8 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> ShouldEndSession<T::BlockNumber> for Pallet<T> {
-	fn should_end_session(now: T::BlockNumber) -> bool {
+impl<T: Config> ShouldEndSession<BlockNumberFor<T>> for Pallet<T> {
+	fn should_end_session(now: BlockNumberFor<T>) -> bool {
 		let offset = Self::duration_offset();
 		let period = Self::session_duration();
 
@@ -213,12 +206,12 @@ impl<T: Config> ShouldEndSession<T::BlockNumber> for Pallet<T> {
 	}
 }
 
-impl<T: Config> EstimateNextSessionRotation<T::BlockNumber> for Pallet<T> {
-	fn average_session_length() -> T::BlockNumber {
+impl<T: Config> EstimateNextSessionRotation<BlockNumberFor<T>> for Pallet<T> {
+	fn average_session_length() -> BlockNumberFor<T> {
 		Self::session_duration()
 	}
 
-	fn estimate_current_session_progress(now: T::BlockNumber) -> (Option<Permill>, Weight) {
+	fn estimate_current_session_progress(now: BlockNumberFor<T>) -> (Option<Permill>, Weight) {
 		let offset = Self::duration_offset();
 		let period = Self::session_duration();
 
@@ -239,7 +232,7 @@ impl<T: Config> EstimateNextSessionRotation<T::BlockNumber> for Pallet<T> {
 		(progress, T::WeightInfo::estimate_next_session_rotation())
 	}
 
-	fn estimate_next_session_rotation(now: T::BlockNumber) -> (Option<T::BlockNumber>, Weight) {
+	fn estimate_next_session_rotation(now: BlockNumberFor<T>) -> (Option<BlockNumberFor<T>>, Weight) {
 		let offset = Self::duration_offset();
 		let period = Self::session_duration();
 

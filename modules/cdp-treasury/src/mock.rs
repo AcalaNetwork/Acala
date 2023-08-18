@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, EnsureOneOf, Everything, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, EitherOfDiverse, Everything, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use nutsfinance_stable_asset::traits::StableAsset;
@@ -33,7 +33,7 @@ use nutsfinance_stable_asset::{
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol, TradingPair};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_runtime::{traits::IdentityLookup, BuildStorage};
 use sp_std::cell::RefCell;
 use support::SpecificJointsSwap;
 
@@ -47,7 +47,7 @@ pub const BOB: AccountId = 1;
 pub const CHARLIE: AccountId = 2;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
+pub const BTC: CurrencyId = CurrencyId::ForeignAsset(255);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const STABLE_ASSET_LP: CurrencyId = CurrencyId::StableAssetPoolToken(0);
 pub const LP_AUSD_DOT: CurrencyId =
@@ -58,16 +58,15 @@ mod cdp_treasury {
 }
 
 impl frame_system::Config for Runtime {
-	type Origin = Origin;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
-	type Call = Call;
+	type RuntimeOrigin = RuntimeOrigin;
+	type Nonce = u64;
+	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
-	type Event = Event;
+	type Block = Block;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -91,31 +90,33 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
+	type CurrencyHooks = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
 }
 
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<1>;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
+	type RuntimeHoldReason = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
@@ -142,7 +143,7 @@ parameter_types! {
 }
 
 impl module_dex::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<4>;
@@ -207,11 +208,11 @@ thread_local! {
 }
 
 impl Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
-	type UpdateOrigin = EnsureOneOf<EnsureRoot<AccountId>, EnsureSignedBy<One, AccountId>>;
+	type UpdateOrigin = EitherOfDiverse<EnsureRoot<AccountId>, EnsureSignedBy<One, AccountId>>;
 	type DEX = DEXModule;
 	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
 	type MaxAuctionsCount = ConstU32<5>;
@@ -221,21 +222,16 @@ impl Config for Runtime {
 	type StableAsset = MockStableAsset;
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		CDPTreasuryModule: cdp_treasury::{Pallet, Storage, Call, Config, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+	pub enum Runtime {
+		System: frame_system,
+		CDPTreasuryModule: cdp_treasury,
+		Currencies: orml_currencies,
+		Tokens: orml_tokens,
+		PalletBalances: pallet_balances,
+		DEXModule: module_dex,
 	}
 );
 
@@ -264,8 +260,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
@@ -304,10 +300,7 @@ impl StableAsset for MockStableAsset {
 	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
-			assets: vec![
-				CurrencyId::Token(TokenSymbol::RENBTC),
-				CurrencyId::Token(TokenSymbol::DOT),
-			],
+			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
 			precisions: vec![1, 1],
 			mint_fee: 0,
 			swap_fee: 0,
@@ -377,7 +370,7 @@ impl StableAsset for MockStableAsset {
 		_i: PoolTokenIndex,
 		_min_redeem_amount: Self::Balance,
 		_asset_length: u32,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Self::Balance, Self::Balance), DispatchError> {
 		unimplemented!()
 	}
 
@@ -444,10 +437,7 @@ impl StableAsset for MockStableAsset {
 	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
-			assets: vec![
-				CurrencyId::Token(TokenSymbol::RENBTC),
-				CurrencyId::Token(TokenSymbol::DOT),
-			],
+			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
 			precisions: vec![1, 1],
 			mint_fee: 0,
 			swap_fee: 0,
@@ -476,10 +466,7 @@ impl StableAsset for MockStableAsset {
 	) -> Option<StableAssetPoolInfo<Self::AssetId, Self::Balance, Self::Balance, Self::AccountId, Self::BlockNumber>> {
 		Some(StableAssetPoolInfo {
 			pool_asset: CurrencyId::StableAssetPoolToken(0),
-			assets: vec![
-				CurrencyId::Token(TokenSymbol::RENBTC),
-				CurrencyId::Token(TokenSymbol::DOT),
-			],
+			assets: vec![CurrencyId::ForeignAsset(255), CurrencyId::Token(TokenSymbol::DOT)],
 			precisions: vec![1, 1],
 			mint_fee: 0,
 			swap_fee: 0,

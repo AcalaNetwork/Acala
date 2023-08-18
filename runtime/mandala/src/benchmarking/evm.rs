@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, Origin, Runtime, System, EVM};
+use crate::{AccountId, EvmAccounts, Runtime, RuntimeEvent, RuntimeOrigin, System, EVM};
 
-use super::utils::{dollar, set_balance};
+use super::utils::{dollar, set_balance, NATIVE};
 use frame_support::dispatch::DispatchError;
 use frame_system::RawOrigin;
 use module_evm::MaxCodeSize;
@@ -27,8 +27,6 @@ use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use sp_core::{H160, H256};
 use sp_io::hashing::keccak_256;
 use sp_std::{str::FromStr, vec};
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 
 fn contract_addr() -> H160 {
 	H160::from_str("0x5e0b4bfa0b55932a3587e648c3552a6515ba56b1").unwrap()
@@ -45,7 +43,7 @@ fn bob() -> libsecp256k1::SecretKey {
 fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 	System::set_block_number(1);
 	EVM::create(
-		Origin::signed(caller.clone()),
+		RuntimeOrigin::signed(caller.clone()),
 		FACTORY_CONTRACT.to_vec(),
 		0,
 		1000000000,
@@ -54,7 +52,7 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 	)
 	.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+	System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::Created {
 		from: module_evm_accounts::EvmAddressMapping::<Runtime>::get_evm_address(&caller).unwrap(),
 		contract: contract_addr(),
 		logs: vec![],
@@ -166,7 +164,7 @@ runtime_benchmarks! {
 		// contract address when it gets deployed
 		let contract_address = H160::from(hex_literal::hex!("5e0b4bfa0b55932a3587e648c3552a6515ba56b1"));
 
-		frame_support::assert_ok!(EVM::create(Origin::signed(alice_account.clone()), STORAGE_CONTRACT.to_vec(), 0, 21_000_000, 100_000, vec![]));
+		frame_support::assert_ok!(EVM::create(RuntimeOrigin::signed(alice_account.clone()), STORAGE_CONTRACT.to_vec(), 0, 21_000_000, 100_000, vec![]));
 
 		let code_hash = EVM::code_hash_at_address(&contract_address);
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
@@ -221,7 +219,7 @@ runtime_benchmarks! {
 		let alice_account = alice_account_id();
 
 		set_balance(NATIVE, &alice_account, 1_000 * dollar(NATIVE));
-		EVM::enable_contract_development(Origin::signed(alice_account_id()))?;
+		EVM::enable_contract_development(RuntimeOrigin::signed(alice_account_id()))?;
 
 		whitelist_account!(alice_account);
 	}: _(RawOrigin::Signed(alice_account_id()))

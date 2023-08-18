@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,17 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CurrencyId, EvmAccounts, GetNativeCurrencyId, Runtime};
+use crate::{AccountId, EvmAccounts, Runtime};
 
-use super::utils::{dollar, set_balance};
+use super::utils::{dollar, set_balance, NATIVE};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_io::hashing::keccak_256;
 
 const SEED: u32 = 0;
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 
 fn alice() -> libsecp256k1::SecretKey {
 	libsecp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()

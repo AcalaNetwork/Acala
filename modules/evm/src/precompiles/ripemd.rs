@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -31,7 +31,7 @@ impl LinearCostPrecompile for Ripemd160 {
 
 	fn execute(input: &[u8], _cost: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), PrecompileFailure> {
 		let mut ret = [0u8; 32];
-		ret[12..32].copy_from_slice(&ripemd160::Ripemd160::digest(input));
+		ret[12..32].copy_from_slice(&ripemd::Ripemd160::digest(input));
 		Ok((ExitSucceed::Returned, ret.to_vec()))
 	}
 }

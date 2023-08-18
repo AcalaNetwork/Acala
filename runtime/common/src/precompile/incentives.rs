@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -31,7 +31,7 @@ use module_incentives::WeightInfo;
 use module_support::{IncentivesManager, PoolId};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
-use sp_runtime::{traits::Convert, FixedPointNumber, RuntimeDebug};
+use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 /// The Incentives precompile
@@ -53,7 +53,6 @@ pub struct IncentivesPrecompile<R>(PhantomData<R>);
 #[repr(u32)]
 pub enum Action {
 	GetIncentiveRewardAmount = "getIncentiveRewardAmount(PoolId,address,address)",
-	GetDexRewardRate = "getDexRewardRate(address)",
 	DepositDexShare = "depositDexShare(address,address,uint256)",
 	WithdrawDexShare = "withdrawDexShare(address,address,uint256)",
 	ClaimRewards = "claimRewards(address,PoolId,address)",
@@ -105,24 +104,6 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::GetDexRewardRate => {
-				let pool_currency_id = input.currency_id_at(1)?;
-				let pool_id = PoolId::Dex(pool_currency_id);
-
-				let value = <module_incentives::Pallet<Runtime> as IncentivesManager<
-					Runtime::AccountId,
-					Balance,
-					CurrencyId,
-					PoolId,
-				>>::get_dex_reward_rate(pool_id);
-
-				Ok(PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
-					output: Output::encode_uint(value.into_inner()),
-					logs: Default::default(),
-				})
-			}
 			Action::DepositDexShare => {
 				let who = input.account_id_at(1)?;
 				let lp_currency_id = input.currency_id_at(2)?;
@@ -136,7 +117,7 @@ where
 				>>::deposit_dex_share(&who, lp_currency_id, amount)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Incentives DepositDexShare failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -160,7 +141,7 @@ where
 				>>::withdraw_dex_share(&who, lp_currency_id, amount)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Incentives WithdrawDexShare failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -185,7 +166,7 @@ where
 				>>::claim_rewards(who, pool_id)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("Incentives ClaimRewards failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -270,16 +251,6 @@ where
 				Self::BASE_COST
 					.saturating_add(read_pool_currency)
 					.saturating_add(read_reward_currency)
-					.saturating_add(WeightToGas::convert(weight))
-			}
-			Action::GetDexRewardRate => {
-				let pool_currency_id = input.currency_id_at(1)?;
-				let read_pool_currency = InputPricer::<Runtime>::read_currency(pool_currency_id);
-
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-
-				Self::BASE_COST
-					.saturating_add(read_pool_currency)
 					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::DepositDexShare => {
@@ -372,15 +343,15 @@ fn init_pool_id(
 mod tests {
 	use super::*;
 	use crate::precompile::mock::{
-		alice, alice_evm_addr, bob, new_test_ext, Currencies, Incentives, Origin, Rewards, Test, Tokens, ACA, ALICE,
-		AUSD, DOT, LP_ACA_AUSD,
+		alice, alice_evm_addr, bob, new_test_ext, Currencies, Incentives, Rewards, RuntimeOrigin, Test, Tokens, ACA,
+		ALICE, AUSD, DOT, LP_ACA_AUSD,
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
 	use module_support::Rate;
 	use orml_rewards::PoolInfo;
 	use orml_traits::MultiCurrency;
-	use sp_runtime::FixedU128;
+	use sp_runtime::{FixedPointNumber, FixedU128};
 
 	type IncentivesPrecompile = super::IncentivesPrecompile<Test>;
 
@@ -394,7 +365,7 @@ mod tests {
 			};
 
 			assert_ok!(Incentives::update_incentive_rewards(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Loans(DOT), vec![(DOT, 100)])]
 			));
 
@@ -412,38 +383,6 @@ mod tests {
 			// value of 100
 			let expected_output = hex! {"
 				00000000000000000000000000000000 00000000000000000000000000000064
-			"};
-
-			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
-			assert_eq!(res.exit_status, ExitSucceed::Returned);
-			assert_eq!(res.output, expected_output.to_vec());
-		});
-	}
-
-	#[test]
-	fn get_dex_reward_rate_works() {
-		new_test_ext().execute_with(|| {
-			let context = Context {
-				address: Default::default(),
-				caller: alice_evm_addr(),
-				apparent_value: Default::default(),
-			};
-
-			assert_ok!(Incentives::update_dex_saving_rewards(
-				Origin::signed(ALICE),
-				vec![(PoolId::Dex(LP_ACA_AUSD), FixedU128::saturating_from_rational(1, 10))]
-			));
-
-			// getDexRewardRate(address) => 0x7ec93136
-			// lp_currency_id
-			let input = hex! {"
-				7ec93136
-				000000000000000000000000 0000000000000000000200000000000000000001
-			"};
-
-			// value for FixedU128::saturating_from_rational(1,10)
-			let expected_output = hex! {"
-				00000000000000000000000000000000 0000000000000000016345785d8a0000
 			"};
 
 			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
@@ -502,7 +441,7 @@ mod tests {
 
 			assert_ok!(Currencies::deposit(LP_ACA_AUSD, &alice(), 1_000_000_000));
 			assert_ok!(Incentives::deposit_dex_share(
-				Origin::signed(alice()),
+				RuntimeOrigin::signed(alice()),
 				LP_ACA_AUSD,
 				100_000
 			));
@@ -550,7 +489,15 @@ mod tests {
 			assert_ok!(Tokens::deposit(AUSD, &Incentives::account_id(), 1_000_000));
 
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
+				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(20, 100)),]
+			));
+			assert_ok!(Incentives::update_claim_reward_deduction_rates(
+				RuntimeOrigin::signed(ALICE),
+				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(40, 100)),]
+			));
+			assert_ok!(Incentives::update_claim_reward_deduction_rates(
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(50, 100)),]
 			));
 			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
@@ -604,7 +551,7 @@ mod tests {
 			};
 
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Dex(LP_ACA_AUSD), FixedU128::saturating_from_rational(1, 10))]
 			));
 
@@ -643,9 +590,18 @@ mod tests {
 			assert_ok!(Tokens::deposit(AUSD, &Incentives::account_id(), 1_000_000));
 
 			assert_ok!(Incentives::update_claim_reward_deduction_rates(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
+				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(20, 100)),]
+			));
+			assert_ok!(Incentives::update_claim_reward_deduction_rates(
+				RuntimeOrigin::signed(ALICE),
+				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(40, 100)),]
+			));
+			assert_ok!(Incentives::update_claim_reward_deduction_rates(
+				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(50, 100)),]
 			));
+
 			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
 			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000));
 			Rewards::add_share(&bob(), &PoolId::Loans(ACA), 100);

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -29,17 +29,16 @@ use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{define_combined_task, Amount, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
-use sp_core::{H160, H256};
+use sp_core::{bytes::from_hex, H160, H256};
 use sp_runtime::{
-	testing::Header,
 	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup},
-	AccountId32,
+	AccountId32, BuildStorage,
 };
 use std::{collections::BTreeMap, str::FromStr};
 
 type Balance = u128;
 
-mod evm_mod {
+pub mod evm_mod {
 	pub use super::super::*;
 }
 
@@ -47,16 +46,15 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
-	type BlockNumber = u64;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
+	type Nonce = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
-	type Event = Event;
+	type Block = Block;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type DbWeight = ();
 	type Version = ();
@@ -73,13 +71,17 @@ impl frame_system::Config for Runtime {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
-	type ExistentialDeposit = ConstU128<1>;
-	type AccountStore = System;
+	type RuntimeEvent = RuntimeEvent;
+	type ExistentialDeposit = ConstU128<2>;
+	type AccountStore = module_support::SystemAccountStore<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
+	type RuntimeHoldReason = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -96,19 +98,17 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
+	type CurrencyHooks = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -140,20 +140,31 @@ impl BlockNumberProvider for MockBlockNumberProvider {
 	}
 }
 
+parameter_types! {
+	pub MinimumWeightRemainInBlock: Weight = Weight::zero();
+}
+
 impl module_idle_scheduler::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
-	type MinimumWeightRemainInBlock = ConstU64<0>;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
 	type DisableBlockThreshold = ConstU32<6>;
 }
 
+impl pallet_utility::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type PalletsOrigin = OriginCaller;
+	type WeightInfo = ();
+}
+
 pub struct GasToWeight;
 
-impl Convert<u64, u64> for GasToWeight {
-	fn convert(a: u64) -> u64 {
-		a
+impl Convert<u64, Weight> for GasToWeight {
+	fn convert(a: u64) -> Weight {
+		Weight::from_parts(a, 0)
 	}
 }
 
@@ -191,7 +202,7 @@ impl Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<20_000_000>;
 
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = GasToWeight;
@@ -211,15 +222,10 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Runtime {
 		System: frame_system,
 		Timestamp: pallet_timestamp,
 		EVM: evm_mod,
@@ -227,6 +233,7 @@ construct_runtime!(
 		Balances: pallet_balances,
 		Currencies: orml_currencies,
 		IdleScheduler: module_idle_scheduler,
+		Utility: pallet_utility,
 	}
 );
 
@@ -253,16 +260,23 @@ pub fn charlie() -> H160 {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let mut t = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 
 	let mut accounts = BTreeMap::new();
+
+	// pragma solidity >=0.8.2 <0.9.0;
+	// contract Test {}
+	let contract = from_hex(
+		"0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220199b6fd928fecd2e7ce866eb76c49927191c7a839fd75192acc84b773e5dbf1e64736f6c63430008120033"
+	).unwrap();
 
 	accounts.insert(
 		contract_a(),
 		GenesisAccount {
 			nonce: 1,
+			code: contract.clone(),
 			..Default::default()
 		},
 	);
@@ -323,5 +337,5 @@ pub fn reserved_balance(address: H160) -> Balance {
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
 pub fn publish_free(contract: H160) {
-	let _ = EVM::publish_free(Origin::signed(CouncilAccount::get()), contract);
+	let _ = EVM::publish_free(RuntimeOrigin::signed(CouncilAccount::get()), contract);
 }

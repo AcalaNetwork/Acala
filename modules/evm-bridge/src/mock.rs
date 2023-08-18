@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -28,12 +28,11 @@ use frame_support::{
 use frame_system::EnsureSignedBy;
 use primitives::{evm::convert_decimals_to_evm, evm::EvmAddress, ReserveIdentifier};
 use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{testing::Header, traits::IdentityLookup};
-use sp_std::str::FromStr;
+use sp_runtime::{traits::IdentityLookup, BuildStorage};
+pub use sp_std::str::FromStr;
 use support::{mocks::MockAddressMapping, AddressMapping};
 
 pub type AccountId = AccountId32;
-pub type BlockNumber = u64;
 pub type Balance = u128;
 
 mod evm_bridge {
@@ -42,16 +41,15 @@ mod evm_bridge {
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
+	type Nonce = u64;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
-	type Event = Event;
+	type Block = Block;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type DbWeight = ();
 	type BlockWeights = ();
@@ -70,13 +68,17 @@ impl frame_system::Config for Runtime {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<1>;
-	type AccountStore = System;
+	type AccountStore = support::SystemAccountStore<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
+	type RuntimeHoldReason = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -104,7 +106,7 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = ConstU32<1>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<10>;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = ();
@@ -128,19 +130,14 @@ impl Config for Runtime {
 	type EVM = EVM;
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		EVMBridge: evm_bridge::{Pallet},
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+	pub enum Runtime {
+		System: frame_system,
+		EVMBridgeModule: evm_bridge,
+		EVM: module_evm,
+		Balances: pallet_balances,
 	}
 );
 
@@ -180,9 +177,16 @@ pub fn deploy_contracts() {
 	let json: serde_json::Value =
 		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
-	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000, vec![]));
+	assert_ok!(EVM::create(
+		RuntimeOrigin::signed(alice()),
+		code,
+		0,
+		2_100_000,
+		10000,
+		vec![]
+	));
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+	System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::Created {
 		from: alice_evm_addr(),
 		contract: erc20_address(),
 		logs: vec![module_evm::Log {
@@ -198,12 +202,66 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1306611,
-		used_storage: 5462,
+		used_gas: 1235081,
+		used_storage: 5131,
 	}));
 
 	assert_ok!(EVM::publish_free(
-		Origin::signed(CouncilAccount::get()),
+		RuntimeOrigin::signed(CouncilAccount::get()),
+		erc20_address()
+	));
+}
+
+pub fn deploy_liquidation_ok_contracts() {
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../ts-tests/build/LiquidationOk.json")).unwrap();
+	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
+	assert_ok!(EVM::create(
+		RuntimeOrigin::signed(alice()),
+		code,
+		0,
+		2_100_000,
+		10000,
+		vec![]
+	));
+
+	System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::Created {
+		from: alice_evm_addr(),
+		contract: erc20_address(),
+		logs: vec![],
+		used_gas: 235274,
+		used_storage: 844,
+	}));
+
+	assert_ok!(EVM::publish_free(
+		RuntimeOrigin::signed(CouncilAccount::get()),
+		erc20_address()
+	));
+}
+
+pub fn deploy_liquidation_err_contracts() {
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../ts-tests/build/LiquidationErr.json")).unwrap();
+	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
+	assert_ok!(EVM::create(
+		RuntimeOrigin::signed(alice()),
+		code,
+		0,
+		2_100_000,
+		10000,
+		vec![]
+	));
+
+	System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::Created {
+		from: alice_evm_addr(),
+		contract: erc20_address(),
+		logs: vec![],
+		used_gas: 228284,
+		used_storage: 818,
+	}));
+
+	assert_ok!(EVM::publish_free(
+		RuntimeOrigin::signed(CouncilAccount::get()),
 		erc20_address()
 	));
 }
@@ -215,8 +273,8 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {

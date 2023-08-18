@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::type_complexity)]
 
-use frame_support::{pallet_prelude::*, traits::Time, transactional};
+use frame_support::{pallet_prelude::*, traits::Time};
 use frame_system::pallet_prelude::*;
 use orml_traits::Happened;
 use primitives::{Balance, CurrencyId, TradingPair};
@@ -56,7 +56,7 @@ pub mod module {
 		type Time: Time;
 
 		/// The origin which may manage dex oracle.
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -102,8 +102,8 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(_n: T::BlockNumber) -> Weight {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
 			let now = T::Time::now();
 			let mut iterate_count: u32 = 0;
 			let mut update_count: u32 = 0;
@@ -119,7 +119,7 @@ pub mod module {
 					let (pool_0, pool_1) = T::DEX::get_liquidity_pool(trading_pair.first(), trading_pair.second());
 					Self::try_update_cumulative(&trading_pair, pool_0, pool_1);
 
-					let (cumulative_0, cumulative_1, _) = Self::cumulatives(&trading_pair);
+					let (cumulative_0, cumulative_1, _) = Self::cumulatives(trading_pair);
 					let u256_elapsed_time: U256 = elapsed_time.saturated_into::<u128>().into();
 					let average_price_0 = ExchangeRate::from_inner(
 						cumulative_0
@@ -137,7 +137,7 @@ pub mod module {
 					);
 
 					AveragePrices::<T>::insert(
-						&trading_pair,
+						trading_pair,
 						(
 							average_price_0,
 							average_price_1,
@@ -165,8 +165,8 @@ pub mod module {
 		/// - `currency_id_a`: one currency_id that forms a trading pair
 		/// - `currency_id_b`: another currency_id that forms a trading pair
 		/// - `interval`: the timestamp interval to update average price.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::enable_average_price())]
-		#[transactional]
 		pub fn enable_average_price(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -178,7 +178,7 @@ pub mod module {
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
-				Self::average_prices(&trading_pair).is_none(),
+				Self::average_prices(trading_pair).is_none(),
 				Error::<T>::AveragePriceAlreadyEnabled
 			);
 			ensure!(!interval.is_zero(), Error::<T>::IntervalIsZero,);
@@ -190,7 +190,7 @@ pub mod module {
 			let initial_cumulative_1 = U256::zero();
 
 			AveragePrices::<T>::insert(
-				&trading_pair,
+				trading_pair,
 				(
 					initial_price_0,
 					initial_price_1,
@@ -200,7 +200,7 @@ pub mod module {
 					interval,
 				),
 			);
-			Cumulatives::<T>::insert(&trading_pair, (initial_cumulative_0, initial_cumulative_1, now));
+			Cumulatives::<T>::insert(trading_pair, (initial_cumulative_0, initial_cumulative_1, now));
 
 			Ok(())
 		}
@@ -211,8 +211,8 @@ pub mod module {
 		///
 		/// - `currency_id_a`: one currency_id that forms a trading pair
 		/// - `currency_id_b`: another currency_id that forms a trading pair
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::disable_average_price())]
-		#[transactional]
 		pub fn disable_average_price(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -222,8 +222,8 @@ pub mod module {
 
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
-			AveragePrices::<T>::take(&trading_pair).ok_or(Error::<T>::AveragePriceMustBeEnabled)?;
-			Cumulatives::<T>::remove(&trading_pair);
+			AveragePrices::<T>::take(trading_pair).ok_or(Error::<T>::AveragePriceMustBeEnabled)?;
+			Cumulatives::<T>::remove(trading_pair);
 
 			Ok(())
 		}
@@ -235,8 +235,8 @@ pub mod module {
 		/// - `currency_id_a`: one currency_id that forms a trading pair
 		/// - `currency_id_b`: another currency_id that forms a trading pair
 		/// - `new_interval`: the new interval.
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_average_price_interval())]
-		#[transactional]
 		pub fn update_average_price_interval(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
@@ -247,7 +247,7 @@ pub mod module {
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 
-			AveragePrices::<T>::try_mutate_exists(&trading_pair, |maybe| -> DispatchResult {
+			AveragePrices::<T>::try_mutate_exists(trading_pair, |maybe| -> DispatchResult {
 				let (_, _, _, _, _, update_interval) = maybe.as_mut().ok_or(Error::<T>::AveragePriceMustBeEnabled)?;
 				ensure!(!new_interval.is_zero(), Error::<T>::IntervalIsZero);
 				*update_interval = new_interval;

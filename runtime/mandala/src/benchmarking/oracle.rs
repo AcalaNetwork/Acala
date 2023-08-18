@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AcalaDataProvider, AcalaOracle, Origin, Price, Runtime, System};
+use crate::{AcalaDataProvider, AcalaOracle, Price, Runtime, RuntimeOrigin, System};
 
 use super::get_benchmarking_collateral_currency_ids;
 use frame_support::traits::OnFinalize;
@@ -36,7 +36,7 @@ runtime_benchmarks_instance! {
 		for i in 0 .. c {
 			values.push((currency_ids[i as usize], Price::one()));
 		}
-	}: _(Origin::root(), values)
+	}: _(RuntimeOrigin::root(), values.try_into().unwrap())
 
 	on_finalize {
 		let currency_ids = get_benchmarking_collateral_currency_ids();
@@ -46,7 +46,7 @@ runtime_benchmarks_instance! {
 			values.push((currency_id, Price::one()));
 		}
 		System::set_block_number(1);
-		AcalaOracle::feed_values(Origin::root(), values)?;
+		AcalaOracle::feed_values(RuntimeOrigin::root(), values.try_into().unwrap())?;
 	}: {
 		AcalaOracle::on_finalize(System::block_number());
 	}

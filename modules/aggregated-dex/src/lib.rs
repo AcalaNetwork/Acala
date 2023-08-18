@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -24,13 +24,11 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use nutsfinance_stable_asset::{traits::StableAsset as StableAssetT, PoolTokenIndex, StableAssetPoolId};
+use nutsfinance_stable_asset::traits::StableAsset as StableAssetT;
 use primitives::{Balance, CurrencyId};
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{Convert, Zero};
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::{DEXManager, RebasedStableAssetError, Swap, SwapLimit};
+use support::{AggregatedSwapPath, DEXManager, RebasedStableAssetError, Swap, SwapLimit};
 
 mod mock;
 mod tests;
@@ -39,12 +37,7 @@ pub mod weights;
 pub use module::*;
 pub use weights::WeightInfo;
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum SwapPath {
-	Dex(Vec<CurrencyId>),
-	Taiga(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex),
-}
+pub type SwapPath = AggregatedSwapPath<CurrencyId>;
 
 #[frame_support::pallet]
 pub mod module {
@@ -61,11 +54,11 @@ pub mod module {
 			AtLeast64BitUnsigned = Balance,
 			Balance = Balance,
 			AccountId = Self::AccountId,
-			BlockNumber = Self::BlockNumber,
+			BlockNumber = BlockNumberFor<Self>,
 		>;
 
 		/// Origin represented Governance
-		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The alternative swap path joint list for DEX swap
 		#[pallet::constant]
@@ -93,19 +86,17 @@ pub mod module {
 	/// The specific swap paths for  AggregatedSwap do aggreated_swap to swap TokenA to TokenB
 	///
 	/// AggregatedSwapPaths: Map: (token_a: CurrencyId, token_b: CurrencyId) => paths: Vec<SwapPath>
-
 	#[pallet::storage]
 	#[pallet::getter(fn aggregated_swap_paths)]
 	pub type AggregatedSwapPaths<T: Config> =
 		StorageMap<_, Twox64Concat, (CurrencyId, CurrencyId), BoundedVec<SwapPath, T::SwapPathLimit>, OptionQuery>;
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -114,13 +105,13 @@ pub mod module {
 		/// - `paths`: aggregated swap path.
 		/// - `supply_amount`: exact supply amount.
 		/// - `min_target_amount`: acceptable minimum target amount.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(
 			paths.iter().fold(0, |u, swap_path| match swap_path {
 				SwapPath::Dex(v) => u + (v.len() as u32),
 				SwapPath::Taiga(_, _, _) => u + 1
 			})
 		))]
-		#[transactional]
 		pub fn swap_with_exact_supply(
 			origin: OriginFor<T>,
 			paths: Vec<SwapPath>,
@@ -134,13 +125,13 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(
+		#[pallet::call_index(1)]
+		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target(
 			paths.iter().fold(0, |u, swap_path| match swap_path {
 				SwapPath::Dex(v) => u + (v.len() as u32),
 				SwapPath::Taiga(_, _, _) => u + 1
 			})
 		))]
-		#[transactional]
 		pub fn swap_with_exact_target(
 			origin: OriginFor<T>,
 			paths: Vec<SwapPath>,
@@ -160,8 +151,8 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `updates`:  Vec<((TokenA, TokenB), Option<Vec<SwapPath>>)>
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_aggregated_swap_paths(updates.len() as u32))]
-		#[transactional]
 		pub fn update_aggregated_swap_paths(
 			origin: OriginFor<T>,
 			updates: Vec<((CurrencyId, CurrencyId), Option<Vec<SwapPath>>)>,
@@ -423,6 +414,23 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for DexSwap<T> {
 
 		T::DEX::swap_with_specific_path(who, &path, limit)
 	}
+
+	fn swap_by_path(
+		who: &T::AccountId,
+		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		T::DEX::swap_with_specific_path(who, swap_path, limit)
+	}
+
+	// DexSwap do not support swap by aggregated path.
+	fn swap_by_aggregated_path(
+		_who: &T::AccountId,
+		_swap_path: &[SwapPath],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Err(Error::<T>::CannotSwap.into())
+	}
 }
 
 /// Swap by Taiga pool.
@@ -509,6 +517,24 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
 		ensure!(actual_target >= min_target_amount, Error::<T>::CannotSwap);
 		Ok((actual_supply, actual_target))
 	}
+
+	// TaigaSwap do not support direct dex swap.
+	fn swap_by_path(
+		_who: &T::AccountId,
+		_swap_path: &[CurrencyId],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Err(Error::<T>::CannotSwap.into())
+	}
+
+	// TaigaSwap do not support swap by aggregated path.
+	fn swap_by_aggregated_path(
+		_who: &T::AccountId,
+		_swap_path: &[SwapPath],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Err(Error::<T>::CannotSwap.into())
+	}
 }
 
 /// Choose DEX or Taiga to fully execute the swap by which price is better.
@@ -587,6 +613,23 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for EitherDexOrTaigaSwap
 			}
 		}
 
+		Err(Error::<T>::CannotSwap.into())
+	}
+
+	fn swap_by_path(
+		who: &T::AccountId,
+		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		DexSwap::<T>::swap_by_path(who, swap_path, limit)
+	}
+
+	// Both DexSwap and TaigaSwap do not support swap by aggregated path.
+	fn swap_by_aggregated_path(
+		_who: &T::AccountId,
+		_swap_path: &[SwapPath],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
 		Err(Error::<T>::CannotSwap.into())
 	}
 }
@@ -683,6 +726,15 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for AggregatedSwap<T> {
 		}
 
 		Err(Error::<T>::CannotSwap.into())
+	}
+
+	// AggregatedSwap support swap by aggregated path.
+	fn swap_by_aggregated_path(
+		who: &T::AccountId,
+		swap_path: &[SwapPath],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Pallet::<T>::do_aggregated_swap(who, swap_path, limit)
 	}
 }
 

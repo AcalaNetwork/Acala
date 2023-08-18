@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -54,7 +54,7 @@
 //!   fees are deposited into the Pot.
 //!
 //! Note: Eventually the Pot distribution may be modified as discussed in
-//! [this issue](https://github.com/paritytech/statemint/issues/21#issuecomment-810481073).
+//! [this issue](https://github.com/paritytech/asset_hub_polkadot/issues/21#issuecomment-810481073).
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
@@ -76,7 +76,13 @@ pub mod weights;
 pub mod pallet {
 	pub use crate::weights::WeightInfo;
 	use frame_support::{
-		inherent::Vec,
+		dispatch::DispatchClass,
+		sp_runtime::{
+			traits::{AccountIdConversion, CheckedSub, Zero},
+			Permill,
+		},
+	};
+	use frame_support::{
 		pallet_prelude::*,
 		storage::bounded_btree_set::BoundedBTreeSet,
 		traits::{
@@ -85,19 +91,12 @@ pub mod pallet {
 		},
 		BoundedVec, PalletId,
 	};
-	use frame_support::{
-		sp_runtime::{
-			traits::{AccountIdConversion, CheckedSub, Zero},
-			Permill,
-		},
-		weights::DispatchClass,
-	};
 	use frame_system::pallet_prelude::*;
 	use frame_system::Config as SystemConfig;
 	use pallet_session::SessionManager;
 	use primitives::ReserveIdentifier;
 	use sp_staking::SessionIndex;
-	use sp_std::{ops::Div, vec};
+	use sp_std::{ops::Div, prelude::*};
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::CollatorSelection;
 	pub const POINT_PER_BLOCK: u32 = 10;
@@ -118,7 +117,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// Overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The currency mechanism.
 		type Currency: NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
@@ -128,7 +127,7 @@ pub mod pallet {
 			+ ValidatorRegistration<Self::AccountId>;
 
 		/// Origin that can dictate updating parameters of this pallet.
-		type UpdateOrigin: EnsureOrigin<Self::Origin>;
+		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Account Identifier from which the internal Pot is generated.
 		#[pallet::constant]
@@ -167,7 +166,6 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	/// The invulnerable, fixed collators.
@@ -214,27 +212,20 @@ pub mod pallet {
 	pub type NonCandidates<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, SessionIndex, ValueQuery>;
 
 	#[pallet::genesis_config]
+	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
 		pub invulnerables: Vec<T::AccountId>,
 		pub candidacy_bond: BalanceOf<T>,
 		pub desired_candidates: u32,
 	}
 
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self {
-				invulnerables: Default::default(),
-				candidacy_bond: Default::default(),
-				desired_candidates: Default::default(),
-			}
-		}
-	}
-
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
-			let duplicate_invulnerables = self.invulnerables.iter().collect::<std::collections::BTreeSet<_>>();
+			let duplicate_invulnerables = self
+				.invulnerables
+				.iter()
+				.collect::<sp_std::collections::btree_set::BTreeSet<_>>();
 			assert_eq!(
 				duplicate_invulnerables.len(),
 				self.invulnerables.len(),
@@ -251,8 +242,8 @@ pub mod pallet {
 				"genesis desired_candidates are more than T::MaxCandidates",
 			);
 
-			<DesiredCandidates<T>>::put(&self.desired_candidates);
-			<CandidacyBond<T>>::put(&self.candidacy_bond);
+			<DesiredCandidates<T>>::put(self.desired_candidates);
+			<CandidacyBond<T>>::put(self.candidacy_bond);
 			<Invulnerables<T>>::put(&bounded_invulnerables);
 		}
 	}
@@ -295,6 +286,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::set_invulnerables(new.len() as u32))]
 		pub fn set_invulnerables(origin: OriginFor<T>, new: Vec<T::AccountId>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
@@ -307,29 +299,32 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::set_desired_candidates())]
 		pub fn set_desired_candidates(origin: OriginFor<T>, #[pallet::compact] max: u32) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			if max > T::MaxCandidates::get() {
 				Err(Error::<T>::MaxCandidatesExceeded)?;
 			}
-			<DesiredCandidates<T>>::put(&max);
+			<DesiredCandidates<T>>::put(max);
 			Self::deposit_event(Event::NewDesiredCandidates {
 				new_desired_candidates: max,
 			});
 			Ok(())
 		}
 
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::set_candidacy_bond())]
 		pub fn set_candidacy_bond(origin: OriginFor<T>, #[pallet::compact] bond: BalanceOf<T>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			<CandidacyBond<T>>::put(&bond);
+			<CandidacyBond<T>>::put(bond);
 			Self::deposit_event(Event::NewCandidacyBond {
 				new_candidacy_bond: bond,
 			});
 			Ok(())
 		}
 
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::register_as_candidate(T::MaxCandidates::get()))]
 		pub fn register_as_candidate(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -348,6 +343,7 @@ pub mod pallet {
 			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates_len as u32)).into())
 		}
 
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::register_candidate(T::MaxCandidates::get()))]
 		pub fn register_candidate(origin: OriginFor<T>, new_candidate: T::AccountId) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
@@ -361,6 +357,7 @@ pub mod pallet {
 			Ok(Some(T::WeightInfo::register_candidate(bounded_candidates_len as u32)).into())
 		}
 
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::leave_intent(T::MaxCandidates::get()))]
 		pub fn leave_intent(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -371,6 +368,7 @@ pub mod pallet {
 			Ok(Some(T::WeightInfo::leave_intent(current_count as u32)).into())
 		}
 
+		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::withdraw_bond())]
 		pub fn withdraw_bond(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -442,7 +440,7 @@ pub mod pallet {
 
 	/// Keep track of number of authored blocks per authority, uncles are counted as well since
 	/// they're a valid proof of being online.
-	impl<T: Config + pallet_authorship::Config> pallet_authorship::EventHandler<T::AccountId, T::BlockNumber>
+	impl<T: Config + pallet_authorship::Config> pallet_authorship::EventHandler<T::AccountId, BlockNumberFor<T>>
 		for Pallet<T>
 	{
 		fn note_author(author: T::AccountId) {
@@ -474,8 +472,6 @@ pub mod pallet {
 				DispatchClass::Mandatory,
 			);
 		}
-
-		fn note_uncle(_author: T::AccountId, _age: T::BlockNumber) {}
 	}
 
 	/// Play the role of the session manager.
@@ -508,7 +504,7 @@ pub mod pallet {
 			candidates.iter().for_each(|candidate| {
 				if validators.contains(candidate) {
 					collators.push(candidate);
-					<SessionPoints<T>>::insert(&candidate, 0);
+					<SessionPoints<T>>::insert(candidate, 0);
 				}
 			});
 

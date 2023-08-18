@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 //! A list of the different weight modules for our runtime.
 #![allow(clippy::unnecessary_cast)]
 
+pub mod module_aggregated_dex;
 pub mod module_asset_registry;
 pub mod module_auction_manager;
 pub mod module_cdp_engine;
@@ -47,3 +48,5 @@ pub mod orml_tokens;
 pub mod orml_vesting;
 
 pub mod nutsfinance_stable_asset;
+
+pub mod pallet_xcm;

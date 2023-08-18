@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -132,7 +132,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + SendTransactionTypes<Call<Self>> {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The minimum increment size of each bid compared to the previous one
 		#[pallet::constant]
@@ -140,12 +140,12 @@ pub mod module {
 
 		/// The extended time for the auction to end after each successful bid
 		#[pallet::constant]
-		type AuctionTimeToClose: Get<Self::BlockNumber>;
+		type AuctionTimeToClose: Get<BlockNumberFor<Self>>;
 
 		/// When the total duration of the auction exceeds this soft cap, push
 		/// the auction to end more faster
 		#[pallet::constant]
-		type AuctionDurationSoftCap: Get<Self::BlockNumber>;
+		type AuctionDurationSoftCap: Get<BlockNumberFor<Self>>;
 
 		/// The stable currency id
 		#[pallet::constant]
@@ -155,7 +155,7 @@ pub mod module {
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Auction to manager the auction process
-		type Auction: Auction<Self::AccountId, Self::BlockNumber, AuctionId = AuctionId, Balance = Balance>;
+		type Auction: Auction<Self::AccountId, BlockNumberFor<Self>, AuctionId = AuctionId, Balance = Balance>;
 
 		/// CDP treasury to escrow assets related to auction
 		type CDPTreasury: CDPTreasuryExtended<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
@@ -237,7 +237,7 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn collateral_auctions)]
 	pub type CollateralAuctions<T: Config> =
-		StorageMap<_, Twox64Concat, AuctionId, CollateralAuctionItem<T::AccountId, T::BlockNumber>, OptionQuery>;
+		StorageMap<_, Twox64Concat, AuctionId, CollateralAuctionItem<T::AccountId, BlockNumberFor<T>>, OptionQuery>;
 
 	/// Record of the total collateral amount of all active collateral auctions
 	/// under specific collateral type CollateralType -> TotalAmount
@@ -258,10 +258,10 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		/// Start offchain worker in order to submit unsigned tx to cancel
 		/// active auction after system shutdown.
-		fn offchain_worker(now: T::BlockNumber) {
+		fn offchain_worker(now: BlockNumberFor<T>) {
 			if T::EmergencyShutdown::is_shutdown() && sp_io::offchain::is_validator() {
 				if let Err(e) = Self::_offchain_worker() {
 					log::info!(
@@ -285,8 +285,8 @@ pub mod module {
 		/// Cancel active auction after system shutdown
 		///
 		/// The dispatch origin of this call must be _None_.
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::cancel_collateral_auction())]
-		#[transactional]
 		pub fn cancel(origin: OriginFor<T>, id: AuctionId) -> DispatchResult {
 			ensure_none(origin)?;
 			ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
@@ -419,7 +419,7 @@ impl<T: Config> Pallet<T> {
 
 	fn cancel_collateral_auction(
 		id: AuctionId,
-		collateral_auction: CollateralAuctionItem<T::AccountId, T::BlockNumber>,
+		collateral_auction: CollateralAuctionItem<T::AccountId, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		let last_bid = Self::get_last_bid(id);
 
@@ -494,7 +494,7 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	fn get_minimum_increment_size(now: T::BlockNumber, start_block: T::BlockNumber) -> Rate {
+	fn get_minimum_increment_size(now: BlockNumberFor<T>, start_block: BlockNumberFor<T>) -> Rate {
 		if now >= start_block + T::AuctionDurationSoftCap::get() {
 			// double the minimum increment size when reach soft cap
 			T::MinimumIncrementSize::get().saturating_mul(Rate::saturating_from_integer(2))
@@ -503,7 +503,7 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	fn get_auction_time_to_close(now: T::BlockNumber, start_block: T::BlockNumber) -> T::BlockNumber {
+	fn get_auction_time_to_close(now: BlockNumberFor<T>, start_block: BlockNumberFor<T>) -> BlockNumberFor<T> {
 		if now >= start_block + T::AuctionDurationSoftCap::get() {
 			// halve the extended time of bid when reach soft cap
 			T::AuctionTimeToClose::get()
@@ -520,18 +520,18 @@ impl<T: Config> Pallet<T> {
 	/// Ensured atomic.
 	#[transactional]
 	pub fn collateral_auction_bid_handler(
-		now: T::BlockNumber,
+		now: BlockNumberFor<T>,
 		id: AuctionId,
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
-	) -> sp_std::result::Result<T::BlockNumber, DispatchError> {
+	) -> sp_std::result::Result<BlockNumberFor<T>, DispatchError> {
 		let (new_bidder, new_bid_price) = new_bid;
 		ensure!(!new_bid_price.is_zero(), Error::<T>::InvalidBidPrice);
 
 		<CollateralAuctions<T>>::try_mutate_exists(
 			id,
-			|collateral_auction| -> sp_std::result::Result<T::BlockNumber, DispatchError> {
-				let mut collateral_auction = collateral_auction.as_mut().ok_or(Error::<T>::AuctionNotExists)?;
+			|collateral_auction| -> sp_std::result::Result<BlockNumberFor<T>, DispatchError> {
+				let collateral_auction = collateral_auction.as_mut().ok_or(Error::<T>::AuctionNotExists)?;
 				let last_bid_price = last_bid.clone().map_or(Zero::zero(), |(_, price)| price); // get last bid price
 
 				// ensure new bid price is valid
@@ -594,7 +594,7 @@ impl<T: Config> Pallet<T> {
 
 	fn collateral_auction_end_handler(
 		auction_id: AuctionId,
-		collateral_auction: CollateralAuctionItem<T::AccountId, T::BlockNumber>,
+		collateral_auction: CollateralAuctionItem<T::AccountId, BlockNumberFor<T>>,
 		last_bid: Option<(T::AccountId, Balance)>,
 	) {
 		let (last_bidder, bid_price) = if let Some((bidder, bid_price)) = last_bid.clone() {
@@ -678,7 +678,7 @@ impl<T: Config> Pallet<T> {
 
 	// Refund stable to the last_bidder.
 	fn try_refund_bid(
-		collateral_auction: &CollateralAuctionItem<T::AccountId, T::BlockNumber>,
+		collateral_auction: &CollateralAuctionItem<T::AccountId, BlockNumberFor<T>>,
 		last_bid: Option<(T::AccountId, Balance)>,
 	) {
 		if let Some((bidder, bid_price)) = last_bid {
@@ -735,13 +735,13 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> AuctionHandler<T::AccountId, Balance, T::BlockNumber, AuctionId> for Pallet<T> {
+impl<T: Config> AuctionHandler<T::AccountId, Balance, BlockNumberFor<T>, AuctionId> for Pallet<T> {
 	fn on_new_bid(
-		now: T::BlockNumber,
+		now: BlockNumberFor<T>,
 		id: AuctionId,
 		new_bid: (T::AccountId, Balance),
 		last_bid: Option<(T::AccountId, Balance)>,
-	) -> OnNewBidResult<T::BlockNumber> {
+	) -> OnNewBidResult<BlockNumberFor<T>> {
 		let bid_result = Self::collateral_auction_bid_handler(now, id, new_bid, last_bid);
 
 		match bid_result {

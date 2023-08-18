@@ -2,7 +2,7 @@
 
 set -xe
 
-RUSTC_VERSION=1.62.0;
+RUSTC_VERSION=`curl -s https://raw.githubusercontent.com/paritytech/srtool/master/RUSTC_VERSION`
 PACKAGE=$PACKAGE;
 BUILD_OPTS=$BUILD_OPTS;
 

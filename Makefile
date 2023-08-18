@@ -6,6 +6,14 @@ run:
 run-eth:
 	cargo run --features with-mandala-runtime --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
 
+.PHONY: run-karura-dev
+run-karura-dev:
+	cargo run --features with-karura-runtime -- --chain=karura-dev --alice --instant-sealing --tmp -lruntime=debug
+
+.PHONY: run-acala-dev
+run-acala-dev:
+	cargo run --features with-acala-runtime -- --chain=acala-dev --alice --instant-sealing --tmp -lruntime=debug
+
 .PHONY: run-karura
 run-karura:
 	cargo run --features with-karura-runtime -- --chain=karura
@@ -37,31 +45,31 @@ build-benches:
 
 .PHONY: build-release
 build-release:
-	cargo build --locked --features with-all-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-all-runtime --profile production --bin acala
 
 .PHONY: build-mandala-release
 build-mandala-release:
-	cargo build --locked --features with-mandala-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-mandala-runtime --profile production --bin acala
 
 .PHONY: build-karura-release
 build-karura-release:
-	cargo build --locked --features with-karura-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-karura-runtime --profile production --bin acala
 
 .PHONY: build-acala-release
 build-acala-release:
-	cargo build --locked --features with-acala-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-acala-runtime --profile production --bin acala
 
 .PHONY: build-mandala-internal-release
 build-mandala-internal-release:
-	cargo build --locked --features with-mandala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-mandala-runtime --release --bin acala
 
 .PHONY: build-karura-internal-release
 build-karura-internal-release:
-	cargo build --locked --features with-karura-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-karura-runtime --release --bin acala
 
 .PHONY: build-acala-internal-release
 build-acala-internal-release:
-	cargo build --locked --features with-acala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-acala-runtime --release --bin acala
 
 .PHONY: check
 check: githooks
@@ -80,7 +88,7 @@ check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --features with-all-runtime --tests --all
 
 .PHONY: check-all
-check-all: check-runtimes check-benchmarks check-integration-tests
+check-all: check-runtimes check-benchmarks check-tests check-integration-tests
 
 .PHONY: check-runtimes
 check-runtimes:
@@ -114,15 +122,18 @@ check-try-runtime:
 
 .PHONY: try-runtime-karura
 try-runtime-karura:
-	SKIP_WASM_BUILD= cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+	cargo build --release --locked --features with-karura-runtime --features try-runtime --bin acala
+	./target/release/acala try-runtime --runtime ./target/release/wbuild/karura-runtime/karura_runtime.compact.compressed.wasm --chain=karura-dev on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws
 
 .PHONY: try-runtime-mandala
 try-runtime-mandala:
-	SKIP_WASM_BUILD= cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --chain=dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://mandala.polkawallet.io:443 -s /tmp/snapshot.bin
+	cargo build --release --locked --features with-mandala-runtime --features try-runtime --bin acala
+	./target/release/acala try-runtime --runtime ./target/release/wbuild/mandala-runtime/mandala_runtime.compact.compressed.wasm --chain=dev on-runtime-upgrade live --uri wss://mandala.polkawallet.io:443
 
 .PHONY: try-runtime-acala
 try-runtime-acala:
-	SKIP_WASM_BUILD= cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+	cargo build --release --locked --features with-acala-runtime --features try-runtime --bin acala
+	./target/release/acala try-runtime --runtime ./target/release/wbuild/acala-runtime/acala_runtime.compact.compressed.wasm --chain=acala-dev on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws
 
 .PHONY: test
 test: githooks
@@ -136,18 +147,18 @@ test-eth: githooks test-evm
 
 .PHONY: test-evm
 test-evm: githooks
-	SKIP_WASM_BUILD= cargo nextest run --manifest-path evm-tests/jsontests/Cargo.toml
+	SKIP_WASM_BUILD= cargo nextest run --release -p evm-jsontests --features evm-tests
 
 .PHONY: test-runtimes
 test-runtimes:
-	SKIP_WASM_BUILD= cargo nextest run --all --features with-all-runtime
-	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-mandala-runtime
-	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-karura-runtime
-	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-acala-runtime
+	SKIP_WASM_BUILD= cargo nextest run --all --features with-all-runtime --lib
+	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-mandala-runtime --lib
+	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-karura-runtime --lib
+	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-acala-runtime --lib
 
 .PHONY: test-e2e
 test-e2e:
-	cargo nextest run --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
+	cargo nextest run --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test --test-threads=1
 
 .PHONY: test-ts
 test-ts: build-mandala-internal-release
@@ -156,7 +167,7 @@ test-ts: build-mandala-internal-release
 .PHONY: test-benchmarking
 test-benchmarking:
 	cargo nextest run --features bench --package module-evm --package runtime-common
-	cargo nextest run --features runtime-benchmarks --features with-all-runtime --features --all benchmarking
+	cargo nextest run --features runtime-benchmarks --features with-all-runtime --all benchmarking
 
 .PHONY: test-all
 test-all: test-runtimes test-eth test-benchmarking
@@ -204,15 +215,15 @@ cargo-update:
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
-	./scripts/build-only-wasm.sh --profile production -p mandala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	./scripts/build-only-wasm.sh --profile production -p mandala-runtime --features=on-chain-release-build
 
 .PHONY: build-wasm-karura
 build-wasm-karura:
-	./scripts/build-only-wasm.sh --profile production -p karura-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	./scripts/build-only-wasm.sh --profile production -p karura-runtime --features=on-chain-release-build
 
 .PHONY: build-wasm-acala
 build-wasm-acala:
-	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=on-chain-release-build
 
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:
@@ -230,17 +241,27 @@ srtool-build-wasm-acala:
 generate-tokens:
 	./scripts/generate-tokens-and-predeploy-contracts.sh
 
+.PHONY: benchmark-module
+benchmark-module:
+ifeq ($(words $(pallet)), 0)
+	$(error pallet not defined)
+endif
+ifeq ($(words $(pallet_folder)), 0)
+	$(error pallet_folder not defined)
+endif
+	cargo run $(options) --release --bin=acala --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark pallet --chain=dev --steps=50 --repeat=20 --pallet=$(pallet) --extrinsic="*" --wasm-execution=compiled --heap-pages=4096 --output=./modules/$(pallet_folder)/src/weights.rs --template=./templates/module-weight-template.hbs
+
 .PHONY: benchmark-mandala
 benchmark-mandala:
-	 cargo run --profile production --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark --chain=mandala-latest --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/mandala/src/weights/
+	cargo run $(options) --profile production --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark pallet --chain=dev --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/mandala/src/weights/
 
 .PHONY: benchmark-karura
 benchmark-karura:
-	 cargo run --profile production --features=runtime-benchmarks --features=with-karura-runtime -- benchmark --chain=karura-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
+	 cargo run $(options) --profile production --features=runtime-benchmarks --features=with-karura-runtime -- benchmark pallet --chain=karura-dev --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
 
 .PHONY: benchmark-acala
 benchmark-acala:
-	 cargo run --profile production --features=runtime-benchmarks --features=with-acala-runtime -- benchmark --chain=acala-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
+	 cargo run $(options) --profile production --features=runtime-benchmarks --features=with-acala-runtime -- benchmark pallet --chain=acala-dev --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
 
 .PHONY: benchmark-machine
 benchmark-machine:

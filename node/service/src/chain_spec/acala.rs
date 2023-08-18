@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::AccountId;
+use acala_primitives::{evm::CHAIN_ID_ACALA_TESTNET, AccountId};
 use sc_chain_spec::{ChainType, Properties};
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -34,16 +34,12 @@ use acala_runtime::{
 };
 use runtime_common::TokenInfo;
 
-pub type ChainSpec = sc_service::GenericChainSpec<acala_runtime::GenesisConfig, Extensions>;
+pub type ChainSpec = sc_service::GenericChainSpec<acala_runtime::RuntimeGenesisConfig, Extensions>;
 
-pub const PARA_ID: u32 = 2000; // TODO: need confirm
+pub const PARA_ID: u32 = 2000;
 
 pub fn acala_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/acala-dist.json")[..])
-}
-
-pub fn wendala_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/wendala-dist.json")[..])
 }
 
 fn acala_properties() -> Properties {
@@ -93,6 +89,45 @@ pub fn acala_dev_config() -> Result<ChainSpec, String> {
 		None,
 		Some(acala_properties()),
 		Extensions {
+			relay_chain: "dev".into(),
+			para_id: PARA_ID,
+			bad_blocks: None,
+		},
+	))
+}
+
+pub fn acala_local_config() -> Result<ChainSpec, String> {
+	let wasm_binary = acala_runtime::WASM_BINARY.unwrap_or_default();
+
+	Ok(ChainSpec::from_genesis(
+		"Acala Local",
+		"acala-local",
+		ChainType::Development,
+		move || {
+			acala_dev_genesis(
+				wasm_binary,
+				// Initial PoA authorities
+				vec![get_parachain_authority_keys_from_seed("Alice")],
+				// Sudo account
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					(get_account_id_from_seed::<sr25519::Public>("Alice"), 1000 * dollar(ACA)),
+					(get_account_id_from_seed::<sr25519::Public>("Bob"), 1000 * dollar(ACA)),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						1000 * dollar(ACA),
+					),
+				],
+				vec![],
+				vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Some(acala_properties()),
+		Extensions {
 			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
 			bad_blocks: None,
@@ -107,9 +142,10 @@ fn acala_dev_genesis(
 	initial_allocation: Vec<(AccountId, Balance)>,
 	vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)>,
 	general_councils: Vec<AccountId>,
-) -> acala_runtime::GenesisConfig {
-	acala_runtime::GenesisConfig {
+) -> acala_runtime::RuntimeGenesisConfig {
+	acala_runtime::RuntimeGenesisConfig {
 		system: SystemConfig {
+			_config: Default::default(),
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 		},
@@ -119,26 +155,26 @@ fn acala_dev_genesis(
 		sudo: SudoConfig { key: Some(root_key) },
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
-			members: general_councils,
+			members: general_councils.try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		financial_council: Default::default(),
 		financial_council_membership: FinancialCouncilMembershipConfig {
-			members: vec![],
+			members: vec![].try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		homa_council: Default::default(),
 		homa_council_membership: HomaCouncilMembershipConfig {
-			members: vec![],
+			members: vec![].try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		technical_committee: Default::default(),
 		technical_committee_membership: TechnicalCommitteeMembershipConfig {
-			members: vec![],
+			members: vec![].try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
-			members: vec![],
+			members: vec![].try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		democracy: Default::default(),
@@ -146,14 +182,16 @@ fn acala_dev_genesis(
 		tokens: TokensConfig { balances: vec![] },
 		vesting: VestingConfig { vesting: vesting_list },
 		cdp_treasury: CdpTreasuryConfig {
+			_phantom: Default::default(),
 			expected_collateral_auction_size: vec![],
 		},
 		cdp_engine: CdpEngineConfig {
+			_phantom: Default::default(),
 			collaterals_params: vec![],
 		},
 		asset_registry: Default::default(),
 		evm: EVMConfig {
-			chain_id: 597u64,
+			chain_id: CHAIN_ID_ACALA_TESTNET,
 			accounts: Default::default(),
 		},
 		dex: DexConfig {
@@ -162,6 +200,7 @@ fn acala_dev_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
+			_config: Default::default(),
 			parachain_id: PARA_ID.into(),
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
@@ -192,6 +231,7 @@ fn acala_dev_genesis(
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
 		polkadot_xcm: PolkadotXcmConfig {
+			_config: Default::default(),
 			safe_xcm_version: Some(2),
 		},
 	}

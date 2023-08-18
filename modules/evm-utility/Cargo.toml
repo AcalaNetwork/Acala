@@ -1,18 +1,18 @@
 [package]
 name = "module-evm-utility"
-version = "2.8.3"
+version = "2.20.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-sha3 = { version = "0.9.1", default-features = false }
+sha3 = { version = "0.10.6", default-features = false }
 
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
 
-evm = { git = "https://github.com/rust-blockchain/evm", rev = "0b686f8c2c83a52638917caa649dc23302fda80d", default-features = false, features = ["with-codec"] }
-evm-gasometer = { git = "https://github.com/rust-blockchain/evm", rev = "0b686f8c2c83a52638917caa649dc23302fda80d", default-features = false }
-evm-runtime = { git = "https://github.com/rust-blockchain/evm", rev = "0b686f8c2c83a52638917caa649dc23302fda80d", default-features = false }
-ethereum = { version = "0.12.0", default-features = false, features = ["with-codec"] }
+evm = { git = "https://github.com/rust-blockchain/evm", rev = "13240a8a551586fdef0b5028ed73af80b248092a", default-features = false, features = ["with-codec"] }
+evm-gasometer = { git = "https://github.com/rust-blockchain/evm", rev = "13240a8a551586fdef0b5028ed73af80b248092a", default-features = false }
+evm-runtime = { git = "https://github.com/rust-blockchain/evm", rev = "13240a8a551586fdef0b5028ed73af80b248092a", default-features = false }
+ethereum = { version = "0.14.0", default-features = false, features = ["with-codec"] }
 
 [features]
 default = ["std"]

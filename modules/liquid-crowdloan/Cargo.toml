@@ -1,0 +1,43 @@
+[package]
+name = "module-liquid-crowdloan"
+version = "2.16.0"
+authors = ["Acala Developers"]
+edition = "2021"
+
+[dependencies]
+scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
+
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38", default-features = false }
+
+orml-traits = { path = "../../orml/traits", default-features = false }
+primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+support = { package = "module-support", path = "../support", default-features = false }
+
+[dev-dependencies]
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+module-currencies = { path = "../currencies" }
+orml-tokens = { path = "../../orml/tokens" }
+
+[features]
+default = ["std"]
+std = [
+	"codec/std",
+	"scale-info/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"frame-support/std",
+	"frame-system/std",
+	"orml-traits/std",
+	"primitives/std",
+	"support/std",
+]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+]

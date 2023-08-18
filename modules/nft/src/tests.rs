@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -23,10 +23,10 @@
 use super::*;
 use frame_support::traits::Currency;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Event, *};
+use mock::{RuntimeEvent, *};
 use orml_nft::TokenInfo;
 use primitives::Balance;
-use sp_runtime::{traits::BlakeTwo256, ArithmeticError};
+use sp_runtime::{traits::BlakeTwo256, ArithmeticError, TokenError};
 use sp_std::collections::btree_map::BTreeMap;
 
 fn free_balance(who: &AccountId) -> Balance {
@@ -56,12 +56,12 @@ fn create_class_should_work() {
 		let metadata = vec![1];
 
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Default::default(),
 			test_attr(1),
 		));
-		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass {
+		System::assert_last_event(RuntimeEvent::NFTModule(crate::Event::CreatedClass {
 			owner: class_id_account(),
 			class_id: CLASS_ID,
 		}));
@@ -90,12 +90,12 @@ fn create_class_should_fail() {
 		let metadata = vec![1];
 		assert_noop!(
 			NFTModule::create_class(
-				Origin::signed(BOB),
+				RuntimeOrigin::signed(BOB),
 				metadata.clone(),
 				Properties(ClassProperty::Transferable | ClassProperty::Burnable),
 				Default::default(),
 			),
-			pallet_balances::Error::<Runtime, _>::InsufficientBalance
+			TokenError::FundsUnavailable
 		);
 
 		let mut large_attr: Attributes = BTreeMap::new();
@@ -103,7 +103,7 @@ fn create_class_should_fail() {
 
 		assert_noop!(
 			NFTModule::create_class(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				metadata,
 				Properties(ClassProperty::Transferable | ClassProperty::Burnable),
 				large_attr,
@@ -119,28 +119,31 @@ fn mint_should_work() {
 		let metadata = vec![1];
 		let metadata_2 = vec![2, 3];
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			test_attr(1),
 		));
-		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass {
+		System::assert_last_event(RuntimeEvent::NFTModule(crate::Event::CreatedClass {
 			owner: class_id_account(),
 			class_id: CLASS_ID,
 		}));
-		assert_ok!(Balances::deposit_into_existing(
-			&class_id_account(),
-			2 * (CREATE_TOKEN_DEPOSIT + ((metadata_2.len() as u128 + TEST_ATTR_LEN) * DATA_DEPOSIT_PER_BYTE))
-		));
+		assert_eq!(Balances::free_balance(&class_id_account()), 1);
+		assert_eq!(Balances::reserved_balance(&class_id_account()), 282);
+
+		let mint_token_deposit =
+			2 * (CREATE_TOKEN_DEPOSIT + ((metadata_2.len() as u128 + TEST_ATTR_LEN) * DATA_DEPOSIT_PER_BYTE));
+		let transfer_amount = mint_token_deposit + Balances::minimum_balance();
+		assert_ok!(Balances::deposit_into_existing(&class_id_account(), transfer_amount));
 		assert_ok!(NFTModule::mint(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata_2.clone(),
 			test_attr(2),
 			2
 		));
-		System::assert_last_event(Event::NFTModule(crate::Event::MintedToken {
+		System::assert_last_event(RuntimeEvent::NFTModule(crate::Event::MintedToken {
 			from: class_id_account(),
 			to: BOB,
 			class_id: CLASS_ID,
@@ -190,14 +193,14 @@ fn mint_should_fail() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_noop!(
 			NFTModule::mint(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				BOB,
 				CLASS_ID_NOT_EXIST,
 				metadata.clone(),
@@ -209,7 +212,7 @@ fn mint_should_fail() {
 
 		assert_noop!(
 			NFTModule::mint(
-				Origin::signed(BOB),
+				RuntimeOrigin::signed(BOB),
 				BOB,
 				CLASS_ID,
 				metadata.clone(),
@@ -221,7 +224,7 @@ fn mint_should_fail() {
 
 		assert_noop!(
 			NFTModule::mint(
-				Origin::signed(BOB),
+				RuntimeOrigin::signed(BOB),
 				BOB,
 				CLASS_ID,
 				metadata.clone(),
@@ -236,11 +239,11 @@ fn mint_should_fail() {
 		});
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
+			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE) + Balances::minimum_balance()
 		));
 		assert_noop!(
 			NFTModule::mint(
-				Origin::signed(class_id_account()),
+				RuntimeOrigin::signed(class_id_account()),
 				BOB,
 				CLASS_ID,
 				metadata,
@@ -257,7 +260,7 @@ fn mint_should_fail_without_mintable() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Default::default(),
 			Default::default(),
@@ -265,7 +268,7 @@ fn mint_should_fail_without_mintable() {
 
 		assert_noop!(
 			NFTModule::mint(
-				Origin::signed(class_id_account()),
+				RuntimeOrigin::signed(class_id_account()),
 				BOB,
 				CLASS_ID,
 				metadata,
@@ -282,17 +285,17 @@ fn transfer_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
+			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE) + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata,
@@ -305,8 +308,12 @@ fn transfer_should_work() {
 			2 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
 		);
 
-		assert_ok!(NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)));
-		System::assert_last_event(Event::NFTModule(crate::Event::TransferredToken {
+		assert_ok!(NFTModule::transfer(
+			RuntimeOrigin::signed(BOB),
+			ALICE,
+			(CLASS_ID, TOKEN_ID)
+		));
+		System::assert_last_event(RuntimeEvent::NFTModule(crate::Event::TransferredToken {
 			from: BOB,
 			to: ALICE,
 			class_id: CLASS_ID,
@@ -321,8 +328,12 @@ fn transfer_should_work() {
 			1 * (CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE)
 		);
 
-		assert_ok!(NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)));
-		System::assert_last_event(Event::NFTModule(crate::Event::TransferredToken {
+		assert_ok!(NFTModule::transfer(
+			RuntimeOrigin::signed(ALICE),
+			BOB,
+			(CLASS_ID, TOKEN_ID)
+		));
+		System::assert_last_event(RuntimeEvent::NFTModule(crate::Event::TransferredToken {
 			from: ALICE,
 			to: BOB,
 			class_id: CLASS_ID,
@@ -341,17 +352,17 @@ fn transfer_should_fail() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata,
@@ -359,15 +370,15 @@ fn transfer_should_fail() {
 			1
 		));
 		assert_noop!(
-			NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID_NOT_EXIST, TOKEN_ID)),
+			NFTModule::transfer(RuntimeOrigin::signed(BOB), ALICE, (CLASS_ID_NOT_EXIST, TOKEN_ID)),
 			Error::<Runtime>::ClassIdNotFound
 		);
 		assert_noop!(
-			NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID_NOT_EXIST)),
+			NFTModule::transfer(RuntimeOrigin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID_NOT_EXIST)),
 			Error::<Runtime>::TokenIdNotFound
 		);
 		assert_noop!(
-			NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)),
+			NFTModule::transfer(RuntimeOrigin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)),
 			orml_nft::Error::<Runtime>::NoPermission
 		);
 	});
@@ -375,17 +386,17 @@ fn transfer_should_fail() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Mintable.into()),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata,
@@ -393,7 +404,7 @@ fn transfer_should_fail() {
 			1
 		));
 		assert_noop!(
-			NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)),
+			NFTModule::transfer(RuntimeOrigin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)),
 			Error::<Runtime>::NonTransferable
 		);
 	});
@@ -404,25 +415,25 @@ fn burn_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
 			Default::default(),
 			1
 		));
-		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
-		System::assert_last_event(Event::NFTModule(crate::Event::BurnedToken {
+		assert_ok!(NFTModule::burn(RuntimeOrigin::signed(BOB), (CLASS_ID, TOKEN_ID)));
+		System::assert_last_event(RuntimeEvent::NFTModule(crate::Event::BurnedToken {
 			owner: BOB,
 			class_id: CLASS_ID,
 			token_id: TOKEN_ID,
@@ -439,17 +450,17 @@ fn burn_should_fail() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata,
@@ -457,12 +468,12 @@ fn burn_should_fail() {
 			1
 		));
 		assert_noop!(
-			NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID_NOT_EXIST)),
+			NFTModule::burn(RuntimeOrigin::signed(BOB), (CLASS_ID, TOKEN_ID_NOT_EXIST)),
 			Error::<Runtime>::TokenIdNotFound
 		);
 
 		assert_noop!(
-			NFTModule::burn(Origin::signed(ALICE), (CLASS_ID, TOKEN_ID)),
+			NFTModule::burn(RuntimeOrigin::signed(ALICE), (CLASS_ID, TOKEN_ID)),
 			Error::<Runtime>::NoPermission
 		);
 
@@ -470,7 +481,7 @@ fn burn_should_fail() {
 			class_info.as_mut().unwrap().total_issuance = 0;
 		});
 		assert_noop!(
-			NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)),
+			NFTModule::burn(RuntimeOrigin::signed(BOB), (CLASS_ID, TOKEN_ID)),
 			ArithmeticError::Overflow,
 		);
 	});
@@ -478,17 +489,17 @@ fn burn_should_fail() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Mintable.into()),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata,
@@ -496,7 +507,7 @@ fn burn_should_fail() {
 			1
 		));
 		assert_noop!(
-			NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)),
+			NFTModule::burn(RuntimeOrigin::signed(BOB), (CLASS_ID, TOKEN_ID)),
 			Error::<Runtime>::NonBurnable
 		);
 	});
@@ -507,17 +518,17 @@ fn burn_with_remark_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
@@ -528,11 +539,11 @@ fn burn_with_remark_should_work() {
 		let remark = "remark info".as_bytes().to_vec();
 		let remark_hash = BlakeTwo256::hash(&remark[..]);
 		assert_ok!(NFTModule::burn_with_remark(
-			Origin::signed(BOB),
+			RuntimeOrigin::signed(BOB),
 			(CLASS_ID, TOKEN_ID),
 			remark
 		));
-		System::assert_last_event(Event::NFTModule(crate::Event::BurnedTokenWithRemark {
+		System::assert_last_event(RuntimeEvent::NFTModule(crate::Event::BurnedTokenWithRemark {
 			owner: BOB,
 			class_id: CLASS_ID,
 			token_id: TOKEN_ID,
@@ -550,39 +561,41 @@ fn burn_with_remark_should_work() {
 fn destroy_class_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
+
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 
 		let deposit = Proxy::deposit(1u32) + CREATE_CLASS_DEPOSIT + DATA_DEPOSIT_PER_BYTE * (metadata.len() as u128);
-		assert_eq!(free_balance(&ALICE), 100000 - deposit);
+		let transfer = deposit + Balances::minimum_balance();
+		assert_eq!(free_balance(&ALICE), 100000 - transfer);
 		assert_eq!(reserved_balance(&ALICE), 0);
-		assert_eq!(free_balance(&class_id_account()), 0);
+		assert_eq!(free_balance(&class_id_account()), Balances::minimum_balance());
 		assert_eq!(reserved_balance(&class_id_account()), deposit);
 		assert_eq!(free_balance(&BOB), 0);
 		assert_eq!(reserved_balance(&BOB), 0);
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata,
 			Default::default(),
 			1
 		));
-		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
+		assert_ok!(NFTModule::burn(RuntimeOrigin::signed(BOB), (CLASS_ID, TOKEN_ID)));
 		assert_ok!(NFTModule::destroy_class(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			CLASS_ID,
 			ALICE
 		));
-		System::assert_last_event(Event::NFTModule(crate::Event::DestroyedClass {
+		System::assert_last_event(RuntimeEvent::NFTModule(crate::Event::DestroyedClass {
 			owner: class_id_account(),
 			class_id: CLASS_ID,
 		}));
@@ -590,7 +603,10 @@ fn destroy_class_should_work() {
 		assert_eq!(reserved_balance(&class_id_account()), 0);
 		assert_eq!(free_balance(&ALICE), 100000);
 		assert_eq!(reserved_balance(&ALICE), 0);
-		assert_eq!(free_balance(&BOB), CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE);
+		assert_eq!(
+			free_balance(&BOB),
+			CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
+		);
 		assert_eq!(reserved_balance(&BOB), 0);
 	});
 }
@@ -600,17 +616,17 @@ fn destroy_class_should_fail() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE
+			1 * CREATE_TOKEN_DEPOSIT + DATA_DEPOSIT_PER_BYTE + Balances::minimum_balance()
 		));
 		assert_ok!(NFTModule::mint(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata,
@@ -618,29 +634,29 @@ fn destroy_class_should_fail() {
 			1
 		));
 		assert_noop!(
-			NFTModule::destroy_class(Origin::signed(class_id_account()), CLASS_ID_NOT_EXIST, BOB),
+			NFTModule::destroy_class(RuntimeOrigin::signed(class_id_account()), CLASS_ID_NOT_EXIST, BOB),
 			Error::<Runtime>::ClassIdNotFound
 		);
 
 		assert_noop!(
-			NFTModule::destroy_class(Origin::signed(BOB), CLASS_ID, BOB),
+			NFTModule::destroy_class(RuntimeOrigin::signed(BOB), CLASS_ID, BOB),
 			Error::<Runtime>::NoPermission
 		);
 
 		assert_noop!(
-			NFTModule::destroy_class(Origin::signed(class_id_account()), CLASS_ID, BOB),
+			NFTModule::destroy_class(RuntimeOrigin::signed(class_id_account()), CLASS_ID, BOB),
 			Error::<Runtime>::CannotDestroyClass
 		);
 
-		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
+		assert_ok!(NFTModule::burn(RuntimeOrigin::signed(BOB), (CLASS_ID, TOKEN_ID)));
 
 		assert_noop!(
-			NFTModule::destroy_class(Origin::signed(class_id_account()), CLASS_ID, BOB),
+			NFTModule::destroy_class(RuntimeOrigin::signed(class_id_account()), CLASS_ID, BOB),
 			pallet_proxy::Error::<Runtime>::NotFound
 		);
 
 		assert_ok!(NFTModule::destroy_class(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			CLASS_ID,
 			ALICE
 		));
@@ -653,7 +669,7 @@ fn update_class_properties_should_work() {
 		let metadata = vec![1];
 
 		assert_ok!(NFTModule::create_class(
-			Origin::signed(ALICE),
+			RuntimeOrigin::signed(ALICE),
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::ClassPropertiesMutable | ClassProperty::Mintable),
 			Default::default(),
@@ -665,7 +681,7 @@ fn update_class_properties_should_work() {
 		));
 
 		assert_ok!(NFTModule::mint(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
@@ -673,35 +689,43 @@ fn update_class_properties_should_work() {
 			1
 		));
 
-		assert_ok!(NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)));
+		assert_ok!(NFTModule::transfer(
+			RuntimeOrigin::signed(BOB),
+			ALICE,
+			(CLASS_ID, TOKEN_ID)
+		));
 
 		assert_ok!(NFTModule::update_class_properties(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			CLASS_ID,
 			Properties(ClassProperty::ClassPropertiesMutable.into())
 		));
 
 		assert_noop!(
-			NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)),
+			NFTModule::transfer(RuntimeOrigin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)),
 			Error::<Runtime>::NonTransferable
 		);
 
 		assert_ok!(NFTModule::update_class_properties(
-			Origin::signed(class_id_account()),
+			RuntimeOrigin::signed(class_id_account()),
 			CLASS_ID,
 			Properties(ClassProperty::Transferable.into())
 		));
 
-		assert_ok!(NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)));
+		assert_ok!(NFTModule::transfer(
+			RuntimeOrigin::signed(ALICE),
+			BOB,
+			(CLASS_ID, TOKEN_ID)
+		));
 
 		assert_noop!(
-			NFTModule::update_class_properties(Origin::signed(class_id_account()), CLASS_ID, Default::default()),
+			NFTModule::update_class_properties(RuntimeOrigin::signed(class_id_account()), CLASS_ID, Default::default()),
 			Error::<Runtime>::Immutable
 		);
 
 		assert_noop!(
 			NFTModule::mint(
-				Origin::signed(class_id_account()),
+				RuntimeOrigin::signed(class_id_account()),
 				BOB,
 				CLASS_ID,
 				metadata,

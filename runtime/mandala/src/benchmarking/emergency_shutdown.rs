@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,11 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CdpTreasury, CurrencyId, EmergencyShutdown, GetStableCurrencyId, Price, Runtime};
+use crate::{AccountId, CdpTreasury, CurrencyId, EmergencyShutdown, Price, Runtime};
 
 use super::{
 	get_benchmarking_collateral_currency_ids,
-	utils::{dollar, feed_price, set_balance},
+	utils::{dollar, feed_price, set_balance, STABLECOIN},
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
@@ -30,8 +30,6 @@ use sp_runtime::traits::One;
 use sp_std::vec;
 
 const SEED: u32 = 0;
-
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_emergency_shutdown }
@@ -44,7 +42,7 @@ runtime_benchmarks! {
 		for i in 0 .. c {
 			values.push((currency_ids[i as usize], Price::one()));
 		}
-		feed_price(values)?;
+		feed_price(values.try_into().unwrap())?;
 	}: _(RawOrigin::Root)
 
 	open_collateral_refund {

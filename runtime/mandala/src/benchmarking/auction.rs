@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,12 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-	AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, CurrencyId, GetStableCurrencyId,
-	GetStakingCurrencyId, Runtime, System,
-};
+use crate::{AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, Runtime, System};
 
-use super::utils::{dollar, set_balance};
+use super::utils::{dollar, set_balance, STABLECOIN, STAKING};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
@@ -32,9 +29,6 @@ use sp_std::prelude::*;
 const SEED: u32 = 0;
 const MAX_DOLLARS: u32 = 1000;
 const MAX_AUCTION_ID: u32 = 100;
-
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, orml_auction }

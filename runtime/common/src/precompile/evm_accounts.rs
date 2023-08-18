@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -89,7 +89,7 @@ where
 			}
 			Action::GetEvmAddress => {
 				// bytes32
-				let input_data = input.bytes_at(1, 32)?;
+				let input_data = input.bytes32_at(1)?;
 
 				let mut buf = [0u8; 32];
 				buf.copy_from_slice(&input_data[..]);
@@ -107,7 +107,7 @@ where
 			}
 			Action::ClaimDefaultEvmAddress => {
 				// bytes32
-				let input_data = input.bytes_at(1, 32)?;
+				let input_data = input.bytes32_at(1)?;
 
 				let mut buf = [0u8; 32];
 				buf.copy_from_slice(&input_data[..]);
@@ -117,7 +117,7 @@ where
 					module_evm_accounts::Pallet::<Runtime>::claim_default_evm_address(&account_id).map_err(|e| {
 						PrecompileFailure::Revert {
 							exit_status: ExitRevert::Reverted,
-							output: Into::<&str>::into(e).as_bytes().to_vec(),
+							output: Output::encode_error_msg("EvmAccounts ClaimDefaultEvmAddress failed", e),
 							cost: target_gas_limit(target_gas).unwrap_or_default(),
 						}
 					})?;
@@ -285,7 +285,7 @@ mod tests {
 				EVMAccountsPrecompile::execute(&input, Some(100_000), &context, false),
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "AccountIdHasMapped".into(),
+					output: "EvmAccounts ClaimDefaultEvmAddress failed: AccountIdHasMapped".into(),
 					cost: target_gas_limit(Some(100_000)).unwrap(),
 				}
 			);

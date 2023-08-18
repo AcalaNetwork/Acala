@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -32,6 +32,7 @@ pub use testing::*;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+use serde::{Deserialize, Serialize};
 use sp_core::U256;
 use sp_runtime::{
 	generic,
@@ -42,9 +43,6 @@ use sp_std::prelude::*;
 
 pub use currency::{CurrencyId, DexShare, Lease, TokenSymbol};
 pub use evm::{convert_decimals_from_evm, convert_decimals_to_evm};
-
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 mod tests;
@@ -111,8 +109,9 @@ pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 /// Fee multiplier.
 pub type Multiplier = FixedU128;
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+	Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, Serialize, Deserialize,
+)]
 pub enum AuthoritysOriginId {
 	Root,
 	Treasury,
@@ -121,15 +120,17 @@ pub enum AuthoritysOriginId {
 	TreasuryReserve,
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+	Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, Serialize, Deserialize,
+)]
 pub enum DataProviderId {
 	Aggregated = 0,
 	Acala = 1,
 }
 
-#[derive(Encode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+	Encode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Serialize, Deserialize,
+)]
 pub struct TradingPair(CurrencyId, CurrencyId);
 
 impl TradingPair {
@@ -191,8 +192,6 @@ pub enum ReserveIdentifier {
 	// always the last, indicate number of variants
 	Count,
 }
-
-pub type CashYieldIndex = u128;
 
 /// Convert any type that implements Into<U256> into byte representation ([u8, 32])
 pub fn to_bytes<T: Into<U256>>(value: T) -> [u8; 32] {

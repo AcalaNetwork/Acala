@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -24,7 +24,6 @@
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement, LockIdentifier, LockableCurrency, OnUnbalanced, WithdrawReasons},
-	transactional,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::Happened;
@@ -48,7 +47,7 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type Currency: LockableCurrency<Self::AccountId, Balance = Balance>;
 
@@ -59,9 +58,9 @@ pub mod module {
 		#[pallet::constant]
 		type MinBond: Get<Balance>;
 		#[pallet::constant]
-		type UnbondingPeriod: Get<Self::BlockNumber>;
+		type UnbondingPeriod: Get<BlockNumberFor<Self>>;
 		#[pallet::constant]
-		type InstantUnstakeFee: Get<Permill>;
+		type InstantUnstakeFee: Get<Option<Permill>>;
 		#[pallet::constant]
 		type MaxUnbondingChunks: Get<u32>;
 		#[pallet::constant]
@@ -80,6 +79,7 @@ pub mod module {
 		BelowMinBondThreshold,
 		MaxUnlockChunksExceeded,
 		NotBonded,
+		NotAllowed,
 	}
 
 	#[pallet::event]
@@ -120,15 +120,15 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Bond tokens by locking them up to `amount`.
 		/// If user available balances is less than amount, then all the remaining balances will be
 		/// locked.
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::bond())]
-		#[transactional]
 		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -147,8 +147,8 @@ pub mod module {
 		/// Start unbonding tokens up to `amount`.
 		/// If bonded amount is less than `amount`, then all the remaining bonded tokens will start
 		/// unbonding. Token will finish unbonding after `UnbondingPeriod` blocks.
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::unbond())]
-		#[transactional]
 		pub fn unbond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -169,16 +169,18 @@ pub mod module {
 		/// Unbond up to `amount` tokens instantly by paying a `InstantUnstakeFee` fee.
 		/// If bonded amount is less than `amount`, then all the remaining bonded tokens will be
 		/// unbonded. This will not unbond tokens during unbonding period.
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::unbond_instant())]
-		#[transactional]
 		pub fn unbond_instant(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+
+			let fee_ratio = T::InstantUnstakeFee::get().ok_or(Error::<T>::NotAllowed)?;
 
 			let change = <Self as BondingController>::unbond_instant(&who, amount)?;
 
 			if let Some(change) = change {
 				let amount = change.change;
-				let fee = T::InstantUnstakeFee::get().mul_ceil(amount);
+				let fee = fee_ratio.mul_ceil(amount);
 				let final_amount = amount.saturating_sub(fee);
 
 				let unbalance =
@@ -199,8 +201,8 @@ pub mod module {
 		/// Rebond up to `amount` tokens from unbonding period.
 		/// If unbonded amount is less than `amount`, then all the remaining unbonded tokens will be
 		/// rebonded.
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::rebond())]
-		#[transactional]
 		pub fn rebond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -218,8 +220,8 @@ pub mod module {
 		}
 
 		/// Withdraw all unbonded tokens.
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
-		#[transactional]
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -243,7 +245,7 @@ impl<T: Config> Pallet<T> {}
 impl<T: Config> BondingController for Pallet<T> {
 	type MinBond = T::MinBond;
 	type MaxUnbondingChunks = T::MaxUnbondingChunks;
-	type Moment = T::BlockNumber;
+	type Moment = BlockNumberFor<T>;
 	type AccountId = T::AccountId;
 
 	type Ledger = Ledger<T>;

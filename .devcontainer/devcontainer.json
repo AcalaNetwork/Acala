@@ -2,40 +2,30 @@
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.192.0/containers/docker-in-docker
 {
 	"name": "Acala",
-	"dockerFile": "Dockerfile",
-	"runArgs": ["--init", "--privileged"],
-	"mounts": ["source=dind-var-lib-docker,target=/var/lib/docker,type=volume"],
-	"overrideCommand": false,
-	
-	// Set *default* container specific settings.json values on container create.
-	"settings": {
-		"lldb.executable": "/usr/bin/lldb",
-		// VS Code don't watch files under ./target
-		"files.watcherExclude": {
-			"**/target/**": true
-		},
-		"rust-analyzer.checkOnSave.command": "clippy"
+	"build": {
+		"dockerfile": "Dockerfile",
 	},
-	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": [
-		"ms-azuretools.vscode-docker",
-		"vadimcn.vscode-lldb",
-		"mutantdino.resourcemonitor",
-		"matklad.rust-analyzer",
-		"tamasfe.even-better-toml",
-		"serayuzgur.crates"
-	],
-	
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	"forwardPorts": [
-		30333,
-		9933,
-		9944
-	],
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "docker --version",
-
-	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
+	},
+	"customizations": {
+		"settings": {
+			"lldb.executable": "/usr/bin/lldb",
+			// VS Code don't watch files under ./target
+			"files.watcherExclude": {
+				"**/target/**": true
+			},
+			"rust-analyzer.checkOnSave.command": "clippy"
+		},
+		"extensions": [
+			"ms-azuretools.vscode-docker",
+			"vadimcn.vscode-lldb",
+			"mutantdino.resourcemonitor",
+			"matklad.rust-analyzer",
+			"tamasfe.even-better-toml",
+			"serayuzgur.crates"
+		]
+	},
+	"forwardPorts": [30333, 9944],
 	"remoteUser": "vscode"
 }

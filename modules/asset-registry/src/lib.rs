@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -24,12 +24,10 @@
 #![allow(clippy::unused_unit)]
 
 use frame_support::{
-	assert_ok,
 	dispatch::DispatchResult,
 	ensure,
 	pallet_prelude::*,
 	traits::{Currency, EnsureOrigin},
-	transactional,
 };
 use frame_system::pallet_prelude::*;
 use module_support::{AssetIdMapping, BuyWeightRate, EVMBridge, Erc20InfoMapping, InvokeContext, Ratio};
@@ -49,11 +47,9 @@ use scale_info::prelude::format;
 use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedU128};
 use sp_std::{boxed::Box, vec::Vec};
 
-use xcm::{
-	v1::{Junction, Junctions::*, MultiLocation},
-	VersionedMultiLocation,
-};
+use xcm::{v3::prelude::*, VersionedMultiLocation};
 
+pub mod migrations;
 mod mock;
 mod tests;
 mod weights;
@@ -71,7 +67,7 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Currency type for withdraw and balance storage.
 		type Currency: Currency<Self::AccountId>;
@@ -84,7 +80,7 @@ pub mod module {
 		type EVMBridge: EVMBridge<Self::AccountId, BalanceOf<Self>>;
 
 		/// Required origin for registering asset.
-		type RegisterOrigin: EnsureOrigin<Self::Origin>;
+		type RegisterOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -178,24 +174,16 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::genesis_config]
+	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
 		pub assets: Vec<(CurrencyId, BalanceOf<T>)>,
 	}
 
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				assets: Default::default(),
-			}
-		}
-	}
-
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			self.assets.iter().for_each(|(asset, ed)| {
-				assert_ok!(Pallet::<T>::do_register_native_asset(
+				frame_support::assert_ok!(Pallet::<T>::do_register_native_asset(
 					*asset,
 					&AssetMetadata {
 						name: asset.name().unwrap().as_bytes().to_vec(),
@@ -210,8 +198,8 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::register_foreign_asset())]
-		#[transactional]
 		pub fn register_foreign_asset(
 			origin: OriginFor<T>,
 			location: Box<VersionedMultiLocation>,
@@ -230,8 +218,8 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::update_foreign_asset())]
-		#[transactional]
 		pub fn update_foreign_asset(
 			origin: OriginFor<T>,
 			foreign_asset_id: ForeignAssetId,
@@ -251,8 +239,8 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::register_stable_asset())]
-		#[transactional]
 		pub fn register_stable_asset(
 			origin: OriginFor<T>,
 			metadata: Box<AssetMetadata<BalanceOf<T>>>,
@@ -268,8 +256,8 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::update_stable_asset())]
-		#[transactional]
 		pub fn update_stable_asset(
 			origin: OriginFor<T>,
 			stable_asset_id: StableAssetPoolId,
@@ -286,8 +274,8 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::register_erc20_asset())]
-		#[transactional]
 		pub fn register_erc20_asset(
 			origin: OriginFor<T>,
 			contract: EvmAddress,
@@ -304,8 +292,8 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::update_erc20_asset())]
-		#[transactional]
 		pub fn update_erc20_asset(
 			origin: OriginFor<T>,
 			contract: EvmAddress,
@@ -322,8 +310,8 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::register_native_asset())]
-		#[transactional]
 		pub fn register_native_asset(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -340,8 +328,8 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::call_index(7)]
 		#[pallet::weight(T::WeightInfo::update_native_asset())]
-		#[transactional]
 		pub fn update_native_asset(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -388,7 +376,7 @@ impl<T: Config> Pallet<T> {
 
 			ForeignAssetLocations::<T>::try_mutate(foreign_asset_id, |maybe_location| -> DispatchResult {
 				ensure!(maybe_location.is_none(), Error::<T>::MultiLocationExisted);
-				*maybe_location = Some(location.clone());
+				*maybe_location = Some(*location);
 
 				AssetMetadatas::<T>::try_mutate(
 					AssetIds::ForeignAssetId(foreign_asset_id),
@@ -420,7 +408,7 @@ impl<T: Config> Pallet<T> {
 
 					// modify location
 					if location != old_multi_locations {
-						LocationToCurrencyIds::<T>::remove(old_multi_locations.clone());
+						LocationToCurrencyIds::<T>::remove(*old_multi_locations);
 						LocationToCurrencyIds::<T>::try_mutate(location, |maybe_currency_ids| -> DispatchResult {
 							ensure!(maybe_currency_ids.is_none(), Error::<T>::MultiLocationExisted);
 							*maybe_currency_ids = Some(CurrencyId::ForeignAsset(foreign_asset_id));
@@ -428,7 +416,7 @@ impl<T: Config> Pallet<T> {
 						})?;
 					}
 					*maybe_asset_metadatas = Some(metadata.clone());
-					*old_multi_locations = location.clone();
+					*old_multi_locations = *location;
 					Ok(())
 				},
 			)
@@ -557,8 +545,11 @@ fn key_to_currency(location: MultiLocation) -> Option<CurrencyId> {
 	match location {
 		MultiLocation {
 			parents: 0,
-			interior: X1(Junction::GeneralKey(key)),
-		} => CurrencyId::decode(&mut &*key).ok(),
+			interior: X1(Junction::GeneralKey { data, length }),
+		} => {
+			let key = &data[..data.len().min(length as usize)];
+			CurrencyId::decode(&mut &*key).ok()
+		}
 		_ => None,
 	}
 }
@@ -579,6 +570,33 @@ where
 			}
 		}
 		None
+	}
+}
+
+pub struct BuyWeightRateOfLiquidCrowdloan<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: Config> BuyWeightRate for BuyWeightRateOfLiquidCrowdloan<T>
+where
+	BalanceOf<T>: Into<u128>,
+{
+	fn calculate_rate(location: MultiLocation) -> Option<Ratio> {
+		let currency = key_to_currency(location);
+		match currency {
+			Some(CurrencyId::LiquidCrowdloan(lease)) => {
+				if let Some(asset_metadata) =
+					Pallet::<T>::asset_metadatas(AssetIds::NativeAssetId(CurrencyId::LiquidCrowdloan(lease)))
+				{
+					let minimum_balance = asset_metadata.minimal_balance.into();
+					let rate =
+						FixedU128::saturating_from_rational(minimum_balance, T::Currency::minimum_balance().into());
+					log::debug!(target: "asset-registry::weight", "LiquidCrowdloan: {}, MinimumBalance: {}, rate:{:?}", lease, minimum_balance, rate);
+					Some(rate)
+				} else {
+					None
+				}
+			}
+			_ => None,
+		}
 	}
 }
 
@@ -616,7 +634,7 @@ where
 	fn calculate_rate(location: MultiLocation) -> Option<Ratio> {
 		let currency = key_to_currency(location);
 		match currency {
-			Some(CurrencyId::Erc20(address)) if !is_system_contract(address) => {
+			Some(CurrencyId::Erc20(address)) if !is_system_contract(&address) => {
 				if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::Erc20(address)) {
 					let minimum_balance = asset_metadata.minimal_balance.into();
 					let rate =
@@ -871,7 +889,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 	// If is CurrencyId::DexShare and contain DexShare::Erc20,
 	// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn decode_evm_address(addr: EvmAddress) -> Option<CurrencyId> {
-		if !is_system_contract(addr) {
+		if !is_system_contract(&addr) {
 			return Some(CurrencyId::Erc20(addr));
 		}
 

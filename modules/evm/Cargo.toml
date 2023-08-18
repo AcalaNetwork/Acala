@@ -1,6 +1,6 @@
 [package]
 name = "module-evm"
-version = "2.8.3"
+version = "2.20.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -11,28 +11,27 @@ required-features = ["bench"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-hex-literal = { version = "0.3.1" }
-primitive-types = { version = "0.11.1", default-features = false, features = ["rlp", "byteorder"] }
-ripemd160 = { version = "0.9", default-features = false }
-rlp = { version = "0.5", default-features = false }
-serde = { version = "1.0.136", optional = true, features = ["derive"] }
-sha3 = { version = "0.9.1", default-features = false }
+hex-literal = { version = "0.4.1" }
+ripemd = { version = "0.1.3", default-features = false }
+rlp = { version = "0.5.2", default-features = false }
+serde = { version = "1.0.145", default-features = false, features = ["alloc", "derive"] }
+sha3 = { version = "0.10.8", default-features = false }
 tiny-keccak = { version = "2.0", features = ["fips202"] }
-scale-info = { version = "2.1", default-features = false, features = ["derive"] }
+scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
 hex = { version = "0.4", default-features = false, features = ["alloc"], optional = true }
 num = { version = "0.4", features = ["alloc"], default-features = false }
 bn = { package = "substrate-bn", version = "0.6", default-features = false }
 
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false, optional = true }
 
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-bencher = { path = "../../orml/bencher", default-features = false, optional = true }
 orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }
@@ -45,60 +44,75 @@ module-idle-scheduler = { path = "../idle-scheduler", default-features = false, 
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
 module-dex = { path = "../dex", default-features = false, optional = true }
 
-xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.24", default-features = false }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v1.0.0", default-features = false }
+
+# we don't directly depends on this but need frame-benchmarking/std to fix build
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" , default-features = false, optional = true }
 
 [dev-dependencies]
 hex = "0.4"
-env_logger = "0.9.0"
-serde_json = "1.0.68"
+env_logger = "0.10.0"
+serde_json = "1.0.81"
+pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
 
 [features]
 default = ["std"]
 std = [
-	"serde",
+	"serde/std",
+
 	"codec/std",
-	"scale-info/std",
-	"sp-core/std",
-	"sp-runtime/std",
 	"frame-support/std",
 	"frame-system/std",
-	"sp-io/std",
-	"sp-std/std",
-	"sha3/std",
-	"rlp/std",
-	"num/std",
+	"module-dex/std",
 	"module-evm-utility/std",
-	"primitive-types/std",
-	"pallet-timestamp/std",
-	"pallet-balances/std",
-	"ripemd160/std",
-	"primitives/std",
-	"orml-traits/std",
+	"module-idle-scheduler/std",
 	"module-support/std",
+	"module-transaction-payment/std",
+	"num/std",
 	"orml-bencher/std",
 	"orml-currencies/std",
 	"orml-tokens/std",
-	"module-idle-scheduler/std",
-	"module-transaction-payment/std",
-	"module-dex/std",
-	"xcm-builder/std"
+	"orml-traits/std",
+	"pallet-balances/std",
+	"pallet-timestamp/std",
+	"primitives/std",
+	"ripemd/std",
+	"rlp/std",
+	"scale-info/std",
+	"sha3/std",
+	"sp-core/std",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"xcm-builder/std",
+	"frame-benchmarking/std",
 ]
 with-ethereum-compatibility = []
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"module-dex/try-runtime",
+	"module-idle-scheduler/try-runtime",
+	"module-transaction-payment/try-runtime",
+	"orml-currencies/try-runtime",
+	"orml-tokens/try-runtime",
+	"pallet-balances/try-runtime",
+	"pallet-timestamp/try-runtime",
+]
 tracing = ["module-evm-utility/tracing"]
 bench = [
-	"pallet-balances",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"hex",
+	"module-dex",
+	"module-idle-scheduler",
+	"orml-bencher/bench",
 	"orml-currencies",
 	"orml-tokens",
-	"orml-bencher/bench",
-	"frame-support/runtime-benchmarks",
-	"sp-runtime/runtime-benchmarks",
-	"frame-system/runtime-benchmarks",
+	"pallet-balances",
 	"serde_json",
-	"hex",
-	"module-idle-scheduler",
-	"module-dex",
-	"xcm-builder/runtime-benchmarks"
+	"sp-runtime/runtime-benchmarks",
+	"xcm-builder/runtime-benchmarks",
 ]
 evm-tests = [
 	"primitives/evm-tests"

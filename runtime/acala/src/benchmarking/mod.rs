@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -82,6 +82,16 @@ pub mod transaction_payment {
 }
 pub mod session_manager {
 	include!("../../../mandala/src/benchmarking/session_manager.rs");
+}
+pub mod liquid_crowdloan {
+	include!("../../../mandala/src/benchmarking/liquid_crowdloan.rs");
+}
+
+pub mod nutsfinance_stable_asset {
+	include!("../../../mandala/src/benchmarking/nutsfinance_stable_asset.rs");
+}
+pub mod aggregated_dex {
+	include!("../../../mandala/src/benchmarking/aggregated_dex.rs");
 }
 
 // orml benchmarking

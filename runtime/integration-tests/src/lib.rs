@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -122,13 +122,3 @@ mod weights;
 	feature = "with-acala-runtime"
 ))]
 mod payment;
-
-#[cfg(any(
-	feature = "with-mandala-runtime",
-	feature = "with-karura-runtime",
-	feature = "with-acala-runtime"
-))]
-mod relaychain;
-
-#[cfg(feature = "with-karura-runtime")]
-mod xcm_interface;

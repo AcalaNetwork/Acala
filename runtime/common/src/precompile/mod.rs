@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -35,7 +35,7 @@ use module_evm::{
 	runner::state::{PrecompileFailure, PrecompileResult, PrecompileSet},
 	Context, ExitRevert,
 };
-use module_support::PrecompileCallerFilter as PrecompileCallerFilterT;
+use module_support::{PrecompileCallerFilter, PrecompilePauseFilter};
 use sp_core::H160;
 use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
@@ -46,11 +46,13 @@ pub mod homa;
 pub mod honzon;
 pub mod incentives;
 pub mod input;
+pub mod liquid_crowdloan;
 pub mod multicurrency;
 pub mod nft;
 pub mod oracle;
 pub mod schedule;
 pub mod stable_asset;
+pub mod xtokens;
 
 use crate::SystemContractsFilter;
 pub use dex::DEXPrecompile;
@@ -59,11 +61,13 @@ pub use evm_accounts::EVMAccountsPrecompile;
 pub use homa::HomaPrecompile;
 pub use honzon::HonzonPrecompile;
 pub use incentives::IncentivesPrecompile;
+pub use liquid_crowdloan::LiquidCrowdloanPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
 pub use schedule::SchedulePrecompile;
 pub use stable_asset::StableAssetPrecompile;
+pub use xtokens::XtokensPrecompile;
 
 pub const ECRECOVER: H160 = H160(hex!("0000000000000000000000000000000000000001"));
 pub const SHA256: H160 = H160(hex!("0000000000000000000000000000000000000002"));
@@ -92,23 +96,26 @@ pub const HOMA: H160 = H160(hex!("0000000000000000000000000000000000000407"));
 pub const EVM_ACCOUNTS: H160 = H160(hex!("0000000000000000000000000000000000000408"));
 pub const HONZON: H160 = H160(hex!("0000000000000000000000000000000000000409"));
 pub const INCENTIVES: H160 = H160(hex!("000000000000000000000000000000000000040a"));
+pub const XTOKENS: H160 = H160(hex!("000000000000000000000000000000000000040b"));
+pub const LIQUID_CROWDLOAN: H160 = H160(hex!("000000000000000000000000000000000000040c"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
 	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
 }
 
-pub struct AllPrecompiles<R> {
-	active: BTreeSet<H160>,
-	_marker: PhantomData<R>,
+pub struct AllPrecompiles<R, F, E> {
+	set: BTreeSet<H160>,
+	_marker: PhantomData<(R, F, E)>,
 }
 
-impl<R> AllPrecompiles<R>
+impl<R, F, E> AllPrecompiles<R, F, E>
 where
 	R: module_evm::Config,
+	E: PrecompileSet,
 {
 	pub fn acala() -> Self {
 		Self {
-			active: BTreeSet::from([
+			set: BTreeSet::from([
 				ECRECOVER,
 				SHA256,
 				RIPEMD,
@@ -129,11 +136,13 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
-				// STABLE_ASSET,
-				// HOMA,
+				STABLE_ASSET,
+				HOMA,
 				EVM_ACCOUNTS,
-				/* HONZON
-				 * INCENTIVES */
+				HONZON,
+				INCENTIVES,
+				XTOKENS,
+				LIQUID_CROWDLOAN,
 			]),
 			_marker: Default::default(),
 		}
@@ -141,7 +150,7 @@ where
 
 	pub fn karura() -> Self {
 		Self {
-			active: BTreeSet::from([
+			set: BTreeSet::from([
 				ECRECOVER,
 				SHA256,
 				RIPEMD,
@@ -162,11 +171,13 @@ where
 				ORACLE,
 				// SCHEDULER,
 				DEX,
-				// STABLE_ASSET,
-				// HOMA,
+				STABLE_ASSET,
+				HOMA,
 				EVM_ACCOUNTS,
-				/* HONZON
-				 * INCENTIVES */
+				HONZON,
+				INCENTIVES,
+				XTOKENS,
+				// LIQUID_CROWDLOAN,
 			]),
 			_marker: Default::default(),
 		}
@@ -174,7 +185,7 @@ where
 
 	pub fn mandala() -> Self {
 		Self {
-			active: BTreeSet::from([
+			set: BTreeSet::from([
 				ECRECOVER,
 				SHA256,
 				RIPEMD,
@@ -200,15 +211,19 @@ where
 				EVM_ACCOUNTS,
 				HONZON,
 				INCENTIVES,
+				XTOKENS,
+				// LIQUID_CROWDLOAN,
 			]),
 			_marker: Default::default(),
 		}
 	}
 }
 
-impl<R> PrecompileSet for AllPrecompiles<R>
+impl<R, PausedPrecompile, E> PrecompileSet for AllPrecompiles<R, PausedPrecompile, E>
 where
 	R: module_evm::Config,
+	E: PrecompileSet + Default,
+	PausedPrecompile: PrecompilePauseFilter,
 	MultiCurrencyPrecompile<R>: Precompile,
 	NFTPrecompile<R>: Precompile,
 	EVMPrecompile<R>: Precompile,
@@ -220,6 +235,7 @@ where
 	HomaPrecompile<R>: Precompile,
 	HonzonPrecompile<R>: Precompile,
 	IncentivesPrecompile<R>: Precompile,
+	XtokensPrecompile<R>: Precompile,
 {
 	fn execute(
 		&self,
@@ -231,6 +247,16 @@ where
 	) -> Option<PrecompileResult> {
 		if !self.is_precompile(address) {
 			return None;
+		}
+
+		// ensure precompile is not paused
+		if PausedPrecompile::is_paused(address) {
+			log::debug!(target: "evm", "Precompile {:?} is paused", address);
+			return Some(Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "precompile is paused".into(),
+				cost: target_gas.unwrap_or_default(),
+			}));
 		}
 
 		// Filter known precompile addresses except Ethereum officials
@@ -326,8 +352,10 @@ where
 				Some(IncentivesPrecompile::<R>::execute(
 					input, target_gas, context, is_static,
 				))
+			} else if address == XTOKENS {
+				Some(XtokensPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else {
-				None
+				E::execute(&Default::default(), address, input, target_gas, context, is_static)
 			}
 		};
 
@@ -339,7 +367,39 @@ where
 	}
 
 	fn is_precompile(&self, address: H160) -> bool {
-		self.active.contains(&address)
+		self.set.contains(&address) || E::is_precompile(&Default::default(), address)
+	}
+}
+
+pub struct AcalaPrecompiles<R>(sp_std::marker::PhantomData<R>);
+
+impl<R> Default for AcalaPrecompiles<R> {
+	fn default() -> Self {
+		Self(sp_std::marker::PhantomData)
+	}
+}
+
+impl<R> PrecompileSet for AcalaPrecompiles<R>
+where
+	LiquidCrowdloanPrecompile<R>: Precompile,
+{
+	fn execute(
+		&self,
+		address: H160,
+		input: &[u8],
+		gas_limit: Option<u64>,
+		context: &Context,
+		is_static: bool,
+	) -> Option<PrecompileResult> {
+		if address == LIQUID_CROWDLOAN {
+			Some(LiquidCrowdloanPrecompile::execute(input, gas_limit, context, is_static))
+		} else {
+			None
+		}
+	}
+
+	fn is_precompile(&self, address: H160) -> bool {
+		address == LIQUID_CROWDLOAN
 	}
 }
 

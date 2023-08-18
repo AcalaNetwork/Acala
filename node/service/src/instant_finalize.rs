@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -47,9 +47,8 @@ where
 	async fn import_block(
 		&mut self,
 		mut block_import_params: sc_consensus::BlockImportParams<Block, Self::Transaction>,
-		cache: std::collections::HashMap<sp_consensus::CacheKeyId, Vec<u8>>,
 	) -> Result<sc_consensus::ImportResult, Self::Error> {
 		block_import_params.finalized = true;
-		self.0.import_block(block_import_params, cache).await
+		self.0.import_block(block_import_params).await
 	}
 }

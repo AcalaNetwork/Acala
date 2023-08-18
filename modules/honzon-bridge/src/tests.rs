@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -32,13 +32,15 @@ fn set_bridged_stable_coin_address_works() {
 		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
 		deploy_contracts();
 		assert_ok!(HonzonBridge::set_bridged_stable_coin_address(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			erc20_address()
 		));
 
-		System::assert_last_event(Event::HonzonBridge(crate::Event::BridgedStableCoinCurrencyIdSet {
-			bridged_stable_coin_currency_id: CurrencyId::Erc20(erc20_address()),
-		}));
+		System::assert_last_event(RuntimeEvent::HonzonBridge(
+			crate::Event::BridgedStableCoinCurrencyIdSet {
+				bridged_stable_coin_currency_id: CurrencyId::Erc20(erc20_address()),
+			},
+		));
 	});
 }
 
@@ -49,19 +51,19 @@ fn to_bridged_works() {
 		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
 
 		assert_noop!(
-			HonzonBridge::from_bridged(Origin::signed(alice()), dollar(5_000)),
+			HonzonBridge::from_bridged(RuntimeOrigin::signed(alice()), dollar(5_000)),
 			module_honzon_bridge::Error::<Runtime>::BridgedStableCoinCurrencyIdNotSet
 		);
 
 		deploy_contracts();
 		assert_ok!(HonzonBridge::set_bridged_stable_coin_address(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			erc20_address()
 		));
 		// ensure the honzon-bridge pallet account bind the evmaddress
 		<EVM as EVMTrait<AccountId>>::set_origin(EvmAccountsModule::get_account_id(&alice_evm_addr()));
 		assert_ok!(Currencies::transfer(
-			Origin::signed(alice()),
+			RuntimeOrigin::signed(alice()),
 			HonzonBridgeAccount::get(),
 			HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
 			dollar(1_000_000)
@@ -84,7 +86,7 @@ fn to_bridged_works() {
 			dollar(1_000_000)
 		);
 
-		assert_ok!(HonzonBridge::to_bridged(Origin::signed(alice()), dollar(5_000)));
+		assert_ok!(HonzonBridge::to_bridged(RuntimeOrigin::signed(alice()), dollar(5_000)));
 
 		assert_eq!(
 			Currencies::free_balance(KUSD, &alice()),
@@ -106,7 +108,7 @@ fn to_bridged_works() {
 			dollar(1_000_000) - dollar(5_000)
 		);
 
-		System::assert_last_event(Event::HonzonBridge(crate::Event::ToBridged {
+		System::assert_last_event(RuntimeEvent::HonzonBridge(crate::Event::ToBridged {
 			who: alice(),
 			amount: dollar(5000),
 		}));
@@ -120,19 +122,19 @@ fn from_bridged_works() {
 		assert_eq!(Currencies::free_balance(KUSD, &alice()), dollar(1_000_000));
 
 		assert_noop!(
-			HonzonBridge::from_bridged(Origin::signed(alice()), dollar(5_000)),
+			HonzonBridge::from_bridged(RuntimeOrigin::signed(alice()), dollar(5_000)),
 			module_honzon_bridge::Error::<Runtime>::BridgedStableCoinCurrencyIdNotSet
 		);
 
 		deploy_contracts();
 		assert_ok!(HonzonBridge::set_bridged_stable_coin_address(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			erc20_address()
 		));
 		// ensure the honzon-bridge pallet account bind the evmaddress
 		<EVM as EVMTrait<AccountId>>::set_origin(EvmAccountsModule::get_account_id(&alice_evm_addr()));
 		assert_ok!(Currencies::transfer(
-			Origin::signed(alice()),
+			RuntimeOrigin::signed(alice()),
 			HonzonBridgeAccount::get(),
 			HonzonBridge::bridged_stable_coin_currency_id().unwrap(),
 			dollar(1_000_000)
@@ -155,7 +157,10 @@ fn from_bridged_works() {
 			dollar(1_000_000)
 		);
 
-		assert_ok!(HonzonBridge::from_bridged(Origin::signed(alice()), dollar(5_000)));
+		assert_ok!(HonzonBridge::from_bridged(
+			RuntimeOrigin::signed(alice()),
+			dollar(5_000)
+		));
 
 		assert_eq!(
 			Currencies::free_balance(KUSD, &alice()),
@@ -177,7 +182,7 @@ fn from_bridged_works() {
 			dollar(1_000_000) + dollar(5_000)
 		);
 
-		System::assert_last_event(Event::HonzonBridge(crate::Event::FromBridged {
+		System::assert_last_event(RuntimeEvent::HonzonBridge(crate::Event::FromBridged {
 			who: alice(),
 			amount: dollar(5000),
 		}));

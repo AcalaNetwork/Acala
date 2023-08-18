@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,7 @@
 
 use crate::{Config, DurationOffset, SessionDuration, Weight};
 use frame_support::traits::Get;
+use frame_system::pallet_prelude::*;
 use sp_runtime::traits::Zero;
 
 pub mod v1 {
@@ -34,7 +35,7 @@ pub mod v1 {
 
 	pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
 		assert!(
-			SessionDuration::<T>::get() == Into::<T::BlockNumber>::into(PERIOD),
+			SessionDuration::<T>::get() == Into::<BlockNumberFor<T>>::into(PERIOD),
 			"SessionDuration not set."
 		);
 		assert!(DurationOffset::<T>::get().is_zero(), "DurationOffset has been set.");
@@ -45,7 +46,7 @@ pub mod v1 {
 		log::info!(target: "session-manager", "Migrating session-manager v1");
 
 		if SessionDuration::<T>::get().is_zero() {
-			SessionDuration::<T>::put(Into::<T::BlockNumber>::into(PERIOD));
+			SessionDuration::<T>::put(Into::<BlockNumberFor<T>>::into(PERIOD));
 		}
 		log::info!(target: "session-manager", "Completed session-manager migration to v1");
 

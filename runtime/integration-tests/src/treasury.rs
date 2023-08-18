@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -23,11 +23,11 @@ fn treasury_should_take_xcm_execution_revenue() {
 	ExtBuilder::default().build().execute_with(|| {
 		let dot_amount = 1000 * dollar(RELAY_CHAIN_CURRENCY);
 		#[cfg(feature = "with-mandala-runtime")] // Mandala uses DOT, which has 10 d.p. accuracy.
-		let actual_amount = 9_999_999_650_350;
+		let actual_amount = 9999999758890;
 		#[cfg(feature = "with-karura-runtime")] // Karura uses KSM, which has 12 d.p. accuracy.
-		let actual_amount = 999_999_860_140_000;
+		let actual_amount = 999999903556000;
 		#[cfg(feature = "with-acala-runtime")] // Acala uses DOT, which has 10 d.p. accuracy.
-		let actual_amount = 9_999_998_601_400;
+		let actual_amount = 9999999035560;
 
 		#[cfg(feature = "with-mandala-runtime")]
 		let shallow_weight = 3_000_000;
@@ -43,13 +43,12 @@ fn treasury_should_take_xcm_execution_revenue() {
 			ReserveAssetDeposited(asset.clone().into()),
 			BuyExecution {
 				fees: asset,
-				weight_limit: Limited(shallow_weight),
+				weight_limit: Limited(Weight::from_parts(shallow_weight, 0)),
 			},
 			DepositAsset {
-				assets: All.into(),
-				max_assets: u32::max_value(),
+				assets: AllCounted(u32::max_value()).into(),
 				beneficiary: X1(Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None,
 					id: ALICE,
 				})
 				.into(),
@@ -57,15 +56,16 @@ fn treasury_should_take_xcm_execution_revenue() {
 		]);
 		use xcm_executor::traits::WeightBounds;
 		let debt = <XcmConfig as xcm_executor::Config>::Weigher::weight(&mut msg).unwrap_or_default();
-		assert_eq!(debt, shallow_weight);
+		assert_eq!(debt, Weight::from_parts(shallow_weight, 0));
 
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), 0);
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()), 0);
 
 		let weight_limit = debt;
+		let hash = msg.using_encoded(sp_io::hashing::blake2_256);
 		assert_eq!(
-			XcmExecutor::<XcmConfig>::execute_xcm(origin, msg, weight_limit),
-			Outcome::Complete(shallow_weight)
+			XcmExecutor::<XcmConfig>::execute_xcm(origin, msg, hash, weight_limit),
+			Outcome::Complete(Weight::from_parts(shallow_weight, 0))
 		);
 
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), actual_amount);
@@ -123,7 +123,7 @@ fn treasury_handles_dust_correctly() {
 				0
 			);
 			assert_ok!(Currencies::transfer(
-				Origin::signed(AccountId::from(ALICE)),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
 				RELAY_CHAIN_CURRENCY,
 				1
@@ -146,7 +146,7 @@ fn treasury_handles_dust_correctly() {
 
 			// treasury can send funds when under existential deposit
 			assert_ok!(Currencies::transfer(
-				Origin::signed(TreasuryAccount::get()),
+				RuntimeOrigin::signed(TreasuryAccount::get()),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
 				RELAY_CHAIN_CURRENCY,
 				relay_ed - 2
@@ -157,7 +157,7 @@ fn treasury_handles_dust_correctly() {
 			);
 
 			assert_ok!(Currencies::transfer(
-				Origin::signed(AccountId::from(BOB)),
+				RuntimeOrigin::signed(AccountId::from(BOB)),
 				sp_runtime::MultiAddress::Id(AccountId::from(ALICE)),
 				RELAY_CHAIN_CURRENCY,
 				relay_ed
@@ -172,7 +172,7 @@ fn treasury_handles_dust_correctly() {
 				relay_ed
 			);
 			assert_ok!(Currencies::transfer(
-				Origin::signed(AccountId::from(ALICE)),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				sp_runtime::MultiAddress::Id(TreasuryAccount::get()),
 				RELAY_CHAIN_CURRENCY,
 				relay_ed
@@ -184,7 +184,7 @@ fn treasury_handles_dust_correctly() {
 				2 * relay_ed
 			);
 			assert_ok!(Currencies::transfer(
-				Origin::signed(TreasuryAccount::get()),
+				RuntimeOrigin::signed(TreasuryAccount::get()),
 				sp_runtime::MultiAddress::Id(AccountId::from(ALICE)),
 				RELAY_CHAIN_CURRENCY,
 				relay_ed + 1
@@ -201,7 +201,7 @@ fn treasury_handles_dust_correctly() {
 			// Test empty treasury recieves dust tokens of Liquid Currency
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &TreasuryAccount::get()), 0);
 			assert_ok!(Currencies::transfer(
-				Origin::signed(AccountId::from(ALICE)),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
 				LIQUID_CURRENCY,
 				1
@@ -219,7 +219,7 @@ fn treasury_handles_dust_correctly() {
 			// Test empty treasury recieves dust tokens of USD Currency using Tokens pallet
 			assert_eq!(Tokens::free_balance(USD_CURRENCY, &TreasuryAccount::get()), 0);
 			assert_ok!(Tokens::transfer(
-				Origin::signed(AccountId::from(ALICE)),
+				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
 				USD_CURRENCY,
 				1
@@ -244,9 +244,13 @@ mod mandala_only_tests {
 			.build()
 			.execute_with(|| {
 				let keys: SessionKeys = Decode::decode(&mut &[0u8; 128][..]).unwrap();
-				assert_ok!(Session::set_keys(Origin::signed(AccountId::from(ALICE)), keys, vec![]));
-				assert_ok!(CollatorSelection::set_desired_candidates(Origin::root(), 1));
-				assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(
+				assert_ok!(Session::set_keys(
+					RuntimeOrigin::signed(AccountId::from(ALICE)),
+					keys,
+					vec![]
+				));
+				assert_ok!(CollatorSelection::set_desired_candidates(RuntimeOrigin::root(), 1));
+				assert_ok!(CollatorSelection::register_as_candidate(RuntimeOrigin::signed(
 					AccountId::from(ALICE)
 				)));
 

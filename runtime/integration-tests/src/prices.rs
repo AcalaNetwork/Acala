@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -91,7 +91,7 @@ fn test_update_liquid_currency_price() {
 			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, relaychain_price)]);
 
 			assert_ok!(Homa::reset_ledgers(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				vec![(0, Some(100 * dollar(RELAY_CHAIN_CURRENCY)), None)]
 			));
 
@@ -101,7 +101,7 @@ fn test_update_liquid_currency_price() {
 			);
 
 			assert_ok!(Homa::reset_ledgers(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				vec![(0, Some(110 * dollar(RELAY_CHAIN_CURRENCY)), None)]
 			));
 

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@ use module_evm::{runner::state::PrecompileFailure, ExitRevert};
 use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
 use primitives::{Balance, CurrencyId, DexShare};
 use sp_core::{H160, U256};
-use sp_runtime::traits::Convert;
+use sp_runtime::{traits::Convert, DispatchError};
 use sp_std::prelude::*;
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
@@ -54,7 +54,8 @@ pub trait InputT {
 	fn u64_at(&self, index: usize) -> Result<u64, Self::Error>;
 	fn u32_at(&self, index: usize) -> Result<u32, Self::Error>;
 
-	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error>;
+	fn bytes_at(&self, start: usize) -> Result<Vec<u8>, Self::Error>;
+	fn bytes32_at(&self, start: usize) -> Result<Vec<u8>, Self::Error>;
 	fn bool_at(&self, index: usize) -> Result<bool, Self::Error>;
 }
 
@@ -194,8 +195,18 @@ where
 		})
 	}
 
-	fn bytes_at(&self, index: usize, len: usize) -> Result<Vec<u8>, Self::Error> {
-		let bytes = self.nth_param(index, Some(len))?;
+	fn bytes_at(&self, index: usize) -> Result<Vec<u8>, Self::Error> {
+		let offset = self.u32_at(index)?;
+		let data_index = (offset as usize).saturating_div(PER_PARAM_BYTES).saturating_add(1);
+
+		let bytes_len = self.u32_at(data_index)?;
+		let bytes = self.nth_param(data_index.saturating_add(1), Some(bytes_len as usize))?;
+
+		Ok(bytes.to_vec())
+	}
+
+	fn bytes32_at(&self, index: usize) -> Result<Vec<u8>, Self::Error> {
+		let bytes = self.nth_param(index, Some(32))?;
 
 		Ok(bytes.to_vec())
 	}
@@ -249,6 +260,10 @@ impl Output {
 		ethabi::encode(&[Token::Bytes(b.to_vec())])
 	}
 
+	pub fn encode_bytes_tuple(b: Vec<&[u8]>) -> Vec<u8> {
+		ethabi::encode(&[Token::Tuple(b.into_iter().map(|v| Token::Bytes(v.to_vec())).collect())])
+	}
+
 	pub fn encode_fixed_bytes(b: &[u8]) -> Vec<u8> {
 		ethabi::encode(&[Token::FixedBytes(b.to_vec())])
 	}
@@ -263,6 +278,14 @@ impl Output {
 
 	pub fn encode_address_array(b: Vec<H160>) -> Vec<u8> {
 		ethabi::encode(&[Token::Array(b.into_iter().map(Token::Address).collect())])
+	}
+
+	pub fn encode_error_msg(info: &str, err: DispatchError) -> Vec<u8> {
+		let mut msg = Vec::new();
+		msg.extend_from_slice(info.as_bytes());
+		msg.extend_from_slice(": ".as_bytes());
+		msg.extend_from_slice(Into::<&str>::into(err).as_bytes());
+		msg
 	}
 }
 

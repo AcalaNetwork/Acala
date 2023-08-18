@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,28 +16,36 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
+use acala_primitives::{evm::CHAIN_ID_MANDALA, orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
 use coins_bip39::{English, Mnemonic, Wordlist};
-use elliptic_curve::sec1::ToEncodedPoint;
 use hex_literal::hex;
 use k256::{
 	ecdsa::{SigningKey, VerifyingKey},
+	elliptic_curve::sec1::ToEncodedPoint,
 	EncodedPoint as K256PublicKey,
+};
+use mandala_runtime::{
+	dollar, get_all_module_accounts, AssetRegistryConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
+	CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, ExistentialDeposits,
+	FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
+	NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
+	PolkadotXcmConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig,
+	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
 };
 use runtime_common::evm_genesis;
 use sc_chain_spec::ChainType;
+use sc_consensus_grandpa::AuthorityId as GrandpaId;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, sr25519, H160};
-use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 use tiny_keccak::{Hasher, Keccak};
 
 use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
-pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
+pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::RuntimeGenesisConfig, Extensions>;
 
 pub const PARA_ID: u32 = 2000;
 
@@ -60,7 +68,7 @@ fn generate_evm_address<W: Wordlist>(phrase: &str, index: u32) -> H160 {
 			.expect("should parse the default derivation path");
 	let mnemonic = Mnemonic::<W>::new_from_phrase(phrase).unwrap();
 
-	let derived_priv_key = mnemonic.derive_key(&derivation_path, None).unwrap();
+	let derived_priv_key = mnemonic.derive_key(derivation_path, None).unwrap();
 	let key: &SigningKey = derived_priv_key.as_ref();
 	let secret_key: SigningKey = SigningKey::from_bytes(&key.to_bytes()).unwrap();
 	let verify_key: VerifyingKey = secret_key.verifying_key();
@@ -296,34 +304,20 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 	))
 }
 
-pub fn mandala_testnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/mandala-dist.json")[..])
-}
-
 fn testnet_genesis(
 	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, AuraId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 	evm_accounts: Vec<H160>,
-) -> mandala_runtime::GenesisConfig {
-	use mandala_runtime::{
-		dollar, get_all_module_accounts, AssetRegistryConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
-		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, ExistentialDeposits,
-		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
-		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
-		PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
-		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA,
-		AUSD, DOT, LDOT, RENBTC,
-	};
-
+) -> mandala_runtime::RuntimeGenesisConfig {
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
 	let initial_balance: u128 = 10_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
 	let evm_genesis_accounts = evm_genesis(evm_accounts);
-	let balances = initial_authorities
+	let _balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
 		.chain(endowed_accounts.iter().cloned().map(|k| (k, initial_balance)))
@@ -348,41 +342,44 @@ fn testnet_genesis(
 		.into_iter()
 		.collect::<Vec<(AccountId, Balance)>>();
 
-	mandala_runtime::GenesisConfig {
+	let member = vec![root_key.clone()];
+
+	mandala_runtime::RuntimeGenesisConfig {
 		system: SystemConfig {
+			_config: Default::default(),
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 		},
-		starport: StarportConfig {
-			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
-		},
 		indices: IndicesConfig { indices: vec![] },
-		balances: BalancesConfig { balances },
-		sudo: SudoConfig {
-			key: Some(root_key.clone()),
+		balances: BalancesConfig {
+			#[cfg(feature = "runtime-benchmarks")]
+			balances: vec![],
+			#[cfg(not(feature = "runtime-benchmarks"))]
+			balances: _balances,
 		},
+		sudo: SudoConfig { key: Some(root_key) },
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		financial_council: Default::default(),
 		financial_council_membership: FinancialCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		homa_council: Default::default(),
 		homa_council_membership: HomaCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		technical_committee: Default::default(),
 		technical_committee_membership: TechnicalCommitteeMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
-			members: vec![root_key],
+			members: member.try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		democracy: Default::default(),
@@ -395,12 +392,13 @@ fn testnet_genesis(
 		},
 		vesting: VestingConfig { vesting: vec![] },
 		cdp_treasury: CdpTreasuryConfig {
+			_phantom: Default::default(),
 			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
-				(RENBTC, dollar(RENBTC)),
 			],
 		},
 		cdp_engine: CdpEngineConfig {
+			_phantom: Default::default(),
 			collaterals_params: vec![
 				(
 					DOT,
@@ -418,27 +416,21 @@ fn testnet_genesis(
 					Some(FixedU128::saturating_from_rational(180, 100)),
 					10_000_000 * dollar(AUSD),
 				),
-				(
-					RENBTC,
-					Some(FixedU128::zero()),
-					Some(FixedU128::saturating_from_rational(150, 100)),
-					Some(FixedU128::saturating_from_rational(10, 100)),
-					Some(FixedU128::saturating_from_rational(150, 100)),
-					10_000_000 * dollar(AUSD),
-				),
 			],
 		},
 		asset_registry: AssetRegistryConfig {
+			#[cfg(feature = "runtime-benchmarks")]
+			assets: vec![],
+			#[cfg(not(feature = "runtime-benchmarks"))]
 			assets: vec![
 				(ACA, NativeTokenExistentialDeposit::get()),
 				(AUSD, ExistentialDeposits::get(&AUSD)),
 				(DOT, ExistentialDeposits::get(&DOT)),
 				(LDOT, ExistentialDeposits::get(&LDOT)),
-				(RENBTC, ExistentialDeposits::get(&RENBTC)),
 			],
 		},
 		evm: EVMConfig {
-			chain_id: 595u64,
+			chain_id: CHAIN_ID_MANDALA,
 			accounts: evm_genesis_accounts,
 		},
 		dex: DexConfig {
@@ -462,10 +454,8 @@ fn testnet_genesis(
 			)],
 		},
 		parachain_info: ParachainInfoConfig {
+			_config: Default::default(),
 			parachain_id: PARA_ID.into(),
-		},
-		ren_vm_bridge: RenVmBridgeConfig {
-			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
 		collator_selection: CollatorSelectionConfig {
@@ -495,6 +485,7 @@ fn testnet_genesis(
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
 		polkadot_xcm: PolkadotXcmConfig {
+			_config: Default::default(),
 			safe_xcm_version: Some(2),
 		},
 		phragmen_election: Default::default(),
@@ -506,17 +497,7 @@ fn mandala_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, AuraId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
-) -> mandala_runtime::GenesisConfig {
-	use mandala_runtime::{
-		cent, dollar, get_all_module_accounts, AssetRegistryConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
-		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, ExistentialDeposits,
-		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
-		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
-		PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
-		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA,
-		AUSD, DOT, LDOT, RENBTC,
-	};
-
+) -> mandala_runtime::RuntimeGenesisConfig {
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
 	let initial_balance: u128 = 1_000_000 * dollar(ACA);
@@ -548,13 +529,13 @@ fn mandala_genesis(
 		.into_iter()
 		.collect::<Vec<(AccountId, Balance)>>();
 
-	mandala_runtime::GenesisConfig {
+	let member = vec![root_key.clone()];
+
+	mandala_runtime::RuntimeGenesisConfig {
 		system: SystemConfig {
+			_config: Default::default(),
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
-		},
-		starport: StarportConfig {
-			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
 		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
@@ -563,26 +544,26 @@ fn mandala_genesis(
 		},
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		financial_council: Default::default(),
 		financial_council_membership: FinancialCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		homa_council: Default::default(),
 		homa_council_membership: HomaCouncilMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		technical_committee: Default::default(),
 		technical_committee_membership: TechnicalCommitteeMembershipConfig {
-			members: vec![root_key.clone()],
+			members: member.clone().try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
-			members: endowed_accounts,
+			members: member.try_into().unwrap(),
 			phantom: Default::default(),
 		},
 		democracy: Default::default(),
@@ -592,12 +573,13 @@ fn mandala_genesis(
 		},
 		vesting: VestingConfig { vesting: vec![] },
 		cdp_treasury: CdpTreasuryConfig {
+			_phantom: Default::default(),
 			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
-				(RENBTC, 5 * cent(RENBTC)),
 			],
 		},
 		cdp_engine: CdpEngineConfig {
+			_phantom: Default::default(),
 			collaterals_params: vec![
 				(
 					DOT,
@@ -615,14 +597,6 @@ fn mandala_genesis(
 					Some(FixedU128::saturating_from_rational(130, 100)),
 					10_000_000 * dollar(AUSD),
 				),
-				(
-					RENBTC,
-					Some(FixedU128::zero()),
-					Some(FixedU128::saturating_from_rational(110, 100)),
-					Some(FixedU128::saturating_from_rational(4, 100)),
-					Some(FixedU128::saturating_from_rational(115, 100)),
-					10_000_000 * dollar(AUSD),
-				),
 			],
 		},
 		asset_registry: AssetRegistryConfig {
@@ -631,11 +605,10 @@ fn mandala_genesis(
 				(AUSD, ExistentialDeposits::get(&AUSD)),
 				(DOT, ExistentialDeposits::get(&DOT)),
 				(LDOT, ExistentialDeposits::get(&LDOT)),
-				(RENBTC, ExistentialDeposits::get(&RENBTC)),
 			],
 		},
 		evm: EVMConfig {
-			chain_id: 595u64,
+			chain_id: CHAIN_ID_MANDALA,
 			accounts: evm_genesis_accounts,
 		},
 		dex: DexConfig {
@@ -644,10 +617,8 @@ fn mandala_genesis(
 			initial_added_liquidity_pools: vec![],
 		},
 		parachain_info: ParachainInfoConfig {
+			_config: Default::default(),
 			parachain_id: PARA_ID.into(),
-		},
-		ren_vm_bridge: RenVmBridgeConfig {
-			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
 		collator_selection: CollatorSelectionConfig {
@@ -677,6 +648,7 @@ fn mandala_genesis(
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
 		polkadot_xcm: PolkadotXcmConfig {
+			_config: Default::default(),
 			safe_xcm_version: Some(2),
 		},
 		phragmen_election: Default::default(),

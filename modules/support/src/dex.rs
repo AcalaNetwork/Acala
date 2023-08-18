@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,10 @@
 
 use codec::{Decode, Encode};
 use frame_support::traits::Get;
+use nutsfinance_stable_asset::{PoolTokenIndex, StableAssetPoolId};
 use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_core::H160;
 use sp_runtime::{DispatchError, RuntimeDebug};
 use sp_std::{cmp::PartialEq, prelude::*, result::Result};
@@ -29,6 +32,13 @@ pub enum SwapLimit<Balance> {
 	ExactSupply(Balance, Balance),
 	/// swap to get exact amount target. (maximum_supply_amount, exact_target_amount)
 	ExactTarget(Balance, Balance),
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum AggregatedSwapPath<CurrencyId> {
+	Dex(Vec<CurrencyId>),
+	Taiga(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex),
 }
 
 pub trait DEXManager<AccountId, Balance, CurrencyId> {
@@ -72,7 +82,10 @@ pub trait DEXManager<AccountId, Balance, CurrencyId> {
 	) -> Result<(Balance, Balance), DispatchError>;
 }
 
-pub trait Swap<AccountId, Balance, CurrencyId> {
+pub trait Swap<AccountId, Balance, CurrencyId>
+where
+	CurrencyId: Clone,
+{
 	fn get_swap_amount(
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
@@ -83,6 +96,21 @@ pub trait Swap<AccountId, Balance, CurrencyId> {
 		who: &AccountId,
 		supply_currency_id: CurrencyId,
 		target_currency_id: CurrencyId,
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError>;
+
+	fn swap_by_path(
+		who: &AccountId,
+		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		let aggregated_swap_path = AggregatedSwapPath::Dex(swap_path.to_vec());
+		Self::swap_by_aggregated_path(who, &[aggregated_swap_path], limit)
+	}
+
+	fn swap_by_aggregated_path(
+		who: &AccountId,
+		swap_path: &[AggregatedSwapPath<CurrencyId>],
 		limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError>;
 }
@@ -98,6 +126,7 @@ impl Into<DispatchError> for SwapError {
 	}
 }
 
+// Dex wrapper of Swap implementation
 pub struct SpecificJointsSwap<Dex, Joints>(sp_std::marker::PhantomData<(Dex, Joints)>);
 
 impl<AccountId, Balance, CurrencyId, Dex, Joints> Swap<AccountId, Balance, CurrencyId>
@@ -106,6 +135,7 @@ where
 	Dex: DEXManager<AccountId, Balance, CurrencyId>,
 	Joints: Get<Vec<Vec<CurrencyId>>>,
 	Balance: Clone,
+	CurrencyId: Clone,
 {
 	fn get_swap_amount(
 		supply_currency_id: CurrencyId,
@@ -137,6 +167,23 @@ where
 		.0;
 
 		<Dex as DEXManager<AccountId, Balance, CurrencyId>>::swap_with_specific_path(who, &path, limit)
+	}
+
+	fn swap_by_path(
+		who: &AccountId,
+		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		<Dex as DEXManager<AccountId, Balance, CurrencyId>>::swap_with_specific_path(who, swap_path, limit)
+	}
+
+	// Dex not support aggregated swap.
+	fn swap_by_aggregated_path(
+		_who: &AccountId,
+		_swap_path: &[AggregatedSwapPath<CurrencyId>],
+		_limit: SwapLimit<Balance>,
+	) -> Result<(Balance, Balance), DispatchError> {
+		Err(Into::<DispatchError>::into(SwapError::CannotSwap))
 	}
 }
 

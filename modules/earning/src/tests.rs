@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,13 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok, traits::fungible::Inspect};
+use frame_support::{
+	assert_noop, assert_ok,
+	traits::{
+		fungible::Inspect,
+		tokens::{Fortitude, Preservation},
+	},
+};
 use mock::*;
 
 fn assert_no_handler_events() {
@@ -40,11 +46,11 @@ fn clear_handler_events() {
 fn bond_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			Earning::bond(Origin::signed(ALICE), 10),
+			Earning::bond(RuntimeOrigin::signed(ALICE), 10),
 			Error::<Runtime>::BelowMinBondThreshold,
 		);
 
-		assert_ok!(Earning::bond(Origin::signed(ALICE), 100));
+		assert_ok!(Earning::bond(RuntimeOrigin::signed(ALICE), 100));
 		System::assert_last_event(
 			Event::Bonded {
 				who: ALICE,
@@ -53,9 +59,12 @@ fn bond_works() {
 			.into(),
 		);
 		OnBonded::assert_eq_and_clear(vec![(ALICE, 100)]);
-		assert_eq!(Balances::reducible_balance(&ALICE, false), 900);
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			900
+		);
 
-		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
+		assert_ok!(Earning::bond(RuntimeOrigin::signed(ALICE), 1000));
 		System::assert_last_event(
 			Event::Bonded {
 				who: ALICE,
@@ -64,7 +73,10 @@ fn bond_works() {
 			.into(),
 		);
 		OnBonded::assert_eq_and_clear(vec![(ALICE, 900)]);
-		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			0
+		);
 
 		assert_no_handler_events();
 	});
@@ -74,20 +86,20 @@ fn bond_works() {
 fn unbonding_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			Earning::unbond(Origin::signed(ALICE), 1000),
+			Earning::unbond(RuntimeOrigin::signed(ALICE), 1000),
 			Error::<Runtime>::NotBonded
 		);
-		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
+		assert_ok!(Earning::bond(RuntimeOrigin::signed(ALICE), 1000));
 
 		assert_noop!(
-			Earning::unbond(Origin::signed(ALICE), 999),
+			Earning::unbond(RuntimeOrigin::signed(ALICE), 999),
 			Error::<Runtime>::BelowMinBondThreshold
 		);
 
 		clear_handler_events();
 
 		// Won't unbond before unbonding period passes
-		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1001));
+		assert_ok!(Earning::unbond(RuntimeOrigin::signed(ALICE), 1001));
 		System::assert_last_event(
 			Event::Unbonded {
 				who: ALICE,
@@ -97,13 +109,16 @@ fn unbonding_works() {
 		);
 		OnUnbonded::assert_eq_and_clear(vec![(ALICE, 1000)]);
 		System::reset_events();
-		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
+		assert_ok!(Earning::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
 		assert_eq!(System::events(), vec![]);
-		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			0
+		);
 
 		System::set_block_number(4);
 
-		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
+		assert_ok!(Earning::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
 		System::assert_last_event(
 			Event::Withdrawn {
 				who: ALICE,
@@ -111,36 +126,45 @@ fn unbonding_works() {
 			}
 			.into(),
 		);
-		assert_eq!(Balances::reducible_balance(&ALICE, false), 1000);
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			1000
+		);
 
 		assert_noop!(
-			Earning::unbond_instant(Origin::signed(ALICE), 1000),
+			Earning::unbond_instant(RuntimeOrigin::signed(ALICE), 1000),
 			Error::<Runtime>::NotBonded
 		);
 
 		assert_no_handler_events();
 
-		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
-		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
-		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1000));
+		assert_ok!(Earning::bond(RuntimeOrigin::signed(ALICE), 1000));
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			0
+		);
+		assert_ok!(Earning::unbond(RuntimeOrigin::signed(ALICE), 1000));
 
 		System::reset_events();
 		clear_handler_events();
 
 		// unbond instant will not work on pending unbond funds
-		assert_ok!(Earning::unbond_instant(Origin::signed(ALICE), 1001));
+		assert_ok!(Earning::unbond_instant(RuntimeOrigin::signed(ALICE), 1001));
 		assert_eq!(System::events(), vec![]);
 		clear_handler_events();
 
-		assert_ok!(Earning::rebond(Origin::signed(ALICE), 1000));
+		assert_ok!(Earning::rebond(RuntimeOrigin::signed(ALICE), 1000));
 		OnBonded::assert_eq_and_clear(vec![(ALICE, 1000)]);
-		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			0
+		);
 
 		assert_noop!(
-			Earning::unbond_instant(Origin::signed(ALICE), 999),
+			Earning::unbond_instant(RuntimeOrigin::signed(ALICE), 999),
 			Error::<Runtime>::BelowMinBondThreshold
 		);
-		assert_ok!(Earning::unbond_instant(Origin::signed(ALICE), 1001));
+		assert_ok!(Earning::unbond_instant(RuntimeOrigin::signed(ALICE), 1001));
 		System::assert_last_event(
 			Event::InstantUnbonded {
 				who: ALICE,
@@ -152,7 +176,10 @@ fn unbonding_works() {
 		OnUnbonded::assert_eq_and_clear(vec![(ALICE, 900)]);
 		OnUnstakeFee::assert_eq_and_clear(vec![100]);
 		// takes instant unbonding fee
-		assert_eq!(Balances::reducible_balance(&ALICE, false), 900);
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			900
+		);
 
 		assert_no_handler_events();
 	});
@@ -161,16 +188,16 @@ fn unbonding_works() {
 #[test]
 fn unbonding_max_unlock_chunks_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
+		assert_ok!(Earning::bond(RuntimeOrigin::signed(ALICE), 1000));
 		System::set_block_number(1);
-		assert_ok!(Earning::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(Earning::unbond(RuntimeOrigin::signed(ALICE), 100));
 		System::set_block_number(2);
-		assert_ok!(Earning::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(Earning::unbond(RuntimeOrigin::signed(ALICE), 100));
 		System::set_block_number(3);
-		assert_ok!(Earning::unbond(Origin::signed(ALICE), 100));
+		assert_ok!(Earning::unbond(RuntimeOrigin::signed(ALICE), 100));
 		System::set_block_number(4);
 		assert_noop!(
-			Earning::unbond(Origin::signed(ALICE), 100),
+			Earning::unbond(RuntimeOrigin::signed(ALICE), 100),
 			Error::<Runtime>::MaxUnlockChunksExceeded
 		);
 	});
@@ -179,17 +206,17 @@ fn unbonding_max_unlock_chunks_works() {
 #[test]
 fn rebond_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
-		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1000));
+		assert_ok!(Earning::bond(RuntimeOrigin::signed(ALICE), 1000));
+		assert_ok!(Earning::unbond(RuntimeOrigin::signed(ALICE), 1000));
 
 		assert_noop!(
-			Earning::rebond(Origin::signed(ALICE), 1),
+			Earning::rebond(RuntimeOrigin::signed(ALICE), 1),
 			Error::<Runtime>::BelowMinBondThreshold
 		);
 
 		clear_handler_events();
 
-		assert_ok!(Earning::rebond(Origin::signed(ALICE), 100));
+		assert_ok!(Earning::rebond(RuntimeOrigin::signed(ALICE), 100));
 		System::assert_last_event(
 			Event::Rebonded {
 				who: ALICE,
@@ -201,8 +228,11 @@ fn rebond_works() {
 
 		System::set_block_number(4);
 
-		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
-		assert_eq!(Balances::reducible_balance(&ALICE, false), 900);
+		assert_ok!(Earning::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			900
+		);
 
 		assert_no_handler_events();
 	});

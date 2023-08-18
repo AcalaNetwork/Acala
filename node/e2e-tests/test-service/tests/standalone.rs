@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,18 +17,21 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use cumulus_primitives_core::ParaId;
-use ecosystem_renvm_bridge::EcdsaSignature;
 use hex_literal::hex;
 use module_evm::AddressMapping;
+use node_primitives::{CurrencyId, TokenSymbol};
+use orml_traits::Change;
+use runtime_common::{Price, Rate, Ratio};
 use sc_transaction_pool_api::TransactionPool;
 use sha3::{Digest, Keccak256};
-use sp_core::{crypto::AccountId32, H160, H256};
+use sp_core::{H160, H256};
 use sp_keyring::Sr25519Keyring::*;
+use sp_runtime::FixedPointNumber;
 use sp_runtime::{traits::IdentifyAccount, MultiAddress, MultiSigner};
 use test_service::{ensure_event, SealMode};
 
 #[substrate_test_utils::test(flavor = "multi_thread")]
-#[ignore] // TODO: Wasm binary must be built for testing, polkadot/node/test/service/src/chain_spec.rs:117:40
+#[ignore] // TODO: Wasm binary must be built for testing, https://github.com/paritytech/polkadot/blob/3cf644abad63c4a177f0697683b72a64c4706852/node/test/service/src/chain_spec.rs#L119
 async fn simple_balances_dev_test() {
 	let mut builder = sc_cli::LoggerBuilder::new("");
 	builder.with_colors(true);
@@ -74,11 +77,74 @@ async fn transaction_pool_priority_order_test() {
 	let node = test_service::TestNodeBuilder::new(para_id, tokio_handle.clone(), Alice)
 		.with_seal_mode(SealMode::DevAuraSeal)
 		.enable_collator()
+		.disable_offchain_worker()
 		.build()
 		.await;
 
 	let bob = MultiSigner::from(Bob.public());
 	let bob_account_id = bob.into_account();
+
+	// setup an unsafe cdp
+	node.submit_extrinsic_batch::<node_runtime::RuntimeCall>(
+		vec![
+			pallet_sudo::Call::sudo {
+				call: Box::new(
+					orml_oracle::Call::feed_values {
+						values: vec![(CurrencyId::Token(TokenSymbol::ACA), Price::from_rational(10, 1)).into()]
+							.try_into()
+							.unwrap(),
+					}
+					.into(),
+				),
+			}
+			.into(),
+			pallet_sudo::Call::sudo {
+				call: Box::new(
+					module_cdp_engine::Call::set_collateral_params {
+						currency_id: CurrencyId::Token(TokenSymbol::ACA),
+						interest_rate_per_sec: Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+						liquidation_ratio: Change::NewValue(Some(Rate::saturating_from_rational(3, 2))),
+						liquidation_penalty: Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+						required_collateral_ratio: Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+						maximum_total_debit_value: Change::NewValue(10000000000000000),
+					}
+					.into(),
+				),
+			}
+			.into(),
+			module_honzon::Call::adjust_loan {
+				currency_id: CurrencyId::Token(TokenSymbol::ACA),
+				collateral_adjustment: 100000000000000,
+				debit_adjustment: 500000000000000,
+			}
+			.into(),
+		],
+		Some(Alice),
+		0,
+	)
+	.await
+	.unwrap();
+
+	node.wait_for_blocks(1).await;
+
+	node.submit_extrinsic(
+		pallet_sudo::Call::sudo {
+			call: Box::new(
+				orml_oracle::Call::feed_values {
+					values: vec![(CurrencyId::Token(TokenSymbol::ACA), Price::from_rational(1, 10)).into()]
+						.try_into()
+						.unwrap(),
+				}
+				.into(),
+			),
+		},
+		Some(Alice),
+		3,
+	)
+	.await
+	.unwrap();
+
+	node.wait_for_blocks(1).await;
 
 	// send operational extrinsic
 	let operational_tx_hash = node
@@ -87,7 +153,7 @@ async fn transaction_pool_priority_order_test() {
 				call: Box::new(module_emergency_shutdown::Call::emergency_shutdown {}.into()),
 			},
 			Some(Alice),
-			0,
+			4,
 		)
 		.await
 		.unwrap();
@@ -106,18 +172,17 @@ async fn transaction_pool_priority_order_test() {
 		.unwrap();
 
 	// send unsigned extrinsic
-	let to: AccountId32 = hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into();
-	let unsigned_tx_hash = node.submit_extrinsic(
-		ecosystem_renvm_bridge::Call::mint {
-			who: to,
-			p_hash: hex!["67028f26328144de6ef80b8cd3b05e0cefb488762c340d1574c0542f752996cb"],
-			amount: 93963,
-			n_hash: hex!["f6a75cc370a2dda6dfc8d016529766bb6099d7fa0d787d9fe5d3a7e60c9ac2a0"],
-			sig: EcdsaSignature::from_slice(&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"]).unwrap(),
-		},
-		None,
-		0,
-	).await.unwrap();
+	let unsigned_tx_hash = node
+		.submit_extrinsic(
+			module_cdp_engine::Call::liquidate {
+				currency_id: CurrencyId::Token(TokenSymbol::ACA),
+				who: MultiAddress::from(Alice.to_account_id()),
+			},
+			None,
+			0,
+		)
+		.await
+		.unwrap();
 
 	assert_eq!(node.transaction_pool.ready().count(), 3);
 
@@ -178,7 +243,7 @@ async fn evm_fill_block_test() {
 	"};
 
 	let functions = std::iter::repeat_with(|| {
-		node_runtime::Call::EVM(module_evm::Call::call {
+		node_runtime::RuntimeCall::EVM(module_evm::Call::call {
 			target,
 			input: input.to_vec(),
 			value: 0,
@@ -194,10 +259,10 @@ async fn evm_fill_block_test() {
 
 	// wait for 6 blocks
 	node.wait_for_blocks(6).await;
+	let new_balance = node.with_state(|| Balances::free_balance(acc));
 
 	let pending_tx = node.transaction_pool.status().ready as u128;
 
-	let new_balance = node.with_state(|| Balances::free_balance(acc));
 	assert_eq!(new_balance - old_balance, (1000 - pending_tx) * 100000000000);
 }
 
@@ -234,7 +299,7 @@ async fn evm_create_fill_block_test() {
 	node.wait_for_blocks(1).await;
 
 	let functions = std::iter::repeat_with(|| {
-		node_runtime::Call::EVM(module_evm::Call::create {
+		node_runtime::RuntimeCall::EVM(module_evm::Call::create {
 			input: contract.clone(),
 			value: 0,
 			gas_limit: 2_000_000,
@@ -251,7 +316,7 @@ async fn evm_create_fill_block_test() {
 	node.wait_for_blocks(5).await;
 	println!(
 		"{:#?}",
-		ensure_event!(node, node_runtime::Event::EVM(module_evm::Event::Created { .. }))
+		ensure_event!(node, node_runtime::RuntimeEvent::EVM(module_evm::Event::Created { .. }))
 	);
 }
 
@@ -325,7 +390,7 @@ async fn evm_gas_limit_test() {
 
 	type EVM = module_evm::Pallet<node_runtime::Runtime>;
 
-	let function = node_runtime::Call::EVM(module_evm::Call::create {
+	let function = node_runtime::RuntimeCall::EVM(module_evm::Call::create {
 		input: contract,
 		value: 0,
 		gas_limit: 2_000_000,
@@ -345,7 +410,7 @@ async fn evm_gas_limit_test() {
 
 	frame_support::assert_ok!(
 		node.submit_extrinsic(
-			node_runtime::Call::EVM(module_evm::Call::publish_contract {
+			node_runtime::RuntimeCall::EVM(module_evm::Call::publish_contract {
 				contract: contract_address
 			}),
 			Some(Alice),
@@ -358,7 +423,7 @@ async fn evm_gas_limit_test() {
 
 	println!(
 		"{:#?}",
-		ensure_event!(node, node_runtime::Event::EVM(module_evm::Event::Created { .. }))
+		ensure_event!(node, node_runtime::RuntimeEvent::EVM(module_evm::Event::Created { .. }))
 	);
 
 	// make sure contract is deployed
@@ -366,18 +431,18 @@ async fn evm_gas_limit_test() {
 	assert_eq!(contract_account.nonce, 1);
 	assert_eq!(contract_account.contract_info.unwrap().published, true);
 
-	// createContractLoop(uint256) 460 times
+	// createContractLoop(uint256) 410 times
 	let input = hex! {"
 		659aaab3
-		00000000000000000000000000000000 000000000000000000000000000001cc
+		00000000000000000000000000000000 0000000000000000000000000000019a
 	"}
 	.to_vec();
 
-	let function = node_runtime::Call::EVM(module_evm::Call::call {
+	let function = node_runtime::RuntimeCall::EVM(module_evm::Call::call {
 		target: contract_address,
 		input: input.clone(),
 		value: 0,
-		gas_limit: 33_000_000,
+		gas_limit: 29_000_000,
 		storage_limit: 5_000_000,
 		access_list: vec![],
 	});
@@ -387,23 +452,26 @@ async fn evm_gas_limit_test() {
 	node.wait_for_blocks(1).await;
 	println!(
 		"{:#?}",
-		ensure_event!(node, node_runtime::Event::EVM(module_evm::Event::Executed { .. }))
+		ensure_event!(
+			node,
+			node_runtime::RuntimeEvent::EVM(module_evm::Event::Executed { .. })
+		)
 	);
 
 	node.wait_for_blocks(1).await;
 
-	// incrementLoop(uint256) 9500 times
+	// incrementLoop(uint256) 8480 times
 	let input = hex! {"
 		3f8308e6
-		00000000000000000000000000000000 0000000000000000000000000000251c
+		00000000000000000000000000000000 00000000000000000000000000002120
 	"}
 	.to_vec();
 
-	let function = node_runtime::Call::EVM(module_evm::Call::call {
+	let function = node_runtime::RuntimeCall::EVM(module_evm::Call::call {
 		target: contract_address,
 		input: input.clone(),
 		value: 0,
-		gas_limit: 33_000_000,
+		gas_limit: 29_000_000,
 		storage_limit: 5_000_000,
 		access_list: vec![],
 	});
@@ -413,7 +481,10 @@ async fn evm_gas_limit_test() {
 	node.wait_for_blocks(1).await;
 	println!(
 		"{:#?}",
-		ensure_event!(node, node_runtime::Event::EVM(module_evm::Event::Executed { .. }))
+		ensure_event!(
+			node,
+			node_runtime::RuntimeEvent::EVM(module_evm::Event::Executed { .. })
+		)
 	);
 
 	node.wait_for_blocks(1).await;

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,6 +22,7 @@ use super::{
 };
 use crate::{precompile::input::InputPricer, WeightToGas};
 use frame_support::traits::Get;
+use frame_system::pallet_prelude::*;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
@@ -63,7 +64,7 @@ where
 		AtLeast64BitUnsigned = Balance,
 		Balance = Balance,
 		AccountId = Runtime::AccountId,
-		BlockNumber = Runtime::BlockNumber,
+		BlockNumber = BlockNumberFor<Runtime>,
 	>,
 {
 	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
@@ -243,7 +244,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("StableAsset StableAssetSwap failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
@@ -272,7 +273,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("StableAsset StableAssetMint failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
@@ -301,7 +302,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("StableAsset StableAssetRedeem failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
@@ -329,7 +330,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("StableAsset StableAssetRedeemSingle failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
@@ -358,7 +359,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					output: Output::encode_error_msg("StableAsset StableAssetRedeemMulti failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
@@ -454,7 +455,7 @@ where
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::precompile::mock::{alice_evm_addr, new_test_ext, Origin, StableAsset, Test, ALICE, AUSD, RENBTC};
+	use crate::precompile::mock::{alice_evm_addr, new_test_ext, RuntimeOrigin, StableAsset, Test, ALICE, AUSD, DOT};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
 
@@ -464,9 +465,9 @@ mod tests {
 	fn get_stable_asset_pool_tokens_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -492,7 +493,7 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000020
 				00000000000000000000000000000000 00000000000000000000000000000002
 				000000000000000000000000 0000000000000000000100000000000000000001
-				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000002
 			"};
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
@@ -515,9 +516,9 @@ mod tests {
 	fn get_stable_asset_total_supply_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -528,7 +529,7 @@ mod tests {
 				1u128
 			));
 			assert_ok!(StableAsset::mint(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				0,
 				vec![1_000_000u128, 1_000_000u128],
 				0u128
@@ -569,9 +570,9 @@ mod tests {
 	fn get_stable_asset_precision_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -617,9 +618,9 @@ mod tests {
 	fn get_stable_asset_mint_fee_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -665,9 +666,9 @@ mod tests {
 	fn get_stable_asset_swap_fee_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -713,9 +714,9 @@ mod tests {
 	fn get_stable_asset_redeem_fee_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -761,9 +762,9 @@ mod tests {
 	fn stable_asset_mint_and_redeem_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -868,9 +869,9 @@ mod tests {
 	fn stable_asset_swap_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(StableAsset::create_pool(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				CurrencyId::StableAssetPoolToken(0),
-				vec![AUSD, RENBTC],
+				vec![AUSD, DOT],
 				vec![1, 1],
 				2u128,
 				3u128,
@@ -881,7 +882,7 @@ mod tests {
 				1u128
 			));
 			assert_ok!(StableAsset::mint(
-				Origin::signed(ALICE),
+				RuntimeOrigin::signed(ALICE),
 				0,
 				vec![1_000_000u128, 1_000_000u128],
 				0u128
@@ -947,7 +948,7 @@ mod tests {
 				resp,
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: b"PoolNotFound".to_vec(),
+					output: "StableAsset StableAssetSwap failed: PoolNotFound".into(),
 					cost: target_gas_limit(Some(200_000)).unwrap_or_default()
 				}
 			);

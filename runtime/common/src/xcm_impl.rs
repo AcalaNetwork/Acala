@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -19,24 +19,32 @@
 //! Common xcm implementation
 
 use codec::Encode;
-use frame_support::{
-	traits::Get,
-	weights::{constants::WEIGHT_PER_SECOND, Weight},
-};
+use frame_support::{traits::Get, weights::constants::WEIGHT_REF_TIME_PER_SECOND};
 use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
-use primitives::{Balance, CurrencyId};
+use primitives::{evm::EvmAddress, Balance, CurrencyId};
+use sp_core::bounded::BoundedVec;
 use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
 use sp_std::{marker::PhantomData, prelude::*};
-use xcm::latest::prelude::*;
+use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::TakeRevenue;
 use xcm_executor::{
 	traits::{DropAssets, WeightTrader},
 	Assets,
 };
 
-pub fn native_currency_location(para_id: u32, id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(para_id), GeneralKey(id.encode())))
+pub fn local_currency_location(key: CurrencyId) -> Option<MultiLocation> {
+	Some(MultiLocation::new(
+		0,
+		X1(Junction::from(BoundedVec::try_from(key.encode()).ok()?)),
+	))
+}
+
+pub fn native_currency_location(para_id: u32, key: Vec<u8>) -> Option<MultiLocation> {
+	Some(MultiLocation::new(
+		1,
+		X2(Parachain(para_id), Junction::from(BoundedVec::try_from(key).ok()?)),
+	))
 }
 
 /// `ExistentialDeposit` for tokens, give priority to match native token, then handled by
@@ -78,7 +86,7 @@ where
 	NB: Get<Balance>,
 	GK: GetByKey<CurrencyId, Balance>,
 {
-	fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
+	fn drop_assets(origin: &MultiLocation, assets: Assets, context: &XcmContext) -> XcmWeight {
 		let multi_assets: Vec<MultiAsset> = assets.into();
 		let mut asset_traps: Vec<MultiAsset> = vec![];
 		for asset in multi_assets {
@@ -100,9 +108,10 @@ where
 			}
 		}
 		if !asset_traps.is_empty() {
-			X::drop_assets(origin, asset_traps.into());
+			X::drop_assets(origin, asset_traps.into(), context);
 		}
-		0
+		// TODO #2492: Put the real weight in there.
+		XcmWeight::from_parts(0, 0)
 	}
 }
 
@@ -113,7 +122,7 @@ where
 /// - The `TakeRevenue` trait is used to collecting xcm execution fee.
 /// - The `BuyWeightRate` trait is used to calculate ratio by location.
 pub struct FixedRateOfAsset<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> {
-	weight: Weight,
+	weight: XcmWeight,
 	amount: u128,
 	ratio: FixedU128,
 	multi_location: Option<MultiLocation>,
@@ -123,7 +132,7 @@ pub struct FixedRateOfAsset<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRa
 impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for FixedRateOfAsset<FixedRate, R, M> {
 	fn new() -> Self {
 		Self {
-			weight: 0,
+			weight: XcmWeight::zero(),
 			amount: 0,
 			ratio: Default::default(),
 			multi_location: None,
@@ -131,7 +140,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		}
 	}
 
-	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
+	fn buy_weight(&mut self, weight: XcmWeight, payment: Assets) -> Result<Assets, XcmError> {
 		log::trace!(target: "xcm::weight", "buy_weight weight: {:?}, payment: {:?}", weight, payment);
 
 		// only support first fungible assets now.
@@ -144,13 +153,14 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		if let AssetId::Concrete(ref multi_location) = asset_id {
 			log::debug!(target: "xcm::weight", "buy_weight multi_location: {:?}", multi_location);
 
-			if let Some(ratio) = M::calculate_rate(multi_location.clone()) {
-				// The WEIGHT_PER_SECOND is non-zero.
-				let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
+			if let Some(ratio) = M::calculate_rate(*multi_location) {
+				// The WEIGHT_REF_TIME_PER_SECOND is non-zero.
+				let weight_ratio =
+					FixedU128::saturating_from_rational(weight.ref_time() as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
 				let amount = ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
 
 				let required = MultiAsset {
-					id: asset_id.clone(),
+					id: *asset_id,
 					fun: Fungible(amount),
 				};
 
@@ -165,7 +175,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 				self.weight = self.weight.saturating_add(weight);
 				self.amount = self.amount.saturating_add(amount);
 				self.ratio = ratio;
-				self.multi_location = Some(multi_location.clone());
+				self.multi_location = Some(*multi_location);
 				return Ok(unused);
 			}
 		}
@@ -174,13 +184,14 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		Err(XcmError::TooExpensive)
 	}
 
-	fn refund_weight(&mut self, weight: Weight) -> Option<MultiAsset> {
+	fn refund_weight(&mut self, weight: XcmWeight) -> Option<MultiAsset> {
 		log::trace!(
 			target: "xcm::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, ratio: {:?}, multi_location: {:?}",
 			weight, self.weight, self.amount, self.ratio, self.multi_location
 		);
 		let weight = weight.min(self.weight);
-		let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
+		let weight_ratio =
+			FixedU128::saturating_from_rational(weight.ref_time() as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
 		let amount = self
 			.ratio
 			.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
@@ -192,7 +203,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		if amount > 0 && self.multi_location.is_some() {
 			Some(
 				(
-					self.multi_location.as_ref().expect("checked is non-empty; qed").clone(),
+					*self.multi_location.as_ref().expect("checked is non-empty; qed"),
 					amount,
 				)
 					.into(),
@@ -209,12 +220,84 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> Drop for FixedRateO
 		if self.amount > 0 && self.multi_location.is_some() {
 			R::take_revenue(
 				(
-					self.multi_location.as_ref().expect("checked is non-empty; qed").clone(),
+					*self.multi_location.as_ref().expect("checked is non-empty; qed"),
 					self.amount,
 				)
 					.into(),
 			);
 		}
+	}
+}
+
+pub struct XcmExecutor<Config: xcm_executor::Config, AccountId, Balance, AccountIdConvert, EVMBridge>(
+	PhantomData<(Config, AccountId, Balance, AccountIdConvert, EVMBridge)>,
+);
+
+impl<
+		Config: xcm_executor::Config,
+		AccountId: Clone,
+		Balance,
+		AccountIdConvert: xcm_executor::traits::ConvertLocation<AccountId>,
+		EVMBridge: module_support::EVMBridge<AccountId, Balance>,
+	> ExecuteXcm<Config::RuntimeCall> for XcmExecutor<Config, AccountId, Balance, AccountIdConvert, EVMBridge>
+{
+	type Prepared = <xcm_executor::XcmExecutor<Config> as ExecuteXcm<Config::RuntimeCall>>::Prepared;
+
+	fn prepare(message: Xcm<Config::RuntimeCall>) -> Result<Self::Prepared, Xcm<Config::RuntimeCall>> {
+		xcm_executor::XcmExecutor::<Config>::prepare(message)
+	}
+
+	fn execute(
+		origin: impl Into<MultiLocation>,
+		weighed_message: Self::Prepared,
+		message_hash: &mut XcmHash,
+		weight_credit: XcmWeight,
+	) -> Outcome {
+		let origin = origin.into();
+		let account = AccountIdConvert::convert_location(&origin);
+		let clear = if let Some(account) = account {
+			EVMBridge::push_xcm_origin(account);
+			true
+		} else {
+			false
+		};
+
+		let res = xcm_executor::XcmExecutor::<Config>::execute(origin, weighed_message, message_hash, weight_credit);
+
+		if clear {
+			EVMBridge::pop_xcm_origin();
+		}
+		res
+	}
+
+	fn charge_fees(origin: impl Into<MultiLocation>, fees: MultiAssets) -> XcmResult {
+		xcm_executor::XcmExecutor::<Config>::charge_fees(origin, fees)
+	}
+}
+
+/// Convert `AccountKey20` to `AccountId`
+pub struct AccountKey20Aliases<Network, AccountId, AddressMapping>(PhantomData<(Network, AccountId, AddressMapping)>);
+impl<Network, AccountId, AddressMapping> xcm_executor::traits::ConvertLocation<AccountId>
+	for AccountKey20Aliases<Network, AccountId, AddressMapping>
+where
+	Network: Get<Option<NetworkId>>,
+	AccountId: From<[u8; 32]> + Into<[u8; 32]> + Clone,
+	AddressMapping: module_support::AddressMapping<AccountId>,
+{
+	fn convert_location(location: &MultiLocation) -> Option<AccountId> {
+		let key = match location {
+			MultiLocation {
+				parents: 0,
+				interior: X1(AccountKey20 { key, network: None }),
+			} => key,
+			MultiLocation {
+				parents: 0,
+				interior: X1(AccountKey20 { key, network }),
+			} if *network == Network::get() => key,
+			_ => return None,
+		};
+
+		Some(AddressMapping::get_account_id(&EvmAddress::from(key)))
 	}
 }
 
@@ -246,16 +329,82 @@ mod tests {
 	}
 
 	#[test]
+	fn currency_id_encode_as_general_key_works() {
+		use primitives::DexShare;
+		use primitives::TokenSymbol::ACA;
+		let evm_addr = sp_core::H160(hex_literal::hex!("0000000000000000000000000000000000000400"));
+
+		assert_eq!(
+			native_currency_location(0, CurrencyId::Token(ACA).encode())
+				.unwrap()
+				.parents,
+			1
+		);
+		assert_eq!(
+			native_currency_location(0, CurrencyId::Erc20(evm_addr).encode())
+				.unwrap()
+				.parents,
+			1
+		);
+		assert_eq!(
+			native_currency_location(0, CurrencyId::StableAssetPoolToken(0).encode())
+				.unwrap()
+				.parents,
+			1
+		);
+		assert_eq!(
+			native_currency_location(0, CurrencyId::ForeignAsset(0).encode())
+				.unwrap()
+				.parents,
+			1
+		);
+		assert_eq!(
+			native_currency_location(0, CurrencyId::LiquidCrowdloan(0).encode())
+				.unwrap()
+				.parents,
+			1
+		);
+
+		assert_eq!(
+			native_currency_location(
+				0,
+				CurrencyId::DexShare(DexShare::Token(ACA), DexShare::ForeignAsset(0)).encode()
+			)
+			.unwrap()
+			.parents,
+			1
+		);
+		assert_eq!(
+			native_currency_location(
+				0,
+				CurrencyId::DexShare(DexShare::Token(ACA), DexShare::Erc20(evm_addr)).encode()
+			)
+			.unwrap()
+			.parents,
+			1
+		);
+
+		// DexShare of two Erc20 exceed 32 length
+		assert_eq!(
+			native_currency_location(
+				0,
+				CurrencyId::DexShare(DexShare::Erc20(evm_addr), DexShare::Erc20(evm_addr)).encode()
+			),
+			None
+		);
+	}
+
+	#[test]
 	fn buy_weight_rate_mock_works() {
 		new_test_ext().execute_with(|| {
 			let asset: MultiAsset = (Parent, 100).into();
 			let assets: Assets = asset.into();
 			let mut trader = <FixedRateOfAsset<(), (), MockNoneBuyWeightRate>>::new();
-			let buy_weight = trader.buy_weight(WEIGHT_PER_SECOND, assets.clone());
+			let buy_weight = trader.buy_weight(XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0), assets.clone());
 			assert_noop!(buy_weight, XcmError::TooExpensive);
 
 			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockFixedBuyWeightRate<FixedRate>>>::new();
-			let buy_weight = trader.buy_weight(WEIGHT_PER_SECOND, assets.clone());
+			let buy_weight = trader.buy_weight(XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0), assets.clone());
 			let asset: MultiAsset = (Parent, 90).into();
 			let assets: Assets = asset.into();
 			assert_ok!(buy_weight, assets.clone());

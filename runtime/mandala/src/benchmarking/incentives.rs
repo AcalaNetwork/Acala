@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,28 +16,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-	AccountId, AccumulatePeriod, Currencies, CurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
-	GetStakingCurrencyId, Incentives, Rate, Rewards, Runtime, System,
-};
+use crate::{AccountId, AccumulatePeriod, Currencies, CurrencyId, Incentives, Rate, Rewards, Runtime, System};
 
 use super::{
 	get_benchmarking_collateral_currency_ids,
-	utils::{dollar, set_balance},
+	utils::{dollar, set_balance, NATIVE, STABLECOIN, STAKING},
 };
-use frame_benchmarking::{account, whitelisted_caller, BenchmarkError};
+use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use module_support::PoolId;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use sp_std::prelude::*;
-
-const SEED: u32 = 0;
-
-const NATIVE: CurrencyId = GetNativeCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
-const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_incentives }
@@ -83,11 +74,10 @@ runtime_benchmarks! {
 	claim_rewards {
 		let caller: AccountId = whitelisted_caller();
 		let pool_id = PoolId::Loans(STAKING);
-		let native_currency_id = GetNativeCurrencyId::get();
 
 		Rewards::add_share(&caller, &pool_id, 100);
-		Currencies::deposit(native_currency_id, &Incentives::account_id(), 80 * dollar(native_currency_id))?;
-		Rewards::accumulate_reward(&pool_id, native_currency_id, 80 * dollar(native_currency_id))?;
+		Currencies::deposit(NATIVE, &Incentives::account_id(), 80 * dollar(NATIVE))?;
+		Rewards::accumulate_reward(&pool_id, NATIVE, 80 * dollar(NATIVE))?;
 	}: _(RawOrigin::Signed(caller), pool_id)
 
 	update_incentive_rewards {
@@ -98,26 +88,6 @@ runtime_benchmarks! {
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
 			updates.push((PoolId::Loans(currency_id), vec![(NATIVE, dollar(NATIVE))]));
-		}
-	}: _(RawOrigin::Root, updates)
-
-	update_dex_saving_rewards {
-		let c in 0 .. get_benchmarking_collateral_currency_ids().len() as u32;
-		let currency_ids = get_benchmarking_collateral_currency_ids();
-		let caller: AccountId = account("caller", 0, SEED);
-		let mut updates = vec![];
-		let base_currency_id = GetStableCurrencyId::get();
-
-		for i in 0 .. c {
-			let currency_id = currency_ids[i as usize];
-			if matches!(currency_id, CurrencyId::StableAssetPoolToken(_)) {
-				continue;
-			}
-			if let Some(lp_share_currency_id) = CurrencyId::join_dex_share_currency_id(currency_id, base_currency_id) {
-				updates.push((PoolId::Dex(lp_share_currency_id), Rate::default()));
-			} else {
-				return Err(BenchmarkError::Stop("invalid currency id"));
-			}
 		}
 	}: _(RawOrigin::Root, updates)
 

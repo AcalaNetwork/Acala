@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -53,7 +53,6 @@ pub trait WeightInfo {
 	fn withdraw_dex_share() -> Weight;
 	fn claim_rewards() -> Weight;
 	fn update_incentive_rewards(c: u32, ) -> Weight;
-	fn update_dex_saving_rewards(c: u32, ) -> Weight;
 	fn update_claim_reward_deduction_rates(c: u32, ) -> Weight;
 }
 
@@ -61,85 +60,73 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn on_initialize(c: u32) -> Weight {
-		(33_360_000 as Weight)
-			.saturating_add((23_139_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
+		Weight::from_parts(33_360_000, 0)
+			.saturating_add(Weight::from_parts(23_139_000, 0).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 	}
 	fn deposit_dex_share() -> Weight {
-		(84_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(9 as Weight))
-			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+		Weight::from_parts(84_000_000, 0)
+			.saturating_add(T::DbWeight::get().reads(9 as u64))
+			.saturating_add(T::DbWeight::get().writes(9 as u64))
 	}
 	fn withdraw_dex_share() -> Weight {
-		(96_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+		Weight::from_parts(96_000_000, 0)
+			.saturating_add(T::DbWeight::get().reads(6 as u64))
+			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
 	fn claim_rewards() -> Weight {
-		(27_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_parts(27_000_000, 0)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	fn update_incentive_rewards(c: u32, ) -> Weight {
-		(479_000 as Weight)
+		Weight::from_parts(479_000, 0)
 			// Standard Error: 29_000
-			.saturating_add((1_893_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
-	}
-	fn update_dex_saving_rewards(c: u32, ) -> Weight {
-		(914_000 as Weight)
-			// Standard Error: 21_000
-			.saturating_add((1_829_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_parts(1_893_000, 0).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	fn update_claim_reward_deduction_rates(c: u32, ) -> Weight {
-		(914_000 as Weight)
+		Weight::from_parts(914_000, 0)
 			// Standard Error: 21_000
-			.saturating_add((1_829_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_parts(1_829_000, 0).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_initialize(c: u32) -> Weight {
-		(33_360_000 as Weight)
-			.saturating_add((23_139_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(c as Weight)))
+		Weight::from_parts(33_360_000, 0)
+			.saturating_add(Weight::from_parts(23_139_000, 0).saturating_mul(c as u64))
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
+			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
 	}
 	fn deposit_dex_share() -> Weight {
-		(84_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(9 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(9 as Weight))
+		Weight::from_parts(84_000_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(9 as u64))
+			.saturating_add(RocksDbWeight::get().writes(9 as u64))
 	}
 	fn withdraw_dex_share() -> Weight {
-		(96_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
+		Weight::from_parts(96_000_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(6 as u64))
+			.saturating_add(RocksDbWeight::get().writes(6 as u64))
 	}
 	fn claim_rewards() -> Weight {
-		(27_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_parts(27_000_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(3 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	fn update_incentive_rewards(c: u32, ) -> Weight {
-		(479_000 as Weight)
+		Weight::from_parts(479_000, 0)
 			// Standard Error: 29_000
-			.saturating_add((1_893_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
-	}
-	fn update_dex_saving_rewards(c: u32, ) -> Weight {
-		(914_000 as Weight)
-			// Standard Error: 21_000
-			.saturating_add((1_829_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_parts(1_893_000, 0).saturating_mul(c as u64))
+			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	fn update_claim_reward_deduction_rates(c: u32, ) -> Weight {
-		(914_000 as Weight)
+		Weight::from_parts(914_000, 0)
 			// Standard Error: 21_000
-			.saturating_add((1_829_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(Weight::from_parts(1_829_000, 0).saturating_mul(c as u64))
+			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 }

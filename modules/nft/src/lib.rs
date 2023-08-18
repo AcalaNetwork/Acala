@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -30,7 +30,7 @@ use frame_support::{
 		ExistenceRequirement::{AllowDeath, KeepAlive},
 		NamedReservableCurrency,
 	},
-	transactional, PalletId,
+	PalletId,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::InspectExtended;
@@ -40,7 +40,6 @@ use primitives::{
 };
 use scale_info::TypeInfo;
 
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
 	traits::{AccountIdConversion, Hash, Saturating, StaticLookup, Zero},
@@ -56,8 +55,7 @@ pub mod weights;
 pub use module::*;
 pub use weights::WeightInfo;
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, Serialize, Deserialize)]
 pub struct ClassData<Balance> {
 	/// Deposit reserved to create token class
 	pub deposit: Balance,
@@ -67,8 +65,7 @@ pub struct ClassData<Balance> {
 	pub attributes: Attributes,
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, Serialize, Deserialize)]
 pub struct TokenData<Balance> {
 	/// Deposit reserved to create token
 	pub deposit: Balance,
@@ -93,7 +90,7 @@ pub mod module {
 		+ orml_nft::Config<ClassData = ClassData<BalanceOf<Self>>, TokenData = TokenData<BalanceOf<Self>>>
 		+ pallet_proxy::Config
 	{
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Currency type for reserve balance.
 		type Currency: NamedReservableCurrency<
@@ -199,17 +196,14 @@ pub mod module {
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Create NFT class, tokens belong to the class.
 		///
 		/// - `metadata`: external metadata
 		/// - `properties`: class property, include `Transferable` `Burnable`
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::create_class())]
-		#[transactional]
 		pub fn create_class(
 			origin: OriginFor<T>,
 			metadata: CID,
@@ -226,8 +220,17 @@ pub mod module {
 			let deposit = class_deposit.saturating_add(data_deposit);
 			let total_deposit = proxy_deposit.saturating_add(deposit);
 
-			// ensure enough token for proxy deposit + class deposit + data deposit
-			<T as module::Config>::Currency::transfer(&who, &owner, total_deposit, KeepAlive)?;
+			// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
+			// Now the pallet-balances judges whether does provider is based on the `free balance` instead of
+			// `total balance`. When there's no other providers, error will throw in following reserve
+			// operation, which want to make `free balance` is zero and `reserved balance` is not zero.
+			// If receiver account has not enough ed, transfer an additional ED to make sure the subsequent
+			// reserve operation.
+			let total_transfer_amount =
+				total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance());
+
+			// ensure enough token for proxy deposit + class deposit + data deposit + ed
+			<T as module::Config>::Currency::transfer(&who, &owner, total_transfer_amount, KeepAlive)?;
 
 			<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &owner, deposit)?;
 
@@ -254,8 +257,8 @@ pub mod module {
 		/// - `class_id`: token belong to the class id
 		/// - `metadata`: external metadata
 		/// - `quantity`: token quantity
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::mint(*quantity))]
-		#[transactional]
 		pub fn mint(
 			origin: OriginFor<T>,
 			to: <T::Lookup as StaticLookup>::Source,
@@ -274,8 +277,8 @@ pub mod module {
 		///
 		/// - `to`: the token owner's account
 		/// - `token`: (class_id, token_id)
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::transfer())]
-		#[transactional]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			to: <T::Lookup as StaticLookup>::Source,
@@ -289,8 +292,8 @@ pub mod module {
 		/// Burn NFT token
 		///
 		/// - `token`: (class_id, token_id)
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::burn())]
-		#[transactional]
 		pub fn burn(origin: OriginFor<T>, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_burn(who, token, None)
@@ -300,8 +303,8 @@ pub mod module {
 		///
 		/// - `token`: (class_id, token_id)
 		/// - `remark`: Vec<u8>
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::burn_with_remark(remark.len() as u32))]
-		#[transactional]
 		pub fn burn_with_remark(
 			origin: OriginFor<T>,
 			token: (ClassIdOf<T>, TokenIdOf<T>),
@@ -316,8 +319,8 @@ pub mod module {
 		///
 		/// - `class_id`: The class ID to destroy
 		/// - `dest`: The proxy account that will receive free balance
+		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::destroy_class())]
-		#[transactional]
 		pub fn destroy_class(
 			origin: OriginFor<T>,
 			class_id: ClassIdOf<T>,
@@ -357,8 +360,8 @@ pub mod module {
 		///
 		/// - `class_id`: The class ID to update
 		/// - `properties`: The new properties
+		#[pallet::call_index(6)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_class_properties())]
-		#[transactional]
 		pub fn update_class_properties(
 			origin: OriginFor<T>,
 			class_id: ClassIdOf<T>,
@@ -369,7 +372,7 @@ pub mod module {
 				let class_info = class_info.as_mut().ok_or(Error::<T>::ClassIdNotFound)?;
 				ensure!(who == class_info.owner, Error::<T>::NoPermission);
 
-				let mut data = &mut class_info.data;
+				let data = &mut class_info.data;
 				ensure!(
 					data.properties.0.contains(ClassProperty::ClassPropertiesMutable),
 					Error::<T>::Immutable
@@ -397,9 +400,24 @@ impl<T: Config> Pallet<T> {
 
 		orml_nft::Pallet::<T>::transfer(from, to, token)?;
 
-		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, from, token_info.data.deposit);
-		<T as module::Config>::Currency::transfer(from, to, token_info.data.deposit, AllowDeath)?;
-		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, token_info.data.deposit)?;
+		let reserve_balance = token_info.data.deposit;
+
+		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
+		// Now the pallet-balances judges whether does provider is based on the `free balance` instead of
+		// `total balance`. When there's no other providers, error will throw in following reserve
+		// operation, which want to make `free balance` is zero and `reserved balance` is not zero.
+		// If receiver account has not enough ed, transfer an additional ED to make sure the subsequent
+		// reserve operation.
+		let transfer_amount =
+			if <T as module::Config>::Currency::free_balance(to) < <T as module::Config>::Currency::minimum_balance() {
+				reserve_balance.saturating_add(<T as module::Config>::Currency::minimum_balance())
+			} else {
+				reserve_balance
+			};
+
+		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, from, reserve_balance);
+		<T as module::Config>::Currency::transfer(from, to, transfer_amount, AllowDeath)?;
+		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, reserve_balance)?;
 
 		Self::deposit_event(Event::TransferredToken {
 			from: from.clone(),
@@ -432,9 +450,22 @@ impl<T: Config> Pallet<T> {
 		let deposit = T::CreateTokenDeposit::get().saturating_add(data_deposit);
 		let total_deposit = deposit.saturating_mul(quantity.into());
 
+		// https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/balances/src/lib.rs#L965
+		// Now the pallet-balances judges whether does provider is based on the `free balance` instead of
+		// `total balance`. When there's no other providers, error will throw in following reserve
+		// operation, which want to make `free balance` is zero and `reserved balance` is not zero.
+		// If receiver account has not enough ed, transfer an additional ED to make sure the subsequent
+		// reserve operation.
+		let total_transfer_amount =
+			if <T as module::Config>::Currency::free_balance(to) < <T as module::Config>::Currency::minimum_balance() {
+				total_deposit.saturating_add(<T as module::Config>::Currency::minimum_balance())
+			} else {
+				total_deposit
+			};
+
 		// `repatriate_reserved` will check `to` account exist and may return
 		// `DeadAccount`.
-		<T as module::Config>::Currency::transfer(who, to, total_deposit, KeepAlive)?;
+		<T as module::Config>::Currency::transfer(who, to, total_transfer_amount, KeepAlive)?;
 		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, total_deposit)?;
 
 		let mut token_ids = Vec::with_capacity(quantity as usize);

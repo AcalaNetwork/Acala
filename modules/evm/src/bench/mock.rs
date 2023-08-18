@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -23,19 +23,22 @@ use super::super::*;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, FindAuthor, Nothing},
-	weights::IdentityFee,
+	weights::{ConstantMultiplier, IdentityFee},
 	ConsensusEngineId, PalletId,
 };
 use frame_system::EnsureSignedBy;
-use module_support::mocks::MockErc20InfoMapping;
-use module_support::{mocks::MockAddressMapping, DEXIncentives, Price, PriceProvider};
+use module_support::{
+	mocks::{MockAddressMapping, MockErc20InfoMapping},
+	DEXIncentives, Price, PriceProvider, SpecificJointsSwap,
+};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
-	define_combined_task, Address, Amount, Block, BlockNumber, CurrencyId, Header, Multiplier, ReserveIdentifier,
-	Signature, TokenSymbol,
+	define_combined_task, Address, Amount, BlockNumber, CurrencyId, Header, Multiplier, ReserveIdentifier, Signature,
+	TokenSymbol,
 };
 use sp_core::{H160, H256};
 use sp_runtime::{
+	generic,
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, IdentityLookup},
 	AccountId32, FixedU128, Percent,
 };
@@ -52,16 +55,15 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
+	type Nonce = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
-	type Event = Event;
+	type Block = Block;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU32<250>;
 	type DbWeight = ();
 	type Version = ();
@@ -78,13 +80,17 @@ impl frame_system::Config for Runtime {
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<1>;
-	type AccountStore = System;
+	type AccountStore = module_support::SystemAccountStore<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
+	type RuntimeHoldReason = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -101,19 +107,17 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
+	type CurrencyHooks = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -144,19 +148,23 @@ impl BlockNumberProvider for MockBlockNumberProvider {
 	}
 }
 
+parameter_types! {
+	pub MinimumWeightRemainInBlock: Weight = Weight::zero();
+}
+
 impl module_idle_scheduler::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
-	type MinimumWeightRemainInBlock = ConstU64<0>;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
 	type DisableBlockThreshold = ConstU32<6>;
 }
 
 pub struct GasToWeight;
-impl Convert<u64, u64> for GasToWeight {
-	fn convert(a: u64) -> u64 {
-		a
+impl Convert<u64, Weight> for GasToWeight {
+	fn convert(a: u64) -> Weight {
+		Weight::from_parts(a, 0)
 	}
 }
 
@@ -189,7 +197,7 @@ impl Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<20_000_000>;
 
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = GasToWeight;
@@ -220,6 +228,7 @@ parameter_types! {
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
 	pub const TradingPathLimit: u32 = 4;
 	pub const ExistenceRequirement: u128 = 1;
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![];
 }
 ord_parameter_types! {
 	pub const ListingOrigin: AccountId32 = AccountId32::new([1u8; 32]);
@@ -236,8 +245,8 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 impl module_transaction_payment::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
@@ -247,9 +256,9 @@ impl module_transaction_payment::Config for Runtime {
 	type MaxTipsOfPriority = ConstU128<1000>;
 	type AlternativeFeeSwapDeposit = ExistenceRequirement;
 	type WeightToFee = IdentityFee<Balance>;
-	type TransactionByteFee = ConstU128<10>;
+	type LengthToFee = ConstantMultiplier<Balance, ConstU128<10>>;
 	type FeeMultiplierUpdate = ();
-	type DEX = Dex;
+	type Swap = SpecificJointsSwap<Dex, AlternativeSwapPathJointList>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;
@@ -280,7 +289,7 @@ parameter_types! {
 }
 
 impl module_dex::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
@@ -294,21 +303,18 @@ impl module_dex::Config for Runtime {
 }
 
 pub type SignedExtra = (frame_system::CheckWeight<Runtime>,);
-pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		Dex: module_dex::{Pallet, Call, Storage, Event<T>},
-		EVM: evm_mod::{Pallet, Config<T>, Call, Storage, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
-		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>},
+	pub enum Runtime {
+		System: frame_system,
+		Dex: module_dex,
+		EVM: evm_mod,
+		Tokens: orml_tokens,
+		Balances: pallet_balances,
+		Currencies: orml_currencies,
+		IdleScheduler: module_idle_scheduler,
+		TransactionPayment: module_transaction_payment,
 	}
 );

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -20,10 +20,10 @@
 
 use acala_primitives::{AccountId, AccountPublic};
 use sc_chain_spec::ChainSpecExtension;
+use sc_consensus_grandpa::AuthorityId as GrandpaId;
 use serde::{Deserialize, Serialize};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public};
-use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::IdentifyAccount;
 
 #[cfg(feature = "with-acala-runtime")]
@@ -51,7 +51,7 @@ pub struct Extensions {
 	pub para_id: u32,
 	/// Known bad block hashes.
 	#[serde(default)]
-	pub bad_blocks: sc_client_api::BadBlocks<polkadot_primitives::v2::Block>,
+	pub bad_blocks: sc_client_api::BadBlocks<polkadot_primitives::v5::Block>,
 }
 
 impl Extensions {

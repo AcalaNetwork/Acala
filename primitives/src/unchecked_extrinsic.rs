@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -19,9 +19,9 @@
 use crate::{evm::EthereumTransactionMessage, signature::AcalaMultiSignature, to_bytes, Address, Balance};
 use codec::{Decode, Encode};
 use frame_support::{
+	dispatch::{DispatchInfo, GetDispatchInfo},
 	log,
 	traits::{ExtrinsicCall, Get},
-	weights::{DispatchInfo, GetDispatchInfo},
 };
 use module_evm_utility::ethereum::{EIP1559TransactionMessage, LegacyTransactionMessage, TransactionAction};
 use module_evm_utility_macro::keccak256;
@@ -34,6 +34,8 @@ use sp_runtime::{
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	AccountId32, RuntimeDebug,
 };
+#[cfg(not(feature = "std"))]
+use sp_std::alloc::format;
 use sp_std::{marker::PhantomData, prelude::*};
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
@@ -50,19 +52,7 @@ pub struct AcalaUncheckedExtrinsic<
 	PhantomData<(ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx)>,
 );
 
-#[cfg(feature = "std")]
-impl<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> parity_util_mem::MallocSizeOf
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
-where
-	Extra: SignedExtension,
-{
-	fn size_of(&self, _ops: &mut parity_util_mem::MallocSizeOfOps) -> usize {
-		// Instantiated only in runtime.
-		0
-	}
-}
-
-impl<Call, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> Extrinsic
+impl<Call: TypeInfo, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> Extrinsic
 	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	type Call = Call;
@@ -92,8 +82,8 @@ impl<Call, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePer
 	type SignedExtensions = Extra;
 }
 
-impl<Call, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> ExtrinsicCall
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
+impl<Call: TypeInfo, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
+	ExtrinsicCall for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 {
 	fn call(&self) -> &Self::Call {
 		self.0.call()
@@ -127,19 +117,18 @@ where
 					target: "evm", "Ethereum eth_msg: {:?}", eth_msg
 				);
 
-				if !eth_msg.tip.is_zero() {
-					// Not yet supported, require zero tip
-					return Err(InvalidTransaction::BadProof.into());
-				}
-
 				if !eth_msg.access_list.len().is_zero() {
 					// Not yet supported, require empty
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
-				let (tx_gas_price, tx_gas_limit) =
+				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero() {
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
-						.ok_or(InvalidTransaction::BadProof)?;
+						.ok_or(InvalidTransaction::BadProof)?
+				} else {
+					// eth_call_v2, the gas_price and gas_limit are encoded.
+					(eth_msg.gas_price as u128, eth_msg.gas_limit as u128)
+				};
 
 				let msg = LegacyTransactionMessage {
 					nonce: eth_msg.nonce.into(),
@@ -176,9 +165,13 @@ where
 					target: "evm", "Eip1559 eth_msg: {:?}", eth_msg
 				);
 
-				let (tx_gas_price, tx_gas_limit) =
+				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero() {
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
-						.ok_or(InvalidTransaction::BadProof)?;
+						.ok_or(InvalidTransaction::BadProof)?
+				} else {
+					// eth_call_v2, the gas_price and gas_limit are encoded.
+					(eth_msg.gas_price as u128, eth_msg.gas_limit as u128)
+				};
 
 				// tip = priority_fee * gas_limit
 				let priority_fee = eth_msg.tip.checked_div(eth_msg.gas_limit.into()).unwrap_or_default();
@@ -237,6 +230,14 @@ where
 			_ => self.0.check(lookup),
 		}
 	}
+
+	#[cfg(feature = "try-runtime")]
+	fn unchecked_into_checked_i_know_what_i_am_doing(
+		self,
+		_lookup: &Lookup,
+	) -> Result<Self::Checked, TransactionValidityError> {
+		unreachable!();
+	}
 }
 
 impl<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx> GetDispatchInfo
@@ -250,7 +251,6 @@ where
 	}
 }
 
-#[cfg(feature = "std")]
 impl<Call: Encode, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 	serde::Serialize
 	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
@@ -263,7 +263,6 @@ impl<Call: Encode, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, 
 	}
 }
 
-#[cfg(feature = "std")]
 impl<'a, Call: Decode, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
 	serde::Deserialize<'a>
 	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, CheckPayerTx>
@@ -376,6 +375,7 @@ mod tests {
 			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
 			nonce: 0,
 			tip: 2,
+			gas_price: 0,
 			gas_limit: 2100000,
 			storage_limit: 20000,
 			action: TransactionAction::Create,
@@ -393,6 +393,7 @@ mod tests {
 			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
 			nonce: 0,
 			tip: 2,
+			gas_price: 0,
 			gas_limit: 2100000,
 			storage_limit: 20000,
 			action: TransactionAction::Create,
@@ -412,6 +413,7 @@ mod tests {
 			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
 			nonce: 0,
 			tip: 2,
+			gas_price: 0,
 			gas_limit: 2100000,
 			storage_limit: 20000,
 			action: TransactionAction::Create,
@@ -590,6 +592,7 @@ mod tests {
 			genesis: Default::default(),
 			nonce: 1,
 			tip: 0,
+			gas_price: 0,
 			gas_limit: 2100000,
 			storage_limit: 64000,
 			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),

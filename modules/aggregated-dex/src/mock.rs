@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -30,15 +30,10 @@ use frame_system::EnsureSignedBy;
 use orml_tokens::ConvertBalance;
 pub use orml_traits::{parameter_type_with_key, MultiCurrency};
 use primitives::{Amount, TokenSymbol, TradingPair};
-use sp_runtime::{
-	testing::{Header, H256},
-	traits::{Bounded, IdentityLookup},
-	AccountId32, FixedPointNumber,
-};
+use sp_runtime::{testing::H256, traits::IdentityLookup, AccountId32, ArithmeticError, BuildStorage, FixedPointNumber};
 pub use support::{ExchangeRate, RebasedStableAsset};
 
 pub type AccountId = AccountId32;
-pub type BlockNumber = u64;
 
 mod aggregated_dex {
 	pub use super::super::*;
@@ -55,16 +50,15 @@ impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
-	type BlockNumber = BlockNumber;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
+	type Nonce = u64;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
-	type Event = Event;
+	type Block = Block;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type DbWeight = ();
 	type Version = ();
@@ -85,19 +79,17 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
+	type CurrencyHooks = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
 }
 
 ord_parameter_types! {
@@ -111,7 +103,7 @@ parameter_types! {
 }
 
 impl module_dex::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<4>;
@@ -135,21 +127,24 @@ pub struct ConvertBalanceHoma;
 impl ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 	type AssetId = CurrencyId;
 
-	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
+	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> sp_std::result::Result<Balance, ArithmeticError> {
 		match asset_id {
 			LDOT => ExchangeRate::saturating_from_rational(1, 10)
 				.checked_mul_int(balance)
-				.unwrap_or(Bounded::max_value()),
-			_ => balance,
+				.ok_or(ArithmeticError::Overflow),
+			_ => Ok(balance),
 		}
 	}
 
-	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
+	fn convert_balance_back(
+		balance: Balance,
+		asset_id: CurrencyId,
+	) -> sp_std::result::Result<Balance, ArithmeticError> {
 		match asset_id {
 			LDOT => ExchangeRate::saturating_from_rational(10, 1)
 				.checked_mul_int(balance)
-				.unwrap_or(Bounded::max_value()),
-			_ => balance,
+				.ok_or(ArithmeticError::Overflow),
+			_ => Ok(balance),
 		}
 	}
 }
@@ -172,7 +167,7 @@ parameter_types! {
 }
 
 impl nutsfinance_stable_asset::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type AssetId = CurrencyId;
 	type Balance = Balance;
 	type Assets = RebaseTokens;
@@ -205,20 +200,15 @@ impl Config for Runtime {
 pub type StableAssetWrapper =
 	RebasedStableAsset<StableAsset, ConvertBalanceHoma, RebasedStableAssetErrorConvertor<Runtime>>;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		AggregatedDex: aggregated_dex::{Pallet, Call, Storage},
-		Dex: module_dex::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>},
+	pub enum Runtime {
+		System: frame_system,
+		AggregatedDex: aggregated_dex,
+		Dex: module_dex,
+		Tokens: orml_tokens,
+		StableAsset: nutsfinance_stable_asset,
 	}
 );
 
@@ -241,8 +231,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {

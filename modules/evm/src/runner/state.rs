@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Synchronize with https://github.com/rust-blockchain/evm/blob/9ac4d47b5e/src/executor/stack/executor.rs
+// Synchronize with https://github.com/rust-blockchain/evm/blob/6534c1dd/src/executor/stack/executor.rs
 
 use crate::{encode_revert_message, StorageMeter};
 use core::{cmp::min, convert::Infallible};
@@ -30,7 +30,6 @@ use module_evm_utility::{
 	evm_gasometer::{self as gasometer, Gasometer, StorageTarget},
 	evm_runtime::Handler,
 };
-use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	currency::CurrencyIdType,
 	evm::{
@@ -40,6 +39,7 @@ pub use primitives::{
 	ReserveIdentifier,
 };
 use sha3::{Digest, Keccak256};
+use sp_core::{H160, H256, U256};
 use sp_runtime::traits::Zero;
 use sp_std::{
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
@@ -310,7 +310,12 @@ impl<'config> StackSubstateMetadata<'config> {
 	}
 }
 
-pub trait StackState<'config>: Backend {
+pub trait CustomStackState {
+	fn code_hash_at_address(&self, address: H160) -> H256;
+	fn code_size_at_address(&self, address: H160) -> U256;
+}
+
+pub trait StackState<'config>: Backend + CustomStackState {
 	fn metadata(&self) -> &StackSubstateMetadata<'config>;
 	fn metadata_mut(&mut self) -> &mut StackSubstateMetadata<'config>;
 
@@ -506,7 +511,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		init_code: Vec<u8>,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
-	) -> ExitReason {
+	) -> (ExitReason, Vec<u8>) {
 		event!(TransactCreate {
 			caller,
 			value,
@@ -516,7 +521,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		});
 
 		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
-			return emit_exit!(e.into());
+			return emit_exit!(e.into(), Vec::new());
 		}
 		self.initialize_with_access_list(access_list);
 
@@ -528,7 +533,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Some(gas_limit),
 			false,
 		) {
-			Capture::Exit((s, _, _)) => emit_exit!(s),
+			Capture::Exit((s, _, v)) => emit_exit!(s, v),
 			Capture::Trap(_) => unreachable!(),
 		}
 	}
@@ -542,7 +547,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		salt: H256,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
-	) -> ExitReason {
+	) -> (ExitReason, Vec<u8>) {
 		let code_hash = H256::from_slice(Keccak256::digest(&init_code).as_slice());
 		event!(TransactCreate2 {
 			caller,
@@ -558,7 +563,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		});
 
 		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
-			return emit_exit!(e.into());
+			return emit_exit!(e.into(), Vec::new());
 		}
 		self.initialize_with_access_list(access_list);
 
@@ -574,7 +579,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Some(gas_limit),
 			false,
 		) {
-			Capture::Exit((s, _, _)) => emit_exit!(s),
+			Capture::Exit((s, _, v)) => emit_exit!(s, v),
 			Capture::Trap(_) => unreachable!(),
 		}
 	}
@@ -588,7 +593,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		init_code: Vec<u8>,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>,
-	) -> ExitReason {
+	) -> (ExitReason, Vec<u8>) {
 		event!(TransactCreate {
 			caller,
 			value,
@@ -598,7 +603,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		});
 
 		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
-			return emit_exit!(e.into());
+			return emit_exit!(e.into(), Vec::new());
 		}
 		self.initialize_with_access_list(access_list);
 
@@ -610,7 +615,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Some(gas_limit),
 			false,
 		) {
-			Capture::Exit((s, _, _)) => emit_exit!(s),
+			Capture::Exit((s, _, v)) => emit_exit!(s, v),
 			Capture::Trap(_) => unreachable!(),
 		}
 	}
@@ -711,7 +716,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 				salt,
 			} => {
 				let mut hasher = Keccak256::new();
-				hasher.update(&[0xff]);
+				hasher.update([0xff]);
 				hasher.update(&caller[..]);
 				hasher.update(&salt[..]);
 				hasher.update(&code_hash[..]);
@@ -768,10 +773,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		}
 
 		fn check_first_byte(config: &Config, code: &[u8]) -> Result<(), ExitError> {
-			if config.disallow_executable_format {
-				if let Some(0xef) = code.first() {
-					return Err(ExitError::InvalidCode);
-				}
+			if config.disallow_executable_format && Some(&Opcode::EOFMAGIC.as_u8()) == code.first() {
+				return Err(ExitError::InvalidCode(Opcode::EOFMAGIC));
 			}
 			Ok(())
 		}
@@ -1009,9 +1012,13 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			}
 		}
 
-		if let Some(result) = self
-			.precompile_set
-			.execute(code_address, &input, Some(gas_limit), &context, is_static)
+		// At this point, the state has been modified in enter_substate to
+		// reflect both the is_static parameter of this call and the is_static
+		// of the caller context.
+		let precompile_is_static = self.state.metadata().is_static();
+		if let Some(result) =
+			self.precompile_set
+				.execute(code_address, &input, Some(gas_limit), &context, precompile_is_static)
 		{
 			return match result {
 				Ok(PrecompileOutput {
@@ -1103,7 +1110,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 	}
 
 	fn code_size(&self, address: H160) -> U256 {
-		U256::from(self.state.code(address).len())
+		self.state.code_size_at_address(address)
 	}
 
 	fn code_hash(&self, address: H160) -> H256 {
@@ -1111,7 +1118,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 			return H256::default();
 		}
 
-		H256::from_slice(Keccak256::digest(&self.state.code(address)).as_slice())
+		self.state.code_hash_at_address(address)
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {

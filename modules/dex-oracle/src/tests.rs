@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -30,19 +30,19 @@ fn enable_average_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		Timestamp::set_timestamp(1000);
 		assert_noop!(
-			DexOracle::enable_average_price(Origin::signed(0), AUSD, DOT, 0),
+			DexOracle::enable_average_price(RuntimeOrigin::signed(0), AUSD, DOT, 0),
 			BadOrigin
 		);
 		assert_noop!(
-			DexOracle::enable_average_price(Origin::signed(1), AUSD, LP_AUSD_DOT, 0),
+			DexOracle::enable_average_price(RuntimeOrigin::signed(1), AUSD, LP_AUSD_DOT, 0),
 			Error::<Runtime>::InvalidCurrencyId
 		);
 		assert_noop!(
-			DexOracle::enable_average_price(Origin::signed(1), AUSD, DOT, 0),
+			DexOracle::enable_average_price(RuntimeOrigin::signed(1), AUSD, DOT, 0),
 			Error::<Runtime>::IntervalIsZero
 		);
 		assert_noop!(
-			DexOracle::enable_average_price(Origin::signed(1), AUSD, DOT, 12000),
+			DexOracle::enable_average_price(RuntimeOrigin::signed(1), AUSD, DOT, 12000),
 			Error::<Runtime>::InvalidPool
 		);
 
@@ -53,7 +53,12 @@ fn enable_average_price_work() {
 		);
 		assert_eq!(DexOracle::average_prices(AUSDDOTPair::get()), None);
 
-		assert_ok!(DexOracle::enable_average_price(Origin::signed(1), AUSD, DOT, 12000));
+		assert_ok!(DexOracle::enable_average_price(
+			RuntimeOrigin::signed(1),
+			AUSD,
+			DOT,
+			12000
+		));
 		assert_eq!(
 			DexOracle::cumulatives(AUSDDOTPair::get()),
 			(U256::from(0), U256::from(0), 1000)
@@ -71,7 +76,7 @@ fn enable_average_price_work() {
 		);
 
 		assert_noop!(
-			DexOracle::enable_average_price(Origin::signed(1), AUSD, DOT, 12000),
+			DexOracle::enable_average_price(RuntimeOrigin::signed(1), AUSD, DOT, 12000),
 			Error::<Runtime>::AveragePriceAlreadyEnabled
 		);
 	});
@@ -82,7 +87,12 @@ fn disable_average_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		set_pool(&AUSDDOTPair::get(), 1_000, 100);
 		Timestamp::set_timestamp(100);
-		assert_ok!(DexOracle::enable_average_price(Origin::signed(1), AUSD, DOT, 1000));
+		assert_ok!(DexOracle::enable_average_price(
+			RuntimeOrigin::signed(1),
+			AUSD,
+			DOT,
+			1000
+		));
 		assert_eq!(
 			DexOracle::cumulatives(AUSDDOTPair::get()),
 			(U256::from(0), U256::from(0), 100)
@@ -100,19 +110,19 @@ fn disable_average_price_work() {
 		);
 
 		assert_noop!(
-			DexOracle::disable_average_price(Origin::signed(0), AUSD, DOT),
+			DexOracle::disable_average_price(RuntimeOrigin::signed(0), AUSD, DOT),
 			BadOrigin
 		);
 		assert_noop!(
-			DexOracle::disable_average_price(Origin::signed(1), AUSD, LP_AUSD_DOT),
+			DexOracle::disable_average_price(RuntimeOrigin::signed(1), AUSD, LP_AUSD_DOT),
 			Error::<Runtime>::InvalidCurrencyId
 		);
 		assert_noop!(
-			DexOracle::disable_average_price(Origin::signed(1), ACA, DOT),
+			DexOracle::disable_average_price(RuntimeOrigin::signed(1), ACA, DOT),
 			Error::<Runtime>::AveragePriceMustBeEnabled
 		);
 
-		assert_ok!(DexOracle::disable_average_price(Origin::signed(1), AUSD, DOT));
+		assert_ok!(DexOracle::disable_average_price(RuntimeOrigin::signed(1), AUSD, DOT));
 		assert_eq!(
 			DexOracle::cumulatives(AUSDDOTPair::get()),
 			(U256::from(0), U256::from(0), 0)
@@ -125,7 +135,12 @@ fn disable_average_price_work() {
 fn update_average_price_interval_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		set_pool(&AUSDDOTPair::get(), 1_000, 100);
-		assert_ok!(DexOracle::enable_average_price(Origin::signed(1), AUSD, DOT, 1000));
+		assert_ok!(DexOracle::enable_average_price(
+			RuntimeOrigin::signed(1),
+			AUSD,
+			DOT,
+			1000
+		));
 		assert_eq!(
 			DexOracle::average_prices(AUSDDOTPair::get()),
 			Some((
@@ -139,24 +154,24 @@ fn update_average_price_interval_work() {
 		);
 
 		assert_noop!(
-			DexOracle::update_average_price_interval(Origin::signed(0), AUSD, DOT, 0),
+			DexOracle::update_average_price_interval(RuntimeOrigin::signed(0), AUSD, DOT, 0),
 			BadOrigin
 		);
 		assert_noop!(
-			DexOracle::update_average_price_interval(Origin::signed(1), AUSD, LP_AUSD_DOT, 0),
+			DexOracle::update_average_price_interval(RuntimeOrigin::signed(1), AUSD, LP_AUSD_DOT, 0),
 			Error::<Runtime>::InvalidCurrencyId
 		);
 		assert_noop!(
-			DexOracle::update_average_price_interval(Origin::signed(1), ACA, DOT, 0),
+			DexOracle::update_average_price_interval(RuntimeOrigin::signed(1), ACA, DOT, 0),
 			Error::<Runtime>::AveragePriceMustBeEnabled
 		);
 		assert_noop!(
-			DexOracle::update_average_price_interval(Origin::signed(1), AUSD, DOT, 0),
+			DexOracle::update_average_price_interval(RuntimeOrigin::signed(1), AUSD, DOT, 0),
 			Error::<Runtime>::IntervalIsZero
 		);
 
 		assert_ok!(DexOracle::update_average_price_interval(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			AUSD,
 			DOT,
 			2000
@@ -180,7 +195,12 @@ fn try_update_cumulative_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		// initialize cumulative price
 		set_pool(&AUSDDOTPair::get(), 1_000, 100);
-		assert_ok!(DexOracle::enable_average_price(Origin::signed(1), AUSD, DOT, 1000));
+		assert_ok!(DexOracle::enable_average_price(
+			RuntimeOrigin::signed(1),
+			AUSD,
+			DOT,
+			1000
+		));
 		assert_eq!(
 			DexOracle::cumulatives(AUSDDOTPair::get()),
 			(U256::from(0), U256::from(0), 0)
@@ -237,7 +257,12 @@ fn on_initialize_work() {
 		// initialize average prices
 		assert_eq!(Timestamp::now(), 0);
 		set_pool(&AUSDDOTPair::get(), 1000, 100);
-		assert_ok!(DexOracle::enable_average_price(Origin::signed(1), AUSD, DOT, 1000));
+		assert_ok!(DexOracle::enable_average_price(
+			RuntimeOrigin::signed(1),
+			AUSD,
+			DOT,
+			1000
+		));
 		assert_eq!(
 			DexOracle::cumulatives(AUSDDOTPair::get()),
 			(U256::from(0), U256::from(0), 0)
@@ -254,7 +279,12 @@ fn on_initialize_work() {
 			))
 		);
 		set_pool(&ACADOTPair::get(), 1000, 1000);
-		assert_ok!(DexOracle::enable_average_price(Origin::signed(1), ACA, DOT, 2000));
+		assert_ok!(DexOracle::enable_average_price(
+			RuntimeOrigin::signed(1),
+			ACA,
+			DOT,
+			2000
+		));
 		assert_eq!(
 			DexOracle::cumulatives(ACADOTPair::get()),
 			(U256::from(0), U256::from(0), 0)

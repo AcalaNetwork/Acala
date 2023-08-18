@@ -1,7 +1,6 @@
-
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -58,50 +57,50 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn auction_collateral(b: u32, ) -> Weight {
-		(2_672_000 as Weight)
+		Weight::from_parts(2_672_000, 0)
 			// Standard Error: 326_000
-			.saturating_add((32_334_000 as Weight).saturating_mul(b as Weight))
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(b as Weight)))
+			.saturating_add(Weight::from_parts(32_334_000, 0).saturating_mul(b as u64))
+			.saturating_add(T::DbWeight::get().reads(6 as u64))
+			.saturating_add(T::DbWeight::get().writes(6 as u64))
+			.saturating_add(T::DbWeight::get().writes((3 as u64).saturating_mul(b as u64)))
 	}
 	fn exchange_collateral_to_stable() -> Weight {
-		(176_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(9 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+		Weight::from_parts(176_000_000, 0)
+			.saturating_add(T::DbWeight::get().reads(9 as u64))
+			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
 	fn set_expected_collateral_auction_size() -> Weight {
-		(25_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_parts(25_000_000, 0)
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	fn extract_surplus_to_treasury() -> Weight {
-		(75_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_parts(75_000_000, 0)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn auction_collateral(b: u32, ) -> Weight {
-		(2_672_000 as Weight)
-			.saturating_add((32_334_000 as Weight).saturating_mul(b as Weight))
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((3 as Weight).saturating_mul(b as Weight)))
+		Weight::from_parts(2_672_000, 0)
+			.saturating_add(Weight::from_parts(32_334_000, 0).saturating_mul(b as u64))
+			.saturating_add(RocksDbWeight::get().reads(6 as u64))
+			.saturating_add(RocksDbWeight::get().writes(6 as u64))
+			.saturating_add(RocksDbWeight::get().writes((3 as u64).saturating_mul(b as u64)))
 	}
 	fn exchange_collateral_to_stable() -> Weight {
-		(176_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(9 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
+		Weight::from_parts(176_000_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(9 as u64))
+			.saturating_add(RocksDbWeight::get().writes(6 as u64))
 	}
 	fn set_expected_collateral_auction_size() -> Weight {
-		(25_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_parts(25_000_000, 0)
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	fn extract_surplus_to_treasury() -> Weight {
-		(75_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		Weight::from_parts(75_000_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 }

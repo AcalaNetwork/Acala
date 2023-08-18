@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,12 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-	AccountId, ActiveSubAccountsIndexList, Balance, Currencies, GetLiquidCurrencyId, GetStakingCurrencyId, Homa, Rate,
-	RelaychainBlockNumberProvider, Runtime,
-};
+use crate::{AccountId, ActiveSubAccountsIndexList, Balance, Currencies, Homa, Rate, RelaychainDataProvider, Runtime};
 
-use super::utils::set_balance;
+use super::utils::{set_balance, LIQUID, STAKING};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
@@ -46,8 +43,8 @@ runtime_benchmarks! {
 		let redeemer: AccountId = account("redeemer", 0, SEED);
 		let sub_account_index = ActiveSubAccountsIndexList::get().first().unwrap().clone();
 
-		set_balance(GetStakingCurrencyId::get(), &minter, 1_000_000_000_000_000);
-		set_balance(GetLiquidCurrencyId::get(), &redeemer, 1_000_000_000_000_000 * 10);
+		set_balance(STAKING, &minter, 1_000_000_000_000_000);
+		set_balance(LIQUID, &redeemer, 1_000_000_000_000_000 * 10);
 		Homa::reset_ledgers(
 			RawOrigin::Root.into(),
 			vec![(sub_account_index, Some(1_000_000_000_000_000), Some(vec![UnlockChunk{value: 1_000_000_000_000, era: 10}]))]
@@ -60,7 +57,7 @@ runtime_benchmarks! {
 			Some(Rate::saturating_from_rational(20, 100)),
 			None,
 		)?;
-		RelaychainBlockNumberProvider::<Runtime>::set_block_number(10);
+		RelaychainDataProvider::<Runtime>::set_block_number(10);
 		Homa::update_bump_era_params(RawOrigin::Root.into(), None, Some(1))?;
 
 		Homa::mint(RawOrigin::Signed(minter).into(), 100_000_000_000_000)?;
@@ -80,14 +77,14 @@ runtime_benchmarks! {
 			None,
 			None,
 		)?;
-		set_balance(GetStakingCurrencyId::get(), &caller, amount * 2);
+		set_balance(STAKING, &caller, amount * 2);
 	}: _(RawOrigin::Signed(caller), amount)
 
 	request_redeem {
 		let caller: AccountId = whitelisted_caller();
 		let amount = 10_000_000_000_000;
 
-		set_balance(GetLiquidCurrencyId::get(), &caller, amount * 2);
+		set_balance(LIQUID, &caller, amount * 2);
 	}: _(RawOrigin::Signed(caller), amount, true)
 
 	fast_match_redeems {
@@ -96,7 +93,7 @@ runtime_benchmarks! {
 		let minter: AccountId = account("minter", 0, SEED);
 		let mint_amount = 1_000_000_000_000_000;
 
-		set_balance(GetStakingCurrencyId::get(), &minter, mint_amount * 2);
+		set_balance(STAKING, &minter, mint_amount * 2);
 		Homa::update_homa_params(
 			RawOrigin::Root.into(),
 			Some(mint_amount * 10),
@@ -110,7 +107,7 @@ runtime_benchmarks! {
 		let redeem_amount = 10_000_000_000_000;
 		for i in 0 .. n {
 			let redeemer = account("redeemer", i, SEED);
-			<Currencies as MultiCurrency<_>>::transfer(GetLiquidCurrencyId::get(), &minter, &redeemer, redeem_amount * 2)?;
+			<Currencies as MultiCurrency<_>>::transfer(LIQUID, &minter, &redeemer, redeem_amount * 2)?;
 			Homa::request_redeem(RawOrigin::Signed(redeemer.clone()).into(), redeem_amount, true)?;
 			redeem_request_list.push(redeemer);
 		}
@@ -122,7 +119,7 @@ runtime_benchmarks! {
 		let redeption_amount = 1_000_000_000_000;
 
 		module_homa::Unbondings::<Runtime>::insert(&redeemer, 1, redeption_amount);
-		set_balance(GetStakingCurrencyId::get(), &Homa::account_id(), redeption_amount);
+		set_balance(STAKING, &Homa::account_id(), redeption_amount);
 		module_homa::UnclaimedRedemption::<Runtime>::put(redeption_amount);
 		Homa::reset_current_era(RawOrigin::Root.into(), 1)?;
 	}: _(RawOrigin::Signed(caller), redeemer)
@@ -134,7 +131,9 @@ runtime_benchmarks! {
 		Some(Rate::saturating_from_rational(1, 100)),
 		Some(Rate::saturating_from_rational(1, 100)))
 
-	update_bump_era_params {}: _(RawOrigin::Root, Some(3000), Some(7200))
+	update_bump_era_params {
+		RelaychainDataProvider::<Runtime>::set_block_number(10000);
+	}: _(RawOrigin::Root, Some(3000), Some(7200))
 
 	reset_ledgers {
 		let n in 0 .. 10;

@@ -1,10 +1,11 @@
 <p align="center">
-  <img src="https://acala.subdao.com/logo/acala-logo-horizontal-gradient.png" width="460">
+  <img src="https://acala.polkawallet-cloud.com/logo/acala-logo-horizontal-gradient.png" width="460">
 </p>
 
 <div align="center">
 
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/AcalaNetwork/Acala/Test?label=Actions&logo=github)](https://github.com/AcalaNetwork/Acala/actions?query=workflow%3ATest)
+
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/AcalaNetwork/Acala/test.yml?label=Actions&logo=github)](https://github.com/AcalaNetwork/Acala/actions)
 [![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/tags)
 [![Substrate version](https://img.shields.io/badge/Substrate-2.0.0-brightgreen?logo=Parity%20Substrate)](https://substrate.io/)
 [![codecov](https://codecov.io/gh/AcalaNetwork/Acala/branch/master/graph/badge.svg?token=ERf7EDgafw)](https://codecov.io/gh/AcalaNetwork/Acala)
@@ -32,12 +33,12 @@
 <!-- /TOC -->
 
 # 1. Introduction
-This project is initiated and facilitated by the Acala Foundation. Acala Foundation nurtures applications in the fields of decentralized finance protocols, particularly those that serve as open finance infrastructures such as stable currency and staking liquidity. The Acala Foundation is founded by [Laminar](https://laminar.one/) and [Polkawallet](https://polkawallet.io/) , participants and contributors to the Polkadot ecosystem. The Acala Foundation welcomes more industry participants as it progresses.
+This project is initiated and facilitated by the Acala Foundation. Acala Foundation nurtures applications in the fields of decentralized finance protocols, particularly those that serve as open finance infrastructures such as stable currency and staking liquidity. The Acala Foundation is founded by [Laminar](https://laminar.one/) and [Polkawallet](https://polkawallet.io/), participants and contributors to the Polkadot ecosystem. The Acala Foundation welcomes more industry participants as it progresses.
 
 # 2. Overview
 The significance of cross-chain communication to the blockchain is like that of the internet to the intranet. Polkadot empowers a network of public, consortium and private blockchains, and enables true interoperability, economic and transactional scalability. A cross-chain stablecoin system will:
 1. Create a sound, stable currency for low cost, borderless value transfer for all chains in the network
-2. Enable commerical lending with predictable risk
+2. Enable commercial lending with predictable risk
 3. Serve as a building block for more open finance services
 
 The Acala Dollar stablecoin (ticker: aUSD) is a multi-collateral-backed cryptocurrency, with value stable against US Dollar (aka. 1:1 aUSD to USD soft peg). It is completely decentralized, that it can be created using assets from blockchains connected to the Polkadot network including Ethereum and Bitcoin as collaterals, and can be used by any chains (or digital jurisdictions) within the Polkadot network and applications on those chains.
@@ -93,7 +94,7 @@ curl https://sh.rustup.rs -sSf | sh
 You may need additional dependencies, checkout [substrate.io](https://docs.substrate.io/v3/getting-started/installation) for more info
 
 ```bash
-sudo apt-get install -y git clang curl libssl-dev llvm libudev-dev
+sudo apt-get install -y git clang curl make libssl-dev llvm libudev-dev protobuf-compiler
 ```
 
 Make sure you have `submodule.recurse` set to true to make life with submodule easier.
@@ -160,9 +161,9 @@ Bench bot can take care of syncing branch with `master` and generating WeightInf
 
 ## Generate module weights
 
-Comment on a PR `/bench runtime module <module_name>` i.e.: `module_currencies`
+Comment on a PR `/bench module <module_name>` i.e.: `module_currencies`
 
-Bench bot will do the benchmarking, generate `weights.rs` file push changes into your branch.
+Bench bot will do the benchmarking, generate `weights.rs` file and push changes into your branch.
 
 ## Generate runtime weights
 
@@ -170,7 +171,7 @@ Comment on a PR `/bench runtime <runtime> <module_name>` i.e.: `/bench runtime m
 
 To generate weights for all modules just pass `*` as `module_name` i.e: `/bench runtime mandala *`
 
-Bench bot will do the benchmarking, generate weights file push changes into your branch.
+Bench bot will do the benchmarking, generate weights file and push changes into your branch.
 
 ## Bench Acala EVM+
 
@@ -185,20 +186,31 @@ If modify the storage, should test the data migration before upgrade the runtime
 try-runtime on karura
 
 ```bash
-# Use a live chain to run the migration test and save state snapshot to file `snapshot.bin`.
-# Add `-m module_name` can specify the module.
-cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws --at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 -s /tmp/snapshot.bin
+# Use a live chain to run the migration test.
+# Add `-p module_name` can specify the module.
+make try-runtime-karura
 
- # Use a state snapshot to run the migration test.
-cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade snap -s /tmp/snapshot.bin
+# Create a state snapshot to run the migration test.
+# Add `--pallet module_name` can specify the module.
+cargo run --features with-karura-runtime --features try-runtime -- try-runtime --runtime existing create-snapshot --uri wss://karura.api.onfinality.io:443/public-ws karura-latest.snap
+
+# Use a state snapshot to run the migration test.
+./target/release/acala try-runtime --runtime ./target/release/wbuild/karura-runtime/karura_runtime.compact.compressed.wasm --chain=karura-dev on-runtime-upgrade snap -s karura-latest.snap
 ```
 
 try-runtime on acala
 
 ```bash
-cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+# Use a live chain to run the migration test.
+# Add `--pallet module_name` can specify the module.
+make try-runtime-acala
 
-cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev on-runtime-upgrade snap -s /tmp/snapshot.bin
+# Create a state snapshot to run the migration test.
+# Add `-palet module_name` can specify the module.
+cargo run --features with-acala-runtime --features try-runtime -- try-runtime --runtime existing create-snapshot --uri wss://acala.api.onfinality.io:443/public-ws acala-latest.snap
+
+# Use a state snapshot to run the migration test.
+./target/release/acala try-runtime --runtime ./target/release/wbuild/acala-runtime/acala_runtime.compact.compressed.wasm --chain=acala-dev on-runtime-upgrade snap -s acala-latest.snap
 ```
 
 # 9. Run local testnet with [parachain-launch](https://github.com/open-web3-stack/parachain-launch)
@@ -243,49 +255,16 @@ docker volume rm [volume_name]
 docker volume prune
 ```
 
-# 10. Run local testnet with [polkadot-launch](https://github.com/paritytech/polkadot-launch)
-
-copy acala related launch json to polkadot-launch:
-
-```bash
-# $polkadot-launch is the home of polkadot-launch
-cp scripts/polkadot-launch/*.json $polkadot-launch/
-```
-
-build polkadot:
-
-```bash
-git clone -n https://github.com/paritytech/polkadot.git
-cargo build --release
-cp target/release/polkadot /tmp/polkadot
-```
-
-build karura:
-
-```bash
-make build-karura-release
-```
-
-launch polkadot and parachain with json config file in polkadot-launch:
-
-```bash
-polkadot-launch acala-launch.json
-```
-
-there're other json file that will run both karura and other parachain.
-- scripts/polkadot-launch/acala-statemine.json: run karura and statemine
-- scripts/polkadot-launch/acala-bifrost.json: run karura and bifrost
-
-# 11. Build For Release
+# 10. Build For Release
 
 For release artifacts, a more optimized build config is used.
-This config takes around 2x to 3x longer to build, but produces an more optimized binary to run.
+This config takes around 2x to 3x longer to build, but produces a more optimized binary to run.
 
 ```bash
 make build-release
 ```
 
-# 12. Setup Local EVM+ Test Enviroment
+# 11. Setup Local EVM+ Test Environment
 
 To set up a basic local network you need two things running locally, a node and the eth-rpc-adapter. Setup each service in their respective terminals and then you are free to use your favorite EVM tools locally! (ex: hardhat)
 
@@ -315,4 +294,4 @@ docker run -it --rm -p 9944:9944 -p 9933:9933 ghcr.io/acalanetwork/mandala-node:
 npx @acala-network/eth-rpc-adapter -l 1
 ```
 
-Note: If your usecase needs `eth_getLogs` rpc call, then you need to have a subquery instance to index the local chain. For this case, follow the tutorial found here: [Local Network Tutorial](https://evmdocs.acala.network/network/network-setup/local-development-network)
+Note: If your use case needs `eth_getLogs` rpc call, then you need to have a subquery instance to index the local chain. For this case, follow the tutorial found here: [Local Network Tutorial](https://evmdocs.acala.network/network/network-setup/local-development-network)
