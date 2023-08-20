@@ -35,44 +35,6 @@ use sp_runtime::{traits::BadOrigin, AccountId32};
 use std::str::FromStr;
 
 #[test]
-fn inc_nonce_if_needed() {
-	new_test_ext().execute_with(|| {
-		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(1));
-
-		let mut call_info = CallInfo {
-			exit_reason: ExitReason::Succeed(ExitSucceed::Returned),
-			value: vec![],
-			used_gas: Default::default(),
-			used_storage: 0,
-			logs: vec![],
-		};
-
-		// succeed call won't inc nonce
-		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
-		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(1));
-
-		call_info.exit_reason = ExitReason::Revert(ExitRevert::Reverted);
-		// revert call will inc nonce
-		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
-		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(2));
-
-		call_info.exit_reason = ExitReason::Fatal(ExitFatal::NotSupported);
-		// fatal call will inc nonce
-		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
-		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(3));
-
-		call_info.exit_reason = ExitReason::Error(ExitError::OutOfGas);
-		// error call will inc nonce
-		Pallet::<Runtime>::inc_nonce_if_needed(&alice(), &Ok(call_info.clone()));
-		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(4));
-
-		// dispatch error will inc nonce
-		Pallet::<Runtime>::inc_nonce_if_needed::<H160>(&alice(), &Err(Error::<Runtime>::InvalidDecimals.into()));
-		assert_eq!(EVM::account_basic(&alice()).nonce, U256::from(5));
-	});
-}
-
-#[test]
 fn fail_call_return_ok_and_inc_nonce() {
 	new_test_ext().execute_with(|| {
 		let mut data = [5u8; 32];
@@ -106,6 +68,34 @@ fn fail_call_return_ok_and_inc_nonce() {
 		assert_ok!(EVM::call(origin, contract_b(), Vec::new(), 1111, 1000000, 0, vec![]));
 		// nonce inc by 1
 		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(3));
+	});
+}
+
+#[test]
+fn inc_nonce_with_revert() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Foo {
+	//     constructor() public {
+	// 		require(false, "error message");
+	// 	}
+	// }
+	let contract = from_hex(
+		"0x6080604052348015600f57600080fd5b5060006083576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040180806020018281038252600d8152602001807f6572726f72206d6573736167650000000000000000000000000000000000000081525060200191505060405180910390fd5b603e8060906000396000f3fe6080604052600080fdfea265627a7a723158204741083d83bf4e3ee8099dd0b3471c81061237c2e8eccfcb513dfa4c04634b5b64736f6c63430005110032").unwrap();
+
+	new_test_ext().execute_with(|| {
+		let alice = alice();
+		let account = MockAddressMapping::get_account_id(&alice);
+		let origin = RuntimeOrigin::signed(account);
+
+		// alice starts with nonce 1
+		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(1));
+
+		// revert call
+		assert_ok!(EVM::create(origin.clone(), contract, 0, 1000000, 0, vec![]));
+
+		// nonce inc by 1
+		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(2));
 	});
 }
 
