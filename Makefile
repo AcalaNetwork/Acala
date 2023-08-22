@@ -161,6 +161,7 @@ test-runtimes:
 
 .PHONY: test-e2e
 test-e2e:
+	# TODO: use cargo-nextest
 	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test --test-threads=1
 
 .PHONY: test-ts
@@ -169,8 +170,8 @@ test-ts: build-mandala-internal-release
 
 .PHONY: test-benchmarking
 test-benchmarking:
-	${cargo_test} --features bench --package module-evm --package runtime-common
-	${cargo_test} --features runtime-benchmarks --features with-all-runtime --all benchmarking
+	SKIP_WASM_BUILD= ${cargo_test} --features bench --package module-evm --package runtime-common
+	SKIP_WASM_BUILD= ${cargo_test} --features runtime-benchmarks --features with-all-runtime --all benchmarking
 
 .PHONY: test-all
 test-all: test-runtimes test-eth test-benchmarking
