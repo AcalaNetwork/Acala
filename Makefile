@@ -1,5 +1,5 @@
 # use `cargo nextest run` if cargo-nextest is installed
-cargo_test = SKIP_WASM_BUILD= $(shell which cargo-nextest >/dev/null && echo "cargo nextest run" || echo "cargo test")
+cargo_test = $(shell which cargo-nextest >/dev/null && echo "cargo nextest run" || echo "cargo test")
 
 .PHONY: run
 run:
@@ -140,24 +140,24 @@ try-runtime-acala:
 
 .PHONY: test
 test: githooks
-	${cargo_test} --features with-mandala-runtime --all
+	SKIP_WASM_BUILD= ${cargo_test} --features with-mandala-runtime --all
 
 .PHONY: test-eth
 test-eth: githooks test-evm
-	${cargo_test} -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
-	${cargo_test} -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
-	${cargo_test} -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_handle_invalid_input
+	SKIP_WASM_BUILD= ${cargo_test} -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
+	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
+	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_handle_invalid_input
 
 .PHONY: test-evm
 test-evm: githooks
-	${cargo_test} --release -p evm-jsontests --features evm-tests
+	SKIP_WASM_BUILD= ${cargo_test} --release -p evm-jsontests --features evm-tests
 
 .PHONY: test-runtimes
 test-runtimes:
-	${cargo_test} --all --features with-all-runtime --lib
-	${cargo_test} -p runtime-integration-tests --features=with-mandala-runtime --lib
-	${cargo_test} -p runtime-integration-tests --features=with-karura-runtime --lib
-	${cargo_test} -p runtime-integration-tests --features=with-acala-runtime --lib
+	SKIP_WASM_BUILD= ${cargo_test} --all --features with-all-runtime --lib
+	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-mandala-runtime --lib
+	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-karura-runtime --lib
+	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-acala-runtime --lib
 
 .PHONY: test-e2e
 test-e2e:
