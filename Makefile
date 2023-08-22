@@ -1,3 +1,6 @@
+# use `cargo nextest run` if cargo-nextest is installed
+cargo_test = SKIP_WASM_BUILD= $(shell which cargo-nextest >/dev/null && echo "cargo nextest run" || echo "cargo test")
+
 .PHONY: run
 run:
 	cargo run --features with-mandala-runtime -- --dev -lruntime=debug --instant-sealing
@@ -137,28 +140,28 @@ try-runtime-acala:
 
 .PHONY: test
 test: githooks
-	SKIP_WASM_BUILD= cargo nextest run --features with-mandala-runtime --all
+	${cargo_test} --features with-mandala-runtime --all
 
 .PHONY: test-eth
 test-eth: githooks test-evm
-	SKIP_WASM_BUILD= cargo nextest run -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
-	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
-	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_handle_invalid_input
+	${cargo_test} -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
+	${cargo_test} -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
+	${cargo_test} -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_handle_invalid_input
 
 .PHONY: test-evm
 test-evm: githooks
-	SKIP_WASM_BUILD= cargo nextest run --release -p evm-jsontests --features evm-tests
+	${cargo_test} --release -p evm-jsontests --features evm-tests
 
 .PHONY: test-runtimes
 test-runtimes:
-	SKIP_WASM_BUILD= cargo nextest run --all --features with-all-runtime --lib
-	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-mandala-runtime --lib
-	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-karura-runtime --lib
-	SKIP_WASM_BUILD= cargo nextest run -p runtime-integration-tests --features=with-acala-runtime --lib
+	${cargo_test} --all --features with-all-runtime --lib
+	${cargo_test} -p runtime-integration-tests --features=with-mandala-runtime --lib
+	${cargo_test} -p runtime-integration-tests --features=with-karura-runtime --lib
+	${cargo_test} -p runtime-integration-tests --features=with-acala-runtime --lib
 
 .PHONY: test-e2e
 test-e2e:
-	cargo nextest run --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test --test-threads=1
+	${cargo_test} --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test --test-threads=1
 
 .PHONY: test-ts
 test-ts: build-mandala-internal-release
@@ -166,8 +169,8 @@ test-ts: build-mandala-internal-release
 
 .PHONY: test-benchmarking
 test-benchmarking:
-	cargo nextest run --features bench --package module-evm --package runtime-common
-	cargo nextest run --features runtime-benchmarks --features with-all-runtime --all benchmarking
+	${cargo_test} --features bench --package module-evm --package runtime-common
+	${cargo_test} --features runtime-benchmarks --features with-all-runtime --all benchmarking
 
 .PHONY: test-all
 test-all: test-runtimes test-eth test-benchmarking
