@@ -28,13 +28,14 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: [clean-up-actions, build-cache]
+    needs: cargo-cache
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
       - uses: actions/cache/restore@v3
         with:
+          path: ~/.cargo/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
@@ -62,14 +63,21 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: [clean-up-actions, build-cache]
+    needs: cargo-target-cache
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
       - uses: actions/cache/restore@v3
         with:
+          path: |
+            ~/.cargo/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions/cache/restore@v3
+        with:
+          path: |
+            target/
+          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
@@ -86,14 +94,21 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: [clean-up-actions, build-cache]
+    needs: cargo-target-cache
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
       - uses: actions/cache/restore@v3
         with:
+          path: |
+            ~/.cargo/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions/cache/restore@v3
+        with:
+          path: |
+            target/
+          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
@@ -118,14 +133,21 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: [clean-up-actions, build-cache]
+    needs: cargo-target-cache
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
       - uses: actions/cache/restore@v3
         with:
+          path: |
+            ~/.cargo/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions/cache/restore@v3
+        with:
+          path: |
+            target/
+          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
@@ -144,7 +166,7 @@ jobs:
         run: |
           npm install -g yarn
           make test-ts
-  build-cache:
+  cargo-cache:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
@@ -160,9 +182,36 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly-2023-04-15
+          components: rustfmt
+          target: wasm32-unknown-unknown
+      - name: Fetch dependencies
+        run: cargo fetch --locked
+
+  target-cache:
+    runs-on: [self-hosted, linux]
+    env:
+      CARGO_INCREMENTAL: 0
+    needs: cargo-cache
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - uses: actions/cache/restore@v3
+        with:
+          path: |
+            ~/.cargo/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions/cache@v3
+        with:
+          path: |
             target/
             !target/debug/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
