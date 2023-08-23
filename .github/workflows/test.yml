@@ -24,7 +24,7 @@ jobs:
         uses: styfle/cancel-workflow-action@0.11.0
         with:
           access_token: ${{ github.token }}
-  build:
+  fmt-clippy:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
@@ -47,8 +47,6 @@ jobs:
         uses: jwlawson/actions-setup-cmake@v1.13
       - name: Check format
         run: cargo fmt --all -- --check
-      - name: Build
-        run: make build-all
       - name: Install clippy
         run: rustup component add clippy
       - name: Run mandala-runtime clippy
@@ -57,13 +55,11 @@ jobs:
         run: cargo clippy --features with-karura-runtime -- -D warnings
       - name: Run acala-runtime clippy
         run: cargo clippy --features with-acala-runtime -- -D warnings
-      - name: Run build benches
-        run: make build-benches
   benchmarking:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: target-cache
+    needs: build
     steps:
       - uses: actions/checkout@v3
         with:
@@ -94,7 +90,7 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: target-cache
+    needs: build
     steps:
       - uses: actions/checkout@v3
         with:
@@ -133,7 +129,7 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: target-cache
+    needs: build
     steps:
       - uses: actions/checkout@v3
         with:
@@ -188,7 +184,7 @@ jobs:
       - name: Fetch dependencies
         run: cargo fetch --locked
 
-  target-cache:
+  build:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
@@ -216,4 +212,6 @@ jobs:
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run build
-        run: cargo build --lib
+        run: make build-all
+      - name: Run build benches
+        run: make build-benches
