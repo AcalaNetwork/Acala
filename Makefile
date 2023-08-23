@@ -1,5 +1,5 @@
 # use `cargo nextest run` if cargo-nextest is installed
-cargo_test = $(shell which cargo-nextest >/dev/null && echo "cargo nextest run --release" || echo "cargo test --release")
+cargo_test = $(shell which cargo-nextest >/dev/null && echo "cargo nextest run" || echo "cargo test")
 
 .PHONY: run
 run:
@@ -150,7 +150,7 @@ test-eth: githooks test-evm
 
 .PHONY: test-evm
 test-evm: githooks
-	SKIP_WASM_BUILD= ${cargo_test} -p evm-jsontests --features evm-tests
+	SKIP_WASM_BUILD= ${cargo_test} --release -p evm-jsontests --features evm-tests
 
 .PHONY: test-runtimes
 test-runtimes:
