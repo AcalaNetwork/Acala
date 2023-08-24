@@ -3236,7 +3236,8 @@ name = "evm-jsontests"
 version = "0.13.1"
 dependencies = [
  "acala-primitives",
- "env_logger 0.9.3",
+ "env_logger 0.10.0",
+ "ethereum",
  "ethjson",
  "frame-support",
  "frame-system",
@@ -3264,7 +3265,6 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
- "triehash-ethereum",
 ]
 
 [[package]]
@@ -5022,16 +5022,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f6d5ed8676d904364de097082f4e7d240b571b67989ced0240f08b7f966f940"
 dependencies = [
  "cpufeatures",
-]
-
-[[package]]
-name = "keccak-hasher"
-version = "0.1.1"
-dependencies = [
- "ethereum-types",
- "hash-db 0.15.2",
- "plain_hasher",
- "tiny-keccak",
 ]
 
 [[package]]
@@ -9260,15 +9250,6 @@ name = "pkg-config"
 version = "0.3.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26072860ba924cbfa98ea39c8c19b4dd6a4a25423dbdf219c1eca91aa0cf6964"
-
-[[package]]
-name = "plain_hasher"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e19e6491bdde87c2c43d70f4c194bc8a758f2eb732df00f61e43f7362e3b4cc"
-dependencies = [
- "crunchy",
-]
 
 [[package]]
 name = "platforms"
@@ -15216,15 +15197,6 @@ checksum = "a1631b201eb031b563d2e85ca18ec8092508e262a3196ce9bd10a67ec87b9f5c"
 dependencies = [
  "hash-db 0.15.2",
  "rlp",
-]
-
-[[package]]
-name = "triehash-ethereum"
-version = "0.2.0"
-dependencies = [
- "ethereum-types",
- "keccak-hasher",
- "triehash",
 ]
 
 [[package]]
