@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(any(test, feature = "bench"))]
+#![cfg(any(test, feature = "wasm-bench"))]
 
 use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, Weight};
 use codec::{Decode, Encode, MaxEncodedLen};

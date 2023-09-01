@@ -43,8 +43,8 @@ build-all:
 
 .PHONY: build-benches
 build-benches:
-	cargo bench --locked --no-run --features bench --package module-evm
-	cargo bench --locked --no-run --features bench --package runtime-common
+	cargo bench --locked --no-run --features wasm-bench --package module-evm
+	cargo bench --locked --no-run --features wasm-bench --package runtime-common
 
 .PHONY: build-release
 build-release:
@@ -277,5 +277,5 @@ clippy-fix:
 
 .PHONY: bench-evm
 bench-evm:
-	cargo bench -p runtime-common --features bench | cargo run --bin weight-gen -- --template ./templates/precompile-weight-template.hbs --output runtime/common/src/precompile/weights.rs
-	cargo bench -p module-evm --features bench | evm-bench/analyze_benches.js runtime/common/src/gas_to_weight_ratio.rs
+	cargo bench -p runtime-common --features wasm-bench -- json | weight-gen --template ./templates/precompile-weight-template.hbs --output runtime/common/src/precompile/weights.rs
+	cargo bench -p module-evm --features wasm-bench -- json | evm-bench/analyze_benches.js runtime/common/src/gas_to_weight_ratio.rs
