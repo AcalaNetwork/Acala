@@ -17,11 +17,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{xcm_impl::AccountKey20Aliases, AccountId, Balance, Convert, CurrencyId};
-use codec::{Decode, Encode};
 use frame_support::{
-	match_types, parameter_types,
-	traits::{ConstU32, Everything, Get, Nothing},
-	weights::Weight,
+	match_types,
+	traits::{ConstU32, Everything, Get},
 };
 use orml_traits::MultiCurrency;
 use pallet_xcm::XcmPassthrough;
@@ -29,10 +27,9 @@ use polkadot_parachain::primitives::Sibling;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
-	AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, NativeAsset,
-	ParentAsSuperuser, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
-	TrailingSetTopicAsId, WithComputedOrigin,
+	ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
+	SignedAccountId32AsNative, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit, TrailingSetTopicAsId,
+	WithComputedOrigin,
 };
 
 /// Type for specifying how a `MultiLocation` can be converted into an `AccountId`. This is used
