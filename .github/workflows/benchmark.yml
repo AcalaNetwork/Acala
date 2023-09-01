@@ -50,7 +50,7 @@ jobs:
                 const palletFolder = pallet.split('_').slice(1).join('-').trim()
                 return `make benchmark-module options="--quiet --color=never" pallet=${pallet} pallet_folder=${palletFolder}`
               case 'evm':
-                return 'make bench-evm'
+                return 'cargo install --git https://github.com/open-web3-stack/wasm-bencher.git --bin weight-gen && make bench-evm'
               default:
                 throw new Error('Invalid command')
             }
