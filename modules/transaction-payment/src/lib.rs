@@ -54,7 +54,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	FixedPointNumber, FixedPointOperand, MultiSignature, Percent, Perquintill,
+	FixedPointNumber, FixedPointOperand, Percent, Perquintill,
 };
 use sp_std::prelude::*;
 use support::{AggregatedSwapPath, BuyWeightRate, PriceProvider, Ratio, Swap, SwapLimit, TransactionPayment};
@@ -639,22 +639,6 @@ pub mod module {
 			call.dispatch(origin)
 		}
 
-		/// Wrap call with fee paid by other account
-		#[pallet::call_index(5)]
-		#[pallet::weight({
-			let dispatch_info = call.get_dispatch_info();
-			(T::WeightInfo::with_fee_paid_by().saturating_add(dispatch_info.weight), dispatch_info.class,)
-		})]
-		pub fn with_fee_paid_by(
-			origin: OriginFor<T>,
-			call: Box<CallOf<T>>,
-			_payer_addr: T::AccountId,
-			_payer_sig: MultiSignature,
-		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin.clone())?;
-			call.dispatch(origin)
-		}
-
 		/// Dapp wrap call, and user pay tx fee as provided aggregated swap path. this dispatch call
 		/// should make sure the trading path is valid.
 		#[pallet::call_index(6)]
@@ -931,16 +915,6 @@ where
 					)
 					.map(|_| (who.clone(), custom_fee_surplus))
 				}
-			}
-			Some(Call::with_fee_paid_by {
-				call: _,
-				payer_addr,
-				payer_sig: _,
-			}) => {
-				// validate payer signature in runtime side, because `SignedExtension` between different runtime
-				// may be different.
-				Self::native_then_alternative_or_default(payer_addr, fee, WithdrawReasons::TRANSACTION_PAYMENT)
-					.map(|surplus| (payer_addr.clone(), surplus))
 			}
 			_ => Self::native_then_alternative_or_default(who, fee, reason).map(|surplus| (who.clone(), surplus)),
 		}
