@@ -65,6 +65,7 @@ use std::{collections::btree_map::BTreeMap, str::FromStr};
 pub mod bench;
 pub mod check_nonce;
 pub mod precompile;
+pub mod xcm_config;
 pub mod xcm_impl;
 
 mod gas_to_weight_ratio;

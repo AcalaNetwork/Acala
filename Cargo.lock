@@ -11474,6 +11474,7 @@ version = "2.20.0"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-parachain-system",
+ "cumulus-pallet-xcm",
  "ethabi",
  "frame-support",
  "frame-system",

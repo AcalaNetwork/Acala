@@ -1576,7 +1576,7 @@ impl module_xcm_interface::Config for Runtime {
 	type RelayChainCallBuilder = RelayChainCallBuilder<ParachainInfo>;
 	type XcmTransfer = XTokens;
 	type SelfLocation = xcm_config::SelfLocation;
-	type AccountIdToMultiLocation = xcm_config::AccountIdToMultiLocation;
+	type AccountIdToMultiLocation = runtime_common::xcm_config::AccountIdToMultiLocation;
 }
 
 impl orml_unknown_tokens::Config for Runtime {
