@@ -876,12 +876,14 @@ fn on_initialize_should_work() {
 				(PoolId::Loans(DOT), vec![(ACA, 2000), (LDOT, 50)]),
 				(PoolId::Dex(BTC_AUSD_LP), vec![(ACA, 100)]),
 				(PoolId::Dex(DOT_AUSD_LP), vec![(ACA, 200)]),
+				(PoolId::Earning(ACA), vec![(ACA, 100)]),
 			],
 		));
 
 		RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(BTC), 1);
 		RewardsModule::add_share(&ALICE::get(), &PoolId::Dex(BTC_AUSD_LP), 1);
 		RewardsModule::add_share(&ALICE::get(), &PoolId::Dex(DOT_AUSD_LP), 1);
+		RewardsModule::add_share(&ALICE::get(), &PoolId::Earning(ACA), 1);
 
 		assert_eq!(TokensModule::free_balance(ACA, &RewardsSource::get()), 10000);
 		assert_eq!(TokensModule::free_balance(AUSD, &RewardsSource::get()), 10000);
@@ -917,6 +919,13 @@ fn on_initialize_should_work() {
 				..Default::default()
 			}
 		);
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Earning(ACA)),
+			PoolInfo {
+				total_shares: 1,
+				..Default::default()
+			}
+		);
 
 		// per 10 blocks will accumulate rewards, nothing happened when on_initialize(9)
 		IncentivesModule::on_initialize(9);
@@ -927,11 +936,11 @@ fn on_initialize_should_work() {
 		IncentivesModule::on_initialize(10);
 		assert_eq!(
 			TokensModule::free_balance(ACA, &RewardsSource::get()),
-			10000 - (1000 + 200 + 100)
+			10000 - (1000 + 200 + 100 + 100)
 		);
 		assert_eq!(TokensModule::free_balance(AUSD, &RewardsSource::get()), 10000 - 500);
 		assert_eq!(TokensModule::free_balance(LDOT, &RewardsSource::get()), 10000);
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 1000 + 200 + 100);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 1000 + 200 + 100 + 100);
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 500);
 		assert_eq!(TokensModule::free_balance(LDOT, &VAULT::get()), 0);
 		// 1000 ACA and 500 AUSD are incentive reward
@@ -966,6 +975,14 @@ fn on_initialize_should_work() {
 				rewards: vec![(ACA, (200, 0))].into_iter().collect(),
 			}
 		);
+		// 100 ACA is incentive reward
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Earning(ACA)),
+			PoolInfo {
+				total_shares: 1,
+				rewards: vec![(ACA, (100, 0))].into_iter().collect(),
+			}
+		);
 
 		// add share for PoolId::Loans(DOT)
 		RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(DOT), 1);
@@ -980,13 +997,13 @@ fn on_initialize_should_work() {
 		IncentivesModule::on_initialize(20);
 		assert_eq!(
 			TokensModule::free_balance(ACA, &RewardsSource::get()),
-			8700 - (1000 + 2000 + 100 + 200)
+			8600 - (1000 + 2000 + 100 + 200 + 100)
 		);
 		assert_eq!(TokensModule::free_balance(AUSD, &RewardsSource::get()), 9500 - 500);
 		assert_eq!(TokensModule::free_balance(LDOT, &RewardsSource::get()), 10000 - 50);
 		assert_eq!(
 			TokensModule::free_balance(ACA, &VAULT::get()),
-			1300 + (1000 + 2000 + 100 + 200)
+			1400 + (1000 + 2000 + 100 + 200 + 100)
 		);
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 500 + 500); // 500 from RewardsSource
 		assert_eq!(TokensModule::free_balance(LDOT, &VAULT::get()), 0 + 50);
@@ -1022,16 +1039,24 @@ fn on_initialize_should_work() {
 				rewards: vec![(ACA, (400, 0))].into_iter().collect(),
 			}
 		);
+		// 100 ACA is incentive reward
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Earning(ACA)),
+			PoolInfo {
+				total_shares: 1,
+				rewards: vec![(ACA, (200, 0))].into_iter().collect(),
+			}
+		);
 
 		mock_shutdown();
 		IncentivesModule::on_initialize(30);
 		assert_eq!(
 			TokensModule::free_balance(ACA, &RewardsSource::get()),
-			5400 - (100 + 200)
+			5200 - (100 + 200 + 100)
 		);
 		assert_eq!(TokensModule::free_balance(AUSD, &RewardsSource::get()), 9000);
 		assert_eq!(TokensModule::free_balance(LDOT, &RewardsSource::get()), 9950);
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 4600 + (100 + 200));
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 4800 + (100 + 200 + 100));
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 1000);
 		assert_eq!(TokensModule::free_balance(LDOT, &VAULT::get()), 50);
 		// PoolId::Loans will not accumulate incentive rewards after shutdown
@@ -1066,6 +1091,15 @@ fn on_initialize_should_work() {
 			PoolInfo {
 				total_shares: 1,
 				rewards: vec![(ACA, (600, 0))].into_iter().collect(),
+			}
+		);
+		// after shutdown, PoolId::Dex will accumulate incentive rewards
+		// reward
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::Earning(ACA)),
+			PoolInfo {
+				total_shares: 1,
+				rewards: vec![(ACA, (300, 0))].into_iter().collect(),
 			}
 		);
 	});

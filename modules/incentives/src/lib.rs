@@ -187,15 +187,17 @@ pub mod module {
 					if !pool_info.total_shares.is_zero() {
 						match pool_id {
 							// do not accumulate incentives for PoolId::Loans after shutdown
-							PoolId::Loans(_) if !shutdown => {
+							PoolId::Loans(_) if shutdown => {
+								log::debug!(
+									target: "incentives",
+									"on_initialize: skip accumulate incentives for pool {:?} after shutdown",
+									pool_id
+								);
+							}
+							_ => {
 								count += 1;
 								Self::accumulate_incentives(pool_id);
 							}
-							PoolId::Dex(_) => {
-								count += 1;
-								Self::accumulate_incentives(pool_id);
-							}
-							_ => {}
 						}
 					}
 				}
