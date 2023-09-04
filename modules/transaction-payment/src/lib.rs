@@ -639,6 +639,9 @@ pub mod module {
 			call.dispatch(origin)
 		}
 
+		// call index 5 with_fee_paid_by was removed
+		// https://github.com/AcalaNetwork/Acala/pull/2601
+
 		/// Dapp wrap call, and user pay tx fee as provided aggregated swap path. this dispatch call
 		/// should make sure the trading path is valid.
 		#[pallet::call_index(6)]
