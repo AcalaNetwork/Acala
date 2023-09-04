@@ -1093,7 +1093,7 @@ fn on_initialize_should_work() {
 				rewards: vec![(ACA, (600, 0))].into_iter().collect(),
 			}
 		);
-		// after shutdown, PoolId::Dex will accumulate incentive rewards
+		// after shutdown, PoolId::Earning will accumulate incentive rewards
 		// reward
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Earning(ACA)),
