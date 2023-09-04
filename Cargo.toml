@@ -120,6 +120,15 @@ x25519-dalek = { opt-level = 3 }
 yamux = { opt-level = 3 }
 zeroize = { opt-level = 3 }
 
+[workspace.dependencies]
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
+
 [patch."https://github.com/paritytech/substrate"]
 binary-merkle-tree = { git = "https://github.com/paritytech//substrate", rev = "948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d" }
 frame-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d" }

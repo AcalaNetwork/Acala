@@ -24,8 +24,7 @@ use crate::{
 		state::{Accessed, CustomStackState, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
 		Runner as RunnerT, RunnerExtended,
 	},
-	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, One, Pallet,
-	STORAGE_SIZE,
+	AccountStorages, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, Pallet, STORAGE_SIZE,
 };
 use frame_support::{
 	dispatch::DispatchError,
@@ -657,7 +656,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 
 	#[cfg(feature = "evm-tests")]
 	fn exists(&self, address: H160) -> bool {
-		Accounts::<T>::contains_key(&address) || self.substate.is_account_dirty(address)
+		crate::Accounts::<T>::contains_key(&address) || self.substate.is_account_dirty(address)
 	}
 
 	#[cfg(not(feature = "evm-tests"))]
@@ -729,15 +728,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn inc_nonce(&mut self, address: H160) {
-		Accounts::<T>::mutate(address, |maybe_account| {
-			if let Some(account) = maybe_account.as_mut() {
-				account.nonce += One::one()
-			} else {
-				let mut account_info = <AccountInfo<T::Nonce>>::new(Default::default(), None);
-				account_info.nonce += One::one();
-				*maybe_account = Some(account_info);
-			}
-		});
+		Pallet::<T>::inc_nonce(&address);
 	}
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) {

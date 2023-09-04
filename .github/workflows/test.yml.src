@@ -51,6 +51,8 @@ jobs:
           toolchain: nightly-2023-04-15
           components: rustfmt
           target: wasm32-unknown-unknown
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build

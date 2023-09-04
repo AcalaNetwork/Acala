@@ -141,16 +141,6 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 		Weight::from_parts(16_360_000, 4306)
 			.saturating_add(T::DbWeight::get().reads(1))
 	}
-	// Storage: TransactionPause PausedTransactions (r:1 w:0)
-	// Proof Skipped: TransactionPause PausedTransactions (max_values: None, max_size: None, mode: Measured)
-	fn with_fee_paid_by() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `841`
-		//  Estimated: `4306`
-		// Minimum execution time: 10_275 nanoseconds.
-		Weight::from_parts(10_793_000, 4306)
-			.saturating_add(T::DbWeight::get().reads(1))
-	}
 	// Storage: TransactionPayment NextFeeMultiplier (r:1 w:1)
 	// Proof: TransactionPayment NextFeeMultiplier (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
 	fn on_finalize() -> Weight {

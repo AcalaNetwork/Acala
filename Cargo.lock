@@ -3237,7 +3237,8 @@ name = "evm-jsontests"
 version = "0.13.1"
 dependencies = [
  "acala-primitives",
- "env_logger 0.9.3",
+ "env_logger 0.10.0",
+ "ethereum",
  "ethjson",
  "frame-support",
  "frame-system",
@@ -3265,7 +3266,6 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
- "triehash-ethereum",
 ]
 
 [[package]]
@@ -5024,16 +5024,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f6d5ed8676d904364de097082f4e7d240b571b67989ced0240f08b7f966f940"
 dependencies = [
  "cpufeatures",
-]
-
-[[package]]
-name = "keccak-hasher"
-version = "0.1.1"
-dependencies = [
- "ethereum-types",
- "hash-db 0.15.2",
- "plain_hasher",
- "tiny-keccak",
 ]
 
 [[package]]
@@ -9282,15 +9272,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26072860ba924cbfa98ea39c8c19b4dd6a4a25423dbdf219c1eca91aa0cf6964"
 
 [[package]]
-name = "plain_hasher"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e19e6491bdde87c2c43d70f4c194bc8a758f2eb732df00f61e43f7362e3b4cc"
-dependencies = [
- "crunchy",
-]
-
-[[package]]
 name = "platforms"
 version = "3.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11513,6 +11494,7 @@ version = "2.20.0"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-parachain-system",
+ "cumulus-pallet-xcm",
  "ethabi",
  "frame-support",
  "frame-system",
@@ -11825,9 +11807,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.101.1"
+version = "0.101.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15f36a6828982f422756984e47912a7a51dcbc2a197aa791158f8ca61cd8204e"
+checksum = "7d93931baf2d282fff8d3a532bbfd7653f734643161b87e3e01e59a04439bf0d"
 dependencies = [
  "ring",
  "untrusted",
@@ -15236,15 +15218,6 @@ checksum = "a1631b201eb031b563d2e85ca18ec8092508e262a3196ce9bd10a67ec87b9f5c"
 dependencies = [
  "hash-db 0.15.2",
  "rlp",
-]
-
-[[package]]
-name = "triehash-ethereum"
-version = "0.2.0"
-dependencies = [
- "ethereum-types",
- "keccak-hasher",
- "triehash",
 ]
 
 [[package]]
