@@ -7549,7 +7549,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "log",
  "parity-scale-codec",
  "paste",
@@ -7783,7 +7783,7 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "hex-literal 0.3.4",
+ "hex-literal 0.4.1",
  "orml-xcm-support",
  "parity-scale-codec",
  "scale-info",

@@ -43,7 +43,7 @@ pub use weights::WeightInfo;
 
 define_parameters! {
 	pub Parameters = {
-		InstantUnstakeFee: Permill = 1,
+		InstantUnstakeFee: Permill = 0,
 	}
 }
 
