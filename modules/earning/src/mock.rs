@@ -76,7 +76,6 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-	pub const InstantUnstakeFee: Option<Permill> = Some(Permill::from_percent(10));
 	pub const EarningLockIdentifier: LockIdentifier = *b"12345678";
 }
 
@@ -92,15 +91,35 @@ impl OnUnbalanced<NegativeImbalance<Runtime>> for OnUnstakeFee {
 	}
 }
 
+pub struct ParameterStoreImpl;
+impl ParameterStore<Parameters> for ParameterStoreImpl {
+	fn get<K>(key: K) -> Option<K::Value>
+	where
+		K: orml_traits::parameters::Key
+			+ Into<<Parameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedKey>,
+		<Parameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedValue: TryInto<K::WrappedValue>,
+	{
+		let key = key.into();
+		match key {
+			ParametersKey::InstantUnstakeFee(_) => Some(
+				ParametersValue::InstantUnstakeFee(Permill::from_percent(10))
+					.try_into()
+					.ok()?
+					.into(),
+			),
+		}
+	}
+}
+
 impl Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
+	type ParameterStore = ParameterStoreImpl;
 	type OnBonded = OnBonded;
 	type OnUnbonded = OnUnbonded;
 	type OnUnstakeFee = OnUnstakeFee;
 	type MinBond = ConstU128<100>;
 	type UnbondingPeriod = ConstU64<3>;
-	type InstantUnstakeFee = InstantUnstakeFee;
 	type MaxUnbondingChunks = ConstU32<3>;
 	type LockIdentifier = EarningLockIdentifier;
 	type WeightInfo = ();

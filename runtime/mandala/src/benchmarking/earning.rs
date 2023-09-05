@@ -17,10 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::utils::{dollar, set_balance, NATIVE};
-use crate::{AccountId, DispatchResult, Earning, Get, NativeTokenExistentialDeposit, Runtime, RuntimeOrigin, System};
+use crate::{
+	AccountId, DispatchResult, Earning, Get, NativeTokenExistentialDeposit, Parameters, Runtime, RuntimeOrigin,
+	RuntimeParameters, System,
+};
 use frame_benchmarking::whitelisted_caller;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
+use sp_runtime::Permill;
 
 fn make_max_unbonding_chunk(who: AccountId) -> DispatchResult {
 	System::set_block_number(0);
@@ -46,6 +50,10 @@ runtime_benchmarks! {
 	unbond_instant {
 		let caller: AccountId = whitelisted_caller();
 		set_balance(NATIVE, &caller, dollar(NATIVE));
+		Parameters::set_parameter(
+			RawOrigin::Root.into(),
+			RuntimeParameters::Earning(module_earning::Parameters::InstantUnstakeFee(module_earning::InstantUnstakeFee, Some(Permill::from_percent(10))))
+		)?;
 		Earning::bond(RuntimeOrigin::signed(caller.clone()), 2 * NativeTokenExistentialDeposit::get())?;
 	}: _(RawOrigin::Signed(caller), NativeTokenExistentialDeposit::get())
 

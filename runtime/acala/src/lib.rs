@@ -60,7 +60,10 @@ use module_support::{AssetIdMapping, DispatchableTask, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
-use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
+use orml_traits::{
+	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
+	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended,
+};
 use orml_utilities::simulate_execution;
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
@@ -1694,7 +1697,6 @@ impl module_liquid_crowdloan::Config for Runtime {
 }
 
 parameter_types! {
-	pub const InstantUnstakeFee: Option<Permill> = None;
 	pub MinBond: Balance = 100 * dollar(ACA);
 	pub const UnbondingPeriod: BlockNumber = 28 * DAYS;
 	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
@@ -1703,14 +1705,27 @@ parameter_types! {
 impl module_earning::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
+	type ParameterStore = ParameterStoreAdapter<Parameters, module_earning::Parameters>;
 	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
 	type OnUnbonded = module_incentives::OnEarningUnbonded<Runtime>;
 	type OnUnstakeFee = Treasury; // fee goes to treasury
 	type MinBond = MinBond;
 	type UnbondingPeriod = UnbondingPeriod;
-	type InstantUnstakeFee = InstantUnstakeFee;
 	type MaxUnbondingChunks = ConstU32<10>;
 	type LockIdentifier = EarningLockIdentifier;
+	type WeightInfo = ();
+}
+
+define_aggregrated_parameters! {
+	pub RuntimeParameters = {
+		Earning: module_earning::Parameters = 0,
+	}
+}
+
+impl orml_parameters::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type AggregratedKeyValue = RuntimeParameters;
+	type AdminOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type WeightInfo = ();
 }
 
@@ -1782,6 +1797,7 @@ construct_runtime!(
 		Auction: orml_auction = 80,
 		Rewards: orml_rewards = 81,
 		OrmlNFT: orml_nft exclude_parts { Call } = 82,
+		Parameters: orml_parameters = 83,
 
 		// Acala Core
 		Prices: module_prices = 90,

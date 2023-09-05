@@ -62,7 +62,8 @@ use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
+	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
+	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey,
 };
 use orml_utilities::simulate_execution;
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
@@ -1301,19 +1302,15 @@ impl module_transaction_payment::Config for Runtime {
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
-parameter_types! {
-	pub const InstantUnstakeFee: Permill = Permill::from_percent(10);
-}
-
 impl module_earning::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
+	type ParameterStore = ParameterStoreAdapter<Parameters, module_earning::Parameters>;
 	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
 	type OnUnbonded = module_incentives::OnEarningUnbonded<Runtime>;
 	type OnUnstakeFee = Treasury; // fee goes to treasury
 	type MinBond = ConstU128<100>;
 	type UnbondingPeriod = ConstU32<3>;
-	type InstantUnstakeFee = InstantUnstakeFee;
 	type MaxUnbondingChunks = ConstU32<3>;
 	type LockIdentifier = EarningLockIdentifier;
 	type WeightInfo = weights::module_earning::WeightInfo<Runtime>;
@@ -1810,6 +1807,19 @@ impl module_liquid_crowdloan::Config for Runtime {
 	type WeightInfo = weights::module_liquid_crowdloan::WeightInfo<Runtime>;
 }
 
+define_aggregrated_parameters! {
+	pub RuntimeParameters = {
+		Earning: module_earning::Parameters = 0,
+	}
+}
+
+impl orml_parameters::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type AggregratedKeyValue = RuntimeParameters;
+	type AdminOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type WeightInfo = ();
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct ConvertEthereumTx;
 
@@ -2020,6 +2030,7 @@ construct_runtime!(
 		Auction: orml_auction = 100,
 		Rewards: orml_rewards = 101,
 		OrmlNFT: orml_nft exclude_parts { Call } = 102,
+		Parameters: orml_parameters = 103,
 
 		// Acala Core
 		Prices: module_prices = 110,
