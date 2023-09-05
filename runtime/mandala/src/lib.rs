@@ -1305,12 +1305,12 @@ impl module_transaction_payment::Config for Runtime {
 impl module_earning::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
+	type ParameterStore = ParameterStoreAdapter<Parameters, module_earning::Parameters>;
 	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
 	type OnUnbonded = module_incentives::OnEarningUnbonded<Runtime>;
 	type OnUnstakeFee = Treasury; // fee goes to treasury
 	type MinBond = ConstU128<100>;
 	type UnbondingPeriod = ConstU32<3>;
-	type ParameterStore = ParameterStoreAdapter<Parameters, module_earning::Parameters>;
 	type MaxUnbondingChunks = ConstU32<3>;
 	type LockIdentifier = EarningLockIdentifier;
 	type WeightInfo = weights::module_earning::WeightInfo<Runtime>;
@@ -2030,13 +2030,13 @@ construct_runtime!(
 		Auction: orml_auction = 100,
 		Rewards: orml_rewards = 101,
 		OrmlNFT: orml_nft exclude_parts { Call } = 102,
+		Parameters: orml_parameters = 103,
 
 		// Acala Core
 		Prices: module_prices = 110,
 		Dex: module_dex = 111,
 		DexOracle: module_dex_oracle = 112,
 		AggregatedDex: module_aggregated_dex = 113,
-		Parameters: orml_parameters = 114,
 
 		// Honzon
 		AuctionManager: module_auction_manager = 120,
