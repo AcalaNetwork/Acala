@@ -36,6 +36,7 @@ use xcm_builder::{EnsureXcmOrigin, FixedWeightBounds, SignedToAccountId32};
 pub type AccountId = AccountId32;
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
 impl frame_system::Config for Runtime {

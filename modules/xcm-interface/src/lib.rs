@@ -40,7 +40,6 @@ use xcm::{prelude::*, v3::Weight as XcmWeight};
 mod mock;
 mod tests;
 
-pub mod migrations;
 pub use module::*;
 
 #[frame_support::pallet]
@@ -172,7 +171,38 @@ pub mod module {
 		}
 	}
 
-	impl<T: Config> Pallet<T> {}
+	impl<T: Config> Pallet<T> {
+		pub fn build_transfer_to_liquid_crowdloan_module_account(
+			vault: T::AccountId,
+			recipient: T::AccountId,
+			amount: Balance,
+		) -> Result<Xcm<()>, DispatchError> {
+			let (xcm_dest_weight, xcm_fee) =
+				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ProxyReserveTransferAssets);
+
+			// self location is relative to self
+			let loc = T::SelfLocation::get();
+			// we need to reanchor it to the parent becuase the call is dispatched on parent
+			let loc = loc
+				.reanchored(&MultiLocation::new(1, Here), Here)
+				.map_err(|_| Error::<T>::XcmFailed)?;
+
+			let proxy_call = T::RelayChainCallBuilder::proxy_call(
+				vault,
+				T::RelayChainCallBuilder::xcm_pallet_reserve_transfer_assets(
+					loc,
+					T::AccountIdToMultiLocation::convert(recipient),
+					// Note this message is executed in the relay chain context.
+					vec![(Concrete(Here.into()), amount).into()].into(),
+					0,
+				),
+			);
+			let xcm_message =
+				T::RelayChainCallBuilder::finalize_call_into_xcm_message(proxy_call, xcm_fee, xcm_dest_weight);
+
+			Ok(xcm_message)
+		}
+	}
 
 	impl<T: Config> HomaSubAccountXcm<T::AccountId, Balance> for Pallet<T> {
 		/// Cross-chain transfer staking currency to sub account on relaychain.
@@ -292,21 +322,8 @@ pub mod module {
 			recipient: T::AccountId,
 			amount: Balance,
 		) -> DispatchResult {
-			let (xcm_dest_weight, xcm_fee) =
-				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ProxyReserveTransferAssets);
-
-			let proxy_call = T::RelayChainCallBuilder::proxy_call(
-				vault.clone(),
-				T::RelayChainCallBuilder::xcm_pallet_reserve_transfer_assets(
-					T::SelfLocation::get(),
-					T::AccountIdToMultiLocation::convert(recipient.clone()),
-					// Note this message is executed in the relay chain context.
-					vec![(Concrete(Here.into()), amount).into()].into(),
-					0,
-				),
-			);
 			let xcm_message =
-				T::RelayChainCallBuilder::finalize_call_into_xcm_message(proxy_call, xcm_fee, xcm_dest_weight);
+				Self::build_transfer_to_liquid_crowdloan_module_account(vault.clone(), recipient.clone(), amount)?;
 
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
 			log::debug!(
