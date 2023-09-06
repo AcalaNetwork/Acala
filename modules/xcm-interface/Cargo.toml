@@ -31,7 +31,7 @@ xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "relea
 orml-tokens = { path = "../../orml/tokens" }
 
 module-currencies = { path = "../../modules/currencies" }
-module-relaychain = { path = "../relaychain", features = ["polkadot"] }
+module-relaychain = { path = "../relaychain" }
 
 [features]
 default = ["std"]

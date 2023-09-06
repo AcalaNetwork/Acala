@@ -29,7 +29,7 @@
 
 use frame_support::{log, pallet_prelude::*, traits::Get};
 use frame_system::pallet_prelude::*;
-use module_support::{CallBuilder, CrowdloanVaultXcm, HomaSubAccountXcm};
+use module_support::{relaychain::CallBuilder, CrowdloanVaultXcm, HomaSubAccountXcm};
 use orml_traits::XcmTransfer;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
@@ -37,7 +37,7 @@ use sp_runtime::traits::Convert;
 use sp_std::{convert::From, prelude::*, vec, vec::Vec};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 
-mod mock;
+mod mocks;
 mod tests;
 
 pub use module::*;

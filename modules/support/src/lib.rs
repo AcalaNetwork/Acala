@@ -21,14 +21,13 @@
 #![allow(clippy::from_over_into)]
 #![allow(clippy::type_complexity)]
 
-use codec::FullCodec;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{task::TaskResult, Balance, CurrencyId, Multiplier, Nonce, ReserveIdentifier};
 use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
 use sp_std::{prelude::*, result::Result};
-use xcm::{prelude::*, v3::Weight as XcmWeight};
+use xcm::prelude::*;
 
 pub mod bounded;
 pub mod dex;
@@ -38,6 +37,7 @@ pub mod honzon;
 pub mod incentives;
 pub mod liquid_crowdloan;
 pub mod mocks;
+pub mod relaychain;
 pub mod stable_asset;
 
 pub use crate::bounded::*;
@@ -131,78 +131,6 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 	) -> Result<(), TransactionValidityError>;
 	fn weight_to_fee(weight: Weight) -> Balance;
 	fn apply_multiplier_to_fee(fee: Balance, multiplier: Option<Multiplier>) -> Balance;
-}
-
-pub trait CallBuilder {
-	type AccountId: FullCodec;
-	type Balance: FullCodec;
-	type RelayChainCall: FullCodec;
-
-	/// Execute a call, replacing the `Origin` with a sub-account.
-	///  params:
-	/// - call: The call to be executed.
-	/// - index: The index of sub-account to be used as the new origin.
-	fn utility_as_derivative_call(call: Self::RelayChainCall, index: u16) -> Self::RelayChainCall;
-
-	/// Bond extra on relay-chain.
-	///  params:
-	/// - amount: The amount of staking currency to bond.
-	fn staking_bond_extra(amount: Self::Balance) -> Self::RelayChainCall;
-
-	/// Unbond on relay-chain.
-	///  params:
-	/// - amount: The amount of staking currency to unbond.
-	fn staking_unbond(amount: Self::Balance) -> Self::RelayChainCall;
-
-	/// Withdraw unbonded staking on the relay-chain.
-	///  params:
-	/// - num_slashing_spans: The number of slashing spans to withdraw from.
-	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelayChainCall;
-
-	/// Transfer Staking currency to another account, disallowing "death".
-	///  params:
-	/// - to: The destination for the transfer
-	/// - amount: The amount of staking currency to be transferred.
-	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall;
-
-	/// Wrap the final call into the Xcm format.
-	///  params:
-	/// - call: The call to be executed
-	/// - extra_fee: Extra fee (in staking currency) used for buy the `weight`.
-	/// - weight: the weight limit used for XCM.
-	fn finalize_call_into_xcm_message(
-		call: Self::RelayChainCall,
-		extra_fee: Self::Balance,
-		weight: XcmWeight,
-	) -> Xcm<()>;
-
-	/// Wrap the final multiple calls into the Xcm format.
-	///  params:
-	/// - calls: the multiple calls and its weight limit to be executed
-	/// - extra_fee: Extra fee (in staking currency) used for buy the `weight`.
-	fn finalize_multiple_calls_into_xcm_message(
-		calls: Vec<(Self::RelayChainCall, XcmWeight)>,
-		extra_fee: Self::Balance,
-	) -> Xcm<()>;
-
-	/// Reserve transfer assets.
-	/// params:
-	/// - dest: The destination chain.
-	/// - beneficiary: The beneficiary.
-	/// - assets: The assets to be transferred.
-	/// - fee_assets_item: The index of assets for fees.
-	fn xcm_pallet_reserve_transfer_assets(
-		dest: MultiLocation,
-		beneficiary: MultiLocation,
-		assets: MultiAssets,
-		fee_assets_item: u32,
-	) -> Self::RelayChainCall;
-
-	/// Proxy a call with a `real` account without a forced proxy type.
-	/// params:
-	/// - real: The real account.
-	/// - call: The call to be executed.
-	fn proxy_call(real: Self::AccountId, call: Self::RelayChainCall) -> Self::RelayChainCall;
 }
 
 /// Dispatchable tasks
