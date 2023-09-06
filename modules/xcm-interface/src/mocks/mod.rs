@@ -40,7 +40,6 @@ pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
-pub type Block = frame_system::mocking::MockBlock<Runtime>;
 parameter_types! {
 	pub const UnitWeightCost: XcmWeight = XcmWeight::from_parts(10, 10);
 	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_parts(100_000_000, 100_000_000);
@@ -53,8 +52,6 @@ parameter_types! {
 	pub UniversalLocation: InteriorMultiLocation =
 		X1(Parachain(2000).into());
 }
-
-pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
 
 #[cfg(feature = "runtime-benchmarks")]
 parameter_types! {
@@ -155,8 +152,12 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 	}
 }
 
+#[macro_export]
 macro_rules! impl_mock {
 	($relaychain:ty) => {
+		pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
+		pub type Block = frame_system::mocking::MockBlock<Runtime>;
+
 		impl frame_system::Config for Runtime {
 			type RuntimeOrigin = RuntimeOrigin;
 			type Nonce = u64;
@@ -266,7 +267,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
+		ext.execute_with(|| frame_system::Pallet::<Runtime>::set_block_number(1u32.into()));
 		ext
 	}
 }
