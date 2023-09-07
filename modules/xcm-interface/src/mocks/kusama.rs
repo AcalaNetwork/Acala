@@ -16,27 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Unit tests for xcm interface module.
+use super::*;
 
-#![cfg(test)]
-
-use crate::mocks::{kusama, polkadot, ExtBuilder, ALICE, BOB};
-use insta::assert_debug_snapshot;
-
-#[test]
-fn build_transfer_to_liquid_crowdloan_module_account_polkadot() {
-	ExtBuilder::default().build::<polkadot::Runtime>().execute_with(|| {
-		let xcm = polkadot::XcmInterface::build_transfer_to_liquid_crowdloan_module_account(ALICE, BOB, 1000000000000)
-			.unwrap();
-		assert_debug_snapshot!(xcm);
-	});
-}
-
-#[test]
-fn build_transfer_to_liquid_crowdloan_module_account_kusama() {
-	ExtBuilder::default().build::<kusama::Runtime>().execute_with(|| {
-		let xcm =
-			kusama::XcmInterface::build_transfer_to_liquid_crowdloan_module_account(ALICE, BOB, 1000000000000).unwrap();
-		assert_debug_snapshot!(xcm);
-	});
-}
+impl_mock!(module_relaychain::KusamaRelayChainCall);

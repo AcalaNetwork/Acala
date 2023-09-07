@@ -119,6 +119,8 @@ uint = { opt-level = 3 }
 x25519-dalek = { opt-level = 3 }
 yamux = { opt-level = 3 }
 zeroize = { opt-level = 3 }
+insta.opt-level = 3
+similar.opt-level = 3
 
 [workspace.dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }

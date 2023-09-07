@@ -123,7 +123,7 @@ module-homa = { path = "../../modules/homa", default-features = false }
 module-xcm-interface = { path = "../../modules/xcm-interface", default-features = false }
 module-nominees-election = { path = "../../modules/nominees-election", default-features = false }
 module-session-manager = { path = "../../modules/session-manager", default-features = false }
-module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["polkadot"]}
+module-relaychain = { path = "../../modules/relaychain", default-features = false }
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
 module-aggregated-dex = { path = "../../modules/aggregated-dex", default-features = false }
 module-liquid-crowdloan = { path = "../../modules/liquid-crowdloan", default-features = false }

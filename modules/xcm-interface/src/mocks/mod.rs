@@ -16,8 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for the prices module.
-
 #![cfg(test)]
 
 use super::*;
@@ -33,52 +31,14 @@ use sp_core::H256;
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
 use xcm_builder::{EnsureXcmOrigin, FixedWeightBounds, SignedToAccountId32};
 
+pub mod kusama;
+pub mod polkadot;
+
 pub type AccountId = AccountId32;
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-
-impl frame_system::Config for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type Nonce = u64;
-	type RuntimeCall = RuntimeCall;
-	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
-	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<250>;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type DbWeight = ();
-	type BaseCallFilter = Everything;
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
-}
-
-impl pallet_balances::Config for Runtime {
-	type Balance = Balance;
-	type DustRemoval = ();
-	type RuntimeEvent = RuntimeEvent;
-	type ExistentialDeposit = ConstU128<1>;
-	type AccountStore = System;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = [u8; 8];
-	type WeightInfo = ();
-	type RuntimeHoldReason = ();
-	type FreezeIdentifier = ();
-	type MaxHolds = ();
-	type MaxFreezes = ();
-}
 
 parameter_types! {
 	pub const UnitWeightCost: XcmWeight = XcmWeight::from_parts(10, 10);
@@ -93,39 +53,9 @@ parameter_types! {
 		X1(Parachain(2000).into());
 }
 
-pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
-
 #[cfg(feature = "runtime-benchmarks")]
 parameter_types! {
 	pub ReachableDest: Option<MultiLocation> = Some(Parent.into());
-}
-
-impl pallet_xcm::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
-	type XcmRouter = ();
-	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
-	type XcmExecuteFilter = Everything;
-	type XcmExecutor = ();
-	type XcmTeleportFilter = Nothing;
-	type XcmReserveTransferFilter = Everything;
-	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
-	type UniversalLocation = UniversalLocation;
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
-	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
-	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
-	type Currency = Balances;
-	type CurrencyMatcher = ();
-	type TrustedLockers = ();
-	type SovereignAccountOf = ();
-	type MaxLockers = ConstU32<8>;
-	type WeightInfo = pallet_xcm::TestWeightInfo;
-	type AdminOrigin = EnsureRoot<AccountId>;
-	type MaxRemoteLockConsumers = ConstU32<0>;
-	type RemoteLockConsumerIdentifier = ();
-	#[cfg(feature = "runtime-benchmarks")]
-	type ReachableDest = ReachableDest;
 }
 
 ord_parameter_types! {
@@ -222,29 +152,105 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 	}
 }
 
-impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type StakingCurrencyId = GetStakingCurrencyId;
-	type ParachainAccount = ParachainAccount;
-	type RelayChainUnbondingSlashingSpans = ConstU32<28>;
-	type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
-	type RelayChainCallBuilder = module_relaychain::RelayChainCallBuilder<ParachainId>;
-	type XcmTransfer = MockXcmTransfer;
-	type SelfLocation = SelfLocation;
-	type AccountIdToMultiLocation = AccountIdToMultiLocation;
-}
+#[macro_export]
+macro_rules! impl_mock {
+	($relaychain:ty) => {
+		pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
+		pub type Block = frame_system::mocking::MockBlock<Runtime>;
 
-type Block = frame_system::mocking::MockBlock<Runtime>;
+		impl frame_system::Config for Runtime {
+			type RuntimeOrigin = RuntimeOrigin;
+			type Nonce = u64;
+			type RuntimeCall = RuntimeCall;
+			type Hash = H256;
+			type Hashing = ::sp_runtime::traits::BlakeTwo256;
+			type AccountId = AccountId;
+			type Lookup = IdentityLookup<Self::AccountId>;
+			type Block = Block;
+			type RuntimeEvent = RuntimeEvent;
+			type BlockHashCount = ConstU64<250>;
+			type BlockWeights = ();
+			type BlockLength = ();
+			type Version = ();
+			type PalletInfo = PalletInfo;
+			type AccountData = pallet_balances::AccountData<Balance>;
+			type OnNewAccount = ();
+			type OnKilledAccount = ();
+			type DbWeight = ();
+			type BaseCallFilter = Everything;
+			type SystemWeightInfo = ();
+			type SS58Prefix = ();
+			type OnSetCode = ();
+			type MaxConsumers = ConstU32<16>;
+		}
 
-construct_runtime!(
-	pub enum Runtime {
-		System: frame_system,
-		Balances: pallet_balances,
-		PolkadotXcm: pallet_xcm,
-		XcmInterface: xcm_interface,
+		impl pallet_balances::Config for Runtime {
+			type Balance = Balance;
+			type DustRemoval = ();
+			type RuntimeEvent = RuntimeEvent;
+			type ExistentialDeposit = ConstU128<1>;
+			type AccountStore = System;
+			type MaxLocks = ();
+			type MaxReserves = ();
+			type ReserveIdentifier = [u8; 8];
+			type WeightInfo = ();
+			type RuntimeHoldReason = ();
+			type FreezeIdentifier = ();
+			type MaxHolds = ();
+			type MaxFreezes = ();
+		}
+
+		impl pallet_xcm::Config for Runtime {
+			type RuntimeEvent = RuntimeEvent;
+			type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
+			type XcmRouter = ();
+			type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
+			type XcmExecuteFilter = Everything;
+			type XcmExecutor = ();
+			type XcmTeleportFilter = Nothing;
+			type XcmReserveTransferFilter = Everything;
+			type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
+			type UniversalLocation = UniversalLocation;
+			type RuntimeOrigin = RuntimeOrigin;
+			type RuntimeCall = RuntimeCall;
+			const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
+			type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+			type Currency = Balances;
+			type CurrencyMatcher = ();
+			type TrustedLockers = ();
+			type SovereignAccountOf = ();
+			type MaxLockers = ConstU32<8>;
+			type WeightInfo = pallet_xcm::TestWeightInfo;
+			type AdminOrigin = EnsureRoot<AccountId>;
+			type MaxRemoteLockConsumers = ConstU32<0>;
+			type RemoteLockConsumerIdentifier = ();
+			#[cfg(feature = "runtime-benchmarks")]
+			type ReachableDest = ReachableDest;
+		}
+
+		impl Config for Runtime {
+			type RuntimeEvent = RuntimeEvent;
+			type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+			type StakingCurrencyId = GetStakingCurrencyId;
+			type ParachainAccount = ParachainAccount;
+			type RelayChainUnbondingSlashingSpans = ConstU32<28>;
+			type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
+			type RelayChainCallBuilder = module_relaychain::RelayChainCallBuilder<ParachainId, $relaychain>;
+			type XcmTransfer = MockXcmTransfer;
+			type SelfLocation = SelfLocation;
+			type AccountIdToMultiLocation = AccountIdToMultiLocation;
+		}
+
+		construct_runtime!(
+			pub enum Runtime {
+				System: frame_system,
+				Balances: pallet_balances,
+				PolkadotXcm: pallet_xcm,
+				XcmInterface: xcm_interface,
+			}
+		);
 	}
-);
+}
 
 pub struct ExtBuilder;
 
@@ -255,13 +261,13 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	pub fn build(self) -> sp_io::TestExternalities {
+	pub fn build<Runtime: frame_system::Config>(self) -> sp_io::TestExternalities {
 		let t = frame_system::GenesisConfig::<Runtime>::default()
 			.build_storage()
 			.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
+		ext.execute_with(|| frame_system::Pallet::<Runtime>::set_block_number(1u32.into()));
 		ext
 	}
 }

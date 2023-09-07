@@ -1574,7 +1574,7 @@ impl module_xcm_interface::Config for Runtime {
 	type ParachainAccount = ParachainAccount;
 	type RelayChainUnbondingSlashingSpans = ConstU32<5>;
 	type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
-	type RelayChainCallBuilder = RelayChainCallBuilder<ParachainInfo>;
+	type RelayChainCallBuilder = RelayChainCallBuilder<ParachainInfo, module_relaychain::KusamaRelayChainCall>;
 	type XcmTransfer = XTokens;
 	type SelfLocation = xcm_config::SelfLocation;
 	type AccountIdToMultiLocation = runtime_common::xcm_config::AccountIdToMultiLocation;
