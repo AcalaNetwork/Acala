@@ -772,6 +772,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn reset_storage(&mut self, address: H160) {
+		// use drain_prefix to avoid wasm-bencher counting limit as write operation
 		<AccountStorages<T>>::drain_prefix(address).for_each(drop);
 	}
 
