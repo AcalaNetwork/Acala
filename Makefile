@@ -43,8 +43,8 @@ build-all:
 
 .PHONY: build-benches
 build-benches:
-	cargo bench --locked --no-run --features bench --package module-evm
-	cargo bench --locked --no-run --features bench --package runtime-common
+	cargo bench --locked --no-run --features wasm-bench --package module-evm
+	cargo bench --locked --no-run --features wasm-bench --package runtime-common
 
 .PHONY: build-release
 build-release:
@@ -104,7 +104,7 @@ check-runtimes:
 
 .PHONY: check-benchmarks
 check-benchmarks:
-	SKIP_WASM_BUILD= cargo check --features bench --package module-evm
+	SKIP_WASM_BUILD= cargo check --features wasm-bench --package module-evm
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p mandala-runtime
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p karura-runtime
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p acala-runtime
@@ -170,7 +170,7 @@ test-ts: build-mandala-internal-release
 
 .PHONY: test-benchmarking
 test-benchmarking:
-	SKIP_WASM_BUILD= ${cargo_test} --features bench --package module-evm --package runtime-common
+	SKIP_WASM_BUILD= ${cargo_test} --features wasm-bench --package module-evm --package runtime-common
 	SKIP_WASM_BUILD= ${cargo_test} --features runtime-benchmarks --features with-all-runtime --all benchmarking
 
 .PHONY: test-all
@@ -277,5 +277,5 @@ clippy-fix:
 
 .PHONY: bench-evm
 bench-evm:
-	cargo bench -p runtime-common --features bench | cargo run --bin weight-gen -- --template ./templates/precompile-weight-template.hbs --output runtime/common/src/precompile/weights.rs
-	cargo bench -p module-evm --features bench | evm-bench/analyze_benches.js runtime/common/src/gas_to_weight_ratio.rs
+	cargo bench -p runtime-common --features wasm-bench -- json | weight-gen --template ./templates/precompile-weight-template.hbs --output runtime/common/src/precompile/weights.rs
+	cargo bench -p module-evm --features wasm-bench -- json | evm-bench/analyze_benches.js runtime/common/src/gas_to_weight_ratio.rs

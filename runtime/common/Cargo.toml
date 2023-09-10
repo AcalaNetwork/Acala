@@ -7,7 +7,7 @@ edition = "2021"
 [[bench]]
 name = "precompile"
 harness = false
-required-features = ["bench"]
+required-features = ["wasm-bench"]
 
 [dependencies]
 hex-literal = "0.4.1"
@@ -75,7 +75,7 @@ orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 orml-xtokens = { path = "../../orml/xtokens", default-features = false }
-orml-bencher = { path = "../../orml/bencher", default-features = false, optional = true }
+wasm-bencher = { git = "https://github.com/open-web3-stack/wasm-bencher", version = "0.5.0", default-features = false, optional = true }
 orml-nft = { path = "../../orml/nft", default-features = false, optional = true }
 orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }
 orml-rewards = { path = "../../orml/rewards", default-features = false, optional = true }
@@ -117,7 +117,7 @@ std = [
 	"xcm-executor/std",
 	"xcm-builder/std",
 
-	"orml-bencher/std",
+	"wasm-bencher/std",
 	"orml-currencies/std",
 	"orml-nft/std",
 	"orml-oracle/std",
@@ -152,9 +152,8 @@ std = [
 with-ethereum-compatibility = [
 	"module-evm/with-ethereum-compatibility",
 ]
-bench = [
-	"frame-support/runtime-benchmarks",
-	"frame-system/runtime-benchmarks",
+wasm-bench = [
+	"wasm-bencher/wasm-bench",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
@@ -166,7 +165,7 @@ bench = [
 	"module-asset-registry",
 	"module-cdp-treasury",
 	"module-evm-bridge",
-	"orml-bencher/bench",
+
 	"orml-currencies",
 	"orml-nft",
 	"orml-rewards",

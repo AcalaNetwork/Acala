@@ -87,6 +87,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Install weight-gen
+        run: cargo install --git https://github.com/open-web3-stack/wasm-bencher.git --bin weight-gen
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
       - name: Use Node.js

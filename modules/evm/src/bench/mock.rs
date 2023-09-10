@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(any(feature = "std", feature = "bench"))]
+#![cfg(any(feature = "std", feature = "wasm-bench"))]
 
 use super::super::*;
 

@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(feature = "bench")]
+#![cfg(feature = "wasm-bench")]
 #![allow(dead_code)]
 
 pub use crate::{precompile::mock::*, DEXPrecompile, EVMPrecompile, OraclePrecompile};
@@ -24,10 +24,10 @@ use frame_support::assert_ok;
 use hex_literal::hex;
 use module_evm::{precompiles::Precompile, Context};
 use module_support::AddressMapping;
-use orml_bencher::{benches, Bencher};
 use orml_traits::DataFeeder;
 use primitives::currency::{AssetMetadata, TokenInfo};
 use sp_core::{H160, H256};
+use wasm_bencher::{benches, Bencher};
 
 fn whitelist_keys(b: &mut Bencher, caller: Option<H160>) {
 	if let Some(caller) = caller {

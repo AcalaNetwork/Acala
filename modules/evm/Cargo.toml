@@ -7,7 +7,7 @@ edition = "2021"
 [[bench]]
 name = "orml_benches"
 harness = false
-required-features = ["bench"]
+required-features = ["wasm-bench"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
@@ -33,7 +33,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
-orml-bencher = { path = "../../orml/bencher", default-features = false, optional = true }
+wasm-bencher = { git = "https://github.com/open-web3-stack/wasm-bencher", version = "0.5.0", default-features = false, optional = true }
 orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }
 orml-tokens = { path = "../../orml/tokens", default-features = false, optional = true }
 
@@ -69,7 +69,7 @@ std = [
 	"module-support/std",
 	"module-transaction-payment/std",
 	"num/std",
-	"orml-bencher/std",
+	"wasm-bencher/std",
 	"orml-currencies/std",
 	"orml-tokens/std",
 	"orml-traits/std",
@@ -100,13 +100,11 @@ try-runtime = [
 	"pallet-timestamp/try-runtime",
 ]
 tracing = ["module-evm-utility/tracing"]
-bench = [
-	"frame-support/runtime-benchmarks",
-	"frame-system/runtime-benchmarks",
+wasm-bench = [
+	"wasm-bencher/wasm-bench",
 	"hex",
 	"module-dex",
 	"module-idle-scheduler",
-	"orml-bencher/bench",
 	"orml-currencies",
 	"orml-tokens",
 	"pallet-balances",

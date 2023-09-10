@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(feature = "bench")]
+#![cfg(feature = "wasm-bench")]
 #![allow(dead_code)]
 
 pub mod mock;
@@ -30,11 +30,11 @@ use hex::FromHex;
 use mock::*;
 use module_support::mocks::MockAddressMapping;
 use module_support::AddressMapping;
-use orml_bencher::{benches, Bencher};
 use primitives::evm::Vicinity;
 use serde_json::Value;
 use sp_core::{H160, H256, U256};
 use sp_std::{convert::TryInto, prelude::*, rc::Rc, str::FromStr};
+use wasm_bencher::{benches, Bencher};
 
 fn get_bench_info(name: &str) -> (Vec<u8>, H160, Vec<u8>, u64, Vec<u8>) {
 	let benches_str = include_str!("../../../../evm-bench/build/benches.json");

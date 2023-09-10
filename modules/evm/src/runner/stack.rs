@@ -772,7 +772,8 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn reset_storage(&mut self, address: H160) {
-		let _ = <AccountStorages<T>>::clear_prefix(address, u32::MAX, None);
+		// use drain_prefix to avoid wasm-bencher counting limit as write operation
+		<AccountStorages<T>>::drain_prefix(address).for_each(drop);
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) {
