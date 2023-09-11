@@ -148,11 +148,12 @@ where
 		assets: MultiAssets,
 		fee_assets_item: u32,
 	) -> RCC {
-		RCC::xcm_pallet(XcmCall::ReserveTransferAssets(
+		RCC::xcm_pallet(XcmCall::LimitedReserveTransferAssets(
 			dest.into_versioned(),
 			beneficiary.into_versioned(),
 			assets.into(),
 			fee_assets_item,
+			WeightLimit::Unlimited,
 		))
 	}
 

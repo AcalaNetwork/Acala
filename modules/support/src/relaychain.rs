@@ -41,11 +41,9 @@ pub enum UtilityCall<RCC> {
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum StakingCall {
 	#[codec(index = 1)]
-	BondExtra(#[codec(compact)] Balance), /* TODO: because param type in relaychain is u64, need to confirm
-	                                       * Balance(u128) is working. */
+	BondExtra(#[codec(compact)] Balance),
 	#[codec(index = 2)]
-	Unbond(#[codec(compact)] Balance), /* TODO: because param type in relaychain is u64, need to confirm
-	                                    * Balance(u128) is working. */
+	Unbond(#[codec(compact)] Balance),
 	#[codec(index = 3)]
 	WithdrawUnbonded(u32),
 }
@@ -53,13 +51,15 @@ pub enum StakingCall {
 /// `pallet-xcm` calls.
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum XcmCall {
-	/// `reserve_transfer_assets(dest, beneficiary, assets, fee_asset_item)` call.
-	#[codec(index = 2)]
-	ReserveTransferAssets(
+	/// `limited_reserve_transfer_assets(dest, beneficiary, assets, fee_asset_item, weight_limit)`
+	/// call.
+	#[codec(index = 8)]
+	LimitedReserveTransferAssets(
 		VersionedMultiLocation,
 		VersionedMultiLocation,
 		VersionedMultiAssets,
 		u32,
+		WeightLimit,
 	),
 }
 
