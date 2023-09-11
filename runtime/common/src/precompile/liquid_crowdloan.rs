@@ -124,14 +124,11 @@ where
 				let read_account = InputPricer::<Runtime>::read_accounts(1);
 				let weight = <Runtime as module_liquid_crowdloan::Config>::WeightInfo::redeem();
 
-				Self::BASE_COST
-					.saturating_add(read_account)
-					.saturating_add(WeightToGas::convert(weight))
+				read_account.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::GetRedeemCurrency => {
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+				WeightToGas::convert(weight)
 			}
 		};
 		Ok(Self::BASE_COST.saturating_add(cost))
