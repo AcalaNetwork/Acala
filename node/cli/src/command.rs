@@ -19,6 +19,8 @@
 // Disable the following lints
 #![allow(clippy::borrowed_box)]
 
+use std::net::SocketAddr;
+
 use crate::cli::{Cli, RelayChainCli, Subcommand};
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
@@ -513,6 +515,10 @@ impl CliConfiguration<Self> for RelayChainCli {
 			.shared_params()
 			.base_path()?
 			.or_else(|| self.base_path.clone().map(Into::into)))
+	}
+
+	fn rpc_addr(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
+		self.base.base.rpc_addr(default_listen_port)
 	}
 
 	fn prometheus_config(
