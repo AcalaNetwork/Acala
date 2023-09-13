@@ -104,6 +104,7 @@ pub use primitives::{
 	DataProviderId, EraIndex, Hash, Lease, Moment, Multiplier, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
 	TradingPair,
 };
+use runtime_common::precompile::AcalaPrecompiles;
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles, CheckRelayNumber, CurrencyHooks,
 	EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil,
@@ -134,7 +135,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2210,
+	spec_version: 2211,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1576,7 +1577,7 @@ impl pallet_proxy::Config for Runtime {
 
 parameter_types! {
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub PrecompilesValue: AllPrecompiles<Runtime, module_transaction_pause::PausedPrecompileFilter<Runtime>, ()> = AllPrecompiles::<_, _, _>::mandala();
+	pub PrecompilesValue: AllPrecompiles<Runtime, module_transaction_pause::PausedPrecompileFilter<Runtime>, AcalaPrecompiles<Runtime>> = AllPrecompiles::<_, _, _>::mandala();
 }
 
 #[cfg(feature = "with-ethereum-compatibility")]
@@ -1637,7 +1638,8 @@ impl module_evm::Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
 	type RuntimeEvent = RuntimeEvent;
-	type PrecompilesType = AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>, ()>;
+	type PrecompilesType =
+		AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>, AcalaPrecompiles<Runtime>>;
 	type PrecompilesValue = PrecompilesValue;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
