@@ -1,5 +1,6 @@
 # generate by yq eval 'explode(.)' test.yml.src > test.yml
 # https://github.com/mikefarah/yq
+
 name: Test
 on:
   pull_request:
@@ -14,21 +15,14 @@ on:
       - release-**
     paths-ignore:
       - '**/README.md'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  clean-up-actions:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        # Only cancel non-master branch runs
-        if: ${{ github.ref != 'refs/heads/master' }}
-        uses: styfle/cancel-workflow-action@0.11.0
-        with:
-          access_token: ${{ github.token }}
   build:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
@@ -67,7 +61,6 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
@@ -96,7 +89,6 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:
@@ -133,7 +125,6 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: clean-up-actions
     steps:
       - uses: actions/checkout@v3
         with:

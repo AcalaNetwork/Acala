@@ -13,24 +13,18 @@ on:
     paths-ignore:
       - '**/README.md'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   TARPAULIN_VERSION: 0.19.1
   # LIBCLANG_PATH: "/usr/lib/llvm-11/lib" # default `llvm-config --prefix`
   CARGO_INCREMENTAL: 0
 jobs:
-  clean-up-actions:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        # Only cancel non-master branch runs
-        if: ${{ github.ref != 'refs/heads/master' }}
-        uses: styfle/cancel-workflow-action@0.11.0
-        with:
-          access_token: ${{ github.token }}
   test:
     name: Coverage Report
     runs-on: [self-hosted, linux]
-    needs: clean-up-actions
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
