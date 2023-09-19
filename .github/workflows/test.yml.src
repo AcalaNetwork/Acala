@@ -15,28 +15,22 @@ on:
       - release-**
     paths-ignore:
       - '**/README.md'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  clean-up-actions:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        # Only cancel non-master branch runs
-        if: ${{ github.ref != 'refs/heads/master' }}
-        uses: styfle/cancel-workflow-action@0.11.0
-        with:
-          access_token: ${{ github.token }}
   build: &setup
     runs-on:
       [self-hosted, linux]
     env:
       CARGO_INCREMENTAL: 0
-    needs: clean-up-actions
     steps:
       - &checkout
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      - uses: actions/cache@v3
+      - &cache
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin/
@@ -51,8 +45,9 @@ jobs:
           toolchain: nightly-2023-04-15
           components: rustfmt
           target: wasm32-unknown-unknown
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@nextest
+      - &cmake
+        name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.13
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Build
@@ -65,32 +60,47 @@ jobs:
         run: cargo clippy --features with-karura-runtime -- -D warnings
       - name: Run acala-runtime clippy
         run: cargo clippy --features with-acala-runtime -- -D warnings
+      - name: Run build benches
+        run: make build-benches
   benchmarking:
     <<: *setup
     steps:
       - *checkout
+      - *cache
       - *toolchain
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+      - *cmake
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
     <<: *setup
     steps:
       - *checkout
+      - *cache
       - *toolchain
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+      - *cmake
       - name: Run runtime tests
         run: make test-runtimes
       - name: Run eth tests
         run: make test-eth
-
       - name: Check benchmarks
         run: make check-benchmarks
       - name: Check try-runtime
         run: make check-try-runtime
+      - name: Check runtimes
+        run: make check-runtimes
   e2e-tests:
     <<: *setup
     steps:
       - *checkout
+      - *cache
       - *toolchain
+      - *cmake
+      - name: Run e2e tests
+        run: make test-e2e
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
