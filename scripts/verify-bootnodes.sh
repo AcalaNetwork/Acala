@@ -35,8 +35,6 @@ do
 		   --rpc-external \
 		   --rpc-cors=all \
 		   --rpc-methods=unsafe \
-		   -- \
-		   --chain=dev \
 		> /dev/null
 	sleep 10s
 
