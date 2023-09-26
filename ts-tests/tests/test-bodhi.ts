@@ -30,7 +30,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 
 	step("should get gas price", async function () {
 		const gasPrice = await context.provider.getGasPrice();
-		expect(gasPrice.toString()).to.be.equal("200000274442");
+		expect(gasPrice.toString()).to.be.equal("100000000205");
 	});
 
 	step("should get fee data ", async function () {
