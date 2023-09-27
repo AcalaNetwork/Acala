@@ -34,6 +34,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use orml_traits::{XcmTransfer, XtokensWeightInfo};
 use orml_xtokens::XtokensWeight;
 use primitives::{Balance, CurrencyId};
+use sp_core::Get;
 use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::{
@@ -320,6 +321,14 @@ where
 					.saturating_add(1);
 				let currencies_len = input.u32_at(currencies_index)? as usize;
 
+				if currencies_len > <Runtime as orml_xtokens::Config>::MaxAssetsForTransfer::get() {
+					return Err(PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "invalid currencies size".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					});
+				}
+
 				let mut currencies = Vec::with_capacity(currencies_len);
 				for i in 0..currencies_len {
 					let index = currencies_index.saturating_add(i.saturating_mul(2)); // address + amount
@@ -553,6 +562,15 @@ where
 					.saturating_div(PER_PARAM_BYTES)
 					.saturating_add(1);
 				let currencies_len = input.u32_at(currencies_index)? as usize;
+
+				if currencies_len > <Runtime as orml_xtokens::Config>::MaxAssetsForTransfer::get() {
+					return Err(PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "invalid currencies size".into(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
+					});
+				}
+
 				let mut currencies = Vec::with_capacity(currencies_len);
 				let mut read_currency: u64 = 0;
 
