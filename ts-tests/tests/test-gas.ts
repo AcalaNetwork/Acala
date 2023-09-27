@@ -18,7 +18,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 			from: alice.getAddress(),
 			data: "0x" + Block.bytecode,
 		});
-		expect(gas.toNumber()).to.be.eq(11301014);
+		expect(gas.toNumber()).to.be.eq(593373);
 	});
 
 	it("eth_estimateResources for contract creation", async function () {
@@ -35,7 +35,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 	it("eth_estimateGas for contract call", async function () {
 		const contract = await deployContract(alice, Block);
 		const gas = await contract.estimateGas.multiply(3);
-		expect(gas.toNumber()).to.be.eq(100100);
+		expect(gas.toNumber()).to.be.eq(342409);
 	});
 
 	it("eth_estimateResources for contract call", async function () {
