@@ -81,8 +81,6 @@ polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "relea
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v1.0.0" }
 polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v1.0.0" }
 
-orml-oracle-rpc = { path = "../../orml/oracle/rpc" }
-orml-tokens-rpc = { path = "../../orml/tokens/rpc" }
 acala-primitives = { path = "../../primitives" }
 acala-rpc = { path = "../../rpc" }
 

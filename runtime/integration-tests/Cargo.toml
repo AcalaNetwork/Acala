@@ -74,7 +74,7 @@ orml-auction = { path = "../../orml/auction" }
 orml-authority = { path = "../../orml/authority" }
 orml-benchmarking = { path = "../../orml/benchmarking", optional = true }
 orml-oracle = { path = "../../orml/oracle" }
-orml-oracle-rpc-runtime-api = { path = "../../orml/oracle/rpc/runtime-api" }
+orml-oracle-runtime-api = { path = "../../orml/oracle/runtime-api" }
 orml-tokens = { path = "../../orml/tokens" }
 orml-traits = { path = "../../orml/traits" }
 orml-vesting = { path = "../../orml/vesting" }
