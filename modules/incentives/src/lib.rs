@@ -420,7 +420,7 @@ impl<T: Config> Pallet<T> {
 		PendingMultiRewards::<T>::mutate_exists(pool_id, &who, |maybe_pending_multi_rewards| {
 			if let Some(pending_multi_rewards) = maybe_pending_multi_rewards {
 				let deduction_rate = Self::claim_reward_deduction_rates(&pool_id);
-				let deduction_currency = ClaimRewardDeductionCurrency::<T>::get(&pool_id);
+				let deduction_currency = ClaimRewardDeductionCurrency::<T>::get(pool_id);
 
 				for (currency_id, pending_reward) in pending_multi_rewards.iter_mut() {
 					if pending_reward.is_zero() {
