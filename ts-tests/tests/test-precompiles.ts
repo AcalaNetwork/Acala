@@ -70,6 +70,6 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 			// Passes system contract filter
 			from: '0x0000000000000000000100000000000000000001',
 			data: input,
-		})).to.be.rejectedWith('VM Exception while processing transaction: execution revert: invalid currencies size');
+		})).to.be.rejectedWith('execution reverted: invalid currencies size');
 	});
 });

@@ -155,4 +155,7 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(c.into()))
 	}
+	fn update_claim_reward_deduction_currency() -> Weight {
+		Weight::from_parts(914_000, 0)
+	}
 }
