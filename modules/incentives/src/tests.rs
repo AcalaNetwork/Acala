@@ -30,7 +30,6 @@ use sp_runtime::{traits::BadOrigin, FixedPointNumber};
 #[test]
 fn deposit_dex_share_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
 		assert_ok!(TokensModule::deposit(BTC_AUSD_LP, &ALICE::get(), 10000));
 		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE::get()), 10000);
 		assert_eq!(
@@ -76,7 +75,6 @@ fn deposit_dex_share_works() {
 #[test]
 fn withdraw_dex_share_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
 		assert_ok!(TokensModule::deposit(BTC_AUSD_LP, &ALICE::get(), 10000));
 
 		assert_noop!(
@@ -138,7 +136,6 @@ fn withdraw_dex_share_works() {
 #[test]
 fn update_incentive_rewards_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
 		assert_noop!(
 			IncentivesModule::update_incentive_rewards(RuntimeOrigin::signed(ALICE::get()), vec![]),
 			BadOrigin
@@ -239,7 +236,6 @@ fn update_incentive_rewards_works() {
 #[test]
 fn update_claim_reward_deduction_rates_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
 		assert_noop!(
 			IncentivesModule::update_claim_reward_deduction_rates(RuntimeOrigin::signed(ALICE::get()), vec![]),
 			BadOrigin
@@ -439,7 +435,6 @@ fn payout_works() {
 #[test]
 fn transfer_failed_when_claim_rewards() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
 		assert_ok!(TokensModule::deposit(AUSD, &VAULT::get(), 27));
 		assert_ok!(TokensModule::deposit(DOT, &VAULT::get(), 30));
 		RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(BTC), 100);
@@ -633,7 +628,6 @@ fn transfer_failed_when_claim_rewards() {
 #[test]
 fn claim_rewards_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
 		assert_ok!(TokensModule::deposit(ACA, &VAULT::get(), 10000));
 		assert_ok!(TokensModule::deposit(AUSD, &VAULT::get(), 10000));
 		assert_ok!(TokensModule::deposit(LDOT, &VAULT::get(), 10000));
@@ -1212,5 +1206,131 @@ fn transfer_reward_and_update_rewards_storage_atomically_when_accumulate_incenti
 				rewards: vec![(ACA, (60, 0)), (AUSD, (90, 0))].into_iter().collect()
 			}
 		);
+	});
+}
+
+#[test]
+fn update_claim_reward_deduction_currency() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			IncentivesModule::update_claim_reward_deduction_currency(
+				RuntimeOrigin::signed(ALICE::get()),
+				PoolId::Dex(DOT_AUSD_LP),
+				Some(ACA)
+			),
+			BadOrigin
+		);
+
+		assert_ok!(IncentivesModule::update_claim_reward_deduction_rates(
+			RuntimeOrigin::signed(ROOT::get()),
+			vec![(PoolId::Dex(DOT_AUSD_LP), Rate::saturating_from_rational(10, 100)),]
+		));
+		assert_ok!(IncentivesModule::update_claim_reward_deduction_currency(
+			RuntimeOrigin::signed(ROOT::get()),
+			PoolId::Dex(DOT_AUSD_LP),
+			Some(ACA)
+		),);
+		System::assert_has_event(RuntimeEvent::IncentivesModule(
+			crate::Event::ClaimRewardDeductionCurrencyUpdated {
+				pool: PoolId::Dex(DOT_AUSD_LP),
+				currency: Some(ACA),
+			},
+		));
+
+		assert_eq!(
+			ClaimRewardDeductionCurrency::<Runtime>::get(PoolId::Dex(DOT_AUSD_LP)),
+			Some(ACA)
+		);
+	});
+}
+
+#[test]
+fn claim_reward_deduction_currency_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		let pool_id = PoolId::Dex(DOT_AUSD_LP);
+
+		assert_ok!(IncentivesModule::update_claim_reward_deduction_rates(
+			RuntimeOrigin::signed(ROOT::get()),
+			vec![(pool_id, Rate::saturating_from_rational(10, 100)),]
+		));
+		assert_ok!(IncentivesModule::update_claim_reward_deduction_currency(
+			RuntimeOrigin::signed(ROOT::get()),
+			pool_id,
+			Some(ACA)
+		));
+
+		assert_ok!(TokensModule::deposit(ACA, &VAULT::get(), 10000));
+		assert_ok!(TokensModule::deposit(AUSD, &VAULT::get(), 10000));
+
+		// alice add shares before accumulate rewards
+		RewardsModule::add_share(&ALICE::get(), &pool_id, 100);
+
+		// bob add shares before accumulate rewards
+		RewardsModule::add_share(&BOB::get(), &pool_id, 100);
+
+		// accumulate rewards
+		assert_ok!(RewardsModule::accumulate_reward(&pool_id, ACA, 1000));
+		assert_ok!(RewardsModule::accumulate_reward(&pool_id, AUSD, 2000));
+
+		// alice claim rewards
+		assert_ok!(IncentivesModule::claim_rewards(
+			RuntimeOrigin::signed(ALICE::get()),
+			pool_id
+		));
+
+		System::assert_has_event(RuntimeEvent::IncentivesModule(crate::Event::ClaimRewards {
+			who: ALICE::get(),
+			pool: pool_id,
+			reward_currency_id: ACA,
+			actual_amount: 450,
+			deduction_amount: 50,
+		}));
+		System::assert_has_event(RuntimeEvent::IncentivesModule(crate::Event::ClaimRewards {
+			who: ALICE::get(),
+			pool: pool_id,
+			reward_currency_id: AUSD,
+			actual_amount: 1000,
+			deduction_amount: 0,
+		}));
+
+		System::reset_events();
+
+		assert_eq!(TokensModule::free_balance(ACA, &ALICE::get()), 450);
+		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 1000);
+
+		// apply deduction currency to all rewards
+		assert_ok!(IncentivesModule::update_claim_reward_deduction_currency(
+			RuntimeOrigin::signed(ROOT::get()),
+			pool_id,
+			None
+		));
+
+		// accumulate rewards
+		assert_ok!(RewardsModule::accumulate_reward(&pool_id, ACA, 1000));
+		assert_ok!(RewardsModule::accumulate_reward(&pool_id, AUSD, 2000));
+
+		// alice claim rewards
+		assert_ok!(IncentivesModule::claim_rewards(
+			RuntimeOrigin::signed(ALICE::get()),
+			pool_id
+		));
+
+		System::assert_has_event(RuntimeEvent::IncentivesModule(crate::Event::ClaimRewards {
+			who: ALICE::get(),
+			pool: pool_id,
+			reward_currency_id: ACA,
+			actual_amount: 473,
+			deduction_amount: 52,
+		}));
+		System::assert_has_event(RuntimeEvent::IncentivesModule(crate::Event::ClaimRewards {
+			who: ALICE::get(),
+			pool: pool_id,
+			reward_currency_id: AUSD,
+			actual_amount: 900,
+			deduction_amount: 100,
+		}));
+
+		assert_eq!(TokensModule::free_balance(ACA, &ALICE::get()), 923);
+		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 1900);
 	});
 }

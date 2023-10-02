@@ -54,6 +54,7 @@ pub trait WeightInfo {
 	fn claim_rewards() -> Weight;
 	fn update_incentive_rewards(c: u32, ) -> Weight;
 	fn update_claim_reward_deduction_rates(c: u32, ) -> Weight;
+	fn update_claim_reward_deduction_currency() -> Weight;
 }
 
 /// Weights for module_incentives using the Acala node and recommended hardware.
@@ -92,6 +93,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(Weight::from_parts(1_829_000, 0).saturating_mul(c as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
+	fn update_claim_reward_deduction_currency() -> Weight {
+		Weight::from_parts(914_000, 0)
+	}
 }
 
 // For backwards compatibility and tests
@@ -128,5 +132,8 @@ impl WeightInfo for () {
 			// Standard Error: 21_000
 			.saturating_add(Weight::from_parts(1_829_000, 0).saturating_mul(c as u64))
 			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
+	}
+	fn update_claim_reward_deduction_currency() -> Weight {
+		Weight::from_parts(914_000, 0)
 	}
 }

@@ -140,6 +140,8 @@ pub mod module {
 		},
 		/// Payout deduction rate updated.
 		ClaimRewardDeductionRateUpdated { pool: PoolId, deduction_rate: Rate },
+		/// Payout deduction currency updated.
+		ClaimRewardDeductionCurrencyUpdated { pool: PoolId, currency: Option<CurrencyId> },
 	}
 
 	/// Mapping from pool to its fixed incentive amounts of multi currencies per period.
@@ -155,6 +157,12 @@ pub mod module {
 	/// ClaimRewardDeductionRates: map Pool => DeductionRate
 	#[pallet::storage]
 	pub type ClaimRewardDeductionRates<T: Config> = StorageMap<_, Twox64Concat, PoolId, FractionalRate, ValueQuery>;
+
+	/// If specified, ClaimRewardDeductionRates only apply to this currency.
+	///
+	/// ClaimRewardDeductionCurrency: map Pool => Option<RewardCurrencyId>
+	#[pallet::storage]
+	pub type ClaimRewardDeductionCurrency<T: Config> = StorageMap<_, Twox64Concat, PoolId, CurrencyId, OptionQuery>;
 
 	/// The pending rewards amount, actual available rewards amount may be deducted
 	///
@@ -338,6 +346,25 @@ pub mod module {
 			}
 			Ok(())
 		}
+
+		/// Update claim rewards deduction rates currency
+		///
+		/// The dispatch origin of this call must be `UpdateOrigin`.
+		#[pallet::call_index(5)]
+		#[pallet::weight(<T as Config>::WeightInfo::update_claim_reward_deduction_currency())]
+		pub fn update_claim_reward_deduction_currency(
+			origin: OriginFor<T>,
+			pool_id: PoolId,
+			currency_id: Option<CurrencyId>,
+		) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			ClaimRewardDeductionCurrency::<T>::mutate_exists(pool_id, |c| *c = currency_id);
+			Self::deposit_event(Event::ClaimRewardDeductionCurrencyUpdated {
+				pool: pool_id,
+				currency: currency_id,
+			});
+			Ok(())
+		}
 	}
 }
 
@@ -393,11 +420,24 @@ impl<T: Config> Pallet<T> {
 		PendingMultiRewards::<T>::mutate_exists(pool_id, &who, |maybe_pending_multi_rewards| {
 			if let Some(pending_multi_rewards) = maybe_pending_multi_rewards {
 				let deduction_rate = Self::claim_reward_deduction_rates(&pool_id);
+				let deduction_currency = ClaimRewardDeductionCurrency::<T>::get(&pool_id);
 
 				for (currency_id, pending_reward) in pending_multi_rewards.iter_mut() {
 					if pending_reward.is_zero() {
 						continue;
 					}
+
+					let deduction_rate = if let Some(deduction_currency) = deduction_currency {
+						// only apply deduction rate to specified currency
+						if deduction_currency == *currency_id {
+							deduction_rate
+						} else {
+							Zero::zero()
+						}
+					} else {
+						// apply deduction rate to all currencies
+						deduction_rate
+					};
 
 					let (payout_amount, deduction_amount) = {
 						let should_deduction_amount = deduction_rate.saturating_mul_int(*pending_reward);
