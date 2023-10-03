@@ -2028,7 +2028,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl orml_oracle_rpc_runtime_api::OracleApi<
+	impl orml_oracle_runtime_api::OracleApi<
 		Block,
 		DataProviderId,
 		CurrencyId,
@@ -2049,7 +2049,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl orml_tokens_rpc_runtime_api::TokensApi<
+	impl orml_tokens_runtime_api::TokensApi<
 		Block,
 		CurrencyId,
 		Balance,

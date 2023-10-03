@@ -260,9 +260,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 
 		match location {
 			MultiLocation {
-				parents,
+				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey { data, length }),
-			} if parents == 1 => {
+			} => {
 				match (para_id, &data[..data.len().min(length as usize)]) {
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Acala

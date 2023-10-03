@@ -18,8 +18,7 @@
 
 //! Acala Client abstractions.
 
-use acala_primitives::{AccountId, Balance, Block, BlockNumber, CurrencyId, DataProviderId, Hash, Header, Nonce};
-use runtime_common::TimeStampedPrice;
+use acala_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Nonce};
 use sc_client_api::{Backend as BackendT, BlockchainEvents, KeysIter, PairsIter};
 use sp_api::{CallApiAt, NumberFor, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
@@ -39,8 +38,6 @@ pub trait RuntimeApiCollection:
 	+ sp_block_builder::BlockBuilder<Block>
 	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
-	+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
-	+ orml_tokens_rpc::TokensRuntimeApi<Block, CurrencyId, Balance>
 	+ sp_api::Metadata<Block>
 	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_session::SessionKeys<Block>
@@ -57,8 +54,6 @@ where
 		+ sp_block_builder::BlockBuilder<Block>
 		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
-		+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
-		+ orml_tokens_rpc::TokensRuntimeApi<Block, CurrencyId, Balance>
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_session::SessionKeys<Block>
