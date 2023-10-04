@@ -19,6 +19,7 @@ concurrency:
 
 env:
   TARPAULIN_VERSION: 0.27.1
+  RUSTFLAGS: -C link-arg=-fuse-ld=lld
   # LIBCLANG_PATH: "/usr/lib/llvm-11/lib" # default `llvm-config --prefix`
   CARGO_INCREMENTAL: 0
 jobs:
