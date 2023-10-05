@@ -168,6 +168,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(c.into()))
 	}
+	fn update_claim_reward_deduction_currency() -> Weight {
+		Weight::from_parts(7_720_531, 1698)
+	}
 }
 
 // For backwards compatibility and tests
@@ -281,5 +284,8 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(c.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(c.into()))
+	}
+	fn update_claim_reward_deduction_currency() -> Weight {
+		Weight::from_parts(7_720_531, 1698)
 	}
 }
