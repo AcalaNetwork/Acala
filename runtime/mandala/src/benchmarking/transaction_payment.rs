@@ -223,6 +223,11 @@ runtime_benchmarks! {
 			AggregatedSwapPath::<CurrencyId>::Dex(vec![LIQUID, NATIVE]),
 		];
 	}: _(RawOrigin::Signed(caller.clone()), fee_aggregated_path, call)
+
+	on_finalize {
+	}: {
+		TransactionPayment::on_finalize(System::block_number());
+	}
 }
 
 #[cfg(test)]
