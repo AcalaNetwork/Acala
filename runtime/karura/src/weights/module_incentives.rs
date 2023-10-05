@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -59,11 +59,11 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 	fn on_initialize(c: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1262 + c * (206 ±0)`
-		//  Estimated: `4757 + c * (5027 ±0)`
-		// Minimum execution time: 9_729 nanoseconds.
-		Weight::from_parts(13_759_575, 4757)
-			// Standard Error: 128_948
-			.saturating_add(Weight::from_parts(17_059_488, 0).saturating_mul(c.into()))
+		//  Estimated: `4757 + c * (5027 ±5)`
+		// Minimum execution time: 9_739 nanoseconds.
+		Weight::from_parts(13_773_619, 4757)
+			// Standard Error: 133_246
+			.saturating_add(Weight::from_parts(17_179_733, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(c.into())))
 			.saturating_add(Weight::from_parts(0, 5027).saturating_mul(c.into()))
@@ -82,8 +82,8 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1841`
 		//  Estimated: `6234`
-		// Minimum execution time: 66_912 nanoseconds.
-		Weight::from_parts(67_818_000, 6234)
+		// Minimum execution time: 66_112 nanoseconds.
+		Weight::from_parts(66_930_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -99,8 +99,8 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1848`
 		//  Estimated: `6234`
-		// Minimum execution time: 66_030 nanoseconds.
-		Weight::from_parts(67_260_000, 6234)
+		// Minimum execution time: 65_486 nanoseconds.
+		Weight::from_parts(66_797_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -122,8 +122,8 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1893`
 		//  Estimated: `5358`
-		// Minimum execution time: 95_971 nanoseconds.
-		Weight::from_parts(97_791_000, 5358)
+		// Minimum execution time: 94_747 nanoseconds.
+		Weight::from_parts(98_045_000, 5358)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -134,10 +134,10 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `751 + c * (85 ±0)`
 		//  Estimated: `1997 + c * (2475 ±0)`
-		// Minimum execution time: 5_016 nanoseconds.
-		Weight::from_parts(7_868_222, 1997)
-			// Standard Error: 93_176
-			.saturating_add(Weight::from_parts(8_384_032, 0).saturating_mul(c.into()))
+		// Minimum execution time: 4_924 nanoseconds.
+		Weight::from_parts(7_800_899, 1997)
+			// Standard Error: 93_850
+			.saturating_add(Weight::from_parts(8_339_843, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(c.into()))
@@ -149,10 +149,10 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `676 + c * (10 ±0)`
 		//  Estimated: `1698 + c * (2475 ±0)`
-		// Minimum execution time: 4_814 nanoseconds.
-		Weight::from_parts(5_590_431, 1698)
-			// Standard Error: 19_204
-			.saturating_add(Weight::from_parts(1_933_698, 0).saturating_mul(c.into()))
+		// Minimum execution time: 4_779 nanoseconds.
+		Weight::from_parts(5_506_327, 1698)
+			// Standard Error: 18_868
+			.saturating_add(Weight::from_parts(1_971_005, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(c.into()))
@@ -163,8 +163,8 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1007`
 		//  Estimated: `4472`
-		// Minimum execution time: 18_009 nanoseconds.
-		Weight::from_parts(18_508_000, 4472)
+		// Minimum execution time: 17_843 nanoseconds.
+		Weight::from_parts(18_316_000, 4472)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

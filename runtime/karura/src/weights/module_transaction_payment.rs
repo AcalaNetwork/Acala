@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -55,8 +55,8 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 		// Proof Size summary in bytes:
 		//  Measured:  `1406`
 		//  Estimated: `3633`
-		// Minimum execution time: 33_444 nanoseconds.
-		Weight::from_parts(34_180_000, 3633)
+		// Minimum execution time: 33_647 nanoseconds.
+		Weight::from_parts(34_155_000, 3633)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -82,8 +82,8 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 		// Proof Size summary in bytes:
 		//  Measured:  `2221`
 		//  Estimated: `9000`
-		// Minimum execution time: 114_951 nanoseconds.
-		Weight::from_parts(116_872_000, 9000)
+		// Minimum execution time: 113_850 nanoseconds.
+		Weight::from_parts(115_135_000, 9000)
 			.saturating_add(T::DbWeight::get().reads(10))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -105,8 +105,8 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 		// Proof Size summary in bytes:
 		//  Measured:  `1778`
 		//  Estimated: `6234`
-		// Minimum execution time: 97_893 nanoseconds.
-		Weight::from_parts(99_674_000, 6234)
+		// Minimum execution time: 97_794 nanoseconds.
+		Weight::from_parts(99_541_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
@@ -114,31 +114,31 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 		// Proof Size summary in bytes:
 		//  Measured:  `666`
 		//  Estimated: `0`
-		// Minimum execution time: 8_881 nanoseconds.
-		Weight::from_parts(9_213_000, 0)
+		// Minimum execution time: 9_020 nanoseconds.
+		Weight::from_parts(9_235_000, 0)
 	}
 	fn with_fee_currency() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `666`
 		//  Estimated: `0`
-		// Minimum execution time: 9_673 nanoseconds.
-		Weight::from_parts(10_114_000, 0)
+		// Minimum execution time: 9_715 nanoseconds.
+		Weight::from_parts(10_207_000, 0)
 	}
 	fn with_fee_aggregated_path() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `666`
 		//  Estimated: `0`
-		// Minimum execution time: 9_946 nanoseconds.
-		Weight::from_parts(10_355_000, 0)
+		// Minimum execution time: 10_012 nanoseconds.
+		Weight::from_parts(10_445_000, 0)
 	}
 	// Storage: `TransactionPayment::NextFeeMultiplier` (r:1 w:1)
 	// Proof: `TransactionPayment::NextFeeMultiplier` (`max_values`: Some(1), `max_size`: Some(16), added: 511, mode: `MaxEncodedLen`)
 	fn on_finalize() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `955`
+		//  Measured:  `923`
 		//  Estimated: `1501`
-		// Minimum execution time: 10_040 nanoseconds.
-		Weight::from_parts(10_294_000, 1501)
+		// Minimum execution time: 10_083 nanoseconds.
+		Weight::from_parts(10_336_000, 1501)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

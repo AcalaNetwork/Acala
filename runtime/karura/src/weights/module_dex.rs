@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -53,8 +53,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1074`
 		//  Estimated: `3660`
-		// Minimum execution time: 18_966 nanoseconds.
-		Weight::from_parts(19_517_000, 3660)
+		// Minimum execution time: 18_735 nanoseconds.
+		Weight::from_parts(19_312_000, 3660)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -64,8 +64,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1111`
 		//  Estimated: `3660`
-		// Minimum execution time: 20_191 nanoseconds.
-		Weight::from_parts(20_708_000, 3660)
+		// Minimum execution time: 19_953 nanoseconds.
+		Weight::from_parts(20_504_000, 3660)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -79,8 +79,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1116`
 		//  Estimated: `3660`
-		// Minimum execution time: 26_246 nanoseconds.
-		Weight::from_parts(26_670_000, 3660)
+		// Minimum execution time: 25_776 nanoseconds.
+		Weight::from_parts(26_440_000, 3660)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -90,8 +90,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `915`
 		//  Estimated: `3660`
-		// Minimum execution time: 11_564 nanoseconds.
-		Weight::from_parts(12_102_000, 3660)
+		// Minimum execution time: 11_546 nanoseconds.
+		Weight::from_parts(11_830_000, 3660)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -111,8 +111,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1708`
 		//  Estimated: `3660`
-		// Minimum execution time: 49_910 nanoseconds.
-		Weight::from_parts(51_454_000, 3660)
+		// Minimum execution time: 50_193 nanoseconds.
+		Weight::from_parts(51_083_000, 3660)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -128,8 +128,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1867`
 		//  Estimated: `6234`
-		// Minimum execution time: 100_851 nanoseconds.
-		Weight::from_parts(101_679_000, 6234)
+		// Minimum execution time: 101_055 nanoseconds.
+		Weight::from_parts(103_278_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -147,8 +147,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2062`
 		//  Estimated: `6272`
-		// Minimum execution time: 69_749 nanoseconds.
-		Weight::from_parts(71_674_000, 6272)
+		// Minimum execution time: 69_002 nanoseconds.
+		Weight::from_parts(71_072_000, 6272)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -168,8 +168,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2200`
 		//  Estimated: `8856`
-		// Minimum execution time: 120_984 nanoseconds.
-		Weight::from_parts(122_420_000, 8856)
+		// Minimum execution time: 121_387 nanoseconds.
+		Weight::from_parts(122_985_000, 8856)
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -193,8 +193,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2607`
 		//  Estimated: `11478`
-		// Minimum execution time: 162_236 nanoseconds.
-		Weight::from_parts(165_324_000, 11478)
+		// Minimum execution time: 160_877 nanoseconds.
+		Weight::from_parts(165_018_000, 11478)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -210,8 +210,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2134`
 		//  Estimated: `8856`
-		// Minimum execution time: 110_892 nanoseconds.
-		Weight::from_parts(113_534_000, 8856)
+		// Minimum execution time: 110_446 nanoseconds.
+		Weight::from_parts(113_165_000, 8856)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -233,8 +233,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2547`
 		//  Estimated: `11478`
-		// Minimum execution time: 174_467 nanoseconds.
-		Weight::from_parts(176_477_000, 11478)
+		// Minimum execution time: 174_920 nanoseconds.
+		Weight::from_parts(176_659_000, 11478)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -251,10 +251,10 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1810 + u * (112 ±0)`
 		//  Estimated: `6234 + u * (643 ±18)`
-		// Minimum execution time: 97_078 nanoseconds.
-		Weight::from_parts(77_122_408, 6234)
-			// Standard Error: 53_722
-			.saturating_add(Weight::from_parts(11_267_717, 0).saturating_mul(u.into()))
+		// Minimum execution time: 96_910 nanoseconds.
+		Weight::from_parts(75_726_840, 6234)
+			// Standard Error: 51_919
+			.saturating_add(Weight::from_parts(11_715_859, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
@@ -273,11 +273,11 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	fn swap_with_exact_target(u: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1810 + u * (112 ±0)`
-		//  Estimated: `6234 + u * (643 ±19)`
-		// Minimum execution time: 97_650 nanoseconds.
-		Weight::from_parts(77_004_697, 6234)
-			// Standard Error: 52_730
-			.saturating_add(Weight::from_parts(11_407_129, 0).saturating_mul(u.into()))
+		//  Estimated: `6234 + u * (643 ±18)`
+		// Minimum execution time: 96_122 nanoseconds.
+		Weight::from_parts(75_170_891, 6234)
+			// Standard Error: 55_147
+			.saturating_add(Weight::from_parts(11_940_206, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
@@ -300,8 +300,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2201`
 		//  Estimated: `6234`
-		// Minimum execution time: 107_183 nanoseconds.
-		Weight::from_parts(109_551_000, 6234)
+		// Minimum execution time: 107_160 nanoseconds.
+		Weight::from_parts(109_542_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -311,8 +311,8 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1248`
 		//  Estimated: `3660`
-		// Minimum execution time: 24_015 nanoseconds.
-		Weight::from_parts(24_584_000, 3660)
+		// Minimum execution time: 24_124 nanoseconds.
+		Weight::from_parts(24_631_000, 3660)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -63,8 +63,8 @@ impl<T: frame_system::Config> orml_auction::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2470`
 		//  Estimated: `8856`
-		// Minimum execution time: 101_947 nanoseconds.
-		Weight::from_parts(104_225_000, 8856)
+		// Minimum execution time: 101_360 nanoseconds.
+		Weight::from_parts(103_455_000, 8856)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}
@@ -97,10 +97,10 @@ impl<T: frame_system::Config> orml_auction::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2600 + c * (981 ±0)`
 		//  Estimated: `6330 + c * (2614 ±0)`
-		// Minimum execution time: 102_616 nanoseconds.
-		Weight::from_parts(53_652_048, 6330)
-			// Standard Error: 19_056
-			.saturating_add(Weight::from_parts(45_336_611, 0).saturating_mul(c.into()))
+		// Minimum execution time: 102_330 nanoseconds.
+		Weight::from_parts(56_053_552, 6330)
+			// Standard Error: 20_135
+			.saturating_add(Weight::from_parts(45_063_778, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(13))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(7))

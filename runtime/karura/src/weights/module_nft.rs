@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -61,8 +61,8 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `385`
 		//  Estimated: `6196`
-		// Minimum execution time: 92_335 nanoseconds.
-		Weight::from_parts(93_622_000, 6196)
+		// Minimum execution time: 91_152 nanoseconds.
+		Weight::from_parts(93_056_000, 6196)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -83,10 +83,10 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2496`
 		//  Estimated: `6196`
-		// Minimum execution time: 111_447 nanoseconds.
-		Weight::from_parts(107_646_177, 6196)
-			// Standard Error: 14_321
-			.saturating_add(Weight::from_parts(22_660_714, 0).saturating_mul(i.into()))
+		// Minimum execution time: 110_814 nanoseconds.
+		Weight::from_parts(36_375_538, 6196)
+			// Standard Error: 18_120
+			.saturating_add(Weight::from_parts(23_231_053, 0).saturating_mul(i.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(5))
 			.saturating_add(T::DbWeight::get().writes((2_u64).saturating_mul(i.into())))
@@ -105,8 +105,8 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `4845`
 		//  Estimated: `8310`
-		// Minimum execution time: 113_216 nanoseconds.
-		Weight::from_parts(115_407_000, 8310)
+		// Minimum execution time: 112_355 nanoseconds.
+		Weight::from_parts(113_167_000, 8310)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
@@ -124,8 +124,8 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `4744`
 		//  Estimated: `8209`
-		// Minimum execution time: 75_124 nanoseconds.
-		Weight::from_parts(76_306_000, 8209)
+		// Minimum execution time: 73_233 nanoseconds.
+		Weight::from_parts(74_326_000, 8209)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -144,10 +144,10 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `4744`
 		//  Estimated: `8209`
-		// Minimum execution time: 75_495 nanoseconds.
-		Weight::from_parts(76_140_000, 8209)
+		// Minimum execution time: 74_800 nanoseconds.
+		Weight::from_parts(75_142_000, 8209)
 			// Standard Error: 2
-			.saturating_add(Weight::from_parts(1_661, 0).saturating_mul(b.into()))
+			.saturating_add(Weight::from_parts(1_669, 0).saturating_mul(b.into()))
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -167,8 +167,8 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2831`
 		//  Estimated: `6296`
-		// Minimum execution time: 109_009 nanoseconds.
-		Weight::from_parts(110_138_000, 6296)
+		// Minimum execution time: 108_230 nanoseconds.
+		Weight::from_parts(109_809_000, 6296)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -178,8 +178,8 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2339`
 		//  Estimated: `5804`
-		// Minimum execution time: 19_259 nanoseconds.
-		Weight::from_parts(19_625_000, 5804)
+		// Minimum execution time: 19_547 nanoseconds.
+		Weight::from_parts(20_101_000, 5804)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

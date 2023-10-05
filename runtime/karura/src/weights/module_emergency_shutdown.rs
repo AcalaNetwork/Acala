@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -56,10 +56,10 @@ impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightIn
 		// Proof Size summary in bytes:
 		//  Measured:  `1286`
 		//  Estimated: `3600`
-		// Minimum execution time: 22_135 nanoseconds.
-		Weight::from_parts(23_027_941, 3600)
-			// Standard Error: 9_320
-			.saturating_add(Weight::from_parts(406_015, 0).saturating_mul(c.into()))
+		// Minimum execution time: 21_963 nanoseconds.
+		Weight::from_parts(22_854_473, 3600)
+			// Standard Error: 10_637
+			.saturating_add(Weight::from_parts(470_136, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -73,8 +73,8 @@ impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightIn
 		// Proof Size summary in bytes:
 		//  Measured:  `1310`
 		//  Estimated: `3600`
-		// Minimum execution time: 22_017 nanoseconds.
-		Weight::from_parts(22_396_000, 3600)
+		// Minimum execution time: 21_919 nanoseconds.
+		Weight::from_parts(22_445_000, 3600)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -93,10 +93,10 @@ impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightIn
 		// Proof Size summary in bytes:
 		//  Measured:  `2059 + c * (33 ±0)`
 		//  Estimated: `3612`
-		// Minimum execution time: 55_063 nanoseconds.
-		Weight::from_parts(57_365_804, 3612)
-			// Standard Error: 29_289
-			.saturating_add(Weight::from_parts(1_837_319, 0).saturating_mul(c.into()))
+		// Minimum execution time: 54_410 nanoseconds.
+		Weight::from_parts(56_634_575, 3612)
+			// Standard Error: 29_545
+			.saturating_add(Weight::from_parts(1_732_231, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}

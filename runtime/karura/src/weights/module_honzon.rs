@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -55,8 +55,8 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1448`
 		//  Estimated: `3633`
-		// Minimum execution time: 38_395 nanoseconds.
-		Weight::from_parts(39_009_000, 3633)
+		// Minimum execution time: 38_484 nanoseconds.
+		Weight::from_parts(39_130_000, 3633)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -68,8 +68,8 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1668`
 		//  Estimated: `3633`
-		// Minimum execution time: 42_715 nanoseconds.
-		Weight::from_parts(43_665_000, 3633)
+		// Minimum execution time: 43_002 nanoseconds.
+		Weight::from_parts(43_903_000, 3633)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -82,10 +82,10 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1287 + c * (176 ±0)`
 		//  Estimated: `3633 + c * (2622 ±0)`
-		// Minimum execution time: 21_426 nanoseconds.
-		Weight::from_parts(27_993_235, 3633)
-			// Standard Error: 211_019
-			.saturating_add(Weight::from_parts(6_754_767, 0).saturating_mul(c.into()))
+		// Minimum execution time: 21_455 nanoseconds.
+		Weight::from_parts(27_945_826, 3633)
+			// Standard Error: 210_866
+			.saturating_add(Weight::from_parts(6_673_194, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
@@ -121,8 +121,8 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2401`
 		//  Estimated: `8856`
-		// Minimum execution time: 123_668 nanoseconds.
-		Weight::from_parts(126_903_000, 8856)
+		// Minimum execution time: 122_385 nanoseconds.
+		Weight::from_parts(125_606_000, 8856)
 			.saturating_add(T::DbWeight::get().reads(17))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -154,8 +154,8 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2746`
 		//  Estimated: `8686`
-		// Minimum execution time: 101_876 nanoseconds.
-		Weight::from_parts(104_712_000, 8686)
+		// Minimum execution time: 101_419 nanoseconds.
+		Weight::from_parts(104_870_000, 8686)
 			.saturating_add(T::DbWeight::get().reads(16))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
@@ -209,8 +209,8 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `5423`
 		//  Estimated: `21966`
-		// Minimum execution time: 354_182 nanoseconds.
-		Weight::from_parts(359_023_000, 21966)
+		// Minimum execution time: 355_391 nanoseconds.
+		Weight::from_parts(360_410_000, 21966)
 			.saturating_add(T::DbWeight::get().reads(39))
 			.saturating_add(T::DbWeight::get().writes(15))
 	}
@@ -250,8 +250,8 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `4709`
 		//  Estimated: `11478`
-		// Minimum execution time: 247_547 nanoseconds.
-		Weight::from_parts(251_653_000, 11478)
+		// Minimum execution time: 243_941 nanoseconds.
+		Weight::from_parts(250_315_000, 11478)
 			.saturating_add(T::DbWeight::get().reads(27))
 			.saturating_add(T::DbWeight::get().writes(12))
 	}
@@ -291,8 +291,8 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `4615`
 		//  Estimated: `19344`
-		// Minimum execution time: 280_744 nanoseconds.
-		Weight::from_parts(288_755_000, 19344)
+		// Minimum execution time: 282_899 nanoseconds.
+		Weight::from_parts(288_074_000, 19344)
 			.saturating_add(T::DbWeight::get().reads(29))
 			.saturating_add(T::DbWeight::get().writes(13))
 	}
@@ -324,8 +324,8 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2921`
 		//  Estimated: `8861`
-		// Minimum execution time: 155_103 nanoseconds.
-		Weight::from_parts(158_922_000, 8861)
+		// Minimum execution time: 154_449 nanoseconds.
+		Weight::from_parts(158_423_000, 8861)
 			.saturating_add(T::DbWeight::get().reads(20))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -351,8 +351,8 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2020`
 		//  Estimated: `7960`
-		// Minimum execution time: 42_828 nanoseconds.
-		Weight::from_parts(43_986_000, 7960)
+		// Minimum execution time: 42_000 nanoseconds.
+		Weight::from_parts(43_216_000, 7960)
 			.saturating_add(T::DbWeight::get().reads(11))
 	}
 }

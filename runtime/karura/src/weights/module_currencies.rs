@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -57,8 +57,8 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1578`
 		//  Estimated: `6234`
-		// Minimum execution time: 55_011 nanoseconds.
-		Weight::from_parts(55_984_000, 6234)
+		// Minimum execution time: 54_707 nanoseconds.
+		Weight::from_parts(55_504_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -70,8 +70,8 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1412`
 		//  Estimated: `3593`
-		// Minimum execution time: 64_776 nanoseconds.
-		Weight::from_parts(65_850_000, 3593)
+		// Minimum execution time: 64_004 nanoseconds.
+		Weight::from_parts(65_096_000, 3593)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -85,8 +85,8 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1128`
 		//  Estimated: `3612`
-		// Minimum execution time: 32_819 nanoseconds.
-		Weight::from_parts(33_518_000, 3612)
+		// Minimum execution time: 32_477 nanoseconds.
+		Weight::from_parts(32_976_000, 3612)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -96,8 +96,8 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1268`
 		//  Estimated: `3593`
-		// Minimum execution time: 36_068 nanoseconds.
-		Weight::from_parts(36_411_000, 3593)
+		// Minimum execution time: 35_538 nanoseconds.
+		Weight::from_parts(36_028_000, 3593)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -109,8 +109,8 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1408`
 		//  Estimated: `3593`
-		// Minimum execution time: 38_142 nanoseconds.
-		Weight::from_parts(38_753_000, 3593)
+		// Minimum execution time: 37_489 nanoseconds.
+		Weight::from_parts(38_096_000, 3593)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -123,10 +123,10 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1453 + c * (79 ±0)`
 		//  Estimated: `3612 + c * (2622 ±0)`
-		// Minimum execution time: 42_452 nanoseconds.
-		Weight::from_parts(22_224_612, 3612)
-			// Standard Error: 23_788
-			.saturating_add(Weight::from_parts(21_564_158, 0).saturating_mul(c.into()))
+		// Minimum execution time: 42_034 nanoseconds.
+		Weight::from_parts(21_920_762, 3612)
+			// Standard Error: 22_383
+			.saturating_add(Weight::from_parts(21_178_986, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
@@ -143,8 +143,8 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1432`
 		//  Estimated: `4765`
-		// Minimum execution time: 36_071 nanoseconds.
-		Weight::from_parts(36_612_000, 4765)
+		// Minimum execution time: 35_452 nanoseconds.
+		Weight::from_parts(36_015_000, 4765)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -158,8 +158,8 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1537`
 		//  Estimated: `4765`
-		// Minimum execution time: 37_003 nanoseconds.
-		Weight::from_parts(37_786_000, 4765)
+		// Minimum execution time: 36_472 nanoseconds.
+		Weight::from_parts(37_028_000, 4765)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}

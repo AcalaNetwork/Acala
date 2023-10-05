@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -75,11 +75,11 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 	fn on_initialize(c: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1018 + c * (90 ±0)`
-		//  Estimated: `3691 + c * (2515 ±0)`
-		// Minimum execution time: 26_085 nanoseconds.
-		Weight::from_parts(28_124_725, 3691)
-			// Standard Error: 47_659
-			.saturating_add(Weight::from_parts(5_963_259, 0).saturating_mul(c.into()))
+		//  Estimated: `3691 + c * (2515 ±13)`
+		// Minimum execution time: 26_035 nanoseconds.
+		Weight::from_parts(27_740_136, 3691)
+			// Standard Error: 47_259
+			.saturating_add(Weight::from_parts(5_931_702, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(9))
@@ -91,8 +91,8 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1173`
 		//  Estimated: `3600`
-		// Minimum execution time: 34_103 nanoseconds.
-		Weight::from_parts(34_797_000, 3600)
+		// Minimum execution time: 32_960 nanoseconds.
+		Weight::from_parts(33_738_000, 3600)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -151,10 +151,10 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `3551`
 		//  Estimated: `9491`
-		// Minimum execution time: 195_524 nanoseconds.
-		Weight::from_parts(199_226_807, 9491)
-			// Standard Error: 20_866
-			.saturating_add(Weight::from_parts(12_481_896, 0).saturating_mul(b.into()))
+		// Minimum execution time: 194_151 nanoseconds.
+		Weight::from_parts(196_218_455, 9491)
+			// Standard Error: 23_188
+			.saturating_add(Weight::from_parts(12_488_572, 0).saturating_mul(b.into()))
 			.saturating_add(T::DbWeight::get().reads(28))
 			.saturating_add(T::DbWeight::get().writes(15))
 			.saturating_add(T::DbWeight::get().writes((3_u64).saturating_mul(b.into())))
@@ -209,8 +209,8 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `4429`
 		//  Estimated: `16722`
-		// Minimum execution time: 302_681 nanoseconds.
-		Weight::from_parts(309_009_000, 16722)
+		// Minimum execution time: 299_784 nanoseconds.
+		Weight::from_parts(308_617_000, 16722)
 			.saturating_add(T::DbWeight::get().reads(36))
 			.saturating_add(T::DbWeight::get().writes(16))
 	}
@@ -240,8 +240,8 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2740`
 		//  Estimated: `6234`
-		// Minimum execution time: 114_156 nanoseconds.
-		Weight::from_parts(116_765_000, 6234)
+		// Minimum execution time: 113_248 nanoseconds.
+		Weight::from_parts(114_913_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(14))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}
@@ -251,8 +251,8 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1173`
 		//  Estimated: `1686`
-		// Minimum execution time: 18_682 nanoseconds.
-		Weight::from_parts(19_125_000, 1686)
+		// Minimum execution time: 18_526 nanoseconds.
+		Weight::from_parts(18_922_000, 1686)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -262,8 +262,8 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1218`
 		//  Estimated: `1686`
-		// Minimum execution time: 19_466 nanoseconds.
-		Weight::from_parts(19_745_000, 1686)
+		// Minimum execution time: 19_182 nanoseconds.
+		Weight::from_parts(19_464_000, 1686)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

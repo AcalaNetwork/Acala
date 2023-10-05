@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -57,8 +57,8 @@ impl<T: frame_system::Config> module_prices::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1388`
 		//  Estimated: `4853`
-		// Minimum execution time: 26_575 nanoseconds.
-		Weight::from_parts(27_048_000, 4853)
+		// Minimum execution time: 26_716 nanoseconds.
+		Weight::from_parts(26_993_000, 4853)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -68,8 +68,8 @@ impl<T: frame_system::Config> module_prices::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1057`
 		//  Estimated: `3532`
-		// Minimum execution time: 20_549 nanoseconds.
-		Weight::from_parts(21_108_000, 3532)
+		// Minimum execution time: 20_235 nanoseconds.
+		Weight::from_parts(20_936_000, 3532)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

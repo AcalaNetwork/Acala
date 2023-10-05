@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -57,8 +57,8 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1578`
 		//  Estimated: `6234`
-		// Minimum execution time: 51_409 nanoseconds.
-		Weight::from_parts(52_512_000, 6234)
+		// Minimum execution time: 51_383 nanoseconds.
+		Weight::from_parts(51_987_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -72,8 +72,8 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1578`
 		//  Estimated: `6234`
-		// Minimum execution time: 54_210 nanoseconds.
-		Weight::from_parts(55_376_000, 6234)
+		// Minimum execution time: 53_342 nanoseconds.
+		Weight::from_parts(54_629_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -85,8 +85,8 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1296`
 		//  Estimated: `6234`
-		// Minimum execution time: 38_823 nanoseconds.
-		Weight::from_parts(39_560_000, 6234)
+		// Minimum execution time: 38_042 nanoseconds.
+		Weight::from_parts(38_957_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -98,8 +98,8 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1432`
 		//  Estimated: `6234`
-		// Minimum execution time: 41_674 nanoseconds.
-		Weight::from_parts(42_248_000, 6234)
+		// Minimum execution time: 40_782 nanoseconds.
+		Weight::from_parts(41_654_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -113,8 +113,8 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1128`
 		//  Estimated: `3612`
-		// Minimum execution time: 31_890 nanoseconds.
-		Weight::from_parts(32_566_000, 3612)
+		// Minimum execution time: 31_385 nanoseconds.
+		Weight::from_parts(32_026_000, 3612)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}

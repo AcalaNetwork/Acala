@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -53,8 +53,8 @@ impl<T: frame_system::Config> module_transaction_pause::WeightInfo for WeightInf
 		// Proof Size summary in bytes:
 		//  Measured:  `1140`
 		//  Estimated: `4605`
-		// Minimum execution time: 18_672 nanoseconds.
-		Weight::from_parts(19_243_000, 4605)
+		// Minimum execution time: 18_748 nanoseconds.
+		Weight::from_parts(19_242_000, 4605)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -64,8 +64,8 @@ impl<T: frame_system::Config> module_transaction_pause::WeightInfo for WeightInf
 		// Proof Size summary in bytes:
 		//  Measured:  `1191`
 		//  Estimated: `4656`
-		// Minimum execution time: 19_911 nanoseconds.
-		Weight::from_parts(20_404_000, 4656)
+		// Minimum execution time: 19_648 nanoseconds.
+		Weight::from_parts(20_462_000, 4656)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -75,8 +75,8 @@ impl<T: frame_system::Config> module_transaction_pause::WeightInfo for WeightInf
 		// Proof Size summary in bytes:
 		//  Measured:  `1140`
 		//  Estimated: `4605`
-		// Minimum execution time: 18_557 nanoseconds.
-		Weight::from_parts(18_941_000, 4605)
+		// Minimum execution time: 18_301 nanoseconds.
+		Weight::from_parts(18_814_000, 4605)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -86,8 +86,8 @@ impl<T: frame_system::Config> module_transaction_pause::WeightInfo for WeightInf
 		// Proof Size summary in bytes:
 		//  Measured:  `1201`
 		//  Estimated: `4666`
-		// Minimum execution time: 19_713 nanoseconds.
-		Weight::from_parts(20_457_000, 4666)
+		// Minimum execution time: 19_981 nanoseconds.
+		Weight::from_parts(20_566_000, 4666)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

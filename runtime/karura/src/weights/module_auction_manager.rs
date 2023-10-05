@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -73,8 +73,8 @@ impl<T: frame_system::Config> module_auction_manager::WeightInfo for WeightInfo<
 		// Proof Size summary in bytes:
 		//  Measured:  `2796`
 		//  Estimated: `8736`
-		// Minimum execution time: 98_791 nanoseconds.
-		Weight::from_parts(101_243_000, 8736)
+		// Minimum execution time: 97_903 nanoseconds.
+		Weight::from_parts(100_030_000, 8736)
 			.saturating_add(T::DbWeight::get().reads(14))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}

@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -57,8 +57,8 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 		// Proof Size summary in bytes:
 		//  Measured:  `1313`
 		//  Estimated: `4778`
-		// Minimum execution time: 29_729 nanoseconds.
-		Weight::from_parts(30_355_000, 4778)
+		// Minimum execution time: 29_447 nanoseconds.
+		Weight::from_parts(30_340_000, 4778)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -68,8 +68,8 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 		// Proof Size summary in bytes:
 		//  Measured:  `1506`
 		//  Estimated: `4971`
-		// Minimum execution time: 23_393 nanoseconds.
-		Weight::from_parts(24_074_000, 4971)
+		// Minimum execution time: 23_237 nanoseconds.
+		Weight::from_parts(24_052_000, 4971)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -79,8 +79,8 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 		// Proof Size summary in bytes:
 		//  Measured:  `1506`
 		//  Estimated: `4971`
-		// Minimum execution time: 22_258 nanoseconds.
-		Weight::from_parts(22_819_000, 4971)
+		// Minimum execution time: 22_493 nanoseconds.
+		Weight::from_parts(22_864_000, 4971)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -90,8 +90,8 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 		// Proof Size summary in bytes:
 		//  Measured:  `1506`
 		//  Estimated: `4971`
-		// Minimum execution time: 22_429 nanoseconds.
-		Weight::from_parts(23_083_000, 4971)
+		// Minimum execution time: 22_286 nanoseconds.
+		Weight::from_parts(22_848_000, 4971)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -116,10 +116,10 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 		// Proof Size summary in bytes:
 		//  Measured:  `2298 + u * (186 ±0)`
 		//  Estimated: `6196 + u * (5244 ±0)`
-		// Minimum execution time: 171_723 nanoseconds.
-		Weight::from_parts(100_921_150, 6196)
-			// Standard Error: 254_224
-			.saturating_add(Weight::from_parts(39_038_556, 0).saturating_mul(u.into()))
+		// Minimum execution time: 171_187 nanoseconds.
+		Weight::from_parts(101_352_789, 6196)
+			// Standard Error: 264_941
+			.saturating_add(Weight::from_parts(38_964_222, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().reads((4_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(4))
@@ -147,10 +147,10 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 		// Proof Size summary in bytes:
 		//  Measured:  `2490 + u * (183 ±0)`
 		//  Estimated: `5965 + u * (2622 ±0)`
-		// Minimum execution time: 2_280_072 nanoseconds.
-		Weight::from_parts(426_463_988, 5965)
-			// Standard Error: 3_654_314
-			.saturating_add(Weight::from_parts(962_104_017, 0).saturating_mul(u.into()))
+		// Minimum execution time: 2_273_203 nanoseconds.
+		Weight::from_parts(438_550_057, 5965)
+			// Standard Error: 3_327_205
+			.saturating_add(Weight::from_parts(955_120_483, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(6))
@@ -176,11 +176,11 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	fn redeem_proportion(u: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2467 + u * (247 ±0)`
-		//  Estimated: `5946 + u * (5244 ±32)`
-		// Minimum execution time: 198_502 nanoseconds.
-		Weight::from_parts(125_972_055, 5946)
-			// Standard Error: 231_122
-			.saturating_add(Weight::from_parts(40_039_828, 0).saturating_mul(u.into()))
+		//  Estimated: `5946 + u * (5244 ±0)`
+		// Minimum execution time: 199_024 nanoseconds.
+		Weight::from_parts(126_621_457, 5946)
+			// Standard Error: 222_280
+			.saturating_add(Weight::from_parts(40_259_313, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((4_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(3))
@@ -205,11 +205,11 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	fn redeem_single(u: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1560 + u * (244 ±0)`
-		//  Estimated: `5081 + u * (1016 ±20)`
-		// Minimum execution time: 1_783_903 nanoseconds.
-		Weight::from_parts(774_449_122, 5081)
-			// Standard Error: 2_376_989
-			.saturating_add(Weight::from_parts(502_800_961, 0).saturating_mul(u.into()))
+		//  Estimated: `5081 + u * (1016 ±0)`
+		// Minimum execution time: 1_782_872 nanoseconds.
+		Weight::from_parts(769_467_511, 5081)
+			// Standard Error: 2_484_058
+			.saturating_add(Weight::from_parts(503_401_547, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(u.into())))
 			.saturating_add(Weight::from_parts(0, 1016).saturating_mul(u.into()))
@@ -234,11 +234,11 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	fn redeem_multi(u: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2467 + u * (247 ±0)`
-		//  Estimated: `5946 + u * (5244 ±0)`
-		// Minimum execution time: 170_451 nanoseconds.
-		Weight::from_parts(108_027_931, 5946)
-			// Standard Error: 243_629
-			.saturating_add(Weight::from_parts(35_085_484, 0).saturating_mul(u.into()))
+		//  Estimated: `5946 + u * (5244 ±32)`
+		// Minimum execution time: 171_360 nanoseconds.
+		Weight::from_parts(108_149_415, 5946)
+			// Standard Error: 249_698
+			.saturating_add(Weight::from_parts(35_376_477, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((4_u64).saturating_mul(u.into())))
 			.saturating_add(T::DbWeight::get().writes(3))

@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -70,10 +70,10 @@ impl<T: frame_system::Config> module_cdp_treasury::WeightInfo for WeightInfo<T> 
 		// Proof Size summary in bytes:
 		//  Measured:  `2011`
 		//  Estimated: `3612`
-		// Minimum execution time: 45_719 nanoseconds.
-		Weight::from_parts(42_417_231, 3612)
-			// Standard Error: 17_486
-			.saturating_add(Weight::from_parts(12_274_710, 0).saturating_mul(b.into()))
+		// Minimum execution time: 45_478 nanoseconds.
+		Weight::from_parts(42_061_017, 3612)
+			// Standard Error: 19_158
+			.saturating_add(Weight::from_parts(12_424_877, 0).saturating_mul(b.into()))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(6))
 			.saturating_add(T::DbWeight::get().writes((3_u64).saturating_mul(b.into())))
@@ -106,8 +106,8 @@ impl<T: frame_system::Config> module_cdp_treasury::WeightInfo for WeightInfo<T> 
 		// Proof Size summary in bytes:
 		//  Measured:  `3947`
 		//  Estimated: `16722`
-		// Minimum execution time: 219_656 nanoseconds.
-		Weight::from_parts(224_953_000, 16722)
+		// Minimum execution time: 219_372 nanoseconds.
+		Weight::from_parts(225_622_000, 16722)
 			.saturating_add(T::DbWeight::get().reads(23))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
@@ -117,8 +117,8 @@ impl<T: frame_system::Config> module_cdp_treasury::WeightInfo for WeightInfo<T> 
 		// Proof Size summary in bytes:
 		//  Measured:  `965`
 		//  Estimated: `0`
-		// Minimum execution time: 16_272 nanoseconds.
-		Weight::from_parts(16_566_000, 0)
+		// Minimum execution time: 15_934 nanoseconds.
+		Weight::from_parts(16_333_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: `Tokens::Accounts` (r:2 w:2)
@@ -129,8 +129,8 @@ impl<T: frame_system::Config> module_cdp_treasury::WeightInfo for WeightInfo<T> 
 		// Proof Size summary in bytes:
 		//  Measured:  `1436`
 		//  Estimated: `6234`
-		// Minimum execution time: 45_159 nanoseconds.
-		Weight::from_parts(46_397_000, 6234)
+		// Minimum execution time: 44_962 nanoseconds.
+		Weight::from_parts(45_940_000, 6234)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}

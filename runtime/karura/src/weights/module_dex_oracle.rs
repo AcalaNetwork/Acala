@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -77,12 +77,12 @@ impl<T: frame_system::Config> module_dex_oracle::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `312 + n * (377 ±0) + u * (249 ±0)`
 		//  Estimated: `4994 + n * (2864 ±33) + u * (346 ±33)`
-		// Minimum execution time: 19_203 nanoseconds.
-		Weight::from_parts(19_766_000, 4994)
-			// Standard Error: 149_092
-			.saturating_add(Weight::from_parts(10_204_641, 0).saturating_mul(n.into()))
-			// Standard Error: 149_092
-			.saturating_add(Weight::from_parts(4_703_570, 0).saturating_mul(u.into()))
+		// Minimum execution time: 19_244 nanoseconds.
+		Weight::from_parts(19_723_000, 4994)
+			// Standard Error: 148_220
+			.saturating_add(Weight::from_parts(10_279_362, 0).saturating_mul(n.into()))
+			// Standard Error: 148_220
+			.saturating_add(Weight::from_parts(4_669_705, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(u.into())))
@@ -104,8 +104,8 @@ impl<T: frame_system::Config> module_dex_oracle::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `922`
 		//  Estimated: `4387`
-		// Minimum execution time: 20_015 nanoseconds.
-		Weight::from_parts(20_543_000, 4387)
+		// Minimum execution time: 19_941 nanoseconds.
+		Weight::from_parts(20_632_000, 4387)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -117,8 +117,8 @@ impl<T: frame_system::Config> module_dex_oracle::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `893`
 		//  Estimated: `4358`
-		// Minimum execution time: 12_474 nanoseconds.
-		Weight::from_parts(12_660_000, 4358)
+		// Minimum execution time: 12_294 nanoseconds.
+		Weight::from_parts(12_738_000, 4358)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -128,8 +128,8 @@ impl<T: frame_system::Config> module_dex_oracle::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `893`
 		//  Estimated: `4358`
-		// Minimum execution time: 11_698 nanoseconds.
-		Weight::from_parts(12_237_000, 4358)
+		// Minimum execution time: 11_946 nanoseconds.
+		Weight::from_parts(12_151_000, 4358)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -59,8 +59,8 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 		// Proof Size summary in bytes:
 		//  Measured:  `1107`
 		//  Estimated: `4572`
-		// Minimum execution time: 25_599 nanoseconds.
-		Weight::from_parts(26_413_000, 4572)
+		// Minimum execution time: 25_662 nanoseconds.
+		Weight::from_parts(26_259_000, 4572)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -72,8 +72,8 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 		// Proof Size summary in bytes:
 		//  Measured:  `1263`
 		//  Estimated: `4728`
-		// Minimum execution time: 25_863 nanoseconds.
-		Weight::from_parts(26_264_000, 4728)
+		// Minimum execution time: 25_257 nanoseconds.
+		Weight::from_parts(25_949_000, 4728)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -85,8 +85,8 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 		// Proof Size summary in bytes:
 		//  Measured:  `1107`
 		//  Estimated: `4572`
-		// Minimum execution time: 20_378 nanoseconds.
-		Weight::from_parts(20_681_000, 4572)
+		// Minimum execution time: 20_038 nanoseconds.
+		Weight::from_parts(20_467_000, 4572)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -96,8 +96,8 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 		// Proof Size summary in bytes:
 		//  Measured:  `1201`
 		//  Estimated: `4666`
-		// Minimum execution time: 20_823 nanoseconds.
-		Weight::from_parts(21_491_000, 4666)
+		// Minimum execution time: 20_736 nanoseconds.
+		Weight::from_parts(21_236_000, 4666)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -115,8 +115,8 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 		// Proof Size summary in bytes:
 		//  Measured:  `6814`
 		//  Estimated: `20179`
-		// Minimum execution time: 196_623 nanoseconds.
-		Weight::from_parts(200_887_000, 20179)
+		// Minimum execution time: 194_047 nanoseconds.
+		Weight::from_parts(198_973_000, 20179)
 			.saturating_add(T::DbWeight::get().reads(10))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -126,8 +126,8 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 		// Proof Size summary in bytes:
 		//  Measured:  `1352`
 		//  Estimated: `4817`
-		// Minimum execution time: 28_893 nanoseconds.
-		Weight::from_parts(30_073_000, 4817)
+		// Minimum execution time: 28_500 nanoseconds.
+		Weight::from_parts(29_514_000, 4817)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -137,8 +137,8 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 		// Proof Size summary in bytes:
 		//  Measured:  `1107`
 		//  Estimated: `4572`
-		// Minimum execution time: 18_840 nanoseconds.
-		Weight::from_parts(19_238_000, 4572)
+		// Minimum execution time: 18_507 nanoseconds.
+		Weight::from_parts(18_962_000, 4572)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -148,8 +148,8 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 		// Proof Size summary in bytes:
 		//  Measured:  `1176`
 		//  Estimated: `4641`
-		// Minimum execution time: 20_267 nanoseconds.
-		Weight::from_parts(20_797_000, 4641)
+		// Minimum execution time: 19_831 nanoseconds.
+		Weight::from_parts(20_371_000, 4641)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

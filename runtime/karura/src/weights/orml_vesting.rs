@@ -20,7 +20,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-10-05, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `ip-172-31-36-103`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
+//! HOSTNAME: `ip-172-31-37-73`, CPU: `Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz`
 //! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -61,8 +61,8 @@ impl<T: frame_system::Config> orml_vesting::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1654`
 		//  Estimated: `6315`
-		// Minimum execution time: 44_186 nanoseconds.
-		Weight::from_parts(44_834_000, 6315)
+		// Minimum execution time: 43_938 nanoseconds.
+		Weight::from_parts(44_512_000, 6315)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -79,10 +79,10 @@ impl<T: frame_system::Config> orml_vesting::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1794`
 		//  Estimated: `6315`
-		// Minimum execution time: 45_313 nanoseconds.
-		Weight::from_parts(46_525_061, 6315)
-			// Standard Error: 440
-			.saturating_add(Weight::from_parts(3_160, 0).saturating_mul(i.into()))
+		// Minimum execution time: 44_622 nanoseconds.
+		Weight::from_parts(46_202_551, 6315)
+			// Standard Error: 455
+			.saturating_add(Weight::from_parts(4_398, 0).saturating_mul(i.into()))
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -99,10 +99,10 @@ impl<T: frame_system::Config> orml_vesting::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1266`
 		//  Estimated: `4764`
-		// Minimum execution time: 37_243 nanoseconds.
-		Weight::from_parts(38_065_946, 4764)
-			// Standard Error: 328
-			.saturating_add(Weight::from_parts(42_207, 0).saturating_mul(i.into()))
+		// Minimum execution time: 36_945 nanoseconds.
+		Weight::from_parts(37_876_359, 4764)
+			// Standard Error: 388
+			.saturating_add(Weight::from_parts(45_158, 0).saturating_mul(i.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
