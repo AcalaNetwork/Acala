@@ -101,6 +101,9 @@ runtime_benchmarks! {
 			updates.push((PoolId::Loans(currency_id), Rate::default()));
 		}
 	}: _(RawOrigin::Root, updates)
+
+	update_claim_reward_deduction_currency {
+	}: _(RawOrigin::Root, PoolId::Earning(NATIVE), Some(NATIVE))
 }
 
 #[cfg(test)]

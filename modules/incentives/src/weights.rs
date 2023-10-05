@@ -52,6 +52,7 @@ pub trait WeightInfo {
 	fn claim_rewards() -> Weight;
 	fn update_incentive_rewards(c: u32, ) -> Weight;
 	fn update_claim_reward_deduction_rates(c: u32, ) -> Weight;
+	fn update_claim_reward_deduction_currency() -> Weight;
 }
 
 /// Weights for module_incentives using the Acala node and recommended hardware.
