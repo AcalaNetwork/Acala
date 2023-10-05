@@ -131,4 +131,15 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 		// Minimum execution time: 9_946 nanoseconds.
 		Weight::from_parts(10_355_000, 0)
 	}
+	// Storage: `TransactionPayment::NextFeeMultiplier` (r:1 w:1)
+	// Proof: `TransactionPayment::NextFeeMultiplier` (`max_values`: Some(1), `max_size`: Some(16), added: 511, mode: `MaxEncodedLen`)
+	fn on_finalize() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `955`
+		//  Estimated: `1501`
+		// Minimum execution time: 10_040 nanoseconds.
+		Weight::from_parts(10_294_000, 1501)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
+	}
 }
