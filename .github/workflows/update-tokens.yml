@@ -19,10 +19,6 @@ jobs:
           persist-credentials: false
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: nightly-2023-04-15
-          components: rustfmt
-          target: wasm32-unknown-unknown
       - name: update tokens
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
