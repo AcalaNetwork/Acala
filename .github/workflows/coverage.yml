@@ -39,8 +39,9 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@nightly
         with:
+          toolchain: stable
           components: rustfmt
           target: wasm32-unknown-unknown
       - name: Setup cmake
