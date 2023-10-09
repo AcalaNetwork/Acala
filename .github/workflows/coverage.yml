@@ -40,10 +40,6 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: stable
-          components: rustfmt
-          target: wasm32-unknown-unknown
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run cargo-tarpaulin
