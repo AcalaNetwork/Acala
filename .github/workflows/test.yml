@@ -38,13 +38,11 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2023-04-15
           components: rustfmt
-          target: wasm32-unknown-unknown
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
       - name: Check format
-        run: cargo fmt --all -- --check
+        run: cargo +nightly fmt --all -- --check
       - name: Build
         run: make build-all
       - name: Install clippy
@@ -75,10 +73,6 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: nightly-2023-04-15
-          components: rustfmt
-          target: wasm32-unknown-unknown
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
       - name: Setup cmake
@@ -103,10 +97,6 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: nightly-2023-04-15
-          components: rustfmt
-          target: wasm32-unknown-unknown
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
       - name: Setup cmake
@@ -139,10 +129,6 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: nightly-2023-04-15
-          components: rustfmt
-          target: wasm32-unknown-unknown
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run e2e tests

@@ -42,14 +42,12 @@ jobs:
         name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2023-04-15
           components: rustfmt
-          target: wasm32-unknown-unknown
       - &cmake
         name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
       - name: Check format
-        run: cargo fmt --all -- --check
+        run: cargo +nightly fmt --all -- --check
       - name: Build
         run: make build-all
       - name: Install clippy

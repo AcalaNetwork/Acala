@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TARPAULIN_VERSION: 0.19.1
+  TARPAULIN_VERSION: 0.27.1
   # LIBCLANG_PATH: "/usr/lib/llvm-11/lib" # default `llvm-config --prefix`
   CARGO_INCREMENTAL: 0
 jobs:
@@ -40,17 +40,13 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: nightly-2023-04-15
-          components: rustfmt
-          target: wasm32-unknown-unknown
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
       - name: Run cargo-tarpaulin
         run: |
-          wget https://github.com/xd009642/tarpaulin/releases/download/${{ env.TARPAULIN_VERSION }}/cargo-tarpaulin-${{ env.TARPAULIN_VERSION }}-travis.tar.gz
-          tar -zxvf cargo-tarpaulin-${{ env.TARPAULIN_VERSION }}-travis.tar.gz -C $HOME/.cargo/bin
-          cargo tarpaulin -v --no-fail-fast --workspace \
+          wget https://github.com/xd009642/tarpaulin/releases/download/${{ env.TARPAULIN_VERSION }}/cargo-tarpaulin-x86_64-unknown-linux-musl.tar.gz
+          tar -zxvf cargo-tarpaulin-x86_64-unknown-linux-musl.tar.gz -C $HOME/.cargo/bin
+          cargo tarpaulin -v --no-fail-fast --implicit-test-threads --workspace \
             -e acala-inspect \
             acala acala-cli e2e-tests acala-service \
             acala-primitives \
