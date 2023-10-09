@@ -41,6 +41,8 @@ jobs:
       - &toolchain
         name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
       - &cmake
         name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
