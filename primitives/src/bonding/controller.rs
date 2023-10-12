@@ -17,12 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::Codec;
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	pallet_prelude::Member,
-	traits::Get,
-	Parameter, StorageMap,
-};
+use frame_support::{dispatch::DispatchResult, pallet_prelude::Member, traits::Get, Parameter, StorageMap};
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
 use super::error::Error;

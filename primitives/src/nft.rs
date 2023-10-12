@@ -20,7 +20,7 @@ use codec::{Decode, Encode};
 use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
 use serde::{Deserialize, Serialize};
 
-use frame_support::RuntimeDebug;
+use sp_runtime::RuntimeDebug;
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 use enumflags2::{bitflags, BitFlags};

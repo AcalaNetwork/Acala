@@ -21,7 +21,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{log, pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::{ExchangeRate, ExchangeRateProvider, FractionalRate, HomaManager, HomaSubAccountXcm, Rate, Ratio};
 use orml_traits::MultiCurrency;

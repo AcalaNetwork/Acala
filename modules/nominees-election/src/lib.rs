@@ -20,7 +20,6 @@
 #![allow(clippy::unused_unit)]
 
 use frame_support::{
-	log,
 	pallet_prelude::*,
 	traits::{Contains, Get, LockIdentifier},
 	BoundedVec,

@@ -27,7 +27,7 @@ use frame_support::{
 		OnInitialize, SortedMembers,
 	},
 	weights::{ConstantMultiplier, IdentityFee},
-	PalletId, RuntimeDebug,
+	PalletId,
 };
 use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
 use module_cdp_engine::CollateralCurrencyIds;
@@ -50,7 +50,7 @@ use scale_info::TypeInfo;
 use sp_core::{H160, H256};
 use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
-	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent,
+	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, RuntimeDebug,
 };
 use sp_std::prelude::*;
 use xcm::{prelude::*, v3::Xcm};

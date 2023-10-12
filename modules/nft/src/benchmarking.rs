@@ -159,12 +159,12 @@ mod mock {
 	use frame_support::{
 		parameter_types,
 		traits::{ConstU128, ConstU32, ConstU64, Contains, InstanceFilter},
-		PalletId, RuntimeDebug,
+		PalletId,
 	};
 	use sp_core::{crypto::AccountId32, H256};
 	use sp_runtime::{
 		traits::{BlakeTwo256, IdentityLookup},
-		BuildStorage,
+		BuildStorage, RuntimeDebug,
 	};
 
 	pub type AccountId = AccountId32;

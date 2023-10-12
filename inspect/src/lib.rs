@@ -27,12 +27,12 @@ use sp_blockchain::HeaderBackend;
 use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::{
 	generic::BlockId,
-	traits::{Block, Hash, HashFor, NumberFor},
+	traits::{Block, Hash, HashingFor, NumberFor},
 };
 use std::{fmt, fmt::Debug, marker::PhantomData, str::FromStr};
 
 /// A helper type for a generic block input.
-pub type BlockAddressFor<TBlock> = BlockAddress<<HashFor<TBlock> as Hash>::Output, NumberFor<TBlock>>;
+pub type BlockAddressFor<TBlock> = BlockAddress<<HashingFor<TBlock> as Hash>::Output, NumberFor<TBlock>>;
 
 /// A Pretty formatter implementation.
 pub trait PrettyPrinter<TBlock: Block> {
@@ -169,7 +169,7 @@ impl<TBlock: Block, TPrinter: PrettyPrinter<TBlock>> Inspector<TBlock, TPrinter>
 	/// Get a pretty-printed extrinsic.
 	pub fn extrinsic(
 		&self,
-		input: ExtrinsicAddress<<HashFor<TBlock> as Hash>::Output, NumberFor<TBlock>>,
+		input: ExtrinsicAddress<<HashingFor<TBlock> as Hash>::Output, NumberFor<TBlock>>,
 	) -> Result<String, Error> {
 		struct ExtrinsicPrinter<'a, A: Block, B>(A::Extrinsic, &'a B);
 		impl<'a, A: Block, B: PrettyPrinter<A>> fmt::Display for ExtrinsicPrinter<'a, A, B> {

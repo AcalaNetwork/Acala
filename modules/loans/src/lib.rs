@@ -27,7 +27,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{log, pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, transactional, PalletId};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId, Position};
 use sp_runtime::{

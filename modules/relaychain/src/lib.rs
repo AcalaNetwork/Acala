@@ -25,9 +25,9 @@
 #![allow(clippy::large_enum_variant)]
 
 use codec::{Decode, Encode, FullCodec};
-use sp_runtime::traits::StaticLookup;
+use sp_runtime::{traits::StaticLookup, RuntimeDebug};
 
-use frame_support::{traits::Get, RuntimeDebug};
+use frame_support::traits::Get;
 use module_support::relaychain::*;
 use primitives::{AccountId, Balance};
 use sp_std::{boxed::Box, marker::PhantomData, prelude::*};

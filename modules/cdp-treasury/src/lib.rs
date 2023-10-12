@@ -29,7 +29,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::needless_range_loop)]
 
-use frame_support::{log, pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use nutsfinance_stable_asset::traits::StableAsset;
 use nutsfinance_stable_asset::RedeemProportionResult;

@@ -24,7 +24,7 @@ use test_service::{initial_head_data, run_relay_chain_validator_node};
 
 /// this testcase will take too long to running, test with command:
 /// cargo test --package test-service -- test_full_node_catching_up --nocapture --include-ignored
-#[substrate_test_utils::test(flavor = "multi_thread")]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn test_full_node_catching_up() {
 	let mut builder = sc_cli::LoggerBuilder::new("");
@@ -83,7 +83,7 @@ async fn test_full_node_catching_up() {
 
 /// this testcase will take too long to running, test with command:
 /// cargo test --package test-service -- simple_balances_test --nocapture --include-ignored
-#[substrate_test_utils::test(flavor = "multi_thread")]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn simple_balances_test() {
 	let mut builder = sc_cli::LoggerBuilder::new("");

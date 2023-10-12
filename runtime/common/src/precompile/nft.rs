@@ -20,10 +20,7 @@ use super::{
 	input::{Input, InputT, Output},
 	target_gas_limit,
 };
-use frame_support::{
-	log,
-	traits::tokens::nonfungibles::{Inspect, Transfer},
-};
+use frame_support::traits::tokens::nonfungibles::{Inspect, Transfer};
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},

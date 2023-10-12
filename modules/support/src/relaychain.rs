@@ -20,9 +20,11 @@
 // * https://github.com/paritytech/polkadot/blob/master/runtime/polkadot/src/xcm_config.rs
 
 use codec::{Decode, Encode, FullCodec};
-use frame_support::RuntimeDebug;
 use primitives::{AccountId, Balance};
-use sp_runtime::traits::{AccountIdLookup, StaticLookup};
+use sp_runtime::{
+	traits::{AccountIdLookup, StaticLookup},
+	RuntimeDebug,
+};
 use sp_std::prelude::*;
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 

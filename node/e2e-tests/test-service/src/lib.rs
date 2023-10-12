@@ -33,18 +33,20 @@ use std::{
 };
 
 use cumulus_client_cli::{generate_genesis_block, CollatorOptions};
-use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
+#[allow(deprecated)]
+use cumulus_client_consensus_aura::BuildAuraConsensusParams;
+use cumulus_client_consensus_aura::{AuraConsensus, SlotProportion};
 use cumulus_client_consensus_common::{
 	ParachainBlockImport as TParachainBlockImport, ParachainCandidate, ParachainConsensus,
 };
 use cumulus_client_network::RequireSecondedInBlockAnnounce;
-use cumulus_client_service::{
-	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
-};
+use cumulus_client_service::{prepare_node_config, StartCollatorParams, StartFullNodeParams};
+#[allow(deprecated)]
+use cumulus_client_service::{start_collator, start_full_node};
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_inprocess_interface::RelayChainInProcessInterface;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
-use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node;
+use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node_with_rpc;
 
 use crate::runtime::Weight;
 use frame_system_rpc_runtime_api::AccountNonceApi;
@@ -70,8 +72,8 @@ use sc_service::{
 	TFullBackend, TFullCallExecutor, TFullClient, TaskManager,
 };
 use sc_transaction_pool_api::TransactionPool;
+use sp_api::OverlayedChanges;
 use sp_api::ProvideRuntimeApi;
-use sp_api::{OverlayedChanges, StorageTransactionCache};
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_core::{Pair, H256};
@@ -79,12 +81,11 @@ use sp_keyring::Sr25519Keyring;
 use sp_runtime::{
 	codec::Encode,
 	generic::Era,
-	traits::{BlakeTwo256, Block as BlockT, Extrinsic, IdentifyAccount},
+	traits::{Block as BlockT, Extrinsic, IdentifyAccount},
 	transaction_validity::TransactionSource,
 	MultiAddress,
 };
 use sp_state_machine::{BasicExternalities, Ext};
-use sp_trie::PrefixedMemoryDB;
 use substrate_test_client::{BlockchainEventsExt, RpcHandlersExt, RpcTransactionError, RpcTransactionOutput};
 use url::Url;
 

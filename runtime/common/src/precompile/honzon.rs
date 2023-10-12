@@ -21,7 +21,7 @@ use super::{
 	target_gas_limit,
 };
 use crate::WeightToGas;
-use frame_support::{log, traits::Get};
+use frame_support::traits::Get;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},

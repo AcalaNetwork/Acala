@@ -36,7 +36,7 @@ use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
-	log, parameter_types,
+	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency,
 		EnsureOrigin, EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType,
@@ -47,7 +47,7 @@ pub use frame_support::{
 		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
 		ConstantMultiplier, IdentityFee, Weight,
 	},
-	PalletId, RuntimeDebug, StorageValue,
+	PalletId, StorageValue,
 };
 use frame_system::{EnsureRoot, EnsureSigned, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
@@ -83,7 +83,7 @@ use sp_runtime::{
 		StaticLookup,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, ArithmeticError, DispatchResult, FixedPointNumber,
+	ApplyExtrinsicResult, ArithmeticError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
 
@@ -1961,21 +1961,8 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	(
-		pallet_balances::migration::MigrateToTrackInactive<Runtime, xcm_config::CheckingAccount>,
-		pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
-		// "Use 2D weights in XCM v3" <https://github.com/paritytech/polkadot/pull/6134>
-		pallet_xcm::migration::v1::MigrateToV1<Runtime>,
-		orml_unknown_tokens::Migration<Runtime>,
-		// Note: The following Migrations do not use the StorageVersion feature, must to be removed after the upgrade
-	),
->;
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 construct_runtime!(
 	pub enum Runtime {
@@ -2431,10 +2418,10 @@ impl_runtime_apis! {
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark as frame_add_benchmark, TrackedStorageKey};
+			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark as frame_add_benchmark};
 			use module_nft::benchmarking::Pallet as NftBench;
+			use frame_support::traits::{WhitelistedStorageKeys, TrackedStorageKey};
 
-			use frame_support::traits::WhitelistedStorageKeys;
 			let mut whitelist: Vec<TrackedStorageKey> = AllPalletsWithSystem::whitelisted_storage_keys();
 
 			// Treasury Account

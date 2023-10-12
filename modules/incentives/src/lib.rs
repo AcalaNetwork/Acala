@@ -39,7 +39,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{log, pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};

@@ -36,7 +36,7 @@ pub fn new_partial(
 		Client,
 		ParachainBackend,
 		MaybeFullSelectChain,
-		sc_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
+		sc_consensus::import_queue::BasicQueue<Block>,
 		sc_transaction_pool::FullPool<Block, Client>,
 		ParachainBlockImport,
 	>,
@@ -417,8 +417,8 @@ async fn build_relay_chain_interface(
 	collator_options: CollatorOptions,
 	task_manager: &mut TaskManager,
 ) -> RelayChainResult<Arc<dyn RelayChainInterface + 'static>> {
-	if !collator_options.relay_chain_rpc_urls.is_empty() {
-		return build_minimal_relay_chain_node(relay_chain_config, task_manager, collator_options.relay_chain_rpc_urls)
+	if let cumulus_client_cli::RelayChainMode::ExternalRpc(rpc_target_urls) = collator_options.relay_chain_mode {
+		return build_minimal_relay_chain_node_with_rpc(relay_chain_config, task_manager, rpc_target_urls)
 			.await
 			.map(|r| r.0);
 	}
@@ -426,9 +426,9 @@ async fn build_relay_chain_interface(
 	let relay_chain_full_node = polkadot_test_service::new_full(
 		relay_chain_config,
 		if let Some(ref key) = collator_key {
-			polkadot_service::IsCollator::Yes(key.clone())
+			polkadot_service::IsParachainNode::Collator(key.clone())
 		} else {
-			polkadot_service::IsCollator::Yes(CollatorPair::generate().0)
+			polkadot_service::IsParachainNode::Collator(CollatorPair::generate().0)
 		},
 		None,
 	)
@@ -626,6 +626,7 @@ where
 					None,
 				);
 
+				#[allow(deprecated)]
 				AuraConsensus::build::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(
 					BuildAuraConsensusParams {
 						proposer_factory,
@@ -690,6 +691,7 @@ where
 			sync_service: sync_service.clone(),
 		};
 
+		#[allow(deprecated)]
 		start_collator(params).await?;
 	} else {
 		let params = StartFullNodeParams {
@@ -707,6 +709,7 @@ where
 			sync_service: sync_service.clone(),
 		};
 
+		#[allow(deprecated)]
 		start_full_node(params)?;
 	}
 

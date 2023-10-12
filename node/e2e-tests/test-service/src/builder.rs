@@ -197,7 +197,7 @@ impl TestNodeBuilder {
 		);
 
 		let collator_options = CollatorOptions {
-			relay_chain_rpc_urls: self.relay_chain_full_node_url,
+			relay_chain_mode: cumulus_client_cli::RelayChainMode::ExternalRpc(self.relay_chain_full_node_url),
 		};
 
 		relay_chain_config.network.node_name = format!("{} (relay chain)", relay_chain_config.network.node_name);
