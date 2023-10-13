@@ -5369,6 +5369,7 @@ dependencies = [
  "module-transaction-pause",
  "module-transaction-payment",
  "module-xcm-interface",
+ "module-xnft",
  "nutsfinance-stable-asset",
  "orml-auction",
  "orml-authority",
@@ -7351,6 +7352,25 @@ dependencies = [
  "sp-std",
  "staging-xcm",
  "staging-xcm-builder",
+ "staging-xcm-executor",
+]
+
+[[package]]
+name = "module-xnft"
+version = "0.1.0-dev"
+dependencies = [
+ "acala-primitives",
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "log",
+ "module-nft",
+ "orml-nft",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime",
+ "sp-std",
+ "staging-xcm",
  "staging-xcm-executor",
 ]
 

@@ -210,6 +210,7 @@ module-incentives = { path = "modules/incentives", default-features = false }
 module-liquid-crowdloan = { path = "modules/liquid-crowdloan", default-features = false }
 module-loans = { path = "modules/loans", default-features = false }
 module-nft = { path = "modules/nft", default-features = false }
+module-xnft = { path = "modules/xnft", default-features = false }
 module-nominees-election = { path = "modules/nominees-election", default-features = false }
 module-prices = { path = "modules/prices", default-features = false }
 module-relaychain = { path = "modules/relaychain", default-features = false }

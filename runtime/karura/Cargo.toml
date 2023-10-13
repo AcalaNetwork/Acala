@@ -122,6 +122,7 @@ module-support = { workspace = true }
 module-transaction-pause = { workspace = true }
 module-transaction-payment = { workspace = true }
 module-xcm-interface = { workspace = true }
+module-xnft = { workspace = true }
 
 primitives = { workspace = true }
 runtime-common = { workspace = true }
@@ -257,6 +258,7 @@ std = [
 	"module-transaction-pause/std",
 	"module-transaction-payment/std",
 	"module-xcm-interface/std",
+	"module-xnft/std",
 
 	"primitives/std",
 	"runtime-common/std",
