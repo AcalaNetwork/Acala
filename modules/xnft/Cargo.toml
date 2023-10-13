@@ -1,0 +1,43 @@
+[package]
+name = "module-xnft"
+description = "XCM NFT PoC"
+version = "0.1.0-dev"
+authors = ["Unique Network Developers"]
+edition = "2021"
+
+[dependencies]
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+cumulus-primitives-core = { workspace = true }
+
+xcm = { package = "staging-xcm", workspace = true }
+xcm-executor = { package = "staging-xcm-executor", workspace = true }
+
+primitives = { workspace = true }
+
+module-nft = { workspace = true }
+orml-nft = { workspace = true }
+
+log = { workspace = true }
+
+[features]
+default = ["std"]
+std = [
+	"parity-scale-codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"sp-runtime/std",
+	"scale-info/std",
+	"sp-std/std",
+	"xcm-executor/std",
+	"xcm/std",
+	"module-nft/std",
+	"orml-nft/std",
+	"cumulus-primitives-core/std",
+]
+try-runtime = ["frame-support/try-runtime", "frame-system/try-runtime"]

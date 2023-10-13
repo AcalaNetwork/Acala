@@ -25,6 +25,7 @@ fn main() {
 			"../../evm-tests",
 			"../../ecosystem-modules/stable-asset",
 			"../../launch",
+			"../../modules/xnft",
 			"../../orml",
 			"../../predeploy-contracts",
 			"../../ts-tests",
