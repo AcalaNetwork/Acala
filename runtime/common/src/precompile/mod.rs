@@ -25,7 +25,6 @@ pub mod mock;
 mod tests;
 mod weights;
 
-use frame_support::log;
 use hex_literal::hex;
 use module_evm::{
 	precompiles::{

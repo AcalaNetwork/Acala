@@ -5,16 +5,17 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
+log = { version = "0.4.17", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false, optional = true}
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false  }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false  }
-pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v1.0.0", default-features = false }
-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v1.0.0", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, optional = true}
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false  }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false  }
+pallet-xcm = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+xcm = { package = "staging-xcm", git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
@@ -22,11 +23,11 @@ module-support = { path = "../../modules/support", default-features = false }
 [dev-dependencies]
 insta = { version = "1.31.0" }
 
-cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v1.0.0" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
-xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v1.0.0" }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v1.0.0" }
+cumulus-primitives-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+xcm-builder = { package = "staging-xcm-builder", git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+xcm-executor = { package = "staging-xcm-executor", git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 
 orml-tokens = { path = "../../orml/tokens" }
 

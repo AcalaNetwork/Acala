@@ -25,7 +25,6 @@ use codec::{Decode, Encode};
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Contains, InstanceFilter, Nothing},
-	RuntimeDebug,
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
@@ -33,7 +32,7 @@ use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage,
+	BuildStorage, RuntimeDebug,
 };
 use support::mocks::MockAddressMapping;
 

@@ -16,8 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use frame_support::log;
-
 #[derive(Default, Clone, Debug)]
 pub struct StorageMeter {
 	limit: u32,

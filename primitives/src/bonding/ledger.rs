@@ -203,9 +203,10 @@ where
 mod tests {
 	use super::*;
 	use frame_support::{
-		assert_err, bounded_vec,
+		assert_err,
 		traits::{ConstU128, ConstU32},
 	};
+	use sp_runtime::bounded_vec;
 
 	type Ledger = BondingLedger<u32, ConstU32<3>, ConstU128<10>>;
 

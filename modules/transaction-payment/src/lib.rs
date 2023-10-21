@@ -29,8 +29,7 @@
 #![allow(clippy::type_complexity)]
 
 use frame_support::{
-	dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo},
-	dispatch::{DispatchResult, Dispatchable},
+	dispatch::{DispatchInfo, DispatchResult, GetDispatchInfo, Pays, PostDispatchInfo},
 	pallet_prelude::*,
 	traits::{
 		Currency, ExistenceRequirement, Imbalance, IsSubType, NamedReservableCurrency, OnUnbalanced, SameOrOther,
@@ -48,8 +47,8 @@ use primitives::{Balance, CurrencyId, Multiplier, ReserveIdentifier};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion, Saturating,
-		SignedExtension, Zero,
+		AccountIdConversion, Convert, DispatchInfoOf, Dispatchable, One, PostDispatchInfoOf, SaturatedConversion,
+		Saturating, SignedExtension, Zero,
 	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,

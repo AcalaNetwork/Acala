@@ -18,7 +18,6 @@
 
 use crate as homa;
 use frame_support::{
-	log,
 	traits::{Get, GetStorageVersion, PalletInfoAccess, StorageVersion},
 	weights::Weight,
 };

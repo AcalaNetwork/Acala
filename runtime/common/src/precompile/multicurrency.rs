@@ -21,10 +21,7 @@ use super::{
 	target_gas_limit,
 };
 use crate::WeightToGas;
-use frame_support::{
-	log,
-	traits::{Currency, Get},
-};
+use frame_support::traits::{Currency, Get};
 use module_currencies::WeightInfo;
 use module_evm::{
 	precompiles::Precompile,

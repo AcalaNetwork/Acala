@@ -31,7 +31,7 @@
 #![allow(clippy::unnecessary_unwrap)]
 
 use codec::MaxEncodedLen;
-use frame_support::{log, pallet_prelude::*, transactional};
+use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,

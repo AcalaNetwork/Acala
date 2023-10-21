@@ -22,7 +22,6 @@ use super::{
 	weights::PrecompileWeights,
 };
 use crate::{Weight, WeightToGas};
-use frame_support::log;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},

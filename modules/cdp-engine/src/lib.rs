@@ -29,7 +29,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use codec::MaxEncodedLen;
-use frame_support::{log, pallet_prelude::*, traits::UnixTime, transactional, BoundedVec, PalletId};
+use frame_support::{pallet_prelude::*, traits::UnixTime, transactional, BoundedVec, PalletId};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,

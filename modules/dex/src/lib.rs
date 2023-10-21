@@ -34,7 +34,7 @@
 #![allow(clippy::collapsible_if)]
 
 use codec::MaxEncodedLen;
-use frame_support::{log, pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};

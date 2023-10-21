@@ -140,7 +140,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		}
 	}
 
-	fn buy_weight(&mut self, weight: XcmWeight, payment: Assets) -> Result<Assets, XcmError> {
+	fn buy_weight(&mut self, weight: XcmWeight, payment: Assets, _context: &XcmContext) -> Result<Assets, XcmError> {
 		log::trace!(target: "xcm::weight", "buy_weight weight: {:?}, payment: {:?}", weight, payment);
 
 		// only support first fungible assets now.
@@ -184,7 +184,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		Err(XcmError::TooExpensive)
 	}
 
-	fn refund_weight(&mut self, weight: XcmWeight) -> Option<MultiAsset> {
+	fn refund_weight(&mut self, weight: XcmWeight, _context: &XcmContext) -> Option<MultiAsset> {
 		log::trace!(
 			target: "xcm::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, ratio: {:?}, multi_location: {:?}",
 			weight, self.weight, self.amount, self.ratio, self.multi_location
@@ -400,11 +400,24 @@ mod tests {
 			let asset: MultiAsset = (Parent, 100).into();
 			let assets: Assets = asset.into();
 			let mut trader = <FixedRateOfAsset<(), (), MockNoneBuyWeightRate>>::new();
-			let buy_weight = trader.buy_weight(XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0), assets.clone());
+			let ctx = XcmContext {
+				origin: Some(Parent.into()),
+				message_id: XcmHash::default(),
+				topic: None,
+			};
+			let buy_weight = trader.buy_weight(
+				XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0),
+				assets.clone(),
+				&ctx,
+			);
 			assert_noop!(buy_weight, XcmError::TooExpensive);
 
 			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockFixedBuyWeightRate<FixedRate>>>::new();
-			let buy_weight = trader.buy_weight(XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0), assets.clone());
+			let buy_weight = trader.buy_weight(
+				XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0),
+				assets.clone(),
+				&ctx,
+			);
 			let asset: MultiAsset = (Parent, 90).into();
 			let assets: Assets = asset.into();
 			assert_ok!(buy_weight, assets.clone());

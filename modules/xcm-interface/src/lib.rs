@@ -27,7 +27,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{log, pallet_prelude::*, traits::Get};
+use frame_support::{pallet_prelude::*, traits::Get};
 use frame_system::pallet_prelude::*;
 use module_support::{relaychain::CallBuilder, CrowdloanVaultXcm, HomaSubAccountXcm};
 use orml_traits::XcmTransfer;

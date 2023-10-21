@@ -23,17 +23,19 @@
 
 pub use acala_primitives::{Block, Hash};
 use cumulus_client_cli::CollatorOptions;
-use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
+#[allow(deprecated)]
+use cumulus_client_consensus_aura::BuildAuraConsensusParams;
+use cumulus_client_consensus_aura::{AuraConsensus, SlotProportion};
 use cumulus_client_consensus_common::{ParachainBlockImport as TParachainBlockImport, ParachainConsensus};
 use cumulus_client_network::RequireSecondedInBlockAnnounce;
-use cumulus_client_service::{
-	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
-};
+use cumulus_client_service::{prepare_node_config, StartCollatorParams, StartFullNodeParams};
+#[allow(deprecated)]
+use cumulus_client_service::{start_collator, start_full_node};
 use cumulus_primitives_core::ParaId;
 use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainInterface, RelayChainResult};
-use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node;
+use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node_with_rpc;
 use futures::{channel::oneshot, FutureExt, StreamExt};
 use jsonrpsee::RpcModule;
 use polkadot_primitives::{CollatorPair, OccupiedCoreAssumption};
@@ -57,8 +59,7 @@ use sp_blockchain::HeaderBackend;
 use sp_consensus_aura::sr25519::{AuthorityId as AuraId, AuthorityPair as AuraPair};
 use sp_core::Decode;
 use sp_keystore::KeystorePtr;
-use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
-use sp_trie::PrefixedMemoryDB;
+use sp_runtime::traits::Block as BlockT;
 use std::{sync::Arc, time::Duration};
 use substrate_prometheus_endpoint::Registry;
 
@@ -194,7 +195,7 @@ pub fn new_partial<RuntimeApi>(
 		FullClient<RuntimeApi>,
 		FullBackend,
 		MaybeFullSelectChain,
-		sc_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
+		sc_consensus::import_queue::BasicQueue<Block>,
 		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>,
 		(
 			ParachainBlockImport<RuntimeApi>,
@@ -206,7 +207,7 @@ pub fn new_partial<RuntimeApi>(
 >
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
 {
 	let telemetry = config
@@ -370,8 +371,8 @@ async fn build_relay_chain_interface(
 	task_manager: &mut TaskManager,
 	collator_options: CollatorOptions,
 ) -> RelayChainResult<(Arc<(dyn RelayChainInterface + 'static)>, Option<CollatorPair>)> {
-	if !collator_options.relay_chain_rpc_urls.is_empty() {
-		build_minimal_relay_chain_node(polkadot_config, task_manager, collator_options.relay_chain_rpc_urls).await
+	if let cumulus_client_cli::RelayChainMode::ExternalRpc(rpc_target_urls) = collator_options.relay_chain_mode {
+		build_minimal_relay_chain_node_with_rpc(polkadot_config, task_manager, rpc_target_urls).await
 	} else {
 		build_inprocess_relay_chain(
 			polkadot_config,
@@ -400,7 +401,7 @@ async fn start_node_impl<RB, RuntimeApi, BIC>(
 where
 	RB: Fn(Arc<FullClient<RuntimeApi>>) -> Result<RpcModule<()>, sc_service::Error> + Send + 'static,
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
 	BIC: FnOnce(
 		Arc<FullClient<RuntimeApi>>,
@@ -559,6 +560,7 @@ where
 			sync_service: sync_service.clone(),
 		};
 
+		#[allow(deprecated)]
 		start_collator(params).await?;
 	} else {
 		let params = StartFullNodeParams {
@@ -573,6 +575,7 @@ where
 			sync_service: sync_service.clone(),
 		};
 
+		#[allow(deprecated)]
 		start_full_node(params)?;
 	}
 
@@ -590,7 +593,7 @@ pub async fn start_node<RuntimeApi>(
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
 {
 	start_node_impl(
@@ -619,6 +622,7 @@ where
 				telemetry.clone(),
 			);
 
+			#[allow(deprecated)]
 			Ok(AuraConsensus::build::<
 				sp_consensus_aura::sr25519::AuthorityPair,
 				_,
@@ -686,7 +690,7 @@ pub fn new_chain_ops(
 	(
 		Arc<Client>,
 		Arc<FullBackend>,
-		sc_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
+		sc_consensus::import_queue::BasicQueue<Block>,
 		TaskManager,
 	),
 	ServiceError,
@@ -740,7 +744,7 @@ pub fn new_chain_ops(
 pub fn start_dev_node<RuntimeApi>(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError>
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
 {
 	let sc_service::PartialComponents {

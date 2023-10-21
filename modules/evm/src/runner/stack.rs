@@ -27,8 +27,7 @@ use crate::{
 	AccountStorages, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, Pallet, STORAGE_SIZE,
 };
 use frame_support::{
-	dispatch::DispatchError,
-	ensure, log,
+	ensure,
 	traits::{Currency, ExistenceRequirement, Get},
 	transactional,
 };
@@ -43,7 +42,10 @@ pub use primitives::{
 	ReserveIdentifier,
 };
 use sp_core::{defer, H160, H256, U256};
-use sp_runtime::traits::{UniqueSaturatedInto, Zero};
+use sp_runtime::{
+	traits::{UniqueSaturatedInto, Zero},
+	DispatchError,
+};
 use sp_std::{
 	boxed::Box,
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},

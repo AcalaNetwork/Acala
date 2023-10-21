@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Config, PausedEvmPrecompiles, Weight, H160};
-use frame_support::{log, traits::OnRuntimeUpgrade};
+use frame_support::traits::OnRuntimeUpgrade;
 use hex_literal::hex;
 use sp_core::Get;
 use sp_std::{marker::PhantomData, vec};

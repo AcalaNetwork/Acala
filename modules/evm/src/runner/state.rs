@@ -20,7 +20,6 @@
 
 use crate::{encode_revert_message, StorageMeter};
 use core::{cmp::min, convert::Infallible};
-use frame_support::log;
 use module_evm_utility::{
 	ethereum::Log,
 	evm::{

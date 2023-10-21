@@ -21,10 +21,7 @@ use super::{
 	target_gas_limit,
 };
 use crate::WeightToGas;
-use frame_support::{
-	log,
-	pallet_prelude::{Decode, Encode, IsType},
-};
+use frame_support::pallet_prelude::{Decode, Encode, IsType};
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},

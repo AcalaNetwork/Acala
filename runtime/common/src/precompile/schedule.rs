@@ -25,8 +25,7 @@ use super::{
 };
 use codec::{Decode, Encode};
 use frame_support::{
-	dispatch::Dispatchable,
-	ensure, log, parameter_types,
+	ensure, parameter_types,
 	traits::{
 		schedule::{DispatchTime, Named as ScheduleNamed},
 		Currency, IsType, OriginTrait,
@@ -42,7 +41,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use pallet_scheduler::TaskAddress;
 use primitives::{Balance, BlockNumber};
 use sp_core::H160;
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{traits::Dispatchable, RuntimeDebug};
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*};
 
 parameter_types! {

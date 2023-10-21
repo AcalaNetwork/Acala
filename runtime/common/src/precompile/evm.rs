@@ -145,7 +145,7 @@ where
 				let contract = input.evm_address_at(2)?;
 				let new_maintainer = input.evm_address_at(3)?;
 
-				frame_support::log::debug!(
+				log::debug!(
 					target: "evm",
 					"evm: from: {:?}, contract: {:?}, new_maintainer: {:?}",
 					from, contract, new_maintainer,

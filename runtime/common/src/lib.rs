@@ -24,11 +24,13 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use cumulus_pallet_parachain_system::CheckAssociatedRelayNumber;
 use frame_support::{
-	dispatch::{DispatchClass, Weight},
+	dispatch::DispatchClass,
 	parameter_types,
 	traits::{Contains, EitherOfDiverse, Get},
-	weights::constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_REF_TIME_PER_SECOND},
-	RuntimeDebug,
+	weights::{
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_REF_TIME_PER_SECOND},
+		Weight,
+	},
 };
 use frame_system::{limits, EnsureRoot};
 use orml_traits::{currency::MutationHooks, GetByKey};
@@ -39,7 +41,7 @@ use primitives::{
 };
 use scale_info::TypeInfo;
 use sp_core::{Bytes, H160};
-use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
+use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 use static_assertions::const_assert;
 

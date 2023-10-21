@@ -20,7 +20,6 @@ use crate::{evm::EthereumTransactionMessage, signature::AcalaMultiSignature, to_
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo},
-	log,
 	traits::{ExtrinsicCall, Get},
 };
 use module_evm_utility::ethereum::{EIP1559TransactionMessage, LegacyTransactionMessage, TransactionAction};

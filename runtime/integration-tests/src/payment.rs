@@ -18,7 +18,10 @@
 
 use crate::setup::*;
 use crate::stable_asset::enable_stable_asset;
-use frame_support::dispatch::{DispatchClass, DispatchInfo, Pays, PostDispatchInfo, Weight};
+use frame_support::{
+	dispatch::{DispatchClass, DispatchInfo, Pays, PostDispatchInfo},
+	weights::Weight,
+};
 use module_support::AggregatedSwapPath;
 use sp_runtime::{
 	traits::{AccountIdConversion, SignedExtension, UniqueSaturatedInto},

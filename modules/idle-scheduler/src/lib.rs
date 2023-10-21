@@ -26,7 +26,7 @@
 
 use acala_primitives::{task::TaskResult, BlockNumber, Nonce};
 use codec::FullCodec;
-use frame_support::{log, pallet_prelude::*};
+use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use module_support::{DispatchableTask, IdleScheduler};
 use scale_info::TypeInfo;

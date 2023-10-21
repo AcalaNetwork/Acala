@@ -17,9 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Config, CurrencyId, ForeignAssetLocations, LocationToCurrencyIds, Weight};
-use frame_support::{
-	log, migration::storage_key_iter, pallet_prelude::*, traits::OnRuntimeUpgrade, StoragePrefixedMap,
-};
+use frame_support::{migration::storage_key_iter, pallet_prelude::*, traits::OnRuntimeUpgrade, StoragePrefixedMap};
 use sp_std::marker::PhantomData;
 use xcm::v3::prelude::*;
 

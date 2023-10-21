@@ -21,7 +21,7 @@ use frame_support::{
 	ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, FindAuthor, Nothing},
 	weights::Weight,
-	ConsensusEngineId, RuntimeDebug,
+	ConsensusEngineId,
 };
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
@@ -33,9 +33,11 @@ use primitives::{
 };
 use scale_info::TypeInfo;
 use sp_core::{H160, H256};
-use sp_runtime::traits::Convert;
-use sp_runtime::traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup, Zero};
 pub use sp_runtime::AccountId32;
+use sp_runtime::{
+	traits::{BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, Zero},
+	RuntimeDebug,
+};
 use std::str::FromStr;
 
 type Block = frame_system::mocking::MockBlock<TestRuntime>;

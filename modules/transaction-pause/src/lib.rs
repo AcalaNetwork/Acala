@@ -20,9 +20,8 @@
 #![allow(clippy::unused_unit)]
 
 use frame_support::{
-	dispatch::{CallMetadata, GetCallMetadata},
 	pallet_prelude::*,
-	traits::{Contains, PalletInfoAccess},
+	traits::{CallMetadata, Contains, GetCallMetadata, PalletInfoAccess},
 };
 use frame_system::pallet_prelude::*;
 use sp_core::H160;
