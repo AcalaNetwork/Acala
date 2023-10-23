@@ -13,6 +13,9 @@ scale-info = { version = "2.9.0", default-features = false, features = ["derive"
 serde_json = { version = "1.0.85", default-features = false, features = ["alloc"] }
 hex = { version = "0.4", default-features = false }
 hex-literal = { version = "0.4.1" }
+strum = { version = "0.24", default-features = false, features = [ "derive" ] }
+strum_macros = "0.24"
+lazy_static = "1.4.0"
 
 # substrate
 frame-executive = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
@@ -53,6 +56,9 @@ sp-staking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "rel
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-version = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+pallet-conviction-voting = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+pallet-referenda = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+pallet-whitelist = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 
 # cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
@@ -149,6 +155,7 @@ std = [
 	"hex/std",
 	"scale-info/std",
 	"serde_json/std",
+	"strum/std",
 
 	"frame-benchmarking/std",
 	"frame-executive/std",
@@ -191,6 +198,9 @@ std = [
 	"sp-transaction-pool/std",
 	"sp-version/std",
 	"substrate-wasm-builder",
+	"pallet-conviction-voting/std",
+	"pallet-referenda/std",
+	"pallet-whitelist/std",
 
 	"cumulus-pallet-aura-ext/std",
 	"cumulus-pallet-dmp-queue/std",
@@ -285,6 +295,9 @@ runtime-benchmarks = [
 	"pallet-utility/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"sp-staking/runtime-benchmarks",
+	"pallet-conviction-voting/runtime-benchmarks",
+	"pallet-referenda/runtime-benchmarks",
+	"pallet-whitelist/runtime-benchmarks",
 
 	"cumulus-pallet-parachain-system/runtime-benchmarks",
 	"cumulus-pallet-xcmp-queue/runtime-benchmarks",
@@ -348,6 +361,9 @@ try-runtime = [
 	"pallet-treasury/try-runtime",
 	"pallet-utility/try-runtime",
 	"pallet-bags-list/try-runtime",
+	"pallet-conviction-voting/try-runtime",
+	"pallet-referenda/try-runtime",
+	"pallet-whitelist/try-runtime",
 
 	"cumulus-pallet-aura-ext/try-runtime",
 	"cumulus-pallet-dmp-queue/try-runtime",
