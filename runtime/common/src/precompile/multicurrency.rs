@@ -21,7 +21,10 @@ use super::{
 	target_gas_limit,
 };
 use crate::WeightToGas;
-use frame_support::traits::{Currency, Get};
+use frame_support::{
+	pallet_prelude::IsType,
+	traits::{Currency, Get},
+};
 use module_currencies::WeightInfo;
 use module_evm::{
 	precompiles::Precompile,
@@ -32,7 +35,7 @@ use module_support::Erc20InfoMapping as Erc20InfoMappingT;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use orml_traits::MultiCurrency as MultiCurrencyT;
 use primitives::{currency::DexShare, Balance, CurrencyId};
-use sp_runtime::{traits::Convert, RuntimeDebug};
+use sp_runtime::{traits::Convert, AccountId32, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 /// The `MultiCurrency` impl precompile.
@@ -56,12 +59,14 @@ pub enum Action {
 	QueryTotalIssuance = "totalSupply()",
 	QueryBalance = "balanceOf(address)",
 	Transfer = "transfer(address,address,uint256)",
+	Transfer2 = "transfer2(address,bytes32,uint256)",
 }
 
 impl<Runtime> Precompile for MultiCurrencyPrecompile<Runtime>
 where
 	Runtime:
 		module_currencies::Config + module_evm::Config + module_prices::Config + module_transaction_payment::Config,
+	Runtime::AccountId: IsType<AccountId32>,
 	module_currencies::Pallet<Runtime>: MultiCurrencyT<Runtime::AccountId, CurrencyId = CurrencyId, Balance = Balance>,
 {
 	fn execute(input: &[u8], target_gas: Option<u64>, context: &Context, _is_static: bool) -> PrecompileResult {
@@ -195,6 +200,35 @@ where
 					logs: Default::default(),
 				})
 			}
+			Action::Transfer2 => {
+				let from = input.account_id_at(1)?;
+				let to_data = input.bytes32_at(2)?;
+				let mut buf = [0u8; 32];
+				buf.copy_from_slice(&to_data[..]);
+				let to: Runtime::AccountId = AccountId32::from(buf).into();
+
+				let amount = input.balance_at(3)?;
+				log::debug!(target: "evm", "multicurrency: transfer2 from: {:?}, to: {:?}, amount: {:?}", from, to, amount);
+
+				<module_currencies::Pallet<Runtime> as MultiCurrencyT<Runtime::AccountId>>::transfer(
+					currency_id,
+					&from,
+					&to,
+					amount,
+				)
+				.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Output::encode_error_msg("Multicurrency Transfer2 failed", e),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
+				})?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: gas_cost,
+					output: vec![],
+					logs: Default::default(),
+				})
+			}
 		}
 	}
 }
@@ -235,7 +269,7 @@ where
 					<Runtime as frame_system::Config>::DbWeight::get().reads(2),
 				))
 			}
-			Action::Transfer => {
+			Action::Transfer | Action::Transfer2 => {
 				let cost = InputPricer::<Runtime>::read_accounts(2);
 
 				// transfer weight
@@ -550,6 +584,52 @@ mod tests {
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Multicurrency Transfer failed: BalanceTooLow".into(),
+					cost: target_gas_limit(Some(100_000)).unwrap(),
+				}
+			);
+		})
+	}
+
+	#[test]
+	fn transfer2_works() {
+		new_test_ext().execute_with(|| {
+			let mut context = Context {
+				address: Default::default(),
+				caller: Default::default(),
+				apparent_value: Default::default(),
+			};
+
+			// transfer2(address,bytes32,uint256) -> 0xbbbbfbeb
+			// from
+			// to
+			// amount
+			let input = hex! {"
+				bbbbfbeb
+				000000000000000000000000 1000000000000000000000000000000000000001
+				65766d3a10000000000000000000000000000000000000020000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000001
+			"};
+
+			let from_balance = Balances::free_balance(alice());
+			let to_balance = Balances::free_balance(bob());
+
+			// Token
+			context.caller = aca_evm_address();
+
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, [0u8; 0].to_vec());
+
+			assert_eq!(Balances::free_balance(alice()), from_balance - 1);
+			assert_eq!(Balances::free_balance(bob()), to_balance + 1);
+
+			// DexShare
+			context.caller = lp_aca_ausd_evm_address();
+			assert_noop!(
+				MultiCurrencyPrecompile::execute(&input, Some(100_000), &context, false),
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Multicurrency Transfer2 failed: BalanceTooLow".into(),
 					cost: target_gas_limit(Some(100_000)).unwrap(),
 				}
 			);
