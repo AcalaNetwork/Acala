@@ -59,7 +59,7 @@ pub enum Action {
 	QueryTotalIssuance = "totalSupply()",
 	QueryBalance = "balanceOf(address)",
 	Transfer = "transfer(address,address,uint256)",
-	Transfer2 = "transfer2(address,bytes32,uint256)",
+	TransferToAccountId = "transferToAccountId(address,bytes32,uint256)",
 }
 
 impl<Runtime> Precompile for MultiCurrencyPrecompile<Runtime>
@@ -200,7 +200,7 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::Transfer2 => {
+			Action::TransferToAccountId => {
 				let from = input.account_id_at(1)?;
 				let to_data = input.bytes32_at(2)?;
 				let mut buf = [0u8; 32];
@@ -208,7 +208,7 @@ where
 				let to: Runtime::AccountId = AccountId32::from(buf).into();
 
 				let amount = input.balance_at(3)?;
-				log::debug!(target: "evm", "multicurrency: transfer2 from: {:?}, to: {:?}, amount: {:?}", from, to, amount);
+				log::debug!(target: "evm", "multicurrency: transferToAccountId from: {:?}, to: {:?}, amount: {:?}", from, to, amount);
 
 				<module_currencies::Pallet<Runtime> as MultiCurrencyT<Runtime::AccountId>>::transfer(
 					currency_id,
@@ -218,7 +218,7 @@ where
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: Output::encode_error_msg("Multicurrency Transfer2 failed", e),
+					output: Output::encode_error_msg("Multicurrency TransferToAccountId failed", e),
 					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
@@ -269,7 +269,7 @@ where
 					<Runtime as frame_system::Config>::DbWeight::get().reads(2),
 				))
 			}
-			Action::Transfer | Action::Transfer2 => {
+			Action::Transfer | Action::TransferToAccountId => {
 				let cost = InputPricer::<Runtime>::read_accounts(2);
 
 				// transfer weight
@@ -591,7 +591,7 @@ mod tests {
 	}
 
 	#[test]
-	fn transfer2_works() {
+	fn transfer_to_account_id_works() {
 		new_test_ext().execute_with(|| {
 			let mut context = Context {
 				address: Default::default(),
@@ -599,12 +599,12 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 
-			// transfer2(address,bytes32,uint256) -> 0xbbbbfbeb
+			// transferToAccountId(address,bytes32,uint256) -> 0x89590498
 			// from
 			// to
 			// amount
 			let input = hex! {"
-				bbbbfbeb
+				89590498
 				000000000000000000000000 1000000000000000000000000000000000000001
 				65766d3a10000000000000000000000000000000000000020000000000000000
 				00000000000000000000000000000000 00000000000000000000000000000001
@@ -629,7 +629,7 @@ mod tests {
 				MultiCurrencyPrecompile::execute(&input, Some(100_000), &context, false),
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
-					output: "Multicurrency Transfer2 failed: BalanceTooLow".into(),
+					output: "Multicurrency TransferToAccountId failed: BalanceTooLow".into(),
 					cost: target_gas_limit(Some(100_000)).unwrap(),
 				}
 			);
