@@ -1511,8 +1511,8 @@ parameter_types! {
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
 		0,  // 15sr8Dvq3AT3Z2Z1y8FnQ4VipekAHhmQnrkgzegUr1tNgbcn
 	];
-	pub MintThreshold: Balance = 5 * dollar(DOT);
-	pub RedeemThreshold: Balance = 50 * dollar(LDOT);
+	pub MintThreshold: Balance = dollar(DOT);
+	pub RedeemThreshold: Balance = 5 * dollar(LDOT);
 }
 
 impl module_homa::Config for Runtime {
