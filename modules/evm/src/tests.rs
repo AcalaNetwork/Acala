@@ -37,9 +37,7 @@ use std::str::FromStr;
 #[test]
 fn fail_call_return_ok_and_inc_nonce() {
 	new_test_ext().execute_with(|| {
-		let mut data = [5u8; 32];
-		data[0..4].copy_from_slice(b"evm:");
-		let signer: AccountId32 = AccountId32::from(data);
+		let signer: AccountId32 = AccountId32::from([5u8; 32]);
 		let alice = MockAddressMapping::get_or_create_evm_address(&signer);
 		let origin = RuntimeOrigin::signed(signer);
 
