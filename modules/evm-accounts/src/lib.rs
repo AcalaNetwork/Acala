@@ -299,7 +299,9 @@ where
 		EvmAddresses::<T>::get(account_id).or_else(|| {
 			let data: &[u8] = account_id.into_ref().as_ref();
 			// Return the underlying EVM address if it exists otherwise return None
-			if data.starts_with(b"evm:") {
+			// account_id must start with "evm:" and ends with 8 bytes of zeros
+			// the range [4..24] contains the EVM address
+			if data.starts_with(b"evm:") && data.ends_with(&[0u8; 8]) {
 				Some(EvmAddress::from_slice(&data[4..24]))
 			} else {
 				None
