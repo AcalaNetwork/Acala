@@ -37,19 +37,17 @@ use std::str::FromStr;
 #[test]
 fn fail_call_return_ok_and_inc_nonce() {
 	new_test_ext().execute_with(|| {
-		let mut data = [5u8; 32];
-		data[0..4].copy_from_slice(b"evm:");
-		let signer: AccountId32 = AccountId32::from(data);
-		let alice = MockAddressMapping::get_or_create_evm_address(&signer);
-		let origin = RuntimeOrigin::signed(signer);
+		let alice = alice();
+		let account = MockAddressMapping::get_account_id(&alice);
+		let origin = RuntimeOrigin::signed(account);
 
-		// nonce 0
-		assert_eq!(EVM::account_basic(&alice).nonce, U256::zero());
+		// nonce starts with 1
+		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(1));
 
 		// out of gas
 		assert_ok!(EVM::call(origin.clone(), contract_a(), Vec::new(), 0, 100, 0, vec![]));
 		// nonce inc by 1
-		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(1));
+		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(2));
 
 		// success call
 		assert_ok!(EVM::call(
@@ -62,12 +60,12 @@ fn fail_call_return_ok_and_inc_nonce() {
 			vec![]
 		));
 		// nonce inc by 1
-		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(2));
+		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(3));
 
 		// invalid decimals
 		assert_ok!(EVM::call(origin, contract_b(), Vec::new(), 1111, 1000000, 0, vec![]));
 		// nonce inc by 1
-		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(3));
+		assert_eq!(EVM::account_basic(&alice).nonce, U256::from(4));
 	});
 }
 
