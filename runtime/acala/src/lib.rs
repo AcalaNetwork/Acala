@@ -138,7 +138,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	state_version: 0,
 };
 
-/// The version infromation used to identify this runtime when compiled
+/// The version information used to identify this runtime when compiled
 /// natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {

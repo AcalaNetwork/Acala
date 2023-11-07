@@ -135,14 +135,14 @@ impl orml_authority::AsOriginId<RuntimeOrigin, OriginCaller> for AuthoritysOrigi
 	}
 }
 
-/// Compares privilages
+/// Compares privileges
 fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
 	if left == right {
 		return Some(Ordering::Equal);
 	}
 
 	match (left, right) {
-		// Root always has privilage
+		// Root always has privilege
 		(OriginCaller::system(frame_system::RawOrigin::Root), _) => Some(Ordering::Greater),
 
 		// Checks which one has more yes votes.

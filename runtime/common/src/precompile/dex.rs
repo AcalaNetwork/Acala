@@ -573,7 +573,7 @@ mod tests {
 
 			// getLiquidityTokenAddress(address,address) -> 0xffd73c4a
 			// DOT
-			// unkonwn token
+			// unknown token
 			let input = hex! {"
 				ffd73c4a
 				000000000000000000000000 0000000000000000000100000000000000000002
