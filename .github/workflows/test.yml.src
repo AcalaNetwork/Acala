@@ -41,8 +41,6 @@ jobs:
       - &toolchain
         name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rustfmt
       - &cmake
         name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
@@ -50,8 +48,6 @@ jobs:
         run: cargo +nightly fmt --all -- --check
       - name: Build
         run: make build-all
-      - name: Install clippy
-        run: rustup component add clippy
       - name: Run mandala-runtime clippy
         run: cargo clippy --features with-mandala-runtime -- -D warnings
       - name: Run karura-runtime clippy
