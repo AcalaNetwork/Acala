@@ -45,8 +45,6 @@ jobs:
         run: cargo +nightly fmt --all -- --check
       - name: Build
         run: make build-all
-      - name: Install clippy
-        run: rustup component add clippy
       - name: Run mandala-runtime clippy
         run: cargo clippy --features with-mandala-runtime -- -D warnings
       - name: Run karura-runtime clippy
