@@ -37,6 +37,8 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
       - name: Check format
