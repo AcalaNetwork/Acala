@@ -27,6 +27,8 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
+pub use module_support::Price;
+use module_support::{mocks::MockStableAsset, SpecificJointsSwap};
 use orml_traits::parameter_type_with_key;
 use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
@@ -36,8 +38,6 @@ use sp_runtime::{
 	BuildStorage,
 };
 use sp_std::cell::RefCell;
-pub use support::Price;
-use support::{mocks::MockStableAsset, SpecificJointsSwap};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;

@@ -15,23 +15,19 @@ scale-info = { version = "2.1", default-features = false, features = ["derive"] 
 enumflags2 = { version = "0.7.7", features = ["serde"] }
 paste = "1.0"
 
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-api = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-
-orml-traits = { path = "../orml/traits", default-features = false }
-
-module-evm-utility = { path = "../modules/evm-utility", default-features = false }
-module-evm-utility-macro = { path = "../modules/evm-utility/macro" }
-nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+sp-io = { workspace = true }
+sp-api = { workspace = true }
+frame-support = { workspace = true }
+orml-traits = { workspace = true }
+module-evm-utility = { workspace = true }
+module-evm-utility-macro = { workspace = true }
+nutsfinance-stable-asset = { workspace = true }
 
 [dev-dependencies]
 serde_json = { version = "1.0.85" }
-
 
 [features]
 default = ["std"]

@@ -24,7 +24,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::large_enum_variant)]
 
-use codec::{Decode, Encode, FullCodec};
+use parity_scale_codec::{Decode, Encode, FullCodec};
 use sp_runtime::{traits::StaticLookup, RuntimeDebug};
 
 use frame_support::traits::Get;

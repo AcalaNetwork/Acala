@@ -23,8 +23,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{RuntimeEvent, *};
+use module_support::SwapError;
 use sp_runtime::traits::BadOrigin;
-use support::SwapError;
 
 #[test]
 fn surplus_pool_work() {

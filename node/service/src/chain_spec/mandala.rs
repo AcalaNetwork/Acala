@@ -16,7 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{evm::CHAIN_ID_MANDALA, orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
 use coins_bip39::{English, Mnemonic, Wordlist};
 use hex_literal::hex;
 use k256::{
@@ -32,6 +31,7 @@ use mandala_runtime::{
 	PolkadotXcmConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig,
 	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
 };
+use primitives::{evm::CHAIN_ID_MANDALA, orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
 use runtime_common::evm_genesis;
 use sc_chain_spec::ChainType;
 use sc_consensus_grandpa::AuthorityId as GrandpaId;

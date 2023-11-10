@@ -26,13 +26,13 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 };
 use frame_system::EnsureSignedBy;
+use module_support::ExchangeRate;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
 use sp_std::cell::RefCell;
 use std::collections::HashMap;
-use support::ExchangeRate;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;

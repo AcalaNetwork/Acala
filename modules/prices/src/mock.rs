@@ -26,6 +26,7 @@ use frame_support::{
 	traits::{ConstU64, Everything, Nothing},
 };
 use frame_system::EnsureSignedBy;
+use module_support::{mocks::MockErc20InfoMapping, ExchangeRate, SwapLimit};
 use orml_traits::{parameter_type_with_key, DataFeeder};
 use primitives::{currency::DexShare, Amount, TokenSymbol};
 use sp_core::{H160, H256};
@@ -34,7 +35,6 @@ use sp_runtime::{
 	BuildStorage, DispatchError, FixedPointNumber,
 };
 use sp_std::cell::RefCell;
-use support::{mocks::MockErc20InfoMapping, ExchangeRate, SwapLimit};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;

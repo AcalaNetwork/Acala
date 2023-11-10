@@ -28,14 +28,19 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use codec::MaxEncodedLen;
 use frame_support::{pallet_prelude::*, traits::UnixTime, transactional, BoundedVec, PalletId};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
 };
+use module_support::{
+	AddressMapping, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, FractionalRate,
+	InvokeContext, LiquidateCollateral, LiquidationEvmBridge, Price, PriceProvider, Rate, Ratio, RiskManager, Swap,
+	SwapLimit,
+};
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_utilities::OffchainErr;
+use parity_scale_codec::MaxEncodedLen;
 use primitives::{evm::EvmAddress, Amount, Balance, CurrencyId, Position};
 use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
@@ -57,11 +62,6 @@ use sp_runtime::{
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{marker::PhantomData, prelude::*};
-use support::{
-	AddressMapping, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, FractionalRate,
-	InvokeContext, LiquidateCollateral, LiquidationEvmBridge, Price, PriceProvider, Rate, Ratio, RiskManager, Swap,
-	SwapLimit,
-};
 
 mod mock;
 mod tests;
@@ -76,7 +76,7 @@ pub const OFFCHAIN_WORKER_MAX_ITERATIONS: &[u8] = b"acala/cdp-engine/max-iterati
 pub const LOCK_DURATION: u64 = 100;
 pub const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
-pub type LoansOf<T> = loans::Pallet<T>;
+pub type LoansOf<T> = module_loans::Pallet<T>;
 pub type CurrencyOf<T> = <T as Config>::Currency;
 
 /// Risk management params
@@ -125,7 +125,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + loans::Config + SendTransactionTypes<Call<Self>> {
+	pub trait Config: frame_system::Config + module_loans::Config + SendTransactionTypes<Call<Self>> {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The origin which may update risk management parameters. Root can
@@ -739,10 +739,10 @@ impl<T: Config> Pallet<T> {
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 
 		// If start key is Some(value) continue iterating from that point in storage otherwise start
-		// iterating from the beginning of <loans::Positions<T>>
+		// iterating from the beginning of <module_loans::Positions<T>>
 		let mut map_iterator = match start_key.clone() {
-			Some(key) => <loans::Positions<T>>::iter_prefix_from(currency_id, key),
-			None => <loans::Positions<T>>::iter_prefix(currency_id),
+			Some(key) => <module_loans::Positions<T>>::iter_prefix_from(currency_id, key),
+			None => <module_loans::Positions<T>>::iter_prefix(currency_id),
 		};
 
 		let mut finished = true;

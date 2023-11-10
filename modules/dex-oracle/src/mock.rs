@@ -26,6 +26,7 @@ use frame_support::{
 	traits::{ConstU64, Everything},
 };
 use frame_system::EnsureSignedBy;
+use module_support::SwapLimit;
 use primitives::{DexShare, Moment, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{
@@ -33,7 +34,6 @@ use sp_runtime::{
 	BuildStorage, DispatchError,
 };
 use sp_std::cell::RefCell;
-use support::SwapLimit;
 
 pub type AccountId = u128;
 

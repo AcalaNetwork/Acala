@@ -24,11 +24,11 @@
 #![allow(clippy::unused_unit)]
 #![allow(unused_must_use)]
 
-use acala_primitives::{task::TaskResult, BlockNumber, Nonce};
-use codec::FullCodec;
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use module_support::{DispatchableTask, IdleScheduler};
+use parity_scale_codec::FullCodec;
+use primitives::{task::TaskResult, BlockNumber, Nonce};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{BlockNumberProvider, One},

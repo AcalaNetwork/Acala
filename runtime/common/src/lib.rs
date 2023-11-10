@@ -34,7 +34,7 @@ use frame_support::{
 };
 use frame_system::{limits, EnsureRoot};
 use orml_traits::{currency::MutationHooks, GetByKey};
-use polkadot_parachain::primitives::RelayChainBlockNumber;
+use polkadot_parachain_primitives::primitives::RelayChainBlockNumber;
 use primitives::{
 	evm::{is_system_contract, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},
 	Balance, CurrencyId,

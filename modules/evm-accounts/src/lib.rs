@@ -26,7 +26,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use codec::Encode;
 use frame_support::{
 	ensure,
 	pallet_prelude::*,
@@ -36,6 +35,7 @@ use frame_system::{ensure_signed, pallet_prelude::*};
 use module_evm_utility_macro::keccak256;
 use module_support::{AddressMapping, EVMAccountsManager};
 use orml_traits::currency::TransferAll;
+use parity_scale_codec::Encode;
 use primitives::{evm::EvmAddress, to_bytes, AccountIndex};
 use sp_core::crypto::AccountId32;
 use sp_core::{H160, H256};

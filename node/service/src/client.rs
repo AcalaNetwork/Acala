@@ -18,7 +18,7 @@
 
 //! Acala Client abstractions.
 
-use acala_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Nonce};
+use primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Nonce};
 use sc_client_api::{Backend as BackendT, BlockchainEvents, KeysIter, PairsIter};
 use sp_api::{CallApiAt, NumberFor, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;

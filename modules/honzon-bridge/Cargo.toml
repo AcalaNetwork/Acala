@@ -5,34 +5,34 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-orml-traits = { path = "../../orml/traits", default-features = false }
+scale-info = { workspace = true }
+parity-scale-codec = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+primitives = { workspace = true }
+orml-traits = { workspace = true }
 
 [dev-dependencies]
 serde_json = "1.0.81"
 hex = "0.4"
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-core = { workspace = true, features = ["std"] }
+sp-io = { workspace = true, features = ["std"] }
+pallet-balances = { workspace = true, features = ["std"] }
+pallet-timestamp = { workspace = true, features = ["std"] }
 
-module-currencies = { path = "../../modules/currencies" }
-module-evm = { path = "../evm" }
-module-evm-accounts = { path = "../evm-accounts" }
-module-evm-bridge = { path = "../evm-bridge" }
-module-support = { path = "../../modules/support" }
-orml-tokens = { path = "../../orml/tokens" }
+module-currencies = { workspace = true, features = ["std"] }
+module-evm = { workspace = true, features = ["std"] }
+module-evm-accounts = { workspace = true, features = ["std"] }
+module-evm-bridge = { workspace = true, features = ["std"] }
+module-support = { workspace = true, features = ["std"] }
+orml-tokens = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",
 	"orml-traits/std",

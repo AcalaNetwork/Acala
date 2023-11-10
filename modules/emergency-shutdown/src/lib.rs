@@ -34,10 +34,10 @@
 
 use frame_support::pallet_prelude::*;
 use frame_system::{ensure_signed, pallet_prelude::*};
+use module_support::{AuctionManager, CDPTreasury, EmergencyShutdown, LockablePrice, Ratio};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Zero, FixedPointNumber};
 use sp_std::prelude::*;
-use support::{AuctionManager, CDPTreasury, EmergencyShutdown, LockablePrice, Ratio};
 
 mod mock;
 mod tests;
@@ -51,7 +51,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + loans::Config {
+	pub trait Config: frame_system::Config + module_loans::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The list of valid collateral currency types
@@ -173,7 +173,7 @@ pub mod module {
 				);
 				// there's on debit in CDP
 				ensure!(
-					<loans::Pallet<T>>::total_positions(currency_id).debit.is_zero(),
+					<module_loans::Pallet<T>>::total_positions(currency_id).debit.is_zero(),
 					Error::<T>::ExistUnhandledDebit,
 				);
 			}

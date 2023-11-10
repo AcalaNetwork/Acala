@@ -31,6 +31,7 @@
 
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
+use module_support::{DEXManager, Erc20InfoMapping, ExchangeRateProvider, LockablePrice, Price, PriceProvider, Rate};
 use orml_traits::{DataFeeder, DataProvider, GetByKey, MultiCurrency};
 use primitives::{Balance, CurrencyId, Lease};
 use sp_core::U256;
@@ -39,7 +40,6 @@ use sp_runtime::{
 	FixedPointNumber,
 };
 use sp_std::marker::PhantomData;
-use support::{DEXManager, Erc20InfoMapping, ExchangeRateProvider, LockablePrice, Price, PriceProvider, Rate};
 
 mod mock;
 mod tests;

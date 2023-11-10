@@ -5,47 +5,47 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-cdp-engine = { package = "module-cdp-engine", path = "../cdp-engine", default-features = false }
-loans = { package = "module-loans", path = "../loans", default-features = false }
-support = { package = "module-support", path = "../support", default-features = false }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+sp-runtime = { workspace = true }
+sp-core = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-std = { workspace = true }
+module-cdp-engine = { workspace = true }
+module-loans = { workspace = true }
+module-support = { workspace = true }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-orml-currencies = { path = "../../orml/currencies" }
-orml-traits = { path = "../../orml/traits" }
-orml-tokens = { path = "../../orml/tokens" }
-cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury" }
-evm-accounts = { package = "module-evm-accounts", path = "../evm-accounts" }
+sp-io = { workspace = true, features = ["std"] }
+sp-core = { workspace = true, features = ["std"] }
+pallet-balances = { workspace = true, features = ["std"] }
+pallet-timestamp = { workspace = true, features = ["std"] }
+orml-currencies = { workspace = true, features = ["std"] }
+orml-traits = { workspace = true, features = ["std"] }
+orml-tokens = { workspace = true, features = ["std"] }
+module-cdp-treasury = { workspace = true, features = ["std"] }
+module-evm-accounts = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
 std = [
-	"cdp-engine/std",
-	"codec/std",
+	"module-cdp-engine/std",
+	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",
-	"loans/std",
+	"module-loans/std",
 	"primitives/std",
 	"scale-info/std",
 	"sp-core/std",
 	"sp-runtime/std",
 	"sp-std/std",
-	"support/std",
+	"module-support/std",
 ]
 try-runtime = [
-	"cdp-engine/try-runtime",
+	"module-cdp-engine/try-runtime",
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
-	"loans/try-runtime",
+	"module-loans/try-runtime",
 ]

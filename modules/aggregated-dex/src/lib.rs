@@ -24,11 +24,11 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
+use module_support::{AggregatedSwapPath, DEXManager, RebasedStableAssetError, Swap, SwapLimit};
 use nutsfinance_stable_asset::traits::StableAsset as StableAssetT;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::traits::{Convert, Zero};
 use sp_std::{marker::PhantomData, vec::Vec};
-use support::{AggregatedSwapPath, DEXManager, RebasedStableAssetError, Swap, SwapLimit};
 
 mod mock;
 mod tests;

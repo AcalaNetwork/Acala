@@ -5,30 +5,29 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-orml-traits = { path = "../../orml/traits", default-features = false }
-support = { package = "module-support", path = "../support", default-features = false }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-nutsfinance-stable-asset = { path = "../../ecosystem-modules/stable-asset/lib/stable-asset", version = "0.1.0", default-features = false }
-module-dex = { package = "module-dex", path = "../dex", default-features = false }
-orml-tokens = { path = "../../orml/tokens", default-features = false }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-std = { workspace = true }
+orml-traits = { workspace = true }
+module-support = { workspace = true }
+primitives = { workspace = true }
+nutsfinance-stable-asset = { workspace = true }
+module-dex = { workspace = true }
+orml-tokens = { workspace = true }
 
 [dev-dependencies]
-orml-tokens = { path = "../../orml/tokens" }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-io = { workspace = true, features = ["std"] }
+pallet-balances = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",
 	"module-dex/std",
@@ -39,7 +38,7 @@ std = [
 	"scale-info/std",
 	"sp-runtime/std",
 	"sp-std/std",
-	"support/std",
+	"module-support/std",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

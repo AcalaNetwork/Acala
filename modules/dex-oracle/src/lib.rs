@@ -24,6 +24,7 @@
 
 use frame_support::{pallet_prelude::*, traits::Time};
 use frame_system::pallet_prelude::*;
+use module_support::{DEXManager, DEXPriceProvider, ExchangeRate};
 use orml_traits::Happened;
 use primitives::{Balance, CurrencyId, TradingPair};
 use sp_core::U256;
@@ -32,7 +33,6 @@ use sp_runtime::{
 	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::marker::PhantomData;
-use support::{DEXManager, DEXPriceProvider, ExchangeRate};
 
 mod mock;
 mod tests;

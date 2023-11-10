@@ -27,6 +27,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
+use module_support::{mocks::MockStableAsset, AuctionManager, LockablePrice, RiskManager, SpecificJointsSwap};
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
@@ -34,8 +35,6 @@ use sp_runtime::{
 	traits::{AccountIdConversion, IdentityLookup},
 	BuildStorage, DispatchResult,
 };
-use support::mocks::MockStableAsset;
-use support::{AuctionManager, LockablePrice, RiskManager, SpecificJointsSwap};
 
 pub type AccountId = u128;
 pub type AuctionId = u32;
@@ -150,7 +149,7 @@ parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
 }
 
-impl loans::Config for Runtime {
+impl module_loans::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type RiskManager = MockRiskManager;
@@ -209,7 +208,7 @@ parameter_types! {
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![];
 }
 
-impl cdp_treasury::Config for Runtime {
+impl module_cdp_treasury::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -247,8 +246,8 @@ construct_runtime!(
 		Tokens: orml_tokens,
 		PalletBalances: pallet_balances,
 		Currencies: orml_currencies,
-		CDPTreasuryModule: cdp_treasury,
-		Loans: loans,
+		CDPTreasuryModule: module_cdp_treasury,
+		Loans: module_loans,
 	}
 );
 

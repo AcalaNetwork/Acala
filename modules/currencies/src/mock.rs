@@ -128,7 +128,7 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<2>;
-	type AccountStore = support::SystemAccountStore<Runtime>;
+	type AccountStore = module_support::SystemAccountStore<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
@@ -180,7 +180,7 @@ impl module_evm::Config for Runtime {
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = GasToWeight;
-	type ChargeTransactionPayment = support::mocks::MockReservedTransactionPayment<Balances>;
+	type ChargeTransactionPayment = module_support::mocks::MockReservedTransactionPayment<Balances>;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 

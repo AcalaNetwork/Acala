@@ -29,6 +29,10 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
+use module_support::{
+	mocks::{MockAddressMapping, MockStableAsset},
+	Price, SpecificJointsSwap,
+};
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
@@ -38,10 +42,6 @@ use sp_runtime::{
 	BuildStorage, Perbill,
 };
 use sp_std::cell::RefCell;
-use support::{
-	mocks::{MockAddressMapping, MockStableAsset},
-	Price, SpecificJointsSwap,
-};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;

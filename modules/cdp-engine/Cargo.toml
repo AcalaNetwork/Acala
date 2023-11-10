@@ -5,40 +5,42 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-log = { version = "0.4.17", default-features = false }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-orml-traits = { path = "../../orml/traits", default-features = false }
-orml-utilities = { path = "../../orml/utilities", default-features = false }
-sp-application-crypto = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-support = { package = "module-support", path = "../support", default-features = false }
-loans = { package = "module-loans", path = "../loans", default-features = false }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-rand_chacha = { version = "0.2", default-features = false }
-nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
+log = { workspace = true }
+rand_chacha = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-application-crypto = {workspace = true }
+orml-traits = { workspace = true }
+orml-utilities = { workspace = true }
+sp-io = {workspace = true }
+sp-runtime = {workspace = true }
+sp-std = {workspace = true }
+module-support = { workspace = true }
+module-loans = { workspace = true }
+primitives = { workspace = true }
+
+nutsfinance-stable-asset = { workspace = true }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-orml-currencies = { path = "../../orml/currencies" }
-dex = { package = "module-dex", path = "../dex" }
-cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury" }
-evm-accounts = { package = "module-evm-accounts", path = "../evm-accounts" }
-orml-tokens = { path = "../../orml/tokens" }
+sp-core = { workspace = true, features = ["std"] }
+pallet-balances = { workspace = true, features = ["std"] }
+pallet-timestamp = { workspace = true, features = ["std"] }
+orml-currencies = { workspace = true, features = ["std"] }
+module-dex = { workspace = true, features = ["std"] }
+module-cdp-treasury = { workspace = true, features = ["std"] }
+module-evm-accounts = { workspace = true, features = ["std"] }
+orml-tokens = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",
-	"loans/std",
+	"module-loans/std",
 	"nutsfinance-stable-asset/std",
 	"orml-traits/std",
 	"orml-utilities/std",
@@ -49,10 +51,10 @@ std = [
 	"sp-io/std",
 	"sp-runtime/std",
 	"sp-std/std",
-	"support/std",
+	"module-support/std",
 ]
 try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
-	"loans/try-runtime",
+	"module-loans/try-runtime",
 ]

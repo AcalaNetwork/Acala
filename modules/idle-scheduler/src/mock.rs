@@ -21,13 +21,13 @@
 #![cfg(test)]
 
 use crate as module_idle_scheduler;
-use acala_primitives::{define_combined_task, task::TaskResult};
 use frame_support::weights::Weight;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 };
 use module_support::DispatchableTask;
+use primitives::{define_combined_task, task::TaskResult};
 pub use sp_runtime::offchain::storage::StorageValueRef;
 use sp_runtime::BuildStorage;
 

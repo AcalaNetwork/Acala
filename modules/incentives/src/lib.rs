@@ -41,6 +41,7 @@
 
 use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
+use module_support::{DEXIncentives, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate};
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
@@ -48,7 +49,6 @@ use sp_runtime::{
 	DispatchResult, FixedPointNumber,
 };
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
-use support::{DEXIncentives, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate};
 
 mod mock;
 mod tests;

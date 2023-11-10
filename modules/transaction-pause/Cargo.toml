@@ -5,29 +5,29 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-log = { version = "0.4.17", default-features = false }
-hex-literal = "0.4.1"
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-module-support = { path = "../support", default-features = false }
+log = { workspace = true }
+hex-literal = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+module-support = { workspace = true }
 
 [dev-dependencies]
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-orml-tokens = { path = "../../orml/tokens" }
-orml-traits = { path = "../../orml/traits" }
-primitives = { package = "acala-primitives", path = "../../primitives" }
-smallvec = "1.4.1"
+sp-io = { workspace = true, features = ["std"] }
+pallet-balances = { workspace = true, features = ["std"] }
+orml-tokens = { workspace = true, features = ["std"] }
+orml-traits = { workspace = true, features = ["std"] }
+primitives = { workspace = true, features = ["std"] }
+smallvec = { workspace = true }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",
 	"module-support/std",

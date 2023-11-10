@@ -27,6 +27,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
+use module_support::{mocks::MockStableAsset, AuctionManager, RiskManager, SpecificJointsSwap};
 use orml_traits::parameter_type_with_key;
 use primitives::TokenSymbol;
 use sp_core::H256;
@@ -36,8 +37,6 @@ use sp_runtime::{
 };
 use sp_std::cell::RefCell;
 use std::collections::HashMap;
-use support::mocks::MockStableAsset;
-use support::{AuctionManager, RiskManager, SpecificJointsSwap};
 
 pub type AccountId = u128;
 pub type AuctionId = u32;

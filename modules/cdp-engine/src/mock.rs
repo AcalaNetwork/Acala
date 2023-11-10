@@ -136,7 +136,7 @@ parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
 }
 
-impl loans::Config for Runtime {
+impl module_loans::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type RiskManager = CDPEngineModule;
@@ -255,7 +255,7 @@ parameter_types! {
 	];
 }
 
-impl dex::Config for Runtime {
+impl module_dex::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
@@ -276,11 +276,11 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl evm_accounts::Config for Runtime {
+impl module_evm_accounts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = PalletBalances;
 	type ChainId = ();
-	type AddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
+	type AddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
 	type WeightInfo = ();
 }
@@ -414,14 +414,14 @@ construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
 		CDPEngineModule: cdp_engine,
-		CDPTreasuryModule: cdp_treasury,
+		CDPTreasuryModule: module_cdp_treasury,
 		Currencies: orml_currencies,
 		Tokens: orml_tokens,
-		LoansModule: loans,
+		LoansModule: module_loans,
 		PalletBalances: pallet_balances,
-		DEXModule: dex,
+		DEXModule: module_dex,
 		Timestamp: pallet_timestamp,
-		EvmAccounts: evm_accounts,
+		EvmAccounts: module_evm_accounts,
 	}
 );
 
