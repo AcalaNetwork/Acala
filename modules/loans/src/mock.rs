@@ -166,7 +166,7 @@ parameter_types! {
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![];
 }
 
-impl cdp_treasury::Config for Runtime {
+impl module_cdp_treasury::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -265,7 +265,7 @@ construct_runtime!(
 		Tokens: orml_tokens,
 		PalletBalances: pallet_balances,
 		Currencies: orml_currencies,
-		CDPTreasuryModule: cdp_treasury,
+		CDPTreasuryModule: module_cdp_treasury,
 	}
 );
 

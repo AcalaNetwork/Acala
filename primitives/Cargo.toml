@@ -5,15 +5,15 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-log = { version = "0.4.17", default-features = false }
-hex-literal = "0.4.1"
-bstringify = "0.1.2"
-serde = { version = "1.0.145", default-features = false, features = ["alloc", "derive"] }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
-num_enum = { version = "0.5.1", default-features = false }
-scale-info = { version = "2.1", default-features = false, features = ["derive"] }
-enumflags2 = { version = "0.7.7", features = ["serde"] }
-paste = "1.0"
+log = { workspace = true }
+hex-literal = { workspace = true }
+bstringify = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }
+parity-scale-codec = { workspace = true, features = ["max-encoded-len"] }
+num_enum = { workspace = true }
+scale-info = { workspace = true }
+enumflags2 = { workspace = true, features = ["serde"] }
+paste = { workspace = true }
 
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
@@ -27,13 +27,13 @@ module-evm-utility-macro = { workspace = true }
 nutsfinance-stable-asset = { workspace = true }
 
 [dev-dependencies]
-serde_json = { version = "1.0.85" }
+serde_json = { workspace = true }
 
 [features]
 default = ["std"]
 std = [
 	"serde/std",
-	"codec/std",
+	"parity-scale-codec/std",
 	"num_enum/std",
 	"scale-info/std",
 	"enumflags2/serde",

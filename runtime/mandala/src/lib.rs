@@ -30,7 +30,6 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::{Decode, DecodeLimit, Encode};
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
 use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
@@ -58,6 +57,7 @@ use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
+use parity_scale_codec::{Decode, DecodeLimit, Encode};
 use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;

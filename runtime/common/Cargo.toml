@@ -10,14 +10,14 @@ harness = false
 required-features = ["wasm-bench"]
 
 [dependencies]
-hex-literal = "0.4.1"
-static_assertions = "1.1.0"
-log = { version = "0.4.17", default-features = false }
-num_enum = { version = "0.5.1", default-features = false }
-serde_json = { version = "1.0.85", default-features = false, features = ["alloc"] }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
-ethabi = { version = "18.0.0", default-features = false }
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
+hex-literal = { workspace = true }
+static_assertions = { workspace = true }
+log = { workspace = true }
+num_enum = { workspace = true }
+serde_json = { workspace = true, features = ["alloc"] }
+parity-scale-codec = { workspace = true }
+ethabi = { workspace = true }
+scale-info = { workspace = true }
 
 # substrate
 frame-support = { workspace = true, features = ["tuples-96"] }
@@ -75,7 +75,7 @@ orml-oracle = { workspace = true }
 orml-traits = { workspace = true }
 orml-tokens = { workspace = true }
 orml-xtokens = { workspace = true }
-wasm-bencher = { git = "https://github.com/open-web3-stack/wasm-bencher", branch = "polkadot-v1.1.0", default-features = false, optional = true }
+wasm-bencher = { workspace = true, optional = true }
 orml-nft = { workspace = true, optional = true }
 orml-currencies = { workspace = true, optional = true }
 orml-rewards = { workspace = true, optional = true }
@@ -87,7 +87,7 @@ orml-utilities = { workspace = true, features = ["std"] }
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"ethabi/std",
 	"log/std",
 	"num_enum/std",

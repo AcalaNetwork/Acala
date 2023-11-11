@@ -15,8 +15,8 @@ primitives = { workspace = true }
 orml-traits = { workspace = true }
 
 [dev-dependencies]
-serde_json = "1.0.81"
-hex = "0.4"
+serde_json = { workspace = true }
+hex = { workspace = true }
 sp-core = { workspace = true, features = ["std"] }
 sp-io = { workspace = true, features = ["std"] }
 pallet-balances = { workspace = true, features = ["std"] }

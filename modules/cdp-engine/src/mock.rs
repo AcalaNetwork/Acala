@@ -27,6 +27,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
+use module_support::{mocks::MockStableAsset, AuctionManager, EmergencyShutdown, SpecificJointsSwap};
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, Moment, TokenSymbol, TradingPair};
 use sp_core::{crypto::AccountId32, H256};
@@ -36,8 +37,6 @@ use sp_runtime::{
 	BuildStorage,
 };
 use sp_std::{cell::RefCell, str::FromStr};
-use support::mocks::MockStableAsset;
-use support::{AuctionManager, EmergencyShutdown, SpecificJointsSwap};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -228,7 +227,7 @@ parameter_types! {
 	];
 }
 
-impl cdp_treasury::Config for Runtime {
+impl module_cdp_treasury::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -403,7 +402,7 @@ impl Config for Runtime {
 	type MaxLiquidationContracts = ConstU32<10>;
 	type LiquidationEvmBridge = MockLiquidationEvmBridge;
 	type PalletId = CDPEnginePalletId;
-	type EvmAddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
+	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
 	type WeightInfo = ();
 }
@@ -474,7 +473,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		dex::GenesisConfig::<Runtime> {
+		module_dex::GenesisConfig::<Runtime> {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 			initial_added_liquidity_pools: vec![],

@@ -21,7 +21,7 @@
 pub mod cli;
 pub mod command;
 
-use codec::{Decode, Encode};
+use parity_scale_codec::{Decode, Encode};
 use sc_client_api::BlockBackend;
 use sp_blockchain::HeaderBackend;
 use sp_core::hexdisplay::HexDisplay;
@@ -69,7 +69,7 @@ impl<TBlock: Block> PrettyPrinter<TBlock> for DebugPrinter {
 #[derive(Debug, derive_more::From, derive_more::Display)]
 pub enum Error {
 	/// Could not decode Block or Extrinsic.
-	Codec(codec::Error),
+	Codec(parity_scale_codec::Error),
 	/// Error accessing blockchain DB.
 	Blockchain(sp_blockchain::Error),
 	/// Given block has not been found.

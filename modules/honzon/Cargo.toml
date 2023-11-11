@@ -15,7 +15,7 @@ sp-std = { workspace = true }
 module-cdp-engine = { workspace = true }
 module-loans = { workspace = true }
 module-support = { workspace = true }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+primitives = { workspace = true }
 
 [dev-dependencies]
 sp-io = { workspace = true, features = ["std"] }

@@ -32,7 +32,7 @@ pub use sp_runtime::offchain::storage::StorageValueRef;
 use sp_runtime::BuildStorage;
 
 use super::*;
-use codec::{Decode, Encode};
+use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
 pub const BASE_WEIGHT: Weight = Weight::from_parts(1_000_000, 0);

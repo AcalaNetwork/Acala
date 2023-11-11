@@ -6,13 +6,13 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-log = { version = "0.4.17", default-features = false }
-smallvec = "1.4.0"
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
-serde_json = { version = "1.0.85", default-features = false, features = ["alloc"] }
-hex = { version = "0.4", default-features = false }
-hex-literal = { version = "0.4.1" }
+log = { workspace = true }
+smallvec = { workspace = true }
+parity-scale-codec = { workspace = true, features = ["derive", "max-encoded-len"] }
+scale-info = { workspace = true }
+serde_json = { workspace = true, features = ["alloc"] }
+hex = { workspace = true }
+hex-literal = { workspace = true }
 
 # substrate
 frame-executive = { workspace = true }
@@ -47,7 +47,7 @@ sp-api = { workspace = true }
 sp-application-crypto = { workspace = true }
 sp-block-builder = { workspace = true }
 sp-consensus-aura = { workspace = true }
-sp-core = { workspace = true }
+sp-core = { workspace = true, features = ["std"] }
 sp-inherents = { workspace = true }
 sp-io = { workspace = true }
 sp-offchain = { workspace = true }
@@ -136,7 +136,7 @@ runtime-common = { workspace = true }
 nutsfinance-stable-asset = { workspace = true }
 
 # benchmarking deps
-libsecp256k1 = { version = "0.7", default-features = false, optional = true }
+libsecp256k1 = { workspace = true, optional = true }
 frame-benchmarking = { workspace = true, optional = true }
 pallet-bags-list = { workspace = true, optional = true }
 
@@ -150,13 +150,13 @@ sp-keyring = { workspace = true }
 cumulus-primitives-parachain-inherent = { workspace = true, features = ["std"] }
 cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 
-acala-service = { path = "../../node/service", features = ["with-mandala-runtime"] }
+acala-service = { workspace = true, features = ["with-mandala-runtime"] }
 
 [features]
 default = ["std"]
 no_std = []
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"hex/std",
 	"scale-info/std",
 	"serde_json/std",

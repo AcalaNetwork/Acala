@@ -23,7 +23,6 @@ use super::{
 	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, UnknownTokens,
 	XcmInterface, XcmpQueue, ACA, AUSD, TAP,
 };
-use codec::{Decode, Encode};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything, Get, Nothing},
@@ -35,6 +34,7 @@ use module_support::HomaSubAccountXcm;
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+use parity_scale_codec::{Decode, Encode};
 use primitives::evm::is_system_contract;
 use runtime_common::{
 	local_currency_location, native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,

@@ -5,8 +5,8 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-parity-scale-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-libsecp256k1 = { version = "0.7", default-features = false, features = ["hmac", "static-context"], optional = true }
+parity-scale-codec = { workspace = true }
+libsecp256k1 = { workspace = true, features = ["hmac", "static-context"], optional = true }
 scale-info = { workspace = true }
 
 frame-support = { workspace = true }

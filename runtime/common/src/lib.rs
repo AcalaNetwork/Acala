@@ -21,7 +21,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-use codec::{Decode, Encode, MaxEncodedLen};
 use cumulus_pallet_parachain_system::CheckAssociatedRelayNumber;
 use frame_support::{
 	dispatch::DispatchClass,
@@ -34,6 +33,7 @@ use frame_support::{
 };
 use frame_system::{limits, EnsureRoot};
 use orml_traits::{currency::MutationHooks, GetByKey};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use polkadot_parachain_primitives::primitives::RelayChainBlockNumber;
 use primitives::{
 	evm::{is_system_contract, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},

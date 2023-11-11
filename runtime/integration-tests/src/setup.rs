@@ -16,11 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-pub use codec::{Decode, Encode};
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::traits::{OnFinalize, OnIdle, OnInitialize};
 pub use frame_support::{assert_noop, assert_ok, traits::Currency};
 pub use frame_system::RawOrigin;
+pub use parity_scale_codec::{Decode, Encode};
 use runtime_common::evm_genesis;
 
 pub use module_support::{

@@ -20,7 +20,7 @@ pallet-session = { workspace = true }
 sp-runtime = { workspace = true }
 sp-staking = { workspace = true }
 sp-std = { workspace = true }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+primitives = { workspace = true }
 
 [dev-dependencies]
 pallet-aura = { workspace = true, features = ["std"] }

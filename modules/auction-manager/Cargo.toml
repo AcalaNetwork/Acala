@@ -20,12 +20,12 @@ module-support = { workspace = true }
 primitives = { workspace = true }
 
 [dev-dependencies]
-sp-core = { workspace = true }
-pallet-balances = { workspace = true }
-orml-auction = { workspace = true }
-module-cdp-treasury = { workspace = true }
-module-dex = { workspace = true }
-orml-tokens = { workspace = true }
+sp-core = { workspace = true, features = ["std"] }
+pallet-balances = { workspace = true, features = ["std"] }
+orml-auction = { workspace = true, features = ["std"] }
+module-cdp-treasury = { workspace = true, features = ["std"] }
+module-dex = { workspace = true, features = ["std"] }
+orml-tokens = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]

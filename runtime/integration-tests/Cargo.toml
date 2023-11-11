@@ -5,12 +5,12 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-smallvec = "1.4.0"
-codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive", "max-encoded-len"] }
-serde_json = { version = "1.0.85" }
-hex = { version = "0.4" }
-hex-literal = { version = "0.4.1" }
-libsecp256k1 = { version = "0.7" }
+smallvec = { workspace = true }
+parity-scale-codec = { workspace = true, features = ["derive", "max-encoded-len"] }
+serde_json = { workspace = true }
+hex = { workspace = true }
+hex-literal = { workspace = true }
+libsecp256k1 = { workspace = true }
 
 # substrate
 frame-support = { workspace = true, features = ["std"] }
@@ -112,13 +112,13 @@ module-relaychain = { workspace = true, features = ["std"] }
 
 primitives = { workspace = true, features = ["std"] }
 runtime-common = { workspace = true, features = ["std"] }
-mandala-runtime = { path = "../mandala", optional = true }
-karura-runtime = { path = "../karura", optional = true }
-acala-runtime = { path = "../acala", optional = true }
+mandala-runtime = { workspace = true, optional = true }
+karura-runtime = { workspace = true, optional = true }
+acala-runtime = { workspace = true, optional = true }
 
 [dev-dependencies]
-env_logger = "0.9.0"
-log = "0.4.17"
+env_logger = { workspace = true }
+log = { workspace = true }
 sp-io = { workspace = true, features = ["std"] }
 sp-trie = { workspace = true, features = ["std"] }
 
@@ -128,7 +128,7 @@ cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 polkadot-cli = { workspace = true }
 polkadot-test-runtime = { workspace = true, features = ["std"] }
 
-acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
+acala-service = { workspace = true, features = ["with-all-runtime"] }
 module-aggregated-dex = { workspace = true, features = ["std"] }
 nutsfinance-stable-asset = { workspace = true, features = ["std"] }
 

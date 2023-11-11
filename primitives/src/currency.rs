@@ -20,9 +20,9 @@
 
 use crate::{evm::EvmAddress, *};
 use bstringify::bstringify;
-use codec::{Decode, Encode, MaxEncodedLen};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 pub use nutsfinance_stable_asset::StableAssetPoolId;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;

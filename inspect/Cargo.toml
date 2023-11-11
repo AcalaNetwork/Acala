@@ -5,10 +5,10 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.4.0" }
-clap = { version = "4.0.9", features = ["derive"] }
-derive_more = "0.99"
-log = "0.4.17"
+parity-scale-codec = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+derive_more = { workspace = true }
+log = { workspace = true }
 sc-cli = { workspace = true }
 sc-client-api = { workspace = true }
 sc-service = { workspace = true }

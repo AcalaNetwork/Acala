@@ -123,7 +123,7 @@ parameter_types! {
 	];
 }
 
-impl cdp_treasury::Config for Runtime {
+impl module_cdp_treasury::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -225,7 +225,7 @@ construct_runtime!(
 		AuctionManagerModule: auction_manager,
 		Tokens: orml_tokens,
 		AuctionModule: orml_auction,
-		CDPTreasuryModule: cdp_treasury,
+		CDPTreasuryModule: module_cdp_treasury,
 		DEXModule: module_dex,
 	}
 );

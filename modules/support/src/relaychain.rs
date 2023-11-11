@@ -19,7 +19,7 @@
 // * Since XCM V3, relaychain configs 'SafeCallFilter' to filter the call in Transact:
 // * https://github.com/paritytech/polkadot/blob/master/runtime/polkadot/src/xcm_config.rs
 
-use codec::{Decode, Encode, FullCodec};
+use parity_scale_codec::{Decode, Encode, FullCodec};
 use primitives::{AccountId, Balance};
 use sp_runtime::{
 	traits::{AccountIdLookup, StaticLookup},

@@ -170,9 +170,9 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{alice_evm_addr, new_test_ext, EvmAddress, Test, ALICE};
-	use codec::Encode;
 	use frame_support::assert_noop;
 	use hex_literal::hex;
+	use parity_scale_codec::Encode;
 	use sp_core::blake2_256;
 	use std::str::FromStr;
 
