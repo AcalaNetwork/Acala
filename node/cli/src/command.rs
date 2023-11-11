@@ -22,6 +22,7 @@
 use std::net::SocketAddr;
 
 use crate::cli::{Cli, RelayChainCli, Subcommand};
+use acala_service::{chain_spec, new_partial, IdentifyVariant};
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
@@ -31,7 +32,6 @@ use sc_cli::{
 };
 use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
 use sc_service::config::{BasePath, PrometheusConfig};
-use service::{chain_spec, new_partial, IdentifyVariant};
 
 fn chain_name() -> String {
 	"Acala".into()

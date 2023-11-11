@@ -5,9 +5,9 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-log = "0.4.17"
-clap = { version = "4.4.2", features = ["derive"] }
-parity-scale-codec = { version = "3.4.0" }
+log = { workspace = true }
+clap = {  workspace = true, features = ["derive"] }
+parity-scale-codec = { workspace = true }
 
 sp-core = { workspace = true, features = ["std"], optional = true }
 sc-cli = { workspace = true, optional = true }
@@ -28,12 +28,12 @@ polkadot-cli = { workspace = true }
 polkadot-primitives ={ workspace = true }
 polkadot-service = { workspace = true }
 
-inspect = { package = "acala-inspect", path = "../../inspect" }
-service = { package = "acala-service", path = "../service", default-features = false, optional = true }
+acala-inspect = { workspace = true }
+acala-service = { workspace = true, optional = true }
 
 [build-dependencies]
-orml-build-script-utils = { path = "../../orml/build-script-utils" }
-substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+orml-build-script-utils = { workspace = true }
+substrate-build-script-utils = { workspace = true }
 
 [features]
 default = [ "cli" ]
@@ -43,7 +43,7 @@ cli = [
 	"sp-core",
 	"sc-executor",
 	"sc-service",
-	"service",
+	"acala-service",
 	"sp-io",
 	"try-runtime-cli",
 ]
@@ -54,26 +54,26 @@ runtime-benchmarks = [
 	"polkadot-primitives/runtime-benchmarks",
 	"polkadot-service/runtime-benchmarks",
 	"sc-service/runtime-benchmarks",
-	"service/runtime-benchmarks",
+	"acala-service/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
 	"polkadot-cli/try-runtime",
 	"polkadot-service/try-runtime",
-	"service/try-runtime",
+	"acala-service/try-runtime",
 	"try-runtime-cli",
 ]
 with-mandala-runtime = [
-	"service/with-mandala-runtime",
+	"acala-service/with-mandala-runtime",
 ]
 with-karura-runtime = [
-	"service/with-karura-runtime",
+	"acala-service/with-karura-runtime",
 ]
 with-acala-runtime = [
-	"service/with-acala-runtime",
+	"acala-service/with-acala-runtime",
 ]
 with-all-runtime = [
-	"service/with-all-runtime",
+	"acala-service/with-all-runtime",
 	"with-acala-runtime",
 	"with-karura-runtime",
 	"with-mandala-runtime",

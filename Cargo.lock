@@ -47,7 +47,7 @@ dependencies = [
  "sp-core 21.0.0 (git+https://github.com/paritytech//polkadot-sdk?branch=release-polkadot-v1.1.0)",
  "sp-io 23.0.0 (git+https://github.com/paritytech//polkadot-sdk?branch=release-polkadot-v1.1.0)",
  "sp-runtime 24.0.0 (git+https://github.com/paritytech//polkadot-sdk?branch=release-polkadot-v1.1.0)",
- "substrate-build-script-utils 3.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0)",
+ "substrate-build-script-utils 3.0.0 (git+https://github.com/paritytech//polkadot-sdk?branch=release-polkadot-v1.1.0)",
  "try-runtime-cli 0.10.0-dev (git+https://github.com/paritytech//polkadot-sdk?branch=release-polkadot-v1.1.0)",
 ]
 
