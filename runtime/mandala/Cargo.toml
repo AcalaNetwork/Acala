@@ -47,7 +47,7 @@ sp-api = { workspace = true }
 sp-application-crypto = { workspace = true }
 sp-block-builder = { workspace = true }
 sp-consensus-aura = { workspace = true }
-sp-core = { workspace = true, features = ["std"] }
+sp-core = { workspace = true }
 sp-inherents = { workspace = true }
 sp-io = { workspace = true }
 sp-offchain = { workspace = true }
@@ -145,8 +145,9 @@ substrate-wasm-builder = { workspace = true, optional = true }
 
 [dev-dependencies]
 sp-io = { workspace = true, features = ["std"] }
-sp-trie = { workspace = true, features = ["std"] }
+sp-trie = { workspace = true }
 sp-keyring = { workspace = true }
+
 cumulus-primitives-parachain-inherent = { workspace = true, features = ["std"] }
 cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 

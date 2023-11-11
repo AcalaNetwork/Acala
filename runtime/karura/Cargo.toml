@@ -30,7 +30,7 @@ pallet-membership = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-proxy = { workspace = true }
 pallet-scheduler = { workspace = true }
-pallet-session = { workspace = true, default-features = false, features = ["historical"] }
+pallet-session = { workspace = true, features = ["historical"] }
 pallet-sudo = { workspace = true }
 pallet-timestamp = { workspace = true }
 pallet-tips = { workspace = true }
@@ -138,7 +138,7 @@ pallet-bags-list = { workspace = true, optional = true }
 substrate-wasm-builder = { workspace = true, optional = true }
 
 [dev-dependencies]
-sp-io = { workspace = true }
+sp-io = { workspace = true, features = ["std"] }
 polkadot-runtime = { workspace = true }
 
 [features]
