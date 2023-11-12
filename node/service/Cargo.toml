@@ -14,6 +14,7 @@ parity-scale-codec = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
 jsonrpsee = { workspace = true, features = ["server", "macros"] }
+
 coins-bip32 = { workspace = true }
 coins-bip39 = { workspace = true }
 k256 = { workspace = true, features = ["keccak256", "ecdsa", "std"] }

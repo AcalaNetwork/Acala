@@ -20,14 +20,18 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 sp-io = { workspace = true }
 sp-api = { workspace = true }
+
 frame-support = { workspace = true }
+
 orml-traits = { workspace = true }
+
 module-evm-utility = { workspace = true }
 module-evm-utility-macro = { workspace = true }
 nutsfinance-stable-asset = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
+
 
 [features]
 default = ["std"]

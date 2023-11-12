@@ -5,7 +5,7 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-parity-scale-codec = { workspace = true }
+parity-scale-codec = { workspace = true, features = ["std"] }
 clap = { workspace = true, features = ["derive"] }
 derive_more = { workspace = true }
 log = { workspace = true }

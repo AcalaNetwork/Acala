@@ -6,8 +6,8 @@ edition = "2021"
 
 [dependencies]
 futures = { workspace = true }
-jsonrpsee = { workspace = true }
-parity-scale-codec = { workspace = true }
+jsonrpsee = { workspace = true, features = ["server", "macros"] }
+parity-scale-codec = { workspace = true, features = ["std"] }
 primitives = { workspace = true, features = ["std"] }
 sp-api = { workspace = true, features = ["std"] }
 sp-blockchain = { workspace = true }
@@ -20,4 +20,5 @@ sc-rpc-api = { workspace = true }
 substrate-frame-rpc-system = { workspace = true }
 pallet-transaction-payment-rpc = { workspace = true }
 sc-consensus-manual-seal = { workspace = true }
+
 runtime-common = { workspace = true, features = ["std"] }

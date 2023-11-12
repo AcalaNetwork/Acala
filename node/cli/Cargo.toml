@@ -7,15 +7,15 @@ edition = "2021"
 [dependencies]
 log = { workspace = true }
 clap = {  workspace = true, features = ["derive"] }
-parity-scale-codec = { workspace = true }
+parity-scale-codec = { workspace = true, features = ["std"] }
 
 sp-core = { workspace = true, features = ["std"], optional = true }
 sc-cli = { workspace = true, optional = true }
 sc-executor = { workspace = true, optional = true }
-sp-io = { workspace = true, optional = true }
+sp-io = { workspace = true, features = ["std"], optional = true }
 sc-service = { workspace = true, optional = true }
 sc-tracing = { workspace = true }
-sp-runtime = { workspace = true }
+sp-runtime = { workspace = true, features = ["std"] }
 sc-telemetry = { workspace = true }
 frame-benchmarking-cli = { workspace = true, optional = true }
 try-runtime-cli = { workspace = true, optional = true }
