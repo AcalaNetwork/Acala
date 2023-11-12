@@ -7,7 +7,6 @@ edition = "2021"
 [dependencies]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
-
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 frame-support = { workspace = true }
@@ -21,6 +20,8 @@ module-dex = { workspace = true }
 orml-tokens = { workspace = true }
 
 [dev-dependencies]
+orml-tokens = { workspace = true, features = ["std"] }
+sp-core = { workspace = true, features = ["std"] }
 sp-io = { workspace = true, features = ["std"] }
 pallet-balances = { workspace = true, features = ["std"] }
 

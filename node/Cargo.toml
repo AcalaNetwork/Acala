@@ -12,7 +12,7 @@ path = "src/main.rs"
 [dependencies]
 futures = { workspace = true }
 acala-cli = { workspace = true }
-acala-service = { workspace = true }
+acala-service = { workspace = true, features = ["std"] }
 
 [features]
 default = []

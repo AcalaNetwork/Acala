@@ -8,7 +8,7 @@ edition = "2021"
 futures = { workspace = true }
 jsonrpsee = { workspace = true }
 parity-scale-codec = { workspace = true }
-primitives = { workspace = true }
+primitives = { workspace = true, features = ["std"] }
 sp-api = { workspace = true, features = ["std"] }
 sp-blockchain = { workspace = true }
 sp-block-builder = { workspace = true, features = ["std"] }

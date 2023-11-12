@@ -41,25 +41,25 @@ sc-transaction-pool = { workspace = true }
 sc-transaction-pool-api = { workspace = true }
 sp-api = { workspace = true, features = ["std"] }
 sp-consensus = { workspace = true }
-sp-consensus-aura = { workspace = true }
-sp-core = { workspace = true }
-sp-io = { workspace = true }
-sp-runtime = { workspace = true }
+sp-consensus-aura = { workspace = true, features = ["std"] }
+sp-core = { workspace = true, features = ["std"] }
+sp-io = { workspace = true, features = ["std"] }
+sp-runtime = { workspace = true, features = ["std"] }
 
 substrate-prometheus-endpoint = { workspace = true }
-frame-benchmarking = { workspace = true }
-frame-system-rpc-runtime-api = { workspace = true }
-pallet-transaction-payment-rpc-runtime-api = { workspace = true }
-sp-block-builder = { workspace = true }
-sp-offchain = { workspace = true }
-sp-session = { workspace = true }
+frame-benchmarking = { workspace = true, features = ["std"] }
+frame-system-rpc-runtime-api = { workspace = true, features = ["std"] }
+pallet-transaction-payment-rpc-runtime-api = { workspace = true, features = ["std"] }
+sp-block-builder = { workspace = true, features = ["std"] }
+sp-offchain = { workspace = true, features = ["std"] }
+sp-session = { workspace = true, features = ["std"] }
 sp-storage = { workspace = true }
-sp-transaction-pool = { workspace = true }
+sp-transaction-pool = { workspace = true, features = ["std"] }
 sp-blockchain = { workspace = true }
-sp-std = { workspace = true }
+sp-std = { workspace = true, features = ["std"] }
 sp-trie = { workspace = true }
 sp-timestamp = { workspace = true }
-sp-keystore = { workspace = true }
+sp-keystore = { workspace = true, features = ["std"] }
 
 cumulus-client-cli = { workspace = true }
 cumulus-client-network = { workspace = true }
@@ -80,13 +80,13 @@ polkadot-cli = { workspace = true }
 polkadot-primitives = { workspace = true }
 polkadot-service = { workspace = true }
 
-primitives = { workspace = true }
+primitives = { workspace = true, features = ["std"] }
 acala-rpc = { workspace = true }
 
-runtime-common = { workspace = true }
-mandala-runtime = { workspace = true, optional = true }
-karura-runtime = { workspace = true, optional = true }
-acala-runtime = { workspace = true, optional = true }
+runtime-common = { workspace = true, features = ["std"] }
+mandala-runtime = { workspace = true, features = ["std"], optional = true }
+karura-runtime = { workspace = true, features = ["std"], optional = true }
+acala-runtime = { workspace = true, features = ["std"], optional = true }
 
 [features]
 default = [ "std" ]

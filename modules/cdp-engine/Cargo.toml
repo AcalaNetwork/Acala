@@ -9,7 +9,6 @@ log = { workspace = true }
 rand_chacha = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
-
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 sp-application-crypto = {workspace = true }

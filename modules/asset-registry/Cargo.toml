@@ -12,9 +12,10 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true  }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+primitives = { workspace = true }
+
 xcm = { workspace = true }
 
-primitives = { workspace = true }
 module-support = { workspace = true }
 
 [dev-dependencies]
@@ -24,6 +25,7 @@ sp-core = { workspace = true, features = ["std"] }
 sp-io = { workspace = true, features = ["std"] }
 pallet-balances = { workspace = true, features = ["std"] }
 pallet-timestamp = { workspace = true, features = ["std"] }
+
 module-evm = { workspace = true, features = ["std"] }
 module-evm-bridge = { workspace = true, features = ["std"] }
 

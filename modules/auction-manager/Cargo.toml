@@ -13,7 +13,6 @@ frame-system = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
-
 orml-traits = { workspace = true }
 orml-utilities = { workspace = true }
 module-support = { workspace = true }
