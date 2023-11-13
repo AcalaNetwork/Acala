@@ -145,13 +145,13 @@ substrate-wasm-builder = { workspace = true, optional = true }
 
 [dev-dependencies]
 sp-io = { workspace = true, features = ["std"] }
-sp-trie = { workspace = true }
+sp-trie = { workspace = true, features = ["std"] }
 sp-keyring = { workspace = true }
 
 cumulus-primitives-parachain-inherent = { workspace = true, features = ["std"] }
 cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 
-acala-service = { workspace = true, features = ["with-mandala-runtime"] }
+acala-service = { workspace = true, features = ["std", "with-mandala-runtime"] }
 
 [features]
 default = ["std"]

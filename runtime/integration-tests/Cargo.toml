@@ -7,10 +7,10 @@ edition = "2021"
 [dependencies]
 smallvec = { workspace = true }
 parity-scale-codec = { workspace = true, features = ["derive", "max-encoded-len"] }
-serde_json = { workspace = true }
-hex = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
+hex = { workspace = true, features = ["std"] }
 hex-literal = { workspace = true }
-libsecp256k1 = { workspace = true }
+libsecp256k1 = { workspace = true, features = ["std", "hmac", "static-context"] }
 
 # substrate
 frame-support = { workspace = true, features = ["std"] }
@@ -38,7 +38,7 @@ pallet-utility = { workspace = true, features = ["std"] }
 sp-api = { workspace = true, features = ["std"] }
 sp-application-crypto = { workspace = true, features = ["std"] }
 sp-block-builder = { workspace = true, features = ["std"] }
-sp-consensus-aura = { workspace = true }
+sp-consensus-aura = { workspace = true, features = ["std"] }
 sp-core = { workspace = true, features = ["std"] }
 sp-inherents = { workspace = true, features = ["std"] }
 sp-io = { workspace = true, features = ["std"] }
@@ -128,7 +128,7 @@ cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 polkadot-cli = { workspace = true }
 polkadot-test-runtime = { workspace = true, features = ["std"] }
 
-acala-service = { workspace = true, features = ["with-all-runtime"] }
+acala-service = { workspace = true, features = ["std", "with-all-runtime"] }
 module-aggregated-dex = { workspace = true, features = ["std"] }
 nutsfinance-stable-asset = { workspace = true, features = ["std"] }
 

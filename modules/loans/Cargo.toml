@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 log = { workspace = true }
-parity-scale-codec = { workspace = true }
+parity-scale-codec = { workspace = true, features = ["max-encoded-len"] }
 scale-info = { workspace = true }
 
 frame-system = { workspace = true }

@@ -8,7 +8,7 @@ edition = "2021"
 impl-trait-for-tuples = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
-serde = { workspace = true, optional = true }
+serde = { workspace = true, features = ["std"], optional = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
@@ -23,7 +23,7 @@ nutsfinance-stable-asset = { workspace = true }
 primitives = { workspace = true }
 
 [dev-dependencies]
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]

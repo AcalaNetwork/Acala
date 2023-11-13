@@ -15,7 +15,7 @@ static_assertions = { workspace = true }
 log = { workspace = true }
 num_enum = { workspace = true }
 serde_json = { workspace = true, features = ["alloc"] }
-parity-scale-codec = { workspace = true }
+parity-scale-codec = { workspace = true, features = ["max-encoded-len"] }
 ethabi = { workspace = true }
 scale-info = { workspace = true }
 

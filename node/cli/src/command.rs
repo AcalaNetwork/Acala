@@ -94,8 +94,8 @@ impl SubstrateCli for Cli {
 			path => {
 				let path = std::path::PathBuf::from(path);
 
-				let chain_spec = Box::new(service::chain_spec::DummyChainSpec::from_json_file(path.clone())?)
-					as Box<dyn service::ChainSpec>;
+				let chain_spec = Box::new(acala_service::chain_spec::DummyChainSpec::from_json_file(path.clone())?)
+					as Box<dyn acala_service::ChainSpec>;
 
 				if chain_spec.is_karura() {
 					#[cfg(feature = "with-karura-runtime")]
@@ -104,21 +104,21 @@ impl SubstrateCli for Cli {
 					}
 
 					#[cfg(not(feature = "with-karura-runtime"))]
-					return Err(service::KARURA_RUNTIME_NOT_AVAILABLE.into());
+					return Err(acala_service::KARURA_RUNTIME_NOT_AVAILABLE.into());
 				} else if chain_spec.is_acala() {
 					#[cfg(feature = "with-acala-runtime")]
 					{
 						Box::new(chain_spec::acala::ChainSpec::from_json_file(path)?)
 					}
 					#[cfg(not(feature = "with-acala-runtime"))]
-					return Err(service::ACALA_RUNTIME_NOT_AVAILABLE.into());
+					return Err(acala_service::ACALA_RUNTIME_NOT_AVAILABLE.into());
 				} else {
 					#[cfg(feature = "with-mandala-runtime")]
 					{
 						Box::new(chain_spec::mandala::ChainSpec::from_json_file(path)?)
 					}
 					#[cfg(not(feature = "with-mandala-runtime"))]
-					return Err(service::MANDALA_RUNTIME_NOT_AVAILABLE.into());
+					return Err(acala_service::MANDALA_RUNTIME_NOT_AVAILABLE.into());
 				}
 			}
 		})
@@ -161,7 +161,7 @@ impl SubstrateCli for RelayChainCli {
 	}
 }
 
-fn set_default_ss58_version(spec: &Box<dyn service::ChainSpec>) {
+fn set_default_ss58_version(spec: &Box<dyn acala_service::ChainSpec>) {
 	use sp_core::crypto::Ss58AddressFormatRegistry;
 
 	let ss58_version = if spec.is_karura() {
@@ -179,7 +179,7 @@ fn set_default_ss58_version(spec: &Box<dyn service::ChainSpec>) {
 const DEV_ONLY_ERROR_PATTERN: &str = "can only use subcommand with --chain [karura-dev, acala-dev, pc-dev, dev], got ";
 
 #[allow(dead_code)]
-fn ensure_dev(spec: &Box<dyn service::ChainSpec>) -> std::result::Result<(), String> {
+fn ensure_dev(spec: &Box<dyn acala_service::ChainSpec>) -> std::result::Result<(), String> {
 	if spec.is_dev() {
 		Ok(())
 	} else {
@@ -192,30 +192,30 @@ macro_rules! with_runtime_or_err {
 		if $chain_spec.is_acala() {
 			#[cfg(feature = "with-acala-runtime")]
 			#[allow(unused_imports)]
-			use service::{acala_runtime::{Block, RuntimeApi}, AcalaExecutorDispatch as Executor};
+			use acala_service::{acala_runtime::{Block, RuntimeApi}, AcalaExecutorDispatch as Executor};
 			#[cfg(feature = "with-acala-runtime")]
 			$( $code )*
 
 			#[cfg(not(feature = "with-acala-runtime"))]
-			return Err(service::ACALA_RUNTIME_NOT_AVAILABLE.into());
+			return Err(acala_service::ACALA_RUNTIME_NOT_AVAILABLE.into());
 		} else if $chain_spec.is_karura() {
 			#[cfg(feature = "with-karura-runtime")]
 			#[allow(unused_imports)]
-			use service::{karura_runtime::{Block, RuntimeApi}, KaruraExecutorDispatch as Executor};
+			use acala_service::{karura_runtime::{Block, RuntimeApi}, KaruraExecutorDispatch as Executor};
 			#[cfg(feature = "with-karura-runtime")]
 			$( $code )*
 
 			#[cfg(not(feature = "with-karura-runtime"))]
-			return Err(service::KARURA_RUNTIME_NOT_AVAILABLE.into());
+			return Err(acala_service::KARURA_RUNTIME_NOT_AVAILABLE.into());
 		} else {
 			#[cfg(feature = "with-mandala-runtime")]
 			#[allow(unused_imports)]
-			use service::{mandala_runtime::{Block, RuntimeApi}, MandalaExecutorDispatch as Executor};
+			use acala_service::{mandala_runtime::{Block, RuntimeApi}, MandalaExecutorDispatch as Executor};
 			#[cfg(feature = "with-mandala-runtime")]
 			$( $code )*
 
 			#[cfg(not(feature = "with-mandala-runtime"))]
-			return Err(service::MANDALA_RUNTIME_NOT_AVAILABLE.into());
+			return Err(acala_service::MANDALA_RUNTIME_NOT_AVAILABLE.into());
 		}
 	}
 }
@@ -232,7 +232,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.sync_run(|mut config| {
-				let (client, _, _, _) = service::new_chain_ops(&mut config)?;
+				let (client, _, _, _) = acala_service::new_chain_ops(&mut config)?;
 				cmd.run(client)
 			})
 		}
@@ -299,7 +299,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.async_run(|mut config| {
-				let (client, _, import_queue, task_manager) = service::new_chain_ops(&mut config)?;
+				let (client, _, import_queue, task_manager) = acala_service::new_chain_ops(&mut config)?;
 				Ok((cmd.run(client, import_queue), task_manager))
 			})
 		}
@@ -311,7 +311,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.async_run(|mut config| {
-				let (client, _, _, task_manager) = service::new_chain_ops(&mut config)?;
+				let (client, _, _, task_manager) = acala_service::new_chain_ops(&mut config)?;
 				Ok((cmd.run(client, config.database), task_manager))
 			})
 		}
@@ -323,7 +323,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.async_run(|mut config| {
-				let (client, _, _, task_manager) = service::new_chain_ops(&mut config)?;
+				let (client, _, _, task_manager) = acala_service::new_chain_ops(&mut config)?;
 				Ok((cmd.run(client, config.chain_spec), task_manager))
 			})
 		}
@@ -335,7 +335,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.async_run(|mut config| {
-				let (client, _, import_queue, task_manager) = service::new_chain_ops(&mut config)?;
+				let (client, _, import_queue, task_manager) = acala_service::new_chain_ops(&mut config)?;
 				Ok((cmd.run(client, import_queue), task_manager))
 			})
 		}
@@ -373,7 +373,7 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.async_run(|mut config| {
-				let (client, backend, _, task_manager) = service::new_chain_ops(&mut config)?;
+				let (client, backend, _, task_manager) = acala_service::new_chain_ops(&mut config)?;
 				Ok((cmd.run(client, backend, None), task_manager))
 			})
 		}
@@ -385,7 +385,7 @@ pub fn run() -> sc_cli::Result<()> {
 			with_runtime_or_err!(chain_spec, {
 				return runner.sync_run(|config| {
 					let partials = new_partial::<RuntimeApi>(&config, false, false)?;
-					cmd.run::<service::Block>(&*config.chain_spec, &*partials.client)
+					cmd.run::<acala_service::Block>(&*config.chain_spec, &*partials.client)
 				});
 			})
 		}
@@ -435,7 +435,7 @@ pub fn run() -> sc_cli::Result<()> {
 				if is_dev {
 					with_runtime_or_err!(config.chain_spec, {
 						{
-							return service::start_dev_node::<RuntimeApi>(config, cli.instant_sealing)
+							return acala_service::start_dev_node::<RuntimeApi>(config, cli.instant_sealing)
 								.map_err(Into::into);
 						}
 					})
@@ -468,7 +468,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 				with_runtime_or_err!(config.chain_spec, {
 					{
-						service::start_node::<RuntimeApi>(config, polkadot_config, collator_options, id)
+						acala_service::start_node::<RuntimeApi>(config, polkadot_config, collator_options, id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)

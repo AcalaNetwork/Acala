@@ -8,11 +8,11 @@ edition = "2021"
 log = { workspace = true }
 async-trait = { workspace = true }
 hex-literal = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-parity-scale-codec = { workspace = true }
+serde = { workspace = true, features = ["std", "derive"] }
+serde_json = { workspace = true, features = ["std"] }
+parity-scale-codec = { workspace = true, features = ["std"] }
 futures = { workspace = true }
-hex = { workspace = true }
+hex = { workspace = true, features = ["std"] }
 jsonrpsee = { workspace = true, features = ["server", "macros"] }
 
 coins-bip32 = { workspace = true }
@@ -54,12 +54,12 @@ pallet-transaction-payment-rpc-runtime-api = { workspace = true, features = ["st
 sp-block-builder = { workspace = true, features = ["std"] }
 sp-offchain = { workspace = true, features = ["std"] }
 sp-session = { workspace = true, features = ["std"] }
-sp-storage = { workspace = true }
+sp-storage = { workspace = true, features = ["std"] }
 sp-transaction-pool = { workspace = true, features = ["std"] }
 sp-blockchain = { workspace = true }
 sp-std = { workspace = true, features = ["std"] }
-sp-trie = { workspace = true }
-sp-timestamp = { workspace = true }
+sp-trie = { workspace = true, features = ["std"] }
+sp-timestamp = { workspace = true, features = ["std"] }
 sp-keystore = { workspace = true, features = ["std"] }
 
 cumulus-client-cli = { workspace = true }
@@ -68,17 +68,17 @@ cumulus-client-service = { workspace = true }
 cumulus-client-consensus-aura = { workspace = true }
 cumulus-client-consensus-common = { workspace = true }
 cumulus-client-consensus-relay-chain = { workspace = true }
-cumulus-primitives-core = { workspace = true }
-cumulus-primitives-parachain-inherent = { workspace = true }
-cumulus-test-relay-sproof-builder = { workspace = true }
-cumulus-pallet-parachain-system = { workspace = true }
+cumulus-primitives-core = { workspace = true, features = ["std"] }
+cumulus-primitives-parachain-inherent = { workspace = true, features = ["std"] }
+cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
+cumulus-pallet-parachain-system = { workspace = true, features = ["std"] }
 cumulus-relay-chain-interface = { workspace = true }
 cumulus-relay-chain-inprocess-interface = { workspace = true }
 cumulus-relay-chain-rpc-interface = { workspace = true }
 cumulus-relay-chain-minimal-node = { workspace = true }
 
 polkadot-cli = { workspace = true }
-polkadot-primitives = { workspace = true }
+polkadot-primitives = { workspace = true, features = ["std"] }
 polkadot-service = { workspace = true }
 
 primitives = { workspace = true, features = ["std"] }

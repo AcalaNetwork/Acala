@@ -22,10 +22,10 @@ try-runtime-cli = { workspace = true, optional = true }
 
 cumulus-client-service = { workspace = true }
 cumulus-client-cli ={ workspace = true }
-cumulus-primitives-core = { workspace = true }
+cumulus-primitives-core = { workspace = true, features = ["std"] }
 polkadot-parachain-primitives = { workspace = true, features = ["std"] }
 polkadot-cli = { workspace = true }
-polkadot-primitives ={ workspace = true }
+polkadot-primitives = { workspace = true, features = ["std"] }
 polkadot-service = { workspace = true }
 
 acala-inspect = { workspace = true }

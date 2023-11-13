@@ -5,8 +5,8 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-serde = { workspace = true, optional = true }
-parity-scale-codec = { workspace = true }
+serde = { workspace = true, features = ["std"], optional = true }
+parity-scale-codec = { workspace = true, features = ["max-encoded-len"] }
 scale-info = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }

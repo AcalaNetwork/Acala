@@ -9,7 +9,7 @@ log = { workspace = true }
 hex-literal = { workspace = true }
 bstringify = { workspace = true }
 serde = { workspace = true, features = ["alloc", "derive"] }
-parity-scale-codec = { workspace = true }
+parity-scale-codec = { workspace = true, features = ["max-encoded-len"] }
 num_enum = { workspace = true }
 scale-info = { workspace = true }
 enumflags2 = { workspace = true, features = ["serde"] }
@@ -30,7 +30,7 @@ module-evm-utility-macro = { workspace = true }
 nutsfinance-stable-asset = { workspace = true }
 
 [dev-dependencies]
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
 
 
 [features]
