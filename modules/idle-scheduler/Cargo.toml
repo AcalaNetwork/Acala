@@ -5,25 +5,25 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-log = { version = "0.4.17", default-features = false }
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-acala-primitives = { path = "../../primitives", default-features = false }
-module-support = { path = "../support", default-features = false }
+log = { workspace = true }
+scale-info = { workspace = true }
+parity-scale-codec = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+primitives = { workspace = true }
+module-support = { workspace = true }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-core = { workspace = true, features = ["std"] }
+sp-io = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
 std = [
-	"acala-primitives/std",
-	"codec/std",
+	"primitives/std",
+	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",
 	"module-support/std",

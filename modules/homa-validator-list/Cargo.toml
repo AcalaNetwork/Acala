@@ -5,30 +5,30 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-serde = { version = "1.0.145", optional = true }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-orml-traits = { path = "../../orml/traits", default-features = false }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-support = { package = "module-support", path = "../support", default-features = false }
+serde = { workspace = true, features = ["std"], optional = true }
+parity-scale-codec = { workspace = true, features = ["max-encoded-len"] }
+scale-info = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+orml-traits = { workspace = true }
+primitives = { workspace = true }
+module-support = { workspace = true }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-orml-tokens = { path = "../../orml/tokens" }
-orml-currencies = { path = "../../orml/currencies" }
+sp-core = { workspace = true, features = ["std"] }
+sp-io = { workspace = true, features = ["std"] }
+pallet-balances = { workspace = true, features = ["std"] }
+orml-tokens = { workspace = true, features = ["std"] }
+orml-currencies = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
 std = [
 	"serde",
 
-	"codec/std",
+	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",
 	"orml-traits/std",
@@ -36,7 +36,7 @@ std = [
 	"scale-info/std",
 	"sp-runtime/std",
 	"sp-std/std",
-	"support/std",
+	"module-support/std",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

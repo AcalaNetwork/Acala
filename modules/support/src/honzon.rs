@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use codec::FullCodec;
+use parity_scale_codec::FullCodec;
 use primitives::Position;
 use sp_core::U256;
 use sp_runtime::{DispatchError, DispatchResult};

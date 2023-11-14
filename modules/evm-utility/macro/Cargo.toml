@@ -8,7 +8,7 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-quote = "1.0.20"
-syn = { version = "1.0.98", features = ["full", "fold", "extra-traits", "visit"] }
-proc-macro2 = "1.0.40"
-module-evm-utility = { path = ".." }
+quote = { workspace = true }
+syn = { workspace = true, features = ["full", "fold", "extra-traits", "visit"] }
+proc-macro2 = { workspace = true }
+module-evm-utility = { workspace = true, features = ["std"] }

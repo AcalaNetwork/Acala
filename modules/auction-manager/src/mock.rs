@@ -27,6 +27,8 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
+pub use module_support::Price;
+use module_support::{mocks::MockStableAsset, SpecificJointsSwap};
 use orml_traits::parameter_type_with_key;
 use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
@@ -36,8 +38,6 @@ use sp_runtime::{
 	BuildStorage,
 };
 use sp_std::cell::RefCell;
-pub use support::Price;
-use support::{mocks::MockStableAsset, SpecificJointsSwap};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -123,7 +123,7 @@ parameter_types! {
 	];
 }
 
-impl cdp_treasury::Config for Runtime {
+impl module_cdp_treasury::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -225,7 +225,7 @@ construct_runtime!(
 		AuctionManagerModule: auction_manager,
 		Tokens: orml_tokens,
 		AuctionModule: orml_auction,
-		CDPTreasuryModule: cdp_treasury,
+		CDPTreasuryModule: module_cdp_treasury,
 		DEXModule: module_dex,
 	}
 );

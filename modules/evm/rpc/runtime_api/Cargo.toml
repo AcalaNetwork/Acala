@@ -5,11 +5,11 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-api = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-primitives = { package = "acala-primitives", path = "../../../../primitives", default-features = false }
+sp-runtime = { workspace = true }
+sp-api = { workspace = true }
+sp-std = { workspace = true }
+sp-core = { workspace = true }
+primitives = { workspace = true }
 
 [features]
 default = ["std"]

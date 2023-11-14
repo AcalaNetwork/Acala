@@ -5,9 +5,9 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-sha3 = { version = "0.10.6", default-features = false }
+sha3 = { workspace = true }
 
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-std = { workspace = true }
 
 evm = { git = "https://github.com/rust-blockchain/evm", rev = "13240a8a551586fdef0b5028ed73af80b248092a", default-features = false, features = ["with-codec"] }
 evm-gasometer = { git = "https://github.com/rust-blockchain/evm", rev = "13240a8a551586fdef0b5028ed73af80b248092a", default-features = false }

@@ -8,32 +8,34 @@ edition = "2021"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-impl-trait-for-tuples = "0.2.2"
-ethereum-types = { version = "0.14.0", default-features = false }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-support = { package = "module-support", path = "../support", default-features = false }
-module-evm = { path = "../evm", default-features = false }
-module-evm-utility-macro = { path = "../evm-utility/macro" }
-num_enum = { version = "0.5.1", default-features = false }
+impl-trait-for-tuples = { workspace = true }
+ethereum-types = { workspace = true }
+num_enum = { workspace = true }
+
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+sp-io = { workspace = true }
+
+module-evm = { workspace = true }
+module-evm-utility-macro = { workspace = true }
+module-support = { workspace = true }
+primitives = { workspace = true }
 
 [dev-dependencies]
-serde_json = "1.0.81"
-hex = "0.4"
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+serde_json = { workspace = true, features = ["std"] }
+hex = { workspace = true, features = ["std"] }
+pallet-balances = { workspace = true, features = ["std"] }
+pallet-timestamp = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"ethereum-types/std",
 	"frame-support/std",
 	"frame-system/std",
@@ -45,7 +47,7 @@ std = [
 	"sp-io/std",
 	"sp-runtime/std",
 	"sp-std/std",
-	"support/std",
+	"module-support/std",
 ]
 runtime-benchmarks = [
 	"frame-support/runtime-benchmarks",

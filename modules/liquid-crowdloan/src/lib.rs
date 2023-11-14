@@ -29,7 +29,7 @@ use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::AccountIdConversion, ArithmeticError};
 
-use support::CrowdloanVaultXcm;
+use module_support::CrowdloanVaultXcm;
 
 mod mock;
 mod tests;

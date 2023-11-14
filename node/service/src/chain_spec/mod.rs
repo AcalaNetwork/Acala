@@ -18,7 +18,7 @@
 
 //! Acala chain configurations.
 
-use acala_primitives::{AccountId, AccountPublic};
+use primitives::{AccountId, AccountPublic};
 use sc_chain_spec::ChainSpecExtension;
 use sc_consensus_grandpa::AuthorityId as GrandpaId;
 use serde::{Deserialize, Serialize};

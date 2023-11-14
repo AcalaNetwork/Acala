@@ -27,11 +27,11 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
+pub use module_support::{ExchangeRate, RebasedStableAsset};
 use orml_tokens::ConvertBalance;
 pub use orml_traits::{parameter_type_with_key, MultiCurrency};
 use primitives::{Amount, TokenSymbol, TradingPair};
 use sp_runtime::{testing::H256, traits::IdentityLookup, AccountId32, ArithmeticError, BuildStorage, FixedPointNumber};
-pub use support::{ExchangeRate, RebasedStableAsset};
 
 pub type AccountId = AccountId32;
 

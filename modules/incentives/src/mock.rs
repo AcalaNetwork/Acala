@@ -27,12 +27,12 @@ use frame_support::{
 	weights::constants::RocksDbWeight,
 };
 use frame_system::EnsureSignedBy;
+pub use module_support::{Price, Ratio, SwapLimit};
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
 use sp_std::cell::RefCell;
-pub use support::{Price, Ratio, SwapLimit};
 
 pub type AccountId = AccountId32;
 

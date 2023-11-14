@@ -10,58 +10,58 @@ harness = false
 required-features = ["wasm-bench"]
 
 [dependencies]
-log = { version = "0.4.17", default-features = false }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-hex-literal = { version = "0.4.1" }
-ripemd = { version = "0.1.3", default-features = false }
-rlp = { version = "0.5.2", default-features = false }
-serde = { version = "1.0.145", default-features = false, features = ["alloc", "derive"] }
-sha3 = { version = "0.10.8", default-features = false }
-tiny-keccak = { version = "2.0", features = ["fips202"] }
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
-serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
-hex = { version = "0.4", default-features = false, features = ["alloc"], optional = true }
-num = { version = "0.4", features = ["alloc"], default-features = false }
-bn = { package = "substrate-bn", version = "0.6", default-features = false }
+log = { workspace = true }
+parity-scale-codec = { workspace = true }
+hex-literal = { workspace = true }
+ripemd = { workspace = true }
+rlp = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }
+sha3 = { workspace = true }
+tiny-keccak = { workspace = true, features = ["fips202"] }
+scale-info = { workspace = true }
+serde_json = { workspace = true, features = ["alloc"], optional = true }
+hex = { workspace = true, features = ["alloc"], optional = true }
+num = { workspace = true, features = ["alloc"] }
+bn = { workspace = true }
 
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+pallet-timestamp = { workspace = true }
+pallet-balances = { workspace = true, optional = true }
 
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-orml-traits = { path = "../../orml/traits", default-features = false }
-wasm-bencher = { git = "https://github.com/open-web3-stack/wasm-bencher", branch = "polkadot-v1.1.0", default-features = false, optional = true }
-orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }
-orml-tokens = { path = "../../orml/tokens", default-features = false, optional = true }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+orml-traits = { workspace = true }
+wasm-bencher = { workspace = true, optional = true }
+orml-currencies = { workspace = true, optional = true }
+orml-tokens = { workspace = true, optional = true }
 
-module-support = { path = "../support", default-features = false }
-module-evm-utility = { path = "../evm-utility", default-features = false }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-module-idle-scheduler = { path = "../idle-scheduler", default-features = false, optional = true }
-module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
-module-dex = { path = "../dex", default-features = false, optional = true }
+module-support = { workspace = true }
+module-evm-utility = { workspace = true }
+primitives = { workspace = true }
+module-idle-scheduler = { workspace = true, optional = true }
+module-transaction-payment = { workspace = true }
+module-dex = { workspace = true, optional = true }
 
-xcm-builder = { package = "staging-xcm-builder", git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+xcm-builder = { workspace = true }
 
 # we don't directly depends on this but need frame-benchmarking/std to fix build
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" , default-features = false, optional = true }
+frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-hex = "0.4"
-env_logger = "0.10.0"
-serde_json = "1.0.81"
-pallet-utility = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+hex = { workspace = true, features = ["std"] }
+env_logger = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
+pallet-utility = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
 std = [
 	"serde/std",
 
-	"codec/std",
+	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",
 	"module-dex/std",

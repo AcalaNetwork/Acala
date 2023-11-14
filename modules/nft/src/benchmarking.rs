@@ -155,12 +155,12 @@ mod mock {
 	use super::*;
 	use crate as nft;
 
-	use codec::{Decode, Encode};
 	use frame_support::{
 		parameter_types,
 		traits::{ConstU128, ConstU32, ConstU64, Contains, InstanceFilter},
 		PalletId,
 	};
+	use parity_scale_codec::{Decode, Encode};
 	use sp_core::{crypto::AccountId32, H256};
 	use sp_runtime::{
 		traits::{BlakeTwo256, IdentityLookup},

@@ -26,11 +26,11 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, ConstU64, Everything},
 };
 use frame_system::EnsureSignedBy;
+use module_support::{mocks::MockAddressMapping, AddressMapping};
 use primitives::{evm::convert_decimals_to_evm, evm::EvmAddress, ReserveIdentifier};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
 pub use sp_std::str::FromStr;
-use support::{mocks::MockAddressMapping, AddressMapping};
 
 pub type AccountId = AccountId32;
 pub type Balance = u128;
@@ -70,7 +70,7 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<1>;
-	type AccountStore = support::SystemAccountStore<Runtime>;
+	type AccountStore = module_support::SystemAccountStore<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
@@ -110,7 +110,7 @@ impl module_evm::Config for Runtime {
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = ();
-	type ChargeTransactionPayment = support::mocks::MockReservedTransactionPayment<Balances>;
+	type ChargeTransactionPayment = module_support::mocks::MockReservedTransactionPayment<Balances>;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
 

@@ -21,13 +21,17 @@
 #![cfg(test)]
 
 use super::*;
-use cdp_engine::CollateralCurrencyIds;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 	PalletId,
 };
 use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
+use module_cdp_engine::CollateralCurrencyIds;
+use module_support::{
+	mocks::MockStableAsset, AuctionManager, ExchangeRate, FractionalRate, Price, PriceProvider, Rate, Ratio,
+	SpecificJointsSwap,
+};
 use orml_traits::parameter_type_with_key;
 use primitives::{Balance, Moment, ReserveIdentifier, TokenSymbol};
 use sp_core::{crypto::AccountId32, H256};
@@ -37,8 +41,6 @@ use sp_runtime::{
 	BuildStorage, FixedPointNumber,
 };
 use sp_std::cell::RefCell;
-use support::mocks::MockStableAsset;
-use support::{AuctionManager, ExchangeRate, FractionalRate, Price, PriceProvider, Rate, Ratio, SpecificJointsSwap};
 
 mod honzon {
 	pub use super::super::*;
@@ -134,7 +136,7 @@ parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
 }
 
-impl loans::Config for Runtime {
+impl module_loans::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type RiskManager = CDPEngineModule;
@@ -210,7 +212,7 @@ parameter_types! {
 	];
 }
 
-impl cdp_treasury::Config for Runtime {
+impl module_cdp_treasury::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -232,11 +234,11 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl evm_accounts::Config for Runtime {
+impl module_evm_accounts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = PalletBalances;
 	type ChainId = ();
-	type AddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
+	type AddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
 	type WeightInfo = ();
 }
@@ -256,7 +258,7 @@ parameter_types! {
 	pub const CDPEnginePalletId: PalletId = PalletId(*b"aca/cdpe");
 }
 
-impl cdp_engine::Config for Runtime {
+impl module_cdp_engine::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PriceSource = MockPriceSource;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
@@ -278,7 +280,7 @@ impl cdp_engine::Config for Runtime {
 	type MaxLiquidationContracts = ConstU32<10>;
 	type LiquidationEvmBridge = ();
 	type PalletId = CDPEnginePalletId;
-	type EvmAddressMapping = evm_accounts::EvmAddressMapping<Runtime>;
+	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = SpecificJointsSwap<(), AlternativeSwapPathJointList>;
 	type WeightInfo = ();
 }
@@ -300,11 +302,11 @@ construct_runtime!(
 		Tokens: orml_tokens,
 		PalletBalances: pallet_balances,
 		Currencies: orml_currencies,
-		LoansModule: loans,
-		CDPTreasuryModule: cdp_treasury,
-		CDPEngineModule: cdp_engine,
+		LoansModule: module_loans,
+		CDPTreasuryModule: module_cdp_treasury,
+		CDPEngineModule: module_cdp_engine,
 		Timestamp: pallet_timestamp,
-		EvmAccounts: evm_accounts,
+		EvmAccounts: module_evm_accounts,
 	}
 );
 

@@ -5,32 +5,31 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-libsecp256k1 = { version = "0.7", default-features = false, features = ["hmac", "static-context"], optional = true }
-scale-info = { version = "2.9.0", default-features = false, features = ["derive"] }
+parity-scale-codec = { workspace = true }
+libsecp256k1 = { workspace = true, features = ["hmac", "static-context"], optional = true }
+scale-info = { workspace = true }
 
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
-orml-traits = { path = "../../orml/traits", default-features = false }
-
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-module-support = { path = "../support", default-features = false }
-module-evm-utility-macro = { path = "../evm-utility/macro" }
+orml-traits = { workspace = true }
+primitives = { workspace = true }
+module-support = { workspace = true }
+module-evm-utility-macro = { workspace = true }
 
 [dev-dependencies]
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-orml-currencies = { path = "../../orml/currencies" }
-orml-tokens = { path = "../../orml/tokens" }
+pallet-balances = { workspace = true, features = ["std"] }
+orml-currencies = { workspace = true, features = ["std"] }
+orml-tokens = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
+	"parity-scale-codec/std",
 	"libsecp256k1",
 	"libsecp256k1/std",
 	"scale-info/std",

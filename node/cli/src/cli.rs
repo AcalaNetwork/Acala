@@ -24,7 +24,7 @@ use clap::Parser;
 use sc_cli::{KeySubcommand, SignCmd, VanityCmd, VerifyCmd};
 use std::path::PathBuf;
 
-use service::chain_spec;
+use acala_service::chain_spec;
 
 /// Possible subcommands of the main binary.
 #[derive(Debug, Parser)]
@@ -44,7 +44,7 @@ pub enum Subcommand {
 		name = "inspect",
 		about = "Decode given block or extrinsic using current native runtime."
 	)]
-	Inspect(inspect::cli::InspectCmd),
+	Inspect(acala_inspect::cli::InspectCmd),
 
 	/// The custom benchmark subcommmand benchmarking runtime modules.
 	#[command(subcommand)]

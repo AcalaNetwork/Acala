@@ -23,7 +23,6 @@ use crate::{
 	System, Timestamp,
 };
 
-pub use codec::Encode;
 use frame_benchmarking::account;
 use frame_support::{
 	assert_ok,
@@ -32,6 +31,7 @@ use frame_support::{
 use frame_system::RawOrigin;
 use module_support::{AggregatedSwapPath, Erc20InfoMapping};
 use orml_traits::{GetByKey, MultiCurrencyExtended};
+pub use parity_scale_codec::Encode;
 use primitives::currency::AssetMetadata;
 use runtime_common::{TokenInfo, LCDOT};
 use sp_consensus_aura::AURA_ENGINE_ID;

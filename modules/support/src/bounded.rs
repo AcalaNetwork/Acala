@@ -18,8 +18,8 @@
 
 use super::Rate;
 
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::Get;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use primitives::{Balance, BlockNumber};
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -54,7 +54,7 @@ pub struct BoundedType<T: Encode + Decode, Range, MaxChangeAbs>(
 impl<T: Encode + Decode + CheckedSub + PartialOrd, Range: Get<(T, T)>, MaxChangeAbs: Get<T>> Decode
 	for BoundedType<T, Range, MaxChangeAbs>
 {
-	fn decode<I: codec::Input>(input: &mut I) -> Result<Self, codec::Error> {
+	fn decode<I: parity_scale_codec::Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error> {
 		let inner = T::decode(input)?;
 		Self::try_from(inner).map_err(|_| "BoundedType: value out of bounds".into())
 	}

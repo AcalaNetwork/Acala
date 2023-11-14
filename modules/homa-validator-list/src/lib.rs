@@ -28,10 +28,11 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use codec::MaxEncodedLen;
 use frame_support::{pallet_prelude::*, traits::Contains};
 use frame_system::pallet_prelude::*;
+use module_support::{ExchangeRateProvider, Ratio};
 use orml_traits::{BasicCurrency, BasicLockableCurrency, Happened, LockIdentifier};
+use parity_scale_codec::MaxEncodedLen;
 use primitives::Balance;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -41,7 +42,6 @@ use sp_runtime::{
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, vec::Vec};
-use support::{ExchangeRateProvider, Ratio};
 
 mod mock;
 mod tests;

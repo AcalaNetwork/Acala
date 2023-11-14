@@ -27,6 +27,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
+use module_support::{mocks::MockStableAsset, AuctionManager, RiskManager, SpecificJointsSwap};
 use orml_traits::parameter_type_with_key;
 use primitives::TokenSymbol;
 use sp_core::H256;
@@ -36,8 +37,6 @@ use sp_runtime::{
 };
 use sp_std::cell::RefCell;
 use std::collections::HashMap;
-use support::mocks::MockStableAsset;
-use support::{AuctionManager, RiskManager, SpecificJointsSwap};
 
 pub type AccountId = u128;
 pub type AuctionId = u32;
@@ -167,7 +166,7 @@ parameter_types! {
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![];
 }
 
-impl cdp_treasury::Config for Runtime {
+impl module_cdp_treasury::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -266,7 +265,7 @@ construct_runtime!(
 		Tokens: orml_tokens,
 		PalletBalances: pallet_balances,
 		Currencies: orml_currencies,
-		CDPTreasuryModule: cdp_treasury,
+		CDPTreasuryModule: module_cdp_treasury,
 	}
 );
 

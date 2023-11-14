@@ -20,13 +20,13 @@ use crate::{
 	currency::{CurrencyId, CurrencyIdType, DexShareType},
 	Balance, BlockNumber, Nonce,
 };
-use codec::{Decode, Encode};
 use core::ops::Range;
 use hex_literal::hex;
 pub use module_evm_utility::{
 	ethereum::{AccessListItem, Log, TransactionAction},
 	evm::ExitReason,
 };
+use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

@@ -21,20 +21,20 @@
 use super::*;
 
 use crate as nft;
-use codec::{Decode, Encode};
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Contains, InstanceFilter, Nothing},
 };
 use frame_system::EnsureSignedBy;
+use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
+use parity_scale_codec::{Decode, Encode};
 use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage, RuntimeDebug,
 };
-use support::mocks::MockAddressMapping;
 
 pub type AccountId = AccountId32;
 
