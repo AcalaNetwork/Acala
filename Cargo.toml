@@ -5,7 +5,6 @@ members = [
 	"node",
 	"node/cli",
 	"node/service",
-	"node/e2e-tests",
 
 	"modules/*",
 	"modules/evm-utility/macro",

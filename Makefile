@@ -159,11 +159,6 @@ test-runtimes:
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-karura-runtime --lib
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-acala-runtime --lib
 
-.PHONY: test-e2e
-test-e2e:
-	# TODO: use cargo-nextest
-	cargo test --release --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test --test-threads=1
-
 .PHONY: test-ts
 test-ts: build-mandala-internal-release
 	cd ts-tests && yarn && yarn run build && ACALA_BUILD=release yarn run test

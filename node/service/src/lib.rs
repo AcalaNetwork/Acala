@@ -463,6 +463,7 @@ where
 			import_queue: params.import_queue,
 			block_announce_validator_builder: Some(Box::new(|_| Box::new(block_announce_validator))),
 			warp_sync_params,
+			block_relay: None,
 		})?;
 
 	let rpc_builder = {
@@ -770,6 +771,7 @@ where
 			import_queue,
 			block_announce_validator_builder: None,
 			warp_sync_params: None,
+			block_relay: None,
 		})?;
 
 	if config.offchain_worker.enabled {

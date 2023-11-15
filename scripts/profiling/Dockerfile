@@ -16,7 +16,7 @@ linker = "/usr/bin/clang" \n\
 rustflags = ["-Clink-arg=-fuse-ld=lld", "-Clink-arg=-Wl,--no-rosegment"] \n\
 ' >> acala/.config
 
-RUN (cd acala && RUSTFLAGS=-g cargo build --release --locked --features with-acala-runtime --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service)
+RUN (cd acala && RUSTFLAGS=-g cargo build --release --locked --features with-acala-runtime --workspace --exclude runtime-integration-tests)
 
 # =============
 

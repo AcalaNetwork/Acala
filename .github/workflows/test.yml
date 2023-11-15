@@ -129,8 +129,6 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
-      - name: Run e2e tests
-        run: make test-e2e
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
