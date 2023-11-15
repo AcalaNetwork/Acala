@@ -139,7 +139,6 @@ substrate-wasm-builder = { workspace = true, optional = true }
 
 [dev-dependencies]
 sp-io = { workspace = true, features = ["std"] }
-polkadot-runtime = { workspace = true }
 
 [features]
 default = ["std"]
@@ -292,7 +291,6 @@ runtime-benchmarks = [
 	"polkadot-parachain-primitives/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
-	"polkadot-runtime/runtime-benchmarks",
 
 	"orml-authority/runtime-benchmarks",
 	"orml-parameters/runtime-benchmarks",

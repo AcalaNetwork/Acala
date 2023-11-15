@@ -57,12 +57,10 @@ sp-state-machine = { workspace = true, features = ["std"] }
 sp-timestamp = { workspace = true, features = ["std"] }
 sp-tracing = { workspace = true, features = ["std"] }
 sp-trie = { workspace = true, features = ["std"] }
-substrate-test-client = { workspace = true }
 
 # Polkadot dependencies
 polkadot-primitives = { workspace = true, features = ["std"] }
 polkadot-service = { workspace = true }
-polkadot-test-service = { workspace = true }
 
 # Cumulus dependencies
 cumulus-client-cli = { workspace = true }

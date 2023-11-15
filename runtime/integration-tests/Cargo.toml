@@ -126,7 +126,6 @@ cumulus-primitives-parachain-inherent = { workspace = true, features = ["std"] }
 cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 
 polkadot-cli = { workspace = true }
-polkadot-test-runtime = { workspace = true, features = ["std"] }
 
 acala-service = { workspace = true, features = ["std", "with-all-runtime"] }
 module-aggregated-dex = { workspace = true, features = ["std"] }
@@ -153,6 +152,3 @@ with-ethereum-compatibility = [
 	"module-evm/with-ethereum-compatibility",
 ]
 std = []
-runtime-benchmarks = [
- 	"polkadot-test-runtime/runtime-benchmarks",
- ]

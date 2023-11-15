@@ -81,7 +81,6 @@ orml-currencies = { workspace = true, optional = true }
 orml-rewards = { workspace = true, optional = true }
 
 [dev-dependencies]
-polkadot-runtime = { workspace = true }
 orml-utilities = { workspace = true, features = ["std"] }
 
 [features]
@@ -172,5 +171,4 @@ wasm-bench = [
 	"orml-tokens/runtime-benchmarks",
 
 	"xcm-builder/runtime-benchmarks",
-	"polkadot-runtime/runtime-benchmarks",
 ]
