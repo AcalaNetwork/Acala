@@ -21,12 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{
-	assert_noop, assert_ok,
-	storage::migration::{get_storage_value, put_storage_value},
-	traits::OnRuntimeUpgrade,
-	StorageHasher, StoragePrefixedMap,
-};
+use frame_support::{assert_noop, assert_ok};
 use mock::{
 	alice, deploy_contracts, deploy_contracts_same_prefix, erc20_address, erc20_address_not_exists,
 	erc20_address_same_prefix, AssetRegistry, CouncilAccount, ExtBuilder, Runtime, RuntimeEvent, RuntimeOrigin, System,

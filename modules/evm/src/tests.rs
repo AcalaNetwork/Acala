@@ -2543,11 +2543,11 @@ fn strict_call_works() {
 			Utility::batch_all(
 				RuntimeOrigin::signed(bob_account_id.clone()),
 				vec![
-					RuntimeCall::Balances(pallet_balances::Call::transfer {
+					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
 						dest: bob_account_id.clone(),
 						value: 5
 					}),
-					RuntimeCall::Balances(pallet_balances::Call::transfer {
+					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
 						dest: bob_account_id.clone(),
 						value: 6
 					}),
@@ -2576,11 +2576,11 @@ fn strict_call_works() {
 			Utility::batch_all(
 				RuntimeOrigin::signed(alice_account_id.clone()),
 				vec![
-					RuntimeCall::Balances(pallet_balances::Call::transfer {
+					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
 						dest: bob_account_id.clone(),
 						value: 5
 					}),
-					RuntimeCall::Balances(pallet_balances::Call::transfer {
+					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
 						dest: bob_account_id.clone(),
 						value: 6
 					}),
@@ -2608,11 +2608,11 @@ fn strict_call_works() {
 		assert_ok!(Utility::batch_all(
 			RuntimeOrigin::signed(alice_account_id.clone()),
 			vec![
-				RuntimeCall::Balances(pallet_balances::Call::transfer {
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
 					dest: bob_account_id.clone(),
 					value: 5
 				}),
-				RuntimeCall::Balances(pallet_balances::Call::transfer {
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
 					dest: bob_account_id.clone(),
 					value: 6
 				}),

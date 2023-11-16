@@ -26,7 +26,7 @@ use mock::{RuntimeEvent, *};
 use sp_runtime::traits::BadOrigin;
 
 const BALANCE_TRANSFER: &<Runtime as frame_system::Config>::RuntimeCall =
-	&mock::RuntimeCall::Balances(pallet_balances::Call::transfer { dest: ALICE, value: 10 });
+	&mock::RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death { dest: ALICE, value: 10 });
 const TOKENS_TRANSFER: &<Runtime as frame_system::Config>::RuntimeCall =
 	&mock::RuntimeCall::Tokens(orml_tokens::Call::transfer {
 		dest: ALICE,
