@@ -130,7 +130,7 @@ fn paused_transaction_filter_work() {
 		assert_ok!(TransactionPause::pause_transaction(
 			RuntimeOrigin::signed(1),
 			b"Balances".to_vec(),
-			b"transfer".to_vec()
+			b"transfer_allow_death".to_vec()
 		));
 		assert_ok!(TransactionPause::pause_transaction(
 			RuntimeOrigin::signed(1),
@@ -142,7 +142,7 @@ fn paused_transaction_filter_work() {
 		assert_ok!(TransactionPause::unpause_transaction(
 			RuntimeOrigin::signed(1),
 			b"Balances".to_vec(),
-			b"transfer".to_vec()
+			b"transfer_allow_death".to_vec()
 		));
 		assert_ok!(TransactionPause::unpause_transaction(
 			RuntimeOrigin::signed(1),

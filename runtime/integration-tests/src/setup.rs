@@ -52,6 +52,7 @@ pub use xcm::v3::prelude::*;
 pub use mandala_imports::*;
 #[cfg(feature = "with-mandala-runtime")]
 mod mandala_imports {
+	pub use frame_support::traits::{Currency as PalletCurrency, Get};
 	pub use mandala_runtime::xcm_config::*;
 	use mandala_runtime::AlternativeFeeSurplus;
 	pub use mandala_runtime::{
@@ -59,20 +60,22 @@ mod mandala_imports {
 		AssetRegistry, AuctionManager, Aura, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber,
 		CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CollatorSelection, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DealWithFees, DefaultDebitExchangeRate,
-		DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil, Get,
-		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinRewardDistributeAmount,
-		MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, OriginCaller,
-		PalletCurrency, ParachainInfo, ParachainSystem, Proxy, ProxyType, Ratio, Runtime, RuntimeCall, RuntimeEvent,
-		RuntimeOrigin, Scheduler, Session, SessionKeys, SessionManager, SevenDays, StableAsset, StableAssetPalletId,
-		System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId,
-		TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic, Utility, Vesting, XcmInterface, EVM, NFT,
+		DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil,
+		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MinRewardDistributeAmount, MinimumDebitValue,
+		NativeTokenExistentialDeposit, NftPalletId, OneDay, OriginCaller, ParachainInfo, ParachainSystem, Proxy,
+		Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Scheduler, Session, SessionKeys, SessionManager, SevenDays,
+		StableAsset, StableAssetPalletId, System, Timestamp, TokenSymbol, Tokens, TransactionPayment,
+		TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic, Utility, Vesting,
+		XcmInterface, EVM, NFT,
 	};
-	use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 	pub use primitives::TradingPair;
-	pub use runtime_common::{cent, dollar, millicent, FixedRateOfAsset, ACA, AUSD, DOT, LDOT};
+	pub use runtime_common::{
+		cent, dollar, millicent, FixedRateOfAsset, MaxTipsOfPriority, ProxyType, Ratio, TipPerWeightStep, ACA, AUSD,
+		DOT, LDOT,
+	};
 	pub use sp_runtime::traits::AccountIdConversion;
 	use sp_runtime::Percent;
-	pub use xcm::v3::Weight as XcmWeight;
+	pub use xcm::v3::{prelude::*, Weight as XcmWeight};
 	pub use xcm_executor::XcmExecutor;
 
 	parameter_types! {
