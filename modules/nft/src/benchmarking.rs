@@ -231,7 +231,10 @@ mod mock {
 		fn filter(&self, c: &RuntimeCall) -> bool {
 			match self {
 				ProxyType::Any => true,
-				ProxyType::JustTransfer => matches!(c, RuntimeCall::Balances(pallet_balances::Call::transfer { .. })),
+				ProxyType::JustTransfer => matches!(
+					c,
+					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death { .. })
+				),
 				ProxyType::JustUtility => matches!(c, RuntimeCall::Utility(..)),
 			}
 		}
