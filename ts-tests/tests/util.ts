@@ -138,7 +138,7 @@ export async function nextBlock(context: TestContext) {
 
 export async function transfer(context: TestContext, from: string, to: string, amount: number) {
 	return new Promise(async (resolve) => {
-		context.provider.api.tx.balances.transfer(to, amount).signAndSend(from, (result) => {
+		context.provider.api.tx.balances.transferAllowDeath(to, amount).signAndSend(from, (result) => {
 			if (result.status.isFinalized || result.status.isInBlock) {
 				resolve(undefined);
 			}
