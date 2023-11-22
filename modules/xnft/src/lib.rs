@@ -20,7 +20,7 @@
 #![allow(clippy::unused_unit)]
 
 use cumulus_primitives_core::ParaId;
-use frame_support::{ensure, pallet_prelude::*};
+use frame_support::{ensure, pallet_prelude::*, PalletId};
 use frame_system::pallet_prelude::*;
 use module_nft::{ClassIdOf, TokenIdOf};
 use sp_runtime::{traits::AccountIdConversion, DispatchResult};
@@ -50,6 +50,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + module_nft::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		type PalletId: Get<PalletId>;
 
 		type LocationToAccountId: ConvertLocation<Self::AccountId>;
 
@@ -149,6 +151,6 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
 	pub fn account_id() -> T::AccountId {
-		frame_support::PalletId(*b"poc_xnft").into_account_truncating()
+		<T as Config>::PalletId::get().into_account_truncating()
 	}
 }

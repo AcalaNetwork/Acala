@@ -175,6 +175,7 @@ parameter_types! {
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
+	pub const XnftPalletId: PalletId = PalletId(*b"aca/xNFT");
 	// Vault all unrleased native token.
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account_truncating();
 	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
@@ -1336,6 +1337,7 @@ impl orml_nft::Config for Runtime {
 
 impl module_xnft::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type PalletId = XnftPalletId;
 	type LocationToAccountId = xcm_config::LocationToAccountId;
 	type SelfParaId = ParachainInfo;
 	type NtfPalletLocation = xcm_config::NftPalletLocation;
