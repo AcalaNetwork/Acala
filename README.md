@@ -179,7 +179,7 @@ Comment on a PR `/bench evm` to benchmark Acala EVM+ and bench bot will generate
 
 
 # 8. Migration testing runtime
-If modify the storage, should test the data migration before upgrade the runtime.
+If modifying the storage, you should test the data migration before upgrading the runtime.
 
 ## Try testing runtime
 
