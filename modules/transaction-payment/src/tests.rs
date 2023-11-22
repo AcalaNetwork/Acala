@@ -1232,7 +1232,7 @@ fn query_info_works() {
 		.weight_fee(2)
 		.build()
 		.execute_with(|| {
-			let call = RuntimeCall::PalletBalances(pallet_balances::Call::transfer {
+			let call = RuntimeCall::PalletBalances(pallet_balances::Call::transfer_allow_death {
 				dest: AccountId::new([2u8; 32]),
 				value: 69,
 			});

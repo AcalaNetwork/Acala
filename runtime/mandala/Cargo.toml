@@ -75,6 +75,7 @@ xcm = { workspace = true }
 xcm-executor = { workspace = true }
 xcm-builder = { workspace = true }
 pallet-xcm = { workspace = true }
+polkadot-runtime-common = { workspace = true }
 
 # orml
 orml-auction = { workspace = true }
@@ -224,6 +225,7 @@ std = [
 	"xcm-builder/std",
 	"xcm-executor/std",
 	"xcm/std",
+	"polkadot-runtime-common/std",
 
 	"orml-auction/std",
 	"orml-authority/std",

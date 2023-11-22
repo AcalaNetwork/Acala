@@ -86,9 +86,9 @@ jobs:
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
       - name: Use Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
-          node-version: 16.x
+          node-version: 18.x
       - name: Run benchmarks
         run: ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
       - name: Commit

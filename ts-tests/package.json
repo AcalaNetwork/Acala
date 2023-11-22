@@ -4,7 +4,7 @@
 	"main": "index.js",
 	"license": "GPL-3.0-or-later",
 	"scripts": {
-		"test": "export NODE_ENV=test && mocha -r ts-node/register/transpile-only --timeout 50000 --no-warnings tests/**/test-*.{js,ts}",
+		"test": "NODE_ENV=test mocha -r ts-node/register/transpile-only --timeout 50000 --no-warnings tests/**/test-*.{js,ts}",
 		"build": "waffle waffle.json",
 		"run-test": "yarn mocha -r ts-node/register/transpile-only --timeout 50000 --no-warnings"
 	},
@@ -12,8 +12,8 @@
 		"@acala-network/api": "~6.0.0",
 		"@acala-network/bodhi": "~2.7.8",
 		"@babel/runtime": "^7.21.5",
-		"@polkadot/api": "^10.9.1",
 		"@openzeppelin/contracts": "4.9.3",
+		"@polkadot/api": "^10.9.1",
 		"@types/chai": "^4.2.22",
 		"@types/chai-as-promised": "^7.1.4",
 		"@types/mocha": "^9.0.0",
@@ -21,10 +21,10 @@
 		"chai-as-promised": "^7.1.1",
 		"ethereum-waffle": "3.4.0",
 		"ethers": "~5.7.0",
+		"get-port": "^5.1.1",
 		"mocha": "^9.1.3",
 		"mocha-steps": "^1.3.0",
 		"ts-node": "^10.7.0",
-		"typescript": "^4.6.3",
-		"get-port": "^5.1.1"
+		"typescript": "^4.6.3"
 	}
 }

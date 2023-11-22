@@ -194,7 +194,8 @@ macro_rules! impl_mock {
 			type MaxReserves = ();
 			type ReserveIdentifier = [u8; 8];
 			type WeightInfo = ();
-			type RuntimeHoldReason = ();
+			type RuntimeHoldReason = RuntimeHoldReason;
+			type RuntimeFreezeReason = RuntimeFreezeReason;
 			type FreezeIdentifier = ();
 			type MaxHolds = ();
 			type MaxFreezes = ();

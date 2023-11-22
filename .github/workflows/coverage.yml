@@ -48,11 +48,10 @@ jobs:
           tar -zxvf cargo-tarpaulin-x86_64-unknown-linux-musl.tar.gz -C $HOME/.cargo/bin
           cargo tarpaulin -v --no-fail-fast --implicit-test-threads --workspace \
             -e acala-inspect \
-            acala acala-cli e2e-tests acala-service \
+            acala acala-cli acala-service \
             acala-primitives \
             acala-rpc \
             acala-runtime runtime-common runtime-integration-tests karura-runtime mandala-runtime \
-            test-service \
             --exclude-files **/mock.rs **/weights.rs **/weights/*
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v3

@@ -71,6 +71,7 @@ xcm = { workspace = true }
 xcm-executor = { workspace = true }
 xcm-builder = { workspace = true }
 pallet-xcm = { workspace = true }
+polkadot-runtime-common = { workspace = true }
 
 # orml
 orml-auction = { workspace = true }
@@ -139,7 +140,6 @@ substrate-wasm-builder = { workspace = true, optional = true }
 
 [dev-dependencies]
 sp-io = { workspace = true, features = ["std"] }
-polkadot-runtime = { workspace = true }
 
 [features]
 default = ["std"]
@@ -177,6 +177,7 @@ std = [
 	"pallet-transaction-payment/std",
 	"pallet-treasury/std",
 	"pallet-utility/std",
+	"pallet-bags-list/std",
 	"sp-api/std",
 	"sp-application-crypto/std",
 	"sp-block-builder/std",
@@ -207,6 +208,7 @@ std = [
 	"xcm-builder/std",
 	"xcm-executor/std",
 	"xcm/std",
+	"polkadot-runtime-common/std",
 
 	"orml-auction/std",
 	"orml-authority/std",
@@ -292,7 +294,6 @@ runtime-benchmarks = [
 	"polkadot-parachain-primitives/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
-	"polkadot-runtime/runtime-benchmarks",
 
 	"orml-authority/runtime-benchmarks",
 	"orml-parameters/runtime-benchmarks",
