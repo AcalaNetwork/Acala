@@ -1542,8 +1542,8 @@ parameter_types! {
 		1,  // FDVu3RdH5WsE2yTdXN3QMq6v1XVDK8GKjhq5oFjXe8wZYpL
 		2,  // EMrKvFy7xLgzzdgruXT9oXERt553igEScqgSjoDm3GewPSA
 	];
-	pub MintThreshold: Balance = dollar(KSM);
-	pub RedeemThreshold: Balance = dollar(LKSM);
+	pub MintThreshold: Balance = 10 * cent(KSM);
+	pub RedeemThreshold: Balance = 50 * cent(LKSM);
 }
 
 impl module_homa::Config for Runtime {
