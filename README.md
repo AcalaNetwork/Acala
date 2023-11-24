@@ -137,19 +137,19 @@ To purge old chain data:
 make purge
 ```
 
-To purge old chain data and run
+To purge old chain data and run:
 
 ```bash
 make restart
 ```
 
-Update ORML
+Update ORML:
 
 ```bash
 make update
 ```
 
-__Note:__ All build command from Makefile are designed for local development purposes and hence have `SKIP_WASM_BUILD` enabled to speed up build time and use `--execution native` to only run use native execution mode.
+__Note:__ All build commands from Makefile are designed for local development purposes and hence have `SKIP_WASM_BUILD` enabled to speed up build time and use `--execution native` to only run native execution mode.
 
 # 6. Bug Bounty :bug:
 
