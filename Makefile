@@ -1,6 +1,7 @@
 # use `cargo nextest run` if cargo-nextest is installed
 cargo_test = $(shell which cargo-nextest >/dev/null && echo "cargo nextest run" || echo "cargo test")
 
+
 .PHONY: run
 run:
 	cargo run --features with-mandala-runtime -- --dev -lruntime=debug --instant-sealing
