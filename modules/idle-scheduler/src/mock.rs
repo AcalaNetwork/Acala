@@ -21,18 +21,18 @@
 #![cfg(test)]
 
 use crate as module_idle_scheduler;
-use acala_primitives::{define_combined_task, task::TaskResult};
 use frame_support::weights::Weight;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 };
 use module_support::DispatchableTask;
+use primitives::{define_combined_task, task::TaskResult};
 pub use sp_runtime::offchain::storage::StorageValueRef;
 use sp_runtime::BuildStorage;
 
 use super::*;
-use codec::{Decode, Encode};
+use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
 pub const BASE_WEIGHT: Weight = Weight::from_parts(1_000_000, 0);

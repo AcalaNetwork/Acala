@@ -21,20 +21,20 @@
 use super::*;
 
 use crate as nft;
-use codec::{Decode, Encode};
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Contains, InstanceFilter, Nothing},
 };
 use frame_system::EnsureSignedBy;
+use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
+use parity_scale_codec::{Decode, Encode};
 use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage, RuntimeDebug,
 };
-use support::mocks::MockAddressMapping;
 
 pub type AccountId = AccountId32;
 
@@ -74,7 +74,8 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();
@@ -101,7 +102,10 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::JustTransfer => matches!(c, RuntimeCall::Balances(pallet_balances::Call::transfer { .. })),
+			ProxyType::JustTransfer => matches!(
+				c,
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death { .. })
+			),
 			ProxyType::JustUtility => matches!(c, RuntimeCall::Utility { .. }),
 		}
 	}

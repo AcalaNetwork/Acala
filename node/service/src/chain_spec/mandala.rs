@@ -16,7 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{evm::CHAIN_ID_MANDALA, orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
 use coins_bip39::{English, Mnemonic, Wordlist};
 use hex_literal::hex;
 use k256::{
@@ -25,14 +24,15 @@ use k256::{
 	EncodedPoint as K256PublicKey,
 };
 use mandala_runtime::{
-	dollar, get_all_module_accounts, AssetRegistryConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
+	get_all_module_accounts, AssetRegistryConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 	CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, ExistentialDeposits,
 	FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 	NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
 	PolkadotXcmConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig,
-	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
+	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
 };
-use runtime_common::evm_genesis;
+use primitives::{evm::CHAIN_ID_MANDALA, orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
+use runtime_common::{dollar, evm_genesis, ACA, AUSD, DOT, LDOT};
 use sc_chain_spec::ChainType;
 use sc_consensus_grandpa::AuthorityId as GrandpaId;
 use sc_telemetry::TelemetryEndpoints;

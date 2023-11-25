@@ -25,6 +25,7 @@ use frame_support::{
 	BoundedVec,
 };
 use frame_system::pallet_prelude::*;
+use module_support::{NomineesProvider, OnNewEra};
 use orml_traits::{BasicCurrency, BasicLockableCurrency};
 use primitives::{
 	bonding::{self, BondingController},
@@ -35,7 +36,6 @@ use sp_runtime::{
 	SaturatedConversion,
 };
 use sp_std::{fmt::Debug, prelude::*};
-use support::{NomineesProvider, OnNewEra};
 
 mod mock;
 mod tests;

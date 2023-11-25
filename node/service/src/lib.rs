@@ -21,7 +21,6 @@
 
 //! Acala service. Specialized wrapper over substrate service.
 
-pub use acala_primitives::{Block, Hash};
 use cumulus_client_cli::CollatorOptions;
 #[allow(deprecated)]
 use cumulus_client_consensus_aura::BuildAuraConsensusParams;
@@ -39,6 +38,7 @@ use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node_with_rpc;
 use futures::{channel::oneshot, FutureExt, StreamExt};
 use jsonrpsee::RpcModule;
 use polkadot_primitives::{CollatorPair, OccupiedCoreAssumption};
+pub use primitives::{Block, Hash};
 use sc_client_api::Backend;
 use sc_consensus::{ImportQueue, LongestChain};
 use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
@@ -463,6 +463,7 @@ where
 			import_queue: params.import_queue,
 			block_announce_validator_builder: Some(Box::new(|_| Box::new(block_announce_validator))),
 			warp_sync_params,
+			block_relay: None,
 		})?;
 
 	let rpc_builder = {
@@ -770,6 +771,7 @@ where
 			import_queue,
 			block_announce_validator_builder: None,
 			warp_sync_params: None,
+			block_relay: None,
 		})?;
 
 	if config.offchain_worker.enabled {

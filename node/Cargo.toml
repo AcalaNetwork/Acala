@@ -10,9 +10,9 @@ name = "acala"
 path = "src/main.rs"
 
 [dependencies]
-futures = "0.3.28"
-acala-cli = { path = "cli" }
-acala-service = { path = "service" }
+futures = { workspace = true }
+acala-cli = { workspace = true }
+acala-service = { workspace = true, features = ["std"] }
 
 [features]
 default = []

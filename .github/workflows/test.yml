@@ -24,7 +24,7 @@ jobs:
     env:
       CARGO_INCREMENTAL: 0
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - uses: actions/cache@v3
@@ -45,8 +45,6 @@ jobs:
         run: cargo +nightly fmt --all -- --check
       - name: Build
         run: make build-all
-      - name: Install clippy
-        run: rustup component add clippy
       - name: Run mandala-runtime clippy
         run: cargo clippy --features with-mandala-runtime -- -D warnings
       - name: Run karura-runtime clippy
@@ -60,7 +58,7 @@ jobs:
     env:
       CARGO_INCREMENTAL: 0
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - uses: actions/cache@v3
@@ -84,7 +82,7 @@ jobs:
     env:
       CARGO_INCREMENTAL: 0
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - uses: actions/cache@v3
@@ -116,7 +114,7 @@ jobs:
     env:
       CARGO_INCREMENTAL: 0
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - uses: actions/cache@v3
@@ -131,12 +129,10 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.13
-      - name: Run e2e tests
-        run: make test-e2e
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16.x
+          node-version: 18.x
       - name: Run ts tests
         run: |
           npm install -g yarn

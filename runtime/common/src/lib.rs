@@ -21,7 +21,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-use codec::{Decode, Encode, MaxEncodedLen};
 use cumulus_pallet_parachain_system::CheckAssociatedRelayNumber;
 use frame_support::{
 	dispatch::DispatchClass,
@@ -34,7 +33,8 @@ use frame_support::{
 };
 use frame_system::{limits, EnsureRoot};
 use orml_traits::{currency::MutationHooks, GetByKey};
-use polkadot_parachain::primitives::RelayChainBlockNumber;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use polkadot_parachain_primitives::primitives::RelayChainBlockNumber;
 use primitives::{
 	evm::{is_system_contract, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},
 	Balance, CurrencyId,
@@ -167,7 +167,7 @@ pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
 	WEIGHT_REF_TIME_PER_SECOND.saturating_div(2),
 	// TODO: drop `* 10` after https://github.com/paritytech/substrate/issues/13501
 	// and the benchmarked size is not 10x of the measured size
-	polkadot_primitives::v5::MAX_POV_SIZE as u64 * 10,
+	polkadot_primitives::v6::MAX_POV_SIZE as u64 * 10,
 );
 
 const_assert!(NORMAL_DISPATCH_RATIO.deconstruct() >= AVERAGE_ON_INITIALIZE_RATIO.deconstruct());

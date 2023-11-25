@@ -16,8 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use codec::Codec;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::Member, traits::Get, Parameter, StorageMap};
+use parity_scale_codec::Codec;
 use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 

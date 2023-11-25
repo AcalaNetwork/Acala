@@ -23,9 +23,9 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{RuntimeEvent, *};
+use module_support::{Rate, Ratio};
 use orml_traits::{Change, MultiCurrency};
 use sp_runtime::FixedPointNumber;
-use support::{Rate, Ratio};
 
 #[test]
 fn authorize_should_work() {
@@ -274,7 +274,7 @@ fn transfer_debit_works() {
 		// Below minimum collateral threshold for the BTC CDP
 		assert_noop!(
 			HonzonModule::transfer_debit(RuntimeOrigin::signed(ALICE), BTC, DOT, 500),
-			cdp_engine::Error::<Runtime>::BelowRequiredCollateralRatio
+			module_cdp_engine::Error::<Runtime>::BelowRequiredCollateralRatio
 		);
 		// Too large of a transfer
 		assert_noop!(
@@ -284,7 +284,7 @@ fn transfer_debit_works() {
 		// Won't work for currency that is not collateral
 		assert_noop!(
 			HonzonModule::transfer_debit(RuntimeOrigin::signed(ALICE), BTC, ACA, 50),
-			cdp_engine::Error::<Runtime>::InvalidCollateralType
+			module_cdp_engine::Error::<Runtime>::InvalidCollateralType
 		);
 
 		assert_ok!(HonzonModule::transfer_debit(RuntimeOrigin::signed(ALICE), BTC, DOT, 50));

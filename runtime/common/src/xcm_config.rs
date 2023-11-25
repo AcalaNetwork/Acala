@@ -23,7 +23,7 @@ use frame_support::{
 };
 use orml_traits::MultiCurrency;
 use pallet_xcm::XcmPassthrough;
-use polkadot_parachain::primitives::Sibling;
+use polkadot_parachain_primitives::primitives::Sibling;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
@@ -81,7 +81,7 @@ pub type Barrier<PolkadotXcm, UniversalLocation> = TrailingSetTopicAsId<(
 	// Allow XCMs with some computed origins to pass through.
 	WithComputedOrigin<
 		(
-			// If the message is one that immediately attemps to pay for execution, then
+			// If the message is one that immediately attempts to pay for execution, then
 			// allow it.
 			AllowTopLevelPaidExecutionFrom<Everything>,
 			// Subscriptions for version tracking are OK.

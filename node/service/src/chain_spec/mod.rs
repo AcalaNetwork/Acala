@@ -18,7 +18,7 @@
 
 //! Acala chain configurations.
 
-use acala_primitives::{AccountId, AccountPublic};
+use primitives::{AccountId, AccountPublic};
 use sc_chain_spec::ChainSpecExtension;
 use sc_consensus_grandpa::AuthorityId as GrandpaId;
 use serde::{Deserialize, Serialize};
@@ -51,7 +51,7 @@ pub struct Extensions {
 	pub para_id: u32,
 	/// Known bad block hashes.
 	#[serde(default)]
-	pub bad_blocks: sc_client_api::BadBlocks<polkadot_primitives::v5::Block>,
+	pub bad_blocks: sc_client_api::BadBlocks<polkadot_primitives::v6::Block>,
 }
 
 impl Extensions {

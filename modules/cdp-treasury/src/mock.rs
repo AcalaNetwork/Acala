@@ -26,6 +26,7 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, ConstU64, EitherOfDiverse, Everything, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
+use module_support::SpecificJointsSwap;
 use nutsfinance_stable_asset::traits::StableAsset;
 use nutsfinance_stable_asset::{
 	PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo, SwapResult,
@@ -35,7 +36,6 @@ use primitives::{DexShare, TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
 use sp_std::cell::RefCell;
-use support::SpecificJointsSwap;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -113,7 +113,8 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();

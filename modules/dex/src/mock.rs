@@ -26,12 +26,12 @@ use frame_support::{
 	traits::{ConstU32, ConstU64, Everything, Nothing},
 };
 use frame_system::EnsureSignedBy;
+use module_support::{mocks::MockErc20InfoMapping, SpecificJointsSwap};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
 use sp_std::cell::RefCell;
-use support::{mocks::MockErc20InfoMapping, SpecificJointsSwap};
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;

@@ -15,4 +15,5 @@
 __pycache__
 
 ts-tests/cache/
+ts-tests/.yarn
 ts-tests/node_modules/

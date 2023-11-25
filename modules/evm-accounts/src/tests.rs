@@ -122,6 +122,22 @@ fn evm_get_account_id() {
 }
 
 #[test]
+fn validate_evm_account_id() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert!(EvmAddressMapping::<Runtime>::get_evm_address(&ALICE).is_none());
+
+		let no_zero_padding = AccountId32::new(*b"evm:aaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+		assert!(EvmAddressMapping::<Runtime>::get_evm_address(&no_zero_padding).is_none());
+
+		let valid_account_id = AccountId32::new(*b"evm:aaaaaaaaaaaaaaaaaaaa\0\0\0\0\0\0\0\0");
+		assert_eq!(
+			EvmAddressMapping::<Runtime>::get_evm_address(&valid_account_id).unwrap(),
+			EvmAddress::from(b"aaaaaaaaaaaaaaaaaaaa")
+		);
+	});
+}
+
+#[test]
 fn account_to_evm() {
 	ExtBuilder::default().build().execute_with(|| {
 		let default_evm_account = EvmAddress::from_str("f0bd9ffde7f9f4394d8cc1d86bf24d87e5d5a9a9").unwrap();

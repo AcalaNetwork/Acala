@@ -369,7 +369,7 @@ mod tests {
 				vec![(PoolId::Loans(DOT), vec![(DOT, 100)])]
 			));
 
-			// getIncetiveRewardAmount(PoolId,address,addres) => 0x7469000d
+			// getIncetiveRewardAmount(PoolId,address,address) => 0x7469000d
 			// pool
 			// pool_currency_id
 			// reward_currency_id

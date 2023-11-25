@@ -23,6 +23,7 @@
 use super::*;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use mock::{RuntimeCall as MockCall, RuntimeEvent, *};
+use module_support::{DEXManager, SwapError};
 use orml_traits::MultiCurrency;
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
 use sp_io::offchain;
@@ -30,7 +31,6 @@ use sp_runtime::{
 	offchain::{DbExternalities, StorageKind},
 	traits::BadOrigin,
 };
-use support::{DEXManager, SwapError};
 
 pub const INIT_TIMESTAMP: u64 = 30_000;
 pub const BLOCK_TIME: u64 = 1000;
@@ -591,7 +591,7 @@ fn expand_position_collateral_for_lp_ausd_dot_work() {
 
 		assert_noop!(
 			CDPEngineModule::expand_position_collateral(&ALICE, LP_AUSD_DOT, 200, 200),
-			dex::Error::<Runtime>::UnacceptableShareIncrement
+			module_dex::Error::<Runtime>::UnacceptableShareIncrement
 		);
 
 		assert_ok!(CDPEngineModule::expand_position_collateral(
@@ -1980,7 +1980,7 @@ fn liquidation_via_contracts_works() {
 
 		assert_ok!(LiquidateViaContracts::<Runtime>::liquidate(&ALICE, DOT, 100, 1_000));
 		let contract_account_id =
-			<evm_accounts::EvmAddressMapping<Runtime> as AddressMapping<AccountId>>::get_account_id(&address);
+			<module_evm_accounts::EvmAddressMapping<Runtime> as AddressMapping<AccountId>>::get_account_id(&address);
 		assert_eq!(Currencies::free_balance(DOT, &contract_account_id), 100);
 	});
 }

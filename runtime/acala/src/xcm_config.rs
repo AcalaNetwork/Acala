@@ -23,7 +23,7 @@ use super::{
 	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, UnknownTokens,
 	XcmInterface, XcmpQueue, ACA, AUSD, TAP,
 };
-use codec::{Decode, Encode};
+use cumulus_primitives_core::ParaId;
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything, Get, Nothing},
@@ -35,6 +35,8 @@ use module_support::HomaSubAccountXcm;
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+use parity_scale_codec::{Decode, Encode};
+use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use primitives::evm::is_system_contract;
 use runtime_common::{
 	local_currency_location, native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
@@ -205,7 +207,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ControllerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ControllerOriginConverter = XcmOriginToCallOrigin;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
-	type PriceForSiblingDelivery = ();
+	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {

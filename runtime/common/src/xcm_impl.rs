@@ -18,10 +18,10 @@
 
 //! Common xcm implementation
 
-use codec::Encode;
 use frame_support::{traits::Get, weights::constants::WEIGHT_REF_TIME_PER_SECOND};
 use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
+use parity_scale_codec::Encode;
 use primitives::{evm::EvmAddress, Balance, CurrencyId};
 use sp_core::bounded::BoundedVec;
 use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};

@@ -31,6 +31,7 @@ use mock::{
 	RuntimeOrigin, System, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DAVE, DOT, FEE_UNBALANCED_AMOUNT, LDOT,
 	TIP_UNBALANCED_AMOUNT,
 };
+use module_support::{BuyWeightRate, DEXManager, Price, TransactionPayment as TransactionPaymentT};
 use orml_traits::{MultiCurrency, MultiLockableCurrency};
 use pallet_balances::ReserveData;
 use primitives::currency::*;
@@ -39,7 +40,6 @@ use sp_runtime::{
 	testing::TestXt,
 	traits::{One, UniqueSaturatedInto},
 };
-use support::{BuyWeightRate, DEXManager, Price, TransactionPayment as TransactionPaymentT};
 use xcm::v3::prelude::*;
 
 const CALL: <Runtime as frame_system::Config>::RuntimeCall =
@@ -1232,7 +1232,7 @@ fn query_info_works() {
 		.weight_fee(2)
 		.build()
 		.execute_with(|| {
-			let call = RuntimeCall::PalletBalances(pallet_balances::Call::transfer {
+			let call = RuntimeCall::PalletBalances(pallet_balances::Call::transfer_allow_death {
 				dest: AccountId::new([2u8; 32]),
 				value: 69,
 			});

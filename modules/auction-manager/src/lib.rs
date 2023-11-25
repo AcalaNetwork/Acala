@@ -30,14 +30,17 @@
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::unnecessary_unwrap)]
 
-use codec::MaxEncodedLen;
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
 };
+use module_support::{
+	AuctionManager, CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, PriceProvider, Rate, SwapLimit,
+};
 use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
 use orml_utilities::OffchainErr;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use primitives::{AuctionId, Balance, CurrencyId};
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -53,7 +56,6 @@ use sp_runtime::{
 	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, PriceProvider, Rate, SwapLimit};
 
 mod mock;
 mod tests;

@@ -31,6 +31,7 @@
 
 use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
+use module_support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio, Swap, SwapLimit};
 use nutsfinance_stable_asset::traits::StableAsset;
 use nutsfinance_stable_asset::RedeemProportionResult;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
@@ -40,7 +41,6 @@ use sp_runtime::{
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
 use sp_std::prelude::*;
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio, Swap, SwapLimit};
 
 mod mock;
 mod tests;

@@ -28,7 +28,6 @@ pub use crate::runner::{
 	storage_meter::StorageMeter,
 	Runner,
 };
-use codec::{Decode, Encode, FullCodec, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, Pays, PostDispatchInfo},
 	ensure,
@@ -55,6 +54,7 @@ pub use module_support::{
 	EVM as EVMTrait,
 };
 pub use orml_traits::{currency::TransferAll, MultiCurrency};
+use parity_scale_codec::{Decode, Encode, FullCodec, MaxEncodedLen};
 pub use primitives::{
 	evm::{
 		convert_decimals_from_evm, convert_decimals_to_evm, decode_gas_limit, is_system_contract, CallInfo, CreateInfo,

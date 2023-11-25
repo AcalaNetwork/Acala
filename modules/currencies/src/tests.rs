@@ -29,13 +29,13 @@ use mock::{
 	RuntimeEvent, RuntimeOrigin, System, Tokens, ALICE_BALANCE, CHARLIE, DAVE, DOT, EVE, EVM, FERDIE, ID_1,
 	NATIVE_CURRENCY_ID, X_TOKEN_ID,
 };
+use module_support::mocks::MockAddressMapping;
+use module_support::EVM as EVMTrait;
 use sp_core::H160;
 use sp_runtime::{
 	traits::{BadOrigin, Bounded},
 	ModuleError, TokenError,
 };
-use support::mocks::MockAddressMapping;
-use support::EVM as EVMTrait;
 
 // this test displays the ED and provider/consumer behavior of current pallet-balances
 #[test]
@@ -291,7 +291,7 @@ fn force_set_lock_and_force_remove_lock_should_work() {
 
 			assert_eq!(
 				Tokens::locks(&alice(), DOT)[0],
-				tokens::BalanceLock { id: ID_1, amount: 100 }
+				orml_tokens::BalanceLock { id: ID_1, amount: 100 }
 			);
 			assert_eq!(
 				PalletBalances::locks(&alice())[0],
@@ -318,7 +318,7 @@ fn force_set_lock_and_force_remove_lock_should_work() {
 			));
 			assert_eq!(
 				Tokens::locks(&alice(), DOT)[0],
-				tokens::BalanceLock { id: ID_1, amount: 10 }
+				orml_tokens::BalanceLock { id: ID_1, amount: 10 }
 			);
 			assert_eq!(
 				PalletBalances::locks(&alice())[0],
@@ -333,7 +333,7 @@ fn force_set_lock_and_force_remove_lock_should_work() {
 			assert_ok!(Currencies::force_set_lock(RuntimeOrigin::root(), alice(), DOT, 0, ID_1,));
 			assert_eq!(
 				Tokens::locks(&alice(), DOT)[0],
-				tokens::BalanceLock { id: ID_1, amount: 10 }
+				orml_tokens::BalanceLock { id: ID_1, amount: 10 }
 			);
 
 			// remove lock
@@ -627,7 +627,7 @@ fn call_event_should_work() {
 			assert_ok!(Currencies::transfer(Some(alice()).into(), bob(), X_TOKEN_ID, 50));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 50);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 150);
-			System::assert_has_event(RuntimeEvent::Tokens(tokens::Event::Transfer {
+			System::assert_has_event(RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
@@ -649,7 +649,7 @@ fn call_event_should_work() {
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 40);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 160);
-			System::assert_has_event(RuntimeEvent::Tokens(tokens::Event::Transfer {
+			System::assert_has_event(RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
@@ -668,7 +668,7 @@ fn call_event_should_work() {
 				100
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 140);
-			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Deposited {
+			System::assert_last_event(RuntimeEvent::Tokens(orml_tokens::Event::Deposited {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 100,
@@ -680,7 +680,7 @@ fn call_event_should_work() {
 				20
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 120);
-			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Withdrawn {
+			System::assert_last_event(RuntimeEvent::Tokens(orml_tokens::Event::Withdrawn {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 20,
@@ -1765,7 +1765,7 @@ fn fungible_mutate_trait_should_work() {
 				&alice(),
 				1000
 			));
-			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Deposited {
+			System::assert_last_event(RuntimeEvent::Tokens(orml_tokens::Event::Deposited {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 1000,
@@ -1846,7 +1846,7 @@ fn fungible_mutate_trait_should_work() {
 				Precision::Exact,
 				Fortitude::Force,
 			));
-			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Withdrawn {
+			System::assert_last_event(RuntimeEvent::Tokens(orml_tokens::Event::Withdrawn {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 1000,
@@ -1982,7 +1982,7 @@ fn fungible_mutate_trait_transfer_should_work() {
 				10000,
 				Preservation::Preserve,
 			));
-			System::assert_has_event(RuntimeEvent::Tokens(tokens::Event::Transfer {
+			System::assert_has_event(RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
@@ -2101,7 +2101,7 @@ fn fungible_unbalanced_trait_should_work() {
 				&alice(),
 				80000
 			));
-			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::BalanceSet {
+			System::assert_last_event(RuntimeEvent::Tokens(orml_tokens::Event::BalanceSet {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				free: 80000,
@@ -2151,7 +2151,7 @@ fn fungible_unbalanced_trait_should_work() {
 			);
 			<Currencies as fungibles::Unbalanced<_>>::set_total_issuance(X_TOKEN_ID, 80000);
 			assert_eq!(<Currencies as fungibles::Inspect<_>>::total_issuance(X_TOKEN_ID), 80000);
-			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::TotalIssuanceSet {
+			System::assert_last_event(RuntimeEvent::Tokens(orml_tokens::Event::TotalIssuanceSet {
 				currency_id: X_TOKEN_ID,
 				amount: 80000,
 			}));
@@ -2242,7 +2242,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				&alice(),
 				20000
 			));
-			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Reserved {
+			System::assert_last_event(RuntimeEvent::Tokens(orml_tokens::Event::Reserved {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 20000,
@@ -2366,7 +2366,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				),
 				Ok(10000)
 			);
-			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::Unreserved {
+			System::assert_last_event(RuntimeEvent::Tokens(orml_tokens::Event::Unreserved {
 				currency_id: X_TOKEN_ID,
 				who: alice(),
 				amount: 10000,
@@ -2514,7 +2514,7 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 				),
 				Ok(2000)
 			);
-			System::assert_last_event(RuntimeEvent::Tokens(tokens::Event::ReserveRepatriated {
+			System::assert_last_event(RuntimeEvent::Tokens(orml_tokens::Event::ReserveRepatriated {
 				currency_id: X_TOKEN_ID,
 				from: alice(),
 				to: bob(),
@@ -2819,43 +2819,43 @@ fn fungible_inspect_hold_and_hold_trait_should_work() {
 #[test]
 fn sweep_dust_tokens_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		tokens::Accounts::<Runtime>::insert(
+		orml_tokens::Accounts::<Runtime>::insert(
 			bob(),
 			DOT,
-			tokens::AccountData {
+			orml_tokens::AccountData {
 				free: 1,
 				frozen: 0,
 				reserved: 0,
 			},
 		);
-		tokens::Accounts::<Runtime>::insert(
+		orml_tokens::Accounts::<Runtime>::insert(
 			eva(),
 			DOT,
-			tokens::AccountData {
+			orml_tokens::AccountData {
 				free: 2,
 				frozen: 0,
 				reserved: 0,
 			},
 		);
-		tokens::Accounts::<Runtime>::insert(
+		orml_tokens::Accounts::<Runtime>::insert(
 			alice(),
 			DOT,
-			tokens::AccountData {
+			orml_tokens::AccountData {
 				free: 0,
 				frozen: 1,
 				reserved: 0,
 			},
 		);
-		tokens::Accounts::<Runtime>::insert(
+		orml_tokens::Accounts::<Runtime>::insert(
 			DustAccount::get(),
 			DOT,
-			tokens::AccountData {
+			orml_tokens::AccountData {
 				free: 100,
 				frozen: 0,
 				reserved: 0,
 			},
 		);
-		tokens::TotalIssuance::<Runtime>::insert(DOT, 104);
+		orml_tokens::TotalIssuance::<Runtime>::insert(DOT, 104);
 
 		let accounts = vec![bob(), eva(), alice()];
 
@@ -2876,7 +2876,7 @@ fn sweep_dust_tokens_works() {
 		}));
 
 		// bob's account is gone
-		assert_eq!(tokens::Accounts::<Runtime>::contains_key(bob(), DOT), false);
+		assert_eq!(orml_tokens::Accounts::<Runtime>::contains_key(bob(), DOT), false);
 		assert_eq!(Currencies::free_balance(DOT, &bob()), 0);
 
 		// eva's account remains, not below ED
@@ -3003,7 +3003,7 @@ fn transfer_erc20_will_charge_gas() {
 		assert_eq!(
 			dispatch_info.weight,
 			<Runtime as module::Config>::WeightInfo::transfer_non_native_currency()
-				+ Weight::from_parts(support::evm::limits::erc20::TRANSFER.gas, 0) // mock GasToWeight is 1:1
+				+ Weight::from_parts(module_support::evm::limits::erc20::TRANSFER.gas, 0) // mock GasToWeight is 1:1
 		);
 
 		let dispatch_info = module::Call::<Runtime>::transfer {

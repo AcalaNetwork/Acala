@@ -18,11 +18,11 @@
 
 #![allow(clippy::type_complexity)]
 use crate::{AddressMapping, CurrencyId, Erc20InfoMapping, TransactionPayment};
-use codec::Encode;
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use nutsfinance_stable_asset::{
 	traits::StableAsset, PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo, SwapResult,
 };
+use parity_scale_codec::Encode;
 use primitives::{
 	currency::TokenInfo,
 	evm::{EvmAddress, H160_POSITION_TOKEN},
@@ -48,7 +48,7 @@ impl AddressMapping<AccountId32> for MockAddressMapping {
 
 	fn get_evm_address(account_id: &AccountId32) -> Option<H160> {
 		let data: [u8; 32] = account_id.clone().into();
-		if data.starts_with(b"evm:") {
+		if data.starts_with(b"evm:") && data.ends_with(&[0u8; 8]) {
 			Some(H160::from_slice(&data[4..24]))
 		} else {
 			None

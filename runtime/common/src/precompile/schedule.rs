@@ -23,7 +23,6 @@ use super::{
 	input::{Input, InputT, Output},
 	target_gas_limit,
 };
-use codec::{Decode, Encode};
 use frame_support::{
 	ensure, parameter_types,
 	traits::{
@@ -39,6 +38,7 @@ use module_evm::{
 use module_support::{AddressMapping, TransactionPayment};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use pallet_scheduler::TaskAddress;
+use parity_scale_codec::{Decode, Encode};
 use primitives::{Balance, BlockNumber};
 use sp_core::H160;
 use sp_runtime::{traits::Dispatchable, RuntimeDebug};

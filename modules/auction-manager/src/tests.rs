@@ -23,10 +23,10 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{RuntimeCall as MockCall, RuntimeEvent, *};
+use module_support::DEXManager;
 use sp_core::offchain::{testing, DbExternalities, OffchainDbExt, OffchainWorkerExt, StorageKind, TransactionPoolExt};
 use sp_io::offchain;
 use sp_runtime::traits::One;
-use support::DEXManager;
 
 fn run_to_block_offchain(n: u64) {
 	while System::block_number() < n {

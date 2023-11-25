@@ -80,21 +80,15 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly-2023-04-15
-          components: rustfmt
-          target: wasm32-unknown-unknown
-          default: true
+        uses: dtolnay/rust-toolchain@nightly
       - name: Install weight-gen
         run: cargo install --git https://github.com/open-web3-stack/wasm-bencher.git --bin weight-gen --force
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
       - name: Use Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
-          node-version: 16.x
+          node-version: 18.x
       - name: Run benchmarks
         run: ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
       - name: Commit

@@ -16,7 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use codec::{Decode, Encode};
 use frame_support::{
 	ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, FindAuthor, Nothing},
@@ -27,6 +26,7 @@ use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{mocks::MockAddressMapping, DispatchableTask};
 use orml_traits::parameter_type_with_key;
+use parity_scale_codec::{Decode, Encode};
 use primitives::{
 	define_combined_task, evm::convert_decimals_to_evm, task::TaskResult, Amount, BlockNumber, CurrencyId,
 	ReserveIdentifier, TokenSymbol,
@@ -83,7 +83,8 @@ impl pallet_balances::Config for TestRuntime {
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
-	type RuntimeHoldReason = ReserveIdentifier;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxHolds = ConstU32<50>;
 	type MaxFreezes = ();

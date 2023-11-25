@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use codec::{Decode, Encode};
+use parity_scale_codec::{Decode, Encode};
 use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
 use serde::{Deserialize, Serialize};
 
@@ -53,7 +53,7 @@ impl Encode for Properties {
 	}
 }
 impl Decode for Properties {
-	fn decode<I: codec::Input>(input: &mut I) -> sp_std::result::Result<Self, codec::Error> {
+	fn decode<I: parity_scale_codec::Input>(input: &mut I) -> sp_std::result::Result<Self, parity_scale_codec::Error> {
 		let field = u8::decode(input)?;
 		Ok(Self(
 			<BitFlags<ClassProperty>>::from_bits(field as u8).map_err(|_| "invalid value")?,

@@ -19,7 +19,6 @@
 #![cfg(any(test, feature = "wasm-bench"))]
 
 use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, Weight};
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ord_parameter_types, parameter_types,
 	traits::{
@@ -39,6 +38,7 @@ use module_support::{
 	PriceProvider, Rate, SpecificJointsSwap,
 };
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 pub use primitives::{
 	define_combined_task,
 	evm::{convert_decimals_to_evm, EvmAddress},
@@ -154,7 +154,8 @@ impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
-	type RuntimeHoldReason = ReserveIdentifier;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxHolds = ConstU32<50>;
 	type MaxFreezes = ();
@@ -306,7 +307,10 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::JustTransfer => matches!(c, RuntimeCall::Balances(pallet_balances::Call::transfer { .. })),
+			ProxyType::JustTransfer => matches!(
+				c,
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death { .. })
+			),
 			ProxyType::JustUtility => matches!(c, RuntimeCall::Utility { .. }),
 		}
 	}

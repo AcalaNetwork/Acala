@@ -18,7 +18,7 @@
 
 //! Acala Client abstractions.
 
-use acala_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Nonce};
+use primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Nonce};
 use sc_client_api::{Backend as BackendT, BlockchainEvents, KeysIter, PairsIter};
 use sp_api::{CallApiAt, NumberFor, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
@@ -29,6 +29,7 @@ use sp_runtime::{
 	Justifications,
 };
 use sp_storage::{ChildInfo, StorageData, StorageKey};
+use sp_trie::MerkleValue;
 use std::sync::Arc;
 
 /// A set of APIs that polkadot-like runtimes must implement.
@@ -377,6 +378,38 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 			Self::Karura(client) => client.child_storage_hash(hash, child_info, key),
 			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.child_storage_hash(hash, child_info, key),
+		}
+	}
+
+	fn closest_merkle_value(
+		&self,
+		hash: <Block as BlockT>::Hash,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Option<MerkleValue<<Block as BlockT>::Hash>>> {
+		match self {
+			#[cfg(feature = "with-mandala-runtime")]
+			Self::Mandala(client) => client.closest_merkle_value(hash, key),
+			#[cfg(feature = "with-karura-runtime")]
+			Self::Karura(client) => client.closest_merkle_value(hash, key),
+			#[cfg(feature = "with-acala-runtime")]
+			Self::Acala(client) => client.closest_merkle_value(hash, key),
+		}
+	}
+
+	/// Given a block's `Hash`, a key and a child storage key, return the closest merkle value.
+	fn child_closest_merkle_value(
+		&self,
+		hash: <Block as BlockT>::Hash,
+		child_info: &ChildInfo,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Option<MerkleValue<<Block as BlockT>::Hash>>> {
+		match self {
+			#[cfg(feature = "with-mandala-runtime")]
+			Self::Mandala(client) => client.child_closest_merkle_value(hash, child_info, key),
+			#[cfg(feature = "with-karura-runtime")]
+			Self::Karura(client) => client.child_closest_merkle_value(hash, child_info, key),
+			#[cfg(feature = "with-acala-runtime")]
+			Self::Acala(client) => client.child_closest_merkle_value(hash, child_info, key),
 		}
 	}
 }

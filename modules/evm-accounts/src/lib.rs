@@ -26,7 +26,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use codec::Encode;
 use frame_support::{
 	ensure,
 	pallet_prelude::*,
@@ -36,6 +35,7 @@ use frame_system::{ensure_signed, pallet_prelude::*};
 use module_evm_utility_macro::keccak256;
 use module_support::{AddressMapping, EVMAccountsManager};
 use orml_traits::currency::TransferAll;
+use parity_scale_codec::Encode;
 use primitives::{evm::EvmAddress, to_bytes, AccountIndex};
 use sp_core::crypto::AccountId32;
 use sp_core::{H160, H256};
@@ -299,7 +299,9 @@ where
 		EvmAddresses::<T>::get(account_id).or_else(|| {
 			let data: &[u8] = account_id.into_ref().as_ref();
 			// Return the underlying EVM address if it exists otherwise return None
-			if data.starts_with(b"evm:") {
+			// account_id must start with "evm:" and ends with 8 bytes of zeros
+			// the range [4..24] contains the EVM address
+			if data.starts_with(b"evm:") && data.ends_with(&[0u8; 8]) {
 				Some(EvmAddress::from_slice(&data[4..24]))
 			} else {
 				None

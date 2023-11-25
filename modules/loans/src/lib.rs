@@ -28,13 +28,13 @@
 #![allow(clippy::collapsible_if)]
 
 use frame_support::{pallet_prelude::*, transactional, PalletId};
+use module_support::{CDPTreasury, RiskManager};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId, Position};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
 	ArithmeticError, DispatchResult,
 };
-use support::{CDPTreasury, RiskManager};
 
 mod mock;
 mod tests;

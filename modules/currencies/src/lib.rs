@@ -22,7 +22,6 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use codec::Codec;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
@@ -36,12 +35,14 @@ use frame_support::{
 	transactional,
 };
 use frame_system::pallet_prelude::*;
+use module_support::{evm::limits::erc20, AddressMapping, EVMBridge, InvokeContext};
 use orml_traits::{
 	arithmetic::{Signed, SimpleArithmetic},
 	currency::{OnDust, TransferAll},
 	BalanceStatus, BasicCurrency, BasicCurrencyExtended, BasicLockableCurrency, BasicReservableCurrency,
 	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
+use parity_scale_codec::Codec;
 use primitives::{evm::EvmAddress, CurrencyId};
 use sp_io::hashing::blake2_256;
 use sp_runtime::{
@@ -49,7 +50,6 @@ use sp_runtime::{
 	DispatchError, DispatchResult,
 };
 use sp_std::{fmt::Debug, marker, result, vec::Vec};
-use support::{evm::limits::erc20, AddressMapping, EVMBridge, InvokeContext};
 
 mod mock;
 mod tests;

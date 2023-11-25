@@ -28,12 +28,12 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
+use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
 use std::cell::RefCell;
-use support::mocks::MockAddressMapping;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -103,7 +103,8 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxHolds = ();
 	type MaxFreezes = ();
