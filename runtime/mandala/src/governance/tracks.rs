@@ -42,13 +42,13 @@ static ref TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>
 			// Amount that must be placed on deposit before a decision can be made.
 			decision_deposit: 20 * 1000 * dollar(ACA),
 			// Amount of time this must be submitted for before a decision can be made.
-			prepare_period: 1 * DAYS,
+			prepare_period: DAYS,
 			// Amount of time that a decision may take to be approved prior to cancellation.
 			decision_period: 14 * DAYS,
 			// Amount of time that the approval criteria must hold before it can be approved.
-			confirm_period: 1 * DAYS,
+			confirm_period: DAYS,
 			// Minimum amount of time that an approved proposal must be in the dispatch queue.
-			min_enactment_period: 1 * DAYS,
+			min_enactment_period: DAYS,
 			// Minimum aye votes as percentage of overall conviction-weighted votes needed for
 			// approval as a function of time into decision period.
 			min_approval: Curve::make_reciprocal(4, 14, percent(80), percent(50), percent(100)),
@@ -77,10 +77,10 @@ static ref TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>
 			name: "general_admin",
 			max_deciding: 10,
 			decision_deposit: 1000 * dollar(ACA),
-			prepare_period: 1 * HOURS,
+			prepare_period: HOURS,
 			decision_period: 14 * DAYS,
-			confirm_period: 1 * DAYS,
-			min_enactment_period: 1 * DAYS,
+			confirm_period: DAYS,
+			min_enactment_period: DAYS,
 			min_approval: Curve::make_reciprocal(4, 14, percent(80), percent(50), percent(100)),
 			min_support: Curve::make_reciprocal(7, 14, percent(10), percent(0), percent(50)),
 		},
@@ -91,7 +91,7 @@ static ref TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>
 			name: "referendum_canceller",
 			max_deciding: 20,
 			decision_deposit: 2 * 1000 * dollar(ACA),
-			prepare_period: 1 * HOURS,
+			prepare_period: HOURS,
 			decision_period: 14 * DAYS,
 			confirm_period: 3 * HOURS,
 			min_enactment_period: 10 * MINUTES,
@@ -105,7 +105,7 @@ static ref TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>
 			name: "referendum_killer",
 			max_deciding: 100,
 			decision_deposit: 4 * 1000 * dollar(ACA),
-			prepare_period: 1 * HOURS,
+			prepare_period: HOURS,
 			decision_period: 14 * DAYS,
 			confirm_period: 3 * HOURS,
 			min_enactment_period: 10 * MINUTES,
@@ -127,7 +127,7 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
 			match system_origin {
 				frame_system::RawOrigin::Root => {
-					if let Some((track_id, _)) = Self::tracks().into_iter().find(|(_, track)| track.name == "root") {
+					if let Some((track_id, _)) = Self::tracks().iter().find(|(_, track)| track.name == "root") {
 						Ok(*track_id)
 					} else {
 						Err(())
@@ -136,7 +136,7 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 				_ => Err(()),
 			}
 		} else if let Ok(custom_origin) = custom_origins::Origin::try_from(id.clone()) {
-			if let Some((track_id, _)) = Self::tracks().into_iter().find(|(_, track)| {
+			if let Some((track_id, _)) = Self::tracks().iter().find(|(_, track)| {
 				if let Ok(track_custom_origin) = custom_origins::Origin::from_str(track.name) {
 					track_custom_origin == custom_origin
 				} else {

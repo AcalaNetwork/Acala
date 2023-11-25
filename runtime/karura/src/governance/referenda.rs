@@ -28,7 +28,7 @@ use frame_system::EnsureRootWithSuccess;
 use sp_runtime::traits::Replace;
 
 parameter_types! {
-	pub const VoteLockingPeriod: BlockNumber = 1 * DAYS;
+	pub const VoteLockingPeriod: BlockNumber = DAYS;
 }
 
 impl pallet_conviction_voting::Config for Runtime {
