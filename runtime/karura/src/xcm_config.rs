@@ -20,8 +20,8 @@ use super::{
 	constants::{fee::*, parachains},
 	AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert, Currencies, CurrencyId,
 	EvmAddressMapping, ExistentialDeposits, FixedRateOfAsset, GetNativeCurrencyId, KaruraTreasuryAccount,
-	NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeOrigin, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM, TAI,
+	NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem, PolkadotXcm, RateLimit, Runtime, RuntimeCall,
+	RuntimeEvent, RuntimeOrigin, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM, TAI,
 };
 use cumulus_primitives_core::ParaId;
 use frame_support::{
@@ -38,7 +38,7 @@ use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use primitives::evm::is_system_contract;
 use runtime_common::{
 	local_currency_location, native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
-	EnsureRootOrThreeFourthsGeneralCouncil,
+	EnsureRootOrThreeFourthsGeneralCouncil, RateLimiterId,
 };
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::{EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, SignedToAccountId32};
@@ -269,6 +269,7 @@ parameter_types! {
 parameter_types! {
 	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_parts(100_000_000, 0);
 	pub const MaxAssetsForTransfer: usize = 2;
+	pub const XtokensRateLimiterId: RateLimiterId = RateLimiterId::XTokens;
 }
 
 parameter_type_with_key! {
@@ -296,6 +297,8 @@ impl orml_xtokens::Config for Runtime {
 	type MinXcmFee = ParachainMinFee;
 	type MultiLocationsFilter = Everything;
 	type ReserveProvider = AbsoluteReserveProvider;
+	type RateLimiter = RateLimit;
+	type RateLimiterId = XtokensRateLimiterId;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<

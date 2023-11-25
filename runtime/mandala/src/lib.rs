@@ -110,9 +110,9 @@ use runtime_common::{
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, ExistentialDepositsTimesOneHundred,
 	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
-	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength,
-	RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, ACA, AUSD, DOT, KSM, LCDOT, LDOT,
+	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, RateLimiterId, Ratio,
+	RuntimeBlockLength, RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LCDOT, LDOT,
 };
 use xcm::prelude::*;
 
@@ -1835,6 +1835,16 @@ impl orml_parameters::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl orml_rate_limit::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type GovernanceOrigin = EnsureRootOrOneThirdsTechnicalCommittee;
+	type RateLimiterId = RateLimiterId;
+	type MaxWhitelistFilterCount = ConstU32<3>;
+	type UnixTime = Timestamp;
+	type BlockNumberProvider = System;
+	type WeightInfo = ();
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct ConvertEthereumTx;
 
@@ -1985,6 +1995,7 @@ construct_runtime!(
 		Scheduler: pallet_scheduler = 2,
 		TransactionPause: module_transaction_pause = 3,
 		Preimage: pallet_preimage = 4,
+		RateLimit: orml_rate_limit = 9,
 
 		// Tokens & Related
 		Balances: pallet_balances = 10,

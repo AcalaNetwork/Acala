@@ -909,6 +909,8 @@ impl orml_xtokens::Config for Test {
 	type MinXcmFee = ParachainMinFee;
 	type MultiLocationsFilter = Everything;
 	type ReserveProvider = AbsoluteReserveProvider;
+	type RateLimiter = ();
+	type RateLimiterId = ();
 }
 
 parameter_types!(

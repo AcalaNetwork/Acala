@@ -79,6 +79,7 @@ wasm-bencher = { workspace = true, optional = true }
 orml-nft = { workspace = true, optional = true }
 orml-currencies = { workspace = true, optional = true }
 orml-rewards = { workspace = true, optional = true }
+orml-rate-limit = { workspace = true, optional = true }
 
 [dev-dependencies]
 orml-utilities = { workspace = true, features = ["std"] }
@@ -124,6 +125,7 @@ std = [
 	"orml-tokens/std",
 	"orml-traits/std",
 	"orml-xtokens/std",
+	"orml-rate-limit/std",
 
 	"module-asset-registry/std",
 	"module-cdp-engine/std",
@@ -168,6 +170,7 @@ wasm-bench = [
 	"orml-currencies",
 	"orml-nft",
 	"orml-rewards",
+	"orml-rate-limit",
 	"orml-tokens/runtime-benchmarks",
 
 	"xcm-builder/runtime-benchmarks",
