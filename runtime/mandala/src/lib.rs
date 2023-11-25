@@ -38,9 +38,9 @@ use frame_support::{
 	traits::{
 		fungible::HoldConsideration,
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
-		ConstBool, ConstU128, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin,
-		EqualPrivilegeOnly, Get, Imbalance, InstanceFilter, LinearStoragePrice, LockIdentifier, OnUnbalanced,
-		SortedMembers,
+		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency,
+		EnsureOrigin, EqualPrivilegeOnly, Get, Imbalance, InstanceFilter, LinearStoragePrice, LockIdentifier,
+		OnUnbalanced, SortedMembers,
 	},
 	weights::{constants::RocksDbWeight, ConstantMultiplier, Weight},
 	PalletId,
