@@ -568,8 +568,24 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.rpc_methods()
 	}
 
+	fn rpc_max_connections(&self) -> Result<u32> {
+		self.base.base.rpc_max_connections()
+	}
+
 	fn rpc_cors(&self, is_dev: bool) -> Result<Option<Vec<String>>> {
 		self.base.base.rpc_cors(is_dev)
+	}
+
+	fn rpc_max_request_size(&self) -> Result<u32> {
+		self.base.base.rpc_max_request_size()
+	}
+
+	fn rpc_max_response_size(&self) -> Result<u32> {
+		self.base.base.rpc_max_response_size()
+	}
+
+	fn rpc_max_subscriptions_per_connection(&self) -> Result<u32> {
+		self.base.base.rpc_max_subscriptions_per_connection()
 	}
 
 	fn default_heap_pages(&self) -> Result<Option<u64>> {
