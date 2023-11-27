@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::*;
+use crate::{xcm_helpers::ClassLocality, *};
 
 const LOG_TARGET: &str = "xcm::module_xnft::transactor";
 
@@ -62,17 +62,14 @@ where
 			return Err(XcmExecutorError::AssetNotHandled.into());
 		};
 
-		let (class_id, is_foreign_asset) = Self::asset_to_collection(&what.id)?;
+		let class_locality = Self::asset_to_collection(&what.id)?;
 
 		let to = <ConverterOf<T>>::convert_location(who).ok_or(XcmExecutorError::AccountIdConversionFailed)?;
 
-		let deposit_handler = if is_foreign_asset {
-			Self::deposit_foreign_asset
-		} else {
-			Self::deposit_local_asset
-		};
-
-		deposit_handler(&to, class_id, &asset_instance)
+		match class_locality {
+			ClassLocality::Foreign(class_id) => Self::deposit_foreign_asset(&to, class_id, &asset_instance),
+			ClassLocality::Local(class_id) => Self::deposit_local_asset(&to, class_id, &asset_instance),
+		}
 	}
 
 	fn withdraw_asset(
@@ -92,14 +89,14 @@ where
 			return Err(XcmExecutorError::AssetNotHandled.into());
 		};
 
-		let (class_id, is_foreign_asset) = Self::asset_to_collection(&what.id)?;
+		let class_locality = Self::asset_to_collection(&what.id)?;
 
 		let from = <ConverterOf<T>>::convert_location(who).ok_or(XcmExecutorError::AccountIdConversionFailed)?;
 
-		let token_id = Self::asset_instance_to_token_id(class_id, is_foreign_asset, &asset_instance)
+		let token = Self::asset_instance_to_token(class_locality, &asset_instance)
 			.ok_or(XcmExecutorError::InstanceConversionFailed)?;
 
-		<ModuleNftPallet<T>>::do_transfer(&from, &Self::account_id(), (class_id, token_id))
+		<ModuleNftPallet<T>>::do_transfer(&from, &Self::account_id(), token)
 			.map(|_| what.clone().into())
 			.map_err(|_| XcmError::FailedToTransactAsset("non-fungible item withdraw failed"))
 	}
@@ -123,15 +120,15 @@ where
 			return Err(XcmExecutorError::AssetNotHandled.into());
 		};
 
-		let (class_id, is_foreign_asset) = Self::asset_to_collection(&asset.id)?;
+		let class_locality = Self::asset_to_collection(&asset.id)?;
 
 		let from = <ConverterOf<T>>::convert_location(from).ok_or(XcmExecutorError::AccountIdConversionFailed)?;
 		let to = <ConverterOf<T>>::convert_location(to).ok_or(XcmExecutorError::AccountIdConversionFailed)?;
 
-		let token_id = Self::asset_instance_to_token_id(class_id, is_foreign_asset, &asset_instance)
+		let token = Self::asset_instance_to_token(class_locality, &asset_instance)
 			.ok_or(XcmExecutorError::InstanceConversionFailed)?;
 
-		<ModuleNftPallet<T>>::do_transfer(&from, &to, (class_id, token_id))
+		<ModuleNftPallet<T>>::do_transfer(&from, &to, token)
 			.map(|_| asset.clone().into())
 			.map_err(|_| XcmError::FailedToTransactAsset("non-fungible item internal transfer failed"))
 	}

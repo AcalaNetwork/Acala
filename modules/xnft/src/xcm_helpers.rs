@@ -22,15 +22,20 @@ use primitives::nft::Attributes;
 use xcm::v3::AssetId::Concrete;
 use xcm_executor::traits::Error as MatchError;
 
+pub enum ClassLocality<T: Config> {
+	Local(ClassIdOf<T>),
+	Foreign(ClassIdOf<T>),
+}
+
 impl<T: Config> Pallet<T>
 where
 	TokenIdOf<T>: TryFrom<u128>,
 	ClassIdOf<T>: TryFrom<u128>,
 {
-	pub fn asset_to_collection(asset: &AssetId) -> Result<(ClassIdOf<T>, bool), MatchError> {
+	pub fn asset_to_collection(asset: &AssetId) -> Result<ClassLocality<T>, MatchError> {
 		Self::foreign_asset_to_class(asset)
-			.map(|a| (a, true))
-			.or_else(|| Self::local_asset_to_class(asset).map(|a| (a, false)))
+			.map(ClassLocality::Foreign)
+			.or_else(|| Self::local_asset_to_class(asset).map(ClassLocality::Local))
 			.ok_or(MatchError::AssetIdConversionFailed)
 	}
 
@@ -88,14 +93,17 @@ where
 			.map_err(|_| XcmError::FailedToTransactAsset("non-fungible local item deposit failed"))
 	}
 
-	pub fn asset_instance_to_token_id(
-		class_id: ClassIdOf<T>,
-		is_foreign_asset: bool,
+	pub fn asset_instance_to_token(
+		class_locality: ClassLocality<T>,
 		asset_instance: &AssetInstance,
-	) -> Option<TokenIdOf<T>> {
-		match is_foreign_asset {
-			true => Self::asset_instance_to_item(class_id, asset_instance),
-			false => Self::convert_asset_instance(asset_instance).ok(),
+	) -> Option<(ClassIdOf<T>, TokenIdOf<T>)> {
+		match class_locality {
+			ClassLocality::Foreign(class_id) => {
+				Self::asset_instance_to_item(class_id, asset_instance).map(|token_id| (class_id, token_id))
+			}
+			ClassLocality::Local(class_id) => Self::convert_asset_instance(asset_instance)
+				.map(|token_id| (class_id, token_id))
+				.ok(),
 		}
 	}
 
