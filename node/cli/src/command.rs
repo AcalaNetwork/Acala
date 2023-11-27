@@ -580,7 +580,7 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.rpc_max_request_size()
 	}
 
-	fn rpc_max_response_size(&self) -> Result<Option<u32>> {
+	fn rpc_max_response_size(&self) -> Result<u32> {
 		self.base.base.rpc_max_response_size()
 	}
 
