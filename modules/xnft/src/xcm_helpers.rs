@@ -17,6 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::*;
+use module_nft::BalanceOf;
+use primitives::nft::Attributes;
 use xcm::v3::AssetId::Concrete;
 use xcm_executor::traits::Error as MatchError;
 
@@ -61,10 +63,20 @@ where
 			Some(token_id) => <ModuleNftPallet<T>>::do_transfer(&Self::account_id(), to, (asset, token_id))
 				.map_err(|_| XcmError::FailedToTransactAsset("non-fungible foreign item deposit failed")),
 			None => {
-				let token_id = <OrmlNftPallet<T>>::mint(to, asset, Default::default(), Default::default())
-					.map_err(|_| XcmError::FailedToTransactAsset("non-fungible new foreign item deposit failed"))?;
+				let token_id = <OrmlNftPallet<T>>::mint(
+					to,
+					asset,
+					Vec::new(),
+					module_nft::TokenData::<BalanceOf<T>> {
+						deposit: 0u32.into(),
+						attributes: Attributes::new(),
+					},
+				)
+				.map_err(|_| XcmError::FailedToTransactAsset("non-fungible new foreign item deposit failed"))?;
+
 				<AssetInstanceToItem<T>>::insert(asset, asset_instance, token_id);
 				<ItemToAssetInstance<T>>::insert(asset, token_id, asset_instance);
+
 				Ok(())
 			}
 		}

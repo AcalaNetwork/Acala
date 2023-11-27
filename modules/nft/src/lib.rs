@@ -65,7 +65,7 @@ pub struct ClassData<Balance> {
 	pub attributes: Attributes,
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, Serialize, Deserialize, Default)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, Serialize, Deserialize)]
 pub struct TokenData<Balance> {
 	/// Deposit reserved to create token
 	pub deposit: Balance,
