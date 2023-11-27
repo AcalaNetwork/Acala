@@ -25,9 +25,12 @@ use frame_system::pallet_prelude::*;
 use module_nft::{ClassIdOf, TokenIdOf};
 use sp_runtime::{traits::AccountIdConversion, DispatchResult};
 use sp_std::boxed::Box;
-use xcm::v3::{
-	AssetId, AssetInstance, Error as XcmError, Fungibility, InteriorMultiLocation, Junction::*, MultiAsset,
-	Result as XcmResult,
+use xcm::{
+	v3::{
+		AssetId, AssetInstance, Error as XcmError, Fungibility, InteriorMultiLocation, Junction::*, MultiAsset,
+		Result as XcmResult,
+	},
+	VersionedAssetId,
 };
 use xcm_executor::traits::{ConvertLocation, Error as XcmExecutorError, TransactAsset};
 
@@ -65,14 +68,18 @@ pub mod pallet {
 	/// Error for non-fungible-token module.
 	#[pallet::error]
 	pub enum Error<T> {
+		/// The asset is already registered.
 		AssetAlreadyRegistered,
+
+		/// The given asset ID could not be converted into the current XCM version.
+		BadAssetId,
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		AssetRegistered {
-			asset_id: Box<AssetId>,
+			asset_id: Box<VersionedAssetId>,
 			collection_id: ClassIdOf<T>,
 		},
 	}
@@ -119,11 +126,17 @@ pub mod pallet {
 			.saturating_add(<module_nft::weights::AcalaWeight<T>>::create_class())
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(2)))]
-		pub fn register_asset(origin: OriginFor<T>, foreign_asset: Box<AssetId>) -> DispatchResult {
+		pub fn register_asset(origin: OriginFor<T>, versioned_foreign_asset: Box<VersionedAssetId>) -> DispatchResult {
 			T::RegisterOrigin::ensure_origin(origin)?;
 
+			let foreign_asset: AssetId = versioned_foreign_asset
+				.as_ref()
+				.clone()
+				.try_into()
+				.map_err(|()| Error::<T>::BadAssetId)?;
+
 			ensure!(
-				!<ForeignAssetToClass<T>>::contains_key(foreign_asset.as_ref()),
+				!<ForeignAssetToClass<T>>::contains_key(foreign_asset),
 				<Error<T>>::AssetAlreadyRegistered,
 			);
 
@@ -136,11 +149,11 @@ pub mod pallet {
 			};
 			let collection_id = orml_nft::Pallet::<T>::create_class(&Self::account_id(), Default::default(), data)?;
 
-			<ForeignAssetToClass<T>>::insert(foreign_asset.as_ref(), collection_id);
-			<ClassToForeignAsset<T>>::insert(collection_id, foreign_asset.as_ref());
+			<ForeignAssetToClass<T>>::insert(foreign_asset, collection_id);
+			<ClassToForeignAsset<T>>::insert(collection_id, foreign_asset);
 
 			Self::deposit_event(Event::AssetRegistered {
-				asset_id: foreign_asset,
+				asset_id: versioned_foreign_asset,
 				collection_id,
 			});
 
