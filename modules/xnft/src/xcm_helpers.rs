@@ -19,6 +19,7 @@
 use crate::*;
 use module_nft::BalanceOf;
 use primitives::nft::Attributes;
+use sp_std::vec::Vec;
 use xcm::v3::AssetId::Concrete;
 use xcm_executor::traits::Error as MatchError;
 
