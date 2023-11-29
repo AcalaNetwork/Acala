@@ -133,7 +133,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18.x
+          cache: 'yarn'
       - name: Run ts tests
         run: |
-          npm install -g yarn
           make test-ts
