@@ -136,5 +136,4 @@ jobs:
       - name: Run ts tests
         run: |
           npm install -g yarn
-          yarn set version 3.6.3
           make test-ts
