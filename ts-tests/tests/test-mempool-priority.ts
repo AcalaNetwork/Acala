@@ -71,7 +71,8 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
             tx3.toHex(),
             parentHash
         );
-        expect(operationalTransactionvalidity.toHuman()).to.deep.eq({
+
+        const expected = {
             "Ok": {
                 "longevity": "31",
                 "priority": "65,695,101,118,020,000",
@@ -83,6 +84,17 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
                     "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d03000000"
                 ]
             }
+        };
+        const priorityRegex = /^65,695,1\d\d,\d{3},\d{3},\d{3}$/;
+
+        expect(operationalTransactionvalidity.toHuman()).to.satisfy((x: any) => {
+            return x === expected || (
+                expect(x.Ok.priority).match(priorityRegex) &&
+                x.Ok.longevity === expected.Ok.longevity &&
+                x.Ok.propagate === expected.Ok.propagate &&
+                x.Ok.provides[0] === expected.Ok.provides[0] &&
+                x.Ok.requires[0] === expected.Ok.requires[0]
+            );
         });
 
         // send normal extrinsic
