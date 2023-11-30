@@ -74,7 +74,7 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
         expect(operationalTransactionvalidity.toHuman()).to.deep.eq({
             "Ok": {
                 "longevity": "31",
-                "priority": "65,695,198,150,890,000",
+                "priority": "65,695,101,118,020,000",
                 "propagate": true,
                 "provides": [
                     "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d04000000"
