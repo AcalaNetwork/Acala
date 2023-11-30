@@ -5,6 +5,7 @@ import { spawn, ChildProcess } from "child_process";
 import chaiAsPromised from "chai-as-promised";
 import chai from "chai";
 import getPort from 'get-port';
+import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/types";
 
 export interface TestContext {
 	provider: BodhiProvider;
@@ -21,8 +22,8 @@ export const BINARY_PATH = `../target/${ACALA_BUILD}/acala`;
 export const SPAWNING_TIME = 120000;
 
 export async function startAcalaNode(autoClaim = true): Promise<{ binary: ChildProcess; } & TestContext> {
-	const P2P_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
-	const RPC_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
+	const RPC_PORT = await getPort({ port: getPort.makeRange(9944, 9999) });
+	const P2P_PORT = await getPort({ port: getPort.makeRange(30333, 30433) });
 
 	const cmd = BINARY_PATH;
 	const args = [
@@ -150,4 +151,14 @@ export async function getEvmNonce(provider: BodhiProvider, address: string): Pro
 	const evm_account = await provider.api.query.evm.accounts<Option<EvmAccountInfo>>(address);
 	const nonce = evm_account.isEmpty ? 0 : evm_account.unwrap().nonce.toNumber();
 	return nonce;
+}
+
+export async function submitExtrinsic(extrinsic: SubmittableExtrinsic<'promise'>, sender: AddressOrPair) {
+	return new Promise(async (resolve) => {
+		extrinsic.signAndSend(sender, (result) => {
+			if (result.status.isFinalized || result.status.isInBlock) {
+				resolve(undefined);
+			}
+		});
+	});
 }
