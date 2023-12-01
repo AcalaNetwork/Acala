@@ -49,14 +49,6 @@ jobs:
         if: ${{ env.CHAIN == '' || env.VERSION == '' || env.PREVIOUS_VERSION == '' }}
         run: python .github/scripts/extrinsic_check_setup_env.py
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '18.x'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install Yarn
-        run: npm install -g yarn
-
       - name: Prepare output
         run: |
           echo "METADATA COMPARISON" >> output.txt
@@ -73,11 +65,7 @@ jobs:
 
       - name: Compare the metadata
         run: |
-          git clone https://github.com/ermalkaleci/tools.git
-          cd tools
-          yarn install --immutable
-          yarn run:metadata ws://localhost:9944 ws://localhost:9955 >> ../output.txt
-          cd ..
+          docker run --network=host jacogr/polkadot-js-tools metadata ws://127.0.0.1:9944 ws://127.0.0.1:9955 >> output.txt
           sed -z -i 's/\n\n/\n/g' output.txt
 
       - name: Show result
