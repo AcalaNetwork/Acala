@@ -53,7 +53,7 @@ jobs:
             acala-rpc \
             acala-runtime runtime-common runtime-integration-tests karura-runtime mandala-runtime \
             ethjson evm-jsontests jsontests \
-            --exclude-files **/mock.rs **/weights.rs **/weights/*
+            --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v3
         with:
