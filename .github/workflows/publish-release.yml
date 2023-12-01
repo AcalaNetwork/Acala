@@ -104,7 +104,7 @@ jobs:
       # Diff new wasm with current
       - name: Check the metadata diff
         run: |
-          subwasm diff ${{ steps.srtool_build.outputs.wasm }} ${{ env.CHAIN }} | tee ${{ env.CHAIN }}-diff.txt
+          subwasm diff wss://${{ env.CHAIN }}-rpc.aca-api.network ${{ steps.srtool_build.outputs.wasm }} | tee ${{ env.CHAIN }}-diff.txt
 
       # Generate release notes
       - name: Generate note
