@@ -39,13 +39,6 @@ pub enum Subcommand {
 	#[command(subcommand)]
 	Key(KeySubcommand),
 
-	/// The custom inspect subcommmand for decoding blocks and extrinsics.
-	#[clap(
-		name = "inspect",
-		about = "Decode given block or extrinsic using current native runtime."
-	)]
-	Inspect(acala_inspect::cli::InspectCmd),
-
 	/// The custom benchmark subcommmand benchmarking runtime modules.
 	#[command(subcommand)]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
