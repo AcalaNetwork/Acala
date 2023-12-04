@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TARPAULIN_VERSION: 0.27.1
+  TARPAULIN_VERSION: 0.27.2
   # LIBCLANG_PATH: "/usr/lib/llvm-11/lib" # default `llvm-config --prefix`
   CARGO_INCREMENTAL: 0
 jobs:
@@ -46,13 +46,14 @@ jobs:
         run: |
           wget https://github.com/xd009642/tarpaulin/releases/download/${{ env.TARPAULIN_VERSION }}/cargo-tarpaulin-x86_64-unknown-linux-musl.tar.gz
           tar -zxvf cargo-tarpaulin-x86_64-unknown-linux-musl.tar.gz -C $HOME/.cargo/bin
-          cargo tarpaulin -v --no-fail-fast --implicit-test-threads --workspace \
+          cargo tarpaulin -v --workspace \
             -e acala-inspect \
             acala acala-cli acala-service \
             acala-primitives \
             acala-rpc \
             acala-runtime runtime-common runtime-integration-tests karura-runtime mandala-runtime \
-            --exclude-files **/mock.rs **/weights.rs **/weights/*
+            ethjson evm-jsontests jsontests \
+            --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v3
         with:
