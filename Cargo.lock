@@ -25,7 +25,6 @@ dependencies = [
 name = "acala-cli"
 version = "2.23.0"
 dependencies = [
- "acala-inspect",
  "acala-service",
  "clap",
  "cumulus-client-cli",
@@ -49,22 +48,6 @@ dependencies = [
  "sp-runtime",
  "substrate-build-script-utils",
  "try-runtime-cli",
-]
-
-[[package]]
-name = "acala-inspect"
-version = "2.23.0"
-dependencies = [
- "clap",
- "derive_more",
- "log",
- "parity-scale-codec",
- "sc-cli",
- "sc-client-api",
- "sc-service",
- "sp-blockchain",
- "sp-core",
- "sp-runtime",
 ]
 
 [[package]]
