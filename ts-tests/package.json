@@ -9,8 +9,8 @@
 		"run-test": "yarn mocha -r ts-node/register/transpile-only --timeout 50000 --no-warnings"
 	},
 	"dependencies": {
-		"@acala-network/api": "~6.0.0",
-		"@acala-network/bodhi": "~2.7.8",
+		"@acala-network/api": "~6.0.4",
+		"@acala-network/bodhi": "~2.7.15",
 		"@babel/runtime": "^7.21.5",
 		"@openzeppelin/contracts": "4.9.3",
 		"@polkadot/api": "^10.9.1",

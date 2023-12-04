@@ -34,13 +34,13 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 			from: await alice.getAddress(),
 			confirmations: 0,
 			nonce: 1,
-			// gasLimit: BigNumber.from("28535"),
+			// gasLimit: BigNumber.from("100200"),
 			// gasPrice: BigNumber.from("1"),
 			//data: "",
 			// value: BigNumber.from(0),
 			chainId: 595,
 		});
-		expect(res.gasLimit.toNumber()).to.eq(28535)
+		expect(res.gasLimit.toNumber()).to.eq(100200)
 		expect(res.gasPrice.toNumber()).to.eq(1)
 		expect(res.value.toNumber()).to.eq(0)
 

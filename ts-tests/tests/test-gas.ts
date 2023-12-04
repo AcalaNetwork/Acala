@@ -18,7 +18,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 			from: alice.getAddress(),
 			data: "0x" + Block.bytecode,
 		});
-		expect(gas.toNumber()).to.be.eq(11301014);
+		expect(gas.toNumber()).to.be.eq(11301114);
 	});
 
 	it("eth_estimateResources for contract creation", async function () {
@@ -28,7 +28,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 		});
 
 		expect(data.usedGas.toNumber()).to.be.eq(251726);
-		expect(data.gasLimit.toNumber()).to.be.eq(273373);
+		expect(data.gasLimit.toNumber()).to.be.eq(302071);
 		expect(data.usedStorage.toNumber()).to.be.eq(10921);
 	});
 
@@ -46,7 +46,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 		);
 
 		expect(data.usedGas.toNumber()).to.be.eq(22038);
-		expect(data.gasLimit.toNumber()).to.be.eq(22409);
+		expect(data.gasLimit.toNumber()).to.be.eq(26445);
 		expect(data.usedStorage.toNumber()).to.be.eq(0);
 	});
 });

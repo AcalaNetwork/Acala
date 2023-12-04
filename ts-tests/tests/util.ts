@@ -21,7 +21,7 @@ export const ACALA_BUILD = process.env.ACALA_BUILD || "debug";
 export const BINARY_PATH = `../target/${ACALA_BUILD}/acala`;
 export const SPAWNING_TIME = 120000;
 
-export async function startAcalaNode(autoClaim = true): Promise<{ binary: ChildProcess; } & TestContext> {
+export async function startAcalaNode(sealing = true, autoClaim = true): Promise<{ binary: ChildProcess; } & TestContext> {
 	const RPC_PORT = await getPort({ port: getPort.makeRange(9944, 9999) });
 	const P2P_PORT = await getPort({ port: getPort.makeRange(30333, 30433) });
 
@@ -30,7 +30,6 @@ export async function startAcalaNode(autoClaim = true): Promise<{ binary: ChildP
 		`--dev`,
 		`-lruntime=debug`,
 		`-levm=debug`,
-		`--instant-sealing`,
 		`--no-telemetry`,
 		`--no-prometheus`,
 		`--port=${P2P_PORT}`,
@@ -42,6 +41,11 @@ export async function startAcalaNode(autoClaim = true): Promise<{ binary: ChildP
 		`--keep-blocks=archive`,
 		`--tmp`,
 	];
+
+	if (sealing) {
+		args.push(`--instant-sealing`);
+	}
+
 	const binary = spawn(cmd, args);
 
 	binary.on("error", (err) => {
@@ -70,7 +74,7 @@ export async function startAcalaNode(autoClaim = true): Promise<{ binary: ChildP
 				console.log(chunk.toString());
 			}
 			binaryLogs.push(chunk);
-			if (chunk.toString().match(/best: #0/)) {
+			if (chunk.toString().match(/best: #/)) {
 				try {
 					const { provider, wallets } = await getTestUtils(`ws://127.0.0.1:${RPC_PORT}`, autoClaim);
 
@@ -103,10 +107,14 @@ export function describeWithAcala(title: string, cb: (context: TestContext) => v
 			console.log('starting acala node ...')
 			this.timeout(SPAWNING_TIME);
 
+			const sealing = 
+				title !== 'Acala RPC (EVM create fill block)' &&
+				title !== 'Acala RPC (EVM call fill block)';
+
 			const autoClaim =
 				title !== 'Acala RPC (Claim Account Eip712)' &&
 				title !== 'Acala RPC (Block)';
-			const init = await startAcalaNode(autoClaim);
+			const init = await startAcalaNode(sealing, autoClaim);
 
 			context.provider = init.provider,
 			context.wallets = init.wallets,
