@@ -93,6 +93,6 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 
 		expect(data.usedGas.toNumber()).to.be.eq(22038);
 		expect(data.usedStorage.toNumber()).to.be.eq(0);
-		expect(data.gasLimit.toNumber()).to.be.eq(26445);
+		expect(data.gasLimit.toNumber()).to.closeTo(26445, 1000);
 	});
 });

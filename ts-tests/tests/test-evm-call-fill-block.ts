@@ -39,7 +39,7 @@ describeWithAcala("Acala RPC (EVM call fill block)", (context) => {
                 break;
             }
 
-            setTimeout(() => { }, 1000);
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         let currentBlockHash = await context.provider.api.rpc.chain.getBlockHash(beforeHeight + 1);

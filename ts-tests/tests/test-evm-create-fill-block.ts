@@ -2,8 +2,7 @@ import { expect } from "chai";
 import { step } from "mocha-steps";
 import { describeWithAcala } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
-import { submitExtrinsic } from "./util";
-import { BigNumber } from "ethers";
+import EmptyContract from "../build/EmptyContract.json"
 
 describeWithAcala("Acala RPC (EVM create fill block)", (context) => {
     let alice: BodhiSigner;
@@ -13,15 +12,9 @@ describeWithAcala("Acala RPC (EVM create fill block)", (context) => {
     });
 
     step("evm create fill block", async function () {
-        /*
-        pragma solidity ^0.8.0;
-        contract Contract {}
-        */
-
-        const contract = "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220b9cbc7f3d9528c236f2c6bdf64e25ac8ca17489f9b4e91a6d92bea793883d5d764736f6c63430008020033";
-
+        const bytecode = '0x' + EmptyContract.bytecode;
         const creates = Array(300).fill(context.provider.api.tx.evm.create(
-            contract,
+            bytecode,
             0,
             2_000_000,
             100_000,
@@ -42,7 +35,7 @@ describeWithAcala("Acala RPC (EVM create fill block)", (context) => {
                 break;
             }
 
-            setTimeout(() => { }, 1000);
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         let currentBlockHash = await context.provider.api.rpc.chain.getBlockHash(beforeHeight + 1);
