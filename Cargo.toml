@@ -8,7 +8,6 @@ members = [
 
 	"modules/*",
 	"modules/evm-utility/macro",
-	"inspect",
 	"primitives",
 	"rpc",
 
@@ -223,7 +222,6 @@ nutsfinance-stable-asset = { version = "0.1.0", path = "ecosystem-modules/stable
 
 # ORML & Acala (client)
 acala-cli = { path = "node/cli" }
-acala-inspect = { path = "inspect" }
 acala-rpc = { path = "rpc" }
 acala-service = { path = "node/service", default-features = false }
 module-evm-utility-macro = { path = "modules/evm-utility/macro" }
