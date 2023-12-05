@@ -5,7 +5,7 @@ import { describeWithAcala } from "./util";
 import { deployContract } from "ethereum-waffle";
 import { Option } from "@polkadot/types/codec";
 import { u32 } from "@polkadot/types";
-import { EvmAccountInfo, CodeInfo } from "@acala-network/types/interfaces";
+import { CodeInfo } from "@acala-network/types/interfaces";
 import { BodhiSigner } from "@acala-network/bodhi";
 
 describeWithAcala("Acala RPC (GasLimit)", (context) => {
@@ -30,7 +30,7 @@ describeWithAcala("Acala RPC (GasLimit)", (context) => {
         // 1 increment value
         expect(storages.length).to.be.eq(352);
 
-        const info = await context.provider.api.query.evm.accounts(contract.address) as Option<EvmAccountInfo>;
+        const info = await context.provider.api.query.evm.accounts(contract.address);
         const codeInfo = await context.provider.api.query.evm.codeInfos(info.unwrap().contractInfo.unwrap().codeHash) as Option<CodeInfo>;
         const extra_bytes = Number(context.provider.api.consts.evm.newContractExtraBytes.toHex());
 
