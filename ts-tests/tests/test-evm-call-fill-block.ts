@@ -7,26 +7,20 @@ import { BigNumber } from "ethers";
 
 describeWithAcala("Acala RPC (EVM call fill block)", (context) => {
     let alice: BodhiSigner;
-    let alice_stash: BodhiSigner;
-
-    const FixedU128 = BigNumber.from('1000000000000000000');
 
     before("init wallets", async function () {
-        [alice, alice_stash] = context.wallets;
+        [alice] = context.wallets;
     });
 
-    step("evm create fill block", async function () {
-        /*
-        pragma solidity ^0.8.0;
-        contract Contract {}
-        */
+    step("evm call fill block", async function () {
+        const input = "0xa9059cbb0000000000000000000000001000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000174876e800";
 
-        const contract = "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220b9cbc7f3d9528c236f2c6bdf64e25ac8ca17489f9b4e91a6d92bea793883d5d764736f6c63430008020033";
-
-        const creates = Array(300).fill(context.provider.api.tx.evm.create(
-            contract,
+        // transfer 100000000000 ACA
+        const transfers = Array(300).fill(context.provider.api.tx.evm.call(
+            "0x0000000000000000000100000000000000000000",
+            input,
             0,
-            2_000_000,
+            100_000,
             100_000,
             []
         ));
@@ -34,7 +28,7 @@ describeWithAcala("Acala RPC (EVM call fill block)", (context) => {
         const beforeHeight = (await context.provider.api.query.system.number()).toNumber();
         let nonce = (await context.provider.api.query.system.account(alice.substrateAddress)).nonce.toNumber();
 
-        for (const tx of creates) {
+        for (const tx of transfers) {
             await tx.signAndSend(alice.substrateAddress, { nonce: nonce++ });
         }
 
@@ -52,8 +46,8 @@ describeWithAcala("Acala RPC (EVM call fill block)", (context) => {
 
         const events = await context.provider.api.derive.tx.events(currentBlockHash);
 
-        const evmCreateEvents = events.events.filter((item) => context.provider.api.events.evm.Created.is(item.event));
+        const evmCreateEvents = events.events.filter((item) => context.provider.api.events.evm.Executed.is(item.event));
 
-        expect(evmCreateEvents.length).to.equal(223);
+        expect(evmCreateEvents.length).to.equal(283);
     });
 });

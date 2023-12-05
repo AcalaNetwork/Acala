@@ -7,12 +7,9 @@ import { BigNumber } from "ethers";
 
 describeWithAcala("Acala RPC (EVM create fill block)", (context) => {
     let alice: BodhiSigner;
-    let alice_stash: BodhiSigner;
-
-    const FixedU128 = BigNumber.from('1000000000000000000');
 
     before("init wallets", async function () {
-        [alice, alice_stash] = context.wallets;
+        [alice] = context.wallets;
     });
 
     step("evm create fill block", async function () {
