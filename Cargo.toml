@@ -7,6 +7,7 @@ members = [
 	"node/service",
 
 	"modules/*",
+	"modules/currencies/runtime-api",
 	"modules/evm-utility/macro",
 	"primitives",
 	"rpc",
@@ -192,6 +193,7 @@ module-cdp-engine = { path = "modules/cdp-engine", default-features = false }
 module-cdp-treasury = { path = "modules/cdp-treasury", default-features = false }
 module-collator-selection = { path = "modules/collator-selection", default-features = false }
 module-currencies = { path = "modules/currencies", default-features = false }
+module-currencies-runtime-api = { path = "modules/currencies/runtime-api", default-features = false }
 module-dex = { path = "modules/dex", default-features = false }
 module-dex-oracle = { path = "modules/dex-oracle", default-features = false }
 module-earning = { path = "modules/earning", default-features = false }
@@ -199,7 +201,7 @@ module-emergency-shutdown = { path = "modules/emergency-shutdown", default-featu
 module-evm = { path = "modules/evm", default-features = false }
 module-evm-accounts = { path = "modules/evm-accounts", default-features = false }
 module-evm-bridge = { path = "modules/evm-bridge", default-features = false }
-module-evm-rpc-runtime-api = { path = "modules/evm/rpc/runtime_api", default-features = false }
+module-evm-rpc-runtime-api = { path = "modules/evm/rpc/runtime-api", default-features = false }
 module-evm-utility = { path = "modules/evm-utility", default-features = false }
 module-homa = { path = "modules/homa", default-features = false }
 module-honzon = { path = "modules/honzon", default-features = false }

@@ -128,6 +128,7 @@ dependencies = [
  "module-cdp-treasury",
  "module-collator-selection",
  "module-currencies",
+ "module-currencies-runtime-api",
  "module-dex",
  "module-dex-oracle",
  "module-earning",
@@ -5330,6 +5331,7 @@ dependencies = [
  "module-cdp-treasury",
  "module-collator-selection",
  "module-currencies",
+ "module-currencies-runtime-api",
  "module-dex",
  "module-dex-oracle",
  "module-earning",
@@ -6240,6 +6242,7 @@ dependencies = [
  "module-cdp-treasury",
  "module-collator-selection",
  "module-currencies",
+ "module-currencies-runtime-api",
  "module-dex",
  "module-dex-oracle",
  "module-earning",
@@ -6764,6 +6767,16 @@ dependencies = [
  "serde_json",
  "sp-core",
  "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-currencies-runtime-api"
+version = "2.23.0"
+dependencies = [
+ "sp-api",
+ "sp-core",
  "sp-runtime",
  "sp-std",
 ]

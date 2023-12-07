@@ -106,6 +106,7 @@ module-cdp-engine = { workspace = true }
 module-cdp-treasury = { workspace = true }
 module-collator-selection = { workspace = true }
 module-currencies = { workspace = true }
+module-currencies-runtime-api = { workspace = true }
 module-dex = { workspace = true }
 module-dex-oracle = { workspace = true }
 module-emergency-shutdown = { workspace = true }
@@ -253,6 +254,7 @@ std = [
 	"module-cdp-treasury/std",
 	"module-collator-selection/std",
 	"module-currencies/std",
+	"module-currencies-runtime-api/std",
 	"module-dex-oracle/std",
 	"module-dex/std",
 	"module-earning/std",
