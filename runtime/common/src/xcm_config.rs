@@ -27,9 +27,9 @@ use polkadot_parachain_primitives::primitives::Sibling;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
-	ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit, TrailingSetTopicAsId,
-	WithComputedOrigin,
+	DescribeAllTerminal, DescribeFamily, HashedDescription, ParentIsPreset, RelayChainAsNative,
+	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
+	TakeRevenue, TakeWeightCredit, TrailingSetTopicAsId, WithComputedOrigin,
 };
 
 /// Type for specifying how a `MultiLocation` can be converted into an `AccountId`. This is used
@@ -44,6 +44,8 @@ pub type LocationToAccountId<RelayNetwork, EvmAddressMapping> = (
 	AccountId32Aliases<RelayNetwork, AccountId>,
 	// Convert `AccountKey20` to `AccountId`
 	AccountKey20Aliases<RelayNetwork, AccountId, EvmAddressMapping>,
+	// Generate remote accounts according to polkadot standards
+	HashedDescription<AccountId, DescribeFamily<DescribeAllTerminal>>,
 );
 
 /// This is the type we use to convert an (incoming) XCM origin into a local `RuntimeOrigin`
