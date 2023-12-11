@@ -28,17 +28,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@acala-network/bodhi@npm:~2.7.15":
-  version: 2.7.15
-  resolution: "@acala-network/bodhi@npm:2.7.15"
+"@acala-network/bodhi@npm:~2.7.16":
+  version: 2.7.16
+  resolution: "@acala-network/bodhi@npm:2.7.16"
   dependencies:
-    "@acala-network/eth-providers": 2.7.15
+    "@acala-network/eth-providers": 2.7.16
     "@types/bn.js": ~5.1.0
     bn.js: ~5.2.0
     ethers: ~5.7.0
   peerDependencies:
-    "@polkadot/api": ^10.9.1
-  checksum: 0394ed0e9bef1ab1e895e75d059429c1ef759da83ca803ef58881434701705be26be63fc67c4a32d3292b438f8e0a6a0c84ead0c64de45dffe68ab2efc44e49c
+    "@polkadot/api": ^10.11.1
+  checksum: 2e71ee7c83087fdc630c1dc8d8245d078b654adf17cd21ff7a88237f7db9622ddb7e0eeec74ca3749f11541c1403df5d2581652ebf7f30bf07df7169e6226f64
   languageName: node
   linkType: hard
 
@@ -49,12 +49,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@acala-network/eth-providers@npm:2.7.15":
-  version: 2.7.15
-  resolution: "@acala-network/eth-providers@npm:2.7.15"
+"@acala-network/eth-providers@npm:2.7.16":
+  version: 2.7.16
+  resolution: "@acala-network/eth-providers@npm:2.7.16"
   dependencies:
     "@acala-network/contracts": 4.3.4
-    "@acala-network/eth-transactions": 2.7.15
+    "@acala-network/eth-transactions": 2.7.16
     bn.js: ~5.2.0
     dd-trace: ~4.16.0
     ethers: ~5.7.0
@@ -62,20 +62,20 @@ __metadata:
     graphql-request: ~3.6.1
     lru-cache: ~7.8.2
   peerDependencies:
-    "@acala-network/api": ~6.0.0
-    "@polkadot/api": ^10.9.1
-  checksum: f3c90ec1aa31d06332c2aae7ff20c667b362ff3f711f66e518a701f64859cf4450e6b33868a12b8bd13d9ed86f1c8c05eaa5c4b16dcee3a5fe86950efc26ae88
+    "@acala-network/api": ~6.0.4
+    "@polkadot/api": ^10.11.1
+  checksum: 1a2e4c6fe14c1bf1b2545a69dd4654f30fb44df984ffcc6522b26fba0da57a4023867239ffce7799bbc3d35ef1232a86fa59eef43476470c71f05cf37c86432f
   languageName: node
   linkType: hard
 
-"@acala-network/eth-transactions@npm:2.7.15":
-  version: 2.7.15
-  resolution: "@acala-network/eth-transactions@npm:2.7.15"
+"@acala-network/eth-transactions@npm:2.7.16":
+  version: 2.7.16
+  resolution: "@acala-network/eth-transactions@npm:2.7.16"
   dependencies:
     ethers: ~5.7.0
   peerDependencies:
     "@polkadot/util-crypto": ^12.4.2
-  checksum: 8a6a5656dd7fcf1a52a85aa136373421c6af2c744adee5d45a77298c6de3c9db7d7074e189ccbc9c74a9902ccab4ea2696900646051210a10db54e80490af629
+  checksum: 91dd214856d9a4f3f5dc3cc90f31b0ffe286f38e70b97a2fac6a76b59012957a94f6d7180aa793265c8bb645224234aff3226a52d42e54796ce5d72afeb144d5
   languageName: node
   linkType: hard
 
@@ -10457,7 +10457,7 @@ __metadata:
   resolution: "ts-tests@workspace:."
   dependencies:
     "@acala-network/api": ~6.0.4
-    "@acala-network/bodhi": ~2.7.15
+    "@acala-network/bodhi": ~2.7.16
     "@babel/runtime": ^7.21.5
     "@openzeppelin/contracts": 4.9.3
     "@polkadot/api": ^10.9.1
