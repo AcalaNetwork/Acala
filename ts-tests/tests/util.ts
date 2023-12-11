@@ -71,7 +71,7 @@ export async function startAcalaNode(autoClaim = true): Promise<{ binary: ChildP
 			binaryLogs.push(chunk);
 			if (chunk.toString().match(/best: #0/)) {
 				try {
-					const { provider, wallets } = await getTestUtils(`ws://localhost:${RPC_PORT}`, autoClaim);
+					const { provider, wallets } = await getTestUtils(`ws://127.0.0.1:${RPC_PORT}`, autoClaim);
 
 					clearTimeout(timer);
 					if (!DISPLAY_LOG) {

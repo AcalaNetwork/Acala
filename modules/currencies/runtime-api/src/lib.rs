@@ -16,19 +16,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-fn main() {
-	substrate_build_script_utils::generate_cargo_keys();
-	orml_build_script_utils::check_file_licenses(
-		"../..",
-		include_bytes!("../../HEADER-GPL3"),
-		&[
-			"../../evm-tests",
-			"../../ecosystem-modules/stable-asset",
-			"../../launch",
-			"../../modules/xnft",
-			"../../orml",
-			"../../predeploy-contracts",
-			"../../ts-tests",
-		],
-	);
+#![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::all)]
+
+use sp_runtime::codec::Codec;
+
+sp_api::decl_runtime_apis! {
+	#[api_version(2)]
+	pub trait CurrenciesApi<CurrencyId, AccountId, Balance> where
+		CurrencyId: Codec,
+		AccountId: Codec,
+		Balance: Codec,
+	{
+		fn query_free_balance(currency_id: CurrencyId, who: AccountId) -> Balance;
+	}
 }

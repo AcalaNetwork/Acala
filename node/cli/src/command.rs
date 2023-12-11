@@ -225,18 +225,6 @@ pub fn run() -> sc_cli::Result<()> {
 	let cli = Cli::from_args();
 
 	match &cli.subcommand {
-		Some(Subcommand::Inspect(cmd)) => {
-			let runner = cli.create_runner(cmd)?;
-			let chain_spec = &runner.config().chain_spec;
-
-			set_default_ss58_version(chain_spec);
-
-			runner.sync_run(|mut config| {
-				let (client, _, _, _) = acala_service::new_chain_ops(&mut config)?;
-				cmd.run(client)
-			})
-		}
-
 		Some(Subcommand::Benchmark(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			let chain_spec = &runner.config().chain_spec;
@@ -568,8 +556,24 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.rpc_methods()
 	}
 
+	fn rpc_max_connections(&self) -> Result<u32> {
+		self.base.base.rpc_max_connections()
+	}
+
 	fn rpc_cors(&self, is_dev: bool) -> Result<Option<Vec<String>>> {
 		self.base.base.rpc_cors(is_dev)
+	}
+
+	fn rpc_max_request_size(&self) -> Result<u32> {
+		self.base.base.rpc_max_request_size()
+	}
+
+	fn rpc_max_response_size(&self) -> Result<u32> {
+		self.base.base.rpc_max_response_size()
+	}
+
+	fn rpc_max_subscriptions_per_connection(&self) -> Result<u32> {
+		self.base.base.rpc_max_subscriptions_per_connection()
 	}
 
 	fn default_heap_pages(&self) -> Result<Option<u64>> {

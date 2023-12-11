@@ -1,6 +1,6 @@
 [package]
 name = "acala-cli"
-version = "2.22.0"
+version = "2.23.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -28,7 +28,6 @@ polkadot-cli = { workspace = true }
 polkadot-primitives = { workspace = true, features = ["std"] }
 polkadot-service = { workspace = true }
 
-acala-inspect = { workspace = true }
 acala-service = { workspace = true, optional = true }
 
 [build-dependencies]

@@ -1,6 +1,6 @@
 [package]
 name = "karura-runtime"
-version = "2.22.0"
+version = "2.23.0"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -101,6 +101,7 @@ module-cdp-engine = { workspace = true }
 module-cdp-treasury = { workspace = true }
 module-collator-selection = { workspace = true }
 module-currencies = { workspace = true }
+module-currencies-runtime-api = { workspace = true }
 module-dex = { workspace = true }
 module-dex-oracle = { workspace = true }
 module-earning = { workspace = true }
@@ -123,6 +124,7 @@ module-support = { workspace = true }
 module-transaction-pause = { workspace = true }
 module-transaction-payment = { workspace = true }
 module-xcm-interface = { workspace = true }
+module-xnft = { workspace = true }
 
 primitives = { workspace = true }
 runtime-common = { workspace = true }
@@ -237,6 +239,7 @@ std = [
 	"module-cdp-treasury/std",
 	"module-collator-selection/std",
 	"module-currencies/std",
+	"module-currencies-runtime-api/std",
 	"module-dex-oracle/std",
 	"module-dex/std",
 	"module-earning/std",
@@ -259,6 +262,7 @@ std = [
 	"module-transaction-pause/std",
 	"module-transaction-payment/std",
 	"module-xcm-interface/std",
+	"module-xnft/std",
 
 	"primitives/std",
 	"runtime-common/std",
@@ -400,6 +404,7 @@ try-runtime = [
 	"module-transaction-pause/try-runtime",
 	"module-transaction-payment/try-runtime",
 	"module-xcm-interface/try-runtime",
+	"module-xnft/try-runtime",
 
 	"primitives/try-runtime",
 

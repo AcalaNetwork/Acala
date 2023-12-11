@@ -351,6 +351,9 @@ pub type EnsureRootOrThreeFourthsTechnicalCommittee = EitherOfDiverse<
 	pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCommitteeInstance, 3, 4>,
 >;
 
+pub type EnsureRootOrOneTechnicalCommittee =
+	EitherOfDiverse<EnsureRoot<AccountId>, pallet_collective::EnsureMember<AccountId, TechnicalCommitteeInstance>>;
+
 /// The type used to represent the kinds of proxying allowed.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub enum ProxyType {
