@@ -7845,7 +7845,7 @@ dependencies = [
 
 [[package]]
 name = "orml-asset-registry"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -7882,7 +7882,7 @@ dependencies = [
 
 [[package]]
 name = "orml-auction"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7898,7 +7898,7 @@ dependencies = [
 
 [[package]]
 name = "orml-authority"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7916,7 +7916,7 @@ dependencies = [
 
 [[package]]
 name = "orml-benchmarking"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -7937,14 +7937,14 @@ dependencies = [
 
 [[package]]
 name = "orml-build-script-utils"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "walkdir",
 ]
 
 [[package]]
 name = "orml-currencies"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7963,7 +7963,7 @@ dependencies = [
 
 [[package]]
 name = "orml-gradually-update"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7978,7 +7978,7 @@ dependencies = [
 
 [[package]]
 name = "orml-nft"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7993,7 +7993,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8011,7 +8011,7 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle-runtime-api"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -8020,7 +8020,7 @@ dependencies = [
 
 [[package]]
 name = "orml-parameters"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8036,7 +8036,7 @@ dependencies = [
 
 [[package]]
 name = "orml-payments"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8054,7 +8054,7 @@ dependencies = [
 
 [[package]]
 name = "orml-rewards"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8070,7 +8070,7 @@ dependencies = [
 
 [[package]]
 name = "orml-tokens"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8091,7 +8091,7 @@ dependencies = [
 
 [[package]]
 name = "orml-tokens-runtime-api"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -8101,7 +8101,7 @@ dependencies = [
 
 [[package]]
 name = "orml-traits"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -8120,7 +8120,7 @@ dependencies = [
 
 [[package]]
 name = "orml-unknown-tokens"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8138,7 +8138,7 @@ dependencies = [
 
 [[package]]
 name = "orml-utilities"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8154,7 +8154,7 @@ dependencies = [
 
 [[package]]
 name = "orml-vesting"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8170,7 +8170,7 @@ dependencies = [
 
 [[package]]
 name = "orml-xcm"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8184,7 +8184,7 @@ dependencies = [
 
 [[package]]
 name = "orml-xcm-support"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "frame-support",
  "orml-traits",
@@ -8197,7 +8197,7 @@ dependencies = [
 
 [[package]]
 name = "orml-xtokens"
-version = "0.6.1"
+version = "0.6.7"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
