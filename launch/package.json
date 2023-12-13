@@ -7,6 +7,6 @@
     "start": "node_modules/@open-web3/parachain-launch/bin/parachain-launch"
   },
   "dependencies": {
-    "@open-web3/parachain-launch": "^1.2.1"
+    "@open-web3/parachain-launch": "^2.0.0"
   }
 }

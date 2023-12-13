@@ -1,5 +1,5 @@
 relaychain:
-  image: parity/polkadot:v0.9.31
+  image: parity/polkadot:v1.1.0
   chain: rococo-local
   runtimeGenesisConfig:
     configuration:
@@ -17,7 +17,7 @@ relaychain:
     - name: charlie
 
 parachains:
-- image: acala/karura-node:2.11.0
+- image: acala/karura-node:2.21.0
   chain:
     base: karura-local
     collators:
