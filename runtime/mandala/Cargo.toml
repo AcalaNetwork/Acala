@@ -96,7 +96,7 @@ orml-vesting = { workspace = true }
 orml-xcm = { workspace = true }
 orml-xcm-support = { workspace = true }
 orml-xtokens = { workspace = true }
-orml-rate-limit = { workspace = true, optional = true }
+orml-rate-limit = { workspace = true }
 
 # modules
 module-transaction-pause = { workspace = true }
