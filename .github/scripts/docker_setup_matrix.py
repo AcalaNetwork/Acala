@@ -1,11 +1,17 @@
 import sys
 import inspect
+import os
 
 branch = sys.argv[1] if len(sys.argv) > 1 else ''
 
 if branch.__contains__("release-"):
     chain, version = inspect.get_chain_and_version(branch)
-    print("::set-output name=matrix::{\"network\": [\"" + chain + "\"]}")
-    print("::set-output name=version::" + version + "")
+    with open(os.getenv("GITHUB_OUTPUT"), "a") as file:
+        matrix = "{\"network\": [\"" + chain + "\"]}"
+        file.write(f"matrix={matrix}\n")
+        file.write(f"version={version}\n")
+
 else:
-    print("::set-output name=matrix::{\"network\": [\"mandala\", \"karura\", \"acala\"]}")
+    with open(os.getenv("GITHUB_OUTPUT"), "a") as file:
+        matrix = "{\"network\": [\"mandala\", \"karura\", \"acala\"]}"
+        file.write(f"matrix={matrix}\n")
