@@ -21,7 +21,7 @@ use super::{
 	AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert, Currencies, CurrencyId,
 	EvmAddressMapping, ExistentialDeposits, FixedRateOfAsset, GetNativeCurrencyId, KaruraTreasuryAccount,
 	NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeOrigin, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM, TAI,
+	RuntimeOrigin, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM, TAI, XNFT,
 };
 use cumulus_primitives_core::ParaId;
 use frame_support::{
@@ -47,6 +47,7 @@ parameter_types! {
 	pub const RelayNetwork: NetworkId = NetworkId::Kusama;
 	pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
 	pub UniversalLocation: InteriorMultiLocation = X2(GlobalConsensus(RelayNetwork::get()), Parachain(ParachainInfo::parachain_id().into()));
+	pub NftPalletLocation: InteriorMultiLocation = X1(PalletInstance(121));
 	pub CheckingAccount: AccountId = PolkadotXcm::check_account();
 }
 
@@ -298,16 +299,19 @@ impl orml_xtokens::Config for Runtime {
 	type ReserveProvider = AbsoluteReserveProvider;
 }
 
-pub type LocalAssetTransactor = MultiCurrencyAdapter<
-	Currencies,
-	UnknownTokens,
-	IsNativeConcrete<CurrencyId, CurrencyIdConvert>,
-	AccountId,
-	LocationToAccountId,
-	CurrencyId,
-	CurrencyIdConvert,
-	DepositToAlternative<KaruraTreasuryAccount, Currencies, CurrencyId, AccountId, Balance>,
->;
+pub type LocalAssetTransactor = (
+	XNFT,
+	MultiCurrencyAdapter<
+		Currencies,
+		UnknownTokens,
+		IsNativeConcrete<CurrencyId, CurrencyIdConvert>,
+		AccountId,
+		LocationToAccountId,
+		CurrencyId,
+		CurrencyIdConvert,
+		DepositToAlternative<KaruraTreasuryAccount, Currencies, CurrencyId, AccountId, Balance>,
+	>,
+);
 
 pub struct CurrencyIdConvert;
 

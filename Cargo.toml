@@ -7,8 +7,8 @@ members = [
 	"node/service",
 
 	"modules/*",
+	"modules/currencies/runtime-api",
 	"modules/evm-utility/macro",
-	"inspect",
 	"primitives",
 	"rpc",
 
@@ -196,6 +196,7 @@ module-cdp-engine = { path = "modules/cdp-engine", default-features = false }
 module-cdp-treasury = { path = "modules/cdp-treasury", default-features = false }
 module-collator-selection = { path = "modules/collator-selection", default-features = false }
 module-currencies = { path = "modules/currencies", default-features = false }
+module-currencies-runtime-api = { path = "modules/currencies/runtime-api", default-features = false }
 module-dex = { path = "modules/dex", default-features = false }
 module-dex-oracle = { path = "modules/dex-oracle", default-features = false }
 module-earning = { path = "modules/earning", default-features = false }
@@ -203,7 +204,7 @@ module-emergency-shutdown = { path = "modules/emergency-shutdown", default-featu
 module-evm = { path = "modules/evm", default-features = false }
 module-evm-accounts = { path = "modules/evm-accounts", default-features = false }
 module-evm-bridge = { path = "modules/evm-bridge", default-features = false }
-module-evm-rpc-runtime-api = { path = "modules/evm/rpc/runtime_api", default-features = false }
+module-evm-rpc-runtime-api = { path = "modules/evm/rpc/runtime-api", default-features = false }
 module-evm-utility = { path = "modules/evm-utility", default-features = false }
 module-homa = { path = "modules/homa", default-features = false }
 module-honzon = { path = "modules/honzon", default-features = false }
@@ -213,6 +214,7 @@ module-incentives = { path = "modules/incentives", default-features = false }
 module-liquid-crowdloan = { path = "modules/liquid-crowdloan", default-features = false }
 module-loans = { path = "modules/loans", default-features = false }
 module-nft = { path = "modules/nft", default-features = false }
+module-xnft = { path = "modules/xnft", default-features = false }
 module-nominees-election = { path = "modules/nominees-election", default-features = false }
 module-prices = { path = "modules/prices", default-features = false }
 module-relaychain = { path = "modules/relaychain", default-features = false }
@@ -225,7 +227,6 @@ nutsfinance-stable-asset = { version = "0.1.0", path = "ecosystem-modules/stable
 
 # ORML & Acala (client)
 acala-cli = { path = "node/cli" }
-acala-inspect = { path = "inspect" }
 acala-rpc = { path = "rpc" }
 acala-service = { path = "node/service", default-features = false }
 module-evm-utility-macro = { path = "modules/evm-utility/macro" }

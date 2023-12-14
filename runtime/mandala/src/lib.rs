@@ -60,7 +60,7 @@ use scale_info::TypeInfo;
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
 	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
-	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey,
+	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey, MultiCurrency,
 };
 use orml_utilities::simulate_execution;
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
@@ -134,7 +134,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2220,
+	spec_version: 2230,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -2113,6 +2113,17 @@ impl_runtime_apis! {
 			} else {
 				ExistentialDeposits::get(&key)
 			}
+		}
+	}
+
+	impl module_currencies_runtime_api::CurrenciesApi<
+		Block,
+		CurrencyId,
+		AccountId,
+		Balance,
+	> for Runtime {
+		fn query_free_balance(currency_id: CurrencyId, who: AccountId) -> Balance {
+			Currencies::free_balance(currency_id, &who)
 		}
 	}
 

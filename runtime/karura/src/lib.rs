@@ -31,6 +31,7 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use parity_scale_codec::{Decode, DecodeLimit, Encode};
+use runtime_common::EnsureRootOrOneTechnicalCommittee;
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -63,7 +64,7 @@ use module_transaction_payment::TargetedFeeAdjustment;
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
 use orml_traits::{
 	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
-	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey,
+	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey, MultiCurrency,
 };
 use orml_utilities::simulate_execution;
 use pallet_transaction_payment::RuntimeDispatchInfo;
@@ -134,7 +135,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2220,
+	spec_version: 2230,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -176,6 +177,7 @@ parameter_types! {
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
+	pub const XnftPalletId: PalletId = PalletId(*b"aca/xNFT");
 	// Vault all unrleased native token.
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account_truncating();
 	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
@@ -1158,6 +1160,15 @@ impl orml_nft::Config for Runtime {
 	type MaxTokenMetadata = ConstU32<1024>;
 }
 
+impl module_xnft::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = XnftPalletId;
+	type LocationToAccountId = xcm_config::LocationToAccountId;
+	type SelfParaId = ParachainInfo;
+	type NtfPalletLocation = xcm_config::NftPalletLocation;
+	type RegisterOrigin = EnsureRootOrOneTechnicalCommittee;
+}
+
 impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
 		match self {
@@ -1662,6 +1673,7 @@ construct_runtime!(
 		Incentives: module_incentives = 120,
 		NFT: module_nft = 121,
 		AssetRegistry: module_asset_registry = 122,
+		XNFT: module_xnft = 123,
 
 		// Smart contracts
 		EVM: module_evm = 130,
@@ -1907,6 +1919,17 @@ impl_runtime_apis! {
 			} else {
 				ExistentialDeposits::get(&key)
 			}
+		}
+	}
+
+	impl module_currencies_runtime_api::CurrenciesApi<
+		Block,
+		CurrencyId,
+		AccountId,
+		Balance,
+	> for Runtime {
+		fn query_free_balance(currency_id: CurrencyId, who: AccountId) -> Balance {
+			Currencies::free_balance(currency_id, &who)
 		}
 	}
 
