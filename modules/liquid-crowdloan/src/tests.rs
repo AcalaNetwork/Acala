@@ -32,6 +32,7 @@ fn redeem_works() {
 		.balances(vec![(BOB, LCDOT, 100), (LiquidCrowdloan::account_id(), DOT, 100)])
 		.build()
 		.execute_with(|| {
+			assert_eq!(Currencies::free_balance(LCDOT, &BOB), 100);
 			assert_ok!(LiquidCrowdloan::redeem(RuntimeOrigin::signed(BOB), 100));
 			assert_eq!(Currencies::free_balance(LCDOT, &BOB), 0);
 			assert_eq!(Currencies::free_balance(DOT, &BOB), 100);
@@ -119,6 +120,7 @@ fn set_redeem_currency_id() {
 				LDOT
 			));
 
+			assert_eq!(Currencies::free_balance(LCDOT, &ALICE), 100);
 			assert_err!(
 				LiquidCrowdloan::redeem(RuntimeOrigin::signed(ALICE), u128::MAX),
 				sp_runtime::ArithmeticError::Overflow

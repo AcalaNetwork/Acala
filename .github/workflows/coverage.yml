@@ -27,7 +27,7 @@ jobs:
     runs-on: [self-hosted, linux]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - uses: actions/cache@v3
@@ -52,7 +52,7 @@ jobs:
             acala-primitives \
             acala-rpc \
             acala-runtime runtime-common runtime-integration-tests karura-runtime mandala-runtime \
-            ethjson evm-jsontests jsontests \
+            ethjson evm-jsontests \
             --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v3
