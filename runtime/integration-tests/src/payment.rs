@@ -475,14 +475,14 @@ fn with_fee_call_works(
 				RuntimeEvent::Dex(module_dex::Event::Swap { .. })
 			)));
 			// Bob don't have any USD currency.
-			assert_noop!(
+			assert_eq!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
 					&with_fee_currency_call(USD_CURRENCY),
 					&INFO,
 					50
 				),
-				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+				Err(TransactionValidityError::Invalid(InvalidTransaction::Payment))
 			);
 
 			// Charlie have USD currency.

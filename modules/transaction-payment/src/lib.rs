@@ -269,6 +269,13 @@ pub mod module {
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::TransactionPayment;
 	pub const DEPOSIT_ID: ReserveIdentifier = ReserveIdentifier::TransactionPaymentDeposit;
 
+	#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+	pub enum ChargeFeeWay {
+		FeeCurrency(CurrencyId),
+		FeePath(Vec<CurrencyId>),
+		FeeAggregatedPath(Vec<AggregatedSwapPath<CurrencyId>>),
+	}
+
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -494,7 +501,15 @@ pub mod module {
 	#[pallet::getter(fn swap_balance_threshold)]
 	pub type SwapBalanceThreshold<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
+	/// The override charge fee way.
+	///
+	/// OverrideChargeFeeWay: ChargeFeeWay
+	#[pallet::storage]
+	#[pallet::getter(fn override_charge_fee_way)]
+	pub type OverrideChargeFeeWay<T: Config> = StorageValue<_, ChargeFeeWay, OptionQuery>;
+
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -842,6 +857,63 @@ where
 		}
 	}
 
+	fn charge_fee_path(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		fee_swap_path: &[CurrencyId],
+	) -> Result<(T::AccountId, Balance), DispatchError> {
+		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+		T::Swap::swap_by_path(
+			who,
+			fee_swap_path,
+			SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
+		)
+		.map(|_| (who.clone(), custom_fee_surplus))
+	}
+
+	fn charge_fee_aggregated_path(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		fee_aggregated_path: &[AggregatedSwapPath<CurrencyId>],
+	) -> Result<(T::AccountId, Balance), DispatchError> {
+		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+		T::Swap::swap_by_aggregated_path(
+			who,
+			fee_aggregated_path,
+			SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
+		)
+		.map(|_| (who.clone(), custom_fee_surplus))
+	}
+
+	fn charge_fee_currency(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		fee_currency_id: CurrencyId,
+	) -> Result<(T::AccountId, Balance), DispatchError> {
+		let alternative_fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
+		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+
+		let (fee_amount, fee_surplus) = if T::DefaultFeeTokens::get().contains(&fee_currency_id) {
+			(fee.saturating_add(alternative_fee_surplus), alternative_fee_surplus)
+		} else {
+			(fee.saturating_add(custom_fee_surplus), custom_fee_surplus)
+		};
+
+		if TokenExchangeRate::<T>::contains_key(fee_currency_id) {
+			// token in charge fee pool should have `TokenExchangeRate` info.
+			Self::swap_from_pool_or_dex(who, fee_amount, fee_currency_id).map(|_| (who.clone(), fee_surplus))
+		} else {
+			// `supply_currency_id` not in charge fee pool, direct swap.
+			T::Swap::swap(
+				who,
+				fee_currency_id,
+				T::NativeCurrencyId::get(),
+				SwapLimit::ExactTarget(Balance::MAX, fee_amount),
+			)
+			.map(|_| (who.clone(), fee_surplus))
+		}
+	}
+
 	/// Determine the fee and surplus that should be withdraw from user. There are three kind call:
 	/// - TransactionPayment::with_fee_currency: swap with tx fee pool if token is enable charge fee
 	///   pool, else swap with dex.
@@ -855,20 +927,20 @@ where
 	) -> Result<(T::AccountId, Balance), DispatchError> {
 		match call.is_sub_type() {
 			Some(Call::with_fee_path { fee_swap_path, .. }) => {
+				// pre check before set OverrideChargeFeeWay
 				ensure!(
-					fee_swap_path.len() > 1
+					fee_swap_path.len() <= T::TradingPathLimit::get() as usize
+						&& fee_swap_path.len() > 1
 						&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
 						&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
 					Error::<T>::InvalidSwapPath
 				);
+
+				// put in storage after check
+				OverrideChargeFeeWay::<T>::put(ChargeFeeWay::FeePath(fee_swap_path.clone()));
+
 				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
-				let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
-				T::Swap::swap_by_path(
-					who,
-					fee_swap_path,
-					SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
-				)
-				.map(|_| (who.clone(), custom_fee_surplus))
+				Self::charge_fee_path(who, fee, fee_swap_path)
 			}
 			Some(Call::with_fee_aggregated_path {
 				fee_aggregated_path, ..
@@ -876,47 +948,29 @@ where
 				let last_should_be_dex = fee_aggregated_path.last();
 				match last_should_be_dex {
 					Some(AggregatedSwapPath::<CurrencyId>::Dex(fee_swap_path)) => {
+						// pre check before set OverrideChargeFeeWay
 						ensure!(
-							fee_swap_path.len() > 1
-								&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
+							fee_swap_path.len() <= T::TradingPathLimit::get() as usize
+								&& fee_swap_path.len() > 1 && fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
 								&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
 							Error::<T>::InvalidSwapPath
 						);
+
+						// put in storage after check
+						OverrideChargeFeeWay::<T>::put(ChargeFeeWay::FeeAggregatedPath(fee_aggregated_path.clone()));
+
 						let fee =
 							Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
-						let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
-						T::Swap::swap_by_aggregated_path(
-							who,
-							fee_aggregated_path,
-							SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
-						)
-						.map(|_| (who.clone(), custom_fee_surplus))
+						Self::charge_fee_aggregated_path(who, fee, fee_aggregated_path)
 					}
 					_ => Err(Error::<T>::InvalidSwapPath.into()),
 				}
 			}
 			Some(Call::with_fee_currency { currency_id, .. }) => {
+				OverrideChargeFeeWay::<T>::put(ChargeFeeWay::FeeCurrency(*currency_id));
+
 				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
-				let alternative_fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
-				let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
-				let (fee_amount, fee_surplus) = if T::DefaultFeeTokens::get().contains(currency_id) {
-					(fee.saturating_add(alternative_fee_surplus), alternative_fee_surplus)
-				} else {
-					(fee.saturating_add(custom_fee_surplus), custom_fee_surplus)
-				};
-				if TokenExchangeRate::<T>::contains_key(currency_id) {
-					// token in charge fee pool should have `TokenExchangeRate` info.
-					Self::swap_from_pool_or_dex(who, fee_amount, *currency_id).map(|_| (who.clone(), fee_surplus))
-				} else {
-					// `supply_currency_id` not in charge fee pool, direct swap.
-					T::Swap::swap(
-						who,
-						*currency_id,
-						T::NativeCurrencyId::get(),
-						SwapLimit::ExactTarget(Balance::MAX, fee.saturating_add(custom_fee_surplus)),
-					)
-					.map(|_| (who.clone(), custom_fee_surplus))
-				}
+				Self::charge_fee_currency(who, fee, *currency_id)
 			}
 			_ => Self::native_then_alternative_or_default(who, fee, reason).map(|surplus| (who.clone(), surplus)),
 		}
@@ -944,6 +998,27 @@ where
 	) -> Result<Balance, DispatchError> {
 		if let Some(amount) = Self::check_native_is_not_enough(who, fee, reason) {
 			// native asset is not enough
+
+			// if override charge fee way, charge fee by the config firstly.
+			match OverrideChargeFeeWay::<T>::get() {
+				Some(ChargeFeeWay::FeeCurrency(fee_currency_id)) => {
+					if let Ok((_, surplus)) = Self::charge_fee_currency(who, amount, fee_currency_id) {
+						return Ok(surplus);
+					}
+				}
+				Some(ChargeFeeWay::FeePath(fee_path)) => {
+					if let Ok((_, surplus)) = Self::charge_fee_path(who, amount, &fee_path) {
+						return Ok(surplus);
+					}
+				}
+				Some(ChargeFeeWay::FeeAggregatedPath(fee_aggregated_path)) => {
+					if let Ok((_, surplus)) = Self::charge_fee_aggregated_path(who, amount, &fee_aggregated_path) {
+						return Ok(surplus);
+					}
+				}
+				None => {}
+			}
+
 			let fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
 			let fee_amount = fee_surplus.saturating_add(amount);
 			let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
@@ -1416,6 +1491,9 @@ where
 
 			// distribute fee
 			<T as Config>::OnTransactionPayment::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
+
+			// reset OverrideChargeFeeWay
+			OverrideChargeFeeWay::<T>::kill();
 
 			Pallet::<T>::deposit_event(Event::<T>::TransactionFeePaid {
 				who,

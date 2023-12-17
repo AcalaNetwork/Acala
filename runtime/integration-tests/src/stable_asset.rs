@@ -565,14 +565,14 @@ fn three_usd_pool_works() {
 			assert_eq!(origin, None);
 
 			// Origin is None, transfer erc20 failed.
-			assert_noop!(
+			assert_eq!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
 					&with_fee_currency_call(usdc),
 					&INFO,
 					50
 				),
-				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+				Err(TransactionValidityError::Invalid(InvalidTransaction::Payment))
 			);
 
 			// set origin in SetEvmOrigin::validate() then transfer erc20 will success.
@@ -588,6 +588,8 @@ fn three_usd_pool_works() {
 			assert_aggregated_dex_event(usdc, with_fee_currency_call(usdc), None);
 			assert_aggregated_dex_event(usdt, with_fee_currency_call(usdt), None);
 
+			//assert_eq!(System::events(), vec![]);
+
 			// AUSD as fee token, only dex swap event produced.
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
@@ -598,9 +600,9 @@ fn three_usd_pool_works() {
 				)
 			);
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
-			let (amount1, amount2) = (227029641, 2250001206);
+			let (amount1, amount2) = (189191360, 1875001005);
 			#[cfg(feature = "with-mandala-runtime")]
-			let (amount1, amount2) = (226576482, 2250001206);
+			let (amount1, amount2) = (188813728, 1875001005);
 			System::assert_has_event(RuntimeEvent::Dex(module_dex::Event::Swap {
 				trader: AccountId::from(BOB),
 				path: vec![USD_CURRENCY, NATIVE_CURRENCY],
@@ -617,14 +619,14 @@ fn three_usd_pool_works() {
 				vec![usdc, NATIVE_CURRENCY],
 			];
 			for path in invalid_swap_path {
-				assert_noop!(
+				assert_eq!(
 					<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 						&AccountId::from(BOB),
 						&with_fee_path_call(path),
 						&INFO,
 						50
 					),
-					TransactionValidityError::Invalid(InvalidTransaction::Payment)
+					Err(TransactionValidityError::Invalid(InvalidTransaction::Payment))
 				);
 			}
 			// USD_CURRENCY to NATIVE_CURRENCY is valid, because it exist in dex swap.
@@ -650,14 +652,14 @@ fn three_usd_pool_works() {
 				AggregatedSwapPath::<CurrencyId>::Taiga(0, 0, 1), // USDT, USDC
 				AggregatedSwapPath::<CurrencyId>::Dex(vec![USD_CURRENCY, NATIVE_CURRENCY]),
 			];
-			assert_noop!(
+			assert_eq!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
 					&with_fee_aggregated_path_call(invalid_aggregated_path),
 					&INFO,
 					50
 				),
-				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+				Err(TransactionValidityError::Invalid(InvalidTransaction::Payment))
 			);
 			assert_aggregated_dex_event(usdc, with_fee_aggregated_path_call(usdc_aggregated_path), None);
 			assert_aggregated_dex_event(usdt, with_fee_aggregated_path_call(usdt_aggregated_path), None);
