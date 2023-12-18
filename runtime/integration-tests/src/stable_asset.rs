@@ -565,14 +565,14 @@ fn three_usd_pool_works() {
 			assert_eq!(origin, None);
 
 			// Origin is None, transfer erc20 failed.
-			assert_eq!(
+			assert_noop!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
 					&with_fee_currency_call(usdc),
 					&INFO,
 					50
 				),
-				Err(TransactionValidityError::Invalid(InvalidTransaction::Payment))
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 
 			// set origin in SetEvmOrigin::validate() then transfer erc20 will success.
@@ -619,14 +619,14 @@ fn three_usd_pool_works() {
 				vec![usdc, NATIVE_CURRENCY],
 			];
 			for path in invalid_swap_path {
-				assert_eq!(
+				assert_noop!(
 					<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 						&AccountId::from(BOB),
 						&with_fee_path_call(path),
 						&INFO,
 						50
 					),
-					Err(TransactionValidityError::Invalid(InvalidTransaction::Payment))
+					TransactionValidityError::Invalid(InvalidTransaction::Payment)
 				);
 			}
 			// USD_CURRENCY to NATIVE_CURRENCY is valid, because it exist in dex swap.
@@ -652,14 +652,14 @@ fn three_usd_pool_works() {
 				AggregatedSwapPath::<CurrencyId>::Taiga(0, 0, 1), // USDT, USDC
 				AggregatedSwapPath::<CurrencyId>::Dex(vec![USD_CURRENCY, NATIVE_CURRENCY]),
 			];
-			assert_eq!(
+			assert_noop!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
 					&with_fee_aggregated_path_call(invalid_aggregated_path),
 					&INFO,
 					50
 				),
-				Err(TransactionValidityError::Invalid(InvalidTransaction::Payment))
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 			assert_aggregated_dex_event(usdc, with_fee_aggregated_path_call(usdc_aggregated_path), None);
 			assert_aggregated_dex_event(usdt, with_fee_aggregated_path_call(usdt_aggregated_path), None);

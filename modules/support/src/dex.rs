@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use frame_support::traits::Get;
+use frame_support::{ensure, traits::Get};
 use nutsfinance_stable_asset::{PoolTokenIndex, StableAssetPoolId};
 use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;
@@ -179,11 +179,17 @@ where
 
 	// Dex not support aggregated swap.
 	fn swap_by_aggregated_path(
-		_who: &AccountId,
-		_swap_path: &[AggregatedSwapPath<CurrencyId>],
-		_limit: SwapLimit<Balance>,
+		who: &AccountId,
+		swap_path: &[AggregatedSwapPath<CurrencyId>],
+		limit: SwapLimit<Balance>,
 	) -> Result<(Balance, Balance), DispatchError> {
-		Err(Into::<DispatchError>::into(SwapError::CannotSwap))
+		ensure!(swap_path.len() == 1, Into::<DispatchError>::into(SwapError::CannotSwap));
+		match swap_path.last() {
+			Some(AggregatedSwapPath::<CurrencyId>::Dex(path)) => {
+				<Dex as DEXManager<AccountId, Balance, CurrencyId>>::swap_with_specific_path(who, path, limit)
+			}
+			_ => Err(Into::<DispatchError>::into(SwapError::CannotSwap)),
+		}
 	}
 }
 
