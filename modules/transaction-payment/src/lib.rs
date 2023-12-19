@@ -875,12 +875,11 @@ where
 		fee: PalletBalanceOf<T>,
 		fee_currency_id: CurrencyId,
 	) -> Result<(T::AccountId, Balance), DispatchError> {
-		let alternative_fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
-		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
-
 		let (fee_amount, fee_surplus) = if T::DefaultFeeTokens::get().contains(&fee_currency_id) {
+			let alternative_fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
 			(fee.saturating_add(alternative_fee_surplus), alternative_fee_surplus)
 		} else {
+			let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
 			(fee.saturating_add(custom_fee_surplus), custom_fee_surplus)
 		};
 
@@ -926,7 +925,7 @@ where
 					vec![AggregatedSwapPath::<CurrencyId>::Dex(fee_swap_path.clone())];
 
 				// put in storage after check
-				OverrideChargeFeeMethod::<T>::put(ChargeFeeMethod::FeeAggregatedPath(fee_aggregated_path.clone()));
+				OverrideChargeFeeMethod::<T>::put(ChargeFeeMethod::FeeAggregatedPath(fee_aggregated_path.to_vec()));
 
 				let fee = Self::check_native_is_not_enough(who, fee, reason).map_or_else(|| fee, |amount| amount);
 				Self::charge_fee_aggregated_path(who, fee, &fee_aggregated_path)
@@ -947,7 +946,7 @@ where
 
 						// put in storage after check
 						OverrideChargeFeeMethod::<T>::put(ChargeFeeMethod::FeeAggregatedPath(
-							fee_aggregated_path.clone(),
+							fee_aggregated_path.to_vec(),
 						));
 
 						let fee =

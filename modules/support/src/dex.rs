@@ -177,7 +177,6 @@ where
 		<Dex as DEXManager<AccountId, Balance, CurrencyId>>::swap_with_specific_path(who, swap_path, limit)
 	}
 
-	// Dex not support aggregated swap.
 	fn swap_by_aggregated_path(
 		who: &AccountId,
 		swap_path: &[AggregatedSwapPath<CurrencyId>],
