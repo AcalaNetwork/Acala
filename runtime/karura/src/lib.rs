@@ -1902,6 +1902,7 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
+#[allow(unused_parens)]
 type Migrations = ();
 
 #[cfg(feature = "runtime-benchmarks")]
