@@ -2153,16 +2153,45 @@ fn with_fee_call_validation_works() {
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
+				CHARLIE,
+				AUSD,
+				1000000,
+			));
+			assert_ok!(Currencies::update_balance(RuntimeOrigin::root(), CHARLIE, DOT, 1000000,));
+			assert_ok!(Currencies::update_balance(
+				RuntimeOrigin::root(),
+				CHARLIE,
+				LDOT,
+				1000000,
+			));
+			assert_eq!(1000000, Currencies::free_balance(AUSD, &CHARLIE));
+			assert_eq!(1000000, Currencies::free_balance(DOT, &CHARLIE));
+			assert_eq!(1000000, Currencies::free_balance(LDOT, &CHARLIE));
+
 			assert_eq!(OverrideChargeFeeMethod::<Runtime>::get(), None);
+
+			// CHARLIE has enough native token, default charge fee succeed
+			assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(&CHARLIE, &CALL, &INFO, 10));
+			// default charge fee will not set OverrideChargeFeeMethod
+			assert_eq!(OverrideChargeFeeMethod::<Runtime>::get(), None);
+
+			// BOB has not enough native token, default charge fee fail
+			assert_noop!(
+				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(&BOB, &CALL, &INFO, 10),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+
 			// dex swap not enabled, validate failed.
 			// with_fee_currency test
 			for token in vec![DOT, AUSD] {
 				assert_noop!(
 					ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-						&ALICE,
+						&CHARLIE,
 						&with_fee_currency_call(token),
 						&INFO,
-						500
+						10
 					),
 					TransactionValidityError::Invalid(InvalidTransaction::Payment)
 				);
@@ -2171,6 +2200,7 @@ fn with_fee_call_validation_works() {
 				assert_eq!(OverrideChargeFeeMethod::<Runtime>::get(), None);
 			}
 
+			// test the wrapped call by with_fee_currency
 			assert_ok!(TransactionPayment::with_fee_currency(
 				RuntimeOrigin::signed(ALICE),
 				DOT,
@@ -2183,10 +2213,10 @@ fn with_fee_call_validation_works() {
 			for path in vec![vec![DOT, AUSD, ACA], vec![AUSD, ACA]] {
 				assert_noop!(
 					ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-						&ALICE,
+						&CHARLIE,
 						&with_fee_path_call(path.clone()),
 						&INFO,
-						500
+						10
 					),
 					TransactionValidityError::Invalid(InvalidTransaction::Payment)
 				);
@@ -2194,22 +2224,24 @@ fn with_fee_call_validation_works() {
 				// ensure_can_charge_fee_with_call failed, dot not set OverrideChargeFeeMethod
 				assert_eq!(OverrideChargeFeeMethod::<Runtime>::get(), None);
 			}
-			assert_ok!(TransactionPayment::with_fee_currency(
+
+			// test the wrapped call by with_fee_currency
+			assert_ok!(TransactionPayment::with_fee_path(
 				RuntimeOrigin::signed(ALICE),
-				DOT,
+				vec![DOT, AUSD, ACA],
 				Box::new(CALL),
 			));
 			assert_eq!(9800, Currencies::free_balance(AUSD, &ALICE));
 			assert_eq!(200, Currencies::free_balance(AUSD, &BOB));
 
-			// with_fee_aggregated_path
+			// with_fee_aggregated_path test
 			let aggregated_path = vec![AggregatedSwapPath::Dex(vec![DOT, AUSD])];
 			assert_noop!(
 				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
 					&ALICE,
 					&with_fee_aggregated_path_by_call(aggregated_path.clone()),
 					&INFO,
-					500
+					10
 				),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
@@ -2217,10 +2249,10 @@ fn with_fee_call_validation_works() {
 			let aggregated_path = vec![AggregatedSwapPath::Dex(vec![DOT, ACA])];
 			assert_noop!(
 				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-					&ALICE,
+					&CHARLIE,
 					&with_fee_aggregated_path_by_call(aggregated_path.clone()),
 					&INFO,
-					500
+					10
 				),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
@@ -2230,12 +2262,80 @@ fn with_fee_call_validation_works() {
 			let aggregated_path = vec![AggregatedSwapPath::Taiga(0, 0, 0)];
 			assert_noop!(
 				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-					&ALICE,
+					&CHARLIE,
 					&with_fee_aggregated_path_by_call(aggregated_path.clone()),
 					&INFO,
-					500
+					10
 				),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+			// ensure_can_charge_fee_with_call failed, dot not set OverrideChargeFeeMethod
+			assert_eq!(OverrideChargeFeeMethod::<Runtime>::get(), None);
+
+			// test the wrapped call by with_fee_aggregated_path
+			assert_ok!(TransactionPayment::with_fee_aggregated_path(
+				RuntimeOrigin::signed(ALICE),
+				aggregated_path,
+				Box::new(CALL),
+			));
+			assert_eq!(9700, Currencies::free_balance(AUSD, &ALICE));
+			assert_eq!(300, Currencies::free_balance(AUSD, &BOB));
+
+			// enable dex and enable AUSD, DOT as fee pool
+			enable_dex_and_tx_fee_pool();
+
+			// with_fee_currency test
+			for token in vec![DOT, AUSD] {
+				assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
+					&CHARLIE,
+					&with_fee_currency_call(token),
+					&INFO,
+					10
+				));
+
+				// OverrideChargeFeeMethod will be set
+				assert_eq!(
+					OverrideChargeFeeMethod::<Runtime>::get(),
+					Some(ChargeFeeMethod::FeeCurrency(token))
+				);
+			}
+
+			// LDOT is not enabled fee pool, cannot charge fee by with_fee_currency
+			assert_noop!(
+				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
+					&CHARLIE,
+					&with_fee_currency_call(LDOT),
+					&INFO,
+					10
+				),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+
+			for path in vec![vec![DOT, AUSD, ACA], vec![AUSD, ACA]] {
+				assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
+					&CHARLIE,
+					&with_fee_path_call(path.clone()),
+					&INFO,
+					10
+				));
+
+				// OverrideChargeFeeMethod will be set
+				assert_eq!(
+					OverrideChargeFeeMethod::<Runtime>::get(),
+					Some(ChargeFeeMethod::FeeAggregatedPath(vec![AggregatedSwapPath::Dex(path)]))
+				);
+			}
+
+			let aggregated_path = vec![AggregatedSwapPath::Dex(vec![DOT, AUSD, ACA])];
+			assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
+				&CHARLIE,
+				&with_fee_aggregated_path_by_call(aggregated_path.clone()),
+				&INFO,
+				10
+			));
+			assert_eq!(
+				OverrideChargeFeeMethod::<Runtime>::get(),
+				Some(ChargeFeeMethod::FeeAggregatedPath(aggregated_path))
 			);
 		});
 }

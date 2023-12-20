@@ -989,19 +989,18 @@ where
 		if let Some(amount) = Self::check_native_is_not_enough(who, fee, reason) {
 			// native asset is not enough
 
-			// if override charge fee method, charge fee by the config firstly.
+			// if override charge fee method, charge fee by the config.
 			match OverrideChargeFeeMethod::<T>::get() {
 				Some(ChargeFeeMethod::FeeCurrency(fee_currency_id)) => {
-					if let Ok((_, surplus)) = Self::charge_fee_currency(who, amount, fee_currency_id) {
-						return Ok(surplus);
-					}
+					return Self::charge_fee_currency(who, amount, fee_currency_id).map(|(_, surplus)| surplus)
 				}
 				Some(ChargeFeeMethod::FeeAggregatedPath(fee_aggregated_path)) => {
-					if let Ok((_, surplus)) = Self::charge_fee_aggregated_path(who, amount, &fee_aggregated_path) {
-						return Ok(surplus);
-					}
+					return Self::charge_fee_aggregated_path(who, amount, &fee_aggregated_path)
+						.map(|(_, surplus)| surplus)
 				}
-				None => {}
+				None => {
+					// OverrideChargeFeeMethod not set, try other tokens
+				}
 			}
 
 			let fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
