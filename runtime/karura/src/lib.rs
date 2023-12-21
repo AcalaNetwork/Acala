@@ -78,7 +78,7 @@ use frame_support::{
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU128, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency, Currency,
 		EnsureOrigin, EqualPrivilegeOnly, Get, Imbalance, InstanceFilter, LinearStoragePrice, LockIdentifier,
-		OnRuntimeUpgrade, OnUnbalanced, SortedMembers,
+		OnUnbalanced, SortedMembers,
 	},
 	weights::{constants::RocksDbWeight, ConstantMultiplier, Weight},
 	PalletId,
@@ -1893,20 +1893,17 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	Migrations,
+>;
 
-pub struct MigrateSetXcmVersionForKusama;
-impl OnRuntimeUpgrade for MigrateSetXcmVersionForKusama {
-	fn on_runtime_upgrade() -> Weight {
-		let _ = PolkadotXcm::force_xcm_version(
-			RuntimeOrigin::root(),
-			Box::new(MultiLocation::new(1, Junctions::Here)),
-			3,
-		);
-		RocksDbWeight::get().writes(1)
-	}
-}
+#[allow(unused_parens)]
+type Migrations = ();
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

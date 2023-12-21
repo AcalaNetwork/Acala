@@ -28,7 +28,6 @@ use sp_core::H160;
 use sp_runtime::DispatchResult;
 use sp_std::{prelude::*, vec::Vec};
 
-pub mod migrations;
 mod mock;
 mod tests;
 pub mod weights;
