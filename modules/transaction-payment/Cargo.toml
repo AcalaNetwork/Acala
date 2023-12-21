@@ -5,6 +5,7 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
+log = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-runtime = { workspace = true }

@@ -861,6 +861,14 @@ where
 		fee: PalletBalanceOf<T>,
 		fee_aggregated_path: &[AggregatedSwapPath<CurrencyId>],
 	) -> Result<(T::AccountId, Balance), DispatchError> {
+		log::debug!(
+			target: "runtime::transaction-payment",
+			"charge_fee_aggregated_path: who: {:?}, fee: {:?}, fee_aggregated_path: {:?}",
+			who,
+			fee,
+			fee_aggregated_path
+		);
+
 		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
 		T::Swap::swap_by_aggregated_path(
 			who,
@@ -875,6 +883,14 @@ where
 		fee: PalletBalanceOf<T>,
 		fee_currency_id: CurrencyId,
 	) -> Result<(T::AccountId, Balance), DispatchError> {
+		log::debug!(
+			target: "runtime::transaction-payment",
+			"charge_fee_currency: who: {:?}, fee: {:?}, fee_currency_id: {:?}",
+			who,
+			fee,
+			fee_currency_id
+		);
+
 		let (fee_amount, fee_surplus) = if T::DefaultFeeTokens::get().contains(&fee_currency_id) {
 			let alternative_fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
 			(fee.saturating_add(alternative_fee_surplus), alternative_fee_surplus)
@@ -910,6 +926,14 @@ where
 		call: &CallOf<T>,
 		reason: WithdrawReasons,
 	) -> Result<(T::AccountId, Balance), DispatchError> {
+		log::debug!(
+			target: "runtime::transaction-payment",
+			"ensure_can_charge_fee_with_call: who: {:?}, fee: {:?}, call: {:?}",
+			who,
+			fee,
+			call
+		);
+
 		match call.is_sub_type() {
 			Some(Call::with_fee_path { fee_swap_path, .. }) => {
 				// pre check before set OverrideChargeFeeMethod
@@ -986,6 +1010,13 @@ where
 		fee: PalletBalanceOf<T>,
 		reason: WithdrawReasons,
 	) -> Result<Balance, DispatchError> {
+		log::debug!(
+			target: "runtime::transaction-payment",
+			"native_then_alternative_or_default: who: {:?}, fee: {:?}",
+			who,
+			fee
+		);
+
 		if let Some(amount) = Self::check_native_is_not_enough(who, fee, reason) {
 			// native asset is not enough
 
@@ -1500,6 +1531,8 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> Result<PalletBalanceOf<T>, DispatchError> {
+		log::debug!(target: "transaction-payment", "reserve_fee: who: {:?}, fee: {:?}, named: {:?}", who, fee, named);
+
 		Pallet::<T>::native_then_alternative_or_default(who, fee, WithdrawReasons::TRANSACTION_PAYMENT)?;
 		T::Currency::reserve_named(&named.unwrap_or(RESERVE_ID), who, fee)?;
 		Ok(fee)
@@ -1510,6 +1543,8 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> PalletBalanceOf<T> {
+		log::debug!(target: "transaction-payment", "unreserve_fee: who: {:?}, fee: {:?}, named: {:?}", who, fee, named);
+
 		<T as Config>::Currency::unreserve_named(&named.unwrap_or(RESERVE_ID), who, fee)
 	}
 
@@ -1517,6 +1552,8 @@ where
 		who: &T::AccountId,
 		weight: Weight,
 	) -> Result<(PalletBalanceOf<T>, NegativeImbalanceOf<T>), TransactionValidityError> {
+		log::debug!(target: "transaction-payment", "unreserve_and_charge_fee: who: {:?}, weight: {:?}", who, weight);
+
 		let fee = Pallet::<T>::weight_to_fee(weight);
 		<T as Config>::Currency::unreserve_named(&RESERVE_ID, who, fee);
 
@@ -1536,6 +1573,8 @@ where
 		refund_weight: Weight,
 		payed: NegativeImbalanceOf<T>,
 	) -> Result<(), TransactionValidityError> {
+		log::debug!(target: "transaction-payment", "refund_fee: who: {:?}, refund_weight: {:?}, payed: {:?}", who, refund_weight, payed.peek());
+
 		let refund = Pallet::<T>::weight_to_fee(refund_weight);
 		let actual_payment = match <T as Config>::Currency::deposit_into_existing(who, refund) {
 			Ok(refund_imbalance) => {
@@ -1565,6 +1604,8 @@ where
 		pays_fee: Pays,
 		class: DispatchClass,
 	) -> Result<(), TransactionValidityError> {
+		log::debug!(target: "transaction-payment", "charge_fee: who: {:?}, len: {:?}, weight: {:?}, tip: {:?}, pays_fee: {:?}, class: {:?}", who, len, weight, tip, pays_fee, class);
+
 		let fee = Pallet::<T>::compute_fee_raw(len, weight, tip, pays_fee, class).final_fee();
 
 		// withdraw native currency as fee
