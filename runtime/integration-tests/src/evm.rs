@@ -1426,13 +1426,12 @@ fn honzon_works_with_evm_contract() {
 }
 
 #[test]
-fn transaction_payment_module_failed_charge_erc20_pool() {
+fn transaction_payment_module_charge_erc20_pool() {
 	let erc20_token = CurrencyId::Erc20(erc20_address_0());
 	let sub_account: AccountId = TransactionPaymentPalletId::get().into_sub_account_truncating(erc20_token);
 	let dollar = dollar(NATIVE_CURRENCY);
 	let alice_evm_account = MockAddressMapping::get_account_id(&alice_evm_addr());
-	let ed = NativeTokenExistentialDeposit::get(); // 100_000_000_000
-	let empty_account = AccountId::new([1u8; 32]);
+	let account_with_erc20 = AccountId::new([1u8; 32]);
 
 	ExtBuilder::default()
 		.balances(vec![
@@ -1496,14 +1495,15 @@ fn transaction_payment_module_failed_charge_erc20_pool() {
 			// erc20 minimum_balance is 0
 			assert_eq!(Currencies::free_balance(erc20_token, &sub_account), 0);
 
+			// transfer erc20 token to account_with_erc20
 			assert_ok!(Currencies::transfer(
 				RuntimeOrigin::signed(alice_evm_account.clone()),
-				MultiAddress::Id(empty_account.clone()),
+				MultiAddress::Id(account_with_erc20.clone()),
 				erc20_token,
 				dollar
 			));
-			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &empty_account), 0);
-			assert_eq!(Currencies::free_balance(erc20_token, &empty_account), dollar);
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &account_with_erc20), 0);
+			assert_eq!(Currencies::free_balance(erc20_token, &account_with_erc20), dollar);
 
 			let len = 150 as u32;
 			let call: &<Runtime as frame_system::Config>::RuntimeCall =
@@ -1528,14 +1528,31 @@ fn transaction_payment_module_failed_charge_erc20_pool() {
 			let fee = fee + fee_surplus;
 			assert_eq!(fee, 3750001206);
 
-			// empty_account use payment non wrapped call to charge fee by erc20 fee pool.
-			assert_eq!(Currencies::free_balance(erc20_token, &sub_account), 0);
+			let alice_native_before = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
+			let alice_erc20_before = Currencies::free_balance(erc20_token, &alice_evm_account);
 
-			// set origin
-			<EVM as EVMTrait<AccountId>>::set_origin(empty_account.clone());
+			// charge fee by default ways
+			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
+					&alice_evm_account.clone(),
+					call,
+					&info,
+					len as usize,
+				)
+			);
+			let alice_native_after = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
+			let alice_erc20_after = Currencies::free_balance(erc20_token, &alice_evm_account);
+
+			// charge tx fee and storage fee by native
+			assert_eq!(alice_native_before - alice_native_after, 2500000804);
+			assert_eq!(alice_erc20_before - alice_erc20_after, 0);
+
+			// cannot charge erc20 fee for the account only hold erc20
+			<EVM as EVMTrait<AccountId>>::set_origin(account_with_erc20.clone());
 			assert_noop!(
 				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&empty_account,
+					&account_with_erc20,
 					call,
 					&info,
 					len as usize,
@@ -1543,54 +1560,48 @@ fn transaction_payment_module_failed_charge_erc20_pool() {
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 
-			// let erc20_fee = Currencies::free_balance(erc20_token, &sub_account);
-			// #[cfg(feature = "with-mandala-runtime")]
-			// assert_eq!(erc20_fee, 10386424149);
-			// #[cfg(feature = "with-karura-runtime")]
-			// assert_eq!(erc20_fee, 10407259503);
-			// #[cfg(feature = "with-acala-runtime")]
-			// assert_eq!(erc20_fee, 10407259503);
+			let alice_native_before = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
+			let alice_erc20_before = Currencies::free_balance(erc20_token, &alice_evm_account);
 
-			// assert_eq!(
-			// 	Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
-			// 	5 * dollar - (fee + ed)
-			// );
-			// assert_eq!(
-			// 	Currencies::free_balance(erc20_token, &empty_account),
-			// 	dollar - erc20_fee
-			// );
-			// assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &empty_account), ed);
+			// charge fee by fee pool
+			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
+					&alice_evm_account.clone(),
+					&with_fee_call,
+					&info,
+					len as usize,
+				)
+			);
+			let alice_native_after = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
+			let alice_erc20_after = Currencies::free_balance(erc20_token, &alice_evm_account);
 
-			// empty_account use payment `with_fee_currency` call to charge fee by erc20 fee pool.
+			// charge storage by native
+			#[cfg(feature = "with-mandala-runtime")]
+			assert_eq!(alice_native_before - alice_native_after, 6400000000);
+			#[cfg(feature = "with-karura-runtime")]
+			assert_eq!(alice_native_before - alice_native_after, 6400000000);
+			#[cfg(feature = "with-acala-runtime")]
+			assert_eq!(alice_native_before - alice_native_after, 19200000000);
+
+			// charge tx fee by native
+			#[cfg(feature = "with-mandala-runtime")]
+			assert_eq!(alice_erc20_before - alice_erc20_after, 375413037);
+			#[cfg(feature = "with-karura-runtime")]
+			assert_eq!(alice_erc20_before - alice_erc20_after, 376166122);
+			#[cfg(feature = "with-acala-runtime")]
+			assert_eq!(alice_erc20_before - alice_erc20_after, 376166122);
+
+			// cannot charge erc20 fee for the account only hold erc20
+			<EVM as EVMTrait<AccountId>>::set_origin(account_with_erc20.clone());
 			assert_noop!(
 				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&empty_account,
+					&account_with_erc20,
 					&with_fee_call,
 					&info,
 					len as usize,
 				),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
-
-			// #[cfg(feature = "with-mandala-runtime")]
-			// let erc20_with_fee = 375413037;
-			// #[cfg(feature = "with-karura-runtime")]
-			// let erc20_with_fee = 376166122;
-			// #[cfg(feature = "with-acala-runtime")]
-			// let erc20_with_fee = 376166122;
-
-			// assert_eq!(
-			// 	Currencies::free_balance(erc20_token, &sub_account),
-			// 	erc20_fee + erc20_with_fee
-			// );
-			// assert_eq!(
-			// 	Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
-			// 	5 * dollar - (fee * 2 + ed)
-			// );
-			// assert_eq!(
-			// 	Currencies::free_balance(erc20_token, &empty_account),
-			// 	dollar - erc20_fee - erc20_with_fee
-			// );
-			// assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &empty_account), ed);
 		});
 }
