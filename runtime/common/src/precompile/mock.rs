@@ -430,6 +430,7 @@ parameter_types! {
 	pub DefaultLiquidationPenalty: FractionalRate = FractionalRate::try_from(Rate::saturating_from_rational(10, 100)).unwrap();
 	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);
 	pub CDPEnginePalletId: PalletId = PalletId(*b"aca/cdpe");
+	pub SettleErc20EvmOrigin: AccountId = AccountId::from(hex_literal::hex!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
 }
 
 impl module_cdp_engine::Config for Test {
@@ -456,6 +457,8 @@ impl module_cdp_engine::Config for Test {
 	type PalletId = CDPEnginePalletId;
 	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Test>;
 	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
+	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
+	type SettleErc20EvmOrigin = SettleErc20EvmOrigin;
 	type WeightInfo = ();
 }
 

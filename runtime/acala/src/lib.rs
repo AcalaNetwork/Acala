@@ -1085,6 +1085,7 @@ parameter_types! {
 	pub MinimumDebitValue: Balance = 50 * dollar(AUSD);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(10, 100);
 	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);
+	pub SettleErc20EvmOrigin: AccountId = AccountId::from(hex_literal::hex!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")); // `26fFquxSECczieT6xrgG9uvg7LaEc1vj5M6SmX5K6QYN6TGZ`
 }
 
 impl module_cdp_engine::Config for Runtime {
@@ -1112,6 +1113,8 @@ impl module_cdp_engine::Config for Runtime {
 	type PalletId = CDPEnginePalletId;
 	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = AcalaSwap;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
+	type SettleErc20EvmOrigin = SettleErc20EvmOrigin;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
