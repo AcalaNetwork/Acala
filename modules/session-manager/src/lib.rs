@@ -36,7 +36,6 @@ use sp_runtime::{
 };
 use sp_staking::SessionIndex;
 
-pub mod migrations;
 mod mock;
 mod tests;
 pub mod weights;
