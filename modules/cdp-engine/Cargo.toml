@@ -32,6 +32,8 @@ module-dex = { workspace = true, features = ["std"] }
 module-cdp-treasury = { workspace = true, features = ["std"] }
 module-evm-accounts = { workspace = true, features = ["std"] }
 orml-tokens = { workspace = true, features = ["std"] }
+module-evm = { workspace = true, features = ["std"] }
+module-evm-bridge = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]

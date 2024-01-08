@@ -34,9 +34,9 @@ use frame_system::{
 	pallet_prelude::*,
 };
 use module_support::{
-	AddressMapping, CDPTreasury, CDPTreasuryExtended, DEXManager, EmergencyShutdown, ExchangeRate, FractionalRate,
-	InvokeContext, LiquidateCollateral, LiquidationEvmBridge, Price, PriceProvider, Rate, Ratio, RiskManager, Swap,
-	SwapLimit,
+	AddressMapping, CDPTreasury, CDPTreasuryExtended, DEXManager, EVMBridge, EmergencyShutdown, ExchangeRate,
+	FractionalRate, InvokeContext, LiquidateCollateral, LiquidationEvmBridge, Price, PriceProvider, Rate, Ratio,
+	RiskManager, Swap, SwapLimit,
 };
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_utilities::OffchainErr;
@@ -207,6 +207,12 @@ pub mod module {
 		type PalletId: Get<PalletId>;
 
 		type EvmAddressMapping: AddressMapping<Self::AccountId>;
+
+		/// Evm Bridge for getting info of contracts from the EVM.
+		type EVMBridge: EVMBridge<Self::AccountId, Balance>;
+
+		/// Evm Origin account when settle erc20 type CDP
+		type SettleErc20EvmOrigin: Get<Self::AccountId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -1153,8 +1159,16 @@ impl<T: Config> Pallet<T> {
 		let confiscate_collateral_amount =
 			sp_std::cmp::min(settle_price.saturating_mul_int(bad_debt_value), collateral);
 
+		if let CurrencyId::Erc20(_) = currency_id {
+			T::EVMBridge::set_origin(T::SettleErc20EvmOrigin::get());
+		}
+
 		// confiscate collateral and all debit
 		<LoansOf<T>>::confiscate_collateral_and_debit(&who, currency_id, confiscate_collateral_amount, debit)?;
+
+		if let CurrencyId::Erc20(_) = currency_id {
+			T::EVMBridge::kill_origin();
+		}
 
 		Self::deposit_event(Event::SettleCDPInDebit {
 			collateral_type: currency_id,

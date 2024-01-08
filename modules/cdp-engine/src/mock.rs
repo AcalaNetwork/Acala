@@ -29,7 +29,7 @@ use frame_support::{
 use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockStableAsset, AuctionManager, EmergencyShutdown, SpecificJointsSwap};
 use orml_traits::parameter_type_with_key;
-use primitives::{DexShare, Moment, TokenSymbol, TradingPair};
+use primitives::{evm::convert_decimals_to_evm, DexShare, Moment, ReserveIdentifier, TokenSymbol, TradingPair};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::TestXt,
@@ -99,7 +99,7 @@ impl orml_tokens::Config for Runtime {
 	type CurrencyHooks = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -111,7 +111,7 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = ();
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
@@ -285,6 +285,47 @@ impl module_evm_accounts::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub NetworkContractSource: EvmAddress = EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap();
+}
+
+ord_parameter_types! {
+	pub const CouncilAccount: AccountId = AccountId::from([1u8; 32]);
+	pub const NetworkContractAccount: AccountId = AccountId::from([0u8; 32]);
+	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
+}
+
+impl module_evm::Config for Runtime {
+	type AddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
+	type Currency = PalletBalances;
+	type TransferAll = ();
+	type NewContractExtraBytes = ConstU32<1>;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type TxFeePerGas = ConstU128<10>;
+	type RuntimeEvent = RuntimeEvent;
+	type PrecompilesType = ();
+	type PrecompilesValue = ();
+	type GasToWeight = ();
+	type ChargeTransactionPayment = module_support::mocks::MockReservedTransactionPayment<PalletBalances>;
+	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
+	type NetworkContractSource = NetworkContractSource;
+
+	type DeveloperDeposit = ConstU128<1000>;
+	type PublicationFee = ConstU128<200>;
+	type TreasuryAccount = TreasuryAccount;
+	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+
+	type Runner = module_evm::runner::stack::Runner<Self>;
+	type FindAuthor = ();
+	type Task = ();
+	type IdleScheduler = ();
+	type WeightInfo = ();
+}
+
+impl module_evm_bridge::Config for Runtime {
+	type EVM = EVM;
+}
+
 thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
@@ -379,6 +420,7 @@ parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(80, 100);
 	pub const CDPEnginePalletId: PalletId = PalletId(*b"aca/cdpe");
+	pub const SettleErc20EvmOrigin: AccountId = AccountId32::new([255u8; 32]);
 }
 
 impl Config for Runtime {
@@ -405,6 +447,8 @@ impl Config for Runtime {
 	type PalletId = CDPEnginePalletId;
 	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = SpecificJointsSwap<DEXModule, AlternativeSwapPathJointList>;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
+	type SettleErc20EvmOrigin = SettleErc20EvmOrigin;
 	type WeightInfo = ();
 }
 
@@ -422,6 +466,8 @@ construct_runtime!(
 		DEXModule: module_dex,
 		Timestamp: pallet_timestamp,
 		EvmAccounts: module_evm_accounts,
+		EVM: module_evm,
+		EVMBridge: module_evm_bridge,
 	}
 );
 
