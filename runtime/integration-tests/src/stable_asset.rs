@@ -588,7 +588,6 @@ fn three_usd_pool_works() {
 			assert_aggregated_dex_event(usdc, with_fee_currency_call(usdc), None);
 			assert_aggregated_dex_event(usdt, with_fee_currency_call(usdt), None);
 
-
 			// AUSD as fee token, only dex swap event produced.
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
