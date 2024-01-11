@@ -16,17 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{
-	input::{Input, InputPricer, InputT, Output},
-	target_gas_limit,
-};
+use super::input::{Input, InputPricer, InputT, Output};
 use crate::WeightToGas;
 use frame_support::traits::Get;
 use module_dex::WeightInfo;
 use module_evm::{
 	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed,
+	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
+	ExitRevert, ExitSucceed,
 };
 use module_support::{DEXManager, SwapLimit};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -64,23 +61,16 @@ where
 	Runtime: module_evm::Config + module_dex::Config + module_prices::Config,
 	module_dex::Pallet<Runtime>: DEXManager<Runtime::AccountId, Balance, CurrencyId>,
 {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let gas_cost = Pricer::<Runtime>::cost(handle)?;
+		handle.record_cost(gas_cost)?;
+
 		let input = Input::<
 			Action,
 			Runtime::AccountId,
 			Runtime::AddressMapping,
 			<Runtime as module_dex::Config>::Erc20InfoMapping,
-		>::new(input, target_gas_limit(target_gas));
-
-		let gas_cost = Pricer::<Runtime>::cost(&input)?;
-
-		if let Some(gas_limit) = target_gas {
-			if gas_limit < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
+		>::new(handle.input());
 
 		let action = input.action()?;
 
@@ -102,9 +92,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint_tuple(vec![balance_a, balance_b]),
-					logs: Default::default(),
 				})
 			}
 			Action::GetLiquidityTokenAddress => {
@@ -122,9 +110,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_address(address),
-					logs: Default::default(),
 				})
 			}
 			Action::GetSwapTargetAmount => {
@@ -148,9 +134,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(target),
-					logs: Default::default(),
 				})
 			}
 			Action::GetSwapSupplyAmount => {
@@ -174,9 +158,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(supply),
-					logs: Default::default(),
 				})
 			}
 			Action::SwapWithExactSupply => {
@@ -198,17 +180,15 @@ where
 				let (_, value) =
 					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::swap_with_specific_path(&who, &path, SwapLimit::ExactSupply(supply_amount, min_target_amount))
 					.map_err(|e|
-							 PrecompileFailure::Revert {
-								 exit_status: ExitRevert::Reverted,
-								 output: Into::<&str>::into(e).as_bytes().to_vec(),
-								 cost: target_gas_limit(target_gas).unwrap_or_default(),
-							 })?;
+						PrecompileFailure::Revert {
+							exit_status: ExitRevert::Reverted,
+							output: Into::<&str>::into(e).as_bytes().to_vec(),
+						}
+					)?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(value),
-					logs: Default::default(),
 				})
 			}
 			Action::SwapWithExactTarget => {
@@ -230,17 +210,15 @@ where
 				let (value, _) =
 					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::swap_with_specific_path(&who, &path, SwapLimit::ExactTarget(max_supply_amount, target_amount))
 					.map_err(|e|
-							 PrecompileFailure::Revert {
-								 exit_status: ExitRevert::Reverted,
-								 output: Output::encode_error_msg("DEX SwapWithExactTarget failed", e),
-								 cost: target_gas_limit(target_gas).unwrap_or_default(),
-							 })?;
+						PrecompileFailure::Revert {
+							exit_status: ExitRevert::Reverted,
+							output: Output::encode_error_msg("DEX SwapWithExactTarget failed", e),
+						}
+					)?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(value),
-					logs: Default::default(),
 				})
 			}
 			Action::AddLiquidity => {
@@ -269,14 +247,11 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("DEX AddLiquidity failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::RemoveLiquidity => {
@@ -305,14 +280,11 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("DEX RemoveLiquidity failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 		}
@@ -327,14 +299,13 @@ where
 {
 	const BASE_COST: u64 = 200;
 
-	fn cost(
-		input: &Input<
+	fn cost(handle: &mut impl PrecompileHandle) -> Result<u64, PrecompileFailure> {
+		let input = Input::<
 			Action,
 			Runtime::AccountId,
 			Runtime::AddressMapping,
 			<Runtime as module_dex::Config>::Erc20InfoMapping,
-		>,
-	) -> Result<u64, PrecompileFailure> {
+		>::new(handle.input());
 		let action = input.action()?;
 
 		let cost: u64 = match action {
@@ -483,7 +454,7 @@ mod tests {
 	use crate::precompile::mock::{alice_evm_addr, new_test_ext, DexModule, RuntimeOrigin, Test, ALICE, AUSD, DOT};
 	use frame_support::{assert_noop, assert_ok};
 	use hex_literal::hex;
-	use module_evm::ExitRevert;
+	use module_evm::{precompiles::tests::MockPrecompileHandle, Context, ExitRevert};
 
 	type DEXPrecompile = crate::DEXPrecompile<Test>;
 
@@ -525,7 +496,7 @@ mod tests {
 				00000000000000000000000000000000 000000000000000000000000000f4240
 			"};
 
-			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = DEXPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});
@@ -567,7 +538,7 @@ mod tests {
 				000000000000000000000000 0000000000000000000200000000010000000002
 			"};
 
-			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = DEXPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
@@ -581,11 +552,10 @@ mod tests {
 			"};
 
 			assert_noop!(
-				DEXPrecompile::execute(&input, Some(10_000), &context, false),
+				DEXPrecompile::execute(&mut MockPrecompileHandle::new(&input, Some(10_000), &context, false)),
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid currency id".into(),
-					cost: target_gas_limit(Some(10_000)).unwrap(),
 				}
 			);
 		});
@@ -633,7 +603,7 @@ mod tests {
 				00000000000000000000000000000000 000000000000000000000000000003dd
 			"};
 
-			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = DEXPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});
@@ -681,7 +651,7 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000001
 			"};
 
-			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = DEXPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});
@@ -733,7 +703,7 @@ mod tests {
 				00000000000000000000000000000000 000000000000000000000000000003dd
 			"};
 
-			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = DEXPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});
@@ -785,7 +755,7 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000001
 			"};
 
-			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = DEXPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});

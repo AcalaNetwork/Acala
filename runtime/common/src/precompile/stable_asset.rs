@@ -16,17 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{
-	input::{Input, InputT, Output},
-	target_gas_limit,
-};
+use super::input::{Input, InputT, Output};
 use crate::{precompile::input::InputPricer, WeightToGas};
 use frame_support::traits::Get;
 use frame_system::pallet_prelude::*;
 use module_evm::{
 	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed,
+	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
+	ExitRevert, ExitSucceed,
 };
 use module_support::Erc20InfoMapping;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -67,21 +64,13 @@ where
 		BlockNumber = BlockNumberFor<Runtime>,
 	>,
 {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let gas_cost = Pricer::<Runtime>::cost(handle)?;
+		handle.record_cost(gas_cost)?;
+
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
-			input,
-			target_gas_limit(target_gas),
+			handle.input(),
 		);
-
-		let mut gas_cost = Pricer::<Runtime>::cost(&input)?;
-
-		if let Some(gas_limit) = target_gas {
-			if gas_limit < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
 
 		let action = input.action()?;
 
@@ -92,21 +81,12 @@ where
 				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
 					// dynamic gas cost calculation
 					// cost of reading asset currencies
-					gas_cost = gas_cost.saturating_add(
-						pool_info
-							.assets
-							.iter()
-							.map(|x| InputPricer::<Runtime>::read_currency(*x))
-							.sum::<u64>(),
-					);
-					// make sure there's enough gas
-					if let Some(gas_limit) = target_gas {
-						if gas_limit < gas_cost {
-							return Err(PrecompileFailure::Error {
-								exit_status: ExitError::OutOfGas,
-							});
-						}
-					}
+					let cost = pool_info
+						.assets
+						.iter()
+						.map(|x| InputPricer::<Runtime>::read_currency(*x))
+						.sum::<u64>();
+					handle.record_cost(cost)?;
 
 					let assets: Vec<H160> = pool_info
 						.assets
@@ -116,16 +96,12 @@ where
 
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Output::encode_address_array(assets),
-						logs: Default::default(),
 					})
 				} else {
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Default::default(),
-						logs: Default::default(),
 					})
 				}
 			}
@@ -135,16 +111,12 @@ where
 				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Output::encode_uint(pool_info.total_supply),
-						logs: Default::default(),
 					})
 				} else {
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Default::default(),
-						logs: Default::default(),
 					})
 				}
 			}
@@ -154,16 +126,12 @@ where
 				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Output::encode_uint(pool_info.precision),
-						logs: Default::default(),
 					})
 				} else {
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Default::default(),
-						logs: Default::default(),
 					})
 				}
 			}
@@ -173,16 +141,12 @@ where
 				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Output::encode_uint(pool_info.mint_fee),
-						logs: Default::default(),
 					})
 				} else {
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Default::default(),
-						logs: Default::default(),
 					})
 				}
 			}
@@ -192,16 +156,12 @@ where
 				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Output::encode_uint(pool_info.swap_fee),
-						logs: Default::default(),
 					})
 				} else {
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Default::default(),
-						logs: Default::default(),
 					})
 				}
 			}
@@ -211,16 +171,12 @@ where
 				if let Some(pool_info) = <nutsfinance_stable_asset::Pallet<Runtime> as StableAsset>::pool(pool_id) {
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Output::encode_uint(pool_info.redeem_fee),
-						logs: Default::default(),
 					})
 				} else {
 					Ok(PrecompileOutput {
 						exit_status: ExitSucceed::Returned,
-						cost: gas_cost,
 						output: Default::default(),
-						logs: Default::default(),
 					})
 				}
 			}
@@ -245,13 +201,10 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("StableAsset StableAssetSwap failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint_tuple(vec![input, output]),
-					logs: Default::default(),
 				})
 			}
 			Action::StableAssetMint => {
@@ -274,13 +227,10 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("StableAsset StableAssetMint failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Default::default(),
-					logs: Default::default(),
 				})
 			}
 			Action::StableAssetRedeem => {
@@ -303,13 +253,10 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("StableAsset StableAssetRedeem failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Default::default(),
-					logs: Default::default(),
 				})
 			}
 			Action::StableAssetRedeemSingle => {
@@ -331,13 +278,10 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("StableAsset StableAssetRedeemSingle failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Default::default(),
-					logs: Default::default(),
 				})
 			}
 			Action::StableAssetRedeemMulti => {
@@ -360,13 +304,10 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("StableAsset StableAssetRedeemMulti failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Default::default(),
-					logs: Default::default(),
 				})
 			}
 		}
@@ -381,14 +322,11 @@ where
 {
 	const BASE_COST: u64 = 200;
 
-	fn cost(
-		input: &Input<
-			Action,
-			Runtime::AccountId,
-			Runtime::AddressMapping,
-			<Runtime as module_prices::Config>::Erc20InfoMapping,
-		>,
-	) -> Result<u64, PrecompileFailure> {
+	fn cost(handle: &mut impl PrecompileHandle) -> Result<u64, PrecompileFailure> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			handle.input(),
+		);
+
 		let action = input.action()?;
 
 		let cost: u64 = match action {
@@ -458,6 +396,7 @@ mod tests {
 	use crate::precompile::mock::{alice_evm_addr, new_test_ext, RuntimeOrigin, StableAsset, Test, ALICE, AUSD, DOT};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
+	use module_evm::{precompiles::tests::MockPrecompileHandle, Context};
 
 	type StableAssetPrecompile = crate::StableAssetPrecompile<Test>;
 
@@ -488,7 +427,8 @@ mod tests {
 				fb0f0f34
 				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			let expected_output = hex! {"
 				00000000000000000000000000000000 00000000000000000000000000000020
 				00000000000000000000000000000000 00000000000000000000000000000002
@@ -506,7 +446,8 @@ mod tests {
 				fb0f0f34
 				00000000000000000000000000000000000000000000000000000000 00000001
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert!(resp.output.is_empty());
 		});
@@ -545,7 +486,8 @@ mod tests {
 				7172c6aa
 				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			let expected_output = hex! {"
 				00000000000000000000000000000000 000000000000000000000000001e8480
 			"};
@@ -560,7 +502,8 @@ mod tests {
 				7172c6aa
 				00000000000000000000000000000000000000000000000000000000 00000001
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert!(resp.output.is_empty());
 		});
@@ -593,7 +536,8 @@ mod tests {
 				9ccdcf91
 				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			let expected_output = hex! {"
 				00000000000000000000000000000000 00000000000000000000000000000001
 			"};
@@ -608,7 +552,8 @@ mod tests {
 				9ccdcf91
 				00000000000000000000000000000000000000000000000000000000 00000001
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert!(resp.output.is_empty());
 		});
@@ -641,7 +586,8 @@ mod tests {
 				62ff9875
 				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			let expected_output = hex! {"
 				00000000000000000000000000000000 00000000000000000000000000000002
 			"};
@@ -656,7 +602,8 @@ mod tests {
 				62ff9875
 				00000000000000000000000000000000000000000000000000000000 00000001
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert!(resp.output.is_empty());
 		});
@@ -689,7 +636,8 @@ mod tests {
 				68410f61
 				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			let expected_output = hex! {"
 				00000000000000000000000000000000 00000000000000000000000000000003
 			"};
@@ -704,7 +652,8 @@ mod tests {
 				68410f61
 				00000000000000000000000000000000000000000000000000000000 00000001
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert!(resp.output.is_empty());
 		});
@@ -737,7 +686,8 @@ mod tests {
 				7f2f11ca
 				00000000000000000000000000000000000000000000000000000000 00000000
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			let expected_output = hex! {"
 				00000000000000000000000000000000 00000000000000000000000000000004
 			"};
@@ -752,7 +702,8 @@ mod tests {
 				7f2f11ca
 				00000000000000000000000000000000000000000000000000000000 00000001
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert!(resp.output.is_empty());
 		});
@@ -797,7 +748,9 @@ mod tests {
 				00000000000000000000000000000000 000000000000000000000000000f4240
 				00000000000000000000000000000000 000000000000000000000000000f4240
 			"};
-			let mint_resp = StableAssetPrecompile::execute(&mint_input, None, &context, false).unwrap();
+			let mint_resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&mint_input, None, &context, false))
+					.unwrap();
 			assert_eq!(mint_resp.exit_status, ExitSucceed::Returned);
 			assert!(mint_resp.output.is_empty());
 
@@ -819,7 +772,9 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000001
 				00000000000000000000000000000000 00000000000000000000000000000002
 			"};
-			let redeem_resp = StableAssetPrecompile::execute(&redeem_input, None, &context, false).unwrap();
+			let redeem_resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&redeem_input, None, &context, false))
+					.unwrap();
 			assert_eq!(redeem_resp.exit_status, ExitSucceed::Returned);
 			assert!(redeem_resp.output.is_empty());
 
@@ -839,8 +794,13 @@ mod tests {
 				0000000000000000000000000000000000000000000000000000000000000000
 				0000000000000000000000000000000000000000000000000000000000000002
 			"};
-			let redeem_single_resp =
-				StableAssetPrecompile::execute(&redeem_single_input, None, &context, false).unwrap();
+			let redeem_single_resp = StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(
+				&redeem_single_input,
+				None,
+				&context,
+				false,
+			))
+			.unwrap();
 			assert_eq!(redeem_single_resp.exit_status, ExitSucceed::Returned);
 			assert!(redeem_single_resp.output.is_empty());
 
@@ -859,7 +819,13 @@ mod tests {
 				000000000000000000000000000000000000000000000000000000000000c350
 				000000000000000000000000000000000000000000000000000000000000c350
 			"};
-			let redeem_multi_resp = StableAssetPrecompile::execute(&redeem_multi_input, None, &context, false).unwrap();
+			let redeem_multi_resp = StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(
+				&redeem_multi_input,
+				None,
+				&context,
+				false,
+			))
+			.unwrap();
 			assert_eq!(redeem_multi_resp.exit_status, ExitSucceed::Returned);
 			assert!(redeem_multi_resp.output.is_empty());
 		});
@@ -917,7 +883,8 @@ mod tests {
 				00000000000000000000000000000000 0000000000000000000000000007a120
 				00000000000000000000000000000000 00000000000000000000000000079ab3
 			"};
-			let resp = StableAssetPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output);
 
@@ -941,15 +908,15 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 				00000000000000000000000000000000000000000000000000000000 00000002
 			"};
-			let resp = StableAssetPrecompile::execute(&input, Some(200_000), &context, false)
-				.err()
-				.unwrap();
+			let resp =
+				StableAssetPrecompile::execute(&mut MockPrecompileHandle::new(&input, Some(200_000), &context, false))
+					.err()
+					.unwrap();
 			assert_eq!(
 				resp,
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "StableAsset StableAssetSwap failed: PoolNotFound".into(),
-					cost: target_gas_limit(Some(200_000)).unwrap_or_default()
 				}
 			);
 		});

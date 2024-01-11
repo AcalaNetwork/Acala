@@ -18,14 +18,13 @@
 
 use super::{
 	input::{Input, InputPricer, InputT, Output},
-	target_gas_limit,
 	weights::PrecompileWeights,
 };
 use crate::WeightToGas;
 use module_evm::{
 	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed, WeightInfo,
+	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
+	ExitRevert, ExitSucceed, WeightInfo,
 };
 use module_support::EVMManager;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -67,21 +66,13 @@ where
 	Runtime: module_evm::Config + module_prices::Config,
 	module_evm::Pallet<Runtime>: EVMManager<Runtime::AccountId, Balance>,
 {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let gas_cost = Pricer::<Runtime>::cost(handle)?;
+		handle.record_cost(gas_cost)?;
+
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
-			input,
-			target_gas_limit(target_gas),
+			handle.input(),
 		);
-
-		let gas_cost = Pricer::<Runtime>::cost(&input)?;
-
-		if let Some(gas_limit) = target_gas {
-			if gas_limit < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
 
 		let action = input.action()?;
 
@@ -90,18 +81,14 @@ where
 				let output = module_evm::Pallet::<Runtime>::query_new_contract_extra_bytes();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(output),
-					logs: Default::default(),
 				})
 			}
 			Action::QueryStorageDepositPerByte => {
 				let deposit = module_evm::Pallet::<Runtime>::query_storage_deposit_per_byte();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(deposit),
-					logs: Default::default(),
 				})
 			}
 			Action::QueryMaintainer => {
@@ -111,33 +98,26 @@ where
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Into::<&str>::into(e).as_bytes().to_vec(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_address(maintainer),
-					logs: Default::default(),
 				})
 			}
 			Action::QueryDeveloperDeposit => {
 				let deposit = module_evm::Pallet::<Runtime>::query_developer_deposit();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(deposit),
-					logs: Default::default(),
 				})
 			}
 			Action::QueryPublicationFee => {
 				let fee = module_evm::Pallet::<Runtime>::query_publication_fee();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(fee),
-					logs: Default::default(),
 				})
 			}
 			Action::TransferMaintainer => {
@@ -159,14 +139,11 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("Evm TransferMaintainer failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::PublishContract => {
@@ -176,15 +153,12 @@ where
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("Evm PublishContract failed", e),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::DisableDeveloperAccount => {
@@ -193,15 +167,12 @@ where
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("Evm DisableDeveloperAccount failed", e),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::EnableDeveloperAccount => {
@@ -210,15 +181,12 @@ where
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("Evm EnableDeveloperAccount failed", e),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::QueryDeveloperStatus => {
@@ -226,9 +194,7 @@ where
 				let developer_status = <module_evm::Pallet<Runtime>>::query_developer_status(who);
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_bool(developer_status),
-					logs: Default::default(),
 				})
 			}
 		}
@@ -243,9 +209,10 @@ where
 {
 	const BASE_COST: u64 = 50;
 
-	fn cost(
-		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
-	) -> Result<u64, PrecompileFailure> {
+	fn cost(handle: &mut impl PrecompileHandle) -> Result<u64, PrecompileFailure> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			handle.input(),
+		);
 		let action = input.action()?;
 		let cost = match action {
 			Action::QueryNewContractExtraBytes => {
@@ -315,7 +282,7 @@ mod tests {
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
-	use module_evm::{ExitReason, Runner};
+	use module_evm::{precompiles::tests::MockPrecompileHandle, Context, ExitError, ExitReason, Runner};
 	use sp_core::H160;
 
 	type EVMPrecompile = crate::EVMPrecompile<Test>;
@@ -341,7 +308,7 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 			"};
 
-			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = EVMPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
@@ -352,7 +319,7 @@ mod tests {
 				000000000000000000000000 1000000000000000000000000000000000000001
 			"};
 
-			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = EVMPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, [0u8; 0].to_vec());
 
@@ -370,7 +337,7 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000001
 			"};
 
-			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = EVMPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
@@ -383,7 +350,7 @@ mod tests {
 				000000000000000000000000 1000000000000000000000000000000000000001
 			"};
 
-			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = EVMPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, [0u8; 0].to_vec());
 
@@ -401,7 +368,7 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 			"};
 
-			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = EVMPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});
@@ -492,7 +459,7 @@ mod tests {
 			"};
 
 			// publish contract with precompile
-			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = EVMPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, [0u8; 0].to_vec());
 

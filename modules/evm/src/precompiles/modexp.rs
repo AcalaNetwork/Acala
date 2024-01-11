@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::Precompile;
-use crate::runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult};
-use module_evm_utility::evm::{Context, ExitError, ExitSucceed};
+use crate::runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult};
+use module_evm_utility::evm::{ExitError, ExitSucceed};
 use num::{BigUint, One, Zero};
 use sp_core::U256;
 use sp_runtime::traits::UniqueSaturatedInto;
@@ -269,7 +269,10 @@ impl ModexpImpl for Modexp {
 }
 
 impl Precompile for IstanbulModexp {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let input = handle.input();
+		let target_gas = handle.gas_limit();
+
 		if input.len() as u64 > MAX_LENGTH {
 			return Err(PrecompileFailure::Error {
 				exit_status: ExitError::OutOfGas,
@@ -284,17 +287,21 @@ impl Precompile for IstanbulModexp {
 			}
 		}
 
+		let output = Self::execute_modexp(input);
+		handle.record_cost(cost.as_u64())?;
+
 		Ok(PrecompileOutput {
 			exit_status: ExitSucceed::Returned,
-			cost: cost.as_u64(),
-			output: Self::execute_modexp(input),
-			logs: Default::default(),
+			output,
 		})
 	}
 }
 
 impl Precompile for Modexp {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let input = handle.input();
+		let target_gas = handle.gas_limit();
+
 		if input.len() as u64 > MAX_LENGTH {
 			return Err(PrecompileFailure::Error {
 				exit_status: ExitError::OutOfGas,
@@ -320,11 +327,12 @@ impl Precompile for Modexp {
 			}
 		}
 
+		let output = Self::execute_modexp(input);
+		handle.record_cost(cost.as_u64())?;
+
 		Ok(PrecompileOutput {
 			exit_status: ExitSucceed::Returned,
-			cost: cost.as_u64(),
-			output: Self::execute_modexp(input),
-			logs: Default::default(),
+			output,
 		})
 	}
 }
@@ -332,7 +340,9 @@ impl Precompile for Modexp {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::precompiles::tests::MockPrecompileHandle;
 	use hex_literal::hex;
+	use module_evm_utility::evm::Context;
 
 	fn get_context() -> Context {
 		Context {
@@ -345,19 +355,17 @@ mod tests {
 	#[test]
 	fn handle_min_gas() {
 		assert_eq!(
-			Modexp::execute(&[], Some(199), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(&[], Some(199), &get_context(), false)),
 			Err(PrecompileFailure::Error {
 				exit_status: ExitError::OutOfGas
 			})
 		);
 
 		assert_eq!(
-			Modexp::execute(&[], Some(200), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(&[], Some(200), &get_context(), false)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 200,
 				output: [0u8; 0].to_vec(),
-				logs: Default::default(),
 			})
 		);
 	}
@@ -365,12 +373,10 @@ mod tests {
 	#[test]
 	fn test_empty_input() {
 		assert_eq!(
-			Modexp::execute(&[], None, &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(&[], None, &get_context(), false)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 200,
 				output: [0u8; 0].to_vec(),
-				logs: Default::default(),
 			})
 		);
 	}
@@ -384,12 +390,10 @@ mod tests {
 		"};
 
 		assert_eq!(
-			Modexp::execute(&input, None, &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(&input, None, &get_context(), false)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 200,
 				output: [0u8; 1].to_vec(),
-				logs: Default::default(),
 			})
 		);
 	}
@@ -403,7 +407,12 @@ mod tests {
 		"};
 
 		assert_eq!(
-			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Err(PrecompileFailure::Error {
 				exit_status: ExitError::OutOfGas,
 			})
@@ -419,7 +428,12 @@ mod tests {
 		"};
 
 		assert_eq!(
-			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Err(PrecompileFailure::Error {
 				exit_status: ExitError::OutOfGas,
 			})
@@ -434,7 +448,12 @@ mod tests {
 			00000000000000000000000000000000000000000000000000000000503c8ac3
 		"};
 		assert_eq!(
-			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Err(PrecompileFailure::Error {
 				exit_status: ExitError::OutOfGas,
 			})
@@ -455,12 +474,15 @@ mod tests {
 		// 3 ^ 5 % 7 == 5
 
 		assert_eq!(
-			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 200,
 				output: vec![5],
-				logs: Default::default(),
 			})
 		);
 	}
@@ -482,22 +504,28 @@ mod tests {
 		U256::from(10055u64).to_big_endian(&mut output);
 
 		assert_eq!(
-			IstanbulModexp::execute(&input, Some(100_000), &get_context(), false),
+			IstanbulModexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 204,
 				output: output.to_vec(),
-				logs: Default::default(),
 			})
 		);
 
 		assert_eq!(
-			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 200,
 				output: output.to_vec(),
-				logs: Default::default(),
 			})
 		);
 	}
@@ -517,22 +545,28 @@ mod tests {
 		U256::from(1u64).to_big_endian(&mut output);
 
 		assert_eq!(
-			IstanbulModexp::execute(&input, Some(100_000), &get_context(), false),
+			IstanbulModexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 13056,
 				output: output.to_vec(),
-				logs: Default::default(),
 			})
 		);
 
 		assert_eq!(
-			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 1360,
 				output: output.to_vec(),
-				logs: Default::default(),
 			})
 		);
 	}
@@ -551,22 +585,28 @@ mod tests {
 		let expected = hex!("3b01b01ac41f2d6e917c6d6a221ce793802469026d9ab7578fa2e79e4da6aaab");
 
 		assert_eq!(
-			IstanbulModexp::execute(&input, Some(100_000), &get_context(), false),
+			IstanbulModexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 768,
 				output: expected.to_vec(),
-				logs: Default::default(),
 			})
 		);
 
 		assert_eq!(
-			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 200,
 				output: expected.to_vec(),
-				logs: Default::default(),
 			})
 		);
 	}
@@ -582,12 +622,15 @@ mod tests {
 		"};
 
 		assert_eq!(
-			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 200,
 				output: [0u8; 0].to_vec(),
-				logs: Default::default(),
 			})
 		);
 	}
@@ -610,12 +653,15 @@ mod tests {
 		];
 
 		assert_eq!(
-			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 200,
 				output: [0u8; 1].to_vec(),
-				logs: Default::default(),
 			})
 		);
 	}
@@ -625,34 +671,50 @@ mod tests {
 		let input = vec![0u8; 1025];
 
 		assert_eq!(
-			IstanbulModexp::execute(&input[..1024], Some(100_000), &get_context(), false),
+			IstanbulModexp::execute(&mut MockPrecompileHandle::new(
+				&input[..1024],
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 0,
 				output: [0u8; 0].to_vec(),
-				logs: Default::default(),
 			})
 		);
 
 		assert_eq!(
-			Modexp::execute(&input[..1024], Some(100_000), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(
+				&input[..1024],
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
-				cost: 200,
 				output: [0u8; 0].to_vec(),
-				logs: Default::default(),
 			})
 		);
 
 		assert_eq!(
-			IstanbulModexp::execute(&input, Some(100_000), &get_context(), false),
+			IstanbulModexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Err(PrecompileFailure::Error {
 				exit_status: ExitError::OutOfGas,
 			})
 		);
 
 		assert_eq!(
-			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Modexp::execute(&mut MockPrecompileHandle::new(
+				&input,
+				Some(100_000),
+				&get_context(),
+				false
+			)),
 			Err(PrecompileFailure::Error {
 				exit_status: ExitError::OutOfGas,
 			})

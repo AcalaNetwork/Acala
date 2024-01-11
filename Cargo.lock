@@ -3532,6 +3532,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethereum"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e04d24d20b8ff2235cffbf242d5092de3aa45f77c5270ddbfadd2778ca13fea"
+dependencies = [
+ "bytes",
+ "ethereum-types",
+ "hash-db 0.16.0",
+ "hash256-std-hasher",
+ "parity-scale-codec",
+ "rlp",
+ "scale-info",
+ "serde",
+ "sha3",
+ "trie-root",
+]
+
+[[package]]
 name = "ethereum-types"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3587,12 +3605,12 @@ dependencies = [
 
 [[package]]
 name = "evm"
-version = "0.36.0"
-source = "git+https://github.com/rust-blockchain/evm?rev=13240a8a551586fdef0b5028ed73af80b248092a#13240a8a551586fdef0b5028ed73af80b248092a"
+version = "0.37.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=842e03d068ddb6a3195a2dedc4a9b63caadb3355#842e03d068ddb6a3195a2dedc4a9b63caadb3355"
 dependencies = [
  "auto_impl",
  "environmental",
- "ethereum",
+ "ethereum 0.14.0",
  "evm-core",
  "evm-gasometer",
  "evm-runtime",
@@ -3607,8 +3625,8 @@ dependencies = [
 
 [[package]]
 name = "evm-core"
-version = "0.36.0"
-source = "git+https://github.com/rust-blockchain/evm?rev=13240a8a551586fdef0b5028ed73af80b248092a#13240a8a551586fdef0b5028ed73af80b248092a"
+version = "0.37.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=842e03d068ddb6a3195a2dedc4a9b63caadb3355#842e03d068ddb6a3195a2dedc4a9b63caadb3355"
 dependencies = [
  "parity-scale-codec",
  "primitive-types",
@@ -3618,8 +3636,8 @@ dependencies = [
 
 [[package]]
 name = "evm-gasometer"
-version = "0.36.0"
-source = "git+https://github.com/rust-blockchain/evm?rev=13240a8a551586fdef0b5028ed73af80b248092a#13240a8a551586fdef0b5028ed73af80b248092a"
+version = "0.37.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=842e03d068ddb6a3195a2dedc4a9b63caadb3355#842e03d068ddb6a3195a2dedc4a9b63caadb3355"
 dependencies = [
  "environmental",
  "evm-core",
@@ -3633,7 +3651,7 @@ version = "0.13.1"
 dependencies = [
  "acala-primitives",
  "env_logger",
- "ethereum",
+ "ethereum 0.14.0",
  "ethjson",
  "frame-support",
  "frame-system",
@@ -3665,8 +3683,8 @@ dependencies = [
 
 [[package]]
 name = "evm-runtime"
-version = "0.36.0"
-source = "git+https://github.com/rust-blockchain/evm?rev=13240a8a551586fdef0b5028ed73af80b248092a#13240a8a551586fdef0b5028ed73af80b248092a"
+version = "0.37.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=842e03d068ddb6a3195a2dedc4a9b63caadb3355#842e03d068ddb6a3195a2dedc4a9b63caadb3355"
 dependencies = [
  "auto_impl",
  "environmental",
@@ -6962,7 +6980,7 @@ dependencies = [
 name = "module-evm-utility"
 version = "2.23.0"
 dependencies = [
- "ethereum",
+ "ethereum 0.15.0",
  "evm",
  "evm-gasometer",
  "evm-runtime",
