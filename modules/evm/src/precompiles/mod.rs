@@ -18,7 +18,7 @@
 
 //! Builtin precompiles.
 
-use crate::runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult};
+use crate::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult};
 use module_evm_utility::evm::{ExitError, ExitSucceed};
 use sp_std::vec::Vec;
 
@@ -93,7 +93,7 @@ fn ensure_linear_cost(target_gas: Option<u64>, len: u64, base: u64, word: u64) -
 }
 
 pub mod tests {
-	use crate::{runner::state::PrecompileHandle, ExitError, ExitReason};
+	use crate::{ExitError, ExitReason, PrecompileHandle};
 	use module_evm_utility::evm::{Context, Transfer};
 	use sp_core::{H160, H256};
 	use sp_std::vec::Vec;

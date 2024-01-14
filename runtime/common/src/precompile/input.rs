@@ -22,7 +22,7 @@ use sp_std::{marker::PhantomData, result::Result, vec::Vec};
 use crate::WeightToGas;
 use ethabi::Token;
 use frame_support::traits::Get;
-use module_evm::{runner::state::PrecompileFailure, ExitRevert};
+use module_evm::{ExitRevert, PrecompileFailure};
 use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
 use primitives::{Balance, CurrencyId, DexShare};
 use sp_core::{H160, U256};

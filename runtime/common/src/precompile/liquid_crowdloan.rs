@@ -19,9 +19,8 @@
 use super::input::{Input, InputPricer, InputT, Output};
 use crate::WeightToGas;
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
-	ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_liquid_crowdloan::WeightInfo;
 use module_support::Erc20InfoMapping as _;

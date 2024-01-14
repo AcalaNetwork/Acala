@@ -31,8 +31,7 @@ use module_evm::{
 		Blake2F, Bn128Add, Bn128Mul, Bn128Pairing, ECRecover, ECRecoverPublicKey, Identity, IstanbulModexp, Modexp,
 		Precompile, Ripemd160, Sha256, Sha3FIPS256, Sha3FIPS512,
 	},
-	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileResult, PrecompileSet},
-	ExitRevert,
+	ExitRevert, PrecompileFailure, PrecompileHandle, PrecompileResult, PrecompileSet,
 };
 use module_support::{PrecompileCallerFilter, PrecompilePauseFilter};
 use sp_core::H160;

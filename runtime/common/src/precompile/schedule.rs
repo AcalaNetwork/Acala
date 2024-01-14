@@ -28,9 +28,8 @@ use frame_support::{
 	},
 };
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
-	ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_support::{AddressMapping, TransactionPayment};
 use num_enum::{IntoPrimitive, TryFromPrimitive};

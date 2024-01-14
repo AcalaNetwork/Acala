@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::Precompile;
-use crate::runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult};
+use crate::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult};
 use module_evm_utility::evm::{ExitError, ExitSucceed};
 use num::{BigUint, One, Zero};
 use sp_core::U256;

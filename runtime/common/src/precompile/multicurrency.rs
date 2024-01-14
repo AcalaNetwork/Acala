@@ -24,9 +24,8 @@ use frame_support::{
 };
 use module_currencies::WeightInfo;
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
-	ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_support::Erc20InfoMapping as Erc20InfoMappingT;
 use num_enum::{IntoPrimitive, TryFromPrimitive};

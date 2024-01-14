@@ -22,9 +22,8 @@ use super::{
 };
 use crate::WeightToGas;
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
-	ExitRevert, ExitSucceed, WeightInfo,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult, WeightInfo,
 };
 use module_support::EVMManager;
 use num_enum::{IntoPrimitive, TryFromPrimitive};

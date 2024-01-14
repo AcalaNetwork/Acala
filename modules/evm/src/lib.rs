@@ -24,7 +24,7 @@
 
 pub use crate::runner::{
 	stack::SubstrateStackState,
-	state::{PrecompileSet, StackExecutor, StackSubstateMetadata},
+	state::{PrecompileResult, StackExecutor, StackSubstateMetadata},
 	storage_meter::StorageMeter,
 	Runner,
 };
@@ -46,7 +46,11 @@ use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureRoot, En
 use hex_literal::hex;
 pub use module_evm_utility::{
 	ethereum::{AccessListItem, Log, TransactionAction},
-	evm::{self, Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed},
+	evm::{
+		self,
+		executor::stack::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileSet},
+		Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed,
+	},
 	Account,
 };
 pub use module_support::{

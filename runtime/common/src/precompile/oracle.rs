@@ -22,9 +22,7 @@ use super::{
 };
 use crate::{Weight, WeightToGas};
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
-	ExitSucceed,
+	precompiles::Precompile, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult,
 };
 use module_support::{Erc20InfoMapping as Erc20InfoMappingT, PriceProvider as PriceProviderT};
 use num_enum::{IntoPrimitive, TryFromPrimitive};

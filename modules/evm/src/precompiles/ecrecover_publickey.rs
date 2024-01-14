@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::LinearCostPrecompile;
-use crate::runner::state::PrecompileFailure;
+use crate::PrecompileFailure;
 use module_evm_utility::evm::{ExitError, ExitSucceed};
 use sp_std::{cmp::min, vec::Vec};
 

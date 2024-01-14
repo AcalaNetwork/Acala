@@ -20,9 +20,8 @@ use super::input::{Input, InputPricer, InputT, Output, PER_PARAM_BYTES};
 use crate::WeightToGas;
 use frame_support::pallet_prelude::{Decode, Encode, IsType};
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
-	ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use orml_traits::{XcmTransfer, XtokensWeightInfo};

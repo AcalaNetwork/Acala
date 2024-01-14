@@ -21,9 +21,8 @@ use crate::{precompile::input::InputPricer, WeightToGas};
 use frame_support::traits::Get;
 use frame_system::pallet_prelude::*;
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
-	ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_support::Erc20InfoMapping;
 use num_enum::{IntoPrimitive, TryFromPrimitive};

@@ -20,9 +20,8 @@ use super::input::{Input, InputT, Output};
 use crate::WeightToGas;
 use frame_support::{pallet_prelude::IsType, traits::Get};
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
-	ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_evm_accounts::WeightInfo;
 use module_support::EVMAccountsManager;

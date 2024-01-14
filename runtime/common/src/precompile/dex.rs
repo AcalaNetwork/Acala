@@ -21,9 +21,8 @@ use crate::WeightToGas;
 use frame_support::traits::Get;
 use module_dex::WeightInfo;
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult},
-	ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_support::{DEXManager, SwapLimit};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
