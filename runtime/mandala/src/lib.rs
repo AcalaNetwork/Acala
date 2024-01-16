@@ -42,6 +42,7 @@ use frame_support::{
 		EqualPrivilegeOnly, Get, Imbalance, InstanceFilter, LinearStoragePrice, LockIdentifier, OnUnbalanced,
 		SortedMembers,
 	},
+	transactional,
 	weights::{constants::RocksDbWeight, ConstantMultiplier, Weight},
 	PalletId,
 };
