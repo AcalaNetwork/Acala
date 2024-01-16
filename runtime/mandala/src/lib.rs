@@ -62,7 +62,6 @@ use orml_traits::{
 	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
 	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey, MultiCurrency,
 };
-use orml_utilities::simulate_execution;
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
 	define_combined_task,
@@ -2317,6 +2316,8 @@ impl_runtime_apis! {
 			}
 		}
 
+		// required by xtokens precompile
+		#[transactional]
 		fn call(
 			from: H160,
 			to: H160,
@@ -2327,20 +2328,17 @@ impl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 			_estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			// Fix xtokens: Transfer failed: Transactional(NoLayer)
-			simulate_execution(|| {
-				<Runtime as module_evm::Config>::Runner::rpc_call(
-					from,
-					from,
-					to,
-					data,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					<Runtime as module_evm::Config>::config(),
-				)
-			})
+			<Runtime as module_evm::Config>::Runner::rpc_call(
+				from,
+				from,
+				to,
+				data,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				<Runtime as module_evm::Config>::config(),
+			)
 		}
 
 		fn create(
