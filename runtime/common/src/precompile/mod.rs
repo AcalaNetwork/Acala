@@ -31,10 +31,11 @@ use module_evm::{
 		Blake2F, Bn128Add, Bn128Mul, Bn128Pairing, ECRecover, ECRecoverPublicKey, Identity, IstanbulModexp, Modexp,
 		Precompile, Ripemd160, Sha256, Sha3FIPS256, Sha3FIPS512,
 	},
-	ExitRevert, PrecompileFailure, PrecompileHandle, PrecompileResult, PrecompileSet,
+	ExitRevert, IsPrecompileResult, PrecompileFailure, PrecompileHandle, PrecompileResult, PrecompileSet,
 };
 use module_support::{PrecompileCallerFilter, PrecompilePauseFilter};
 use sp_core::H160;
+use sp_runtime::traits::Zero;
 use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
 pub mod dex;
@@ -234,7 +235,11 @@ where
 	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
 		let context = handle.context();
 		let address = handle.code_address();
-		if !self.is_precompile(address) {
+
+		if let IsPrecompileResult::Answer {
+			is_precompile: false, ..
+		} = self.is_precompile(address, u64::zero())
+		{
 			return None;
 		}
 
@@ -343,8 +348,19 @@ where
 		result
 	}
 
-	fn is_precompile(&self, address: H160) -> bool {
-		self.set.contains(&address) || E::is_precompile(&Default::default(), address)
+	fn is_precompile(&self, address: H160, _remaining_gas: u64) -> IsPrecompileResult {
+		let is_precompile = {
+			self.set.contains(&address)
+				|| match E::is_precompile(&Default::default(), address, u64::zero()) {
+					IsPrecompileResult::Answer { is_precompile, .. } => is_precompile,
+					_ => false,
+				}
+		};
+
+		IsPrecompileResult::Answer {
+			is_precompile,
+			extra_cost: 0,
+		}
 	}
 }
 
@@ -369,8 +385,11 @@ where
 		}
 	}
 
-	fn is_precompile(&self, address: H160) -> bool {
-		address == LIQUID_CROWDLOAN
+	fn is_precompile(&self, address: H160, _remaining_gas: u64) -> IsPrecompileResult {
+		IsPrecompileResult::Answer {
+			is_precompile: address == LIQUID_CROWDLOAN,
+			extra_cost: 0,
+		}
 	}
 }
 

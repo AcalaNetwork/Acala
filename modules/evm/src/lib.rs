@@ -48,7 +48,7 @@ pub use module_evm_utility::{
 	ethereum::{AccessListItem, Log, TransactionAction},
 	evm::{
 		self,
-		executor::stack::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileSet},
+		executor::stack::{IsPrecompileResult, PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileSet},
 		Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed,
 	},
 	Account,
