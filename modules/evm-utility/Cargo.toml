@@ -9,9 +9,9 @@ sha3 = { workspace = true }
 
 sp-std = { workspace = true }
 
-evm = { git = "https://github.com/rust-blockchain/evm", rev = "5fb8a4957c642134782e184c47f7d7b5a29f3629", default-features = false, features = ["with-codec"] }
-evm-gasometer = { git = "https://github.com/rust-blockchain/evm", rev = "5fb8a4957c642134782e184c47f7d7b5a29f3629", default-features = false }
-evm-runtime = { git = "https://github.com/rust-blockchain/evm", rev = "5fb8a4957c642134782e184c47f7d7b5a29f3629", default-features = false }
+evm = { git = "https://github.com/rust-blockchain/evm", rev = "b436a7f4b34a1bc63857938f09a32ecd397537c9", default-features = false, features = ["with-codec"] }
+evm-gasometer = { git = "https://github.com/rust-blockchain/evm", rev = "b436a7f4b34a1bc63857938f09a32ecd397537c9", default-features = false }
+evm-runtime = { git = "https://github.com/rust-blockchain/evm", rev = "b436a7f4b34a1bc63857938f09a32ecd397537c9", default-features = false }
 #evm = { version = "0.41.1", default-features = false, features = ["with-codec"] }
 #evm-gasometer = { version = "0.41.0", default-features = false }
 #evm-runtime = { version = "0.41.0", default-features = false }

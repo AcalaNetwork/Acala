@@ -509,8 +509,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			// EIP-3860
 			if init_code.len() > limit {
 				self.state.metadata_mut().gasometer.fail();
-				let _ = self.exit_substate(StackExitKind::Failed);
-				return Err(ExitError::OutOfGas);
+				return Err(ExitError::CreateContractLimit);
 			}
 			return self
 				.state
@@ -542,7 +541,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			if init_code.len() > limit {
 				self.state.metadata_mut().gasometer.fail();
 				let _ = self.exit_substate(StackExitKind::Failed);
-				return emit_exit!(ExitError::InitCodeLimit.into(), Vec::new());
+				return emit_exit!(ExitError::CreateContractLimit.into(), Vec::new());
 			}
 		}
 
@@ -583,7 +582,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			if init_code.len() > limit {
 				self.state.metadata_mut().gasometer.fail();
 				let _ = self.exit_substate(StackExitKind::Failed);
-				return emit_exit!(ExitError::InitCodeLimit.into(), Vec::new());
+				return emit_exit!(ExitError::CreateContractLimit.into(), Vec::new());
 			}
 		}
 
@@ -642,7 +641,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			if init_code.len() > limit {
 				self.state.metadata_mut().gasometer.fail();
 				let _ = self.exit_substate(StackExitKind::Failed);
-				return emit_exit!(ExitError::InitCodeLimit.into(), Vec::new());
+				return emit_exit!(ExitError::CreateContractLimit.into(), Vec::new());
 			}
 		}
 
