@@ -41,6 +41,8 @@ pub enum AcalaMultiSignature {
 	Eip1559([u8; 65]),
 	// An Ethereum SECP256k1 signature using Eip712 for message encoding.
 	AcalaEip712([u8; 65]),
+	// An Ethereum SECP256k1 signature using Eip2930 for message encoding.
+	Eip2930([u8; 65]),
 }
 
 impl From<ed25519::Signature> for AcalaMultiSignature {
