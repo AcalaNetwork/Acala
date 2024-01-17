@@ -19,9 +19,9 @@
 use module_evm_utility::evm::{maybe_borrowed::MaybeBorrowed, Runtime};
 use sp_core::H160;
 
-pub struct TaggedRuntime<'config, 'borrow> {
+pub struct TaggedRuntime<'borrow> {
 	pub kind: RuntimeKind,
-	pub inner: MaybeBorrowed<'borrow, Runtime<'config>>,
+	pub inner: MaybeBorrowed<'borrow, Runtime>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

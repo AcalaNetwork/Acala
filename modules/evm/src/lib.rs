@@ -414,8 +414,13 @@ pub mod module {
 					let state = SubstrateStackState::<T>::new(&vicinity, metadata);
 					let mut executor = StackExecutor::new_with_precompiles(state, T::config(), &());
 
-					let mut runtime =
-						evm::Runtime::new(Rc::new(account.code.clone()), Rc::new(Vec::new()), context, T::config());
+					let mut runtime = evm::Runtime::new(
+						Rc::new(account.code.clone()),
+						Rc::new(Vec::new()),
+						context,
+						T::config().stack_limit,
+						T::config().memory_limit,
+					);
 					let reason = executor.execute(&mut runtime);
 
 					assert!(

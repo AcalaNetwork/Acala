@@ -408,7 +408,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 	}
 
 	/// Execute the runtime until it returns.
-	pub fn execute(&mut self, runtime: &mut Runtime<'config>) -> ExitReason {
+	pub fn execute(&mut self, runtime: &mut Runtime) -> ExitReason {
 		let mut call_stack = Vec::with_capacity(DEFAULT_CALL_STACK_CAPACITY);
 		call_stack.push(TaggedRuntime {
 			kind: RuntimeKind::Execute,
@@ -419,10 +419,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 	}
 
 	/// Execute using Runtimes on the call_stack until it returns.
-	fn execute_with_call_stack<'borrow>(
-		&mut self,
-		call_stack: &mut Vec<TaggedRuntime<'config, 'borrow>>,
-	) -> (ExitReason, Option<H160>, Vec<u8>) {
+	fn execute_with_call_stack(&mut self, call_stack: &mut Vec<TaggedRuntime>) -> (ExitReason, Option<H160>, Vec<u8>) {
 		// This `interrupt_runtime` is used to pass the runtime obtained from the
 		// `Capture::Trap` branch in the match below back to the top of the call stack.
 		// The reason we can't simply `push` the runtime directly onto the stack in the
@@ -831,7 +828,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		init_code: Vec<u8>,
 		target_gas: Option<u64>,
 		take_l64: bool,
-	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), StackExecutorCreateInterrupt<'config>> {
+	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), StackExecutorCreateInterrupt<'static>> {
 		macro_rules! try_or_fail {
 			( $e:expr ) => {
 				match $e {
@@ -937,7 +934,13 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			self.state.inc_nonce(address);
 		}
 
-		let runtime = Runtime::new(Rc::new(init_code), Rc::new(Vec::new()), context, self.config);
+		let runtime = Runtime::new(
+			Rc::new(init_code),
+			Rc::new(Vec::new()),
+			context,
+			self.config.stack_limit,
+			self.config.memory_limit,
+		);
 
 		Capture::Trap(StackExecutorCreateInterrupt(TaggedRuntime {
 			kind: RuntimeKind::Create(address),
@@ -956,7 +959,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		take_l64: bool,
 		take_stipend: bool,
 		context: Context,
-	) -> Capture<(ExitReason, Vec<u8>), StackExecutorCallInterrupt<'config>> {
+	) -> Capture<(ExitReason, Vec<u8>), StackExecutorCallInterrupt<'static>> {
 		macro_rules! try_or_fail {
 			( $e:expr ) => {
 				match $e {
@@ -1064,7 +1067,13 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			};
 		}
 
-		let runtime = Runtime::new(Rc::new(code), Rc::new(input), context, self.config);
+		let runtime = Runtime::new(
+			Rc::new(code),
+			Rc::new(input),
+			context,
+			self.config.stack_limit,
+			self.config.memory_limit,
+		);
 
 		Capture::Trap(StackExecutorCallInterrupt(TaggedRuntime {
 			kind: RuntimeKind::Call(code_address),
@@ -1162,15 +1171,15 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 	}
 }
 
-pub struct StackExecutorCallInterrupt<'config>(TaggedRuntime<'config, 'config>);
-pub struct StackExecutorCreateInterrupt<'config>(TaggedRuntime<'config, 'config>);
+pub struct StackExecutorCallInterrupt<'borrow>(TaggedRuntime<'borrow>);
+pub struct StackExecutorCreateInterrupt<'borrow>(TaggedRuntime<'borrow>);
 
 impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 	for StackExecutor<'config, 'precompiles, S, P>
 {
-	type CreateInterrupt = StackExecutorCreateInterrupt<'config>;
+	type CreateInterrupt = StackExecutorCreateInterrupt<'static>;
 	type CreateFeedback = Infallible;
-	type CallInterrupt = StackExecutorCallInterrupt<'config>;
+	type CallInterrupt = StackExecutorCallInterrupt<'static>;
 	type CallFeedback = Infallible;
 
 	fn balance(&self, address: H160) -> U256 {
