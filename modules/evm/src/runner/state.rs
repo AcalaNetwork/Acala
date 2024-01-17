@@ -324,7 +324,7 @@ pub trait StackState<'config>: Backend {
 	fn is_cold(&self, address: H160) -> bool;
 	fn is_storage_cold(&self, address: H160, key: H256) -> bool;
 
-	fn inc_nonce(&mut self, address: H160);
+	fn inc_nonce(&mut self, address: H160) -> Result<(), ExitError>;
 	fn set_storage(&mut self, address: H160, key: H256, value: H256);
 	fn reset_storage(&mut self, address: H160);
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>);
@@ -691,7 +691,9 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>,
 	) -> (ExitReason, Vec<u8>) {
-		self.state.inc_nonce(caller);
+		if let Err(e) = self.state.inc_nonce(caller) {
+			return (e.into(), Vec::new());
+		}
 
 		event!(TransactCall {
 			caller,
@@ -772,7 +774,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 	}
 
 	/// Get account nonce.
-	pub fn nonce(&self, address: H160) -> U256 {
+	pub fn nonce(&self, address: H160) -> u64 {
 		self.state.basic(address).nonce
 	}
 
@@ -877,7 +879,9 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			return Capture::Exit((ExitError::OutOfFund.into(), None, Vec::new()));
 		}
 
-		self.state.inc_nonce(caller);
+		if let Err(e) = self.state.inc_nonce(caller) {
+			return Capture::Exit((e.into(), None, Vec::new()));
+		}
 
 		let after_gas = if take_l64 && self.config.call_l64_after_gas {
 			if self.config.estimate {
@@ -906,7 +910,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			}
 
 			// We will keep the nonce until the storages are cleared.
-			if self.nonce(address) > U256::zero() {
+			if self.nonce(address) > 0 {
 				let _ = self.exit_substate(StackExitKind::Failed);
 				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
 			}
@@ -934,7 +938,9 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		}
 
 		if self.config.create_increase_nonce {
-			self.state.inc_nonce(address);
+			if let Err(e) = self.state.inc_nonce(address) {
+				return Capture::Exit((e.into(), None, Vec::new()));
+			}
 		}
 
 		let runtime = Runtime::new(

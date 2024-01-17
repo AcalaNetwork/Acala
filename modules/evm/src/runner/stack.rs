@@ -733,8 +733,9 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		self.substate.deleted(address)
 	}
 
-	fn inc_nonce(&mut self, address: H160) {
+	fn inc_nonce(&mut self, address: H160) -> Result<(), ExitError> {
 		Pallet::<T>::inc_nonce(&address);
+		Ok(())
 	}
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) {
