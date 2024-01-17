@@ -1519,7 +1519,7 @@ impl<T: Config> Pallet<T> {
 		let balance = T::Currency::free_balance(&account_id);
 
 		Account {
-			nonce: UniqueSaturatedInto::<u64>::unique_saturated_into(nonce),
+			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
 			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(
 				convert_decimals_to_evm(balance),
 			)),
