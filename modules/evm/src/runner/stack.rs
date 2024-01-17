@@ -621,6 +621,10 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 		self.vicinity.origin
 	}
 
+	fn block_randomness(&self) -> Option<H256> {
+		None
+	}
+
 	fn block_hash(&self, number: U256) -> H256 {
 		if number > U256::from(u32::MAX) {
 			H256::default()

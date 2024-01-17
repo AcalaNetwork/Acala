@@ -3606,7 +3606,7 @@ dependencies = [
 [[package]]
 name = "evm"
 version = "0.37.0"
-source = "git+https://github.com/rust-blockchain/evm?rev=e7138f7234b117d29d4e653da4967d76e51c5eaf#e7138f7234b117d29d4e653da4967d76e51c5eaf"
+source = "git+https://github.com/rust-blockchain/evm?rev=21972c2392af3381bbfcd2139664ba3fff0ee287#21972c2392af3381bbfcd2139664ba3fff0ee287"
 dependencies = [
  "auto_impl",
  "environmental",
@@ -3626,7 +3626,7 @@ dependencies = [
 [[package]]
 name = "evm-core"
 version = "0.37.0"
-source = "git+https://github.com/rust-blockchain/evm?rev=e7138f7234b117d29d4e653da4967d76e51c5eaf#e7138f7234b117d29d4e653da4967d76e51c5eaf"
+source = "git+https://github.com/rust-blockchain/evm?rev=21972c2392af3381bbfcd2139664ba3fff0ee287#21972c2392af3381bbfcd2139664ba3fff0ee287"
 dependencies = [
  "parity-scale-codec",
  "primitive-types",
@@ -3637,7 +3637,7 @@ dependencies = [
 [[package]]
 name = "evm-gasometer"
 version = "0.37.0"
-source = "git+https://github.com/rust-blockchain/evm?rev=e7138f7234b117d29d4e653da4967d76e51c5eaf#e7138f7234b117d29d4e653da4967d76e51c5eaf"
+source = "git+https://github.com/rust-blockchain/evm?rev=21972c2392af3381bbfcd2139664ba3fff0ee287#21972c2392af3381bbfcd2139664ba3fff0ee287"
 dependencies = [
  "environmental",
  "evm-core",
@@ -3684,7 +3684,7 @@ dependencies = [
 [[package]]
 name = "evm-runtime"
 version = "0.37.0"
-source = "git+https://github.com/rust-blockchain/evm?rev=e7138f7234b117d29d4e653da4967d76e51c5eaf#e7138f7234b117d29d4e653da4967d76e51c5eaf"
+source = "git+https://github.com/rust-blockchain/evm?rev=21972c2392af3381bbfcd2139664ba3fff0ee287#21972c2392af3381bbfcd2139664ba3fff0ee287"
 dependencies = [
  "auto_impl",
  "environmental",

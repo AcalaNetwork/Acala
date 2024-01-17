@@ -419,7 +419,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 	}
 
 	/// Execute using Runtimes on the call_stack until it returns.
-	fn execute_with_call_stack(&mut self, call_stack: &mut Vec<TaggedRuntime>) -> (ExitReason, Option<H160>, Vec<u8>) {
+	fn execute_with_call_stack(
+		&mut self,
+		call_stack: &mut Vec<TaggedRuntime<'_>>,
+	) -> (ExitReason, Option<H160>, Vec<u8>) {
 		// This `interrupt_runtime` is used to pass the runtime obtained from the
 		// `Capture::Trap` branch in the match below back to the top of the call stack.
 		// The reason we can't simply `push` the runtime directly onto the stack in the
@@ -1278,6 +1281,9 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 	}
 	fn block_difficulty(&self) -> U256 {
 		self.state.block_difficulty()
+	}
+	fn block_randomness(&self) -> Option<H256> {
+		self.state.block_randomness()
 	}
 	fn block_gas_limit(&self) -> U256 {
 		self.state.block_gas_limit()
