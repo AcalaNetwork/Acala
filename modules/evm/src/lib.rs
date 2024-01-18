@@ -49,7 +49,7 @@ pub use module_evm_utility::{
 	evm::{
 		self,
 		executor::stack::{IsPrecompileResult, PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileSet},
-		Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed,
+		Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed, ExternalOperation,
 	},
 	Account,
 };

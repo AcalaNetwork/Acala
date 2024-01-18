@@ -349,6 +349,21 @@ pub trait StackState<'config>: Backend {
 	fn code_hash(&self, address: H160) -> H256 {
 		H256::from_slice(Keccak256::digest(self.code(address)).as_slice())
 	}
+
+	fn record_external_dynamic_opcode_cost(
+		&mut self,
+		_opcode: Opcode,
+		_gas_cost: gasometer::GasCost,
+		_target: StorageTarget,
+	) -> Result<(), ExitError> {
+		Ok(())
+	}
+
+	fn record_external_cost(&mut self, _ref_time: Option<u64>, _proof_size: Option<u64>) -> Result<(), ExitError> {
+		Ok(())
+	}
+
+	fn refund_external_cost(&mut self, _ref_time: Option<u64>, _proof_size: Option<u64>) {}
 }
 
 /// A precompile result.
@@ -725,6 +740,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			self.initialize_with_access_list(access_list);
 		}
 
+		if let Err(e) = self.record_external_operation(crate::ExternalOperation::AccountBasicRead) {
+			return (e.into(), Vec::new());
+		}
+
 		let context = Context {
 			caller,
 			address,
@@ -876,6 +895,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			return Capture::Exit((ExitError::OutOfFund.into(), None, Vec::new()));
 		}
 
+		if let Err(e) = self.record_external_operation(crate::ExternalOperation::AccountBasicRead) {
+			return Capture::Exit((ExitReason::Error(e), None, Vec::new()));
+		}
+
 		if let Err(e) = self.state.inc_nonce(caller) {
 			return Capture::Exit((e.into(), None, Vec::new()));
 		}
@@ -901,7 +924,12 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		self.enter_substate(gas_limit, false);
 
 		{
-			if self.code_size(address) != U256::zero() {
+			if let Err(e) = self.record_external_operation(crate::ExternalOperation::AddressCodeRead(address)) {
+				let _ = self.exit_substate(StackExitKind::Failed);
+				return Capture::Exit((ExitReason::Error(e), None, Vec::new()));
+			}
+			let code_size = self.code_size(address);
+			if code_size != U256::zero() {
 				let _ = self.exit_substate(StackExitKind::Failed);
 				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
 			}
@@ -935,6 +963,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		}
 
 		if self.config.create_increase_nonce {
+			if let Err(e) = self.record_external_operation(crate::ExternalOperation::AccountBasicRead) {
+				let _ = self.exit_substate(StackExitKind::Failed);
+				return Capture::Exit((ExitReason::Error(e), None, Vec::new()));
+			}
 			if let Err(e) = self.state.inc_nonce(address) {
 				return Capture::Exit((e.into(), None, Vec::new()));
 			}
@@ -1015,10 +1047,14 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			}
 		}
 
-		let code = self.code(code_address);
-
 		self.enter_substate(gas_limit, is_static);
 		self.state.touch(context.address);
+
+		if let Err(e) = self.record_external_operation(crate::ExternalOperation::AddressCodeRead(code_address)) {
+			let _ = self.exit_substate(StackExitKind::Failed);
+			return Capture::Exit((ExitReason::Error(e), Vec::new()));
+		}
+		let code = self.code(code_address);
 
 		if let Some(depth) = self.state.metadata().depth {
 			if depth > self.config.call_stack_limit {
@@ -1028,6 +1064,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		}
 
 		if let Some(transfer) = transfer {
+			if let Err(e) = self.record_external_operation(crate::ExternalOperation::AccountBasicRead) {
+				let _ = self.exit_substate(StackExitKind::Failed);
+				return Capture::Exit((ExitReason::Error(e), Vec::new()));
+			}
 			match self.state.transfer(transfer) {
 				Ok(()) => (),
 				Err(e) => {
@@ -1125,6 +1165,9 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 					Ok(()) => {
 						self.state.set_code(address, out);
 						let exit_result = self.exit_substate(StackExitKind::Succeeded);
+						if let Err(e) = self.record_external_operation(crate::ExternalOperation::Write) {
+							return (e.into(), None, Vec::new());
+						}
 						if let Err(e) = exit_result {
 							return (e.into(), None, Vec::new());
 						}
@@ -1438,6 +1481,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 			let gasometer = &mut self.state.metadata_mut().gasometer;
 
 			gasometer.record_dynamic_cost(gas_cost, memory_cost)?;
+
+			self.state
+				.record_external_dynamic_opcode_cost(opcode, gas_cost, target)?;
+
 			match target {
 				StorageTarget::Address(address) => self.state.metadata_mut().access_address(address),
 				StorageTarget::Slot(address, key) => self.state.metadata_mut().access_storage(address, key),
@@ -1446,6 +1493,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 		}
 
 		Ok(())
+	}
+
+	fn record_external_operation(&mut self, op: crate::ExternalOperation) -> Result<(), ExitError> {
+		self.state.record_external_operation(op)
 	}
 }
 
@@ -1481,11 +1532,13 @@ impl<'inner, 'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Pr
 			Err(err) => return (ExitReason::Error(err), Vec::new()),
 		};
 
+		let target_exists = self.executor.exists(code_address);
+
 		let gas_cost = gasometer::GasCost::Call {
 			value: transfer.clone().map(|x| x.value).unwrap_or_else(U256::zero),
 			gas: U256::from(gas_limit.unwrap_or(u64::MAX)),
 			target_is_cold,
-			target_exists: self.executor.exists(code_address),
+			target_exists,
 		};
 
 		// We record the length of the input.
@@ -1541,6 +1594,16 @@ impl<'inner, 'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Pr
 	/// Record cost to the Runtime gasometer.
 	fn record_cost(&mut self, cost: u64) -> Result<(), ExitError> {
 		self.executor.state.metadata_mut().gasometer.record_cost(cost)
+	}
+
+	/// Record Substrate specific cost.
+	fn record_external_cost(&mut self, ref_time: Option<u64>, proof_size: Option<u64>) -> Result<(), ExitError> {
+		self.executor.state.record_external_cost(ref_time, proof_size)
+	}
+
+	/// Refund Substrate specific cost.
+	fn refund_external_cost(&mut self, ref_time: Option<u64>, proof_size: Option<u64>) {
+		self.executor.state.refund_external_cost(ref_time, proof_size);
 	}
 
 	/// Retreive the remaining gas.

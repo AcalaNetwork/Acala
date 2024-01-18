@@ -147,6 +147,14 @@ pub mod tests {
 			}
 		}
 
+		fn record_external_cost(&mut self, _ref_time: Option<u64>, _proof_size: Option<u64>) -> Result<(), ExitError> {
+			unimplemented!()
+		}
+
+		fn refund_external_cost(&mut self, _ref_time: Option<u64>, _proof_size: Option<u64>) {
+			unimplemented!()
+		}
+
 		fn remaining_gas(&self) -> u64 {
 			unimplemented!()
 		}
