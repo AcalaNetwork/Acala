@@ -363,7 +363,12 @@ pub trait StackState<'config>: Backend {
 		Ok(())
 	}
 
-	fn record_external_cost(&mut self, _ref_time: Option<u64>, _proof_size: Option<u64>) -> Result<(), ExitError> {
+	fn record_external_cost(
+		&mut self,
+		_ref_time: Option<u64>,
+		_proof_size: Option<u64>,
+		_storage_growth: Option<u64>,
+	) -> Result<(), ExitError> {
 		Ok(())
 	}
 
@@ -1167,9 +1172,12 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 				match self.state.metadata_mut().gasometer.record_deposit(out.len()) {
 					Ok(()) => {
+						let code_len = out.len();
 						self.state.set_code(address, out);
 						let exit_result = self.exit_substate(StackExitKind::Succeeded);
-						if let Err(e) = self.record_external_operation(crate::ExternalOperation::Write) {
+						if let Err(e) =
+							self.record_external_operation(crate::ExternalOperation::Write(U256::from(code_len)))
+						{
 							return (e.into(), None, Vec::new());
 						}
 						if let Err(e) = exit_result {
@@ -1601,8 +1609,15 @@ impl<'inner, 'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Pr
 	}
 
 	/// Record Substrate specific cost.
-	fn record_external_cost(&mut self, ref_time: Option<u64>, proof_size: Option<u64>) -> Result<(), ExitError> {
-		self.executor.state.record_external_cost(ref_time, proof_size)
+	fn record_external_cost(
+		&mut self,
+		ref_time: Option<u64>,
+		proof_size: Option<u64>,
+		storage_growth: Option<u64>,
+	) -> Result<(), ExitError> {
+		self.executor
+			.state
+			.record_external_cost(ref_time, proof_size, storage_growth)
 	}
 
 	/// Refund Substrate specific cost.
