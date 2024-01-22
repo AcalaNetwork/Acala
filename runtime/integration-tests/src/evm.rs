@@ -107,7 +107,7 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1235081,
+		used_gas: 1235455,
 		used_storage: 15130,
 	}));
 
@@ -143,7 +143,7 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1235081,
+		used_gas: 1235455,
 		used_storage: 15130,
 	}));
 
@@ -349,7 +349,7 @@ fn test_evm_module() {
 				from: alice_address,
 				contract,
 				logs: vec![],
-				used_gas: 132199,
+				used_gas: 132225,
 				used_storage: 10367,
 			}));
 
@@ -1136,7 +1136,7 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 					from: EvmAddress::from_str("0x414d1f1c39e8357acfa07e8aac63cc5da8f9ca4d").unwrap(),
 					contract: EvmAddress::from_str("0xa764c25fe7641aeb21ac08118fa343093b9cb30d").unwrap(),
 					logs: vec![],
-					used_gas: 132199,
+					used_gas: 132225,
 					used_storage: 10367,
 				}));
 			}

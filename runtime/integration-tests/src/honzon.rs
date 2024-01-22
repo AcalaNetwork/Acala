@@ -98,7 +98,7 @@ pub fn deploy_liquidation_contracts() {
 		from: repayment_evm_addr(),
 		contract: mock_liquidation_address_0(),
 		logs: vec![],
-		used_gas: 473252,
+		used_gas: 473376,
 		used_storage: 11949,
 	}));
 
@@ -117,7 +117,7 @@ pub fn deploy_liquidation_contracts() {
 		from: repayment_evm_addr(),
 		contract: mock_liquidation_address_1(),
 		logs: vec![],
-		used_gas: 473252,
+		used_gas: 473376,
 		used_storage: 11949,
 	}));
 

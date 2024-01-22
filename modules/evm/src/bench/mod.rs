@@ -80,7 +80,13 @@ fn whitelist_keys(b: &mut Bencher, from: H160, code: Vec<u8>) -> H160 {
 	let state = SubstrateStackState::<Runtime>::new(&vicinity, metadata);
 	let mut executor = StackExecutor::new_with_precompiles(state, config, &());
 
-	let mut runtime = EVMRuntime::new(Rc::new(code.clone()), Rc::new(Vec::new()), context, config);
+	let mut runtime = EVMRuntime::new(
+		Rc::new(code.clone()),
+		Rc::new(Vec::new()),
+		context,
+		config.stack_limit,
+		config.memory_limit,
+	);
 	let reason = executor.execute(&mut runtime);
 
 	assert!(reason.is_succeed(), "{:?}", reason);

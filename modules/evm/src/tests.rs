@@ -777,7 +777,7 @@ fn publish_factory() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_gas.as_u64(), 155_879u64);
+		assert_eq!(result.used_gas.as_u64(), 155925);
 		assert_eq!(result.used_storage, 461);
 		assert_eq!(
 			balance(alice()),
@@ -818,7 +818,7 @@ fn create_nft_contract_works() {
 			from: NetworkContractSource::get(),
 			contract: MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(MIRRORED_NFT_ADDRESS_START),
 			logs: vec![],
-			used_gas: 93183,
+			used_gas: 93197,
 			used_storage: 284,
 		}));
 		assert_eq!(EVM::network_contract_index(), MIRRORED_NFT_ADDRESS_START + 1);
@@ -888,7 +888,7 @@ fn create_predeploy_contract_works() {
 			from: NetworkContractSource::get(),
 			contract: addr,
 			logs: vec![],
-			used_gas: 93183,
+			used_gas: 93197,
 			used_storage: 284,
 		}));
 
@@ -1877,7 +1877,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(142_445),
+				used_gas: U256::from(142451),
 				used_storage: expected_used_storage,
 				logs: vec![]
 			}
@@ -1904,7 +1904,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(259_561),
+				used_gas: U256::from(259573),
 				used_storage: expected_used_storage,
 				logs: vec![]
 			}
@@ -1964,7 +1964,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(110_469),
+				used_gas: U256::from(110475),
 				used_storage: expected_used_storage,
 				logs: vec![]
 			}
@@ -2007,7 +2007,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(93_369),
+				used_gas: U256::from(93375),
 				used_storage: expected_used_storage,
 				logs: vec![]
 			}
@@ -2293,7 +2293,7 @@ fn auto_publish_works() {
 			from: alice(),
 			contract: factory,
 			logs: vec![],
-			used_gas: 593209,
+			used_gas: 593369,
 			used_storage: 2609,
 		}));
 
@@ -2328,7 +2328,7 @@ fn auto_publish_works() {
 					data: vec![],
 				},
 			],
-			used_gas: 387664,
+			used_gas: 387768,
 			used_storage: 1530,
 		}));
 
@@ -2398,7 +2398,7 @@ fn auto_publish_works() {
 					data: vec![],
 				},
 			],
-			used_gas: 370564,
+			used_gas: 370668,
 			used_storage: 1466,
 		}));
 
@@ -2455,7 +2455,7 @@ fn auto_publish_works() {
 				],
 				data: vec![],
 			}],
-			used_gas: 147214,
+			used_gas: 147228,
 			used_storage: 407,
 		}));
 

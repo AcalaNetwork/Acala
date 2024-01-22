@@ -201,7 +201,7 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1235081,
+		used_gas: 1235455,
 		used_storage: 5131,
 	}));
 
@@ -242,7 +242,7 @@ pub fn deploy_contracts_same_prefix() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1235081,
+		used_gas: 1235455,
 		used_storage: 5131,
 	}));
 

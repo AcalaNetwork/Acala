@@ -104,17 +104,17 @@ pub type NegativeImbalanceOf<T> =
 pub const RESERVE_ID_STORAGE_DEPOSIT: ReserveIdentifier = ReserveIdentifier::EvmStorageDeposit;
 pub const RESERVE_ID_DEVELOPER_DEPOSIT: ReserveIdentifier = ReserveIdentifier::EvmDeveloperDeposit;
 
-// Initially based on London hard fork configuration.
+// Initially based on shanghai hard fork configuration.
 static ACALA_CONFIG: EvmConfig = EvmConfig {
 	refund_sstore_clears: 0,            // no gas refund
 	sstore_gas_metering: false,         // no gas refund
 	sstore_revert_under_stipend: false, // ignored
 	create_contract_limit: Some(MaxCodeSize::get() as usize),
-	..module_evm_utility::evm::Config::london()
+	..module_evm_utility::evm::Config::shanghai()
 };
 
 /// Create an empty contract `contract Empty { }`.
-pub const BASE_CREATE_GAS: u64 = 67_066;
+pub const BASE_CREATE_GAS: u64 = 67_072;
 /// Call function that just set a storage `function store(uint256 num) public { number = num; }`.
 pub const BASE_CALL_GAS: u64 = 43_702;
 

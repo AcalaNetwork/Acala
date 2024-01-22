@@ -56,8 +56,8 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 		from: module_evm_accounts::EvmAddressMapping::<Runtime>::get_evm_address(&caller).unwrap(),
 		contract: contract_addr(),
 		logs: vec![],
-		used_gas: 132_199,
-		used_storage: 10_367,
+		used_gas: 132225,
+		used_storage: 10367,
 	}));
 	Ok(contract_addr())
 }
