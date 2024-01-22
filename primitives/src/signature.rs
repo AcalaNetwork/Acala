@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -41,6 +41,8 @@ pub enum AcalaMultiSignature {
 	Eip1559([u8; 65]),
 	// An Ethereum SECP256k1 signature using Eip712 for message encoding.
 	AcalaEip712([u8; 65]),
+	// An Ethereum SECP256k1 signature using Eip2930 for message encoding.
+	Eip2930([u8; 65]),
 }
 
 impl From<ed25519::Signature> for AcalaMultiSignature {

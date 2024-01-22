@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -66,7 +66,6 @@ use orml_traits::{
 	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
 	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey, MultiCurrency,
 };
-use orml_utilities::simulate_execution;
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 use frame_support::{
@@ -78,8 +77,9 @@ use frame_support::{
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU128, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency, Currency,
 		EnsureOrigin, EqualPrivilegeOnly, Get, Imbalance, InstanceFilter, LinearStoragePrice, LockIdentifier,
-		OnRuntimeUpgrade, OnUnbalanced, SortedMembers,
+		OnUnbalanced, SortedMembers,
 	},
+	transactional,
 	weights::{constants::RocksDbWeight, ConstantMultiplier, Weight},
 	PalletId,
 };
@@ -1092,6 +1092,7 @@ parameter_types! {
 	pub MinimumDebitValue: Balance = 50 * dollar(KUSD);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(10, 100);
 	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);
+	pub SettleErc20EvmOrigin: AccountId = AccountId::from(hex_literal::hex!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")); // `u5wKvsdTcsYQXeB9nvDQ7PppNHeVefghTzBY9niAhMPXpyo`
 }
 
 impl module_cdp_engine::Config for Runtime {
@@ -1119,6 +1120,8 @@ impl module_cdp_engine::Config for Runtime {
 	type PalletId = CDPEnginePalletId;
 	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = AcalaSwap;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
+	type SettleErc20EvmOrigin = SettleErc20EvmOrigin;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1893,20 +1896,17 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	Migrations,
+>;
 
-pub struct MigrateSetXcmVersionForKusama;
-impl OnRuntimeUpgrade for MigrateSetXcmVersionForKusama {
-	fn on_runtime_upgrade() -> Weight {
-		let _ = PolkadotXcm::force_xcm_version(
-			RuntimeOrigin::root(),
-			Box::new(MultiLocation::new(1, Junctions::Here)),
-			3,
-		);
-		RocksDbWeight::get().writes(1)
-	}
-}
+#[allow(unused_parens)]
+type Migrations = ();
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -2112,6 +2112,8 @@ impl_runtime_apis! {
 			}
 		}
 
+		// required by xtokens precompile
+		#[transactional]
 		fn call(
 			from: H160,
 			to: H160,
@@ -2122,20 +2124,17 @@ impl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 			_estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			// Fix xtokens: Transfer failed: Transactional(NoLayer)
-			simulate_execution(|| {
-				<Runtime as module_evm::Config>::Runner::rpc_call(
-					from,
-					from,
-					to,
-					data,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					<Runtime as module_evm::Config>::config(),
-				)
-			})
+			<Runtime as module_evm::Config>::Runner::rpc_call(
+				from,
+				from,
+				to,
+				data,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				<Runtime as module_evm::Config>::config(),
+			)
 		}
 
 		fn create(

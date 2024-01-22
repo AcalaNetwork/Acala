@@ -91,7 +91,6 @@ orml-tokens = { workspace = true }
 orml-tokens-runtime-api = { workspace = true }
 orml-traits = { workspace = true }
 orml-unknown-tokens ={ workspace = true }
-orml-utilities = { workspace = true }
 orml-vesting = { workspace = true }
 orml-xcm = { workspace = true }
 orml-xcm-support = { workspace = true }
@@ -241,7 +240,6 @@ std = [
 	"orml-tokens/std",
 	"orml-traits/std",
 	"orml-unknown-tokens/std",
-	"orml-utilities/std",
 	"orml-vesting/std",
 	"orml-xcm-support/std",
 	"orml-xcm/std",
