@@ -106,6 +106,19 @@ impl Precompile for Blake2F {
 			output: output_buf.to_vec(),
 		})
 	}
+
+	#[cfg(feature = "evm-tests")]
+	fn execute_ext(
+		input: &[u8],
+		target_gas: Option<u64>,
+		context: &crate::Context,
+		is_static: bool,
+	) -> Result<(PrecompileOutput, u64), PrecompileFailure> {
+		let mut handle = crate::precompiles::tests::MockPrecompileHandle::new(&input, target_gas, context, is_static);
+		let output = Self::execute(&mut handle)?;
+
+		Ok((output, handle.gas_used))
+	}
 }
 
 #[cfg(test)]

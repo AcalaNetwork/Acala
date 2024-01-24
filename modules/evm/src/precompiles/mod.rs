@@ -48,6 +48,14 @@ pub trait Precompile {
 	/// `target_gas`. Return `Ok(status, output, gas_used)` if the execution is
 	/// successful. Otherwise return `Err(_)`.
 	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult;
+
+	#[cfg(feature = "evm-tests")]
+	fn execute_ext(
+		input: &[u8],
+		target_gas: Option<u64>,
+		context: &crate::Context,
+		is_static: bool,
+	) -> Result<(PrecompileOutput, u64), PrecompileFailure>;
 }
 
 pub trait LinearCostPrecompile {
@@ -65,6 +73,18 @@ impl<T: LinearCostPrecompile> Precompile for T {
 		handle.record_cost(cost)?;
 		let (exit_status, output) = T::execute(handle.input(), cost)?;
 		Ok(PrecompileOutput { exit_status, output })
+	}
+
+	#[cfg(feature = "evm-tests")]
+	fn execute_ext(
+		input: &[u8],
+		target_gas: Option<u64>,
+		context: &crate::Context,
+		is_static: bool,
+	) -> Result<(PrecompileOutput, u64), PrecompileFailure> {
+		let cost = ensure_linear_cost(target_gas, input.len() as u64, T::BASE, T::WORD)?;
+		let (exit_status, output) = T::execute(input, cost)?;
+		Ok((PrecompileOutput { exit_status, output }, cost))
 	}
 }
 

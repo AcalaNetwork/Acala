@@ -73,6 +73,8 @@ pub struct Vicinity {
 	pub block_difficulty: Option<U256>,
 	/// Environmental base fee per gas.
 	pub block_base_fee_per_gas: Option<U256>,
+	/// Environmental randomness.
+	pub block_randomness: Option<H256>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]

@@ -1149,7 +1149,7 @@ version = "10.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a399848a68a5196a04c19db5bfc4dca3cd0989a3165150f06c1ad1bc8882aa34"
 dependencies = [
- "hash-db 0.16.0",
+ "hash-db",
  "log",
 ]
 
@@ -3514,31 +3514,13 @@ dependencies = [
 
 [[package]]
 name = "ethereum"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a89fb87a9e103f71b903b80b670200b54cc67a07578f070681f1fffb7396fb7"
-dependencies = [
- "bytes",
- "ethereum-types",
- "hash-db 0.15.2",
- "hash256-std-hasher",
- "parity-scale-codec",
- "rlp",
- "scale-info",
- "serde",
- "sha3",
- "triehash",
-]
-
-[[package]]
-name = "ethereum"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e04d24d20b8ff2235cffbf242d5092de3aa45f77c5270ddbfadd2778ca13fea"
 dependencies = [
  "bytes",
  "ethereum-types",
- "hash-db 0.16.0",
+ "hash-db",
  "hash256-std-hasher",
  "parity-scale-codec",
  "rlp",
@@ -3610,7 +3592,7 @@ checksum = "767f43e9630cc36cf8ff2777cbb0121b055f0d1fd6eaaa13b46a1808f0d0e7e9"
 dependencies = [
  "auto_impl",
  "environmental",
- "ethereum 0.15.0",
+ "ethereum",
  "evm-core",
  "evm-gasometer",
  "evm-runtime",
@@ -3653,7 +3635,7 @@ version = "0.13.1"
 dependencies = [
  "acala-primitives",
  "env_logger",
- "ethereum 0.14.0",
+ "ethereum",
  "ethjson",
  "frame-support",
  "frame-system",
@@ -4565,12 +4547,6 @@ dependencies = [
  "serde_json",
  "thiserror",
 ]
-
-[[package]]
-name = "hash-db"
-version = "0.15.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d23bd4e7b5eda0d0f3a307e8b381fdc8ba9000f26fbe912250c0a4cc3956364a"
 
 [[package]]
 name = "hash-db"
@@ -6464,7 +6440,7 @@ version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "808b50db46293432a45e63bc15ea51e0ab4c0a1647b8eb114e31a3e698dd6fbe"
 dependencies = [
- "hash-db 0.16.0",
+ "hash-db",
 ]
 
 [[package]]
@@ -6983,7 +6959,7 @@ dependencies = [
 name = "module-evm-utility"
 version = "2.23.0"
 dependencies = [
- "ethereum 0.15.0",
+ "ethereum",
  "evm",
  "evm-gasometer",
  "evm-runtime",
@@ -12318,7 +12294,7 @@ version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4ced79f609a44782874d856cf39d256838957195ef34f4fb8ced90bf4b725d0"
 dependencies = [
- "hash-db 0.16.0",
+ "hash-db",
  "kvdb",
  "kvdb-memorydb",
  "kvdb-rocksdb",
@@ -13958,7 +13934,7 @@ version = "23.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f582f92ce47c86e4ffffe81fdd5120fea7c850dc0800653a7fa203bcc1532335"
 dependencies = [
- "hash-db 0.16.0",
+ "hash-db",
  "log",
  "parity-scale-codec",
  "scale-info",
@@ -14183,7 +14159,7 @@ dependencies = [
  "dyn-clonable",
  "ed25519-zebra 3.1.0",
  "futures",
- "hash-db 0.16.0",
+ "hash-db",
  "hash256-std-hasher",
  "impl-serde",
  "lazy_static",
@@ -14545,7 +14521,7 @@ version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96e087fa4430befd2047b61d912c9d6fa4eaed408c4b58b46c6e9acd7965f2d3"
 dependencies = [
- "hash-db 0.16.0",
+ "hash-db",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.1",
@@ -14666,7 +14642,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e359b358263cc322c3f678c272a3a519621d9853dcfa1374dfcbdb5f54c6f85"
 dependencies = [
  "ahash 0.8.6",
- "hash-db 0.16.0",
+ "hash-db",
  "hashbrown 0.13.2",
  "lazy_static",
  "memory-db",
@@ -15688,7 +15664,7 @@ version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff28e0f815c2fea41ebddf148e008b077d2faddb026c9555b29696114d602642"
 dependencies = [
- "hash-db 0.16.0",
+ "hash-db",
  "hashbrown 0.13.2",
  "log",
  "rustc-hex",
@@ -15701,17 +15677,7 @@ version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4ed310ef5ab98f5fa467900ed906cb9232dd5376597e00fd4cba2a449d06c0b"
 dependencies = [
- "hash-db 0.16.0",
-]
-
-[[package]]
-name = "triehash"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1631b201eb031b563d2e85ca18ec8092508e262a3196ce9bd10a67ec87b9f5c"
-dependencies = [
- "hash-db 0.15.2",
- "rlp",
+ "hash-db",
 ]
 
 [[package]]

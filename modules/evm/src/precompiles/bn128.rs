@@ -97,6 +97,19 @@ impl Precompile for Bn128Add {
 			output: buf.to_vec(),
 		})
 	}
+
+	#[cfg(feature = "evm-tests")]
+	fn execute_ext(
+		input: &[u8],
+		target_gas: Option<u64>,
+		context: &crate::Context,
+		is_static: bool,
+	) -> Result<(PrecompileOutput, u64), PrecompileFailure> {
+		let mut handle = crate::precompiles::tests::MockPrecompileHandle::new(&input, target_gas, context, is_static);
+		let output = Self::execute(&mut handle)?;
+
+		Ok((output, handle.gas_used))
+	}
 }
 
 /// The Bn128Mul builtin
@@ -136,6 +149,19 @@ impl Precompile for Bn128Mul {
 			exit_status: ExitSucceed::Returned,
 			output: buf.to_vec(),
 		})
+	}
+
+	#[cfg(feature = "evm-tests")]
+	fn execute_ext(
+		input: &[u8],
+		target_gas: Option<u64>,
+		context: &crate::Context,
+		is_static: bool,
+	) -> Result<(PrecompileOutput, u64), PrecompileFailure> {
+		let mut handle = crate::precompiles::tests::MockPrecompileHandle::new(&input, target_gas, context, is_static);
+		let output = Self::execute(&mut handle)?;
+
+		Ok((output, handle.gas_used))
 	}
 }
 
@@ -235,6 +261,19 @@ impl Precompile for Bn128Pairing {
 			exit_status: ExitSucceed::Returned,
 			output: buf.to_vec(),
 		})
+	}
+
+	#[cfg(feature = "evm-tests")]
+	fn execute_ext(
+		input: &[u8],
+		target_gas: Option<u64>,
+		context: &crate::Context,
+		is_static: bool,
+	) -> Result<(PrecompileOutput, u64), PrecompileFailure> {
+		let mut handle = crate::precompiles::tests::MockPrecompileHandle::new(&input, target_gas, context, is_static);
+		let output = Self::execute(&mut handle)?;
+
+		Ok((output, handle.gas_used))
 	}
 }
 
