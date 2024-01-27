@@ -38,9 +38,9 @@ use frame_support::{
 	traits::{
 		fungible::HoldConsideration,
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
-		ConstBool, ConstU128, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin,
-		EqualPrivilegeOnly, Get, Imbalance, InstanceFilter, LinearStoragePrice, LockIdentifier, OnUnbalanced,
-		SortedMembers,
+		ConstBool, ConstU128, ConstU16, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency,
+		EnsureOrigin, EqualPrivilegeOnly, Get, Imbalance, InstanceFilter, LinearStoragePrice, LockIdentifier,
+		OnUnbalanced, SortedMembers,
 	},
 	transactional,
 	weights::{constants::RocksDbWeight, ConstantMultiplier, Weight},
@@ -122,9 +122,11 @@ pub use nutsfinance_stable_asset;
 mod authority;
 mod benchmarking;
 pub mod constants;
+pub mod governance;
 /// Weights for pallets used in the runtime.
 mod weights;
 pub mod xcm_config;
+use governance::councils::*;
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -372,129 +374,6 @@ impl pallet_sudo::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const GeneralCouncilMotionDuration: BlockNumber = 7 * DAYS;
-	pub const CouncilDefaultMaxProposals: u32 = 100;
-	pub const CouncilDefaultMaxMembers: u32 = 100;
-	pub MaxProposalWeight: Weight = Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block;
-}
-
-impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type Proposal = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type MotionDuration = GeneralCouncilMotionDuration;
-	type MaxProposals = CouncilDefaultMaxProposals;
-	type MaxMembers = CouncilDefaultMaxMembers;
-	type DefaultVote = pallet_collective::PrimeDefaultVote;
-	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = ();
-	type MaxProposalWeight = MaxProposalWeight;
-}
-
-impl pallet_membership::Config<GeneralCouncilMembershipInstance> for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type AddOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
-	type RemoveOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
-	type SwapOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
-	type ResetOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
-	type PrimeOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
-	type MembershipInitialized = GeneralCouncil;
-	type MembershipChanged = GeneralCouncil;
-	type MaxMembers = CouncilDefaultMaxMembers;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const FinancialCouncilMotionDuration: BlockNumber = 7 * DAYS;
-}
-
-impl pallet_collective::Config<FinancialCouncilInstance> for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type Proposal = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type MotionDuration = FinancialCouncilMotionDuration;
-	type MaxProposals = CouncilDefaultMaxProposals;
-	type MaxMembers = CouncilDefaultMaxMembers;
-	type DefaultVote = pallet_collective::PrimeDefaultVote;
-	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = ();
-	type MaxProposalWeight = MaxProposalWeight;
-}
-
-impl pallet_membership::Config<FinancialCouncilMembershipInstance> for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = FinancialCouncil;
-	type MembershipChanged = FinancialCouncil;
-	type MaxMembers = CouncilDefaultMaxMembers;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const HomaCouncilMotionDuration: BlockNumber = 7 * DAYS;
-}
-
-impl pallet_collective::Config<HomaCouncilInstance> for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type Proposal = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type MotionDuration = HomaCouncilMotionDuration;
-	type MaxProposals = CouncilDefaultMaxProposals;
-	type MaxMembers = CouncilDefaultMaxMembers;
-	type DefaultVote = pallet_collective::PrimeDefaultVote;
-	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = ();
-	type MaxProposalWeight = MaxProposalWeight;
-}
-
-impl pallet_membership::Config<HomaCouncilMembershipInstance> for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = HomaCouncil;
-	type MembershipChanged = HomaCouncil;
-	type MaxMembers = CouncilDefaultMaxMembers;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const TechnicalCommitteeMotionDuration: BlockNumber = 7 * DAYS;
-}
-
-impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type Proposal = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type MotionDuration = TechnicalCommitteeMotionDuration;
-	type MaxProposals = CouncilDefaultMaxProposals;
-	type MaxMembers = CouncilDefaultMaxMembers;
-	type DefaultVote = pallet_collective::PrimeDefaultVote;
-	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = ();
-	type MaxProposalWeight = MaxProposalWeight;
-}
-
-impl pallet_membership::Config<TechnicalCommitteeMembershipInstance> for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = TechnicalCommittee;
-	type MembershipChanged = TechnicalCommittee;
-	type MaxMembers = CouncilDefaultMaxMembers;
-	type WeightInfo = ();
-}
-
 impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
@@ -645,59 +524,6 @@ impl pallet_recovery::Config for Runtime {
 	type MaxFriends = ConstU32<9>;
 	type RecoveryDeposit = RecoveryDeposit;
 	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 2 * HOURS;
-	pub const VotingPeriod: BlockNumber = HOURS;
-	pub const FastTrackVotingPeriod: BlockNumber = HOURS;
-	pub MinimumDeposit: Balance = 100 * cent(ACA);
-	pub const EnactmentPeriod: BlockNumber = MINUTES;
-	pub const CooloffPeriod: BlockNumber = MINUTES;
-}
-
-impl pallet_democracy::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Balances;
-	type EnactmentPeriod = EnactmentPeriod;
-	type LaunchPeriod = LaunchPeriod;
-	type VotingPeriod = VotingPeriod;
-	type VoteLockingPeriod = EnactmentPeriod; // Same as EnactmentPeriod
-	type MinimumDeposit = MinimumDeposit;
-	/// A straight majority of the council can decide what their next motion is.
-	type ExternalOrigin = EnsureRootOrHalfGeneralCouncil;
-	/// A majority can have the next scheduled referendum be a straight majority-carries vote.
-	type ExternalMajorityOrigin = EnsureRootOrHalfGeneralCouncil;
-	/// A unanimous council can have the next scheduled referendum be a straight default-carries
-	/// (NTB) vote.
-	type ExternalDefaultOrigin = EnsureRootOrAllGeneralCouncil;
-	/// Two thirds of the technical committee can have an ExternalMajority/ExternalDefault vote
-	/// be tabled immediately and with a shorter voting/enactment period.
-	type FastTrackOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
-	type InstantOrigin = EnsureRootOrAllTechnicalCommittee;
-	type InstantAllowed = ConstBool<true>;
-	type FastTrackVotingPeriod = FastTrackVotingPeriod;
-	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
-	type CancellationOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type BlacklistOrigin = EnsureRoot<AccountId>;
-	// To cancel a proposal before it has been passed, the technical committee must be unanimous or
-	// Root must agree.
-	type CancelProposalOrigin = EnsureRootOrAllTechnicalCommittee;
-	// Any single technical committee member may veto a coming council proposal, however they can
-	// only do it once and it lasts only for the cooloff period.
-	type VetoOrigin = pallet_collective::EnsureMember<AccountId, TechnicalCommitteeInstance>;
-	type CooloffPeriod = CooloffPeriod;
-	type Slash = Treasury;
-	type Scheduler = Scheduler;
-	type PalletsOrigin = OriginCaller;
-	type MaxVotes = ConstU32<100>;
-	//TODO: might need to weight for Mandala
-	type WeightInfo = pallet_democracy::weights::SubstrateWeight<Runtime>;
-	type MaxProposals = CouncilDefaultMaxProposals;
-	type Preimages = Preimage;
-	type MaxDeposits = ConstU32<100>;
-	type MaxBlacklisted = ConstU32<100>;
-	type SubmitOrigin = EnsureSigned<AccountId>;
 }
 
 impl orml_auction::Config for Runtime {
@@ -2029,6 +1855,10 @@ construct_runtime!(
 		HomaCouncilMembership: pallet_membership::<Instance3> = 55,
 		TechnicalCommittee: pallet_collective::<Instance4> = 56,
 		TechnicalCommitteeMembership: pallet_membership::<Instance4> = 57,
+		ConvictionVoting: pallet_conviction_voting = 150,
+		Referenda: pallet_referenda = 151,
+		Origins: governance::custom_origins::{Origin} = 152,
+		Whitelist: pallet_whitelist = 153,
 
 		Authority: orml_authority = 70,
 		PhragmenElection: pallet_elections_phragmen = 71,

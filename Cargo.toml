@@ -153,6 +153,9 @@ async-trait = { version = "0.1.71" }
 coins-bip32 = { version = "0.7.0" }
 coins-bip39 = { version = "0.7.0" }
 k256 = { version = "0.11.5", default-features = false }
+strum = { version = "0.24", default-features = false, features = [ "derive" ] }
+strum_macros = { version = "0.24" }
+lazy_static = { version = "1.4.0" }
 
 # Dependencies are split into 2 groups: wasm and client.
 # - "wasm" dependencies requires to be no_std compatible, which often requires
@@ -276,6 +279,9 @@ pallet-treasury = { version = "24.0.0", default-features = false }
 pallet-utility = { version = "25.0.0", default-features = false }
 pallet-vesting = { version = "25.0.0", default-features = false }
 pallet-xcm = { version = "4.0.0", default-features = false }
+pallet-conviction-voting = { version = "25.0.0", default-features = false }
+pallet-referenda = { version = "25.0.0", default-features = false }
+pallet-whitelist = { version = "24.0.0", default-features = false }
 parachain-info = { package = "staging-parachain-info", version = "0.4.0", default-features = false }
 polkadot-core-primitives = { version = "4.0.0", default-features = false }
 polkadot-parachain-primitives = { version = "3.0.0", default-features = false }
