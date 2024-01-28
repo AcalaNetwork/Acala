@@ -249,8 +249,6 @@ frame-try-runtime = { version = "0.31.0", default-features = false }
 pallet-aura = { version = "24.0.0", default-features = false }
 pallet-authority-discovery = { version = "25.0.0", default-features = false }
 pallet-authorship = { version = "25.0.0", default-features = false }
-pallet-babe = { version = "25.0.0", default-features = false }
-pallet-bags-list = { version = "24.0.0", default-features = false }
 pallet-balances = { version = "25.0.0", default-features = false }
 pallet-bounties = { version = "24.0.0", default-features = false }
 pallet-collective = { version = "25.0.0", default-features = false }
@@ -266,7 +264,6 @@ pallet-recovery = { version = "25.0.0", default-features = false }
 pallet-root-testing = { version = "1.0.0", default-features = false }
 pallet-scheduler = { version = "26.0.0", default-features = false }
 pallet-session = { version = "25.0.0", default-features = false }
-pallet-staking = { version = "25.0.0", default-features = false }
 pallet-sudo = { version = "25.0.0", default-features = false }
 pallet-timestamp = { version = "24.0.0", default-features = false }
 pallet-tips = { version = "24.0.0", default-features = false }
@@ -274,7 +271,6 @@ pallet-transaction-payment = { version = "25.0.0", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = "25.0.0", default-features = false }
 pallet-treasury = { version = "24.0.0", default-features = false }
 pallet-utility = { version = "25.0.0", default-features = false }
-pallet-vesting = { version = "25.0.0", default-features = false }
 pallet-xcm = { version = "4.0.0", default-features = false }
 parachain-info = { package = "staging-parachain-info", version = "0.4.0", default-features = false }
 polkadot-core-primitives = { version = "4.0.0", default-features = false }
@@ -285,7 +281,6 @@ polkadot-runtime-parachains = { version = "4.0.0", default-features = false }
 sp-api = { version = "23.0.0", default-features = false }
 sp-application-crypto = { version = "27.0.0", default-features = false }
 sp-arithmetic = { version = "20.0.0", default-features = false }
-sp-authority-discovery = { version = "23.0.0", default-features = false }
 sp-block-builder = { version = "23.0.0", default-features = false }
 sp-blockchain = { version = "25.0.0", default-features = false }
 sp-consensus = { version = "0.29.0", default-features = false }
@@ -298,10 +293,7 @@ sp-inherents = { version = "23.0.0", default-features = false }
 sp-io = { version = "27.0.0", default-features = false }
 sp-keyring = { version = "28.0.0", default-features = false }
 sp-keystore = { version = "0.31.0", default-features = false }
-sp-maybe-compressed-blob = { version = "9.0.0", default-features = false }
-sp-npos-elections = { version = "23.0.0", default-features = false }
 sp-offchain = { version = "23.0.0", default-features = false }
-sp-panic-handler = { version = "12.0.0", default-features = false }
 sp-runtime = { version = "28.0.0", default-features = false }
 sp-runtime-interface = { version = "21.0.0", default-features = false }
 sp-session = { version = "24.0.0", default-features = false }
@@ -360,7 +352,6 @@ sc-transaction-pool-api = { version = "25.0.0" }
 substrate-build-script-utils = { version = "9.0.0" }
 substrate-frame-rpc-system = { version = "25.0.0" }
 substrate-prometheus-endpoint = { version = "0.16.0" }
-substrate-test-utils = { version = "3.0.0" }
 substrate-wasm-builder = { version = "14.0.0" }
 try-runtime-cli = { version = "0.35.0" }
 polkadot-cli = { version = "4.0.0" }
