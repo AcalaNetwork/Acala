@@ -2309,8 +2309,95 @@ impl_runtime_apis! {
 		}
 	}
 
-	#[api_version(3)]
-	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance, AccountId> for Runtime {
+	// TODO: remove this when acala-types use `EVMRuntimeApi` instead of `EVMRuntimeRPCApi`
+	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance> for Runtime {
+		fn block_limits() -> BlockLimits {
+			BlockLimits {
+				max_gas_limit: runtime_common::EvmLimits::<Runtime>::max_gas_limit(),
+				max_storage_limit: runtime_common::EvmLimits::<Runtime>::max_storage_limit(),
+			}
+		}
+
+		// required by xtokens precompile
+		#[transactional]
+		fn call(
+			from: H160,
+			to: H160,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			_estimate: bool,
+		) -> Result<CallInfo, sp_runtime::DispatchError> {
+			<Runtime as module_evm::Config>::Runner::rpc_call(
+				from,
+				from,
+				to,
+				data,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				<Runtime as module_evm::Config>::config(),
+			)
+		}
+
+		fn create(
+			from: H160,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			_estimate: bool,
+		) -> Result<CreateInfo, sp_runtime::DispatchError> {
+			<Runtime as module_evm::Config>::Runner::rpc_create(
+				from,
+				data,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				<Runtime as module_evm::Config>::config(),
+			)
+		}
+
+		fn get_estimate_resources_request(extrinsic: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError> {
+			let utx = UncheckedExtrinsic::decode_all_with_depth_limit(sp_api::MAX_EXTRINSIC_DEPTH, &mut &*extrinsic)
+				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
+
+			let request = match utx.0.function {
+				RuntimeCall::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
+					Some(EstimateResourcesRequest {
+						from: None,
+						to: Some(target),
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
+						value: Some(value),
+						data: Some(input),
+						access_list: Some(access_list)
+					})
+				}
+				RuntimeCall::EVM(module_evm::Call::create{input, value, gas_limit, storage_limit, access_list}) => {
+					Some(EstimateResourcesRequest {
+						from: None,
+						to: None,
+						gas_limit: Some(gas_limit),
+						storage_limit: Some(storage_limit),
+						value: Some(value),
+						data: Some(input),
+						access_list: Some(access_list)
+					})
+				}
+				_ => None,
+			};
+
+			request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))
+		}
+	}
+
+	impl module_evm_rpc_runtime_api::EVMRuntimeApi<Block, Balance, AccountId> for Runtime {
 		fn block_limits() -> BlockLimits {
 			BlockLimits {
 				max_gas_limit: runtime_common::EvmLimits::<Runtime>::max_gas_limit(),
