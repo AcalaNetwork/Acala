@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::LinearCostPrecompile;
-use crate::runner::state::PrecompileFailure;
+use crate::PrecompileFailure;
 use module_evm_utility::evm::ExitSucceed;
 use sha3::Digest;
 use sp_std::vec::Vec;

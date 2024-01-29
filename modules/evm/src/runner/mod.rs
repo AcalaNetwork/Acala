@@ -19,6 +19,7 @@
 pub mod stack;
 pub mod state;
 pub mod storage_meter;
+pub mod tagged_runtime;
 
 use crate::{BalanceOf, CallInfo, Config, CreateInfo};
 use module_evm_utility::evm;

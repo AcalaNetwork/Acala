@@ -21,7 +21,7 @@
 
 use crate::{
 	runner::{
-		state::{Accessed, CustomStackState, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
+		state::{Accessed, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
 		Runner as RunnerT, RunnerExtended,
 	},
 	AccountStorages, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, Pallet, STORAGE_SIZE,
@@ -621,6 +621,10 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 		self.vicinity.origin
 	}
 
+	fn block_randomness(&self) -> Option<H256> {
+		self.vicinity.block_randomness
+	}
+
 	fn block_hash(&self, number: U256) -> H256 {
 		if number > U256::from(u32::MAX) {
 			H256::default()
@@ -729,8 +733,9 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		self.substate.deleted(address)
 	}
 
-	fn inc_nonce(&mut self, address: H160) {
+	fn inc_nonce(&mut self, address: H160) -> Result<(), ExitError> {
 		Pallet::<T>::inc_nonce(&address);
+		Ok(())
 	}
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) {
@@ -911,14 +916,12 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		self.substate
 			.recursive_is_cold(&|a: &Accessed| a.accessed_storage.contains(&(address, key)))
 	}
-}
 
-impl<'vicinity, 'config, T: Config> CustomStackState for SubstrateStackState<'vicinity, 'config, T> {
-	fn code_hash_at_address(&self, address: H160) -> H256 {
-		Pallet::<T>::code_hash_at_address(&address)
+	fn code_size(&self, address: H160) -> U256 {
+		Pallet::<T>::code_size_at_address(&address)
 	}
 
-	fn code_size_at_address(&self, address: H160) -> U256 {
-		Pallet::<T>::code_size_at_address(&address)
+	fn code_hash(&self, address: H160) -> H256 {
+		Pallet::<T>::code_hash_at_address(&address)
 	}
 }

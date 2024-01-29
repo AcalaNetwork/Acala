@@ -16,20 +16,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::LinearCostPrecompile;
-use crate::PrecompileFailure;
-use module_evm_utility::evm::ExitSucceed;
-use sp_std::vec::Vec;
+use module_evm_utility::evm::{maybe_borrowed::MaybeBorrowed, Runtime};
+use sp_core::H160;
 
-/// The sha256 precompile.
-pub struct Sha256;
+pub struct TaggedRuntime<'borrow> {
+	pub kind: RuntimeKind,
+	pub inner: MaybeBorrowed<'borrow, Runtime>,
+}
 
-impl LinearCostPrecompile for Sha256 {
-	const BASE: u64 = 60;
-	const WORD: u64 = 12;
-
-	fn execute(input: &[u8], _cost: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), PrecompileFailure> {
-		let ret = sp_io::hashing::sha2_256(input);
-		Ok((ExitSucceed::Returned, ret.to_vec()))
-	}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuntimeKind {
+	Create(H160),
+	Call(H160),
+	/// Special variant used only in `StackExecutor::execute`
+	Execute,
 }

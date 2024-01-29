@@ -22,7 +22,10 @@
 pub use crate::{precompile::mock::*, DEXPrecompile, EVMPrecompile, OraclePrecompile};
 use frame_support::assert_ok;
 use hex_literal::hex;
-use module_evm::{precompiles::Precompile, Context};
+use module_evm::{
+	precompiles::{tests::MockPrecompileHandle, Precompile},
+	Context,
+};
 use module_support::AddressMapping;
 use orml_traits::DataFeeder;
 use primitives::currency::{AssetMetadata, TokenInfo};
@@ -121,7 +124,7 @@ fn oracle_get_price(b: &mut Bencher) {
 	"};
 
 	let resp = b
-		.bench(|| OraclePrecompile::<Test>::execute(&input, None, &context, false))
+		.bench(|| OraclePrecompile::<Test>::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)))
 		.unwrap();
 
 	assert_eq!(resp.output, expected_output);
@@ -148,7 +151,7 @@ fn evm_query_new_contract_extra_bytes(b: &mut Bencher) {
 	"};
 
 	let resp = b
-		.bench(|| EVMPrecompile::<Test>::execute(&input, None, &context, false))
+		.bench(|| EVMPrecompile::<Test>::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)))
 		.unwrap();
 
 	assert_eq!(resp.output, expected_output);
@@ -175,7 +178,7 @@ fn evm_query_storage_deposit_per_byte(b: &mut Bencher) {
 	"};
 
 	let resp = b
-		.bench(|| EVMPrecompile::<Test>::execute(&input, None, &context, false))
+		.bench(|| EVMPrecompile::<Test>::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)))
 		.unwrap();
 
 	assert_eq!(resp.output, expected_output);
@@ -216,7 +219,7 @@ fn evm_query_maintainer(b: &mut Bencher) {
 	"};
 
 	let resp = b
-		.bench(|| EVMPrecompile::<Test>::execute(&input, None, &context, false))
+		.bench(|| EVMPrecompile::<Test>::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)))
 		.unwrap();
 
 	assert_eq!(resp.output, expected_output);
@@ -243,7 +246,7 @@ fn evm_query_developer_deposit(b: &mut Bencher) {
 	"};
 
 	let resp = b
-		.bench(|| EVMPrecompile::<Test>::execute(&input, None, &context, false))
+		.bench(|| EVMPrecompile::<Test>::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)))
 		.unwrap();
 	assert_eq!(resp.output, expected_output);
 }
@@ -269,7 +272,7 @@ fn evm_query_publication_fee(b: &mut Bencher) {
 	"};
 
 	let resp = b
-		.bench(|| EVMPrecompile::<Test>::execute(&input, None, &context, false))
+		.bench(|| EVMPrecompile::<Test>::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)))
 		.unwrap();
 	assert_eq!(resp.output, expected_output);
 }
@@ -297,7 +300,7 @@ fn evm_query_developer_status(b: &mut Bencher) {
 	"};
 
 	let resp = b
-		.bench(|| EVMPrecompile::<Test>::execute(&input, None, &context, false))
+		.bench(|| EVMPrecompile::<Test>::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)))
 		.unwrap();
 	assert_eq!(resp.output, expected_output);
 }

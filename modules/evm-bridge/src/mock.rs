@@ -203,7 +203,7 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1235081,
+		used_gas: 1235455,
 		used_storage: 5131,
 	}));
 
@@ -230,7 +230,7 @@ pub fn deploy_liquidation_ok_contracts() {
 		from: alice_evm_addr(),
 		contract: erc20_address(),
 		logs: vec![],
-		used_gas: 235274,
+		used_gas: 235330,
 		used_storage: 844,
 	}));
 
@@ -257,7 +257,7 @@ pub fn deploy_liquidation_err_contracts() {
 		from: alice_evm_addr(),
 		contract: erc20_address(),
 		logs: vec![],
-		used_gas: 228284,
+		used_gas: 228338,
 		used_storage: 818,
 	}));
 

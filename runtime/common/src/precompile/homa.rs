@@ -16,16 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{
-	input::{Input, InputPricer, InputT, Output},
-	target_gas_limit,
-};
+use super::input::{Input, InputPricer, InputT, Output};
 use crate::WeightToGas;
 use frame_support::traits::Get;
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_support::HomaManager;
 
@@ -66,23 +62,16 @@ where
 	Runtime: module_evm::Config + module_homa::Config + module_prices::Config,
 	module_homa::Pallet<Runtime>: HomaManager<Runtime::AccountId, Balance>,
 {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let gas_cost = Pricer::<Runtime>::cost(handle)?;
+		handle.record_cost(gas_cost)?;
+
 		let input = Input::<
 			Action,
 			Runtime::AccountId,
 			<Runtime as module_evm::Config>::AddressMapping,
 			Runtime::Erc20InfoMapping,
-		>::new(input, target_gas_limit(target_gas));
-
-		let gas_cost = Pricer::<Runtime>::cost(&input)?;
-
-		if let Some(gas_limit) = target_gas {
-			if gas_limit < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
+		>::new(handle.input());
 
 		let action = input.action()?;
 
@@ -101,15 +90,12 @@ where
 					|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("Homa Mint failed", e),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					},
 				)?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::RequestRedeem => {
@@ -129,14 +115,11 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("Homa RequestRedeem failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::GetExchangeRate => {
@@ -144,18 +127,14 @@ where
 					<module_homa::Pallet<Runtime> as HomaManager<Runtime::AccountId, Balance>>::get_exchange_rate();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(rate.into_inner()),
-					logs: Default::default(),
 				})
 			}
 			Action::GetEstimatedRewardRate => {
 				let rate = <module_homa::Pallet<Runtime> as HomaManager<Runtime::AccountId, Balance>>::get_estimated_reward_rate();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(rate.into_inner()),
-					logs: Default::default(),
 				})
 			}
 			Action::GetCommissionRate => {
@@ -163,9 +142,7 @@ where
 					<module_homa::Pallet<Runtime> as HomaManager<Runtime::AccountId, Balance>>::get_commission_rate();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(rate.into_inner()),
-					logs: Default::default(),
 				})
 			}
 			Action::GetFastMatchFee => {
@@ -173,9 +150,7 @@ where
 					<module_homa::Pallet<Runtime> as HomaManager<Runtime::AccountId, Balance>>::get_fast_match_fee();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(rate.into_inner()),
-					logs: Default::default(),
 				})
 			}
 		}
@@ -190,9 +165,10 @@ where
 {
 	const BASE_COST: u64 = 200;
 
-	fn cost(
-		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
-	) -> Result<u64, PrecompileFailure> {
+	fn cost(handle: &mut impl PrecompileHandle) -> Result<u64, PrecompileFailure> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			handle.input(),
+		);
 		let action = input.action()?;
 
 		let cost: u64 = match action {
@@ -240,6 +216,7 @@ mod tests {
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
+	use module_evm::{precompiles::tests::MockPrecompileHandle, Context};
 	use sp_runtime::{FixedPointNumber, FixedU128};
 
 	type HomaPrecompile = super::HomaPrecompile<Test>;
@@ -283,7 +260,7 @@ mod tests {
 				00000000000000000000000000000000 0000000000000000000000003b9aca00
 			"};
 
-			let res = HomaPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HomaPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 		});
@@ -332,7 +309,7 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 			"};
 
-			let res = HomaPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HomaPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 		});
@@ -355,7 +332,7 @@ mod tests {
 			// encoded value of FixedU128::saturating_from_rational(1,10);
 			let expected_output = hex! {"00000000000000000000000000000000 0000000000000000016345785d8a0000"}.to_vec();
 
-			let res = HomaPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HomaPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output);
 		});
@@ -386,7 +363,7 @@ mod tests {
 			// encoded value of FixedU128::saturating_from_rational(1,10);
 			let expected_output = hex! {"00000000000000000000000000000000 0000000000000000016345785d8a0000"}.to_vec();
 
-			let res = HomaPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HomaPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output);
 		});
@@ -415,7 +392,7 @@ mod tests {
 			// encoded value of FixedU128::saturating_from_rational(1,10);
 			let expected_output = hex! {"00000000000000000000000000000000 0000000000000000016345785d8a0000"}.to_vec();
 
-			let res = HomaPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HomaPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output);
 		});
@@ -444,7 +421,7 @@ mod tests {
 			// encoded value of FixedU128::saturating_from_rational(1,10);
 			let expected_output = hex! {"00000000000000000000000000000000 0000000000000000016345785d8a0000"}.to_vec();
 
-			let res = HomaPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HomaPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output);
 		});

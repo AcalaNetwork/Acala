@@ -16,15 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{
-	input::{Input, InputT, Output},
-	target_gas_limit,
-};
+use super::input::{Input, InputT, Output};
 use frame_support::traits::tokens::nonfungibles::{Inspect, Transfer};
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_support::AddressMapping;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -60,21 +56,13 @@ where
 		+ Inspect<Runtime::AccountId, ItemId = u64, CollectionId = u32>
 		+ Transfer<Runtime::AccountId>,
 {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let gas_cost = Pricer::<Runtime>::cost(handle)?;
+		handle.record_cost(gas_cost)?;
+
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
-			input,
-			target_gas_limit(target_gas),
+			handle.input(),
 		);
-
-		let gas_cost = Pricer::<Runtime>::cost(&input)?;
-
-		if let Some(gas_limit) = target_gas {
-			if gas_limit < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
 
 		let action = input.action()?;
 
@@ -88,9 +76,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
 					output: Output::encode_uint(balance),
-					logs: Default::default(),
 				})
 			}
 			Action::QueryOwner => {
@@ -108,9 +94,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
 					output: Output::encode_address(owner),
-					logs: Default::default(),
 				})
 			}
 			Action::Transfer => {
@@ -126,14 +110,11 @@ where
 					.map_err(|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("NFT Transfer failed", e),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 		}
@@ -148,9 +129,10 @@ where
 {
 	pub const BASE_COST: u64 = 200;
 
-	fn cost(
-		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
-	) -> Result<u64, PrecompileFailure> {
+	fn cost(handle: &mut impl PrecompileHandle) -> Result<u64, PrecompileFailure> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			handle.input(),
+		);
 		let _action = input.action()?;
 		// TODO: gas cost
 		Ok(Self::BASE_COST)

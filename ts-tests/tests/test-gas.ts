@@ -27,7 +27,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 			data: "0x" + Block.bytecode,
 		});
 
-		expect(data.usedGas.toNumber()).to.be.eq(251726);
+		expect(data.usedGas.toNumber()).to.be.eq(251786);
 		expect(data.gasLimit.toNumber()).closeTo(302071, 1000);
 		expect(data.usedStorage.toNumber()).to.be.eq(10921);
 	});

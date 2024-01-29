@@ -16,16 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{
-	input::{Input, InputPricer, InputT, Output},
-	target_gas_limit,
-};
+use super::input::{Input, InputPricer, InputT, Output};
 use crate::WeightToGas;
 use frame_support::traits::Get;
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_incentives::WeightInfo;
 use module_support::{IncentivesManager, PoolId};
@@ -65,21 +61,13 @@ where
 	Runtime: module_evm::Config + module_incentives::Config + module_prices::Config,
 	module_incentives::Pallet<Runtime>: IncentivesManager<Runtime::AccountId, Balance, CurrencyId, PoolId>,
 {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let gas_cost = Pricer::<Runtime>::cost(handle)?;
+		handle.record_cost(gas_cost)?;
+
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
-			input,
-			target_gas_limit(target_gas),
+			handle.input(),
 		);
-
-		let gas_cost = Pricer::<Runtime>::cost(&input)?;
-
-		if let Some(gas_limit) = target_gas {
-			if gas_limit < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
 
 		let action = input.action()?;
 
@@ -88,7 +76,7 @@ where
 				let pool = input.u32_at(1)?;
 				let pool_currency_id = input.currency_id_at(2)?;
 				let reward_currency_id = input.currency_id_at(3)?;
-				let pool_id = init_pool_id(pool, pool_currency_id, target_gas)?;
+				let pool_id = init_pool_id(pool, pool_currency_id)?;
 
 				let value = <module_incentives::Pallet<Runtime> as IncentivesManager<
 					Runtime::AccountId,
@@ -99,9 +87,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(value),
-					logs: Default::default(),
 				})
 			}
 			Action::DepositDexShare => {
@@ -118,14 +104,11 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("Incentives DepositDexShare failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::WithdrawDexShare => {
@@ -142,21 +125,18 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("Incentives WithdrawDexShare failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::ClaimRewards => {
 				let who = input.account_id_at(1)?;
 				let pool = input.u32_at(2)?;
 				let pool_currency_id = input.currency_id_at(3)?;
-				let pool_id = init_pool_id(pool, pool_currency_id, target_gas)?;
+				let pool_id = init_pool_id(pool, pool_currency_id)?;
 
 				<module_incentives::Pallet<Runtime> as IncentivesManager<
 					Runtime::AccountId,
@@ -167,20 +147,17 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("Incentives ClaimRewards failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::GetClaimRewardDeductionRate => {
 				let pool = input.u32_at(1)?;
 				let pool_currency_id = input.currency_id_at(2)?;
-				let pool_id = init_pool_id(pool, pool_currency_id, target_gas)?;
+				let pool_id = init_pool_id(pool, pool_currency_id)?;
 
 				let value = <module_incentives::Pallet<Runtime> as IncentivesManager<
 					Runtime::AccountId,
@@ -191,16 +168,14 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(value.into_inner()),
-					logs: Default::default(),
 				})
 			}
 			Action::GetPendingRewards => {
 				// solidity abi encode array will add an offset at input[1]
 				let pool = input.u32_at(2)?;
 				let pool_currency_id = input.currency_id_at(3)?;
-				let pool_id = init_pool_id(pool, pool_currency_id, target_gas)?;
+				let pool_id = init_pool_id(pool, pool_currency_id)?;
 				let who = input.account_id_at(4)?;
 				let reward_currency_ids_len = input.u32_at(5)?;
 				let mut reward_currency_ids = vec![];
@@ -217,9 +192,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint_array(value),
-					logs: Default::default(),
 				})
 			}
 		}
@@ -234,9 +207,10 @@ where
 {
 	const BASE_COST: u64 = 200;
 
-	fn cost(
-		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
-	) -> Result<u64, PrecompileFailure> {
+	fn cost(handle: &mut impl PrecompileHandle) -> Result<u64, PrecompileFailure> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			handle.input(),
+		);
 		let action = input.action()?;
 
 		let cost: u64 = match action {
@@ -322,11 +296,7 @@ where
 	}
 }
 
-fn init_pool_id(
-	pool_id_number: u32,
-	pool_currency_id: CurrencyId,
-	target_gas: Option<u64>,
-) -> Result<PoolId, PrecompileFailure> {
+fn init_pool_id(pool_id_number: u32, pool_currency_id: CurrencyId) -> Result<PoolId, PrecompileFailure> {
 	match pool_id_number {
 		0 => Ok(PoolId::Loans(pool_currency_id)),
 		1 => Ok(PoolId::Dex(pool_currency_id)),
@@ -334,7 +304,6 @@ fn init_pool_id(
 		_ => Err(PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "Incentives: Invalid enum value".into(),
-			cost: target_gas_limit(target_gas).unwrap_or_default(),
 		}),
 	}
 }
@@ -348,6 +317,7 @@ mod tests {
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
+	use module_evm::{precompiles::tests::MockPrecompileHandle, Context};
 	use module_support::Rate;
 	use orml_rewards::PoolInfo;
 	use orml_traits::MultiCurrency;
@@ -385,7 +355,8 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000064
 			"};
 
-			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			let res =
+				IncentivesPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output.to_vec());
 		});
@@ -413,7 +384,8 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000100000
 			"};
 
-			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			let res =
+				IncentivesPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 
 			assert_eq!(
@@ -457,7 +429,8 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000100
 			"};
 
-			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			let res =
+				IncentivesPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 
 			assert_eq!(
@@ -524,7 +497,8 @@ mod tests {
 				000000000000000000000000 0000000000000000000100000000000000000000
 			"};
 
-			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			let res =
+				IncentivesPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 
 			assert_eq!(
@@ -569,7 +543,8 @@ mod tests {
 				00000000000000000000000000000000 0000000000000000016345785d8a0000
 			"};
 
-			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			let res =
+				IncentivesPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output.to_vec());
 		});
@@ -644,7 +619,8 @@ mod tests {
 				00000000000000000000000000000000 000000000000000000000000000001f4
 			"};
 
-			let res = IncentivesPrecompile::execute(&input, None, &context, false).unwrap();
+			let res =
+				IncentivesPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output.to_vec());
 		})

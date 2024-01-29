@@ -19,10 +19,7 @@
 // Disable the following lints
 #![allow(clippy::type_complexity)]
 
-use super::{
-	input::{Input, InputT, Output},
-	target_gas_limit,
-};
+use super::input::{Input, InputT, Output};
 use frame_support::{
 	ensure, parameter_types,
 	traits::{
@@ -31,9 +28,8 @@ use frame_support::{
 	},
 };
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_support::{AddressMapping, TransactionPayment};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -105,21 +101,13 @@ where
 		Address = TaskAddress<BlockNumber>,
 	>,
 {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let gas_cost = Pricer::<Runtime>::cost(handle)?;
+		handle.record_cost(gas_cost)?;
+
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
-			input,
-			target_gas_limit(target_gas),
+			handle.input(),
 		);
-
-		let gas_cost = Pricer::<Runtime>::cost(&input)?;
-
-		if let Some(gas_limit) = target_gas {
-			if gas_limit < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
 
 		let action = input.action()?;
 
@@ -166,7 +154,6 @@ where
 						output: "Scheduler charge failed".into(),
 						// TODO: upgrade schedule::v3::Named
 						// output: Output::encode_error_msg("Scheduler charge failed", e),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					})?;
 				}
 
@@ -185,7 +172,6 @@ where
 				let next_id = current_id.checked_add(1).ok_or_else(|| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Scheduler next id overflow".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				EvmSchedulerNextID::set(&next_id);
 
@@ -222,14 +208,11 @@ where
 					output: "Scheduler schedule failed".into(),
 					// TODO: upgrade schedule::v3::Named
 					// output: Output::encode_error_msg("Scheduler schedule failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
 					output: Output::encode_bytes(&task_id),
-					logs: Default::default(),
 				})
 			}
 			Action::Cancel => {
@@ -246,14 +229,12 @@ where
 				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Decode task_id failed".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				ensure!(
 					task_info.sender == from,
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "NoPermission".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				);
 
@@ -267,7 +248,6 @@ where
 					output: "Scheduler cancel failed".into(),
 					// TODO: upgrade schedule::v3::Named
 					// output: Output::encode_error_msg("Scheduler cancel failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
@@ -283,9 +263,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::Reschedule => {
@@ -304,14 +282,12 @@ where
 				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Decode task_id failed".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				ensure!(
 					task_info.sender == from,
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "NoPermission".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				);
 
@@ -323,14 +299,11 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("Scheduler reschedule failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 		}
@@ -345,9 +318,11 @@ where
 {
 	const BASE_COST: u64 = 200;
 
-	fn cost(
-		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
-	) -> Result<u64, PrecompileFailure> {
+	fn cost(handle: &mut impl PrecompileHandle) -> Result<u64, PrecompileFailure> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			handle.input(),
+		);
+
 		let _action = input.action()?;
 		// TODO: gas cost
 		Ok(Self::BASE_COST)
@@ -362,6 +337,7 @@ mod tests {
 		alice_evm_addr, bob_evm_addr, new_test_ext, run_to_block, Balances, RuntimeEvent as TestEvent, System, Test,
 	};
 	use hex_literal::hex;
+	use module_evm::{precompiles::tests::MockPrecompileHandle, Context};
 	use sp_core::H160;
 
 	type SchedulePrecompile = crate::SchedulePrecompile<Test>;
@@ -403,7 +379,7 @@ mod tests {
 				00000000000000000000000000000000000000000000000000000000
 			"};
 
-			let resp = SchedulePrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = SchedulePrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(sp_core::bytes::to_hex(&resp.output[..], false), "0x\
 				0000000000000000000000000000000000000000000000000000000000000020\
@@ -428,16 +404,14 @@ mod tests {
 				0000000001824f12000000000000000000000000000000000000000000000000
 			"};
 
-			let resp = SchedulePrecompile::execute(&cancel_input, None, &context, false).unwrap();
+			let resp = SchedulePrecompile::execute(&mut MockPrecompileHandle::new(&cancel_input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
-			assert_eq!(resp.cost, 0);
 			let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Canceled { when: 3, index: 0 });
 			assert!(System::events().iter().any(|record| record.event == event));
 
 			// schedule call again
-			let resp = SchedulePrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = SchedulePrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
-			assert_eq!(resp.cost, 0);
 			assert_eq!(sp_core::bytes::to_hex(&resp.output[..], false), "0x\
 				0000000000000000000000000000000000000000000000000000000000000020\
 				0000000000000000000000000000000000000000000000000000000000000029\
@@ -462,9 +436,8 @@ mod tests {
 				0000000001824f12000000000000000000000000000000000000000000000000
 			"};
 
-			let resp = SchedulePrecompile::execute(&reschedule_input, None, &context, false).unwrap();
+			let resp = SchedulePrecompile::execute(&mut MockPrecompileHandle::new(&reschedule_input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
-			assert_eq!(resp.cost, 0);
 			assert_eq!(resp.output, [0u8; 0].to_vec());
 
 			let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Scheduled { when: 5, index: 0 });
@@ -534,9 +507,8 @@ mod tests {
 				1200000000000000000000000000000000000000000000000000000000000000
 			"};
 
-			let resp = SchedulePrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = SchedulePrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
-			assert_eq!(resp.cost, 0);
 			assert_eq!(sp_core::bytes::to_hex(&resp.output[..], false), "0x\
 				0000000000000000000000000000000000000000000000000000000000000020\
 				0000000000000000000000000000000000000000000000000000000000000029\
@@ -572,11 +544,10 @@ mod tests {
 				0000000001824f12000000000000000000000000000000000000000000000000
 			"};
 			assert_eq!(
-				SchedulePrecompile::execute(&cancel_input, Some(10_000), &context, false),
+				SchedulePrecompile::execute(&mut MockPrecompileHandle::new(&cancel_input, Some(10_000), &context, false)),
 				Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "NoPermission".into(),
-					cost: target_gas_limit(Some(10_000)).unwrap()
 				})
 			);
 
