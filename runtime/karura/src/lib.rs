@@ -2201,22 +2201,11 @@ impl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			_estimate: bool,
+			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			let from = EvmAddressMapping::<Runtime>::get_evm_address(&from)
-			.unwrap_or_else(|| EvmAddressMapping::<Runtime>::get_default_evm_address(&from));
+			let from = EvmAddressMapping::<Runtime>::get_or_create_evm_address(&from);
 
-			<Runtime as module_evm::Config>::Runner::rpc_call(
-				from,
-				from,
-				to,
-				data,
-				value,
-				gas_limit,
-				storage_limit,
-				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-				<Runtime as module_evm::Config>::config(),
-			)
+			Self::call(from, to, data, value, gas_limit, storage_limit, access_list, estimate)
 		}
 
 		fn account_create(
@@ -2226,20 +2215,11 @@ impl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-			_estimate: bool,
+			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
-			let from = EvmAddressMapping::<Runtime>::get_evm_address(&from)
-			.unwrap_or_else(|| EvmAddressMapping::<Runtime>::get_default_evm_address(&from));
+			let from = EvmAddressMapping::<Runtime>::get_or_create_evm_address(&from);
 
-			<Runtime as module_evm::Config>::Runner::rpc_create(
-				from,
-				data,
-				value,
-				gas_limit,
-				storage_limit,
-				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-				<Runtime as module_evm::Config>::config(),
-			)
+			Self::create(from, data, value, gas_limit, storage_limit, access_list, estimate)
 		}
 	}
 
