@@ -58,7 +58,7 @@ use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
+use module_support::{AddressMapping, AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
@@ -2104,7 +2104,8 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance> for Runtime {
+	#[api_version(3)]
+	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance, AccountId> for Runtime {
 		fn block_limits() -> BlockLimits {
 			BlockLimits {
 				max_gas_limit: runtime_common::EvmLimits::<Runtime>::max_gas_limit(),
@@ -2188,6 +2189,57 @@ impl_runtime_apis! {
 			};
 
 			request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))
+		}
+
+		// required by xtokens precompile
+		#[transactional]
+		fn account_call(
+			from: AccountId,
+			to: H160,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			_estimate: bool,
+		) -> Result<CallInfo, sp_runtime::DispatchError> {
+			let from = EvmAddressMapping::<Runtime>::get_evm_address(&from)
+			.unwrap_or_else(|| EvmAddressMapping::<Runtime>::get_default_evm_address(&from));
+
+			<Runtime as module_evm::Config>::Runner::rpc_call(
+				from,
+				from,
+				to,
+				data,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				<Runtime as module_evm::Config>::config(),
+			)
+		}
+
+		fn account_create(
+			from: AccountId,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			_estimate: bool,
+		) -> Result<CreateInfo, sp_runtime::DispatchError> {
+			let from = EvmAddressMapping::<Runtime>::get_evm_address(&from)
+			.unwrap_or_else(|| EvmAddressMapping::<Runtime>::get_default_evm_address(&from));
+
+			<Runtime as module_evm::Config>::Runner::rpc_create(
+				from,
+				data,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				<Runtime as module_evm::Config>::config(),
+			)
 		}
 	}
 

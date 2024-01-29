@@ -29,8 +29,9 @@ use sp_std::vec::Vec;
 
 sp_api::decl_runtime_apis! {
 	#[api_version(2)]
-	pub trait EVMRuntimeRPCApi<Balance> where
+	pub trait EVMRuntimeRPCApi<Balance, AccountId> where
 		Balance: Codec + MaybeDisplay + MaybeFromStr,
+		AccountId: Codec + MaybeDisplay + MaybeFromStr,
 	{
 		fn call(
 			from: H160,
@@ -56,5 +57,28 @@ sp_api::decl_runtime_apis! {
 		fn get_estimate_resources_request(data: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError>;
 
 		fn block_limits() -> BlockLimits;
+
+		#[api_version(3)]
+		fn account_call(
+			from: AccountId,
+			to: H160,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			estimate: bool,
+		) -> Result<CallInfo, sp_runtime::DispatchError>;
+
+		#[api_version(3)]
+		fn account_create(
+			from: AccountId,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			estimate: bool,
+		) -> Result<CreateInfo, sp_runtime::DispatchError>;
 	}
 }
