@@ -29,7 +29,7 @@ use sp_std::{marker::PhantomData, prelude::*};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::TakeRevenue;
 use xcm_executor::{
-	traits::{DropAssets, WeightTrader},
+	traits::{DropAssets, WeightTrader, XcmAssetTransfers},
 	Assets,
 };
 
@@ -273,6 +273,14 @@ impl<
 	fn charge_fees(origin: impl Into<MultiLocation>, fees: MultiAssets) -> XcmResult {
 		xcm_executor::XcmExecutor::<Config>::charge_fees(origin, fees)
 	}
+}
+
+impl<Config: xcm_executor::Config, AccountId, Balance, AccountIdConvert, EVMBridge> XcmAssetTransfers
+	for XcmExecutor<Config, AccountId, Balance, AccountIdConvert, EVMBridge>
+{
+	type IsReserve = Config::IsReserve;
+	type IsTeleporter = Config::IsTeleporter;
+	type AssetTransactor = Config::AssetTransactor;
 }
 
 /// Convert `AccountKey20` to `AccountId`

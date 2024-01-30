@@ -288,4 +288,13 @@ impl<T: frame_system::Config> pallet_xcm::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(10))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
+	fn transfer_assets() -> Weight {
+		Weight::from_parts(43_104_000, 0)
+	}
+	fn new_query() -> Weight {
+		Weight::from_parts(43_104_000, 0)
+	}
+	fn take_response() -> Weight {
+		Weight::from_parts(43_104_000, 0)
+	}
 }

@@ -27,11 +27,11 @@ use cumulus_client_consensus_aura::BuildAuraConsensusParams;
 use cumulus_client_consensus_aura::{AuraConsensus, SlotProportion};
 use cumulus_client_consensus_common::{ParachainBlockImport as TParachainBlockImport, ParachainConsensus};
 use cumulus_client_network::RequireSecondedInBlockAnnounce;
+use cumulus_client_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
 use cumulus_client_service::{prepare_node_config, StartCollatorParams, StartFullNodeParams};
 #[allow(deprecated)]
 use cumulus_client_service::{start_collator, start_full_node};
 use cumulus_primitives_core::ParaId;
-use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainInterface, RelayChainResult};
 use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node_with_rpc;

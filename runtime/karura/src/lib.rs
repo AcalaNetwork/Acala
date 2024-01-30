@@ -235,7 +235,8 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+				| pallet_xcm::Call::limited_teleport_assets { .. }
+				| pallet_xcm::Call::transfer_assets { .. } => {
 					return false;
 				}
 				pallet_xcm::Call::force_xcm_version { .. }
@@ -282,6 +283,7 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type MaxConsumers = ConstU32<16>;
+	type RuntimeTask = ();
 }
 
 impl pallet_aura::Config for Runtime {
@@ -1535,13 +1537,14 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type OnSystemEvent = ();
 	type SelfParaId = ParachainInfo;
-	type DmpMessageHandler = DmpQueue;
+	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, xcm_config::RelayOrigin>;
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type CheckAssociatedRelayNumber =
 		CheckRelayNumber<EvmChainId<Runtime>, cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases>;
+	type WeightInfo = cumulus_pallet_parachain_system::weights::SubstrateWeight<Runtime>;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -1798,6 +1801,7 @@ construct_runtime!(
 		XTokens: orml_xtokens = 54,
 		UnknownTokens: orml_unknown_tokens = 55,
 		OrmlXcm: orml_xcm = 56,
+		MessageQueue: pallet_message_queue = 57,
 
 		// Governance
 		Authority: orml_authority = 60,
@@ -1906,7 +1910,7 @@ pub type Executive = frame_executive::Executive<
 >;
 
 #[allow(unused_parens)]
-type Migrations = ();
+type Migrations = (cumulus_pallet_xcmp_queue::migration::v4::MigrationToV4<Runtime>,);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

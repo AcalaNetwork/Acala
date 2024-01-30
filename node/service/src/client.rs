@@ -20,12 +20,12 @@
 
 use primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Nonce};
 use sc_client_api::{Backend as BackendT, BlockchainEvents, KeysIter, PairsIter};
-use sp_api::{CallApiAt, NumberFor, ProvideRuntimeApi};
+use sp_api::{CallApiAt, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
 use sp_consensus::BlockStatus;
 use sp_runtime::{
 	generic::SignedBlock,
-	traits::{BlakeTwo256, Block as BlockT},
+	traits::{BlakeTwo256, Block as BlockT, NumberFor},
 	Justifications,
 };
 use sp_storage::{ChildInfo, StorageData, StorageKey};
@@ -73,7 +73,7 @@ pub trait AbstractClient<Block, Backend>:
 where
 	Block: BlockT,
 	Backend: BackendT<Block>,
-	Backend::State: sp_api::StateBackend<BlakeTwo256>,
+	Backend::State: sc_client_api::StateBackend<BlakeTwo256>,
 	Self::Api: RuntimeApiCollection,
 {
 }
@@ -82,7 +82,7 @@ impl<Block, Backend, Client> AbstractClient<Block, Backend> for Client
 where
 	Block: BlockT,
 	Backend: BackendT<Block>,
-	Backend::State: sp_api::StateBackend<BlakeTwo256>,
+	Backend::State: sc_client_api::StateBackend<BlakeTwo256>,
 	Client: BlockchainEvents<Block>
 		+ ProvideRuntimeApi<Block>
 		+ HeaderBackend<Block>
@@ -115,7 +115,7 @@ pub trait ExecuteWithClient {
 	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
 	where
 		Backend: sc_client_api::Backend<Block>,
-		Backend::State: sp_api::StateBackend<BlakeTwo256>,
+		Backend::State: sc_client_api::StateBackend<BlakeTwo256>,
 		Api: crate::RuntimeApiCollection,
 		Client: AbstractClient<Block, Backend, Api = Api> + 'static;
 }
