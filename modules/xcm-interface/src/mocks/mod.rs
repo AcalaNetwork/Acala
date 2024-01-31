@@ -53,11 +53,6 @@ parameter_types! {
 		X1(Parachain(2000).into());
 }
 
-#[cfg(feature = "runtime-benchmarks")]
-parameter_types! {
-	pub ReachableDest: Option<MultiLocation> = Some(Parent.into());
-}
-
 ord_parameter_types! {
 	pub const One: AccountId = ALICE;
 }
@@ -225,8 +220,6 @@ macro_rules! impl_mock {
 			type AdminOrigin = EnsureRoot<AccountId>;
 			type MaxRemoteLockConsumers = ConstU32<0>;
 			type RemoteLockConsumerIdentifier = ();
-			#[cfg(feature = "runtime-benchmarks")]
-			type ReachableDest = ReachableDest;
 		}
 
 		impl Config for Runtime {
