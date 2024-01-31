@@ -22,7 +22,7 @@ use super::super::*;
 
 use frame_support::{
 	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything, FindAuthor, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, FindAuthor, Nothing},
 	weights::{ConstantMultiplier, IdentityFee},
 	ConsensusEngineId, PalletId,
 };
@@ -36,10 +36,10 @@ pub use primitives::{
 	define_combined_task, Address, Amount, BlockNumber, CurrencyId, Header, Multiplier, ReserveIdentifier, Signature,
 	TokenSymbol,
 };
-use sp_core::{H160, H256};
+use sp_core::H160;
 use sp_runtime::{
 	generic,
-	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, IdentityLookup},
+	traits::{AccountIdConversion, BlockNumberProvider, IdentityLookup},
 	AccountId32, FixedU128, Percent,
 };
 
@@ -57,6 +57,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
 	type AccountData = pallet_balances::AccountData<Balance>;
+	type BlockHashCount = ConstU32<10>;
 }
 
 impl pallet_balances::Config for Runtime {
