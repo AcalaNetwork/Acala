@@ -500,49 +500,14 @@ pub fn new_chain_ops(
 	ServiceError,
 > {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
-	if config.chain_spec.is_mandala() {
-		#[cfg(feature = "with-mandala-runtime")]
-		{
-			let PartialComponents {
-				client,
-				backend,
-				import_queue,
-				task_manager,
-				..
-			} = new_partial(config, config.chain_spec.is_dev(), false)?;
-			Ok((client, backend, import_queue, task_manager))
-		}
-		#[cfg(not(feature = "with-mandala-runtime"))]
-		Err(MANDALA_RUNTIME_NOT_AVAILABLE.into())
-	} else if config.chain_spec.is_karura() {
-		#[cfg(feature = "with-karura-runtime")]
-		{
-			let PartialComponents {
-				client,
-				backend,
-				import_queue,
-				task_manager,
-				..
-			} = new_partial(config, false, false)?;
-			Ok((client, backend, import_queue, task_manager))
-		}
-		#[cfg(not(feature = "with-karura-runtime"))]
-		Err(KARURA_RUNTIME_NOT_AVAILABLE.into())
-	} else {
-		#[cfg(feature = "with-acala-runtime")]
-		{
-			let PartialComponents {
-				client,
-				backend,
-				import_queue,
-				task_manager,
-				..
-			} = new_partial(config, false, false)?;
-			Ok((client, backend, import_queue, task_manager))
-		}
-		#[cfg(not(feature = "with-acala-runtime"))]
-		Err(ACALA_RUNTIME_NOT_AVAILABLE.into())
-	}
+	let PartialComponents {
+		client,
+		backend,
+		import_queue,
+		task_manager,
+		..
+	} = new_partial(config, false, false)?;
+	Ok((client, backend, import_queue, task_manager))
 }
 
 pub fn start_dev_node(config: Configuration, instant_sealing: bool) -> Result<TaskManager, ServiceError> {
