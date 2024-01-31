@@ -49,25 +49,31 @@ sp-runtime = { workspace = true, features = ["std"] }
 
 substrate-prometheus-endpoint = { workspace = true }
 frame-benchmarking = { workspace = true, features = ["std"] }
+frame-support = { workspace = true, features = ["std"] }
 frame-system-rpc-runtime-api = { workspace = true, features = ["std"] }
 pallet-transaction-payment-rpc-runtime-api = { workspace = true, features = ["std"] }
+pallet-transaction-payment = { workspace = true, features = ["std"] }
 sp-block-builder = { workspace = true, features = ["std"] }
+sp-blockchain = { workspace = true }
+sp-inherents = { workspace = true, features = ["std"] }
+sp-keystore = { workspace = true, features = ["std"] }
 sp-offchain = { workspace = true, features = ["std"] }
 sp-session = { workspace = true, features = ["std"] }
-sp-storage = { workspace = true, features = ["std"] }
-sp-transaction-pool = { workspace = true, features = ["std"] }
-sp-blockchain = { workspace = true }
 sp-std = { workspace = true, features = ["std"] }
-sp-trie = { workspace = true, features = ["std"] }
+sp-storage = { workspace = true, features = ["std"] }
 sp-timestamp = { workspace = true, features = ["std"] }
-sp-keystore = { workspace = true, features = ["std"] }
+sp-transaction-pool = { workspace = true, features = ["std"] }
+sp-trie = { workspace = true, features = ["std"] }
+sp-version = { workspace = true, features = ["std"] }
 
 cumulus-client-cli = { workspace = true }
+cumulus-client-collator = { workspace = true }
 cumulus-client-consensus-aura = { workspace = true }
 cumulus-client-consensus-common = { workspace = true }
+cumulus-client-consensus-proposer = { workspace = true }
 cumulus-client-consensus-relay-chain = { workspace = true }
 cumulus-client-network = { workspace = true }
-cumulus-client-parachain-inherent ={ workspace = true }
+cumulus-client-parachain-inherent = { workspace = true }
 cumulus-client-service = { workspace = true }
 cumulus-pallet-parachain-system = { workspace = true, features = ["std"] }
 cumulus-primitives-core = { workspace = true, features = ["std"] }

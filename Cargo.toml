@@ -315,8 +315,10 @@ xcm-executor = { package = "staging-xcm-executor", version = "7.0.0", default-fe
 
 # polkadot-sdk (client)
 cumulus-client-cli = { version = "0.7.0" }
+cumulus-client-collator = { version = "0.7.0" }
 cumulus-client-consensus-aura = { version = "0.7.0" }
 cumulus-client-consensus-common = { version = "0.7.0"  }
+cumulus-client-consensus-proposer = { version = "0.7.0" }
 cumulus-client-consensus-relay-chain = { version = "0.7.0" }
 cumulus-client-network = { version = "0.7.0" }
 cumulus-client-parachain-inherent = { version = "0.1.0" }
