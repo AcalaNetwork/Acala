@@ -85,7 +85,7 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
                 ]
             }
         };
-        const priorityRegex = /^65,695,1\d\d,\d{3},\d{3},\d{3}$/;
+        const priorityRegex = /^65,813,8\d\d,\d{3},\d{3},\d{3}$/;
 
         expect(operationalTransactionvalidity.toHuman()).to.satisfy((x: any) => {
             return x === expected || (

@@ -157,11 +157,11 @@ mod mock {
 
 	use frame_support::{
 		derive_impl, parameter_types,
-		traits::{ConstU128, ConstU32, ConstU64, Contains, InstanceFilter},
+		traits::{ConstU128, ConstU32, Contains, InstanceFilter},
 		PalletId,
 	};
 	use parity_scale_codec::{Decode, Encode};
-	use sp_core::{crypto::AccountId32, H256};
+	use sp_core::crypto::AccountId32;
 	use sp_runtime::{
 		traits::{BlakeTwo256, IdentityLookup},
 		BuildStorage, RuntimeDebug,
@@ -178,7 +178,7 @@ mod mock {
 	}
 	impl pallet_balances::Config for Runtime {
 		type Balance = Balance;
-		type RuntimeEvent = ();
+		type RuntimeEvent = RuntimeEvent;
 		type DustRemoval = ();
 		type ExistentialDeposit = ConstU128<1>;
 		type AccountStore = frame_system::Pallet<Runtime>;
@@ -193,7 +193,7 @@ mod mock {
 		type MaxFreezes = ();
 	}
 	impl pallet_utility::Config for Runtime {
-		type RuntimeEvent = ();
+		type RuntimeEvent = RuntimeEvent;
 		type RuntimeCall = RuntimeCall;
 		type PalletsOrigin = OriginCaller;
 		type WeightInfo = ();
@@ -236,7 +236,7 @@ mod mock {
 		}
 	}
 	impl pallet_proxy::Config for Runtime {
-		type RuntimeEvent = ();
+		type RuntimeEvent = RuntimeEvent;
 		type RuntimeCall = RuntimeCall;
 		type Currency = Balances;
 		type ProxyType = ProxyType;
@@ -255,7 +255,7 @@ mod mock {
 	}
 
 	impl crate::Config for Runtime {
-		type RuntimeEvent = ();
+		type RuntimeEvent = RuntimeEvent;
 		type Currency = Balances;
 		type CreateClassDeposit = ConstU128<200>;
 		type CreateTokenDeposit = ConstU128<100>;
