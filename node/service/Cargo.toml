@@ -51,6 +51,7 @@ substrate-prometheus-endpoint = { workspace = true }
 frame-benchmarking = { workspace = true, features = ["std"] }
 frame-support = { workspace = true, features = ["std"] }
 frame-system-rpc-runtime-api = { workspace = true, features = ["std"] }
+frame-try-runtime = { workspace = true, features = ["std"] }
 pallet-transaction-payment-rpc-runtime-api = { workspace = true, features = ["std"] }
 pallet-transaction-payment = { workspace = true, features = ["std"] }
 sp-block-builder = { workspace = true, features = ["std"] }
