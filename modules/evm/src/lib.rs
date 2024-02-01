@@ -36,7 +36,7 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		BalanceStatus, Currency, EitherOfDiverse, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
-		NamedReservableCurrency, OnKilledAccount,
+		NamedReservableCurrency, OnKilledAccount, Randomness,
 	},
 	transactional,
 	weights::Weight,
@@ -240,6 +240,9 @@ pub mod module {
 
 		/// Find author for the current block.
 		type FindAuthor: FindAuthor<Self::AccountId>;
+
+		/// Provides randomness in the runtime.
+		type Randomness: Randomness<Self::Hash, BlockNumberFor<Self>>;
 
 		/// Dispatchable tasks
 		type Task: DispatchableTask + FullCodec + Debug + Clone + PartialEq + TypeInfo + From<EvmTask<Self>>;
@@ -1908,6 +1911,13 @@ impl<T: Config> Pallet<T> {
 				});
 			}
 		});
+	}
+
+	fn generate_random_number(seed: u32) -> u32 {
+		let (random_seed, _) = T::Randomness::random(&(seed).encode());
+		let random_number =
+			<u32>::decode(&mut random_seed.as_ref()).expect("secure hashes should always be bigger than u32; qed");
+		random_number
 	}
 }
 

@@ -1,13 +1,25 @@
 import { expect } from "chai";
+import { deployContract } from "ethereum-waffle";
 import { step } from "mocha-steps";
 import { describeWithAcala } from "./util";
+import Block from "../build/Block.json";
+import { Contract } from "ethers";
+import { BodhiSigner } from "@acala-network/bodhi";
 
 describeWithAcala("Acala RPC (Block)", (context) => {
+	let alice: BodhiSigner;
+	let contract: Contract;
+
+	before(async () => {
+		[alice] = context.wallets;
+		contract = await deployContract(alice, Block);
+	});
+
 	step("should be at block 0 at genesis", async function () {
 		expect(await context.provider.getBlockNumber()).to.equal(0);
 	});
 
-	it("should return genesis block by number", async function () {
+	step("should return genesis block by number", async function () {
 		expect(await context.provider.getBlockNumber()).to.equal(0);
 	});
 });
