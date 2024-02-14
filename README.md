@@ -26,9 +26,23 @@
   - [2.1. aUSD and the Honzon stablecoin protocol](#21-ausd-and-the-honzon-stablecoin-protocol)
   - [2.2. Acala Network Economic Model](#22-acala-network-economic-model)
 - [3. Building](#3-building)
+  - [NOTE](#note)
 - [4. Run](#4-run)
 - [5. Development](#5-development)
 - [6. Bug Bounty :bug:](#6-bug-bounty-bug)
+- [7. Bench Bot](#7-bench-bot)
+  - [Generate module weights](#generate-module-weights)
+  - [Generate runtime weights](#generate-runtime-weights)
+  - [Bench Acala EVM+](#bench-acala-evm)
+- [8. Migration testing runtime](#8-migration-testing-runtime)
+  - [Try testing runtime](#try-testing-runtime)
+- [9. Run local testnet with parachain-launch](#9-run-local-testnet-with-parachain-launch)
+- [10. Build For Release](#10-build-for-release)
+- [11. Setup Local EVM+ Test Environment](#11-setup-local-evm-test-environment)
+  - [Setting up local node](#setting-up-local-node)
+      - [Compile the node from source code:](#compile-the-node-from-source-code)
+      - [Run node using docker:](#run-node-using-docker)
+  - [Setting up eth-rpc-adapter](#setting-up-eth-rpc-adapter)
 
 <!-- /TOC -->
 
