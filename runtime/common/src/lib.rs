@@ -40,7 +40,7 @@ use primitives::{
 	Balance, CurrencyId,
 };
 use scale_info::TypeInfo;
-use sp_core::{Bytes, H160};
+use sp_core::H160;
 use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 use static_assertions::const_assert;
@@ -419,7 +419,7 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 			nonce: 0u32,
 			balance: 0u128,
 			storage: BTreeMap::new(),
-			code: Bytes::from_str(&code_string).unwrap().0,
+			code: sp_core::Bytes::from_str(&code_string).unwrap().0,
 			enable_contract_development: false,
 		};
 

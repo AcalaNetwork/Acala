@@ -18,36 +18,33 @@
 
 use super::{
 	constants::fee::*, AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert,
-	Currencies, CurrencyId, EvmAddressMapping, ExistentialDeposits, GetNativeCurrencyId, NativeTokenExistentialDeposit,
-	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, TreasuryAccount,
-	UnknownTokens, XcmpQueue, ACA,
+	Currencies, CurrencyId, EvmAddressMapping, ExistentialDeposits, GetNativeCurrencyId, MessageQueue,
+	NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeOrigin, TreasuryAccount, UnknownTokens, XcmpQueue, ACA,
 };
-pub use cumulus_primitives_core::ParaId;
+pub use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 pub use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Everything, Get, Nothing},
+	traits::{ConstU32, Everything, Get, Nothing, TransformOrigin},
 	weights::Weight,
 };
 use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfStableAsset};
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
-use pallet_xcm::XcmPassthrough;
+
+use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 use parity_scale_codec::{Decode, Encode};
-use polkadot_parachain_primitives::primitives::Sibling;
+
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use primitives::evm::is_system_contract;
 use runtime_common::{
-	local_currency_location, native_currency_location, xcm_impl::AccountKey20Aliases, AcalaDropAssets,
-	EnsureRootOrHalfGeneralCouncil, EnsureRootOrThreeFourthsGeneralCouncil, FixedRateOfAsset,
+	local_currency_location, native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
+	EnsureRootOrThreeFourthsGeneralCouncil, FixedRateOfAsset, RuntimeBlockWeights,
 };
+use sp_runtime::Perbill;
 use xcm::{prelude::*, v3::Weight as XcmWeight};
-pub use xcm_builder::{
-	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
-	AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, NativeAsset,
-	ParentAsSuperuser, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
-};
+use xcm_builder::{EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, SignedToAccountId32};
 
 parameter_types! {
 	pub const DotLocation: MultiLocation = MultiLocation::parent();
@@ -57,67 +54,19 @@ parameter_types! {
 	pub CheckingAccount: AccountId = PolkadotXcm::check_account();
 }
 
-/// Type for specifying how a `MultiLocation` can be converted into an `AccountId`. This is used
-/// when determining ownership of accounts for asset transacting and when attempting to use XCM
-/// `Transact` in order to determine the dispatch RuntimeOrigin.
-pub type LocationToAccountId = (
-	// The parent (Relay-chain) origin converts to the default `AccountId`.
-	ParentIsPreset<AccountId>,
-	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
-	SiblingParachainConvertsVia<Sibling, AccountId>,
-	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
-	AccountId32Aliases<RelayNetwork, AccountId>,
-	// Convert `AccountKey20` to `AccountId`
-	AccountKey20Aliases<RelayNetwork, AccountId, EvmAddressMapping<Runtime>>,
-);
+pub type LocationToAccountId =
+	runtime_common::xcm_config::LocationToAccountId<RelayNetwork, EvmAddressMapping<Runtime>>;
 
-/// This is the type we use to convert an (incoming) XCM origin into a local `RuntimeOrigin`
-/// instance, ready for dispatching a transaction with Xcm's `Transact`. There is an `OriginKind`
-/// which can biases the kind of local `RuntimeOrigin` it will become.
-pub type XcmOriginToCallOrigin = (
-	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
-	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for
-	// foreign chains who want to have a local sovereign account on this chain which they control.
-	SovereignSignedViaLocation<LocationToAccountId, RuntimeOrigin>,
-	// Native converter for Relay-chain (Parent) location; will converts to a `Relay` origin when
-	// recognized.
-	RelayChainAsNative<RelayChainOrigin, RuntimeOrigin>,
-	// Native converter for sibling Parachains; will convert to a `SiblingPara` origin when
-	// recognized.
-	SiblingParachainAsNative<cumulus_pallet_xcm::Origin, RuntimeOrigin>,
-	// Native signed account converter; this just converts an `AccountId32` origin into a normal
-	// `Origin::Signed` origin of the same 32-byte value.
-	SignedAccountId32AsNative<RelayNetwork, RuntimeOrigin>,
-	// Xcm origins can be represented natively under the Xcm pallet's Xcm origin.
-	XcmPassthrough<RuntimeOrigin>,
-);
+pub type XcmOriginToCallOrigin = runtime_common::xcm_config::XcmOriginToCallOrigin<
+	LocationToAccountId,
+	RuntimeOrigin,
+	RelayChainOrigin,
+	RelayNetwork,
+>;
 
-pub type Barrier = (
-	TakeWeightCredit,
-	AllowTopLevelPaidExecutionFrom<Everything>,
-	// Expected responses are OK.
-	AllowKnownQueryResponses<PolkadotXcm>,
-	// Subscriptions for version tracking are OK.
-	AllowSubscriptionsFrom<Everything>,
-);
+pub type Barrier = runtime_common::xcm_config::Barrier<PolkadotXcm, UniversalLocation>;
 
-pub struct ToTreasury;
-impl TakeRevenue for ToTreasury {
-	fn take_revenue(revenue: MultiAsset) {
-		if let MultiAsset {
-			id: Concrete(location),
-			fun: Fungible(amount),
-		} = revenue
-		{
-			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
-				// Ensure TreasuryAccount have ed requirement for native asset, but don't need
-				// ed requirement for cross-chain asset because it's one of whitelist accounts.
-				// Ignore the result.
-				let _ = Currencies::deposit(currency_id, &TreasuryAccount::get(), amount);
-			}
-		}
-	}
-}
+pub type ToTreasury = runtime_common::xcm_config::ToTreasury<CurrencyIdConvert, TreasuryAccount, Currencies>;
 
 parameter_types! {
 	// One XCM operation is 1_000_000 weight - almost certainly a conservative estimate.
@@ -203,11 +152,6 @@ pub type XcmExecutor = runtime_common::XcmExecutor<
 	module_evm_bridge::EVMBridge<Runtime>,
 >;
 
-#[cfg(feature = "runtime-benchmarks")]
-parameter_types! {
-	pub ReachableDest: Option<MultiLocation> = Some(Parent.into());
-}
-
 impl pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
@@ -229,8 +173,6 @@ impl pallet_xcm::Config for Runtime {
 	type SovereignAccountOf = ();
 	type MaxLockers = ConstU32<8>;
 	type WeightInfo = crate::weights::pallet_xcm::WeightInfo<Runtime>;
-	#[cfg(feature = "runtime-benchmarks")]
-	type ReachableDest = ReachableDest;
 	type AdminOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type MaxRemoteLockConsumers = ConstU32<0>;
 	type RemoteLockConsumerIdentifier = ();
@@ -241,12 +183,16 @@ impl cumulus_pallet_xcm::Config for Runtime {
 	type XcmExecutor = XcmExecutor;
 }
 
+parameter_types! {
+	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;
+}
+
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type XcmExecutor = XcmExecutor;
 	type ChannelInfo = ParachainSystem;
 	type VersionWrapper = ();
-	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
+	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
+	type MaxInboundSuspended = sp_core::ConstU32<1_000>;
 	type ControllerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ControllerOriginConverter = XcmOriginToCallOrigin;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
@@ -255,8 +201,28 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type XcmExecutor = XcmExecutor;
-	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = cumulus_pallet_dmp_queue::weights::SubstrateWeight<Self>;
+	type DmpSink = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
+}
+
+parameter_types! {
+	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
+}
+
+impl pallet_message_queue::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_message_queue::weights::SubstrateWeight<Self>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type MessageProcessor = pallet_message_queue::mock_helpers::NoopMessageProcessor<AggregateMessageOrigin>;
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type MessageProcessor =
+		xcm_builder::ProcessXcmMessage<AggregateMessageOrigin, xcm_executor::XcmExecutor<XcmConfig>, RuntimeCall>;
+	type Size = u32;
+	type QueueChangeHandler = NarrowOriginToSibling<XcmpQueue>;
+	type QueuePausedQuery = NarrowOriginToSibling<XcmpQueue>;
+	type HeapSize = sp_core::ConstU32<{ 64 * 1024 }>;
+	type MaxStale = sp_core::ConstU32<8>;
+	type ServiceWeight = MessageQueueServiceWeight;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
@@ -355,10 +321,6 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 	}
 }
 
-parameter_types! {
-	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
-}
-
 pub struct AccountIdToMultiLocation;
 impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 	fn convert(account: AccountId) -> MultiLocation {
@@ -371,6 +333,7 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 }
 
 parameter_types! {
+	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
 	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_parts(100_000_000, 0);
 	pub const MaxAssetsForTransfer: usize = 2;
 }

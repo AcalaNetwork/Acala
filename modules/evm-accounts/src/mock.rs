@@ -22,12 +22,12 @@
 
 use super::*;
 use frame_support::{
-	construct_runtime, parameter_types,
-	traits::{ConstU128, ConstU64, Everything, Nothing},
+	construct_runtime, derive_impl, parameter_types,
+	traits::{ConstU128, Nothing},
 };
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
-use sp_core::{crypto::AccountId32, H256};
+use sp_core::crypto::AccountId32;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
 
@@ -40,30 +40,13 @@ pub const BOB: AccountId = AccountId32::new([1u8; 32]);
 mod evm_accounts {
 	pub use super::super::*;
 }
+
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type Nonce = u64;
-	type RuntimeCall = RuntimeCall;
-	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<250>;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type DbWeight = ();
-	type BaseCallFilter = Everything;
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
 }
 
 impl pallet_balances::Config for Runtime {

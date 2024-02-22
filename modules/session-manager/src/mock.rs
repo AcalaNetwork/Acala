@@ -21,36 +21,14 @@
 #![cfg(test)]
 
 use crate as session_manager;
-use frame_support::{
-	construct_runtime,
-	traits::{ConstU32, ConstU64, Everything},
-};
+use frame_support::{construct_runtime, derive_impl};
 use sp_runtime::{testing::UintAuthorityId, traits::OpaqueKeys, BuildStorage, RuntimeAppPublic};
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = Everything;
-	type RuntimeOrigin = RuntimeOrigin;
-	type Nonce = u64;
-	type RuntimeCall = RuntimeCall;
-	type Hash = sp_runtime::testing::H256;
-	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = u64;
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<250>;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = ();
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
 }
 
 sp_runtime::impl_opaque_keys! {

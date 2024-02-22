@@ -27,6 +27,7 @@ pallet-bounties = { workspace = true }
 pallet-collective = { workspace = true }
 pallet-democracy = { workspace = true }
 pallet-membership = { workspace = true }
+pallet-message-queue = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-proxy = { workspace = true }
 pallet-scheduler = { workspace = true }
@@ -72,6 +73,7 @@ xcm-executor = { workspace = true }
 xcm-builder = { workspace = true }
 pallet-xcm = { workspace = true }
 polkadot-runtime-common = { workspace = true }
+parachains-common = { workspace = true }
 
 # orml
 orml-auction = { workspace = true }
@@ -163,6 +165,7 @@ std = [
 	"pallet-collective/std",
 	"pallet-democracy/std",
 	"pallet-membership/std",
+	"pallet-message-queue/std",
 	"pallet-multisig/std",
 	"pallet-preimage/std",
 	"pallet-proxy/std",
@@ -207,6 +210,7 @@ std = [
 	"xcm-executor/std",
 	"xcm/std",
 	"polkadot-runtime-common/std",
+	"parachains-common/std",
 
 	"orml-auction/std",
 	"orml-authority/std",
@@ -274,6 +278,7 @@ runtime-benchmarks = [
 	"pallet-collective/runtime-benchmarks",
 	"pallet-democracy/runtime-benchmarks",
 	"pallet-membership/runtime-benchmarks",
+	"pallet-message-queue/runtime-benchmarks",
 	"pallet-multisig/runtime-benchmarks",
 	"pallet-preimage/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
@@ -334,6 +339,7 @@ try-runtime = [
 	"pallet-collective/try-runtime",
 	"pallet-democracy/try-runtime",
 	"pallet-membership/try-runtime",
+	"pallet-message-queue/try-runtime",
 	"pallet-multisig/try-runtime",
 	"pallet-preimage/try-runtime",
 	"pallet-proxy/try-runtime",

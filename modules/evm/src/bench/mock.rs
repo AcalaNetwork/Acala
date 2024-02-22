@@ -21,8 +21,8 @@
 use super::super::*;
 
 use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything, FindAuthor, Nothing},
+	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	traits::{ConstU128, ConstU32, ConstU64, FindAuthor, Nothing},
 	weights::{ConstantMultiplier, IdentityFee},
 	ConsensusEngineId, PalletId,
 };
@@ -36,10 +36,10 @@ pub use primitives::{
 	define_combined_task, Address, Amount, BlockNumber, CurrencyId, Header, Multiplier, ReserveIdentifier, Signature,
 	TokenSymbol,
 };
-use sp_core::{H160, H256};
+use sp_core::H160;
 use sp_runtime::{
 	generic,
-	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, IdentityLookup},
+	traits::{AccountIdConversion, BlockNumberProvider, IdentityLookup},
 	AccountId32, FixedU128, Percent,
 };
 
@@ -51,30 +51,13 @@ mod evm_mod {
 	pub use super::super::super::*;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = Everything;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
-	type Nonce = u64;
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
 	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU32<250>;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = crate::CallKillAccount<Runtime>;
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
+	type BlockHashCount = ConstU32<10>;
 }
 
 impl pallet_balances::Config for Runtime {

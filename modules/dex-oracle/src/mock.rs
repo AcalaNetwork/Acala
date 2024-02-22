@@ -21,14 +21,11 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU64, Everything},
-};
+use frame_support::{construct_runtime, derive_impl, ord_parameter_types, parameter_types, traits::ConstU64};
 use frame_system::EnsureSignedBy;
 use module_support::SwapLimit;
 use primitives::{DexShare, Moment, TokenSymbol};
-use sp_core::{H160, H256};
+use sp_core::H160;
 use sp_runtime::{
 	traits::{IdentityLookup, Zero},
 	BuildStorage, DispatchError,
@@ -52,30 +49,12 @@ parameter_types! {
 	pub static ACADOTPair: TradingPair = TradingPair::from_currency_ids(ACA, DOT).unwrap();
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type Nonce = u64;
-	type RuntimeCall = RuntimeCall;
-	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<250>;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = ();
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type DbWeight = ();
-	type BaseCallFilter = Everything;
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
 }
 
 impl pallet_timestamp::Config for Runtime {

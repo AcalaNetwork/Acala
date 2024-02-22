@@ -29,8 +29,8 @@ use acala_runtime::{
 	Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig,
 	EVMConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
 	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig,
-	SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
-	TokensConfig, VestingConfig,
+	SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
+	VestingConfig,
 };
 use runtime_common::{dollar, TokenInfo, ACA, AUSD, DOT, LDOT};
 
@@ -58,15 +58,15 @@ fn acala_properties() -> Properties {
 }
 
 pub fn acala_dev_config() -> Result<ChainSpec, String> {
-	let wasm_binary = acala_runtime::WASM_BINARY.unwrap_or_default();
+	let wasm_binary = acala_runtime::WASM_BINARY.expect("WASM binary was not built, please build it!");
 
+	#[allow(deprecated)]
 	Ok(ChainSpec::from_genesis(
 		"Acala Dev",
 		"acala-dev",
 		ChainType::Development,
 		move || {
 			acala_dev_genesis(
-				wasm_binary,
 				// Initial PoA authorities
 				vec![get_parachain_authority_keys_from_seed("Alice")],
 				// Sudo account
@@ -93,19 +93,20 @@ pub fn acala_dev_config() -> Result<ChainSpec, String> {
 			para_id: PARA_ID,
 			bad_blocks: None,
 		},
+		wasm_binary,
 	))
 }
 
 pub fn acala_local_config() -> Result<ChainSpec, String> {
-	let wasm_binary = acala_runtime::WASM_BINARY.unwrap_or_default();
+	let wasm_binary = acala_runtime::WASM_BINARY.expect("WASM binary was not built, please build it!");
 
+	#[allow(deprecated)]
 	Ok(ChainSpec::from_genesis(
 		"Acala Local",
 		"acala-local",
 		ChainType::Development,
 		move || {
 			acala_dev_genesis(
-				wasm_binary,
 				// Initial PoA authorities
 				vec![get_parachain_authority_keys_from_seed("Alice")],
 				// Sudo account
@@ -132,11 +133,11 @@ pub fn acala_local_config() -> Result<ChainSpec, String> {
 			para_id: PARA_ID,
 			bad_blocks: None,
 		},
+		wasm_binary,
 	))
 }
 
 fn acala_dev_genesis(
-	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AuraId)>,
 	root_key: AccountId,
 	initial_allocation: Vec<(AccountId, Balance)>,
@@ -144,11 +145,7 @@ fn acala_dev_genesis(
 	general_councils: Vec<AccountId>,
 ) -> acala_runtime::RuntimeGenesisConfig {
 	acala_runtime::RuntimeGenesisConfig {
-		system: SystemConfig {
-			_config: Default::default(),
-			// Add Wasm runtime to storage.
-			code: wasm_binary.to_vec(),
-		},
+		system: Default::default(),
 		balances: BalancesConfig {
 			balances: initial_allocation,
 		},
