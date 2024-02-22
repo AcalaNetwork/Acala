@@ -111,9 +111,9 @@ use runtime_common::{
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, ExistentialDepositsTimesOneHundred,
 	FinancialCouncilInstance, FinancialCouncilMembershipInstance, FixedRateOfAsset, GasToWeight,
 	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
-	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
-	RuntimeBlockLength, RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
-	TimeStampedPrice, TipPerWeightStep, KAR, KSM, KUSD, LKSM, TAI,
+	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate,
+	RateLimiterId, Ratio, RuntimeBlockLength, RuntimeBlockWeights, TechnicalCommitteeInstance,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, KAR, KSM, KUSD, LKSM, TAI,
 };
 use xcm::v3::prelude::*;
 
@@ -1753,6 +1753,16 @@ impl orml_parameters::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl orml_rate_limit::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type GovernanceOrigin = EnsureRootOrOneThirdsTechnicalCommittee;
+	type RateLimiterId = RateLimiterId;
+	type MaxWhitelistFilterCount = ConstU32<3>;
+	type UnixTime = Timestamp;
+	type BlockNumberProvider = System;
+	type WeightInfo = ();
+}
+
 construct_runtime!(
 	pub enum Runtime {
 		// Core & Utility
@@ -1766,6 +1776,7 @@ construct_runtime!(
 		// NOTE: IdleScheduler must be put before ParachainSystem in order to read relaychain blocknumber
 		IdleScheduler: module_idle_scheduler = 7,
 		Preimage: pallet_preimage = 8,
+		RateLimit: orml_rate_limit = 9,
 
 		// Tokens & Related
 		Balances: pallet_balances = 10,

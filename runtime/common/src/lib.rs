@@ -408,6 +408,18 @@ where
 	}
 }
 
+/// The type used to represent the kinds of rate limiter id.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+pub enum RateLimiterId {
+	XTokens,
+}
+
+impl Default for RateLimiterId {
+	fn default() -> Self {
+		Self::XTokens
+	}
+}
+
 #[cfg(feature = "std")]
 /// Returns `evm_genesis_accounts`
 pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, primitives::Nonce>> {

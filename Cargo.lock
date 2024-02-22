@@ -159,6 +159,7 @@ dependencies = [
  "orml-oracle",
  "orml-oracle-runtime-api",
  "orml-parameters",
+ "orml-rate-limit",
  "orml-rewards",
  "orml-tokens",
  "orml-tokens-runtime-api",
@@ -5074,6 +5075,7 @@ dependencies = [
  "orml-oracle",
  "orml-oracle-runtime-api",
  "orml-parameters",
+ "orml-rate-limit",
  "orml-rewards",
  "orml-tokens",
  "orml-tokens-runtime-api",
@@ -5952,6 +5954,7 @@ dependencies = [
  "orml-oracle-runtime-api",
  "orml-parameters",
  "orml-payments",
+ "orml-rate-limit",
  "orml-rewards",
  "orml-tokens",
  "orml-tokens-runtime-api",
@@ -7697,6 +7700,24 @@ dependencies = [
  "log",
  "orml-tokens",
  "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "orml-rate-limit"
+version = "0.6.7"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "orml-utilities",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -11334,6 +11355,7 @@ dependencies = [
  "orml-currencies",
  "orml-nft",
  "orml-oracle",
+ "orml-rate-limit",
  "orml-rewards",
  "orml-tokens",
  "orml-traits",

@@ -90,6 +90,7 @@ orml-vesting = { workspace = true }
 orml-xcm = { workspace = true }
 orml-xcm-support = { workspace = true }
 orml-xtokens = { workspace = true }
+orml-rate-limit = { workspace = true }
 
 # modules
 module-aggregated-dex = { workspace = true }
@@ -224,6 +225,7 @@ std = [
 	"orml-xcm-support/std",
 	"orml-xcm/std",
 	"orml-xtokens/std",
+	"orml-rate-limit/std",
 
 	"module-aggregated-dex/std",
 	"module-asset-registry/std",
@@ -297,6 +299,7 @@ runtime-benchmarks = [
 	"orml-tokens/runtime-benchmarks",
 	"orml-vesting/runtime-benchmarks",
 	"orml-xtokens/runtime-benchmarks",
+	"orml-rate-limit/runtime-benchmarks",
 
 	"module-collator-selection/runtime-benchmarks",
 	"module-evm-accounts/runtime-benchmarks",
@@ -365,6 +368,7 @@ try-runtime = [
 	"orml-vesting/try-runtime",
 	"orml-xcm/try-runtime",
 	"orml-xtokens/try-runtime",
+	"orml-rate-limit/try-runtime",
 
 	"module-aggregated-dex/try-runtime",
 	"module-asset-registry/try-runtime",

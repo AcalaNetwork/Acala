@@ -28,6 +28,7 @@ members = [
 	"orml/oracle",
 	"orml/parameters",
 	"orml/payments",
+	"orml/rate-limit",
 	"orml/rewards",
 	"orml/tokens",
 	"orml/tokens/runtime-api",
@@ -171,6 +172,7 @@ orml-oracle = { path = "orml/oracle", default-features = false }
 orml-oracle-runtime-api = { path = "orml/oracle/runtime-api", default-features = false }
 orml-parameters = { path = "orml/parameters", default-features = false }
 orml-payments = { path = "orml/payments", default-features = false }
+orml-rate-limit = { path = "orml/rate-limit", default-features = false }
 orml-rewards = { path = "orml/rewards", default-features = false }
 orml-tokens = { path = "orml/tokens", default-features = false }
 orml-tokens-runtime-api = { path = "orml/tokens/runtime-api", default-features = false }
