@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -73,6 +73,8 @@ pub struct Vicinity {
 	pub block_difficulty: Option<U256>,
 	/// Environmental base fee per gas.
 	pub block_base_fee_per_gas: Option<U256>,
+	/// Environmental randomness.
+	pub block_randomness: Option<H256>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -19,16 +19,15 @@
 use super::*;
 use crate as collator_selection;
 use frame_support::{
-	ord_parameter_types, parameter_types,
-	traits::{ConstU16, ConstU32, ConstU64, Everything, FindAuthor},
+	derive_impl, ord_parameter_types, parameter_types,
+	traits::{ConstU32, ConstU64, FindAuthor},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
 use primitives::ReserveIdentifier;
-use sp_core::H256;
 use sp_runtime::{
 	testing::UintAuthorityId,
-	traits::{BlakeTwo256, ConstBool, IdentityLookup, OpaqueKeys},
+	traits::{ConstBool, IdentityLookup, OpaqueKeys},
 	BuildStorage, Permill, RuntimeAppPublic,
 };
 
@@ -47,30 +46,12 @@ frame_support::construct_runtime!(
 	}
 );
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
-	type BaseCallFilter = Everything;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type DbWeight = ();
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
-	type Nonce = u64;
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<250>;
-	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<u64>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ConstU16<42>;
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
 }
 
 impl pallet_balances::Config for Test {

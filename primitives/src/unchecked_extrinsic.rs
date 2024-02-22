@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,9 @@ use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo},
 	traits::{ExtrinsicCall, Get},
 };
-use module_evm_utility::ethereum::{EIP1559TransactionMessage, LegacyTransactionMessage, TransactionAction};
+use module_evm_utility::ethereum::{
+	EIP1559TransactionMessage, EIP2930TransactionMessage, LegacyTransactionMessage, TransactionAction,
+};
 use module_evm_utility_macro::keccak256;
 use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;
@@ -125,6 +127,50 @@ where
 					value: eth_msg.value.into(),
 					input: eth_msg.input,
 					chain_id: Some(eth_msg.chain_id),
+				};
+				log::trace!(
+					target: "evm", "tx msg: {:?}", msg
+				);
+
+				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
+
+				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
+
+				let account_id = lookup.lookup(Address::Address20(signer.into()))?;
+				let expected_account_id = lookup.lookup(addr)?;
+
+				if account_id != expected_account_id {
+					return Err(InvalidTransaction::BadProof.into());
+				}
+
+				Ok(CheckedExtrinsic {
+					signed: Some((account_id, eth_extra)),
+					function,
+				})
+			}
+			Some((addr, AcalaMultiSignature::Eip2930(sig), extra)) => {
+				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "Eip2930 eth_msg: {:?}", eth_msg
+				);
+
+				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero() {
+					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
+						.ok_or(InvalidTransaction::BadProof)?
+				} else {
+					// eth_call_v2, the gas_price and gas_limit are encoded.
+					(eth_msg.gas_price as u128, eth_msg.gas_limit as u128)
+				};
+
+				let msg = EIP2930TransactionMessage {
+					chain_id: eth_msg.chain_id,
+					nonce: eth_msg.nonce.into(),
+					gas_price: tx_gas_price.into(),
+					gas_limit: tx_gas_limit.into(),
+					action: eth_msg.action,
+					value: eth_msg.value.into(),
+					input: eth_msg.input,
+					access_list: eth_msg.access_list,
 				};
 				log::trace!(
 					target: "evm", "tx msg: {:?}", msg

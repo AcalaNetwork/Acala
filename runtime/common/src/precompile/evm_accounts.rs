@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,16 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{
-	input::{Input, InputT, Output},
-	target_gas_limit,
-};
+use super::input::{Input, InputT, Output};
 use crate::WeightToGas;
 use frame_support::{pallet_prelude::IsType, traits::Get};
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_evm_accounts::WeightInfo;
 use module_support::EVMAccountsManager;
@@ -57,21 +53,13 @@ where
 	Runtime: module_evm_accounts::Config + module_prices::Config,
 	module_evm_accounts::Pallet<Runtime>: EVMAccountsManager<Runtime::AccountId>,
 {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let gas_cost = Pricer::<Runtime>::cost(handle)?;
+		handle.record_cost(gas_cost)?;
+
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
-			input,
-			target_gas_limit(target_gas),
+			handle.input(),
 		);
-
-		let gas_cost = Pricer::<Runtime>::cost(&input)?;
-
-		if let Some(gas_limit) = target_gas {
-			if gas_limit < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
 
 		let action = input.action()?;
 
@@ -82,9 +70,7 @@ where
 				let output = module_evm_accounts::Pallet::<Runtime>::get_account_id(&address);
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_fixed_bytes(output.into().as_ref()),
-					logs: Default::default(),
 				})
 			}
 			Action::GetEvmAddress => {
@@ -100,9 +86,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_address(address),
-					logs: Default::default(),
 				})
 			}
 			Action::ClaimDefaultEvmAddress => {
@@ -118,15 +102,12 @@ where
 						PrecompileFailure::Revert {
 							exit_status: ExitRevert::Reverted,
 							output: Output::encode_error_msg("EvmAccounts ClaimDefaultEvmAddress failed", e),
-							cost: target_gas_limit(target_gas).unwrap_or_default(),
 						}
 					})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_address(address),
-					logs: Default::default(),
 				})
 			}
 		}
@@ -141,9 +122,10 @@ where
 {
 	const BASE_COST: u64 = 200;
 
-	fn cost(
-		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
-	) -> Result<u64, PrecompileFailure> {
+	fn cost(handle: &mut impl PrecompileHandle) -> Result<u64, PrecompileFailure> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			handle.input(),
+		);
 		let action = input.action()?;
 		let cost = match action {
 			Action::GetAccountId => {
@@ -172,6 +154,7 @@ mod tests {
 	use crate::precompile::mock::{alice_evm_addr, new_test_ext, EvmAddress, Test, ALICE};
 	use frame_support::assert_noop;
 	use hex_literal::hex;
+	use module_evm::{precompiles::tests::MockPrecompileHandle, Context};
 	use parity_scale_codec::Encode;
 	use sp_core::blake2_256;
 	use std::str::FromStr;
@@ -199,7 +182,8 @@ mod tests {
 				65766d3a 1000000000000000000000000000000000000001 0000000000000000
 			"};
 
-			let resp = EVMAccountsPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				EVMAccountsPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});
@@ -226,7 +210,8 @@ mod tests {
 				000000000000000000000000 1000000000000000000000000000000000000001
 			"};
 
-			let resp = EVMAccountsPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				EVMAccountsPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
@@ -242,7 +227,8 @@ mod tests {
 				000000000000000000000000 0000000000000000000000000000000000000000
 			"};
 
-			let resp = EVMAccountsPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				EVMAccountsPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});
@@ -276,17 +262,17 @@ mod tests {
 				000000000000000000000000 8f2703bbe0abeaf09b384374959ffac5f7d0d69f
 			"};
 
-			let resp = EVMAccountsPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp =
+				EVMAccountsPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
 			// call again, the evm address already mapped
 			assert_noop!(
-				EVMAccountsPrecompile::execute(&input, Some(100_000), &context, false),
+				EVMAccountsPrecompile::execute(&mut MockPrecompileHandle::new(&input, Some(100_000), &context, false)),
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "EvmAccounts ClaimDefaultEvmAddress failed: AccountIdHasMapped".into(),
-					cost: target_gas_limit(Some(100_000)).unwrap(),
 				}
 			);
 		});

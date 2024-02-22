@@ -1,6 +1,6 @@
 [package]
 name = "runtime-integration-tests"
-version = "2.23.0"
+version = "2.24.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -33,7 +33,6 @@ pallet-tips = { workspace = true, features = ["std"] }
 pallet-transaction-payment = { workspace = true, features = ["std"] }
 pallet-transaction-payment-rpc-runtime-api = { workspace = true, features = ["std"] }
 pallet-treasury = { workspace = true, features = ["std"] }
-pallet-staking = { workspace = true, features = ["std"] }
 pallet-utility = { workspace = true, features = ["std"] }
 sp-api = { workspace = true, features = ["std"] }
 sp-application-crypto = { workspace = true, features = ["std"] }

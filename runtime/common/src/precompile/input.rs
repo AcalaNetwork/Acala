@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@ use sp_std::{marker::PhantomData, result::Result, vec::Vec};
 use crate::WeightToGas;
 use ethabi::Token;
 use frame_support::traits::Get;
-use module_evm::{runner::state::PrecompileFailure, ExitRevert};
+use module_evm::{ExitRevert, PrecompileFailure};
 use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
 use primitives::{Balance, CurrencyId, DexShare};
 use sp_core::{H160, U256};
@@ -61,16 +61,14 @@ pub trait InputT {
 
 pub struct Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping> {
 	content: &'a [u8],
-	target_gas: Option<u64>,
 	_marker: PhantomData<(Action, AccountId, AddressMapping, Erc20InfoMapping)>,
 }
 impl<'a, Action, AccountId, AddressMapping, Erc20InfoMapping>
 	Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping>
 {
-	pub fn new(content: &'a [u8], target_gas: Option<u64>) -> Self {
+	pub fn new(content: &'a [u8]) -> Self {
 		Self {
 			content,
-			target_gas,
 			_marker: PhantomData,
 		}
 	}
@@ -104,7 +102,6 @@ where
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid input".into(),
-				cost: self.target_gas.unwrap_or_default(),
 			}
 		);
 
@@ -116,13 +113,11 @@ where
 		let action = u32::from_be_bytes(param.try_into().map_err(|_| PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "invalid action".into(),
-			cost: self.target_gas.unwrap_or_default(),
 		})?);
 
 		action.try_into().map_err(|_| PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "invalid action".into(),
-			cost: self.target_gas.unwrap_or_default(),
 		})
 	}
 
@@ -150,7 +145,6 @@ where
 		Erc20InfoMapping::decode_evm_address(address).ok_or_else(|| PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "invalid currency id".into(),
-			cost: self.target_gas.unwrap_or_default(),
 		})
 	}
 
@@ -159,7 +153,6 @@ where
 		decode_i128(param).ok_or(PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "failed to decode i128".into(),
-			cost: self.target_gas.unwrap_or_default(),
 		})
 	}
 
@@ -173,7 +166,6 @@ where
 		param.try_into().map_err(|_| PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "failed to convert uint256 into Balance".into(),
-			cost: self.target_gas.unwrap_or_default(),
 		})
 	}
 
@@ -182,7 +174,6 @@ where
 		param.try_into().map_err(|_| PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "failed to convert uint256 into u64".into(),
-			cost: self.target_gas.unwrap_or_default(),
 		})
 	}
 
@@ -191,7 +182,6 @@ where
 		param.try_into().map_err(|_| PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "failed to convert uint256 into u32".into(),
-			cost: self.target_gas.unwrap_or_default(),
 		})
 	}
 
@@ -222,7 +212,6 @@ where
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "failed to decode bool".into(),
-				cost: self.target_gas.unwrap_or_default(),
 			})
 		}
 	}
@@ -368,7 +357,7 @@ mod tests {
 			00000000
 			ffffffffffffffffffffffffffffffff00000000000000000000000000000001
 		"};
-		let input = TestInput::new(&data[..], Some(10));
+		let input = TestInput::new(&data[..]);
 		assert_ok!(
 			input.nth_param(1, None),
 			&hex!("ffffffffffffffffffffffffffffffff00000000000000000000000000000001")[..]
@@ -378,29 +367,27 @@ mod tests {
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid input".into(),
-				cost: 10,
 			}
 		);
 	}
 
 	#[test]
 	fn action_works() {
-		let input = TestInput::new(&hex!("00000000")[..], None);
+		let input = TestInput::new(&hex!("00000000")[..]);
 		assert_ok!(input.action(), Action::QueryBalance);
 
-		let input = TestInput::new(&hex!("00000001")[..], None);
+		let input = TestInput::new(&hex!("00000001")[..]);
 		assert_ok!(input.action(), Action::Transfer);
 
-		let input = TestInput::new(&hex!("00000002")[..], None);
+		let input = TestInput::new(&hex!("00000002")[..]);
 		assert_ok!(input.action(), Action::Unknown);
 
-		let input = TestInput::new(&hex!("00000003")[..], Some(10));
+		let input = TestInput::new(&hex!("00000003")[..]);
 		assert_eq!(
 			input.action(),
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid action".into(),
-				cost: 10,
 			})
 		);
 	}
@@ -415,7 +402,7 @@ mod tests {
 			ffffffffffffffffffffffff ff00000000000000000000000000000000000003
 		"};
 
-		let input = TestInput::new(&data[..], None);
+		let input = TestInput::new(&data[..]);
 		assert_ok!(
 			input.account_id_at(1),
 			MockAddressMapping::get_account_id(&H160::from_str("ff00000000000000000000000000000000000001").unwrap())
@@ -439,7 +426,7 @@ mod tests {
 			ffffffffffffffffffffffff 0000000000000000000000000000000000000002
 			ffffffffffffffffffffffff ff00000000000000000000000000000000000003
 		"};
-		let input = TestInput::new(&data[..], None);
+		let input = TestInput::new(&data[..]);
 		assert_ok!(
 			input.evm_address_at(1),
 			H160::from_str("ff00000000000000000000000000000000000001").unwrap()
@@ -456,13 +443,12 @@ mod tests {
 
 	#[test]
 	fn currency_id_works() {
-		let input = TestInput::new(&[0u8; 100][..], Some(10));
+		let input = TestInput::new(&[0u8; 100][..]);
 		assert_err!(
 			input.currency_id_at(1),
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid currency id".into(),
-				cost: 10,
 			}
 		);
 
@@ -474,7 +460,7 @@ mod tests {
 			ffffffffffffffffffffffff 0000000000000000000100000000000000000002
 		"};
 
-		let input = TestInput::new(&data[..], None);
+		let input = TestInput::new(&data[..]);
 		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::ACA));
 		assert_ok!(input.currency_id_at(2), CurrencyId::Token(TokenSymbol::AUSD));
 		assert_ok!(input.currency_id_at(3), CurrencyId::Token(TokenSymbol::DOT));
@@ -488,7 +474,7 @@ mod tests {
 			00000000000000000000000000000000ffffffffffffffffffffffffffffffff
 			ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 		"};
-		let input = TestInput::new(&data[..], None);
+		let input = TestInput::new(&data[..]);
 		assert_ok!(input.u256_at(1), U256::from(127u128));
 		assert_ok!(input.u256_at(2), U256::from(u128::MAX));
 		assert_ok!(input.u256_at(3), U256::MAX);
@@ -502,7 +488,7 @@ mod tests {
 			00000000000000000000000000000000 ffffffffffffffffffffffffffffffff
 			ffffffffffffffffffffffffffffffff ffffffffffffffffffffffffffffffff
 		"};
-		let input = TestInput::new(&data[..], Some(10));
+		let input = TestInput::new(&data[..]);
 		assert_ok!(input.balance_at(1), 127u128);
 		assert_ok!(input.balance_at(2), u128::MAX);
 		assert_eq!(
@@ -510,7 +496,6 @@ mod tests {
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "failed to convert uint256 into Balance".into(),
-				cost: 10,
 			})
 		);
 	}
@@ -523,7 +508,7 @@ mod tests {
 			000000000000000000000000000000000000000000000000 ffffffffffffffff
 			000000000000000000000000000000000000000000000001 ffffffffffffffff
 		"};
-		let input = TestInput::new(&data[..], Some(10));
+		let input = TestInput::new(&data[..]);
 		assert_ok!(input.u64_at(1), 127u64);
 		assert_ok!(input.u64_at(2), u64::MAX);
 		assert_eq!(
@@ -531,7 +516,6 @@ mod tests {
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "failed to convert uint256 into u64".into(),
-				cost: 10,
 			})
 		);
 	}
@@ -544,7 +528,7 @@ mod tests {
 			00000000000000000000000000000000000000000000000000000000 ffffffff
 			00000000000000000000000000000000000000000000000000000001 ffffffff
 		"};
-		let input = TestInput::new(&data[..], Some(10));
+		let input = TestInput::new(&data[..]);
 		assert_ok!(input.u32_at(1), 127u32);
 		assert_ok!(input.u32_at(2), u32::MAX);
 		assert_eq!(
@@ -552,7 +536,6 @@ mod tests {
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "failed to convert uint256 into u32".into(),
-				cost: 10,
 			})
 		);
 	}
@@ -568,14 +551,13 @@ mod tests {
 			ff000000000000000000000000000000 ffffffffffffffffffffffffffffffff
 			00000000000000000000000000000000 00000000000000000000000000000000
 		"};
-		let input = TestInput::new(&data[..], Some(10));
+		let input = TestInput::new(&data[..]);
 		assert_ok!(input.i128_at(1), 127_i128);
 		assert_eq!(
 			input.i128_at(2),
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "failed to decode i128".into(),
-				cost: 10,
 			})
 		);
 		assert_ok!(input.i128_at(3), -1_i128);
@@ -585,7 +567,6 @@ mod tests {
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "failed to decode i128".into(),
-				cost: 10,
 			})
 		);
 		assert_ok!(input.i128_at(6), 0);
@@ -599,7 +580,7 @@ mod tests {
 			0000000000000000000000000000000000000000000000000000000000000001
 			0000000000000000000000000000000000000000000000000000000000000002
 		"};
-		let input = TestInput::new(&data[..], Some(10));
+		let input = TestInput::new(&data[..]);
 		assert_ok!(input.bool_at(1), false);
 		assert_ok!(input.bool_at(2), true);
 		assert_eq!(
@@ -607,7 +588,6 @@ mod tests {
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "failed to decode bool".into(),
-				cost: 10,
 			})
 		);
 	}

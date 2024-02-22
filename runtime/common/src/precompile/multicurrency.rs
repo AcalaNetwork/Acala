@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,10 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{
-	input::{Input, InputPricer, InputT, Output},
-	target_gas_limit,
-};
+use super::input::{Input, InputPricer, InputT, Output};
 use crate::WeightToGas;
 use frame_support::{
 	pallet_prelude::IsType,
@@ -27,9 +24,8 @@ use frame_support::{
 };
 use module_currencies::WeightInfo;
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_support::Erc20InfoMapping as Erc20InfoMappingT;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -69,30 +65,23 @@ where
 	Runtime::AccountId: IsType<AccountId32>,
 	module_currencies::Pallet<Runtime>: MultiCurrencyT<Runtime::AccountId, CurrencyId = CurrencyId, Balance = Balance>,
 {
-	fn execute(input: &[u8], target_gas: Option<u64>, context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let context = handle.context();
+		let currency_id =
+			Runtime::Erc20InfoMapping::decode_evm_address(context.caller).ok_or_else(|| PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid currency id".into(),
+			})?;
+
+		let gas_cost = Pricer::<Runtime>::cost(handle, currency_id)?;
+		handle.record_cost(gas_cost)?;
+
 		let input = Input::<
 			Action,
 			Runtime::AccountId,
 			<Runtime as module_evm::Config>::AddressMapping,
 			Runtime::Erc20InfoMapping,
-		>::new(input, target_gas_limit(target_gas));
-
-		let currency_id =
-			Runtime::Erc20InfoMapping::decode_evm_address(context.caller).ok_or_else(|| PrecompileFailure::Revert {
-				exit_status: ExitRevert::Reverted,
-				output: "invalid currency id".into(),
-				cost: target_gas_limit(target_gas).unwrap_or_default(),
-			})?;
-
-		let gas_cost = Pricer::<Runtime>::cost(&input, currency_id)?;
-
-		if let Some(gas_limit) = target_gas {
-			if gas_limit < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
+		>::new(handle.input());
 
 		let action = input.action()?;
 
@@ -103,15 +92,12 @@ where
 				let name = Runtime::Erc20InfoMapping::name(currency_id).ok_or_else(|| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Get name failed".into(),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				log::debug!(target: "evm", "multicurrency: name: {:?}", name);
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_bytes(&name),
-					logs: Default::default(),
 				})
 			}
 			Action::QuerySymbol => {
@@ -119,15 +105,12 @@ where
 					Runtime::Erc20InfoMapping::symbol(currency_id).ok_or_else(|| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "Get symbol failed".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					})?;
 				log::debug!(target: "evm", "multicurrency: symbol: {:?}", symbol);
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_bytes(&symbol),
-					logs: Default::default(),
 				})
 			}
 			Action::QueryDecimals => {
@@ -135,15 +118,12 @@ where
 					Runtime::Erc20InfoMapping::decimals(currency_id).ok_or_else(|| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "Get decimals failed".into(),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					})?;
 				log::debug!(target: "evm", "multicurrency: decimals: {:?}", decimals);
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(decimals),
-					logs: Default::default(),
 				})
 			}
 			Action::QueryTotalIssuance => {
@@ -153,9 +133,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(total_issuance),
-					logs: Default::default(),
 				})
 			}
 			Action::QueryBalance => {
@@ -170,9 +148,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(balance),
-					logs: Default::default(),
 				})
 			}
 			Action::Transfer => {
@@ -190,14 +166,11 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("Multicurrency Transfer failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::TransferToAccountId => {
@@ -219,14 +192,11 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Output::encode_error_msg("Multicurrency TransferToAccountId failed", e),
-					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 		}
@@ -242,15 +212,14 @@ where
 {
 	const BASE_COST: u64 = 200;
 
-	fn cost(
-		input: &Input<
+	fn cost(handle: &mut impl PrecompileHandle, currency_id: CurrencyId) -> Result<u64, PrecompileFailure> {
+		let input = Input::<
 			Action,
 			Runtime::AccountId,
 			<Runtime as module_evm::Config>::AddressMapping,
 			Runtime::Erc20InfoMapping,
-		>,
-		currency_id: CurrencyId,
-	) -> Result<u64, PrecompileFailure> {
+		>::new(handle.input());
+
 		let action = input.action()?;
 
 		// Decode CurrencyId from EvmAddress
@@ -317,6 +286,7 @@ mod tests {
 	};
 	use frame_support::assert_noop;
 	use hex_literal::hex;
+	use module_evm::{precompiles::tests::MockPrecompileHandle, Context};
 
 	type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<Test>;
 
@@ -336,11 +306,10 @@ mod tests {
 			"};
 
 			assert_noop!(
-				MultiCurrencyPrecompile::execute(&input, Some(10_000), &context, false),
+				MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, Some(10_000), &context, false)),
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid currency id".into(),
-					cost: target_gas_limit(Some(10_000)).unwrap(),
 				}
 			);
 		});
@@ -369,7 +338,8 @@ mod tests {
 				4163616c61000000000000000000000000000000000000000000000000000000
 			"};
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
@@ -382,7 +352,8 @@ mod tests {
 				4c50204163616c61202d204163616c6120446f6c6c6172000000000000000000
 			"};
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});
@@ -411,7 +382,8 @@ mod tests {
 				4143410000000000000000000000000000000000000000000000000000000000
 			"};
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
@@ -424,7 +396,8 @@ mod tests {
 				4c505f4143415f41555344000000000000000000000000000000000000000000
 			"};
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});
@@ -451,14 +424,16 @@ mod tests {
 				00000000000000000000000000000000 0000000000000000000000000000000c
 			"};
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
 			// DexShare
 			context.caller = lp_aca_ausd_evm_address();
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});
@@ -486,7 +461,8 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000077359400
 			"};
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
@@ -497,7 +473,8 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 			"};
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		});
@@ -527,7 +504,8 @@ mod tests {
 				00000000000000000000000000000000 0000000000000000000000e8d4a51000
 			"};
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 
@@ -538,7 +516,8 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 			"};
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, expected_output.to_vec());
 		})
@@ -570,7 +549,8 @@ mod tests {
 			// Token
 			context.caller = aca_evm_address();
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, [0u8; 0].to_vec());
 
@@ -580,11 +560,15 @@ mod tests {
 			// DexShare
 			context.caller = lp_aca_ausd_evm_address();
 			assert_noop!(
-				MultiCurrencyPrecompile::execute(&input, Some(100_000), &context, false),
+				MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(
+					&input,
+					Some(100_000),
+					&context,
+					false
+				)),
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Multicurrency Transfer failed: BalanceTooLow".into(),
-					cost: target_gas_limit(Some(100_000)).unwrap(),
 				}
 			);
 		})
@@ -616,7 +600,8 @@ mod tests {
 			// Token
 			context.caller = aca_evm_address();
 
-			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			let resp = MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.output, [0u8; 0].to_vec());
 
@@ -626,11 +611,15 @@ mod tests {
 			// DexShare
 			context.caller = lp_aca_ausd_evm_address();
 			assert_noop!(
-				MultiCurrencyPrecompile::execute(&input, Some(100_000), &context, false),
+				MultiCurrencyPrecompile::execute(&mut MockPrecompileHandle::new(
+					&input,
+					Some(100_000),
+					&context,
+					false
+				)),
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Multicurrency TransferToAccountId failed: BalanceTooLow".into(),
-					cost: target_gas_limit(Some(100_000)).unwrap(),
 				}
 			);
 		})

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -31,11 +31,11 @@ use module_evm::{
 		Blake2F, Bn128Add, Bn128Mul, Bn128Pairing, ECRecover, ECRecoverPublicKey, Identity, IstanbulModexp, Modexp,
 		Precompile, Ripemd160, Sha256, Sha3FIPS256, Sha3FIPS512,
 	},
-	runner::state::{PrecompileFailure, PrecompileResult, PrecompileSet},
-	Context, ExitRevert,
+	ExitRevert, IsPrecompileResult, PrecompileFailure, PrecompileHandle, PrecompileResult, PrecompileSet,
 };
 use module_support::{PrecompileCallerFilter, PrecompilePauseFilter};
 use sp_core::H160;
+use sp_runtime::traits::Zero;
 use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
 pub mod dex;
@@ -97,10 +97,6 @@ pub const HONZON: H160 = H160(hex!("0000000000000000000000000000000000000409"));
 pub const INCENTIVES: H160 = H160(hex!("000000000000000000000000000000000000040a"));
 pub const XTOKENS: H160 = H160(hex!("000000000000000000000000000000000000040b"));
 pub const LIQUID_CROWDLOAN: H160 = H160(hex!("000000000000000000000000000000000000040c"));
-
-pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
-	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
-}
 
 pub struct AllPrecompiles<R, F, E> {
 	set: BTreeSet<H160>,
@@ -236,15 +232,14 @@ where
 	IncentivesPrecompile<R>: Precompile,
 	XtokensPrecompile<R>: Precompile,
 {
-	fn execute(
-		&self,
-		address: H160,
-		input: &[u8],
-		target_gas: Option<u64>,
-		context: &Context,
-		is_static: bool,
-	) -> Option<PrecompileResult> {
-		if !self.is_precompile(address) {
+	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
+		let context = handle.context();
+		let address = handle.code_address();
+
+		if let IsPrecompileResult::Answer {
+			is_precompile: false, ..
+		} = self.is_precompile(address, u64::zero())
+		{
 			return None;
 		}
 
@@ -254,7 +249,6 @@ where
 			return Some(Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "precompile is paused".into(),
-				cost: target_gas.unwrap_or_default(),
 			}));
 		}
 
@@ -263,43 +257,42 @@ where
 			return Some(Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "cannot be called with DELEGATECALL or CALLCODE".into(),
-				cost: target_gas.unwrap_or_default(),
 			}));
 		}
 
-		log::trace!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}", address, input, target_gas, context);
+		log::trace!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, context: {:?}", address, handle.input(), context);
 
 		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
 		let result = if address == ECRECOVER {
-			Some(ECRecover::execute(input, target_gas, context, is_static))
+			Some(ECRecover::execute(handle))
 		} else if address == SHA256 {
-			Some(Sha256::execute(input, target_gas, context, is_static))
+			Some(Sha256::execute(handle))
 		} else if address == RIPEMD {
-			Some(Ripemd160::execute(input, target_gas, context, is_static))
+			Some(Ripemd160::execute(handle))
 		} else if address == IDENTITY {
-			Some(Identity::execute(input, target_gas, context, is_static))
+			Some(Identity::execute(handle))
 		} else if address == MODEXP {
 			if R::config().increase_state_access_gas {
-				Some(Modexp::execute(input, target_gas, context, is_static))
+				Some(Modexp::execute(handle))
 			} else {
-				Some(IstanbulModexp::execute(input, target_gas, context, is_static))
+				Some(IstanbulModexp::execute(handle))
 			}
 		} else if address == BN_ADD {
-			Some(Bn128Add::execute(input, target_gas, context, is_static))
+			Some(Bn128Add::execute(handle))
 		} else if address == BN_MUL {
-			Some(Bn128Mul::execute(input, target_gas, context, is_static))
+			Some(Bn128Mul::execute(handle))
 		} else if address == BN_PAIRING {
-			Some(Bn128Pairing::execute(input, target_gas, context, is_static))
+			Some(Bn128Pairing::execute(handle))
 		} else if address == BLAKE2F {
-			Some(Blake2F::execute(input, target_gas, context, is_static))
+			Some(Blake2F::execute(handle))
 		}
 		// Non-standard precompile starts with 128
 		else if address == ECRECOVER_PUBLICKEY {
-			Some(ECRecoverPublicKey::execute(input, target_gas, context, is_static))
+			Some(ECRecoverPublicKey::execute(handle))
 		} else if address == SHA3_256 {
-			Some(Sha3FIPS256::execute(input, target_gas, context, is_static))
+			Some(Sha3FIPS256::execute(handle))
 		} else if address == SHA3_512 {
-			Some(Sha3FIPS512::execute(input, target_gas, context, is_static))
+			Some(Sha3FIPS512::execute(handle))
 		}
 		// Acala precompile
 		else {
@@ -308,7 +301,6 @@ where
 				return Some(Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "NoPermission".into(),
-					cost: target_gas.unwrap_or_default(),
 				}));
 			}
 
@@ -317,56 +309,58 @@ where
 				return Some(Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Caller is not a system contract".into(),
-					cost: target_gas.unwrap_or_default(),
 				}));
 			}
 
 			if address == MULTI_CURRENCY {
-				Some(MultiCurrencyPrecompile::<R>::execute(
-					input, target_gas, context, is_static,
-				))
+				Some(MultiCurrencyPrecompile::<R>::execute(handle))
 			} else if address == NFT {
-				Some(NFTPrecompile::<R>::execute(input, target_gas, context, is_static))
+				Some(NFTPrecompile::<R>::execute(handle))
 			} else if address == EVM {
-				Some(EVMPrecompile::<R>::execute(input, target_gas, context, is_static))
+				Some(EVMPrecompile::<R>::execute(handle))
 			} else if address == ORACLE {
-				Some(OraclePrecompile::<R>::execute(input, target_gas, context, is_static))
+				Some(OraclePrecompile::<R>::execute(handle))
 			} else if address == SCHEDULER {
-				Some(SchedulePrecompile::<R>::execute(input, target_gas, context, is_static))
+				Some(SchedulePrecompile::<R>::execute(handle))
 			} else if address == DEX {
-				Some(DEXPrecompile::<R>::execute(input, target_gas, context, is_static))
+				Some(DEXPrecompile::<R>::execute(handle))
 			} else if address == STABLE_ASSET {
-				Some(StableAssetPrecompile::<R>::execute(
-					input, target_gas, context, is_static,
-				))
+				Some(StableAssetPrecompile::<R>::execute(handle))
 			} else if address == HOMA {
-				Some(HomaPrecompile::<R>::execute(input, target_gas, context, is_static))
+				Some(HomaPrecompile::<R>::execute(handle))
 			} else if address == EVM_ACCOUNTS {
-				Some(EVMAccountsPrecompile::<R>::execute(
-					input, target_gas, context, is_static,
-				))
+				Some(EVMAccountsPrecompile::<R>::execute(handle))
 			} else if address == HONZON {
-				Some(HonzonPrecompile::<R>::execute(input, target_gas, context, is_static))
+				Some(HonzonPrecompile::<R>::execute(handle))
 			} else if address == INCENTIVES {
-				Some(IncentivesPrecompile::<R>::execute(
-					input, target_gas, context, is_static,
-				))
+				Some(IncentivesPrecompile::<R>::execute(handle))
 			} else if address == XTOKENS {
-				Some(XtokensPrecompile::<R>::execute(input, target_gas, context, is_static))
+				Some(XtokensPrecompile::<R>::execute(handle))
 			} else {
-				E::execute(&Default::default(), address, input, target_gas, context, is_static)
+				E::execute(&Default::default(), handle)
 			}
 		};
 
-		log::trace!(target: "evm", "Precompile end, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}, result: {:?}", address, input, target_gas, context, result);
+		log::trace!(target: "evm", "Precompile end, address: {:?}, input: {:?}, context: {:?}, result: {:?}", address, handle.input(), handle.context(), result);
 		if let Some(Err(PrecompileFailure::Revert { ref output, .. })) = result {
 			log::debug!(target: "evm", "Precompile failed: {:?}", core::str::from_utf8(output));
 		};
 		result
 	}
 
-	fn is_precompile(&self, address: H160) -> bool {
-		self.set.contains(&address) || E::is_precompile(&Default::default(), address)
+	fn is_precompile(&self, address: H160, _remaining_gas: u64) -> IsPrecompileResult {
+		let is_precompile = {
+			self.set.contains(&address)
+				|| match E::is_precompile(&Default::default(), address, u64::zero()) {
+					IsPrecompileResult::Answer { is_precompile, .. } => is_precompile,
+					_ => false,
+				}
+		};
+
+		IsPrecompileResult::Answer {
+			is_precompile,
+			extra_cost: 0,
+		}
 	}
 }
 
@@ -382,23 +376,20 @@ impl<R> PrecompileSet for AcalaPrecompiles<R>
 where
 	LiquidCrowdloanPrecompile<R>: Precompile,
 {
-	fn execute(
-		&self,
-		address: H160,
-		input: &[u8],
-		gas_limit: Option<u64>,
-		context: &Context,
-		is_static: bool,
-	) -> Option<PrecompileResult> {
+	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
+		let address = handle.code_address();
 		if address == LIQUID_CROWDLOAN {
-			Some(LiquidCrowdloanPrecompile::execute(input, gas_limit, context, is_static))
+			Some(LiquidCrowdloanPrecompile::execute(handle))
 		} else {
 			None
 		}
 	}
 
-	fn is_precompile(&self, address: H160) -> bool {
-		address == LIQUID_CROWDLOAN
+	fn is_precompile(&self, address: H160, _remaining_gas: u64) -> IsPrecompileResult {
+		IsPrecompileResult::Answer {
+			is_precompile: address == LIQUID_CROWDLOAN,
+			extra_cost: 0,
+		}
 	}
 }
 

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -490,7 +490,7 @@ mod mandala_only_tests {
 						bytes.len()
 					),
 					Ok(ValidTransaction {
-						priority: 51918138056970000,
+						priority: 51967622776640000,
 						requires: vec![],
 						provides: vec![],
 						longevity: 18_446_744_073_709_551_615,

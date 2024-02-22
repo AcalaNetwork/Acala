@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #![cfg(test)]
 use super::*;
 use crate::precompile::mock::{new_test_ext, PrecompilesValue};
+use module_evm::precompiles::tests::MockPrecompileHandle;
 use module_evm::{Context, ExitRevert};
 use primitives::evm::{PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START};
 
@@ -36,12 +37,19 @@ fn precompile_filter_works_on_acala_precompiles() {
 			caller: non_system.into(),
 			apparent_value: 0.into(),
 		};
+		let mut handle = MockPrecompileHandle {
+			input: &[0u8; 1],
+			code_address: precompile,
+			gas_limit: Some(10),
+			gas_used: 0,
+			context: &non_system_caller_context,
+			is_static: false,
+		};
 		assert_eq!(
-			PrecompilesValue::get().execute(precompile, &[0u8; 1], Some(10), &non_system_caller_context, false),
+			PrecompilesValue::get().execute(&mut handle),
 			Some(Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "NoPermission".into(),
-				cost: 10,
 			})),
 		);
 	});
@@ -60,9 +68,15 @@ fn precompile_filter_does_not_work_on_system_contracts() {
 			caller: non_system.into(),
 			apparent_value: 0.into(),
 		};
-		assert!(PrecompilesValue::get()
-			.execute(non_system.into(), &[0u8; 1], None, &non_system_caller_context, false)
-			.is_none());
+		let mut handle = MockPrecompileHandle {
+			input: &[0u8; 1],
+			code_address: non_system.into(),
+			gas_limit: None,
+			gas_used: 0,
+			context: &non_system_caller_context,
+			is_static: false,
+		};
+		assert!(PrecompilesValue::get().execute(&mut handle).is_none());
 	});
 }
 
@@ -79,8 +93,14 @@ fn precompile_filter_does_not_work_on_non_system_contracts() {
 			caller: another_non_system.into(),
 			apparent_value: 0.into(),
 		};
-		assert!(PrecompilesValue::get()
-			.execute(non_system.into(), &[0u8; 1], None, &non_system_caller_context, false)
-			.is_none());
+		let mut handle = MockPrecompileHandle {
+			input: &[0u8; 1],
+			code_address: non_system.into(),
+			gas_limit: None,
+			gas_used: 0,
+			context: &non_system_caller_context,
+			is_static: false,
+		};
+		assert!(PrecompilesValue::get().execute(&mut handle).is_none());
 	});
 }

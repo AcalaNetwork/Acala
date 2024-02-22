@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,16 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{
-	input::{Input, InputPricer, InputT, Output},
-	target_gas_limit,
-};
+use super::input::{Input, InputPricer, InputT, Output};
 use crate::WeightToGas;
 use frame_support::traits::Get;
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_honzon::WeightInfo;
 use module_support::HonzonManager;
@@ -64,21 +60,13 @@ where
 	Runtime: module_evm::Config + module_honzon::Config + module_prices::Config,
 	module_honzon::Pallet<Runtime>: HonzonManager<Runtime::AccountId, CurrencyId, Amount, Balance>,
 {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let gas_cost = Pricer::<Runtime>::cost(handle)?;
+		handle.record_cost(gas_cost)?;
+
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
-			input,
-			target_gas_limit(target_gas),
+			handle.input(),
 		);
-
-		let gas_cost = Pricer::<Runtime>::cost(&input)?;
-
-		if let Some(gas_limit) = target_gas {
-			if gas_limit < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
 
 		let action = input.action()?;
 
@@ -104,15 +92,12 @@ where
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("Honzon AdjustLoan failed", e),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				)?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::CloseLoanByDex => {
@@ -135,15 +120,12 @@ where
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("Honzon CloseLoanByDex failed", e),
-						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				)?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: vec![],
-					logs: Default::default(),
 				})
 			}
 			Action::GetPosition => {
@@ -159,9 +141,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint_tuple(vec![collateral, debit]),
-					logs: Default::default(),
 				})
 			}
 			Action::GetCollateralParameters => {
@@ -175,9 +155,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint_array(params),
-					logs: Default::default(),
 				})
 			}
 			Action::GetCurrentCollateralRatio => {
@@ -193,9 +171,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(ratio.into_inner()),
-					logs: Default::default(),
 				})
 			}
 			Action::GetDebitExchangeRate => {
@@ -209,9 +185,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(exchange_rate.into_inner()),
-					logs: Default::default(),
 				})
 			}
 		}
@@ -226,9 +200,10 @@ where
 {
 	const BASE_COST: u64 = 200;
 
-	fn cost(
-		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
-	) -> Result<u64, PrecompileFailure> {
+	fn cost(handle: &mut impl PrecompileHandle) -> Result<u64, PrecompileFailure> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			handle.input(),
+		);
 		let action = input.action()?;
 
 		let cost: u64 = match action {
@@ -311,6 +286,7 @@ mod tests {
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
+	use module_evm::{precompiles::tests::MockPrecompileHandle, Context};
 	use module_support::{Rate, Ratio};
 	use orml_traits::Change;
 	use sp_runtime::FixedPointNumber;
@@ -354,7 +330,7 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000001000
 			"};
 
-			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HonzonPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(Loans::positions(DOT, alice()).collateral, 268435456);
 			assert_eq!(Loans::positions(DOT, alice()).debit, 4096)
@@ -432,7 +408,7 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000100000000
 			"};
 
-			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HonzonPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 
 			assert_eq!(Loans::positions(DOT, alice()).debit, 0);
@@ -485,7 +461,7 @@ mod tests {
 				00000000000000000000000000000000 0000000000000000000000174876e800
 				00000000000000000000000000000000 000000000000000000000000000f4240
 			"};
-			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HonzonPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output.to_vec());
 		});
@@ -533,7 +509,7 @@ mod tests {
 				00000000000000000000000000000000 000000000000000018fae27693b40000
 			"};
 
-			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HonzonPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output.to_vec());
 		});
@@ -582,7 +558,7 @@ mod tests {
 			let expected_output = hex! {"
 				00000000000000000000000000000000 000000000000152d02c7e14af6800000
 			"};
-			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HonzonPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output.to_vec());
 		});
@@ -617,7 +593,7 @@ mod tests {
 			let expected_output = hex! {"
 				00000000000000000000000000000000 00000000000000000de0b6b3a7640000
 			"};
-			let res = HonzonPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = HonzonPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output.to_vec());
 		})

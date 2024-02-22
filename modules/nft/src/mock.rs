@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,15 +22,15 @@ use super::*;
 
 use crate as nft;
 use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Contains, InstanceFilter, Nothing},
+	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	traits::{ConstU128, ConstU32, Contains, InstanceFilter, Nothing},
 };
 use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use parity_scale_codec::{Decode, Encode};
 use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier, TokenSymbol};
-use sp_core::{crypto::AccountId32, H160, H256};
+use sp_core::{crypto::AccountId32, H160};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage, RuntimeDebug,
@@ -38,30 +38,12 @@ use sp_runtime::{
 
 pub type AccountId = AccountId32;
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = BaseFilter;
-	type RuntimeOrigin = RuntimeOrigin;
-	type Nonce = u64;
-	type Hash = H256;
-	type RuntimeCall = RuntimeCall;
-	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<250>;
-	type DbWeight = ();
-	type BlockWeights = ();
-	type BlockLength = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
 }
 
 impl pallet_balances::Config for Runtime {

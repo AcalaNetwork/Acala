@@ -1,6 +1,6 @@
 [package]
 name = "module-evm"
-version = "2.23.0"
+version = "2.24.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -61,7 +61,7 @@ pallet-utility = { workspace = true, features = ["std"] }
 default = ["std"]
 std = [
 	"serde/std",
-    "environmental/std",
+	"environmental/std",
 	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",

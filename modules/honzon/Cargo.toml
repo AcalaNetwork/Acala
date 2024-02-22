@@ -1,6 +1,6 @@
 [package]
 name = "module-honzon"
-version = "2.23.0"
+version = "2.24.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -27,6 +27,8 @@ orml-traits = { workspace = true, features = ["std"] }
 orml-tokens = { workspace = true, features = ["std"] }
 module-cdp-treasury = { workspace = true, features = ["std"] }
 module-evm-accounts = { workspace = true, features = ["std"] }
+module-evm = { workspace = true, features = ["std"] }
+module-evm-bridge = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]

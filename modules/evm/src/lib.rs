@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 
 pub use crate::runner::{
 	stack::SubstrateStackState,
-	state::{PrecompileSet, StackExecutor, StackSubstateMetadata},
+	state::{PrecompileResult, StackExecutor, StackSubstateMetadata},
 	storage_meter::StorageMeter,
 	Runner,
 };
@@ -46,7 +46,11 @@ use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureRoot, En
 use hex_literal::hex;
 pub use module_evm_utility::{
 	ethereum::{AccessListItem, Log, TransactionAction},
-	evm::{self, Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed},
+	evm::{
+		self,
+		executor::stack::{IsPrecompileResult, PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileSet},
+		Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed, ExternalOperation,
+	},
 	Account,
 };
 pub use module_support::{
@@ -100,17 +104,17 @@ pub type NegativeImbalanceOf<T> =
 pub const RESERVE_ID_STORAGE_DEPOSIT: ReserveIdentifier = ReserveIdentifier::EvmStorageDeposit;
 pub const RESERVE_ID_DEVELOPER_DEPOSIT: ReserveIdentifier = ReserveIdentifier::EvmDeveloperDeposit;
 
-// Initially based on London hard fork configuration.
+// Initially based on shanghai hard fork configuration.
 static ACALA_CONFIG: EvmConfig = EvmConfig {
 	refund_sstore_clears: 0,            // no gas refund
 	sstore_gas_metering: false,         // no gas refund
 	sstore_revert_under_stipend: false, // ignored
 	create_contract_limit: Some(MaxCodeSize::get() as usize),
-	..module_evm_utility::evm::Config::london()
+	..module_evm_utility::evm::Config::shanghai()
 };
 
 /// Create an empty contract `contract Empty { }`.
-pub const BASE_CREATE_GAS: u64 = 67_066;
+pub const BASE_CREATE_GAS: u64 = 67_072;
 /// Call function that just set a storage `function store(uint256 num) public { number = num; }`.
 pub const BASE_CALL_GAS: u64 = 43_702;
 
@@ -410,8 +414,13 @@ pub mod module {
 					let state = SubstrateStackState::<T>::new(&vicinity, metadata);
 					let mut executor = StackExecutor::new_with_precompiles(state, T::config(), &());
 
-					let mut runtime =
-						evm::Runtime::new(Rc::new(account.code.clone()), Rc::new(Vec::new()), context, T::config());
+					let mut runtime = evm::Runtime::new(
+						Rc::new(account.code.clone()),
+						Rc::new(Vec::new()),
+						context,
+						T::config().stack_limit,
+						T::config().memory_limit,
+					);
 					let reason = executor.execute(&mut runtime);
 
 					assert!(

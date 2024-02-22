@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::Precompile;
-use crate::runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult};
-use module_evm_utility::evm::{Context, ExitError, ExitSucceed};
+use crate::{PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileResult};
+use module_evm_utility::evm::{ExitError, ExitSucceed};
 use sp_core::U256;
 use sp_std::vec::Vec;
 
@@ -67,8 +67,12 @@ impl Bn128Add {
 }
 
 impl Precompile for Bn128Add {
-	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
 		use bn::AffineG1;
+
+		handle.record_cost(Bn128Add::GAS_COST)?;
+
+		let input = handle.input();
 
 		let p1 = read_point(input, 0)?;
 		let p2 = read_point(input, 64)?;
@@ -90,10 +94,21 @@ impl Precompile for Bn128Add {
 
 		Ok(PrecompileOutput {
 			exit_status: ExitSucceed::Returned,
-			cost: Bn128Add::GAS_COST,
 			output: buf.to_vec(),
-			logs: Default::default(),
 		})
+	}
+
+	#[cfg(feature = "evm-tests")]
+	fn execute_ext(
+		input: &[u8],
+		target_gas: Option<u64>,
+		context: &crate::Context,
+		is_static: bool,
+	) -> Result<(PrecompileOutput, u64), PrecompileFailure> {
+		let mut handle = crate::precompiles::tests::MockPrecompileHandle::new(&input, target_gas, context, is_static);
+		let output = Self::execute(&mut handle)?;
+
+		Ok((output, handle.gas_used))
 	}
 }
 
@@ -105,8 +120,12 @@ impl Bn128Mul {
 }
 
 impl Precompile for Bn128Mul {
-	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
 		use bn::AffineG1;
+
+		handle.record_cost(Bn128Mul::GAS_COST)?;
+
+		let input = handle.input();
 
 		let p = read_point(input, 0)?;
 		let fr = read_fr(input, 64)?;
@@ -128,10 +147,21 @@ impl Precompile for Bn128Mul {
 
 		Ok(PrecompileOutput {
 			exit_status: ExitSucceed::Returned,
-			cost: Bn128Mul::GAS_COST,
 			output: buf.to_vec(),
-			logs: Default::default(),
 		})
+	}
+
+	#[cfg(feature = "evm-tests")]
+	fn execute_ext(
+		input: &[u8],
+		target_gas: Option<u64>,
+		context: &crate::Context,
+		is_static: bool,
+	) -> Result<(PrecompileOutput, u64), PrecompileFailure> {
+		let mut handle = crate::precompiles::tests::MockPrecompileHandle::new(&input, target_gas, context, is_static);
+		let output = Self::execute(&mut handle)?;
+
+		Ok((output, handle.gas_used))
 	}
 }
 
@@ -145,17 +175,10 @@ impl Bn128Pairing {
 }
 
 impl Precompile for Bn128Pairing {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
 		use bn::{pairing_batch, AffineG1, AffineG2, Fq, Fq2, Group, Gt, G1, G2};
 
-		if let Some(gas_left) = target_gas {
-			if gas_left < Bn128Pairing::BASE_GAS_COST {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
-
+		let input = handle.input();
 		if input.len() % 192 != 0 {
 			return Err(PrecompileFailure::Error {
 				exit_status: ExitError::Other("Invalid input length, must be multiple of 192 (3 * (32*2))".into()),
@@ -169,13 +192,6 @@ impl Precompile for Bn128Pairing {
 			let elements = input.len() / 192;
 
 			let gas_cost: u64 = Bn128Pairing::BASE_GAS_COST + (elements as u64 * Bn128Pairing::GAS_COST_PER_PAIRING);
-			if let Some(gas_left) = target_gas {
-				if gas_left < gas_cost {
-					return Err(PrecompileFailure::Error {
-						exit_status: ExitError::OutOfGas,
-					});
-				}
-			}
 
 			let mut vals = Vec::new();
 			for idx in 0..elements {
@@ -236,22 +252,37 @@ impl Precompile for Bn128Pairing {
 			}
 		};
 
+		handle.record_cost(gas_cost)?;
+
 		let mut buf = [0u8; 32];
 		ret_val.to_big_endian(&mut buf);
 
 		Ok(PrecompileOutput {
 			exit_status: ExitSucceed::Returned,
-			cost: gas_cost,
 			output: buf.to_vec(),
-			logs: Default::default(),
 		})
+	}
+
+	#[cfg(feature = "evm-tests")]
+	fn execute_ext(
+		input: &[u8],
+		target_gas: Option<u64>,
+		context: &crate::Context,
+		is_static: bool,
+	) -> Result<(PrecompileOutput, u64), PrecompileFailure> {
+		let mut handle = crate::precompiles::tests::MockPrecompileHandle::new(&input, target_gas, context, is_static);
+		let output = Self::execute(&mut handle)?;
+
+		Ok((output, handle.gas_used))
 	}
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::precompiles::tests::MockPrecompileHandle;
 	use hex_literal::hex;
+	use module_evm_utility::evm::Context;
 
 	fn get_context() -> Context {
 		Context {
@@ -278,7 +309,7 @@ mod tests {
 			"};
 
 			assert_eq!(
-				Bn128Add::execute(&input[..], None, &get_context(), false)
+				Bn128Add::execute(&mut MockPrecompileHandle::new(&input[..], None, &get_context(), false))
 					.unwrap()
 					.output,
 				expected
@@ -295,7 +326,7 @@ mod tests {
 			"};
 
 			assert_eq!(
-				Bn128Add::execute(&input[..], None, &get_context(), false)
+				Bn128Add::execute(&mut MockPrecompileHandle::new(&input[..], None, &get_context(), false))
 					.unwrap()
 					.output,
 				expected
@@ -312,7 +343,7 @@ mod tests {
 			"};
 
 			assert_eq!(
-				Bn128Add::execute(&input[..], None, &get_context(), false),
+				Bn128Add::execute(&mut MockPrecompileHandle::new(&input[..], None, &get_context(), false)),
 				Err(PrecompileFailure::Error {
 					exit_status: ExitError::Other("Invalid curve point".into())
 				})
@@ -336,7 +367,7 @@ mod tests {
 			"};
 
 			assert_eq!(
-				Bn128Mul::execute(&input[..], None, &get_context(), false)
+				Bn128Mul::execute(&mut MockPrecompileHandle::new(&input[..], None, &get_context(), false))
 					.unwrap()
 					.output,
 				expected
@@ -352,7 +383,7 @@ mod tests {
 			"};
 
 			assert_eq!(
-				Bn128Mul::execute(&input[..], None, &get_context(), false),
+				Bn128Mul::execute(&mut MockPrecompileHandle::new(&input[..], None, &get_context(), false)),
 				Err(PrecompileFailure::Error {
 					exit_status: ExitError::Other("Invalid curve point".into())
 				})
@@ -370,7 +401,7 @@ mod tests {
 		"};
 
 		assert_eq!(
-			Bn128Pairing::execute(&input[..], None, &get_context(), false)
+			Bn128Pairing::execute(&mut MockPrecompileHandle::new(&input[..], None, &get_context(), false))
 				.unwrap()
 				.output,
 			expected
@@ -390,7 +421,7 @@ mod tests {
 		"};
 
 		assert_eq!(
-			Bn128Pairing::execute(&input[..], None, &get_context(), false),
+			Bn128Pairing::execute(&mut MockPrecompileHandle::new(&input[..], None, &get_context(), false)),
 			Err(PrecompileFailure::Error {
 				exit_status: ExitError::Other("Invalid b argument - not on curve".into())
 			})
@@ -407,7 +438,7 @@ mod tests {
 		"};
 
 		assert_eq!(
-			Bn128Pairing::execute(&input[..], None, &get_context(), false),
+			Bn128Pairing::execute(&mut MockPrecompileHandle::new(&input[..], None, &get_context(), false)),
 			Err(PrecompileFailure::Error {
 				exit_status: ExitError::Other("Invalid input length, must be multiple of 192 (3 * (32*2))".into())
 			})

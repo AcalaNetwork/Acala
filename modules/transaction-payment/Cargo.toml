@@ -1,10 +1,11 @@
 [package]
 name = "module-transaction-payment"
-version = "2.23.0"
+version = "2.24.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
+log = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-runtime = { workspace = true }

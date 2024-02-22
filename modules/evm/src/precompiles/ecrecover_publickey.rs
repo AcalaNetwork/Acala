@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::LinearCostPrecompile;
-use crate::runner::state::PrecompileFailure;
+use crate::PrecompileFailure;
 use module_evm_utility::evm::{ExitError, ExitSucceed};
 use sp_std::{cmp::min, vec::Vec};
 

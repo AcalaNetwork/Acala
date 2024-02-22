@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,7 @@ use mandala_runtime::{
 	CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, ExistentialDeposits,
 	FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 	NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
-	PolkadotXcmConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig,
+	PolkadotXcmConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig,
 	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
 };
 use primitives::{evm::CHAIN_ID_MANDALA, orml_traits::GetByKey, AccountId, Balance, TokenSymbol};
@@ -114,15 +114,15 @@ fn dev_testnet_config_from_chain_id(chain_id: &str, mnemonic: Option<&str>) -> R
 	properties.insert("tokenDecimals".into(), token_decimals.into());
 
 	let evm_accounts = get_evm_accounts(mnemonic);
-	let wasm_binary = mandala_runtime::WASM_BINARY.unwrap_or_default();
+	let wasm_binary = mandala_runtime::WASM_BINARY.expect("WASM binary was not built, please build it!");
 
+	#[allow(deprecated)]
 	Ok(ChainSpec::from_genesis(
 		"Mandala Dev",
 		chain_id,
 		ChainType::Development,
 		move || {
 			testnet_genesis(
-				wasm_binary,
 				// Initial PoA authorities
 				vec![get_authority_keys_from_seed("Alice")],
 				// Sudo account
@@ -163,6 +163,7 @@ fn dev_testnet_config_from_chain_id(chain_id: &str, mnemonic: Option<&str>) -> R
 			para_id: PARA_ID,
 			bad_blocks: None,
 		},
+		wasm_binary,
 	))
 }
 
@@ -180,13 +181,13 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 
 	let wasm_binary = mandala_runtime::WASM_BINARY.ok_or("Dev runtime wasm binary not available")?;
 
+	#[allow(deprecated)]
 	Ok(ChainSpec::from_genesis(
 		"Local",
 		"local",
 		ChainType::Local,
 		move || {
 			testnet_genesis(
-				wasm_binary,
 				vec![
 					get_authority_keys_from_seed("Alice"),
 					get_authority_keys_from_seed("Bob"),
@@ -219,6 +220,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 			para_id: PARA_ID,
 			bad_blocks: None,
 		},
+		wasm_binary,
 	))
 }
 
@@ -235,6 +237,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 
 	let wasm_binary = mandala_runtime::WASM_BINARY.ok_or("Mandala runtime wasm binary not available")?;
 
+	#[allow(deprecated)]
 	Ok(ChainSpec::from_genesis(
 		"Acala Mandala TC7",
 		"mandala-dev-tc7",
@@ -253,7 +256,6 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 		// ./target/debug/subkey --ed25519 inspect "$SECRET//acala//3//grandpa"
 		move || {
 			mandala_genesis(
-				wasm_binary,
 				vec![
 					(
 						// 5CLg63YpPJNqcyWaYebk3LuuUVp3un7y1tmuV3prhdbnMA77
@@ -301,11 +303,11 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 			para_id: PARA_ID,
 			bad_blocks: None,
 		},
+		wasm_binary,
 	))
 }
 
 fn testnet_genesis(
-	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, AuraId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
@@ -345,11 +347,7 @@ fn testnet_genesis(
 	let member = vec![root_key.clone()];
 
 	mandala_runtime::RuntimeGenesisConfig {
-		system: SystemConfig {
-			_config: Default::default(),
-			// Add Wasm runtime to storage.
-			code: wasm_binary.to_vec(),
-		},
+		system: Default::default(),
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig {
 			#[cfg(feature = "runtime-benchmarks")]
@@ -493,7 +491,6 @@ fn testnet_genesis(
 }
 
 fn mandala_genesis(
-	wasm_binary: &[u8],
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, AuraId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
@@ -532,11 +529,7 @@ fn mandala_genesis(
 	let member = vec![root_key.clone()];
 
 	mandala_runtime::RuntimeGenesisConfig {
-		system: SystemConfig {
-			_config: Default::default(),
-			// Add Wasm runtime to storage.
-			code: wasm_binary.to_vec(),
-		},
+		system: Default::default(),
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
 		sudo: SudoConfig {

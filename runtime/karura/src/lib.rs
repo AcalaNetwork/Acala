@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -58,7 +58,7 @@ use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
+use module_support::{AddressMapping, AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
@@ -66,7 +66,6 @@ use orml_traits::{
 	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
 	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey, MultiCurrency,
 };
-use orml_utilities::simulate_execution;
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 use frame_support::{
@@ -78,8 +77,9 @@ use frame_support::{
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU128, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency, Currency,
 		EnsureOrigin, EqualPrivilegeOnly, Get, Imbalance, InstanceFilter, LinearStoragePrice, LockIdentifier,
-		OnRuntimeUpgrade, OnUnbalanced, SortedMembers,
+		OnUnbalanced, SortedMembers,
 	},
+	transactional,
 	weights::{constants::RocksDbWeight, ConstantMultiplier, Weight},
 	PalletId,
 };
@@ -109,11 +109,11 @@ use runtime_common::{
 	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
 	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, ExistentialDepositsTimesOneHundred,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, FixedRateOfAsset, GasToWeight,
-	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
-	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
-	RuntimeBlockLength, RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
-	TimeStampedPrice, TipPerWeightStep, KAR, KSM, KUSD, LKSM, TAI,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
+	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
+	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength,
+	RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
+	TipPerWeightStep, KAR, KSM, KUSD, LKSM, TAI,
 };
 use xcm::v3::prelude::*;
 
@@ -133,7 +133,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2230,
+	spec_version: 2240,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -235,7 +235,8 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+				| pallet_xcm::Call::limited_teleport_assets { .. }
+				| pallet_xcm::Call::transfer_assets { .. } => {
 					return false;
 				}
 				pallet_xcm::Call::force_xcm_version { .. }
@@ -282,6 +283,7 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type MaxConsumers = ConstU32<16>;
+	type RuntimeTask = ();
 }
 
 impl pallet_aura::Config for Runtime {
@@ -1092,6 +1094,7 @@ parameter_types! {
 	pub MinimumDebitValue: Balance = 50 * dollar(KUSD);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(10, 100);
 	pub MaxLiquidationContractSlippage: Ratio = Ratio::saturating_from_rational(15, 100);
+	pub SettleErc20EvmOrigin: AccountId = AccountId::from(hex_literal::hex!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")); // `u5wKvsdTcsYQXeB9nvDQ7PppNHeVefghTzBY9niAhMPXpyo`
 }
 
 impl module_cdp_engine::Config for Runtime {
@@ -1119,6 +1122,8 @@ impl module_cdp_engine::Config for Runtime {
 	type PalletId = CDPEnginePalletId;
 	type EvmAddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
 	type Swap = AcalaSwap;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
+	type SettleErc20EvmOrigin = SettleErc20EvmOrigin;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1532,13 +1537,14 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type OnSystemEvent = ();
 	type SelfParaId = ParachainInfo;
-	type DmpMessageHandler = DmpQueue;
+	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, xcm_config::RelayOrigin>;
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type CheckAssociatedRelayNumber =
 		CheckRelayNumber<EvmChainId<Runtime>, cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases>;
+	type WeightInfo = cumulus_pallet_parachain_system::weights::SubstrateWeight<Runtime>;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -1795,6 +1801,7 @@ construct_runtime!(
 		XTokens: orml_xtokens = 54,
 		UnknownTokens: orml_unknown_tokens = 55,
 		OrmlXcm: orml_xcm = 56,
+		MessageQueue: pallet_message_queue = 57,
 
 		// Governance
 		Authority: orml_authority = 60,
@@ -1893,20 +1900,17 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	Migrations,
+>;
 
-pub struct MigrateSetXcmVersionForKusama;
-impl OnRuntimeUpgrade for MigrateSetXcmVersionForKusama {
-	fn on_runtime_upgrade() -> Weight {
-		let _ = PolkadotXcm::force_xcm_version(
-			RuntimeOrigin::root(),
-			Box::new(MultiLocation::new(1, Junctions::Here)),
-			3,
-		);
-		RocksDbWeight::get().writes(1)
-	}
-}
+#[allow(unused_parens)]
+type Migrations = (cumulus_pallet_xcmp_queue::migration::v4::MigrationToV4<Runtime>,);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -2104,7 +2108,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance> for Runtime {
+	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance, AccountId> for Runtime {
 		fn block_limits() -> BlockLimits {
 			BlockLimits {
 				max_gas_limit: runtime_common::EvmLimits::<Runtime>::max_gas_limit(),
@@ -2112,6 +2116,8 @@ impl_runtime_apis! {
 			}
 		}
 
+		// required by xtokens precompile
+		#[transactional]
 		fn call(
 			from: H160,
 			to: H160,
@@ -2122,20 +2128,17 @@ impl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 			_estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
-			// Fix xtokens: Transfer failed: Transactional(NoLayer)
-			simulate_execution(|| {
-				<Runtime as module_evm::Config>::Runner::rpc_call(
-					from,
-					from,
-					to,
-					data,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					<Runtime as module_evm::Config>::config(),
-				)
-			})
+			<Runtime as module_evm::Config>::Runner::rpc_call(
+				from,
+				from,
+				to,
+				data,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				<Runtime as module_evm::Config>::config(),
+			)
 		}
 
 		fn create(
@@ -2189,6 +2192,37 @@ impl_runtime_apis! {
 			};
 
 			request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))
+		}
+
+		// required by xtokens precompile
+		#[transactional]
+		fn account_call(
+			from: AccountId,
+			to: H160,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			estimate: bool,
+		) -> Result<CallInfo, sp_runtime::DispatchError> {
+			let from = EvmAddressMapping::<Runtime>::get_or_create_evm_address(&from);
+
+			Self::call(from, to, data, value, gas_limit, storage_limit, access_list, estimate)
+		}
+
+		fn account_create(
+			from: AccountId,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			estimate: bool,
+		) -> Result<CreateInfo, sp_runtime::DispatchError> {
+			let from = EvmAddressMapping::<Runtime>::get_or_create_evm_address(&from);
+
+			Self::create(from, data, value, gas_limit, storage_limit, access_list, estimate)
 		}
 
 		#[cfg(feature = "tracing")]

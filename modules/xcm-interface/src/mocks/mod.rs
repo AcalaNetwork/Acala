@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -21,15 +21,15 @@
 use super::*;
 use crate as xcm_interface;
 use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
+	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	traits::{ConstU128, ConstU32, Everything, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use orml_traits::xcm_transfer::Transferred;
 use primitives::{CurrencyId, TokenSymbol};
-use sp_core::H256;
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
 use xcm_builder::{EnsureXcmOrigin, FixedWeightBounds, SignedToAccountId32};
+use xcm_executor::traits::XcmAssetTransfers;
 
 pub mod kusama;
 pub mod polkadot;
@@ -51,11 +51,6 @@ parameter_types! {
 	pub const RelayNetwork: NetworkId = NetworkId::Polkadot;
 	pub UniversalLocation: InteriorMultiLocation =
 		X1(Parachain(2000).into());
-}
-
-#[cfg(feature = "runtime-benchmarks")]
-parameter_types! {
-	pub ReachableDest: Option<MultiLocation> = Some(Parent.into());
 }
 
 ord_parameter_types! {
@@ -152,36 +147,82 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 	}
 }
 
+pub enum Weightless {}
+impl PreparedMessage for Weightless {
+	fn weight_of(&self) -> Weight {
+		unreachable!()
+	}
+}
+
+pub struct MockExec;
+impl<T> ExecuteXcm<T> for MockExec {
+	type Prepared = Weightless;
+
+	fn prepare(_message: Xcm<T>) -> Result<Self::Prepared, Xcm<T>> {
+		unreachable!()
+	}
+
+	fn execute(
+		_origin: impl Into<MultiLocation>,
+		_pre: Weightless,
+		_hash: &mut XcmHash,
+		_weight_credit: Weight,
+	) -> Outcome {
+		unreachable!()
+	}
+
+	fn execute_xcm_in_credit(
+		_origin: impl Into<MultiLocation>,
+		message: Xcm<T>,
+		_hash: XcmHash,
+		weight_limit: Weight,
+		_weight_credit: Weight,
+	) -> Outcome {
+		let o = match (message.0.len(), &message.0.first()) {
+			(
+				1,
+				Some(Transact {
+					require_weight_at_most, ..
+				}),
+			) => {
+				if require_weight_at_most.all_lte(weight_limit) {
+					Outcome::Complete(*require_weight_at_most)
+				} else {
+					Outcome::Error(XcmError::WeightLimitReached(*require_weight_at_most))
+				}
+			}
+			// use 1000 to decide that it's not supported.
+			_ => Outcome::Incomplete(
+				Weight::from_parts(1000, 1000).min(weight_limit),
+				XcmError::Unimplemented,
+			),
+		};
+		o
+	}
+
+	fn charge_fees(_location: impl Into<MultiLocation>, _fees: MultiAssets) -> XcmResult {
+		Err(XcmError::Unimplemented)
+	}
+}
+
+impl XcmAssetTransfers for MockExec {
+	type IsReserve = ();
+	type IsTeleporter = ();
+	type AssetTransactor = ();
+}
+
 #[macro_export]
 macro_rules! impl_mock {
 	($relaychain:ty) => {
 		pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
 		pub type Block = frame_system::mocking::MockBlock<Runtime>;
 
+		#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 		impl frame_system::Config for Runtime {
-			type RuntimeOrigin = RuntimeOrigin;
-			type Nonce = u64;
-			type RuntimeCall = RuntimeCall;
-			type Hash = H256;
-			type Hashing = ::sp_runtime::traits::BlakeTwo256;
 			type AccountId = AccountId;
 			type Lookup = IdentityLookup<Self::AccountId>;
 			type Block = Block;
-			type RuntimeEvent = RuntimeEvent;
-			type BlockHashCount = ConstU64<250>;
-			type BlockWeights = ();
-			type BlockLength = ();
-			type Version = ();
-			type PalletInfo = PalletInfo;
 			type AccountData = pallet_balances::AccountData<Balance>;
-			type OnNewAccount = ();
-			type OnKilledAccount = ();
-			type DbWeight = ();
-			type BaseCallFilter = Everything;
-			type SystemWeightInfo = ();
-			type SS58Prefix = ();
-			type OnSetCode = ();
-			type MaxConsumers = ConstU32<16>;
 		}
 
 		impl pallet_balances::Config for Runtime {
@@ -207,7 +248,7 @@ macro_rules! impl_mock {
 			type XcmRouter = ();
 			type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
 			type XcmExecuteFilter = Everything;
-			type XcmExecutor = ();
+			type XcmExecutor = MockExec;
 			type XcmTeleportFilter = Nothing;
 			type XcmReserveTransferFilter = Everything;
 			type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
@@ -225,8 +266,6 @@ macro_rules! impl_mock {
 			type AdminOrigin = EnsureRoot<AccountId>;
 			type MaxRemoteLockConsumers = ConstU32<0>;
 			type RemoteLockConsumerIdentifier = ();
-			#[cfg(feature = "runtime-benchmarks")]
-			type ReachableDest = ReachableDest;
 		}
 
 		impl Config for Runtime {

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 use std::net::SocketAddr;
 
 use crate::cli::{Cli, RelayChainCli, Subcommand};
-use acala_service::{chain_spec, new_partial, IdentifyVariant};
+use acala_service::{chain_spec, new_partial, Block, IdentifyVariant};
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
@@ -30,7 +30,6 @@ use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams, NetworkParams, Result,
 	SharedParams, SubstrateCli,
 };
-use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
 use sc_service::config::{BasePath, PrometheusConfig};
 
 fn chain_name() -> String {
@@ -191,26 +190,17 @@ macro_rules! with_runtime_or_err {
 	($chain_spec:expr, { $( $code:tt )* }) => {
 		if $chain_spec.is_acala() {
 			#[cfg(feature = "with-acala-runtime")]
-			#[allow(unused_imports)]
-			use acala_service::{acala_runtime::{Block, RuntimeApi}, AcalaExecutorDispatch as Executor};
-			#[cfg(feature = "with-acala-runtime")]
 			$( $code )*
 
 			#[cfg(not(feature = "with-acala-runtime"))]
 			return Err(acala_service::ACALA_RUNTIME_NOT_AVAILABLE.into());
 		} else if $chain_spec.is_karura() {
 			#[cfg(feature = "with-karura-runtime")]
-			#[allow(unused_imports)]
-			use acala_service::{karura_runtime::{Block, RuntimeApi}, KaruraExecutorDispatch as Executor};
-			#[cfg(feature = "with-karura-runtime")]
 			$( $code )*
 
 			#[cfg(not(feature = "with-karura-runtime"))]
 			return Err(acala_service::KARURA_RUNTIME_NOT_AVAILABLE.into());
 		} else {
-			#[cfg(feature = "with-mandala-runtime")]
-			#[allow(unused_imports)]
-			use acala_service::{mandala_runtime::{Block, RuntimeApi}, MandalaExecutorDispatch as Executor};
 			#[cfg(feature = "with-mandala-runtime")]
 			$( $code )*
 
@@ -241,13 +231,10 @@ pub fn run() -> sc_cli::Result<()> {
 									.into());
 							}
 
-							cmd.run::<Block, ExtendedHostFunctions<
-								sp_io::SubstrateHostFunctions,
-								<Executor as NativeExecutionDispatch>::ExtendHostFunctions,
-							>>(config)
+							cmd.run::<Block, ()>(config)
 						}
 						BenchmarkCmd::Block(cmd) => {
-							let partials = new_partial::<RuntimeApi>(&config, true, false)?;
+							let partials = new_partial(&config, true, false)?;
 							cmd.run(partials.client)
 						}
 						#[cfg(not(feature = "runtime-benchmarks"))]
@@ -256,7 +243,7 @@ pub fn run() -> sc_cli::Result<()> {
 						}
 						#[cfg(feature = "runtime-benchmarks")]
 						BenchmarkCmd::Storage(cmd) => {
-							let partials = new_partial::<RuntimeApi>(&config, true, false)?;
+							let partials = new_partial(&config, true, false)?;
 							let db = partials.backend.expose_db();
 							let storage = partials.backend.expose_storage();
 
@@ -372,8 +359,8 @@ pub fn run() -> sc_cli::Result<()> {
 
 			with_runtime_or_err!(chain_spec, {
 				return runner.sync_run(|config| {
-					let partials = new_partial::<RuntimeApi>(&config, false, false)?;
-					cmd.run::<acala_service::Block>(&*config.chain_spec, &*partials.client)
+					let partials = new_partial(&config, false, false)?;
+					cmd.run(partials.client)
 				});
 			})
 		}
@@ -387,29 +374,7 @@ pub fn run() -> sc_cli::Result<()> {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		Some(Subcommand::TryRuntime(cmd)) => {
-			let runner = cli.create_runner(cmd)?;
-			let chain_spec = &runner.config().chain_spec;
-			set_default_ss58_version(chain_spec);
-
-			ensure_dev(chain_spec).map_err(|err| format!("try-runtime error: {}", err))?;
-
-			with_runtime_or_err!(chain_spec, {
-				return runner.async_run(|config| {
-					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
-					let task_manager = sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
-						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
-					let info_provider = try_runtime_cli::block_building_info::substrate_info(12000);
-					Ok((
-						cmd.run::<Block, ExtendedHostFunctions<
-							sp_io::SubstrateHostFunctions,
-							<Executor as NativeExecutionDispatch>::ExtendHostFunctions,
-						>, _>(Some(info_provider)),
-						task_manager,
-					))
-				});
-			})
-		}
+		Some(Subcommand::TryRuntime(_)) => Err(try_runtime_cli::DEPRECATION_NOTICE.into()),
 
 		None => {
 			let runner = cli.create_runner(&cli.run.normalize())?;
@@ -423,8 +388,7 @@ pub fn run() -> sc_cli::Result<()> {
 				if is_dev {
 					with_runtime_or_err!(config.chain_spec, {
 						{
-							return acala_service::start_dev_node::<RuntimeApi>(config, cli.instant_sealing)
-								.map_err(Into::into);
+							return acala_service::start_dev_node(config, cli.instant_sealing).map_err(Into::into);
 						}
 					})
 				} else if cli.instant_sealing {
@@ -456,7 +420,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 				with_runtime_or_err!(config.chain_spec, {
 					{
-						acala_service::start_node::<RuntimeApi>(config, polkadot_config, collator_options, id)
+						acala_service::start_node(config, polkadot_config, collator_options, id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)

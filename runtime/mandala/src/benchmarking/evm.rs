@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -56,8 +56,8 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 		from: module_evm_accounts::EvmAddressMapping::<Runtime>::get_evm_address(&caller).unwrap(),
 		contract: contract_addr(),
 		logs: vec![],
-		used_gas: 132_199,
-		used_storage: 10_367,
+		used_gas: 132225,
+		used_storage: 10367,
 	}));
 	Ok(contract_addr())
 }

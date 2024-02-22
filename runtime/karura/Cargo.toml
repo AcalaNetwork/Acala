@@ -1,6 +1,6 @@
 [package]
 name = "karura-runtime"
-version = "2.23.0"
+version = "2.24.0"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -27,6 +27,7 @@ pallet-bounties = { workspace = true }
 pallet-collective = { workspace = true }
 pallet-democracy = { workspace = true }
 pallet-membership = { workspace = true }
+pallet-message-queue = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-proxy = { workspace = true }
 pallet-scheduler = { workspace = true }
@@ -72,6 +73,7 @@ xcm-executor = { workspace = true }
 xcm-builder = { workspace = true }
 pallet-xcm = { workspace = true }
 polkadot-runtime-common = { workspace = true }
+parachains-common = { workspace = true }
 
 # orml
 orml-auction = { workspace = true }
@@ -86,7 +88,6 @@ orml-tokens = { workspace = true }
 orml-tokens-runtime-api = { workspace = true }
 orml-traits = { workspace = true }
 orml-unknown-tokens = { workspace = true }
-orml-utilities = { workspace = true }
 orml-vesting = { workspace = true }
 orml-xcm = { workspace = true }
 orml-xcm-support = { workspace = true }
@@ -134,8 +135,6 @@ nutsfinance-stable-asset = { workspace = true }
 # benchmarking deps
 libsecp256k1 = { workspace = true, optional = true }
 frame-benchmarking = { workspace = true, optional = true }
-pallet-staking = { workspace = true, optional = true }
-pallet-bags-list = { workspace = true, optional = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, optional = true }
@@ -160,13 +159,13 @@ std = [
 	"frame-try-runtime/std",
 	"pallet-aura/std",
 	"pallet-authorship/std",
-	"pallet-bags-list/std",
 	"pallet-balances/std",
 	"pallet-bounties/std",
 	"pallet-bounties/std",
 	"pallet-collective/std",
 	"pallet-democracy/std",
 	"pallet-membership/std",
+	"pallet-message-queue/std",
 	"pallet-multisig/std",
 	"pallet-preimage/std",
 	"pallet-proxy/std",
@@ -211,6 +210,7 @@ std = [
 	"xcm-executor/std",
 	"xcm/std",
 	"polkadot-runtime-common/std",
+	"parachains-common/std",
 
 	"orml-auction/std",
 	"orml-authority/std",
@@ -224,7 +224,6 @@ std = [
 	"orml-tokens/std",
 	"orml-traits/std",
 	"orml-unknown-tokens/std",
-	"orml-utilities/std",
 	"orml-vesting/std",
 	"orml-xcm-support/std",
 	"orml-xcm/std",
@@ -274,17 +273,16 @@ runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
-	"pallet-bags-list/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-bounties/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
 	"pallet-democracy/runtime-benchmarks",
 	"pallet-membership/runtime-benchmarks",
+	"pallet-message-queue/runtime-benchmarks",
 	"pallet-multisig/runtime-benchmarks",
 	"pallet-preimage/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
 	"pallet-scheduler/runtime-benchmarks",
-	"pallet-staking/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-tips/runtime-benchmarks",
 	"pallet-treasury/runtime-benchmarks",
@@ -341,6 +339,7 @@ try-runtime = [
 	"pallet-collective/try-runtime",
 	"pallet-democracy/try-runtime",
 	"pallet-membership/try-runtime",
+	"pallet-message-queue/try-runtime",
 	"pallet-multisig/try-runtime",
 	"pallet-preimage/try-runtime",
 	"pallet-proxy/try-runtime",
@@ -352,7 +351,6 @@ try-runtime = [
 	"pallet-transaction-payment/try-runtime",
 	"pallet-treasury/try-runtime",
 	"pallet-utility/try-runtime",
-	"pallet-bags-list/try-runtime",
 
 	"cumulus-pallet-aura-ext/try-runtime",
 	"cumulus-pallet-dmp-queue/try-runtime",

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -418,7 +418,7 @@ pub mod pallet {
 
 		pub fn do_register_candidate(who: &T::AccountId, deposit: BalanceOf<T>) -> Result<usize, DispatchError> {
 			// ensure we are below limit.
-			let length = <Candidates<T>>::decode_len().unwrap_or_default();
+			let length = <Candidates<T>>::decode_non_dedup_len().unwrap_or_default();
 			ensure!(
 				(length as u32) < Self::desired_candidates(),
 				Error::<T>::MaxCandidatesExceeded

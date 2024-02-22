@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2023 Acala Foundation.
+// Copyright (C) 2020-2024 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,15 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{
-	input::{Input, InputPricer, InputT, Output},
-	target_gas_limit,
-};
+use super::input::{Input, InputPricer, InputT, Output};
 use crate::WeightToGas;
 use module_evm::{
-	precompiles::Precompile,
-	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitRevert, ExitSucceed,
+	precompiles::Precompile, ExitRevert, ExitSucceed, PrecompileFailure, PrecompileHandle, PrecompileOutput,
+	PrecompileResult,
 };
 use module_liquid_crowdloan::WeightInfo;
 use module_support::Erc20InfoMapping as _;
@@ -48,21 +44,13 @@ impl<Runtime> Precompile for LiquidCrowdloanPrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config + module_liquid_crowdloan::Config,
 {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(handle: &mut impl PrecompileHandle) -> PrecompileResult {
+		let gas_cost = Pricer::<Runtime>::cost(handle)?;
+		handle.record_cost(gas_cost)?;
+
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
-			input,
-			target_gas_limit(target_gas),
+			handle.input(),
 		);
-
-		let gas_cost = Pricer::<Runtime>::cost(&input)?;
-
-		if let Some(gas_limit) = target_gas {
-			if gas_limit < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		}
 
 		let action = input.action()?;
 
@@ -76,16 +64,13 @@ where
 						PrecompileFailure::Revert {
 							exit_status: ExitRevert::Reverted,
 							output: Output::encode_error_msg("LiquidCrowdloan redeem failed", e),
-							cost: target_gas_limit(target_gas).unwrap_or_default(),
 						}
 					})?;
 
 				log::debug!(target: "evm", "liuqid_crowdloan: Redeem who: {:?}, amount: {:?}, output: {:?}", who, amount, redeem_amount);
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_uint(redeem_amount),
-					logs: Default::default(),
 				})
 			}
 			Action::GetRedeemCurrency => {
@@ -96,9 +81,7 @@ where
 				log::debug!(target: "evm", "liuqid_crowdloan: GetRedeemCurrency output: {:?}", address);
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: gas_cost,
 					output: Output::encode_address(address),
-					logs: Default::default(),
 				})
 			}
 		}
@@ -113,9 +96,10 @@ where
 {
 	const BASE_COST: u64 = 200;
 
-	fn cost(
-		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
-	) -> Result<u64, PrecompileFailure> {
+	fn cost(handle: &mut impl PrecompileHandle) -> Result<u64, PrecompileFailure> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			handle.input(),
+		);
 		let action = input.action()?;
 
 		let cost = match action {
@@ -143,6 +127,7 @@ mod tests {
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
+	use module_evm::{precompiles::tests::MockPrecompileHandle, Context};
 	use orml_traits::MultiCurrency;
 	use sp_runtime::traits::AccountIdConversion;
 
@@ -185,7 +170,8 @@ mod tests {
 				00000000000000000000000000000000 0000000000000000000000003b9aca00
 			"};
 
-			let res = LiquidCrowdloanPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = LiquidCrowdloanPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output.to_vec());
 
@@ -233,7 +219,8 @@ mod tests {
 				00000000000000000000000000000000 0000000000000000000000028fa6ae00
 			"};
 
-			let res = LiquidCrowdloanPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = LiquidCrowdloanPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output.to_vec());
 
@@ -259,7 +246,8 @@ mod tests {
 				000000000000000000000000 0000000000000000000100000000000000000002
 			"};
 
-			let res = LiquidCrowdloanPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = LiquidCrowdloanPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output.to_vec());
 
@@ -270,7 +258,8 @@ mod tests {
 				000000000000000000000000 0000000000000000000100000000000000000003
 			"};
 
-			let res = LiquidCrowdloanPrecompile::execute(&input, None, &context, false).unwrap();
+			let res = LiquidCrowdloanPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false))
+				.unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output.to_vec());
 		});
