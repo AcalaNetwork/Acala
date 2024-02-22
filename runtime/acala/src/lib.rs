@@ -2222,8 +2222,10 @@ sp_api::impl_runtime_apis! {
 
 			Self::create(from, data, value, gas_limit, storage_limit, access_list, estimate)
 		}
+	}
 
-		#[cfg(feature = "tracing")]
+	#[cfg(feature = "tracing")]
+	impl module_evm_rpc_runtime_api::EVMTraceApi<Block, Balance> for Runtime {
 		fn trace_call(
 			from: H160,
 			to: H160,
@@ -2236,14 +2238,31 @@ sp_api::impl_runtime_apis! {
 			let mut tracer = module_evm::runner::tracing::CallTracer::new();
 			module_evm::runner::tracing::call_tracer_using(&mut tracer, || {
 				if to == H160::zero() {
-					Self::create(from, data, value, gas_limit, storage_limit, access_list, false).map(drop)
+					<Runtime as module_evm::Config>::Runner::rpc_create(
+						from,
+						data,
+						value,
+						gas_limit,
+						storage_limit,
+						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+						<Runtime as module_evm::Config>::config(),
+					).map(drop)
 				} else {
-					Self::call(from, to, data, value, gas_limit, storage_limit, access_list, false).map(drop)
+					<Runtime as module_evm::Config>::Runner::rpc_call(
+						from,
+						from,
+						to,
+						data,
+						value,
+						gas_limit,
+						storage_limit,
+						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+						<Runtime as module_evm::Config>::config(),
+					).map(drop)
 				}
 			}).map(|_| tracer.finalize())
 		}
 
-		#[cfg(feature = "tracing")]
 		fn trace_vm(
 			from: H160,
 			to: H160,
@@ -2256,9 +2275,27 @@ sp_api::impl_runtime_apis! {
 			let mut tracer = module_evm::runner::tracing::OpcodeTracer::new();
 			module_evm::runner::tracing::opcode_tracer_using(&mut tracer, || {
 				if to == H160::zero() {
-					Self::create(from, data, value, gas_limit, storage_limit, access_list, false).map(drop)
+					<Runtime as module_evm::Config>::Runner::rpc_create(
+						from,
+						data,
+						value,
+						gas_limit,
+						storage_limit,
+						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+						<Runtime as module_evm::Config>::config(),
+					).map(drop)
 				} else {
-					Self::call(from, to, data, value, gas_limit, storage_limit, access_list, false).map(drop)
+					<Runtime as module_evm::Config>::Runner::rpc_call(
+						from,
+						from,
+						to,
+						data,
+						value,
+						gas_limit,
+						storage_limit,
+						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+						<Runtime as module_evm::Config>::config(),
+					).map(drop)
 				}
 			}).map(|_| tracer.steps)
 		}

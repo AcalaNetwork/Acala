@@ -78,8 +78,14 @@ sp_api::decl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError>;
+	}
+}
 
-		#[cfg(feature = "tracing")]
+#[cfg(feature = "tracing")]
+sp_api::decl_runtime_apis! {
+	pub trait EVMTraceApi<Balance> where
+		Balance: Codec + MaybeDisplay + MaybeFromStr,
+	{
 		fn trace_call(
 			from: H160,
 			to: H160,
@@ -90,7 +96,6 @@ sp_api::decl_runtime_apis! {
 			access_list: Option<Vec<AccessListItem>>,
 		) -> Result<Vec<primitives::evm::tracing::CallTrace>, sp_runtime::DispatchError>;
 
-		#[cfg(feature = "tracing")]
 		fn trace_vm(
 			from: H160,
 			to: H160,
