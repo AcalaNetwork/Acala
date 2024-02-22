@@ -58,6 +58,14 @@ macro_rules! event {
 }
 
 macro_rules! emit_exit {
+	($reason:expr) => {{
+		let reason = $reason;
+		event!(Exit {
+			reason: &reason,
+			return_value: &Vec::new(),
+		});
+		reason
+	}};
 	($reason:expr, $return_value:expr) => {{
 		let reason = $reason;
 		let return_value = $return_value;

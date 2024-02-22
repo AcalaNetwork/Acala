@@ -74,6 +74,14 @@ pub enum Event<'a> {
 		gas_limit: u64,
 		address: H160,
 	},
+	PrecompileSubcall {
+		code_address: H160,
+		transfer: &'a Option<Transfer>,
+		input: &'a [u8],
+		target_gas: Option<u64>,
+		is_static: bool,
+		context: &'a Context,
+	},
 	Enter {
 		depth: u32,
 	},
@@ -169,6 +177,14 @@ impl EventListener for CallTracer {
 	fn event(&mut self, event: Event) {
 		match event {
 			Event::Call {
+				code_address,
+				transfer,
+				input,
+				target_gas,
+				is_static,
+				context,
+			}
+			| Event::PrecompileSubcall {
 				code_address,
 				transfer,
 				input,
@@ -532,6 +548,7 @@ impl Stringify for ExitError {
 			ExitError::PCUnderflow => "PCUnderflow",
 			ExitError::CreateEmpty => "CreateEmpty",
 			ExitError::Other(msg) => msg,
+			ExitError::MaxNonce => "MaxNonce",
 		}
 	}
 }
