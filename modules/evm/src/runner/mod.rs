@@ -19,6 +19,8 @@
 pub mod stack;
 pub mod state;
 pub mod storage_meter;
+#[cfg(feature = "tracing")]
+pub mod tracing;
 
 use crate::{BalanceOf, CallInfo, Config, CreateInfo};
 use module_evm_utility::evm;

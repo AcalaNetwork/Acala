@@ -56,5 +56,27 @@ sp_api::decl_runtime_apis! {
 		fn get_estimate_resources_request(data: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError>;
 
 		fn block_limits() -> BlockLimits;
+
+		#[cfg(feature = "tracing")]
+		fn trace_call(
+			from: H160,
+			to: H160,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+		) -> Result<Vec<primitives::evm::tracing::CallTrace>, sp_runtime::DispatchError>;
+
+		#[cfg(feature = "tracing")]
+		fn trace_vm(
+			from: H160,
+			to: H160,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+		) -> Result<Vec<primitives::evm::tracing::Step>, sp_runtime::DispatchError>;
 	}
 }

@@ -57,6 +57,7 @@ dependencies = [
  "bstringify",
  "enumflags2",
  "frame-support",
+ "hex",
  "hex-literal",
  "log",
  "module-evm-utility",
@@ -6865,6 +6866,7 @@ version = "2.23.0"
 dependencies = [
  "acala-primitives",
  "env_logger",
+ "environmental",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

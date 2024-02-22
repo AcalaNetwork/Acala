@@ -47,47 +47,18 @@ use sp_std::{
 };
 
 macro_rules! event {
-	($x:expr) => {};
+	($event:expr) => {{
+		#[cfg(feature = "tracing")]
+		{
+			use crate::runner::tracing::{self, Event::*, EventListener};
+			tracing::call_tracer_with(|tracer| {
+				EventListener::event(tracer, $event);
+			});
+		}
+	}};
 }
-
-#[cfg(feature = "tracing")]
-mod tracing {
-	pub struct Tracer;
-	impl module_evm_utility::evm::tracing::EventListener for Tracer {
-		fn event(&mut self, event: module_evm_utility::evm::tracing::Event) {
-			frame_support::log::debug!(
-				target: "evm", "evm tracing: {:?}", event
-			);
-		}
-	}
-	impl module_evm_utility::evm_runtime::tracing::EventListener for Tracer {
-		fn event(&mut self, event: module_evm_utility::evm_runtime::tracing::Event) {
-			frame_support::log::debug!(
-				target: "evm", "evm_runtime tracing: {:?}", event
-			);
-		}
-	}
-	impl module_evm_utility::evm_gasometer::tracing::EventListener for Tracer {
-		fn event(&mut self, event: module_evm_utility::evm_gasometer::tracing::Event) {
-			frame_support::log::debug!(
-				target: "evm", "evm_gasometer tracing: {:?}", event
-			);
-		}
-	}
-}
-
-#[cfg(feature = "tracing")]
-use tracing::*;
 
 macro_rules! emit_exit {
-	($reason:expr) => {{
-		let reason = $reason;
-		event!(Exit {
-			reason: &reason,
-			return_value: &Vec::new(),
-		});
-		reason
-	}};
 	($reason:expr, $return_value:expr) => {{
 		let reason = $reason;
 		let return_value = $return_value;
@@ -209,6 +180,12 @@ impl<'config> StackSubstateMetadata<'config> {
 	}
 
 	pub fn spit_child(&self, gas_limit: u64, is_static: bool) -> Self {
+		event!(Enter {
+			depth: match self.depth {
+				None => 0,
+				Some(n) => n + 1,
+			} as u32
+		});
 		Self {
 			gasometer: Gasometer::new(gas_limit, self.gasometer.config()),
 			storage_meter: StorageMeter::new(self.storage_meter.available_storage()),
@@ -516,7 +493,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			value,
 			init_code: &init_code,
 			gas_limit,
-			address: self.create_address(CreateScheme::Legacy { caller }),
+			address: self.create_address(CreateScheme::Legacy { caller }).unwrap_or_default(),
 		});
 
 		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
@@ -554,11 +531,13 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			init_code: &init_code,
 			salt,
 			gas_limit,
-			address: self.create_address(CreateScheme::Create2 {
-				caller,
-				code_hash,
-				salt,
-			}),
+			address: self
+				.create_address(CreateScheme::Create2 {
+					caller,
+					code_hash,
+					salt,
+				})
+				.unwrap_or_default(),
 		});
 
 		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
@@ -1063,13 +1042,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 		let mut runtime = Runtime::new(Rc::new(code), Rc::new(input), context, self.config);
 
-		#[cfg(not(feature = "tracing"))]
 		let reason = self.execute(&mut runtime);
-		#[cfg(feature = "tracing")]
-		//let reason = module_evm_utility::evm::tracing::using(&mut Tracer, || self.execute(&mut runtime));
-		let reason = module_evm_utility::evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
-		//let reason = module_evm_utility::evm_gasometer::tracing::using(&mut Tracer, || self.execute(&mut
-		// runtime));
 
 		log::debug!(target: "evm", "Call execution using address {}: {:?}", code_address, reason);
 

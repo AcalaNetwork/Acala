@@ -2176,6 +2176,46 @@ sp_api::impl_runtime_apis! {
 
 			request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))
 		}
+
+		#[cfg(feature = "tracing")]
+		fn trace_call(
+			from: H160,
+			to: H160,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+		) -> Result<Vec<module_evm::runner::tracing::CallTrace>, sp_runtime::DispatchError> {
+			let mut tracer = module_evm::runner::tracing::CallTracer::new();
+			module_evm::runner::tracing::call_tracer_using(&mut tracer, || {
+				if to == H160::zero() {
+					Self::create(from, data, value, gas_limit, storage_limit, access_list, false).map(drop)
+				} else {
+					Self::call(from, to, data, value, gas_limit, storage_limit, access_list, false).map(drop)
+				}
+			}).map(|_| tracer.finalize())
+		}
+
+		#[cfg(feature = "tracing")]
+		fn trace_vm(
+			from: H160,
+			to: H160,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+		) -> Result<Vec<module_evm::runner::tracing::Step>, sp_runtime::DispatchError> {
+			let mut tracer = module_evm::runner::tracing::OpcodeTracer::new();
+			module_evm::runner::tracing::opcode_tracer_using(&mut tracer, || {
+				if to == H160::zero() {
+					Self::create(from, data, value, gas_limit, storage_limit, access_list, false).map(drop)
+				} else {
+					Self::call(from, to, data, value, gas_limit, storage_limit, access_list, false).map(drop)
+				}
+			}).map(|_| tracer.steps)
+		}
 	}
 
 	impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {

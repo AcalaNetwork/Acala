@@ -23,6 +23,7 @@ serde_json = { workspace = true, features = ["alloc"], optional = true }
 hex = { workspace = true, features = ["alloc"], optional = true }
 num = { workspace = true, features = ["alloc"] }
 bn = { workspace = true }
+environmental = { version = "1.1.4", default-features = false, optional = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
@@ -60,7 +61,7 @@ pallet-utility = { workspace = true, features = ["std"] }
 default = ["std"]
 std = [
 	"serde/std",
-
+    "environmental/std",
 	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",
@@ -100,7 +101,7 @@ try-runtime = [
 	"pallet-balances/try-runtime",
 	"pallet-timestamp/try-runtime",
 ]
-tracing = ["module-evm-utility/tracing"]
+tracing = ["environmental", "primitives/tracing", "module-evm-utility/tracing"]
 wasm-bench = [
 	"wasm-bencher/wasm-bench",
 	"hex",
