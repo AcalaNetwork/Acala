@@ -44,7 +44,9 @@ use runtime_common::{
 };
 use sp_runtime::Perbill;
 use xcm::{prelude::*, v3::Weight as XcmWeight};
-use xcm_builder::{EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, SignedToAccountId32};
+use xcm_builder::{
+	EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FrameTransactionalProcessor, SignedToAccountId32,
+};
 
 parameter_types! {
 	pub const DotLocation: MultiLocation = MultiLocation::parent();
@@ -130,6 +132,7 @@ impl xcm_executor::Config for XcmConfig {
 	type CallDispatcher = RuntimeCall;
 	type SafeCallFilter = Everything;
 	type Aliasers = Nothing;
+	type TransactionalProcessor = FrameTransactionalProcessor;
 }
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.

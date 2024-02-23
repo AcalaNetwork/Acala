@@ -43,7 +43,9 @@ use runtime_common::{
 };
 use sp_runtime::Perbill;
 use xcm::{prelude::*, v3::Weight as XcmWeight};
-use xcm_builder::{EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, SignedToAccountId32};
+use xcm_builder::{
+	EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FrameTransactionalProcessor, SignedToAccountId32,
+};
 
 parameter_types! {
 	pub const RelayNetwork: NetworkId = NetworkId::Kusama;
@@ -188,6 +190,7 @@ impl xcm_executor::Config for XcmConfig {
 	type CallDispatcher = RuntimeCall;
 	type SafeCallFilter = Everything;
 	type Aliasers = Nothing;
+	type TransactionalProcessor = FrameTransactionalProcessor;
 }
 
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
