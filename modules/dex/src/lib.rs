@@ -1300,7 +1300,7 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::InvalidTradingPathLength
 		);
 		ensure!(
-			path.first() != path.get(path_length - 1),
+			path.first() != path.last(),
 			Error::<T>::InvalidTradingPath
 		);
 
