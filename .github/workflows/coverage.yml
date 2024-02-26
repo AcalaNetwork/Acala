@@ -20,6 +20,7 @@ concurrency:
 env:
   TARPAULIN_VERSION: 0.27.3
   CARGO_INCREMENTAL: 0
+  RUST_TEST_THREADS: 1
 jobs:
   test:
     name: Coverage Report
