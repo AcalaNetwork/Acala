@@ -34,7 +34,6 @@ use nutsfinance_stable_asset::{
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol, TradingPair};
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
-use sp_std::cell::RefCell;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -138,9 +137,9 @@ impl module_dex::Config for Runtime {
 	type OnLiquidityPoolUpdated = ();
 }
 
-thread_local! {
-	pub static TOTAL_COLLATERAL_AUCTION: RefCell<u32> = RefCell::new(0);
-	pub static TOTAL_COLLATERAL_IN_AUCTION: RefCell<Balance> = RefCell::new(0);
+parameter_types! {
+	pub static TotalCollateralAuction: u32 = 0;
+	pub static TotalCollateralInAuction: Balance = 0;
 }
 
 pub struct MockAuctionManager;
@@ -155,8 +154,8 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		amount: Self::Balance,
 		_target: Self::Balance,
 	) -> DispatchResult {
-		TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut() += 1);
-		TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut() += amount);
+		TotalCollateralAuction::mutate(|v| *v += 1);
+		TotalCollateralInAuction::mutate(|v| *v += amount);
 		Ok(())
 	}
 
@@ -183,10 +182,6 @@ parameter_types! {
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
 		vec![DOT],
 	];
-}
-
-thread_local! {
-	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
 
 impl Config for Runtime {

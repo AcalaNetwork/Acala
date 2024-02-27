@@ -34,7 +34,6 @@ use sp_runtime::{
 	traits::{AccountIdConversion, IdentityLookup},
 	BuildStorage,
 };
-use sp_std::cell::RefCell;
 use std::collections::HashMap;
 
 pub type AccountId = u128;
@@ -200,8 +199,8 @@ impl RiskManager<AccountId, CurrencyId, Balance, Balance> for MockRiskManager {
 	}
 }
 
-thread_local! {
-	pub static DOT_SHARES: RefCell<HashMap<AccountId, Balance>> = RefCell::new(HashMap::new());
+parameter_types! {
+	pub static DotShares: HashMap<AccountId, Balance> = HashMap::new();
 }
 
 pub struct MockOnUpdateLoan;
@@ -216,10 +215,10 @@ impl Happened<(AccountId, CurrencyId, Amount, Balance)> for MockOnUpdateLoan {
 		};
 
 		if *currency_id == DOT {
-			DOT_SHARES.with(|v| {
-				let mut old_map = v.borrow().clone();
+			DotShares::mutate(|v| {
+				let mut old_map = v.clone();
 				old_map.insert(*who, new_share_amount);
-				*v.borrow_mut() = old_map;
+				*v = old_map;
 			});
 		}
 	}

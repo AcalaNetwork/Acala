@@ -33,7 +33,6 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::H160;
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
-use std::cell::RefCell;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -118,9 +117,9 @@ impl module_currencies::Config for Runtime {
 	type OnDust = ();
 }
 
-thread_local! {
-	pub static TRANSFER_RECORD: RefCell<Option<(AccountId, AccountId, Balance)>> = RefCell::new(None);
-	pub static TRANSFER_OK: RefCell<bool> = RefCell::new(true);
+parameter_types! {
+	pub static TransferRecord: Option<(AccountId, AccountId, Balance)> = None;
+	pub static TransferOk: bool = true;
 }
 
 pub struct MockXcmTransfer;
@@ -130,8 +129,8 @@ impl CrowdloanVaultXcm<AccountId, Balance> for MockXcmTransfer {
 		recipient: AccountId,
 		amount: Balance,
 	) -> DispatchResult {
-		if TRANSFER_OK.with(|v| *v.borrow()) {
-			TRANSFER_RECORD.with(|v| *v.borrow_mut() = Some((vault, recipient, amount)));
+		if TransferOk::get() {
+			TransferRecord::mutate(|v| *v = Some((vault, recipient, amount)));
 			Ok(())
 		} else {
 			Err(DispatchError::Other("transfer failed"))
@@ -193,8 +192,8 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
-		TRANSFER_RECORD.with(|v| *v.borrow_mut() = None);
-		TRANSFER_OK.with(|v| *v.borrow_mut() = self.transfer_ok);
+		TransferRecord::mutate(|v| *v = None);
+		TransferOk::mutate(|v| *v = self.transfer_ok);
 
 		let mut t = frame_system::GenesisConfig::<Runtime>::default()
 			.build_storage()

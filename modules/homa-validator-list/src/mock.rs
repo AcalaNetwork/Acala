@@ -30,7 +30,6 @@ use module_support::ExchangeRate;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
-use sp_std::cell::RefCell;
 use std::collections::HashMap;
 
 pub type AccountId = u128;
@@ -108,15 +107,15 @@ impl orml_currencies::Config for Runtime {
 	type WeightInfo = ();
 }
 
-thread_local! {
-	pub static SHARES: RefCell<HashMap<(AccountId, AccountId), Balance>> = RefCell::new(HashMap::new());
-	pub static ACCUMULATED_SLASH: RefCell<Balance> = RefCell::new(0);
+parameter_types! {
+	pub static Shares: HashMap<(AccountId, AccountId), Balance> = HashMap::new();
+	pub static AccumulatedSlash: Balance = 0;
 }
 
 pub struct MockOnSlash;
 impl Happened<Balance> for MockOnSlash {
 	fn happened(amount: &Balance) {
-		ACCUMULATED_SLASH.with(|v| *v.borrow_mut() += amount);
+		AccumulatedSlash::mutate(|v| *v += amount);
 	}
 }
 
@@ -124,15 +123,15 @@ pub struct MockOnIncreaseGuarantee;
 impl Happened<(AccountId, AccountId, Balance)> for MockOnIncreaseGuarantee {
 	fn happened(info: &(AccountId, AccountId, Balance)) {
 		let (account_id, relaychain_id, amount) = info;
-		SHARES.with(|v| {
-			let mut old_map = v.borrow().clone();
+		Shares::mutate(|v| {
+			let mut old_map = v.clone();
 			if let Some(share) = old_map.get_mut(&(*account_id, *relaychain_id)) {
 				*share = share.saturating_add(*amount);
 			} else {
 				old_map.insert((*account_id, *relaychain_id), *amount);
 			};
 
-			*v.borrow_mut() = old_map;
+			*v = old_map;
 		});
 	}
 }
@@ -141,15 +140,15 @@ pub struct MockOnDecreaseGuarantee;
 impl Happened<(AccountId, AccountId, Balance)> for MockOnDecreaseGuarantee {
 	fn happened(info: &(AccountId, AccountId, Balance)) {
 		let (account_id, relaychain_id, amount) = info;
-		SHARES.with(|v| {
-			let mut old_map = v.borrow().clone();
+		Shares::mutate(|v| {
+			let mut old_map = v.clone();
 			if let Some(share) = old_map.get_mut(&(*account_id, *relaychain_id)) {
 				*share = share.saturating_sub(*amount);
 			} else {
 				old_map.insert((*account_id, *relaychain_id), Default::default());
 			};
 
-			*v.borrow_mut() = old_map;
+			*v = old_map;
 		});
 	}
 }

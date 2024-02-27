@@ -30,7 +30,6 @@ use module_support::{mocks::MockErc20InfoMapping, SpecificJointsSwap};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 use primitives::{Amount, TokenSymbol};
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
-use sp_std::cell::RefCell;
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;
@@ -105,8 +104,8 @@ parameter_types! {
 	];
 }
 
-thread_local! {
-	pub static AUSD_DOT_POOL_RECORD: RefCell<(Balance, Balance)> = RefCell::new((0, 0));
+parameter_types! {
+	pub static AusdDotPoolRecord: (Balance, Balance) = (0, 0);
 }
 
 pub struct MockOnLiquidityPoolUpdated;
@@ -114,7 +113,7 @@ impl Happened<(TradingPair, Balance, Balance)> for MockOnLiquidityPoolUpdated {
 	fn happened(info: &(TradingPair, Balance, Balance)) {
 		let (trading_pair, new_pool_0, new_pool_1) = info;
 		if *trading_pair == AUSDDOTPair::get() {
-			AUSD_DOT_POOL_RECORD.with(|v| *v.borrow_mut() = (*new_pool_0, *new_pool_1));
+			AusdDotPoolRecord::mutate(|v| *v = (*new_pool_0, *new_pool_1));
 		}
 	}
 }
