@@ -30,7 +30,6 @@ use sp_runtime::{
 	traits::{IdentityLookup, Zero},
 	BuildStorage, DispatchError,
 };
-use sp_std::cell::RefCell;
 
 pub type AccountId = u128;
 
@@ -64,16 +63,16 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
-thread_local! {
-	static AUSD_DOT_POOL: RefCell<(Balance, Balance)> = RefCell::new((Zero::zero(), Zero::zero()));
-	static ACA_DOT_POOL: RefCell<(Balance, Balance)> = RefCell::new((Zero::zero(), Zero::zero()));
+parameter_types! {
+	static AusdDotPool: (Balance, Balance) = (Zero::zero(), Zero::zero());
+	static AcaDotPool: (Balance, Balance) = (Zero::zero(), Zero::zero());
 }
 
 pub fn set_pool(trading_pair: &TradingPair, pool_0: Balance, pool_1: Balance) {
 	if *trading_pair == AUSDDOTPair::get() {
-		AUSD_DOT_POOL.with(|v| *v.borrow_mut() = (pool_0, pool_1));
+		AusdDotPool::mutate(|v| *v = (pool_0, pool_1));
 	} else if *trading_pair == ACADOTPair::get() {
-		ACA_DOT_POOL.with(|v| *v.borrow_mut() = (pool_0, pool_1));
+		AcaDotPool::mutate(|v| *v = (pool_0, pool_1));
 	}
 }
 
@@ -83,9 +82,9 @@ impl DEXManager<AccountId, Balance, CurrencyId> for MockDEX {
 		TradingPair::from_currency_ids(currency_id_0, currency_id_1)
 			.map(|trading_pair| {
 				if trading_pair == AUSDDOTPair::get() {
-					AUSD_DOT_POOL.with(|v| *v.borrow())
+					AusdDotPool::get()
 				} else if trading_pair == ACADOTPair::get() {
-					ACA_DOT_POOL.with(|v| *v.borrow())
+					AcaDotPool::get()
 				} else {
 					(0, 0)
 				}
