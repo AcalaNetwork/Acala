@@ -155,6 +155,9 @@ pub mod module {
 
 			// recover evm address from signature
 			let maybe_address = Self::verify_eip712_signature(&who, &eth_signature);
+			if maybe_address.is_none() {
+				panic!("{:?}, {:?}, {:?}", who, eth_signature, maybe_address);
+			}
 			let address = maybe_address.ok_or(Error::<T>::BadSignature)?;
 			ensure!(eth_address == address, Error::<T>::InvalidSignature);
 
