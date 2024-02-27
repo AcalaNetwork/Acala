@@ -154,7 +154,8 @@ pub mod module {
 			);
 
 			// recover evm address from signature
-			let address = Self::verify_eip712_signature(&who, &eth_signature).ok_or(Error::<T>::BadSignature)?;
+			let maybe_address = Self::verify_eip712_signature(&who, &eth_signature);
+			let address = maybe_address.ok_or(Error::<T>::BadSignature)?;
 			ensure!(eth_address == address, Error::<T>::InvalidSignature);
 
 			// check if the evm padded address already exists
