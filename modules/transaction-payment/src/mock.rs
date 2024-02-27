@@ -41,7 +41,6 @@ use sp_runtime::{
 	traits::{AccountIdConversion, IdentityLookup, One},
 	BuildStorage, Perbill,
 };
-use sp_std::cell::RefCell;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -145,10 +144,6 @@ impl module_currencies::Config for Runtime {
 	type OnDust = ();
 }
 
-thread_local! {
-	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
-}
-
 ord_parameter_types! {
 	pub const Zero: AccountId = AccountId::new([0u8; 32]);
 }
@@ -196,36 +191,36 @@ parameter_types! {
 	pub DotFeeSwapPath: Vec<CurrencyId> = vec![DOT, AUSD, ACA];
 }
 
-thread_local! {
-	pub static TIP_UNBALANCED_AMOUNT: RefCell<u128> = RefCell::new(0);
-	pub static FEE_UNBALANCED_AMOUNT: RefCell<u128> = RefCell::new(0);
+parameter_types! {
+	pub static TipUnbalancedAmount: u128 = 0;
+	pub static FeeUnbalancedAmount: u128 = 0;
 }
 
 pub struct DealWithFees;
 impl OnUnbalanced<pallet_balances::NegativeImbalance<Runtime>> for DealWithFees {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = pallet_balances::NegativeImbalance<Runtime>>) {
 		if let Some(fees) = fees_then_tips.next() {
-			FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() += fees.peek());
+			FeeUnbalancedAmount::mutate(|a| *a += fees.peek());
 			if let Some(tips) = fees_then_tips.next() {
-				TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() += tips.peek());
+				TipUnbalancedAmount::mutate(|a| *a += tips.peek());
 			}
 		}
 	}
 }
 
-thread_local! {
-	static RELATIVE_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+parameter_types! {
+	static RelativePrice: Option<Price> = Some(Price::one());
 }
 
 pub struct MockPriceSource;
 impl MockPriceSource {
 	pub fn set_relative_price(price: Option<Price>) {
-		RELATIVE_PRICE.with(|v| *v.borrow_mut() = price);
+		RelativePrice::mutate(|v| *v = price);
 	}
 }
 impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
-		RELATIVE_PRICE.with(|v| *v.borrow_mut())
+		RelativePrice::get()
 	}
 
 	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
@@ -256,7 +251,7 @@ impl WeightToFeeT for TransactionByteFee {
 	type Balance = Balance;
 
 	fn weight_to_fee(weight: &Weight) -> Self::Balance {
-		Self::Balance::saturated_from(weight.ref_time()).saturating_mul(TRANSACTION_BYTE_FEE.with(|v| *v.borrow()))
+		Self::Balance::saturated_from(weight.ref_time()).saturating_mul(TransactionByteFee::get())
 	}
 }
 
@@ -287,8 +282,8 @@ impl Config for Runtime {
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
-thread_local! {
-	static WEIGHT_TO_FEE: RefCell<u128> = RefCell::new(1);
+parameter_types! {
+	static WeightToFeeStep: u128 = 1;
 }
 
 pub struct WeightToFee;
@@ -299,7 +294,7 @@ impl WeightToFeePolynomial for WeightToFee {
 		smallvec![frame_support::weights::WeightToFeeCoefficient {
 			degree: 1,
 			coeff_frac: Perbill::zero(),
-			coeff_integer: WEIGHT_TO_FEE.with(|v| *v.borrow()),
+			coeff_integer: WeightToFeeStep::get(),
 			negative: false,
 		}]
 	}
@@ -363,9 +358,9 @@ impl ExtBuilder {
 	}
 	fn set_constants(&self) {
 		ExtrinsicBaseWeight::mutate(|v| *v = self.base_weight);
-		TRANSACTION_BYTE_FEE.with(|v| *v.borrow_mut() = self.byte_fee);
-		WEIGHT_TO_FEE.with(|v| *v.borrow_mut() = self.weight_to_fee);
-		TIP_PER_WEIGHT_STEP.with(|v| *v.borrow_mut() = self.tip_per_weight_step);
+		TransactionByteFee::mutate(|v| *v = self.byte_fee);
+		WeightToFeeStep::mutate(|v| *v = self.weight_to_fee);
+		TipPerWeightStep::mutate(|v| *v = self.tip_per_weight_step);
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
 		self.set_constants();

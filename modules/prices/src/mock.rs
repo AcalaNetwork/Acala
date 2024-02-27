@@ -31,7 +31,6 @@ use sp_runtime::{
 	traits::{IdentityLookup, One as OneT, Zero},
 	BuildStorage, DispatchError, FixedPointNumber,
 };
-use sp_std::cell::RefCell;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -61,18 +60,18 @@ impl frame_system::Config for Runtime {
 	type AccountData = ();
 }
 
-thread_local! {
-	static CHANGED: RefCell<bool> = RefCell::new(false);
+parameter_types! {
+	static Changed: bool = false;
 }
 
 pub fn mock_oracle_update() {
-	CHANGED.with(|v| *v.borrow_mut() = true)
+	Changed::mutate(|v| *v = true)
 }
 
 pub struct MockDataProvider;
 impl DataProvider<CurrencyId, Price> for MockDataProvider {
 	fn get(currency_id: &CurrencyId) -> Option<Price> {
-		if CHANGED.with(|v| *v.borrow_mut()) {
+		if Changed::get() {
 			match *currency_id {
 				AUSD => None,
 				TAI => Some(Price::saturating_from_integer(40000)),

@@ -36,7 +36,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
 	BuildStorage,
 };
-use sp_std::{cell::RefCell, str::FromStr};
+use sp_std::str::FromStr;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -127,21 +127,21 @@ impl module_loans::Config for Runtime {
 	type OnUpdateLoan = ();
 }
 
-thread_local! {
-	static BTC_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
-	static DOT_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
-	static LP_AUSD_DOT_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
-	static LP_DOT_BTC_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+parameter_types! {
+	static BtcPrice: Option<Price> = Some(Price::one());
+	static DotPrice: Option<Price> = Some(Price::one());
+	static LpAusdDotPrice: Option<Price> = Some(Price::one());
+	static LpDotBtcPrice: Option<Price> = Some(Price::one());
 }
 
 pub struct MockPriceSource;
 impl MockPriceSource {
 	pub fn set_price(currency_id: CurrencyId, price: Option<Price>) {
 		match currency_id {
-			BTC => BTC_PRICE.with(|v| *v.borrow_mut() = price),
-			DOT => DOT_PRICE.with(|v| *v.borrow_mut() = price),
-			LP_AUSD_DOT => LP_AUSD_DOT_PRICE.with(|v| *v.borrow_mut() = price),
-			LP_DOT_BTC => LP_DOT_BTC_PRICE.with(|v| *v.borrow_mut() = price),
+			BTC => BtcPrice::mutate(|v| *v = price),
+			DOT => DotPrice::mutate(|v| *v = price),
+			LP_AUSD_DOT => LpAusdDotPrice::mutate(|v| *v = price),
+			LP_DOT_BTC => LpDotBtcPrice::mutate(|v| *v = price),
 			_ => {}
 		}
 	}
@@ -149,27 +149,24 @@ impl MockPriceSource {
 impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn get_price(currency_id: CurrencyId) -> Option<Price> {
 		match currency_id {
-			BTC => BTC_PRICE.with(|v| *v.borrow()),
-			DOT => DOT_PRICE.with(|v| *v.borrow()),
+			BTC => BtcPrice::get(),
+			DOT => DotPrice::get(),
 			AUSD => Some(Price::one()),
-			LP_AUSD_DOT => LP_AUSD_DOT_PRICE.with(|v| *v.borrow()),
-			LP_DOT_BTC => LP_DOT_BTC_PRICE.with(|v| *v.borrow()),
+			LP_AUSD_DOT => LpAusdDotPrice::get(),
+			LP_DOT_BTC => LpDotBtcPrice::get(),
 			_ => None,
 		}
 	}
 }
 
-thread_local! {
-	pub static AUCTION: RefCell<Option<(AccountId, CurrencyId, Balance, Balance)>> = RefCell::new(None);
+parameter_types! {
+	pub static Auction: Option<(AccountId, CurrencyId, Balance, Balance)> = None;
 }
 
 pub struct MockAuctionManager;
 impl MockAuctionManager {
 	pub fn auction() -> Option<(AccountId, CurrencyId, Balance, Balance)> {
-		AUCTION.with(|v| {
-			let cloned = v.borrow().clone();
-			cloned
-		})
+		Auction::get()
 	}
 }
 impl AuctionManager<AccountId> for MockAuctionManager {
@@ -183,12 +180,12 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		amount: Self::Balance,
 		target: Self::Balance,
 	) -> DispatchResult {
-		AUCTION.with(|v| *v.borrow_mut() = Some((refund_recipient.clone(), currency_id, amount, target)));
+		Auction::mutate(|v| *v = Some((refund_recipient.clone(), currency_id, amount, target)));
 		Ok(())
 	}
 
 	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
-		AUCTION.with(|v| *v.borrow_mut() = None);
+		Auction::mutate(|v| *v = None);
 		Ok(())
 	}
 
@@ -308,12 +305,12 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
-thread_local! {
-	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+parameter_types! {
+	static IsShutdown: bool = false;
 }
 
 pub fn mock_shutdown() {
-	IS_SHUTDOWN.with(|v| *v.borrow_mut() = true)
+	IsShutdown::mutate(|v| *v = true)
 }
 
 pub fn liquidation_contract_addr() -> EvmAddress {
@@ -323,38 +320,38 @@ pub fn liquidation_contract_addr() -> EvmAddress {
 pub struct MockEmergencyShutdown;
 impl EmergencyShutdown for MockEmergencyShutdown {
 	fn is_shutdown() -> bool {
-		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+		IsShutdown::get()
 	}
 }
 
-thread_local! {
-	static LIQUIDATED: RefCell<(EvmAddress, EvmAddress, Balance, Balance)> = RefCell::new((EvmAddress::default(), EvmAddress::default(), 0, 0));
-	static TRANSFERRED: RefCell<(EvmAddress, Balance)> = RefCell::new((EvmAddress::default(), 0));
-	static REFUNDED: RefCell<(EvmAddress, Balance)> = RefCell::new((EvmAddress::default(), 0));
-	static LIQUIDATION_RESULT: RefCell<DispatchResult> = RefCell::new(Err(Error::<Runtime>::LiquidationFailed.into()));
-	static REPAYMENT: RefCell<Option<Balance>> = RefCell::new(None);
+parameter_types! {
+	static LIQUIDATED: (EvmAddress, EvmAddress, Balance, Balance) = (EvmAddress::default(), EvmAddress::default(), 0, 0);
+	static TRANSFERRED: (EvmAddress, Balance) = (EvmAddress::default(), 0);
+	static REFUNDED: (EvmAddress, Balance) = (EvmAddress::default(), 0);
+	static LiquidationResult: DispatchResult = Err(Error::<Runtime>::LiquidationFailed.into());
+	static REPAYMENT: Option<Balance> = None;
 }
 
 pub struct MockLiquidationEvmBridge;
 impl MockLiquidationEvmBridge {
 	pub fn liquidated() -> (EvmAddress, EvmAddress, Balance, Balance) {
-		LIQUIDATED.with(|v| v.borrow().clone())
+		LIQUIDATED::get()
 	}
 	pub fn transferred() -> (EvmAddress, Balance) {
-		TRANSFERRED.with(|v| v.borrow().clone())
+		TRANSFERRED::get()
 	}
 	pub fn refunded() -> (EvmAddress, Balance) {
-		REFUNDED.with(|v| v.borrow().clone())
+		REFUNDED::get()
 	}
 	pub fn reset() {
-		LIQUIDATION_RESULT.with(|v| *v.borrow_mut() = Err(Error::<Runtime>::LiquidationFailed.into()));
-		REPAYMENT.with(|v| *v.borrow_mut() = None);
+		LiquidationResult::mutate(|v| *v = Err(Error::<Runtime>::LiquidationFailed.into()));
+		REPAYMENT::mutate(|v| *v = None);
 	}
 	pub fn set_liquidation_result(r: DispatchResult) {
-		LIQUIDATION_RESULT.with(|v| *v.borrow_mut() = r);
+		LiquidationResult::mutate(|v| *v = r);
 	}
 	pub fn set_repayment(repayment: Balance) {
-		REPAYMENT.with(|v| *v.borrow_mut() = Some(repayment));
+		REPAYMENT::mutate(|v| *v = Some(repayment));
 	}
 }
 impl LiquidationEvmBridge for MockLiquidationEvmBridge {
@@ -365,23 +362,23 @@ impl LiquidationEvmBridge for MockLiquidationEvmBridge {
 		amount: Balance,
 		min_repayment: Balance,
 	) -> DispatchResult {
-		let result = LIQUIDATION_RESULT.with(|v| v.borrow().clone());
+		let result = LiquidationResult::get();
 		if result.is_ok() {
-			let repayment = if let Some(r) = REPAYMENT.with(|v| v.borrow().clone()) {
+			let repayment = if let Some(r) = REPAYMENT::get() {
 				r
 			} else {
 				min_repayment
 			};
 			let _ = Currencies::deposit(GetStableCurrencyId::get(), &CDPEngineModule::account_id(), repayment);
 		}
-		LIQUIDATED.with(|v| *v.borrow_mut() = (collateral, repay_dest, amount, min_repayment));
+		LIQUIDATED::mutate(|v| *v = (collateral, repay_dest, amount, min_repayment));
 		result
 	}
 	fn on_collateral_transfer(_context: InvokeContext, collateral: EvmAddress, amount: Balance) {
-		TRANSFERRED.with(|v| *v.borrow_mut() = (collateral, amount));
+		TRANSFERRED::mutate(|v| *v = (collateral, amount));
 	}
 	fn on_repayment_refund(_context: InvokeContext, collateral: EvmAddress, repayment: Balance) {
-		REFUNDED.with(|v| *v.borrow_mut() = (collateral, repayment));
+		REFUNDED::mutate(|v| *v = (collateral, repayment));
 	}
 }
 
