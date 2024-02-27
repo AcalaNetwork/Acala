@@ -30,7 +30,6 @@ pub use module_support::{Price, Ratio, SwapLimit};
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol};
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
-use sp_std::cell::RefCell;
 
 pub type AccountId = AccountId32;
 
@@ -88,18 +87,18 @@ impl orml_tokens::Config for Runtime {
 	type DustRemovalWhitelist = Nothing;
 }
 
-thread_local! {
-	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+parameter_types! {
+	static IsShutdown: bool = false;
 }
 
 pub fn mock_shutdown() {
-	IS_SHUTDOWN.with(|v| *v.borrow_mut() = true)
+	IsShutdown::mutate(|v| *v = true)
 }
 
 pub struct MockEmergencyShutdown;
 impl EmergencyShutdown for MockEmergencyShutdown {
 	fn is_shutdown() -> bool {
-		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+		IsShutdown::get()
 	}
 }
 
