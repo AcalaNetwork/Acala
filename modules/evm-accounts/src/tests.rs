@@ -51,6 +51,14 @@ fn claim_account_should_not_work() {
 			EvmAccountsModule::claim_account(
 				RuntimeOrigin::signed(ALICE),
 				EvmAccountsModule::eth_address(&bob()),
+				[0u8; 65]
+			),
+			Error::<Runtime>::BadSignature
+		);
+		assert_noop!(
+			EvmAccountsModule::claim_account(
+				RuntimeOrigin::signed(ALICE),
+				EvmAccountsModule::eth_address(&bob()),
 				EvmAccountsModule::eth_sign(&bob(), &BOB)
 			),
 			Error::<Runtime>::InvalidSignature
