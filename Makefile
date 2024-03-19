@@ -236,6 +236,14 @@ srtool-build-wasm-karura:
 srtool-build-wasm-acala:
 	PACKAGE=acala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build,no-metadata-docs" ./scripts/srtool-build.sh
 
+.PHONY: build-wasm-karura-tracing
+build-wasm-karura-tracing:
+	./scripts/build-only-wasm.sh --profile production -p karura-runtime --features=on-chain-release-build,tracing
+
+.PHONY: build-wasm-acala-tracing
+build-wasm-acala-tracing:
+	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=on-chain-release-build,tracing
+
 .PHONY: generate-tokens
 generate-tokens:
 	./scripts/generate-tokens-and-predeploy-contracts.sh
