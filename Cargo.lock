@@ -57,7 +57,6 @@ dependencies = [
  "bstringify",
  "enumflags2",
  "frame-support",
- "hex",
  "hex-literal",
  "log",
  "module-evm-utility",

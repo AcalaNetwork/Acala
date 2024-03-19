@@ -61,7 +61,6 @@ pallet-utility = { workspace = true, features = ["std"] }
 default = ["std"]
 std = [
 	"serde/std",
-	"environmental/std",
 	"parity-scale-codec/std",
 	"frame-support/std",
 	"frame-system/std",
