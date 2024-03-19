@@ -55,7 +55,6 @@ pub fn deploy_contract() {
 		1_000_000,
 		vec![]
 	));
-	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address()));
 }
 
 runtime_benchmarks! {

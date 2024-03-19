@@ -186,11 +186,6 @@ pub fn deploy_contracts() {
 		used_gas: 1235455,
 		used_storage: 5131,
 	}));
-
-	assert_ok!(EVM::publish_free(
-		RuntimeOrigin::signed(CouncilAccount::get()),
-		erc20_address()
-	));
 }
 
 // Specify contract address

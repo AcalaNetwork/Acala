@@ -247,8 +247,6 @@ pub fn deploy_contracts() {
 		used_gas: 1235455,
 		used_storage: 5131,
 	}));
-
-	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address()));
 }
 
 pub struct ExtBuilder {
