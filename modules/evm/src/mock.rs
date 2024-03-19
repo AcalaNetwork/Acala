@@ -317,8 +317,3 @@ pub fn reserved_balance(address: H160) -> Balance {
 	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
 	Balances::reserved_balance(account_id)
 }
-
-#[cfg(not(feature = "with-ethereum-compatibility"))]
-pub fn publish_free(contract: H160) {
-	let _ = EVM::publish_free(RuntimeOrigin::signed(CouncilAccount::get()), contract);
-}
