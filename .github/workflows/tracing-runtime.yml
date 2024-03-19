@@ -2,10 +2,17 @@ name: Build and publish evm tracing runtime
 on:
   release:
     types: [published]
+  # Allow manual trigger for old releases
   workflow_dispatch:
     inputs:
+      # Branch with old release + tracing feature
+      branch:
+        description: Branch to build tracing runtime
+        required: true
+        type: string
+      # Set the tag to publish the tracing runtime
       tag:
-        description: Existing tag to build runtime. i.e. 1.0.0
+        description: Existing tag to publish tracing runtime. i.e. 1.0.0
         required: true
         type: string
 
@@ -21,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag && format('refs/tags/{0}', github.event.inputs.tag) || github.ref }}
+          ref: ${{ github.event.inputs.branch || github.ref }}
           submodules: recursive
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
