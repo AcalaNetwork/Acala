@@ -1125,10 +1125,6 @@ pub mod module {
 						});
 					}
 
-					if info.exit_reason.is_succeed() {
-						Pallet::<T>::deposit_event(Event::<T>::ContractPublished { contract });
-					}
-
 					Ok(PostDispatchInfo {
 						actual_weight: Some(create_predeploy_contract::<T>(used_gas)),
 						pays_fee: Pays::No,
