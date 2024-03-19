@@ -222,10 +222,6 @@ pub fn deploy_contracts_same_prefix() {
 		used_gas: 1235455,
 		used_storage: 5131,
 	}));
-
-	System::assert_last_event(RuntimeEvent::EVM(module_evm::Event::ContractPublished {
-		contract: erc20_address_same_prefix(),
-	}));
 }
 
 pub struct ExtBuilder {

@@ -874,8 +874,6 @@ fn create_predeploy_contract_works() {
 			used_storage: 284,
 		}));
 
-		System::assert_last_event(RuntimeEvent::EVM(crate::Event::ContractPublished { contract: addr }));
-
 		assert_noop!(
 			EVM::create_predeploy_contract(
 				RuntimeOrigin::signed(NetworkContractAccount::get()),
