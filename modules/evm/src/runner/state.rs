@@ -822,6 +822,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			}
 			CreateScheme::Legacy { caller } => {
 				let nonce = self.nonce(caller);
+				println!("nonce: {:?}", nonce);
+				println!("caller: {:?}", caller);
 				let mut stream = rlp::RlpStream::new_list(2);
 				stream.append(&caller);
 				stream.append(&nonce);
