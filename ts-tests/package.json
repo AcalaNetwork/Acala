@@ -12,7 +12,7 @@
 		"@acala-network/api": "~6.0.4",
 		"@acala-network/bodhi": "~2.7.16",
 		"@babel/runtime": "^7.21.5",
-		"@openzeppelin/contracts": "4.9.3",
+		"@openzeppelin/contracts": "4.9.6",
 		"@polkadot/api": "^10.9.1",
 		"@types/chai": "^4.2.22",
 		"@types/chai-as-promised": "^7.1.4",
