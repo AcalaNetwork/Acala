@@ -93,7 +93,7 @@ where
 			Action::QueryMaintainer => {
 				let contract = input.evm_address_at(1)?;
 
-				let maintainer = module_evm::Pallet::<Runtime>::query_maintainer(contract).map_err(|e| {
+				let maintainer = module_evm::Pallet::<Runtime>::query_maintainer(&contract).map_err(|e| {
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Into::<&str>::into(e).as_bytes().to_vec(),
@@ -162,7 +162,7 @@ where
 			}
 			Action::DisableDeveloperAccount => {
 				let who = input.account_id_at(1)?;
-				<module_evm::Pallet<Runtime>>::disable_account_contract_development(who).map_err(|e| {
+				<module_evm::Pallet<Runtime>>::disable_account_contract_development(&who).map_err(|e| {
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("Evm DisableDeveloperAccount failed", e),
@@ -176,7 +176,7 @@ where
 			}
 			Action::EnableDeveloperAccount => {
 				let who = input.account_id_at(1)?;
-				<module_evm::Pallet<Runtime>>::enable_account_contract_development(who).map_err(|e| {
+				<module_evm::Pallet<Runtime>>::enable_account_contract_development(&who).map_err(|e| {
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("Evm EnableDeveloperAccount failed", e),
@@ -190,7 +190,7 @@ where
 			}
 			Action::QueryDeveloperStatus => {
 				let who = input.account_id_at(1)?;
-				let developer_status = <module_evm::Pallet<Runtime>>::query_developer_status(who);
+				let developer_status = <module_evm::Pallet<Runtime>>::query_developer_status(&who);
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					output: Output::encode_bool(developer_status),
@@ -276,8 +276,8 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{
-		alice_evm_addr, bob, bob_evm_addr, new_test_ext, EVMModule, RuntimeEvent as TestEvent, RuntimeOrigin, System,
-		Test,
+		alice, alice_evm_addr, bob, bob_evm_addr, new_test_ext, EVMModule, RuntimeEvent as TestEvent, RuntimeOrigin,
+		System, Test,
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
@@ -392,6 +392,8 @@ mod tests {
 				5056fea265627a7a723158201f3db7301354b88b310868daf4395a6ab6cd42d1
 				6b1d8e68cdf4fdd9d34fffbf64736f6c63430005110032
 			"};
+
+			assert_ok!(EVMModule::enable_account_contract_development(&alice()));
 
 			// create contract
 			let info = <Test as module_evm::Config>::Runner::create(

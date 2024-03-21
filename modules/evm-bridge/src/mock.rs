@@ -188,11 +188,6 @@ pub fn deploy_contracts() {
 		used_gas: 1235455,
 		used_storage: 5131,
 	}));
-
-	assert_ok!(EVM::publish_free(
-		RuntimeOrigin::signed(CouncilAccount::get()),
-		erc20_address()
-	));
 }
 
 pub fn deploy_liquidation_ok_contracts() {
@@ -215,11 +210,6 @@ pub fn deploy_liquidation_ok_contracts() {
 		used_gas: 235330,
 		used_storage: 844,
 	}));
-
-	assert_ok!(EVM::publish_free(
-		RuntimeOrigin::signed(CouncilAccount::get()),
-		erc20_address()
-	));
 }
 
 pub fn deploy_liquidation_err_contracts() {
@@ -242,11 +232,6 @@ pub fn deploy_liquidation_err_contracts() {
 		used_gas: 228338,
 		used_storage: 818,
 	}));
-
-	assert_ok!(EVM::publish_free(
-		RuntimeOrigin::signed(CouncilAccount::get()),
-		erc20_address()
-	));
 }
 
 impl ExtBuilder {

@@ -194,6 +194,9 @@ runtime_benchmarks! {
 
 		set_balance(NATIVE, &alice_account, 1_000_000_000 * dollar(NATIVE));
 		set_balance(NATIVE, &bob_account_id(), 1_000 * dollar(NATIVE));
+
+		EVM::enable_contract_development(RuntimeOrigin::signed(alice_account_id()))?;
+
 		let contract = deploy_contract(alice_account_id())?;
 
 		whitelist_account!(alice_account);
@@ -204,6 +207,8 @@ runtime_benchmarks! {
 
 		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
 		set_balance(NATIVE, &bob_account_id(), 1_000 * dollar(NATIVE));
+
+		EVM::enable_contract_development(RuntimeOrigin::signed(alice_account_id()))?;
 		let contract = deploy_contract(alice_account_id())?;
 	}: _(RawOrigin::Root, contract)
 
@@ -229,6 +234,8 @@ runtime_benchmarks! {
 		let alice_account = alice_account_id();
 
 		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
+
+		EVM::enable_contract_development(RuntimeOrigin::signed(alice_account_id()))?;
 		let contract = deploy_contract(alice_account_id())?;
 
 		let new_contract = vec![0; c as usize];
@@ -240,6 +247,8 @@ runtime_benchmarks! {
 		let alice_account = alice_account_id();
 
 		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
+
+		EVM::enable_contract_development(RuntimeOrigin::signed(alice_account_id()))?;
 		let contract = deploy_contract(alice_account_id())?;
 
 		whitelist_account!(alice_account);

@@ -1125,11 +1125,6 @@ pub mod module {
 						});
 					}
 
-					if info.exit_reason.is_succeed() {
-						Self::mark_published(contract, Some(source))?;
-						Pallet::<T>::deposit_event(Event::<T>::ContractPublished { contract });
-					}
-
 					Ok(PostDispatchInfo {
 						actual_weight: Some(create_predeploy_contract::<T>(used_gas)),
 						pays_fee: Pays::No,
@@ -1777,7 +1772,7 @@ impl<T: Config> Pallet<T> {
 
 	fn is_developer_or_contract(caller: &H160) -> bool {
 		let account_id = T::AddressMapping::get_account_id(caller);
-		Self::query_developer_status(account_id) || Self::is_contract(caller)
+		Self::query_developer_status(&account_id) || Self::is_contract(caller)
 	}
 
 	fn reserve_storage(caller: &H160, limit: u32) -> DispatchResult {
@@ -2037,7 +2032,7 @@ impl<T: Config> EVMManager<T::AccountId, BalanceOf<T>> for Pallet<T> {
 		T::StorageDepositPerByte::get()
 	}
 
-	fn query_maintainer(contract: EvmAddress) -> Result<EvmAddress, DispatchError> {
+	fn query_maintainer(contract: &EvmAddress) -> Result<EvmAddress, DispatchError> {
 		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound.into()), |account_info| {
 			account_info
 				.contract_info
@@ -2061,16 +2056,16 @@ impl<T: Config> EVMManager<T::AccountId, BalanceOf<T>> for Pallet<T> {
 		Pallet::<T>::do_publish_contract(who, contract)
 	}
 
-	fn query_developer_status(who: T::AccountId) -> bool {
-		!T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who).is_zero()
+	fn query_developer_status(who: &T::AccountId) -> bool {
+		!T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, who).is_zero()
 	}
 
-	fn enable_account_contract_development(who: T::AccountId) -> DispatchResult {
-		Pallet::<T>::do_enable_contract_development(&who)
+	fn enable_account_contract_development(who: &T::AccountId) -> DispatchResult {
+		Pallet::<T>::do_enable_contract_development(who)
 	}
 
-	fn disable_account_contract_development(who: T::AccountId) -> sp_runtime::DispatchResult {
-		Pallet::<T>::do_disable_contract_development(&who)
+	fn disable_account_contract_development(who: &T::AccountId) -> sp_runtime::DispatchResult {
+		Pallet::<T>::do_disable_contract_development(who)
 	}
 }
 

@@ -165,9 +165,6 @@ fn should_create_and_call_contract() {
 
 		let contract_address = result.value;
 
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(contract_address);
-
 		assert_eq!(contract_address, H160::from_str("5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap());
 
 		assert_eq!(Pallet::<Runtime>::account_basic(&caller).nonce, 2.into());
@@ -282,9 +279,6 @@ fn call_reverts_with_message() {
 
 		let contract_address = result.value;
 
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(contract_address);
-
 		// call method `foo`
 		let foo = from_hex("0xc2985578").unwrap();
 		let result = <Runtime as Config>::Runner::call(
@@ -349,9 +343,6 @@ fn should_publish_payable_contract() {
 		)
 		.unwrap();
 		let contract_address = result.value;
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(contract_address);
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_storage, 287);
@@ -451,9 +442,6 @@ fn should_transfer_from_contract() {
 		);
 
 		let contract_address = result.value;
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(contract_address);
 
 		// send via transfer
 		let mut via_transfer = from_hex("0x636e082b").unwrap();
@@ -632,9 +620,6 @@ fn contract_should_publish_contracts() {
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
 
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(factory_contract_address);
-
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
@@ -713,9 +698,6 @@ fn contract_should_publish_contracts_without_payable() {
 		let factory_contract_address = result.value;
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(reserved_balance(factory_contract_address), 4640);
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(factory_contract_address);
 
 		// Factory.createContract
 		let create_contract = from_hex("0x412a5a6d").unwrap();
@@ -892,8 +874,6 @@ fn create_predeploy_contract_works() {
 			used_storage: 284,
 		}));
 
-		System::assert_last_event(RuntimeEvent::EVM(crate::Event::ContractPublished { contract: addr }));
-
 		assert_noop!(
 			EVM::create_predeploy_contract(
 				RuntimeOrigin::signed(NetworkContractAccount::get()),
@@ -1020,6 +1000,9 @@ fn should_publish() {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		// contract not created yet
 		assert_noop!(EVM::publish_contract(RuntimeOrigin::signed(alice_account_id.clone()), H160::default()), Error::<Runtime>::ContractNotFound);
 
@@ -1043,7 +1026,7 @@ fn should_publish() {
 		let contract_address = result.value;
 
 		assert_eq!(result.used_storage, 284);
-		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte();
+		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte() - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -1106,7 +1089,9 @@ fn should_publish() {
 		let code_size = Accounts::<Runtime>::get(contract_address).map_or(0, |account_info| -> u32 {
 			account_info.contract_info.map_or(0, |contract_info| CodeInfos::<Runtime>::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
 		});
-		assert_eq!(balance(alice()), INITIAL_BALANCE - PUBLICATION_FEE - ((NEW_CONTRACT_EXTRA_BYTES + code_size) as u128* EVM::get_storage_deposit_per_byte()));
+
+		let alice_balance = INITIAL_BALANCE - PUBLICATION_FEE - ((NEW_CONTRACT_EXTRA_BYTES + code_size) as u128* EVM::get_storage_deposit_per_byte()) - DEVELOPER_DEPOSIT;
+		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(Balances::free_balance(TreasuryAccount::get()), INITIAL_BALANCE + PUBLICATION_FEE);
 
 		// call method `multiply` will work
@@ -1143,6 +1128,10 @@ fn should_publish_free() {
 	new_test_ext().execute_with(|| {
 		// contract not created yet
 		assert_noop!(EVM::publish_free(RuntimeOrigin::signed(CouncilAccount::get()), H160::default()), Error::<Runtime>::ContractNotFound);
+
+		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
 
 		// create contract
 		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![], <Runtime as Config>::config()).unwrap();
@@ -1265,6 +1254,9 @@ fn should_set_code() {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		// create contract
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
@@ -1278,7 +1270,7 @@ fn should_set_code() {
 		.unwrap();
 		let contract_address = result.value;
 		assert_eq!(result.used_storage, 284);
-		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte();
+		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte() - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(reserved_balance(contract_address), 2840);
@@ -1408,6 +1400,9 @@ fn should_selfdestruct_without_schedule_task() {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		let amount = 1000u128;
 
 		let mut stored_value: Vec<u8> =
@@ -1428,7 +1423,7 @@ fn should_selfdestruct_without_schedule_task() {
 
 		let contract_address = result.value;
 		assert_eq!(result.used_storage, 287);
-		let alice_balance = INITIAL_BALANCE - 287 * EVM::get_storage_deposit_per_byte() - amount;
+		let alice_balance = INITIAL_BALANCE - 287 * EVM::get_storage_deposit_per_byte() - amount - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -1508,6 +1503,9 @@ fn should_selfdestruct_with_schedule_task() {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		let amount = 1000u128;
 
 		// create contract
@@ -1524,7 +1522,7 @@ fn should_selfdestruct_with_schedule_task() {
 
 		let contract_address = result.value;
 		assert_eq!(result.used_storage, 361);
-		let alice_balance = INITIAL_BALANCE - 361 * EVM::get_storage_deposit_per_byte() - amount;
+		let alice_balance = INITIAL_BALANCE - 361 * EVM::get_storage_deposit_per_byte() - amount - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -1680,9 +1678,6 @@ fn storage_limit_should_work() {
 		assert_eq!(balance(alice()), alice_balance);
 
 		let factory_contract_address = result.value;
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(factory_contract_address);
 
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
@@ -1846,9 +1841,6 @@ fn evm_execute_mode_should_work() {
 		assert_eq!(result.used_storage, expected_used_storage);
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(factory_contract_address);
 
 		let context = InvokeContext {
 			contract: factory_contract_address,
@@ -2059,9 +2051,6 @@ fn should_update_storage() {
 		assert_eq!(result.used_storage, used_storage as i32);
 
 		assert_eq!(ContractStorageSizes::<Runtime>::get(&contract_address), used_storage);
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(contract_address);
 
 		// call method `set(123)`
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
@@ -2279,6 +2268,10 @@ fn auto_publish_works() {
 
 	new_test_ext().execute_with(|| {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		assert_ok!(EVM::create(
 			RuntimeOrigin::signed(alice_account_id.clone()),
 			code,
@@ -2522,6 +2515,12 @@ fn strict_call_works() {
 	).unwrap();
 
 	new_test_ext().execute_with(|| {
+		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
+
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		// create contract
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
@@ -2535,9 +2534,6 @@ fn strict_call_works() {
 		.unwrap();
 
 		let contract_address = result.value;
-
-		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
-		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
 		assert_eq!(
 			Utility::batch_all(

@@ -190,7 +190,7 @@ pub trait EVMManager<AccountId, Balance> {
 	/// Query the constants `StorageDepositPerByte` value from evm module.
 	fn query_storage_deposit_per_byte() -> Balance;
 	/// Query the maintainer address from the ERC20 contract.
-	fn query_maintainer(contract: H160) -> Result<H160, DispatchError>;
+	fn query_maintainer(contract: &H160) -> Result<H160, DispatchError>;
 	/// Query the constants `DeveloperDeposit` value from evm module.
 	fn query_developer_deposit() -> Balance;
 	/// Query the constants `PublicationFee` value from evm module.
@@ -200,11 +200,11 @@ pub trait EVMManager<AccountId, Balance> {
 	/// Publish contract
 	fn publish_contract_precompile(who: AccountId, contract: H160) -> DispatchResult;
 	/// Query the developer status of an account
-	fn query_developer_status(who: AccountId) -> bool;
+	fn query_developer_status(who: &AccountId) -> bool;
 	/// Enable developer mode
-	fn enable_account_contract_development(who: AccountId) -> DispatchResult;
+	fn enable_account_contract_development(who: &AccountId) -> DispatchResult;
 	/// Disable developer mode
-	fn disable_account_contract_development(who: AccountId) -> DispatchResult;
+	fn disable_account_contract_development(who: &AccountId) -> DispatchResult;
 }
 
 /// An abstraction of EVMAccountsManager
