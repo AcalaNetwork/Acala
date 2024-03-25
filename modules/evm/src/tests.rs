@@ -2967,3 +2967,149 @@ fn should_not_allow_system_contracts_send_tx() {
 		);
 	});
 }
+
+#[cfg(feature = "tracing")]
+#[test]
+fn tracer_works() {
+	// pragma solidity =0.8.9;
+	//
+	// contract StorageManager {
+	//     Storage public s;
+	//
+	//     constructor() {
+	//         s = new Storage();
+	//     }
+	//
+	//     function loop_insert_and_remove(uint insert, uint remove) public {
+	//         loop_insert(insert);
+	//         loop_remove(remove);
+	//     }
+	//
+	//     function loop_insert(uint max) public {
+	//         for (uint i = 0; i < max; i++) {
+	//             s.insert(i, 1);
+	//         }
+	//     }
+	//
+	//     function loop_remove(uint max) public {
+	//         for (uint i = 0; i < max; i++) {
+	//             s.insert(i, 0);
+	//         }
+	//     }
+	// }
+	//
+	// contract Storage {
+	//     mapping(uint=>uint) table;
+	//
+	//     function insert(uint index, uint value) public {
+	//         if (value != 0) {
+	//             table[index] = value;
+	//         } else {
+	//             delete table[index];
+	//         }
+	//     }
+	// }
+	let contract = from_hex(
+		"0x608060405234801561001057600080fd5b5060405161001d9061007e565b604051809103906000f080158015610039573d6000803e3d6000fd5b506000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555061008b565b610147806105be83390190565b6105248061009a6000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c80630be6fe5d146100515780631358f5251461006d57806386b714e214610089578063da1385d5146100a7575b600080fd5b61006b60048036038101906100669190610298565b6100c3565b005b610087600480360381019061008291906102d8565b6100d9565b005b610091610189565b60405161009e9190610384565b60405180910390f35b6100c160048036038101906100bc91906102d8565b6101ad565b005b6100cc826101ad565b6100d5816100d9565b5050565b60005b818110156101855760008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16631d834a1b8260006040518363ffffffff1660e01b81526004016101409291906103e9565b600060405180830381600087803b15801561015a57600080fd5b505af115801561016e573d6000803e3d6000fd5b50505050808061017d90610441565b9150506100dc565b5050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b60005b818110156102595760008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16631d834a1b8260016040518363ffffffff1660e01b81526004016102149291906104c5565b600060405180830381600087803b15801561022e57600080fd5b505af1158015610242573d6000803e3d6000fd5b50505050808061025190610441565b9150506101b0565b5050565b600080fd5b6000819050919050565b61027581610262565b811461028057600080fd5b50565b6000813590506102928161026c565b92915050565b600080604083850312156102af576102ae61025d565b5b60006102bd85828601610283565b92505060206102ce85828601610283565b9150509250929050565b6000602082840312156102ee576102ed61025d565b5b60006102fc84828501610283565b91505092915050565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000819050919050565b600061034a61034561034084610305565b610325565b610305565b9050919050565b600061035c8261032f565b9050919050565b600061036e82610351565b9050919050565b61037e81610363565b82525050565b60006020820190506103996000830184610375565b92915050565b6103a881610262565b82525050565b6000819050919050565b60006103d36103ce6103c9846103ae565b610325565b610262565b9050919050565b6103e3816103b8565b82525050565b60006040820190506103fe600083018561039f565b61040b60208301846103da565b9392505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b600061044c82610262565b91507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff82141561047f5761047e610412565b5b600182019050919050565b6000819050919050565b60006104af6104aa6104a58461048a565b610325565b610262565b9050919050565b6104bf81610494565b82525050565b60006040820190506104da600083018561039f565b6104e760208301846104b6565b939250505056fea2646970667358221220c53549ea0c54d760bc0fd8aa7f8eeebf806e4474546e87e9783e4ad3f55dfa6564736f6c63430008090033608060405234801561001057600080fd5b50610127806100206000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c80631d834a1b14602d575b600080fd5b60436004803603810190603f919060b8565b6045565b005b600081146067578060008084815260200190815260200160002081905550607e565b600080838152602001908152602001600020600090555b5050565b600080fd5b6000819050919050565b6098816087565b811460a257600080fd5b50565b60008135905060b2816091565b92915050565b6000806040838503121560cc5760cb6082565b5b600060d88582860160a5565b925050602060e78582860160a5565b915050925092905056fea2646970667358221220941edb58b322ea8088f4f9091a8a48c92e59c2f39db303d8e126a0c3dd434dde64736f6c63430008090033"
+	).unwrap();
+
+	new_test_ext().execute_with(|| {
+		// create contract
+		let result = <Runtime as Config>::Runner::create(
+			alice(),
+			contract,
+			0,
+			500000,
+			100000,
+			vec![],
+			<Runtime as Config>::config(),
+		)
+			.unwrap();
+
+		let contract_address = result.value;
+
+		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+
+		let mut tracer = crate::runner::tracing::Tracer::new();
+		crate::runner::tracing::using(&mut tracer, || {
+			assert_ok!(EVM::call(
+				RuntimeOrigin::signed(alice_account_id.clone()),
+				contract_address,
+				hex! {"
+					da1385d5
+					0000000000000000000000000000000000000000000000000000000000000001
+				"}
+				.to_vec(),
+				0,
+				1000000,
+				0,
+				vec![],
+			));
+		});
+
+		let expected = r#"
+        [
+		  {
+			"type": "CALL",
+			"from": "0x1000000000000000000000000000000000000001",
+			"to": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+			"input": "0xda1385d50000000000000000000000000000000000000000000000000000000000000001",
+			"value": "0x0",
+			"gas": 1000000,
+			"gasUsed": 50007,
+			"output": null,
+			"error": null,
+			"revertReason": null,
+			"depth": 0,
+			"calls": [
+			  {
+				"type": "CALL",
+				"from": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+				"to": "0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4",
+				"input": "0x1d834a1b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001",
+				"value": "0x0",
+				"gas": 973100,
+				"gasUsed": 22883,
+				"output": null,
+				"error": null,
+				"revertReason": null,
+				"depth": 1,
+				"calls": []
+			  }
+			]
+		  }
+		]
+        "#;
+		let expected = serde_json::from_str::<Vec<crate::runner::tracing::CallTrace>>(expected).unwrap();
+		assert_eq!(tracer.finalize(), expected);
+		let steps = tracer.steps();
+		assert_eq!(steps.len(), 553);
+		let step = r#"
+			{
+				"op": [80, 85, 83, 72, 49],
+				"pc": 0,
+				"depth": 0,
+				"gas": 978796,
+				"stack": [],
+				"memory": null
+			}
+		"#;
+		let step = serde_json::from_str::<crate::runner::tracing::Step>(step).unwrap();
+		assert_eq!(steps.first().unwrap(), &step);
+		assert_eq!(String::from_utf8_lossy(&step.op), "PUSH1");
+
+		let step = r#"
+			{
+				"op": [83, 84, 79, 80],
+				"pc": 194,
+				"depth": 0,
+				"gas": 949994,
+				"stack": ["0x00000000000000000000000000000000000000000000000000000000da1385d5"],
+				"memory": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 29, 131, 74, 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+			}
+		"#;
+		let step = serde_json::from_str::<crate::runner::tracing::Step>(step).unwrap();
+		assert_eq!(steps.last().unwrap(), &step);
+		assert_eq!(String::from_utf8_lossy(&step.op), "STOP");
+	})
+}

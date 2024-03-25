@@ -369,6 +369,23 @@ pub mod tracing {
 		}
 	}
 
+	#[cfg(feature = "std")]
+	fn vec_to_hex<S>(data: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		serializer.serialize_str(&sp_core::bytes::to_hex(data, false))
+	}
+
+	#[cfg(feature = "std")]
+	fn hex_to_vec<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+	where
+		D: serde::Deserializer<'de>,
+	{
+		use serde::de::Error;
+		String::deserialize(deserializer).and_then(|string| sp_core::bytes::from_hex(&string).map_err(Error::custom))
+	}
+
 	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
@@ -377,6 +394,7 @@ pub mod tracing {
 		pub call_type: CallType,
 		pub from: H160,
 		pub to: H160,
+		#[serde(serialize_with = "vec_to_hex", deserialize_with = "hex_to_vec")]
 		pub input: Vec<u8>,
 		pub value: U256,
 		// gas limit
