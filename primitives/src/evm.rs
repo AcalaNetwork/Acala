@@ -404,7 +404,21 @@ pub mod tracing {
 		pub op: Vec<u8>,
 		#[codec(compact)]
 		pub pc: u64,
+		#[codec(compact)]
+		pub depth: u32,
+		#[codec(compact)]
+		pub gas: u64,
 		pub stack: Vec<H256>,
-		pub memory: Vec<u8>,
+		pub memory: Option<Vec<u8>>,
+	}
+
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	pub struct VMTrace {
+		#[codec(compact)]
+		pub gas: u64,
+		pub return_value: H256,
+		pub struct_logs: Vec<Step>,
 	}
 }

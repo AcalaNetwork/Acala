@@ -50,7 +50,7 @@ macro_rules! event {
 		#[cfg(feature = "tracing")]
 		{
 			use crate::runner::tracing::{self, Event::*, EventListener};
-			tracing::call_tracer_with(|tracer| {
+			tracing::with(|tracer| {
 				EventListener::event(tracer, $event);
 			});
 		}

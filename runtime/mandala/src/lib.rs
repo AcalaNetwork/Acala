@@ -2441,8 +2441,8 @@ impl_runtime_apis! {
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
 		) -> Result<Vec<module_evm::runner::tracing::CallTrace>, sp_runtime::DispatchError> {
-			let mut tracer = module_evm::runner::tracing::CallTracer::new();
-			module_evm::runner::tracing::call_tracer_using(&mut tracer, || {
+			let mut tracer = module_evm::runner::tracing::Tracer::new();
+			module_evm::runner::tracing::using(&mut tracer, || {
 				if to == H160::zero() {
 					<Runtime as module_evm::Config>::Runner::rpc_create(
 						from,
@@ -2477,9 +2477,11 @@ impl_runtime_apis! {
 			gas_limit: u64,
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
-		) -> Result<Vec<module_evm::runner::tracing::Step>, sp_runtime::DispatchError> {
-			let mut tracer = module_evm::runner::tracing::OpcodeTracer::new();
-			module_evm::runner::tracing::opcode_tracer_using(&mut tracer, || {
+		) -> Result<module_evm::runner::tracing::VMTrace, sp_runtime::DispatchError> {
+			use sp_core::H256;
+			use sp_runtime::traits::UniqueSaturatedInto;
+			let mut tracer = module_evm::runner::tracing::Tracer::new();
+			module_evm::runner::tracing::using(&mut tracer, || {
 				if to == H160::zero() {
 					<Runtime as module_evm::Config>::Runner::rpc_create(
 						from,
@@ -2489,7 +2491,7 @@ impl_runtime_apis! {
 						storage_limit,
 						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 						<Runtime as module_evm::Config>::config(),
-					).map(drop)
+					).map(|res| (H256::from(res.value), UniqueSaturatedInto::<u64>::unique_saturated_into(res.used_gas)))
 				} else {
 					<Runtime as module_evm::Config>::Runner::rpc_call(
 						from,
@@ -2501,9 +2503,13 @@ impl_runtime_apis! {
 						storage_limit,
 						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 						<Runtime as module_evm::Config>::config(),
-					).map(drop)
+					).map(|res| (H256::from_slice(&res.value), UniqueSaturatedInto::<u64>::unique_saturated_into(res.used_gas)))
 				}
-			}).map(|_| tracer.steps)
+			}).map(|(return_value, gas) | module_evm::runner::tracing::VMTrace {
+				gas,
+				return_value,
+				struct_logs: tracer.steps(),
+			})
 		}
 	}
 

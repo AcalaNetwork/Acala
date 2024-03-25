@@ -23,7 +23,7 @@ use module_evm_utility::{
 use sp_core::{H160, H256, U256};
 use sp_std::prelude::*;
 
-pub use primitives::evm::tracing::{CallTrace, CallType, Step};
+pub use primitives::evm::tracing::{CallTrace, CallType, Step, VMTrace};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Event<'a> {
@@ -87,18 +87,20 @@ pub enum Event<'a> {
 	},
 }
 
-pub struct CallTracer {
+pub struct Tracer {
 	events: Vec<CallTrace>,
 	stack: Vec<CallTrace>,
+	steps: Vec<Step>,
 	opcode: Option<Opcode>,
 	snapshot: Option<evm_gasometer::Snapshot>,
 }
 
-impl CallTracer {
+impl Tracer {
 	pub fn new() -> Self {
 		Self {
 			events: Vec::new(),
 			stack: Vec::new(),
+			steps: Vec::new(),
 			opcode: None,
 			snapshot: None,
 		}
@@ -106,6 +108,10 @@ impl CallTracer {
 
 	pub fn finalize(&mut self) -> Vec<CallTrace> {
 		self.events.drain(..).rev().collect()
+	}
+
+	pub fn steps(&self) -> Vec<Step> {
+		self.steps.clone()
 	}
 
 	fn call_type(&self) -> CallType {
@@ -121,8 +127,30 @@ impl CallTracer {
 
 	fn evm_runtime_event(&mut self, event: evm_runtime::tracing::Event) {
 		match event {
-			evm_runtime::tracing::Event::Step { opcode, .. } => {
+			evm_runtime::tracing::Event::Step {
+				context: _,
+				opcode,
+				position,
+				stack,
+				memory,
+			} => {
 				self.opcode = Some(opcode);
+				self.steps.push(Step {
+					op: opcode.stringify().as_bytes().to_vec(),
+					pc: position.clone().unwrap_or_default() as u64,
+					depth: self.stack.last().map(|x| x.depth).unwrap_or_default(),
+					gas: if let Some(snapshot) = self.snapshot {
+						snapshot.gas()
+					} else {
+						0
+					},
+					stack: stack.data().clone(),
+					memory: if memory.is_empty() {
+						None
+					} else {
+						Some(memory.data().clone())
+					},
+				})
 			}
 			_ => {}
 		};
@@ -139,41 +167,11 @@ impl CallTracer {
 	}
 }
 
-pub struct OpcodeTracer {
-	pub steps: Vec<Step>,
-}
-
-impl OpcodeTracer {
-	pub fn new() -> Self {
-		Self { steps: Vec::new() }
-	}
-}
-
-impl evm_runtime::tracing::EventListener for OpcodeTracer {
-	fn event(&mut self, event: evm_runtime::tracing::Event) {
-		match event {
-			evm_runtime::tracing::Event::Step {
-				context: _,
-				opcode,
-				position,
-				stack,
-				memory,
-			} => self.steps.push(Step {
-				op: opcode.stringify().as_bytes().to_vec(),
-				pc: position.clone().unwrap_or_default() as u64,
-				stack: stack.data().clone(),
-				memory: memory.data().clone(),
-			}),
-			_ => {}
-		}
-	}
-}
-
 pub trait EventListener {
 	fn event(&mut self, event: Event);
 }
 
-impl EventListener for CallTracer {
+impl EventListener for Tracer {
 	fn event(&mut self, event: Event) {
 		match event {
 			Event::Call {
@@ -341,7 +339,7 @@ pub struct EvmRuntimeTracer;
 
 impl evm_runtime::tracing::EventListener for EvmRuntimeTracer {
 	fn event(&mut self, event: evm_runtime::tracing::Event) {
-		call_tracer::with(|tracer| {
+		tracer::with(|tracer| {
 			tracer.evm_runtime_event(event);
 		});
 	}
@@ -351,28 +349,24 @@ pub struct EvmGasometerTracer;
 
 impl evm_gasometer::tracing::EventListener for EvmGasometerTracer {
 	fn event(&mut self, event: evm_gasometer::tracing::Event) {
-		call_tracer::with(|tracer| {
+		tracer::with(|tracer| {
 			tracer.evm_gasometer_event(event);
 		});
 	}
 }
 
-environmental::environmental!(call_tracer: CallTracer);
+environmental::environmental!(tracer: Tracer);
 
-pub fn call_tracer_using<R, F: FnOnce() -> R>(new: &mut CallTracer, f: F) -> R {
-	call_tracer::using(new, || {
+pub fn using<R, F: FnOnce() -> R>(new: &mut Tracer, f: F) -> R {
+	tracer::using(new, || {
 		evm_gasometer::tracing::using(&mut EvmGasometerTracer, || {
 			evm_runtime::tracing::using(&mut EvmRuntimeTracer, f)
 		})
 	})
 }
 
-pub(crate) fn call_tracer_with<F: FnOnce(&mut CallTracer)>(f: F) {
-	call_tracer::with(f);
-}
-
-pub fn opcode_tracer_using<R, F: FnOnce() -> R>(new: &mut OpcodeTracer, f: F) -> R {
-	evm_runtime::tracing::using(new, f)
+pub(crate) fn with<F: FnOnce(&mut Tracer)>(f: F) {
+	tracer::with(f);
 }
 
 trait Stringify {
