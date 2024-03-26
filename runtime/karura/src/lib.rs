@@ -1797,7 +1797,7 @@ construct_runtime!(
 		XcmpQueue: cumulus_pallet_xcmp_queue = 50,
 		PolkadotXcm: pallet_xcm = 51,
 		CumulusXcm: cumulus_pallet_xcm exclude_parts { Call } = 52,
-		DmpQueue: cumulus_pallet_dmp_queue = 53,
+		// 53 was used by DmpQueue which is now replaced by MessageQueue
 		XTokens: orml_xtokens = 54,
 		UnknownTokens: orml_unknown_tokens = 55,
 		OrmlXcm: orml_xcm = 56,
@@ -1909,8 +1909,13 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
+parameter_types! {
+	pub const DmpQueuePalletName: &'static str = "DmpQueue";
+}
+
 #[allow(unused_parens)]
-type Migrations = (cumulus_pallet_xcmp_queue::migration::v4::MigrationToV4<Runtime>,);
+type Migrations =
+	(frame_support::migrations::RemovePallet<DmpQueuePalletName, <Runtime as frame_system::Config>::DbWeight>,);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

@@ -1989,7 +1989,7 @@ pub type Executive = frame_executive::Executive<
 >;
 
 #[allow(unused_parens)]
-type Migrations = (cumulus_pallet_xcmp_queue::migration::v4::MigrationToV4<Runtime>,);
+type Migrations = ();
 
 construct_runtime!(
 	pub enum Runtime {
@@ -2080,7 +2080,7 @@ construct_runtime!(
 		XcmpQueue: cumulus_pallet_xcmp_queue = 170,
 		PolkadotXcm: pallet_xcm = 171,
 		CumulusXcm: cumulus_pallet_xcm exclude_parts { Call } = 172,
-		DmpQueue: cumulus_pallet_dmp_queue = 173,
+		// DmpQueue is removed
 		XTokens: orml_xtokens = 174,
 		UnknownTokens: orml_unknown_tokens = 175,
 		OrmlXcm: orml_xcm = 176,

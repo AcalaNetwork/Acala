@@ -231,7 +231,6 @@ orml-build-script-utils = { path = "orml/build-script-utils" }
 
 # polkadot-sdk (wasm)
 cumulus-pallet-aura-ext = { version = "0.7.0", default-features = false }
-cumulus-pallet-dmp-queue = { version = "0.7.0", default-features = false }
 cumulus-pallet-parachain-system = { version = "0.7.0", default-features = false }
 cumulus-pallet-xcm = { version = "0.7.0", default-features = false }
 cumulus-pallet-xcmp-queue = { version = "0.7.0", default-features = false }

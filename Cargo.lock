@@ -104,7 +104,6 @@ version = "2.24.0"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
- "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
@@ -2332,25 +2331,6 @@ dependencies = [
  "sp-consensus-aura",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "cumulus-pallet-dmp-queue"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f461956a4a85c053657fe64e73852940c8a52e7d8fc20ccb4f91688e73f0820b"
-dependencies = [
- "cumulus-primitives-core",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "parity-scale-codec",
- "scale-info",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "staging-xcm",
 ]
 
 [[package]]
@@ -5069,7 +5049,6 @@ version = "2.24.0"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
- "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
@@ -5945,7 +5924,6 @@ dependencies = [
  "acala-primitives",
  "acala-service",
  "cumulus-pallet-aura-ext",
- "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
@@ -11630,7 +11608,6 @@ dependencies = [
  "acala-runtime",
  "acala-service",
  "cumulus-pallet-aura-ext",
- "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
