@@ -6545,6 +6545,7 @@ version = "2.24.0"
 dependencies = [
  "acala-primitives",
  "env_logger",
+ "environmental",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

@@ -55,3 +55,4 @@ std = [
 ]
 evm-tests = []
 try-runtime = []
+tracing = []

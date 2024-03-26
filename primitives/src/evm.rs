@@ -333,3 +333,110 @@ mod convert {
 }
 
 pub use convert::*;
+
+#[cfg(feature = "tracing")]
+pub mod tracing {
+	use parity_scale_codec::{Decode, Encode};
+	use scale_info::TypeInfo;
+	use sp_core::{H160, H256, U256};
+	use sp_runtime::RuntimeDebug;
+	use sp_std::vec::Vec;
+
+	#[cfg(feature = "std")]
+	use serde::{Deserialize, Serialize};
+
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub enum CallType {
+		CALL,
+		CALLCODE,
+		STATICCALL,
+		DELEGATECALL,
+		CREATE,
+		SUICIDE,
+	}
+
+	impl sp_std::fmt::Display for CallType {
+		fn fmt(&self, f: &mut sp_std::fmt::Formatter<'_>) -> sp_std::fmt::Result {
+			match self {
+				CallType::CALL => write!(f, "CALL"),
+				CallType::CALLCODE => write!(f, "CALLCODE"),
+				CallType::STATICCALL => write!(f, "STATICCALL"),
+				CallType::DELEGATECALL => write!(f, "DELEGATECALL"),
+				CallType::CREATE => write!(f, "CREATE"),
+				CallType::SUICIDE => write!(f, "SUICIDE"),
+			}
+		}
+	}
+
+	#[cfg(feature = "std")]
+	fn vec_to_hex<S>(data: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		serializer.serialize_str(&sp_core::bytes::to_hex(data, false))
+	}
+
+	#[cfg(feature = "std")]
+	fn hex_to_vec<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+	where
+		D: serde::Deserializer<'de>,
+	{
+		use serde::de::Error;
+		String::deserialize(deserializer).and_then(|string| sp_core::bytes::from_hex(&string).map_err(Error::custom))
+	}
+
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	pub struct CallTrace {
+		#[cfg_attr(feature = "std", serde(rename = "type"))]
+		pub call_type: CallType,
+		pub from: H160,
+		pub to: H160,
+		#[serde(serialize_with = "vec_to_hex", deserialize_with = "hex_to_vec")]
+		pub input: Vec<u8>,
+		pub value: U256,
+		// gas limit
+		#[codec(compact)]
+		pub gas: u64,
+		#[codec(compact)]
+		pub gas_used: u64,
+		// value returned from EVM, if any
+		pub output: Option<Vec<u8>>,
+		// evm error, if any
+		pub error: Option<Vec<u8>>,
+		// revert reason, if any
+		pub revert_reason: Option<Vec<u8>>,
+		// depth of the call
+		#[codec(compact)]
+		pub depth: u32,
+		// List of sub-calls
+		pub calls: Vec<CallTrace>,
+	}
+
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	pub struct Step {
+		pub op: Vec<u8>,
+		#[codec(compact)]
+		pub pc: u64,
+		#[codec(compact)]
+		pub depth: u32,
+		#[codec(compact)]
+		pub gas: u64,
+		pub stack: Vec<H256>,
+		pub memory: Option<Vec<u8>>,
+	}
+
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	pub struct VMTrace {
+		#[codec(compact)]
+		pub gas: u64,
+		pub return_value: H256,
+		pub struct_logs: Vec<Step>,
+	}
+}
