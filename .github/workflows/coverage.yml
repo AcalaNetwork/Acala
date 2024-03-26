@@ -18,8 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TARPAULIN_VERSION: 0.27.2
-  # LIBCLANG_PATH: "/usr/lib/llvm-11/lib" # default `llvm-config --prefix`
+  TARPAULIN_VERSION: 0.27.3
   CARGO_INCREMENTAL: 0
 jobs:
   test:

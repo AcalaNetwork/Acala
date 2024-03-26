@@ -46,37 +46,16 @@ use sp_runtime::traits::Zero;
 use sp_std::{collections::btree_set::BTreeSet, rc::Rc, vec::Vec};
 
 macro_rules! event {
-	($x:expr) => {};
+	($event:expr) => {{
+		#[cfg(feature = "tracing")]
+		{
+			use crate::runner::tracing::{self, Event::*, EventListener};
+			tracing::with(|tracer| {
+				EventListener::event(tracer, $event);
+			});
+		}
+	}};
 }
-
-#[cfg(feature = "tracing")]
-mod tracing {
-	pub struct Tracer;
-	impl module_evm_utility::evm::tracing::EventListener for Tracer {
-		fn event(&mut self, event: module_evm_utility::evm::tracing::Event) {
-			frame_support::log::debug!(
-				target: "evm", "evm tracing: {:?}", event
-			);
-		}
-	}
-	impl module_evm_utility::evm_runtime::tracing::EventListener for Tracer {
-		fn event(&mut self, event: module_evm_utility::evm_runtime::tracing::Event) {
-			frame_support::log::debug!(
-				target: "evm", "evm_runtime tracing: {:?}", event
-			);
-		}
-	}
-	impl module_evm_utility::evm_gasometer::tracing::EventListener for Tracer {
-		fn event(&mut self, event: module_evm_utility::evm_gasometer::tracing::Event) {
-			frame_support::log::debug!(
-				target: "evm", "evm_gasometer tracing: {:?}", event
-			);
-		}
-	}
-}
-
-#[cfg(feature = "tracing")]
-use tracing::*;
 
 macro_rules! emit_exit {
 	($reason:expr) => {{
@@ -212,6 +191,12 @@ impl<'config> StackSubstateMetadata<'config> {
 	}
 
 	pub fn spit_child(&self, gas_limit: u64, is_static: bool) -> Self {
+		event!(Enter {
+			depth: match self.depth {
+				None => 0,
+				Some(n) => n + 1,
+			} as u32
+		});
 		Self {
 			gasometer: Gasometer::new(gas_limit, self.gasometer.config()),
 			storage_meter: StorageMeter::new(self.storage_meter.available_storage()),
@@ -560,7 +545,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			value,
 			init_code: &init_code,
 			gas_limit,
-			address: self.create_address(CreateScheme::Legacy { caller }),
+			address: self.create_address(CreateScheme::Legacy { caller }).unwrap_or_default(),
 		});
 
 		if let Some(limit) = self.config.max_initcode_size {
@@ -603,26 +588,27 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
 	) -> (ExitReason, Vec<u8>) {
-		if let Some(limit) = self.config.max_initcode_size {
-			if init_code.len() > limit {
-				self.state.metadata_mut().gasometer.fail();
-				return emit_exit!(ExitError::CreateContractLimit.into(), Vec::new());
-			}
-		}
-
-		let code_hash = H256::from_slice(Keccak256::digest(&init_code).as_slice());
 		event!(TransactCreate2 {
 			caller,
 			value,
 			init_code: &init_code,
 			salt,
 			gas_limit,
-			address: self.create_address(CreateScheme::Create2 {
-				caller,
-				code_hash,
-				salt,
-			}),
+			address: self
+				.create_address(CreateScheme::Create2 {
+					caller,
+					code_hash: H256::from_slice(Keccak256::digest(&init_code).as_slice()),
+					salt,
+				})
+				.unwrap_or_default(),
 		});
+
+		if let Some(limit) = self.config.max_initcode_size {
+			if init_code.len() > limit {
+				self.state.metadata_mut().gasometer.fail();
+				return emit_exit!(ExitError::CreateContractLimit.into(), Vec::new());
+			}
+		}
 
 		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
 			return emit_exit!(e.into(), Vec::new());
@@ -633,7 +619,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			caller,
 			CreateScheme::Create2 {
 				caller,
-				code_hash,
+				code_hash: H256::from_slice(Keccak256::digest(&init_code).as_slice()),
 				salt,
 			},
 			value,
@@ -661,13 +647,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>,
 	) -> (ExitReason, Vec<u8>) {
-		if let Some(limit) = self.config.max_initcode_size {
-			if init_code.len() > limit {
-				self.state.metadata_mut().gasometer.fail();
-				return emit_exit!(ExitError::CreateContractLimit.into(), Vec::new());
-			}
-		}
-
 		event!(TransactCreate {
 			caller,
 			value,
@@ -675,6 +654,13 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			gas_limit,
 			address,
 		});
+
+		if let Some(limit) = self.config.max_initcode_size {
+			if init_code.len() > limit {
+				self.state.metadata_mut().gasometer.fail();
+				return emit_exit!(ExitError::CreateContractLimit.into(), Vec::new());
+			}
+		}
 
 		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
 			return emit_exit!(e.into(), Vec::new());
@@ -714,10 +700,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>,
 	) -> (ExitReason, Vec<u8>) {
-		if let Err(e) = self.state.inc_nonce(caller) {
-			return (e.into(), Vec::new());
-		}
-
 		event!(TransactCall {
 			caller,
 			address,
@@ -725,6 +707,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			data: &data,
 			gas_limit,
 		});
+
+		if let Err(e) = self.state.inc_nonce(caller) {
+			return emit_exit!(e.into(), Vec::new());
+		}
 
 		let transaction_cost = gasometer::call_transaction_cost(&data, &access_list);
 		let gasometer = &mut self.state.metadata_mut().gasometer;
