@@ -20,3 +20,4 @@ std = [
 	"sp-core/std",
 	"primitives/std",
 ]
+tracing = ["primitives/tracing"]
