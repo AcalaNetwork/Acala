@@ -392,7 +392,10 @@ pub mod tracing {
 		pub call_type: CallType,
 		pub from: H160,
 		pub to: H160,
-		#[serde(serialize_with = "vec_to_hex", deserialize_with = "hex_to_vec")]
+		#[cfg_attr(
+			feature = "std",
+			serde(serialize_with = "vec_to_hex", deserialize_with = "hex_to_vec")
+		)]
 		pub input: Vec<u8>,
 		pub value: U256,
 		// gas limit
