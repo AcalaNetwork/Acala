@@ -239,11 +239,11 @@ srtool-build-wasm-acala:
 
 .PHONY: build-wasm-karura-tracing
 build-wasm-karura-tracing:
-	./scripts/build-only-wasm.sh --profile production -p karura-runtime --features=on-chain-release-build,tracing
+	./scripts/build-only-wasm.sh --profile production -p karura-runtime --features=tracing
 
 .PHONY: build-wasm-acala-tracing
 build-wasm-acala-tracing:
-	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=on-chain-release-build,tracing
+	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=tracing
 
 .PHONY: generate-tokens
 generate-tokens:
