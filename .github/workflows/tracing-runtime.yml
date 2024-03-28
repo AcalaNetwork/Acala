@@ -16,12 +16,15 @@ on:
         required: true
         type: string
 
+env:
+  SUBWASM_VERSION: 0.20.0
+
 jobs:
   build-runtime:
     name: "Build evm tracing runtime ${{ matrix.network }}"
     permissions:
       contents: write
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         network: [karura, acala]
@@ -44,7 +47,7 @@ jobs:
       - name: Find spec version
         run: |
           SPEC_VERSION=`subwasm version -j target/production/wbuild/${{ matrix.network }}-runtime/${{ matrix.network }}_runtime.compact.compressed.wasm  | jq .specVersion`
-          cp target/production/wbuild/${{ matrix.network }}-runtime/${{ matrix.network }}_runtime.compact.compressed.wasm > ${{ matrix.network }}_runtime_tracing_$SPEC_VERSION.compact.compressed.wasm
+          cp target/production/wbuild/${{ matrix.network }}-runtime/${{ matrix.network }}_runtime.compact.compressed.wasm ${{ matrix.network }}_runtime_tracing_$SPEC_VERSION.compact.compressed.wasm
           echo "SPEC_VERSION=$SPEC_VERSION" >> $GITHUB_ENV
       - name: Upload tracing runtime
         uses: softprops/action-gh-release@v2
