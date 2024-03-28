@@ -1048,13 +1048,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 		let mut runtime = Runtime::new(Rc::new(code), Rc::new(input), context, self.config);
 
-		#[cfg(not(feature = "tracing"))]
 		let reason = self.execute(&mut runtime);
-		#[cfg(feature = "tracing")]
-		//let reason = module_evm_utility::evm::tracing::using(&mut Tracer, || self.execute(&mut runtime));
-		let reason = module_evm_utility::evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
-		//let reason = module_evm_utility::evm_gasometer::tracing::using(&mut Tracer, || self.execute(&mut
-		// runtime));
 
 		log::debug!(target: "evm", "Call execution using address {}: {:?}", code_address, reason);
 
