@@ -3030,7 +3030,7 @@ fn tracer_works() {
 
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 
-		let mut tracer = crate::runner::tracing::Tracer::new();
+		let mut tracer = crate::runner::tracing::Tracer::new(true);
 		crate::runner::tracing::using(&mut tracer, || {
 			assert_ok!(EVM::call(
 				RuntimeOrigin::signed(alice_account_id.clone()),

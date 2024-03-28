@@ -88,6 +88,7 @@ pub enum Event<'a> {
 }
 
 pub struct Tracer {
+	vm: bool,
 	events: Vec<CallTrace>,
 	stack: Vec<CallTrace>,
 	steps: Vec<Step>,
@@ -96,8 +97,9 @@ pub struct Tracer {
 }
 
 impl Tracer {
-	pub fn new() -> Self {
+	pub fn new(vm: bool) -> Self {
 		Self {
+			vm,
 			events: Vec::new(),
 			stack: Vec::new(),
 			steps: Vec::new(),
@@ -135,6 +137,9 @@ impl Tracer {
 				memory,
 			} => {
 				self.opcode = Some(opcode);
+				if !self.vm {
+					return;
+				}
 				self.steps.push(Step {
 					op: opcode.stringify().as_bytes().to_vec(),
 					pc: position.clone().unwrap_or_default() as u64,
@@ -542,7 +547,6 @@ impl Stringify for ExitError {
 			ExitError::PCUnderflow => "PCUnderflow",
 			ExitError::CreateEmpty => "CreateEmpty",
 			ExitError::Other(msg) => msg,
-			ExitError::MaxNonce => "MaxNonce",
 		}
 	}
 }

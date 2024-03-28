@@ -2203,7 +2203,7 @@ impl_runtime_apis! {
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
 		) -> Result<Vec<module_evm::runner::tracing::CallTrace>, sp_runtime::DispatchError> {
-			let mut tracer = module_evm::runner::tracing::Tracer::new();
+			let mut tracer = module_evm::runner::tracing::Tracer::new(false);
 			module_evm::runner::tracing::using(&mut tracer, || {
 				if to == H160::zero() {
 					<Runtime as module_evm::Config>::Runner::rpc_create(
@@ -2242,7 +2242,7 @@ impl_runtime_apis! {
 		) -> Result<module_evm::runner::tracing::VMTrace, sp_runtime::DispatchError> {
 			use sp_core::H256;
 			use sp_runtime::traits::UniqueSaturatedInto;
-			let mut tracer = module_evm::runner::tracing::Tracer::new();
+			let mut tracer = module_evm::runner::tracing::Tracer::new(true);
 			module_evm::runner::tracing::using(&mut tracer, || {
 				if to == H160::zero() {
 					<Runtime as module_evm::Config>::Runner::rpc_create(
