@@ -116,8 +116,7 @@ impl xcm_executor::Config for XcmConfig {
 	type AssetTransactor = LocalAssetTransactor;
 	type OriginConverter = XcmOriginToCallOrigin;
 	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
-	// Teleporting is disabled.
-	type IsTeleporter = ();
+	type IsTeleporter = runtime_common::xcm_config::TrustedTeleporters;
 	type UniversalLocation = UniversalLocation;
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;

@@ -18,11 +18,12 @@
 
 use crate::{xcm_impl::AccountKey20Aliases, AccountId, Balance, Convert, CurrencyId};
 use frame_support::{
-	match_types,
+	match_types, parameter_types,
 	traits::{ConstU32, Everything, Get},
 };
 use orml_traits::MultiCurrency;
 use pallet_xcm::XcmPassthrough;
+use parachains_common::xcm_config::{ConcreteAssetFromSystem, ParentRelayOrSiblingParachains};
 use polkadot_parachain_primitives::primitives::Sibling;
 use xcm::latest::prelude::*;
 use xcm_builder::{
@@ -69,13 +70,6 @@ pub type XcmOriginToCallOrigin<LocationToAccountId, RuntimeOrigin, RelayChainOri
 	XcmPassthrough<RuntimeOrigin>,
 );
 
-match_types! {
-	pub type ParentOrSiblings: impl Contains<MultiLocation> = {
-		MultiLocation { parents: 1, interior: Here } |
-		MultiLocation { parents: 1, interior: X1(_) }
-	};
-}
-
 pub type Barrier<PolkadotXcm, UniversalLocation> = TrailingSetTopicAsId<(
 	TakeWeightCredit,
 	// Expected responses are OK.
@@ -87,7 +81,7 @@ pub type Barrier<PolkadotXcm, UniversalLocation> = TrailingSetTopicAsId<(
 			// allow it.
 			AllowTopLevelPaidExecutionFrom<Everything>,
 			// Subscriptions for version tracking are OK.
-			AllowSubscriptionsFrom<ParentOrSiblings>,
+			AllowSubscriptionsFrom<ParentRelayOrSiblingParachains>,
 		),
 		UniversalLocation,
 		ConstU32<8>,
@@ -130,3 +124,13 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 		.into()
 	}
 }
+
+parameter_types! {
+	pub const RelayLocation: MultiLocation = MultiLocation::parent();
+}
+
+// define assets that can be trusted to teleport by remotes
+pub type TrustedTeleporters = (
+	// relay token from relaychain or system parachain
+	ConcreteAssetFromSystem<RelayLocation>,
+);
