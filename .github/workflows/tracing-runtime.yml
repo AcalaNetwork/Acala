@@ -16,6 +16,9 @@ on:
         required: true
         type: string
 
+env:
+  SUBWASM_VERSION: 0.20.0
+
 jobs:
   build-runtime:
     name: "Build evm tracing runtime ${{ matrix.network }}"
