@@ -40,11 +40,12 @@ cumulus-pallet-xcm = { workspace = true }
 
 # polkadot
 pallet-xcm = { workspace = true }
+parachains-common = { workspace = true }
 polkadot-parachain-primitives = { workspace = true }
 polkadot-primitives = { workspace = true }
 xcm = { workspace = true }
-xcm-executor = { workspace = true }
 xcm-builder = {  workspace = true }
+xcm-executor = { workspace = true }
 
 # modules
 module-currencies = { workspace = true }
@@ -109,12 +110,13 @@ std = [
 
 	"cumulus-pallet-parachain-system/std",
 
+	"pallet-xcm/std",
+	"parachains-common/std",
 	"polkadot-parachain-primitives/std",
 	"polkadot-primitives/std",
-	"pallet-xcm/std",
-	"xcm/std",
-	"xcm-executor/std",
 	"xcm-builder/std",
+	"xcm-executor/std",
+	"xcm/std",
 
 	"wasm-bencher/std",
 	"orml-currencies/std",
