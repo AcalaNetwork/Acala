@@ -18,7 +18,7 @@
 
 use crate::{xcm_impl::AccountKey20Aliases, AccountId, Balance, Convert, CurrencyId};
 use frame_support::{
-	match_types, parameter_types,
+	parameter_types,
 	traits::{ConstU32, Everything, Get},
 };
 use orml_traits::MultiCurrency;
