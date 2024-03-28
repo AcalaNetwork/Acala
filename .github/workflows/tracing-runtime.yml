@@ -24,7 +24,7 @@ jobs:
     name: "Build evm tracing runtime ${{ matrix.network }}"
     permissions:
       contents: write
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         network: [karura, acala]
