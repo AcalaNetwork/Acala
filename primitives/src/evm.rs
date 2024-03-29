@@ -428,8 +428,11 @@ pub mod tracing {
 		pub depth: u32,
 		#[codec(compact)]
 		pub gas: u64,
+		// 32 bytes stack items without leading zeros
 		pub stack: Vec<Vec<u8>>,
-		pub memory: Option<Vec<u8>>,
+		// Chunks of memory 32 bytes each without leading zeros except the last one which is untouched
+		// Recreate the memory by joining the chunks. Each chunk (except the last one) should be 32 bytes
+		pub memory: Option<Vec<Vec<u8>>>,
 	}
 
 	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]

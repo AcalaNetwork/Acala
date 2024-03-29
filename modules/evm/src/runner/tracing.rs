@@ -150,7 +150,7 @@ impl Tracer {
 						.iter()
 						.map(|x| {
 							let slice = x.as_fixed_bytes();
-							// trim left zeros
+							// trim leading zeros
 							let start = slice.iter().position(|x| *x != 0).unwrap_or(31);
 							slice[start..].to_vec()
 						})
@@ -158,7 +158,23 @@ impl Tracer {
 					memory: if memory.is_empty() {
 						None
 					} else {
-						Some(memory.data().clone())
+						let chunks = memory.data().chunks(32);
+						let size = chunks.len();
+						let mut slices: Vec<Vec<u8>> = Vec::with_capacity(size);
+						for (idx, chunk) in chunks.enumerate() {
+							if idx + 1 == size {
+								// last chunk must not be trimmed because it can be less than 32 bytes
+								slices.push(chunk.to_vec());
+							} else {
+								// trim leading zeros
+								if let Some(start) = chunk.iter().position(|x| *x != 0) {
+									slices.push(chunk[start..].to_vec());
+								} else {
+									slices.push(Vec::from([0u8]));
+								}
+							}
+						}
+						Some(slices)
 					},
 				})
 			}
