@@ -336,9 +336,10 @@ pub use convert::*;
 
 #[cfg(feature = "tracing")]
 pub mod tracing {
+	use module_evm_utility::evm::Opcode;
 	use parity_scale_codec::{Decode, Encode};
 	use scale_info::TypeInfo;
-	use sp_core::{H160, H256, U256};
+	use sp_core::{H160, U256};
 	use sp_runtime::RuntimeDebug;
 	use sp_std::vec::Vec;
 
@@ -422,14 +423,14 @@ pub mod tracing {
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub struct Step {
-		pub op: Vec<u8>,
+		pub op: Opcode,
 		#[codec(compact)]
-		pub pc: u64,
+		pub pc: u32,
 		#[codec(compact)]
 		pub depth: u32,
 		#[codec(compact)]
 		pub gas: u64,
-		pub stack: Vec<H256>,
+		pub stack: Vec<Vec<u8>>,
 		pub memory: Option<Vec<u8>>,
 	}
 
@@ -439,7 +440,7 @@ pub mod tracing {
 	pub struct VMTrace {
 		#[codec(compact)]
 		pub gas: u64,
-		pub return_value: H256,
+		pub return_value: Vec<u8>,
 		pub struct_logs: Vec<Step>,
 	}
 }

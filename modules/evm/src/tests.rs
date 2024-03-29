@@ -3026,7 +3026,7 @@ fn tracer_works() {
 
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 
-		let mut tracer = crate::runner::tracing::Tracer::new();
+		let mut tracer = crate::runner::tracing::Tracer::new(true);
 		crate::runner::tracing::using(&mut tracer, || {
 			assert_ok!(EVM::call(
 				RuntimeOrigin::signed(alice_account_id.clone()),
@@ -3082,7 +3082,7 @@ fn tracer_works() {
 		assert_eq!(steps.len(), 553);
 		let step = r#"
 			{
-				"op": [80, 85, 83, 72, 49],
+				"op": 96,
 				"pc": 0,
 				"depth": 0,
 				"gas": 978796,
@@ -3092,20 +3092,18 @@ fn tracer_works() {
 		"#;
 		let step = serde_json::from_str::<crate::runner::tracing::Step>(step).unwrap();
 		assert_eq!(steps.first().unwrap(), &step);
-		assert_eq!(String::from_utf8_lossy(&step.op), "PUSH1");
 
 		let step = r#"
 			{
-				"op": [83, 84, 79, 80],
+				"op": 0,
 				"pc": 194,
 				"depth": 0,
 				"gas": 949994,
-				"stack": ["0x00000000000000000000000000000000000000000000000000000000da1385d5"],
+				"stack": [[218, 19, 133, 213]],
 				"memory": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 29, 131, 74, 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
 			}
 		"#;
 		let step = serde_json::from_str::<crate::runner::tracing::Step>(step).unwrap();
 		assert_eq!(steps.last().unwrap(), &step);
-		assert_eq!(String::from_utf8_lossy(&step.op), "STOP");
 	})
 }
