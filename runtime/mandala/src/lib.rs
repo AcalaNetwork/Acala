@@ -2478,7 +2478,6 @@ impl_runtime_apis! {
 			storage_limit: u32,
 			access_list: Option<Vec<AccessListItem>>,
 		) -> Result<module_evm::runner::tracing::VMTrace, sp_runtime::DispatchError> {
-			use sp_core::H256;
 			use sp_runtime::traits::UniqueSaturatedInto;
 			let mut tracer = module_evm::runner::tracing::Tracer::new(true);
 			module_evm::runner::tracing::using(&mut tracer, || {
@@ -2491,7 +2490,7 @@ impl_runtime_apis! {
 						storage_limit,
 						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 						<Runtime as module_evm::Config>::config(),
-					).map(|res| (H256::from(res.value), UniqueSaturatedInto::<u64>::unique_saturated_into(res.used_gas)))
+					).map(|res| (res.value.as_bytes().to_vec(), UniqueSaturatedInto::<u64>::unique_saturated_into(res.used_gas)))
 				} else {
 					<Runtime as module_evm::Config>::Runner::rpc_call(
 						from,
@@ -2503,7 +2502,7 @@ impl_runtime_apis! {
 						storage_limit,
 						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 						<Runtime as module_evm::Config>::config(),
-					).map(|res| (H256::from_slice(&res.value), UniqueSaturatedInto::<u64>::unique_saturated_into(res.used_gas)))
+					).map(|res| (res.value, UniqueSaturatedInto::<u64>::unique_saturated_into(res.used_gas)))
 				}
 			}).map(|(return_value, gas) | module_evm::runner::tracing::VMTrace {
 				gas,
