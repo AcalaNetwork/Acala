@@ -2230,84 +2230,15 @@ sp_api::impl_runtime_apis! {
 	}
 
 	#[cfg(feature = "tracing")]
-	impl module_evm_rpc_runtime_api::EVMTraceApi<Block, Balance> for Runtime {
-		fn trace_call(
-			from: H160,
-			to: H160,
-			data: Vec<u8>,
-			value: Balance,
-			gas_limit: u64,
-			storage_limit: u32,
-			access_list: Option<Vec<AccessListItem>>,
-		) -> Result<Vec<module_evm::runner::tracing::CallTrace>, sp_runtime::DispatchError> {
-			let mut tracer = module_evm::runner::tracing::Tracer::new(false);
+	impl module_evm_rpc_runtime_api::EVMTraceApi<Block> for Runtime {
+		fn trace_extrinsic(
+			extrinsic: <Block as BlockT>::Extrinsic,
+			tracer_config: primitives::evm::tracing::TracerConfig,
+		) -> Result<module_evm::runner::tracing::TraceOutcome, sp_runtime::transaction_validity::TransactionValidityError> {
+			let mut tracer = module_evm::runner::tracing::Tracer::new(tracer_config);
 			module_evm::runner::tracing::using(&mut tracer, || {
-				if to == H160::zero() {
-					<Runtime as module_evm::Config>::Runner::rpc_create(
-						from,
-						data,
-						value,
-						gas_limit,
-						storage_limit,
-						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-						<Runtime as module_evm::Config>::config(),
-					).map(drop)
-				} else {
-					<Runtime as module_evm::Config>::Runner::rpc_call(
-						from,
-						from,
-						to,
-						data,
-						value,
-						gas_limit,
-						storage_limit,
-						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-						<Runtime as module_evm::Config>::config(),
-					).map(drop)
-				}
+				Executive::apply_extrinsic(extrinsic)
 			}).map(|_| tracer.finalize())
-		}
-
-		fn trace_vm(
-			from: H160,
-			to: H160,
-			data: Vec<u8>,
-			value: Balance,
-			gas_limit: u64,
-			storage_limit: u32,
-			access_list: Option<Vec<AccessListItem>>,
-		) -> Result<module_evm::runner::tracing::VMTrace, sp_runtime::DispatchError> {
-			use sp_runtime::traits::UniqueSaturatedInto;
-			let mut tracer = module_evm::runner::tracing::Tracer::new(true);
-			module_evm::runner::tracing::using(&mut tracer, || {
-				if to == H160::zero() {
-					<Runtime as module_evm::Config>::Runner::rpc_create(
-						from,
-						data,
-						value,
-						gas_limit,
-						storage_limit,
-						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-						<Runtime as module_evm::Config>::config(),
-					).map(|res| (res.value.as_bytes().to_vec(), UniqueSaturatedInto::<u64>::unique_saturated_into(res.used_gas)))
-				} else {
-					<Runtime as module_evm::Config>::Runner::rpc_call(
-						from,
-						from,
-						to,
-						data,
-						value,
-						gas_limit,
-						storage_limit,
-						access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-						<Runtime as module_evm::Config>::config(),
-					).map(|res| (res.value, UniqueSaturatedInto::<u64>::unique_saturated_into(res.used_gas)))
-				}
-			}).map(|(return_value, gas) | module_evm::runner::tracing::VMTrace {
-				gas,
-				return_value,
-				struct_logs: tracer.steps(),
-			})
 		}
 	}
 
