@@ -23,7 +23,7 @@ use primitives::evm::{AccessListItem, BlockLimits, CallInfo, CreateInfo, Estimat
 use sp_core::H160;
 use sp_runtime::{
 	codec::Codec,
-	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
+	traits::{MaybeDisplay, MaybeFromStr},
 };
 use sp_std::vec::Vec;
 
@@ -85,7 +85,7 @@ sp_api::decl_runtime_apis! {
 sp_api::decl_runtime_apis! {
 	pub trait EVMTraceApi {
 		fn trace_extrinsic(
-			extrinsic: <Block as BlockT>::Extrinsic,
+			extrinsic: Block::Extrinsic,
 			tracer_config: primitives::evm::tracing::TracerConfig,
 		) -> Result<primitives::evm::tracing::TraceOutcome, sp_runtime::transaction_validity::TransactionValidityError>;
 	}
