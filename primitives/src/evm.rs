@@ -355,6 +355,19 @@ pub mod tracing {
 		SUICIDE,
 	}
 
+	impl From<Opcode> for CallType {
+		fn from(op: Opcode) -> Self {
+			match op {
+				Opcode::CALLCODE => CallType::CALLCODE,
+				Opcode::DELEGATECALL => CallType::DELEGATECALL,
+				Opcode::STATICCALL => CallType::STATICCALL,
+				Opcode::CREATE | Opcode::CREATE2 => CallType::CREATE,
+				Opcode::SUICIDE => CallType::SUICIDE,
+				_ => CallType::CALL,
+			}
+		}
+	}
+
 	impl sp_std::fmt::Display for CallType {
 		fn fmt(&self, f: &mut sp_std::fmt::Formatter<'_>) -> sp_std::fmt::Result {
 			match self {
@@ -369,7 +382,7 @@ pub mod tracing {
 	}
 
 	#[cfg(feature = "std")]
-	fn vec_to_hex<S>(data: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+	fn vec_to_hex<S>(data: &[u8], serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: serde::Serializer,
 	{
@@ -437,11 +450,28 @@ pub mod tracing {
 
 	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-	pub struct VMTrace {
-		#[codec(compact)]
-		pub gas: u64,
-		pub return_value: Vec<u8>,
-		pub struct_logs: Vec<Step>,
+	pub enum TraceOutcome {
+		Calls(Vec<CallTrace>),
+		Steps(Vec<Step>),
+	}
+
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub enum TracerConfig {
+		CallTracer,
+		OpcodeTracer(OpcodeConfig),
+	}
+
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub struct OpcodeConfig {
+		// Tracing opcodes is very expensive, so we need to limit the number of opcodes to trace.
+		// Each trace call will have a maximum of `page_size` opcodes. If the number of opcodes
+		// is equal to `page_size` then another trace call will be needed to get the next page of opcodes.
+		pub page: u32,
+		// Number of opcodes to trace in a single page.
+		pub page_size: u32,
+		pub disable_stack: bool,
+		pub enable_memory: bool,
 	}
 }

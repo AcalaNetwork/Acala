@@ -780,15 +780,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		self.state.metadata_mut().access_address(caller);
 		self.state.metadata_mut().access_address(address);
 
-		event!(Create {
-			caller,
-			address,
-			scheme,
-			value,
-			init_code: &init_code,
-			target_gas
-		});
-
 		if let Some(depth) = self.state.metadata().depth {
 			if depth >= self.config.call_stack_limit {
 				return Capture::Exit((ExitError::CallTooDeep.into(), None, Vec::new()));
@@ -940,15 +931,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 		// Set target address
 		*self.state.metadata_mut().target_mut() = Some(code_address);
-
-		event!(Call {
-			code_address,
-			transfer: &transfer,
-			input: &input,
-			target_gas,
-			is_static,
-			context: &context,
-		});
 
 		let after_gas = if take_l64 && self.config.call_l64_after_gas {
 			if self.config.estimate {
@@ -1224,6 +1206,14 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 		init_code: Vec<u8>,
 		target_gas: Option<u64>,
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
+		event!(Create {
+			caller,
+			address: self.create_address(scheme).unwrap_or_default(),
+			value,
+			init_code: &init_code,
+			target_gas
+		});
+
 		let capture = self.create_inner(caller, scheme, value, init_code, target_gas, true);
 
 		if let Capture::Exit((ref reason, _, ref return_value)) = capture {
@@ -1265,6 +1255,15 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 		is_static: bool,
 		context: Context,
 	) -> Capture<(ExitReason, Vec<u8>), Self::CallInterrupt> {
+		event!(Call {
+			code_address,
+			transfer: &transfer,
+			input: &input,
+			target_gas,
+			is_static,
+			context: &context,
+		});
+
 		let capture = self.call_inner(
 			code_address,
 			transfer,

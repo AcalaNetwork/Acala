@@ -17,13 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use module_evm_utility::{
-	evm::{Context, CreateScheme, ExitError, ExitFatal, ExitReason, ExitSucceed, Opcode, Transfer},
+	evm::{Context, ExitError, ExitFatal, ExitReason, ExitSucceed, Opcode, Transfer},
 	evm_gasometer, evm_runtime,
 };
 use sp_core::{H160, H256, U256};
 use sp_std::prelude::*;
 
-pub use primitives::evm::tracing::{CallTrace, CallType, Step, VMTrace};
+pub use primitives::evm::tracing::{CallTrace, CallType, OpcodeConfig, Step, TraceOutcome, TracerConfig};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Event<'a> {
@@ -38,7 +38,6 @@ pub enum Event<'a> {
 	Create {
 		caller: H160,
 		address: H160,
-		scheme: CreateScheme,
 		value: U256,
 		init_code: &'a [u8],
 		target_gas: Option<u64>,
@@ -88,45 +87,80 @@ pub enum Event<'a> {
 }
 
 pub struct Tracer {
-	vm: bool,
-	events: Vec<CallTrace>,
+	config: TracerConfig,
+	calls: Vec<CallTrace>,
 	stack: Vec<CallTrace>,
+	depth: u32,
 	steps: Vec<Step>,
-	opcode: Option<Opcode>,
-	snapshot: Option<evm_gasometer::Snapshot>,
+	step_counter: u32,
+	gas: u64,
+	current_opcode: Option<Opcode>,
 }
 
 impl Tracer {
-	pub fn new(vm: bool) -> Self {
+	pub fn new(config: TracerConfig) -> Self {
 		Self {
-			vm,
-			events: Vec::new(),
+			config,
+			calls: Vec::new(),
 			stack: Vec::new(),
+			depth: 0,
 			steps: Vec::new(),
-			opcode: None,
-			snapshot: None,
+			step_counter: 0,
+			gas: 0,
+			current_opcode: None,
 		}
 	}
 
-	pub fn finalize(&mut self) -> Vec<CallTrace> {
-		self.events.drain(..).rev().collect()
+	#[inline]
+	fn trace_memory(&self) -> bool {
+		matches!(
+			self.config,
+			TracerConfig::OpcodeTracer(OpcodeConfig {
+				enable_memory: true,
+				..
+			})
+		)
 	}
 
-	pub fn steps(&self) -> Vec<Step> {
-		self.steps.clone()
+	#[inline]
+	fn trace_stack(&self) -> bool {
+		matches!(
+			self.config,
+			TracerConfig::OpcodeTracer(OpcodeConfig {
+				disable_stack: false,
+				..
+			})
+		)
 	}
 
-	fn call_type(&self) -> CallType {
-		match self.opcode {
-			Some(Opcode::CALLCODE) => CallType::CALLCODE,
-			Some(Opcode::DELEGATECALL) => CallType::DELEGATECALL,
-			Some(Opcode::STATICCALL) => CallType::STATICCALL,
-			Some(Opcode::CREATE) | Some(Opcode::CREATE2) => CallType::CREATE,
-			Some(Opcode::SUICIDE) => CallType::SUICIDE,
-			_ => CallType::CALL,
+	#[inline]
+	fn trace_call(&self) -> bool {
+		matches!(self.config, TracerConfig::CallTracer)
+	}
+
+	// increment step counter and check if we should record this step
+	#[inline]
+	fn count_step(&mut self) -> bool {
+		self.step_counter += 1;
+		if let TracerConfig::OpcodeTracer(OpcodeConfig { page, page_size, .. }) = self.config {
+			if self.step_counter > page * page_size && self.step_counter <= (page + 1) * page_size {
+				return true;
+			}
+		}
+		false
+	}
+
+	pub fn finalize(&mut self) -> TraceOutcome {
+		match self.config {
+			TracerConfig::CallTracer => {
+				assert!(self.stack.is_empty(), "Call stack is not empty");
+				TraceOutcome::Calls(self.calls.drain(..).collect())
+			}
+			TracerConfig::OpcodeTracer(_) => TraceOutcome::Steps(self.steps.drain(..).collect()),
 		}
 	}
 
+	#[inline]
 	fn evm_runtime_event(&mut self, event: evm_runtime::tracing::Event) {
 		match event {
 			evm_runtime::tracing::Event::Step {
@@ -136,98 +170,99 @@ impl Tracer {
 				stack,
 				memory,
 			} => {
-				self.opcode = Some(opcode);
-				if !self.vm {
-					return;
-				}
-				self.steps.push(Step {
-					op: opcode,
-					pc: position.as_ref().map_or(0, |pc| *pc as u32),
-					depth: self.stack.last().map_or(0, |x| x.depth),
-					gas: self.snapshot.map_or(0, |s| s.gas()),
-					stack: stack
-						.data()
-						.iter()
-						.map(|x| {
-							let slice = x.as_fixed_bytes();
-							// trim leading zeros
-							let start = slice.iter().position(|x| *x != 0).unwrap_or(31);
-							slice[start..].to_vec()
-						})
-						.collect(),
-					memory: if memory.is_empty() {
-						None
-					} else {
-						let chunks = memory.data().chunks(32);
-						let size = chunks.len();
-						let mut slices: Vec<Vec<u8>> = Vec::with_capacity(size);
-						for (idx, chunk) in chunks.enumerate() {
-							if idx + 1 == size {
-								// last chunk must not be trimmed because it can be less than 32 bytes
-								slices.push(chunk.to_vec());
-							} else {
-								// trim leading zeros
-								if let Some(start) = chunk.iter().position(|x| *x != 0) {
-									slices.push(chunk[start..].to_vec());
+				self.current_opcode = Some(opcode);
+				if self.count_step() {
+					self.steps.push(Step {
+						op: opcode,
+						pc: position.as_ref().map_or(0, |pc| *pc as u32),
+						depth: self.depth,
+						gas: 0,
+						stack: if self.trace_stack() {
+							stack
+								.data()
+								.iter()
+								.map(|x| {
+									let slice = x.as_fixed_bytes();
+									// trim leading zeros
+									let start = slice.iter().position(|x| *x != 0).unwrap_or(31);
+									slice[start..].to_vec()
+								})
+								.collect()
+						} else {
+							Vec::new()
+						},
+						memory: if memory.is_empty() || !self.trace_memory() {
+							None
+						} else {
+							let chunks = memory.data().chunks(32);
+							let size = chunks.len();
+							let mut slices: Vec<Vec<u8>> = Vec::with_capacity(size);
+							for (idx, chunk) in chunks.enumerate() {
+								if idx + 1 == size {
+									// last chunk must not be trimmed because it can be less than 32 bytes
+									slices.push(chunk.to_vec());
 								} else {
-									slices.push(Vec::from([0u8]));
+									// trim leading zeros
+									if let Some(start) = chunk.iter().position(|x| *x != 0) {
+										slices.push(chunk[start..].to_vec());
+									} else {
+										slices.push(Vec::from([0u8]));
+									}
 								}
 							}
-						}
-						Some(slices)
-					},
-				})
+							Some(slices)
+						},
+					})
+				}
+			}
+			evm_runtime::tracing::Event::StepResult { .. } => {
+				if let Some(step) = self.steps.last_mut() {
+					step.gas = self.gas;
+				}
 			}
 			_ => {}
 		};
 	}
 
+	#[inline]
 	fn evm_gasometer_event(&mut self, event: evm_gasometer::tracing::Event) {
 		match event {
 			evm_gasometer::tracing::Event::RecordCost { snapshot, .. }
 			| evm_gasometer::tracing::Event::RecordDynamicCost { snapshot, .. }
 			| evm_gasometer::tracing::Event::RecordTransaction { snapshot, .. }
 			| evm_gasometer::tracing::Event::RecordRefund { snapshot, .. }
-			| evm_gasometer::tracing::Event::RecordStipend { snapshot, .. } => self.snapshot = snapshot,
+			| evm_gasometer::tracing::Event::RecordStipend { snapshot, .. } => {
+				self.gas = snapshot.map_or(0, |s| s.gas());
+			}
 		};
 	}
-}
 
-pub trait EventListener {
-	fn event(&mut self, event: Event);
-}
-
-impl EventListener for Tracer {
-	fn event(&mut self, event: Event) {
+	#[inline]
+	fn call_event(&mut self, event: Event) {
 		match event {
 			Event::Call {
 				code_address,
 				transfer,
 				input,
 				target_gas,
-				is_static,
 				context,
+				..
 			}
 			| Event::PrecompileSubcall {
 				code_address,
 				transfer,
 				input,
 				target_gas,
-				is_static,
 				context,
+				..
 			} => {
-				let call_type = if is_static {
-					CallType::STATICCALL
-				} else {
-					self.call_type()
-				};
 				self.stack.push(CallTrace {
-					call_type,
+					call_type: self.current_opcode.map_or(CallType::CALL, |x| x.into()),
 					from: context.caller,
 					to: code_address,
 					input: input.to_vec(),
-					value: transfer.clone().map(|x| x.value).unwrap_or_default(),
-					gas: target_gas.unwrap_or_default(),
+					value: transfer.as_ref().map_or(U256::zero(), |x| x.value),
+					gas: target_gas.unwrap_or(self.gas),
 					gas_used: 0,
 					output: None,
 					error: None,
@@ -264,7 +299,6 @@ impl EventListener for Tracer {
 				value,
 				init_code,
 				target_gas,
-				..
 			} => {
 				self.stack.push(CallTrace {
 					call_type: CallType::CREATE,
@@ -272,7 +306,7 @@ impl EventListener for Tracer {
 					to: address,
 					input: init_code.to_vec(),
 					value,
-					gas: target_gas.unwrap_or_default(),
+					gas: target_gas.unwrap_or(self.gas),
 					gas_used: 0,
 					output: None,
 					error: None,
@@ -316,46 +350,86 @@ impl EventListener for Tracer {
 				target,
 				balance,
 			} => {
-				self.stack.push(CallTrace {
-					call_type: CallType::SUICIDE,
-					from: address,
-					to: target,
-					input: vec![],
-					value: balance,
-					gas: 0,
-					gas_used: 0,
-					output: None,
-					error: None,
-					revert_reason: None,
-					calls: Vec::new(),
-					depth: 0,
-				});
+				if let Some(trace) = self.stack.last_mut() {
+					trace.calls.push(CallTrace {
+						call_type: CallType::SUICIDE,
+						from: address,
+						to: target,
+						input: vec![],
+						value: balance,
+						gas: 0,
+						gas_used: 0,
+						output: None,
+						error: None,
+						revert_reason: None,
+						calls: Vec::new(),
+						depth: 0,
+					});
+				}
 			}
 			Event::Exit { reason, return_value } => {
 				if let Some(mut trace) = self.stack.pop() {
 					match reason {
-						ExitReason::Succeed(ExitSucceed::Returned) => trace.output = Some(return_value.to_vec()),
+						ExitReason::Succeed(ExitSucceed::Returned) => {
+							if !return_value.is_empty() {
+								trace.output = Some(return_value.to_vec());
+							}
+						}
 						ExitReason::Succeed(_) => {}
 						ExitReason::Error(e) => trace.error = Some(e.stringify().as_bytes().to_vec()),
-						ExitReason::Revert(_) => trace.revert_reason = Some(return_value.to_vec()),
+						ExitReason::Revert(_) => {
+							if !return_value.is_empty() {
+								trace.revert_reason = Some(return_value.to_vec());
+							}
+						}
 						ExitReason::Fatal(e) => trace.error = Some(e.stringify().as_bytes().to_vec()),
 					}
 
-					if let Some(snapshot) = self.snapshot {
-						trace.gas_used = trace.gas.saturating_sub(snapshot.gas());
+					trace.gas_used = trace.gas.saturating_sub(self.gas);
+
+					if let Some(index) = self.calls.iter().position(|x| x.depth > trace.depth) {
+						let mut subcalls = self.calls.drain(index..).collect::<Vec<_>>();
+						if matches!(reason, ExitReason::Succeed(ExitSucceed::Suicided)) {
+							let mut suicide_call = trace.calls.pop().expect("suicide call should be injected");
+							suicide_call.depth = trace.depth + 1;
+							subcalls.push(suicide_call);
+						}
+						trace.calls = subcalls;
 					}
 
-					if let Some(index) = self.events.iter().position(|x| x.depth > trace.depth) {
-						trace.calls = self.events.drain(index..).collect();
-					}
-
-					self.events.push(trace);
+					self.calls.push(trace);
+				} else {
+					panic!("exit event without call event")
 				}
 			}
 			Event::Enter { depth } => {
 				if let Some(event) = self.stack.last_mut() {
 					event.depth = depth;
 				}
+			}
+		}
+	}
+}
+
+pub trait EventListener {
+	fn event(&mut self, event: Event);
+}
+
+impl EventListener for Tracer {
+	fn event(&mut self, event: Event) {
+		if self.trace_call() {
+			self.call_event(event);
+		} else {
+			match event {
+				Event::Exit { reason, .. } => {
+					if !matches!(reason, ExitReason::Succeed(ExitSucceed::Suicided)) {
+						self.depth = self.depth.saturating_sub(1);
+					}
+				}
+				Event::Enter { depth } => {
+					self.depth = depth;
+				}
+				_ => {}
 			}
 		}
 	}
