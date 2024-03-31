@@ -384,20 +384,24 @@ pub mod tracing {
 	}
 
 	#[cfg(feature = "std")]
-	fn vec_to_hex<S>(data: &[u8], serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: serde::Serializer,
-	{
-		serializer.serialize_str(&sp_core::bytes::to_hex(data, false))
-	}
+	mod maybe_hex {
+		use serde::{Deserialize, Deserializer, Serializer};
+		pub fn serialize<S: Serializer>(data: &Option<Vec<u8>>, serializer: S) -> Result<S::Ok, S::Error> {
+			if let Some(data) = data {
+				sp_core::bytes::serialize(data.as_slice(), serializer)
+			} else {
+				serializer.serialize_none()
+			}
+		}
 
-	#[cfg(feature = "std")]
-	fn hex_to_vec<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
-	where
-		D: serde::Deserializer<'de>,
-	{
-		use serde::de::Error;
-		String::deserialize(deserializer).and_then(|string| sp_core::bytes::from_hex(&string).map_err(Error::custom))
+		pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Vec<u8>>, D::Error> {
+			use serde::de::Error;
+			match Option::deserialize(deserializer) {
+				Ok(Some(data)) => sp_core::bytes::from_hex(data).map_err(Error::custom).map(Some),
+				Ok(None) => Ok(None),
+				Err(e) => Err(e),
+			}
+		}
 	}
 
 	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -408,10 +412,7 @@ pub mod tracing {
 		pub call_type: CallType,
 		pub from: H160,
 		pub to: H160,
-		#[cfg_attr(
-			feature = "std",
-			serde(serialize_with = "vec_to_hex", deserialize_with = "hex_to_vec")
-		)]
+		#[cfg_attr(feature = "std", serde(with = "sp_core::bytes"))]
 		pub input: Vec<u8>,
 		pub value: U256,
 		// gas limit
@@ -419,10 +420,13 @@ pub mod tracing {
 		pub gas: u64,
 		#[codec(compact)]
 		pub gas_used: u64,
+		#[cfg_attr(feature = "std", serde(with = "maybe_hex"))]
 		// value returned from EVM, if any
 		pub output: Option<Vec<u8>>,
+		#[cfg_attr(feature = "std", serde(with = "maybe_hex"))]
 		// evm error, if any
 		pub error: Option<Vec<u8>>,
+		#[cfg_attr(feature = "std", serde(with = "maybe_hex"))]
 		// revert reason, if any
 		pub revert_reason: Option<Vec<u8>>,
 		// depth of the call
