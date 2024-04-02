@@ -150,7 +150,7 @@ test-eth: githooks test-evm
 
 .PHONY: test-evm
 test-evm: githooks
-	SKIP_WASM_BUILD= ${cargo_test} -p module-evm --features tracing
+	SKIP_WASM_BUILD= ${cargo_test} -p module-evm -p module-evm-bridge --features tracing
 	SKIP_WASM_BUILD= ${cargo_test} --release -p evm-jsontests --features evm-tests
 
 .PHONY: test-runtimes

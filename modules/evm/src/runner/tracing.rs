@@ -17,13 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use module_evm_utility::{
-	evm::{Context, CreateScheme, ExitError, ExitFatal, ExitReason, ExitSucceed, Opcode, Transfer},
+	evm::{Context, ExitError, ExitFatal, ExitReason, ExitSucceed, Opcode, Transfer},
 	evm_gasometer, evm_runtime,
 };
 use sp_core::{H160, H256, U256};
 use sp_std::prelude::*;
 
-pub use primitives::evm::tracing::{CallTrace, CallType, Step, VMTrace};
+pub use primitives::evm::tracing::{CallTrace, CallType, OpcodeConfig, Step, TraceOutcome, TracerConfig};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Event<'a> {
@@ -38,7 +38,6 @@ pub enum Event<'a> {
 	Create {
 		caller: H160,
 		address: H160,
-		scheme: CreateScheme,
 		value: U256,
 		init_code: &'a [u8],
 		target_gas: Option<u64>,
@@ -88,43 +87,80 @@ pub enum Event<'a> {
 }
 
 pub struct Tracer {
-	events: Vec<CallTrace>,
+	config: TracerConfig,
+	calls: Vec<CallTrace>,
 	stack: Vec<CallTrace>,
+	depth: u32,
 	steps: Vec<Step>,
-	opcode: Option<Opcode>,
-	snapshot: Option<evm_gasometer::Snapshot>,
+	step_counter: u32,
+	gas: u64,
+	current_opcode: Option<Opcode>,
 }
 
 impl Tracer {
-	pub fn new() -> Self {
+	pub fn new(config: TracerConfig) -> Self {
 		Self {
-			events: Vec::new(),
+			config,
+			calls: Vec::new(),
 			stack: Vec::new(),
+			depth: 0,
 			steps: Vec::new(),
-			opcode: None,
-			snapshot: None,
+			step_counter: 0,
+			gas: 0,
+			current_opcode: None,
 		}
 	}
 
-	pub fn finalize(&mut self) -> Vec<CallTrace> {
-		self.events.drain(..).rev().collect()
+	#[inline]
+	fn trace_memory(&self) -> bool {
+		matches!(
+			self.config,
+			TracerConfig::OpcodeTracer(OpcodeConfig {
+				enable_memory: true,
+				..
+			})
+		)
 	}
 
-	pub fn steps(&self) -> Vec<Step> {
-		self.steps.clone()
+	#[inline]
+	fn trace_stack(&self) -> bool {
+		matches!(
+			self.config,
+			TracerConfig::OpcodeTracer(OpcodeConfig {
+				disable_stack: false,
+				..
+			})
+		)
 	}
 
-	fn call_type(&self) -> CallType {
-		match self.opcode {
-			Some(Opcode::CALLCODE) => CallType::CALLCODE,
-			Some(Opcode::DELEGATECALL) => CallType::DELEGATECALL,
-			Some(Opcode::STATICCALL) => CallType::STATICCALL,
-			Some(Opcode::CREATE) | Some(Opcode::CREATE2) => CallType::CREATE,
-			Some(Opcode::SUICIDE) => CallType::SUICIDE,
-			_ => CallType::CALL,
+	#[inline]
+	fn trace_call(&self) -> bool {
+		matches!(self.config, TracerConfig::CallTracer)
+	}
+
+	// increment step counter and check if we should record this step
+	#[inline]
+	fn count_step(&mut self) -> bool {
+		self.step_counter += 1;
+		if let TracerConfig::OpcodeTracer(OpcodeConfig { page, page_size, .. }) = self.config {
+			if self.step_counter > page * page_size && self.step_counter <= (page + 1) * page_size {
+				return true;
+			}
+		}
+		false
+	}
+
+	pub fn finalize(&mut self) -> TraceOutcome {
+		match self.config {
+			TracerConfig::CallTracer => {
+				assert!(self.stack.is_empty(), "Call stack is not empty");
+				TraceOutcome::Calls(self.calls.drain(..).collect())
+			}
+			TracerConfig::OpcodeTracer(_) => TraceOutcome::Steps(self.steps.drain(..).collect()),
 		}
 	}
 
+	#[inline]
 	fn evm_runtime_event(&mut self, event: evm_runtime::tracing::Event) {
 		match event {
 			evm_runtime::tracing::Event::Step {
@@ -134,74 +170,99 @@ impl Tracer {
 				stack,
 				memory,
 			} => {
-				self.opcode = Some(opcode);
-				self.steps.push(Step {
-					op: opcode.stringify().as_bytes().to_vec(),
-					pc: position.clone().unwrap_or_default() as u64,
-					depth: self.stack.last().map(|x| x.depth).unwrap_or_default(),
-					gas: if let Some(snapshot) = self.snapshot {
-						snapshot.gas()
-					} else {
-						0
-					},
-					stack: stack.data().clone(),
-					memory: if memory.is_empty() {
-						None
-					} else {
-						Some(memory.data().clone())
-					},
-				})
+				self.current_opcode = Some(opcode);
+				if self.count_step() {
+					self.steps.push(Step {
+						op: opcode,
+						pc: position.as_ref().map_or(0, |pc| *pc as u32),
+						depth: self.depth,
+						gas: 0,
+						stack: if self.trace_stack() {
+							stack
+								.data()
+								.iter()
+								.map(|x| {
+									let slice = x.as_fixed_bytes();
+									// trim leading zeros
+									let start = slice.iter().position(|x| *x != 0).unwrap_or(31);
+									slice[start..].to_vec()
+								})
+								.collect()
+						} else {
+							Vec::new()
+						},
+						memory: if memory.is_empty() || !self.trace_memory() {
+							None
+						} else {
+							let chunks = memory.data().chunks(32);
+							let size = chunks.len();
+							let mut slices: Vec<Vec<u8>> = Vec::with_capacity(size);
+							for (idx, chunk) in chunks.enumerate() {
+								if idx + 1 == size {
+									// last chunk must not be trimmed because it can be less than 32 bytes
+									slices.push(chunk.to_vec());
+								} else {
+									// trim leading zeros
+									if let Some(start) = chunk.iter().position(|x| *x != 0) {
+										slices.push(chunk[start..].to_vec());
+									} else {
+										slices.push(Vec::from([0u8]));
+									}
+								}
+							}
+							Some(slices)
+						},
+					})
+				}
+			}
+			evm_runtime::tracing::Event::StepResult { .. } => {
+				if let Some(step) = self.steps.last_mut() {
+					step.gas = self.gas;
+				}
 			}
 			_ => {}
 		};
 	}
 
+	#[inline]
 	fn evm_gasometer_event(&mut self, event: evm_gasometer::tracing::Event) {
 		match event {
 			evm_gasometer::tracing::Event::RecordCost { snapshot, .. }
 			| evm_gasometer::tracing::Event::RecordDynamicCost { snapshot, .. }
 			| evm_gasometer::tracing::Event::RecordTransaction { snapshot, .. }
 			| evm_gasometer::tracing::Event::RecordRefund { snapshot, .. }
-			| evm_gasometer::tracing::Event::RecordStipend { snapshot, .. } => self.snapshot = snapshot,
+			| evm_gasometer::tracing::Event::RecordStipend { snapshot, .. } => {
+				self.gas = snapshot.map_or(0, |s| s.gas());
+			}
 		};
 	}
-}
 
-pub trait EventListener {
-	fn event(&mut self, event: Event);
-}
-
-impl EventListener for Tracer {
-	fn event(&mut self, event: Event) {
+	#[inline]
+	fn call_event(&mut self, event: Event) {
 		match event {
 			Event::Call {
 				code_address,
 				transfer,
 				input,
 				target_gas,
-				is_static,
 				context,
+				..
 			}
 			| Event::PrecompileSubcall {
 				code_address,
 				transfer,
 				input,
 				target_gas,
-				is_static,
 				context,
+				..
 			} => {
-				let call_type = if is_static {
-					CallType::STATICCALL
-				} else {
-					self.call_type()
-				};
 				self.stack.push(CallTrace {
-					call_type,
+					call_type: self.current_opcode.map_or(CallType::CALL, |x| x.into()),
 					from: context.caller,
 					to: code_address,
 					input: input.to_vec(),
-					value: transfer.clone().map(|x| x.value).unwrap_or_default(),
-					gas: target_gas.unwrap_or_default(),
+					value: transfer.as_ref().map_or(U256::zero(), |x| x.value),
+					gas: target_gas.unwrap_or(self.gas),
 					gas_used: 0,
 					output: None,
 					error: None,
@@ -238,7 +299,6 @@ impl EventListener for Tracer {
 				value,
 				init_code,
 				target_gas,
-				..
 			} => {
 				self.stack.push(CallTrace {
 					call_type: CallType::CREATE,
@@ -246,7 +306,7 @@ impl EventListener for Tracer {
 					to: address,
 					input: init_code.to_vec(),
 					value,
-					gas: target_gas.unwrap_or_default(),
+					gas: target_gas.unwrap_or(self.gas),
 					gas_used: 0,
 					output: None,
 					error: None,
@@ -290,46 +350,86 @@ impl EventListener for Tracer {
 				target,
 				balance,
 			} => {
-				self.stack.push(CallTrace {
-					call_type: CallType::SUICIDE,
-					from: address,
-					to: target,
-					input: vec![],
-					value: balance,
-					gas: 0,
-					gas_used: 0,
-					output: None,
-					error: None,
-					revert_reason: None,
-					calls: Vec::new(),
-					depth: 0,
-				});
+				if let Some(trace) = self.stack.last_mut() {
+					trace.calls.push(CallTrace {
+						call_type: CallType::SUICIDE,
+						from: address,
+						to: target,
+						input: vec![],
+						value: balance,
+						gas: 0,
+						gas_used: 0,
+						output: None,
+						error: None,
+						revert_reason: None,
+						calls: Vec::new(),
+						depth: 0,
+					});
+				}
 			}
 			Event::Exit { reason, return_value } => {
 				if let Some(mut trace) = self.stack.pop() {
 					match reason {
-						ExitReason::Succeed(ExitSucceed::Returned) => trace.output = Some(return_value.to_vec()),
+						ExitReason::Succeed(ExitSucceed::Returned) => {
+							if !return_value.is_empty() {
+								trace.output = Some(return_value.to_vec());
+							}
+						}
 						ExitReason::Succeed(_) => {}
 						ExitReason::Error(e) => trace.error = Some(e.stringify().as_bytes().to_vec()),
-						ExitReason::Revert(_) => trace.revert_reason = Some(return_value.to_vec()),
+						ExitReason::Revert(_) => {
+							if !return_value.is_empty() {
+								trace.revert_reason = Some(return_value.to_vec());
+							}
+						}
 						ExitReason::Fatal(e) => trace.error = Some(e.stringify().as_bytes().to_vec()),
 					}
 
-					if let Some(snapshot) = self.snapshot {
-						trace.gas_used = trace.gas.saturating_sub(snapshot.gas());
+					trace.gas_used = trace.gas.saturating_sub(self.gas);
+
+					if let Some(index) = self.calls.iter().position(|x| x.depth > trace.depth) {
+						let mut subcalls = self.calls.drain(index..).collect::<Vec<_>>();
+						if matches!(reason, ExitReason::Succeed(ExitSucceed::Suicided)) {
+							let mut suicide_call = trace.calls.pop().expect("suicide call should be injected");
+							suicide_call.depth = trace.depth + 1;
+							subcalls.push(suicide_call);
+						}
+						trace.calls = subcalls;
 					}
 
-					if let Some(index) = self.events.iter().position(|x| x.depth > trace.depth) {
-						trace.calls = self.events.drain(index..).collect();
-					}
-
-					self.events.push(trace);
+					self.calls.push(trace);
+				} else {
+					panic!("exit event without call event")
 				}
 			}
 			Event::Enter { depth } => {
 				if let Some(event) = self.stack.last_mut() {
 					event.depth = depth;
 				}
+			}
+		}
+	}
+}
+
+pub trait EventListener {
+	fn event(&mut self, event: Event);
+}
+
+impl EventListener for Tracer {
+	fn event(&mut self, event: Event) {
+		if self.trace_call() {
+			self.call_event(event);
+		} else {
+			match event {
+				Event::Exit { reason, .. } => {
+					if !matches!(reason, ExitReason::Succeed(ExitSucceed::Suicided)) {
+						self.depth = self.depth.saturating_sub(1);
+					}
+				}
+				Event::Enter { depth } => {
+					self.depth = depth;
+				}
+				_ => {}
 			}
 		}
 	}
@@ -371,157 +471,6 @@ pub(crate) fn with<F: FnOnce(&mut Tracer)>(f: F) {
 
 trait Stringify {
 	fn stringify(&self) -> &str;
-}
-
-impl Stringify for Opcode {
-	fn stringify(&self) -> &str {
-		match self {
-			&Opcode::STOP => "STOP",
-			&Opcode::ADD => "ADD",
-			&Opcode::MUL => "MUL",
-			&Opcode::SUB => "SUB",
-			&Opcode::DIV => "DIV",
-			&Opcode::SDIV => "SDIV",
-			&Opcode::MOD => "MOD",
-			&Opcode::SMOD => "SMOD",
-			&Opcode::ADDMOD => "ADDMOD",
-			&Opcode::MULMOD => "MULMOD",
-			&Opcode::EXP => "EXP",
-			&Opcode::SIGNEXTEND => "SIGNEXTEND",
-			&Opcode::LT => "LT",
-			&Opcode::GT => "GT",
-			&Opcode::SLT => "SLT",
-			&Opcode::SGT => "SGT",
-			&Opcode::EQ => "EQ",
-			&Opcode::ISZERO => "ISZERO",
-			&Opcode::AND => "AND",
-			&Opcode::OR => "OR",
-			&Opcode::XOR => "XOR",
-			&Opcode::NOT => "NOT",
-			&Opcode::BYTE => "BYTE",
-			&Opcode::SHL => "SHL",
-			&Opcode::SHR => "SHR",
-			&Opcode::SAR => "SAR",
-			&Opcode::SHA3 => "SHA3",
-			&Opcode::ADDRESS => "ADDRESS",
-			&Opcode::BALANCE => "BALANCE",
-			&Opcode::ORIGIN => "ORIGIN",
-			&Opcode::CALLER => "CALLER",
-			&Opcode::CALLVALUE => "CALLVALUE",
-			&Opcode::CALLDATALOAD => "CALLDATALOAD",
-			&Opcode::CALLDATASIZE => "CALLDATASIZE",
-			&Opcode::CALLDATACOPY => "CALLDATACOPY",
-			&Opcode::CODESIZE => "CODESIZE",
-			&Opcode::CODECOPY => "CODECOPY",
-			&Opcode::GASPRICE => "GASPRICE",
-			&Opcode::EXTCODESIZE => "EXTCODESIZE",
-			&Opcode::EXTCODECOPY => "EXTCODECOPY",
-			&Opcode::RETURNDATASIZE => "RETURNDATASIZE",
-			&Opcode::RETURNDATACOPY => "RETURNDATACOPY",
-			&Opcode::EXTCODEHASH => "EXTCODEHASH",
-			&Opcode::BLOCKHASH => "BLOCKHASH",
-			&Opcode::COINBASE => "COINBASE",
-			&Opcode::TIMESTAMP => "TIMESTAMP",
-			&Opcode::NUMBER => "NUMBER",
-			&Opcode::DIFFICULTY => "DIFFICULTY",
-			&Opcode::GASLIMIT => "GASLIMIT",
-			&Opcode::CHAINID => "CHAINID",
-			&Opcode::SELFBALANCE => "SELFBALANCE",
-			&Opcode::POP => "POP",
-			&Opcode::MLOAD => "MLOAD",
-			&Opcode::MSTORE => "MSTORE",
-			&Opcode::MSTORE8 => "MSTORE8",
-			&Opcode::SLOAD => "SLOAD",
-			&Opcode::SSTORE => "SSTORE",
-			&Opcode::JUMP => "JUMP",
-			&Opcode::JUMPI => "JUMPI",
-			&Opcode::PC => "PC",
-			&Opcode::MSIZE => "MSIZE",
-			&Opcode::GAS => "GAS",
-			&Opcode::JUMPDEST => "JUMPDEST",
-			&Opcode::PUSH1 => "PUSH1",
-			&Opcode::PUSH2 => "PUSH2",
-			&Opcode::PUSH3 => "PUSH3",
-			&Opcode::PUSH4 => "PUSH4",
-			&Opcode::PUSH5 => "PUSH5",
-			&Opcode::PUSH6 => "PUSH6",
-			&Opcode::PUSH7 => "PUSH7",
-			&Opcode::PUSH8 => "PUSH8",
-			&Opcode::PUSH9 => "PUSH9",
-			&Opcode::PUSH10 => "PUSH10",
-			&Opcode::PUSH11 => "PUSH11",
-			&Opcode::PUSH12 => "PUSH12",
-			&Opcode::PUSH13 => "PUSH13",
-			&Opcode::PUSH14 => "PUSH14",
-			&Opcode::PUSH15 => "PUSH15",
-			&Opcode::PUSH16 => "PUSH16",
-			&Opcode::PUSH17 => "PUSH17",
-			&Opcode::PUSH18 => "PUSH18",
-			&Opcode::PUSH19 => "PUSH19",
-			&Opcode::PUSH20 => "PUSH20",
-			&Opcode::PUSH21 => "PUSH21",
-			&Opcode::PUSH22 => "PUSH22",
-			&Opcode::PUSH23 => "PUSH23",
-			&Opcode::PUSH24 => "PUSH24",
-			&Opcode::PUSH25 => "PUSH25",
-			&Opcode::PUSH26 => "PUSH26",
-			&Opcode::PUSH27 => "PUSH27",
-			&Opcode::PUSH28 => "PUSH28",
-			&Opcode::PUSH29 => "PUSH29",
-			&Opcode::PUSH30 => "PUSH30",
-			&Opcode::PUSH31 => "PUSH31",
-			&Opcode::PUSH32 => "PUSH32",
-			&Opcode::DUP1 => "DUP1",
-			&Opcode::DUP2 => "DUP2",
-			&Opcode::DUP3 => "DUP3",
-			&Opcode::DUP4 => "DUP4",
-			&Opcode::DUP5 => "DUP5",
-			&Opcode::DUP6 => "DUP6",
-			&Opcode::DUP7 => "DUP7",
-			&Opcode::DUP8 => "DUP8",
-			&Opcode::DUP9 => "DUP9",
-			&Opcode::DUP10 => "DUP10",
-			&Opcode::DUP11 => "DUP11",
-			&Opcode::DUP12 => "DUP12",
-			&Opcode::DUP13 => "DUP13",
-			&Opcode::DUP14 => "DUP14",
-			&Opcode::DUP15 => "DUP15",
-			&Opcode::DUP16 => "DUP16",
-			&Opcode::SWAP1 => "SWAP1",
-			&Opcode::SWAP2 => "SWAP2",
-			&Opcode::SWAP3 => "SWAP3",
-			&Opcode::SWAP4 => "SWAP4",
-			&Opcode::SWAP5 => "SWAP5",
-			&Opcode::SWAP6 => "SWAP6",
-			&Opcode::SWAP7 => "SWAP7",
-			&Opcode::SWAP8 => "SWAP8",
-			&Opcode::SWAP9 => "SWAP9",
-			&Opcode::SWAP10 => "SWAP10",
-			&Opcode::SWAP11 => "SWAP11",
-			&Opcode::SWAP12 => "SWAP12",
-			&Opcode::SWAP13 => "SWAP13",
-			&Opcode::SWAP14 => "SWAP14",
-			&Opcode::SWAP15 => "SWAP15",
-			&Opcode::SWAP16 => "SWAP16",
-			&Opcode::LOG0 => "LOG0",
-			&Opcode::LOG1 => "LOG1",
-			&Opcode::LOG2 => "LOG2",
-			&Opcode::LOG3 => "LOG3",
-			&Opcode::LOG4 => "LOG4",
-			&Opcode::CREATE => "CREATE",
-			&Opcode::CALL => "CALL",
-			&Opcode::CALLCODE => "CALLCODE",
-			&Opcode::RETURN => "RETURN",
-			&Opcode::DELEGATECALL => "DELEGATECALL",
-			&Opcode::STATICCALL => "STATICCALL",
-			&Opcode::REVERT => "REVERT",
-			&Opcode::INVALID => "INVALID",
-			&Opcode::CREATE2 => "CREATE2",
-			&Opcode::EOFMAGIC => "EOFMAGIC",
-			&Opcode::SUICIDE => "SUICIDE",
-			_ => "UNKNOWN",
-		}
-	}
 }
 
 impl Stringify for ExitError {

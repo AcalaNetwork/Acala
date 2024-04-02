@@ -738,7 +738,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		}
 
 		if let Err(e) = self.record_external_operation(crate::ExternalOperation::AccountBasicRead) {
-			return (e.into(), Vec::new());
+			return emit_exit!(e.into(), Vec::new());
 		}
 
 		let context = Context {
@@ -873,15 +873,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		self.state.metadata_mut().access_address(caller);
 		self.state.metadata_mut().access_address(address);
 
-		event!(Create {
-			caller,
-			address,
-			scheme,
-			value,
-			init_code: &init_code,
-			target_gas
-		});
-
 		if let Some(depth) = self.state.metadata().depth {
 			if depth >= self.config.call_stack_limit {
 				return Capture::Exit((ExitError::CallTooDeep.into(), None, Vec::new()));
@@ -1010,15 +1001,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 		// Set target address
 		*self.state.metadata_mut().target_mut() = Some(code_address);
-
-		event!(Call {
-			code_address,
-			transfer: &transfer,
-			input: &input,
-			target_gas,
-			is_static,
-			context: &context,
-		});
 
 		let after_gas = if take_l64 && self.config.call_l64_after_gas {
 			if self.config.estimate {
@@ -1386,7 +1368,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
 		if let Err(e) = self.maybe_record_init_code_cost(&init_code) {
 			let reason: ExitReason = e.into();
-			emit_exit!(reason.clone());
 			return Capture::Exit((reason, None, Vec::new()));
 		}
 
@@ -1402,6 +1383,14 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 		init_code: Vec<u8>,
 		target_gas: Option<u64>,
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
+		event!(Create {
+			caller,
+			address: self.create_address(scheme).unwrap_or_default(),
+			value,
+			init_code: &init_code,
+			target_gas
+		});
+
 		if let Err(e) = self.maybe_record_init_code_cost(&init_code) {
 			let reason: ExitReason = e.into();
 			emit_exit!(reason.clone());
@@ -1449,6 +1438,15 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 		is_static: bool,
 		context: Context,
 	) -> Capture<(ExitReason, Vec<u8>), Self::CallInterrupt> {
+		event!(Call {
+			code_address,
+			transfer: &transfer,
+			input: &input,
+			target_gas,
+			is_static,
+			context: &context,
+		});
+
 		let capture = self.call_inner(
 			code_address,
 			transfer,
@@ -1558,7 +1556,7 @@ impl<'inner, 'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Pr
 		}
 
 		event!(PrecompileSubcall {
-			code_address: code_address.clone(),
+			code_address,
 			transfer: &transfer,
 			input: &input,
 			target_gas: gas_limit,
@@ -1576,7 +1574,7 @@ impl<'inner, 'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Pr
 			is_static,
 			context.clone(),
 		) {
-			Capture::Exit((s, v)) => (s, v),
+			Capture::Exit((s, v)) => emit_exit!(s, v),
 			Capture::Trap(rt) => {
 				// Ideally this would pass the interrupt back to the executor so it could be
 				// handled like any other call, however the type signature of this function does
