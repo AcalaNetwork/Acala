@@ -129,7 +129,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2230,
+	spec_version: 2240,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -228,7 +228,8 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+				| pallet_xcm::Call::limited_teleport_assets { .. }
+				| pallet_xcm::Call::transfer_assets { .. } => {
 					return false;
 				}
 				pallet_xcm::Call::force_xcm_version { .. }
@@ -275,6 +276,7 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type MaxConsumers = ConstU32<16>;
+	type RuntimeTask = ();
 }
 
 impl pallet_aura::Config for Runtime {
@@ -1512,13 +1514,14 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type OnSystemEvent = ();
 	type SelfParaId = ParachainInfo;
-	type DmpMessageHandler = DmpQueue;
+	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, xcm_config::RelayOrigin>;
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type CheckAssociatedRelayNumber =
 		CheckRelayNumber<EvmChainId<Runtime>, cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases>;
+	type WeightInfo = cumulus_pallet_parachain_system::weights::SubstrateWeight<Runtime>;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -1791,10 +1794,11 @@ construct_runtime!(
 		XcmpQueue: cumulus_pallet_xcmp_queue = 50,
 		PolkadotXcm: pallet_xcm = 51,
 		CumulusXcm: cumulus_pallet_xcm exclude_parts { Call } = 52,
-		DmpQueue: cumulus_pallet_dmp_queue = 53,
+		// 53 was used by DmpQueue which is now replaced by MessageQueue
 		XTokens: orml_xtokens = 54,
 		UnknownTokens: orml_unknown_tokens = 55,
 		OrmlXcm: orml_xcm = 56,
+		MessageQueue: pallet_message_queue = 57,
 
 		// Governance
 		Authority: orml_authority = 60,
@@ -1901,8 +1905,13 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
+parameter_types! {
+	pub const DmpQueuePalletName: &'static str = "DmpQueue";
+}
+
 #[allow(unused_parens)]
-type Migrations = ();
+type Migrations =
+	(frame_support::migrations::RemovePallet<DmpQueuePalletName, <Runtime as frame_system::Config>::DbWeight>,);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -2217,6 +2226,19 @@ sp_api::impl_runtime_apis! {
 			let from = EvmAddressMapping::<Runtime>::get_or_create_evm_address(&from);
 
 			Self::create(from, data, value, gas_limit, storage_limit, access_list, estimate)
+		}
+	}
+
+	#[cfg(feature = "tracing")]
+	impl module_evm_rpc_runtime_api::EVMTraceApi<Block> for Runtime {
+		fn trace_extrinsic(
+			extrinsic: <Block as BlockT>::Extrinsic,
+			tracer_config: primitives::evm::tracing::TracerConfig,
+		) -> Result<module_evm::runner::tracing::TraceOutcome, sp_runtime::transaction_validity::TransactionValidityError> {
+			let mut tracer = module_evm::runner::tracing::Tracer::new(tracer_config);
+			module_evm::runner::tracing::using(&mut tracer, || {
+				Executive::apply_extrinsic(extrinsic)
+			}).map(|_| tracer.finalize())
 		}
 	}
 

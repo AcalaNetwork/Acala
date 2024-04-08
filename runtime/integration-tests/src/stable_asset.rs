@@ -797,7 +797,7 @@ pub fn deploy_erc20_contracts() {
 		100000,
 		vec![]
 	));
-	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address_0()));
+
 	assert_ok!(AssetRegistry::register_erc20_asset(
 		RuntimeOrigin::root(),
 		erc20_address_0(),

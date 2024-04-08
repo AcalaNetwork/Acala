@@ -102,8 +102,6 @@ pub fn deploy_liquidation_contracts() {
 		used_storage: 11949,
 	}));
 
-	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), mock_liquidation_address_0()));
-
 	assert_ok!(EVM::create(
 		RuntimeOrigin::signed(cdp_engine_pallet_account()),
 		code,
@@ -120,8 +118,6 @@ pub fn deploy_liquidation_contracts() {
 		used_gas: 473376,
 		used_storage: 11949,
 	}));
-
-	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), mock_liquidation_address_1()));
 }
 
 #[test]

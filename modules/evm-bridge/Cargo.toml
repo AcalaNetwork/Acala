@@ -1,6 +1,6 @@
 [package]
 name = "module-evm-bridge"
-version = "2.23.0"
+version = "2.24.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -59,3 +59,4 @@ try-runtime = [
 	"frame-system/try-runtime",
 	"module-evm/try-runtime",
 ]
+tracing = ["module-evm/tracing"]

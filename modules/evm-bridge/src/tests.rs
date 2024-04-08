@@ -353,3 +353,81 @@ fn liquidation_err_fails_as_expected() {
 			);
 		});
 }
+
+#[cfg(feature = "tracing")]
+#[test]
+fn tracing_should_work() {
+	use module_evm::runner::tracing;
+	use primitives::evm::tracing::TracerConfig;
+
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000), (bob(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			let mut tracer = tracing::Tracer::new(TracerConfig::CallTracer);
+			tracing::using(&mut tracer, || {
+				assert_err!(
+					EVMBridge::<Runtime>::transfer(
+						InvokeContext {
+							contract: erc20_address(),
+							sender: bob_evm_addr(),
+							origin: bob_evm_addr(),
+						},
+						alice_evm_addr(),
+						10
+					),
+					Error::<Runtime>::ExecutionRevert
+				);
+			});
+			let expected = r#"[
+			  {
+				"type": "CALL",
+				"from": "0x1000000000000000000000000000000000000002",
+				"to": "0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643",
+				"input": "0xa9059cbb0000000000000000000000001000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000a",
+				"value": "0x0",
+				"gas": 200000,
+				"gasUsed": 200000,
+				"output": null,
+				"error": null,
+				"revertReason": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000002645524332303a207472616e7366657220616d6f756e7420657863656564732062616c616e63650000000000000000000000000000000000000000000000000000",
+				"depth": 0,
+				"calls": []
+			  }
+			]"#;
+			let expected = serde_json::from_str::<Vec<tracing::CallTrace>>(expected).unwrap();
+			assert_eq!(tracer.finalize(), tracing::TraceOutcome::Calls(expected));
+
+			tracing::using(&mut tracer, || {
+				assert_ok!(EVMBridge::<Runtime>::transfer(
+					InvokeContext {
+						contract: erc20_address(),
+						sender: alice_evm_addr(),
+						origin: alice_evm_addr(),
+					},
+					bob_evm_addr(),
+					100
+				));
+			});
+
+			let expected = r#"[
+			  {
+				"type": "CALL",
+				"from": "0x1000000000000000000000000000000000000001",
+				"to": "0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643",
+				"input": "0xa9059cbb00000000000000000000000010000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000064",
+				"value": "0x0",
+				"gas": 200000,
+				"gasUsed": 51929,
+				"output": "0x0000000000000000000000000000000000000000000000000000000000000001",
+				"error": null,
+				"revertReason": null,
+				"depth": 0,
+				"calls": []
+			  }
+			]"#;
+			let expected = serde_json::from_str::<Vec<tracing::CallTrace>>(expected).unwrap();
+			assert_eq!(tracer.finalize(), tracing::TraceOutcome::Calls(expected));
+		});
+}

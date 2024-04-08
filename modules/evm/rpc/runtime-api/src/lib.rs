@@ -80,3 +80,13 @@ sp_api::decl_runtime_apis! {
 		) -> Result<CreateInfo, sp_runtime::DispatchError>;
 	}
 }
+
+#[cfg(feature = "tracing")]
+sp_api::decl_runtime_apis! {
+	pub trait EVMTraceApi {
+		fn trace_extrinsic(
+			extrinsic: Block::Extrinsic,
+			tracer_config: primitives::evm::tracing::TracerConfig,
+		) -> Result<primitives::evm::tracing::TraceOutcome, sp_runtime::transaction_validity::TransactionValidityError>;
+	}
+}

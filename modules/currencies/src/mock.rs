@@ -24,8 +24,8 @@ use super::*;
 pub use crate as currencies;
 
 use frame_support::{
-	assert_ok, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
+	assert_ok, derive_impl, ord_parameter_types, parameter_types,
+	traits::{ConstU128, ConstU32, ConstU64, Nothing},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -47,30 +47,13 @@ pub const EVE: AccountId = AccountId32::new([8u8; 32]);
 pub const FERDIE: AccountId = AccountId32::new([9u8; 32]);
 
 pub type AccountId = AccountId32;
+
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
-	type Nonce = u64;
-	type Hash = H256;
-	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<250>;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type DbWeight = ();
-	type BaseCallFilter = Everything;
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
 }
 
 type Balance = u128;
@@ -306,11 +289,6 @@ pub fn deploy_contracts() {
 		used_gas: 1235455,
 		used_storage: 5131,
 	}));
-
-	assert_ok!(EVM::publish_free(
-		RuntimeOrigin::signed(CouncilAccount::get()),
-		erc20_address()
-	));
 }
 
 pub struct ExtBuilder {

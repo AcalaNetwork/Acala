@@ -22,8 +22,8 @@
 
 use super::*;
 use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, EitherOfDiverse, Everything, Nothing},
+	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	traits::{ConstU128, ConstU32, ConstU64, EitherOfDiverse, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_support::SpecificJointsSwap;
@@ -33,9 +33,7 @@ use nutsfinance_stable_asset::{
 };
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol, TradingPair};
-use sp_core::H256;
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
-use sp_std::cell::RefCell;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -57,30 +55,12 @@ mod cdp_treasury {
 	pub use super::super::*;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type Nonce = u64;
-	type RuntimeCall = RuntimeCall;
-	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<250>;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type DbWeight = ();
-	type BaseCallFilter = Everything;
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -157,9 +137,9 @@ impl module_dex::Config for Runtime {
 	type OnLiquidityPoolUpdated = ();
 }
 
-thread_local! {
-	pub static TOTAL_COLLATERAL_AUCTION: RefCell<u32> = RefCell::new(0);
-	pub static TOTAL_COLLATERAL_IN_AUCTION: RefCell<Balance> = RefCell::new(0);
+parameter_types! {
+	pub static TotalCollateralAuction: u32 = 0;
+	pub static TotalCollateralInAuction: Balance = 0;
 }
 
 pub struct MockAuctionManager;
@@ -174,8 +154,8 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		amount: Self::Balance,
 		_target: Self::Balance,
 	) -> DispatchResult {
-		TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut() += 1);
-		TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut() += amount);
+		TotalCollateralAuction::mutate(|v| *v += 1);
+		TotalCollateralInAuction::mutate(|v| *v += amount);
 		Ok(())
 	}
 
@@ -202,10 +182,6 @@ parameter_types! {
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
 		vec![DOT],
 	];
-}
-
-thread_local! {
-	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
 
 impl Config for Runtime {

@@ -1,6 +1,6 @@
 [package]
 name = "runtime-integration-tests"
-version = "2.23.0"
+version = "2.24.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -57,7 +57,6 @@ cumulus-primitives-core = { workspace = true, features = ["std"] }
 cumulus-primitives-utility = { workspace = true, features = ["std"] }
 cumulus-primitives-timestamp = { workspace = true, features = ["std"] }
 cumulus-pallet-parachain-system = { workspace = true, features = ["std"] }
-cumulus-pallet-dmp-queue = { workspace = true, features = ["std"] }
 cumulus-pallet-xcmp-queue = { workspace = true, features = ["std"] }
 cumulus-pallet-xcm = { workspace = true, features = ["std"] }
 parachain-info = { workspace = true, features = ["std"] }

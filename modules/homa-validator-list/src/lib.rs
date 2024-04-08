@@ -387,7 +387,7 @@ pub mod module {
 		/// Rebond tokens to a validator on the relay chain.
 		///
 		/// - `validator`: The AccountId of a validator on the relay chain to rebond to
-		/// - `amount`: The amount of tokens to to rebond to the given validator
+		/// - `amount`: The amount of tokens to rebond to the given validator
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::rebond())]
 		pub fn rebond(
@@ -484,7 +484,7 @@ pub mod module {
 		}
 
 		/// Slash validators on the relay chain.
-		/// Ensures the the caller can perform a slash.
+		/// Ensures the caller can perform a slash.
 		///
 		/// - `slashes`: The SlashInfos of the validators to be slashed
 		#[pallet::call_index(6)]

@@ -27,9 +27,9 @@ use frame_support::{
 	dispatch::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	AccountId, BlockWeights, Currencies, DEXModule, ExtBuilder, FeePoolSize, MockPriceSource, Runtime, RuntimeCall,
-	RuntimeOrigin, System, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DAVE, DOT, FEE_UNBALANCED_AMOUNT, LDOT,
-	TIP_UNBALANCED_AMOUNT,
+	AccountId, BlockWeights, Currencies, DEXModule, ExtBuilder, FeePoolSize, FeeUnbalancedAmount, MockPriceSource,
+	Runtime, RuntimeCall, RuntimeOrigin, System, TipUnbalancedAmount, TransactionPayment, ACA, ALICE, AUSD, BOB,
+	CHARLIE, DAVE, DOT, LDOT,
 };
 use module_support::{BuyWeightRate, DEXManager, Price, TransactionPayment as TransactionPaymentT};
 use orml_traits::{MultiCurrency, MultiLockableCurrency};
@@ -310,8 +310,8 @@ fn pre_post_dispatch_and_refund_native_is_enough() {
 
 		let refund = 200; // 1000 - 800
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee + refund);
-		assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()), fee - refund);
-		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), 0);
+		assert_eq!(FeeUnbalancedAmount::get(), fee - refund);
+		assert_eq!(TipUnbalancedAmount::get(), 0);
 
 		System::assert_has_event(crate::mock::RuntimeEvent::TransactionPayment(
 			crate::Event::TransactionFeePaid {
@@ -323,7 +323,7 @@ fn pre_post_dispatch_and_refund_native_is_enough() {
 		));
 
 		// reset and test refund with tip
-		FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() = 0);
+		FeeUnbalancedAmount::mutate(|a| *a = 0);
 
 		let tip: Balance = 5;
 		let pre = ChargeTransactionPayment::<Runtime>::from(tip)
@@ -340,8 +340,8 @@ fn pre_post_dispatch_and_refund_native_is_enough() {
 			&Ok(())
 		));
 		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 100000 - fee - tip + refund);
-		assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()), fee - refund);
-		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), tip);
+		assert_eq!(FeeUnbalancedAmount::get(), fee - refund);
+		assert_eq!(TipUnbalancedAmount::get(), tip);
 
 		System::assert_has_event(crate::mock::RuntimeEvent::TransactionPayment(
 			crate::Event::TransactionFeePaid {
@@ -438,11 +438,8 @@ fn pre_post_dispatch_and_refund_with_fee_currency_call(token: CurrencyId, surplu
 			Currencies::free_balance(ACA, &ALICE),
 			aca_init + refund + refund_surplus
 		);
-		assert_eq!(
-			FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()),
-			fee - refund + actual_surplus
-		);
-		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), 0);
+		assert_eq!(FeeUnbalancedAmount::get(), fee - refund + actual_surplus);
+		assert_eq!(TipUnbalancedAmount::get(), 0);
 
 		System::assert_has_event(crate::mock::RuntimeEvent::TransactionPayment(
 			crate::Event::TransactionFeePaid {
@@ -454,7 +451,7 @@ fn pre_post_dispatch_and_refund_with_fee_currency_call(token: CurrencyId, surplu
 		));
 
 		// reset and test refund with tip
-		FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() = 0);
+		FeeUnbalancedAmount::mutate(|a| *a = 0);
 
 		assert_ok!(Currencies::update_balance(
 			RuntimeOrigin::root(),
@@ -513,11 +510,8 @@ fn pre_post_dispatch_and_refund_with_fee_currency_call(token: CurrencyId, surplu
 			Currencies::free_balance(ACA, &CHARLIE),
 			aca_init + refund + refund_surplus
 		);
-		assert_eq!(
-			FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()),
-			fee - refund + surplus - refund_surplus
-		);
-		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), tip);
+		assert_eq!(FeeUnbalancedAmount::get(), fee - refund + surplus - refund_surplus);
+		assert_eq!(TipUnbalancedAmount::get(), tip);
 
 		System::assert_has_event(crate::mock::RuntimeEvent::TransactionPayment(
 			crate::Event::TransactionFeePaid {
