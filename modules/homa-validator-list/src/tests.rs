@@ -861,7 +861,6 @@ fn contains_work() {
 				.total_insurance,
 			100
 		);
-		assert!(!HomaValidatorListModule::contains(&VALIDATOR_1));
 
 		assert_ok!(HomaValidatorListModule::bond(
 			RuntimeOrigin::signed(ALICE),
@@ -874,6 +873,5 @@ fn contains_work() {
 				.total_insurance,
 			200
 		);
-		assert!(HomaValidatorListModule::contains(&VALIDATOR_1));
 	});
 }

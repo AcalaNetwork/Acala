@@ -123,6 +123,7 @@ module-prices = { workspace = true }
 module-incentives = { workspace = true }
 module-support = { workspace = true }
 module-homa = { workspace = true }
+module-homa-validator-list = { workspace = true }
 module-xcm-interface = { workspace = true }
 module-nominees-election = { workspace = true }
 module-session-manager = { workspace = true }
@@ -262,6 +263,7 @@ std = [
 	"module-evm-utility/std",
 	"module-evm/std",
 	"module-homa/std",
+	"module-homa-validator-list/std",
 	"module-honzon/std",
 	"module-idle-scheduler/std",
 	"module-incentives/std",
@@ -415,6 +417,7 @@ try-runtime = [
 	"module-evm-bridge/try-runtime",
 	"module-evm/try-runtime",
 	"module-homa/try-runtime",
+	"module-homa-validator-list/try-runtime",
 	"module-honzon/try-runtime",
 	"module-idle-scheduler/try-runtime",
 	"module-incentives/try-runtime",

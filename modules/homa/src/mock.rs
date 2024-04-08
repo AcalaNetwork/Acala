@@ -55,7 +55,9 @@ pub const VALIDATOR_D: AccountId = AccountId32::new([203u8; 32]);
 
 /// mock XCM transfer.
 pub struct MockHomaSubAccountXcm;
-impl HomaSubAccountXcm<AccountId, Balance, AccountId> for MockHomaSubAccountXcm {
+impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
+	type RelayChainAccountId = AccountId;
+
 	fn transfer_staking_to_sub_account(sender: &AccountId, _: u16, amount: Balance) -> DispatchResult {
 		Currencies::withdraw(StakingCurrencyId::get(), sender, amount)
 	}
@@ -72,7 +74,7 @@ impl HomaSubAccountXcm<AccountId, Balance, AccountId> for MockHomaSubAccountXcm 
 		Ok(())
 	}
 
-	fn nominate_on_sub_account(_: u16, _: Vec<AccountId>) -> DispatchResult {
+	fn nominate_on_sub_account(_: u16, _: Vec<Self::RelayChainAccountId>) -> DispatchResult {
 		Ok(())
 	}
 
@@ -198,8 +200,7 @@ impl Config for Runtime {
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type XcmInterface = MockHomaSubAccountXcm;
 	type WeightInfo = ();
-	type RelayChainAccountId = AccountId;
-	type GetNominations = GetNominations;
+	type NominationsProvider = GetNominations;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;

@@ -18,9 +18,11 @@
 
 use crate::{ExchangeRate, Rate};
 use sp_runtime::DispatchResult;
+use sp_std::fmt::Debug;
 use xcm::v3::prelude::*;
 
-pub trait HomaSubAccountXcm<AccountId, Balance, RelayChainAccountId> {
+pub trait HomaSubAccountXcm<AccountId, Balance> {
+	type RelayChainAccountId: Debug + Clone + Ord;
 	/// Cross-chain transfer staking currency to sub account on relaychain.
 	fn transfer_staking_to_sub_account(sender: &AccountId, sub_account_index: u16, amount: Balance) -> DispatchResult;
 	/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency and
@@ -31,7 +33,7 @@ pub trait HomaSubAccountXcm<AccountId, Balance, RelayChainAccountId> {
 	/// Send XCM message to the relaychain for sub account to unbond.
 	fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
 	/// Send XCM message to the relaychain for sub account to nominate.
-	fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<RelayChainAccountId>) -> DispatchResult;
+	fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<Self::RelayChainAccountId>) -> DispatchResult;
 	/// The fee of cross-chain transfer is deducted from the recipient.
 	fn get_xcm_transfer_fee() -> Balance;
 	/// The fee of parachain

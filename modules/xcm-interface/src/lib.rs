@@ -205,7 +205,9 @@ pub mod module {
 		}
 	}
 
-	impl<T: Config> HomaSubAccountXcm<T::AccountId, Balance, T::AccountId> for Pallet<T> {
+	impl<T: Config> HomaSubAccountXcm<T::AccountId, Balance> for Pallet<T> {
+		type RelayChainAccountId = T::AccountId;
+
 		/// Cross-chain transfer staking currency to sub account on relaychain.
 		fn transfer_staking_to_sub_account(
 			sender: &T::AccountId,
@@ -307,7 +309,7 @@ pub mod module {
 		}
 
 		/// Send XCM message to the relaychain for sub account to nominate.
-		fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<T::AccountId>) -> DispatchResult {
+		fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<Self::RelayChainAccountId>) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaNominate);
 			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				T::RelayChainCallBuilder::utility_as_derivative_call(

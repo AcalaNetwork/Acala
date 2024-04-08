@@ -162,6 +162,7 @@ impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 
 parameter_types! {
 	pub static MockBlockNumberProvider: u64 = 0;
+	pub ActiveSubAccountsIndexList: Vec<u16> = vec![0, 1, 2];
 }
 
 impl BlockNumberProvider for MockBlockNumberProvider {
@@ -190,6 +191,8 @@ impl Config for Runtime {
 	type OnIncreaseGuarantee = MockOnIncreaseGuarantee;
 	type OnDecreaseGuarantee = MockOnDecreaseGuarantee;
 	type BlockNumberProvider = MockBlockNumberProvider;
+	type MaxNominations = ConstU32<24>;
+	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;

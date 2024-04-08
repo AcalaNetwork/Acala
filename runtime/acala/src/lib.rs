@@ -1554,6 +1554,31 @@ impl module_homa::Config for Runtime {
 	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
+	type NominationsProvider = HomaValidatorList;
+}
+
+parameter_types! {
+	pub MinBondAmount: Balance = 10 * dollar(LDOT);
+	pub const ValidatorBackingBondingDuration: BlockNumber = 28 * DAYS;
+	pub ValidatorInsuranceThreshold: Balance = 100_000 * dollar(LDOT);
+}
+
+impl module_homa_validator_list::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RelayChainAccountId = AccountId;
+	type LiquidTokenCurrency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
+	type MinBondAmount = MinBondAmount;
+	type BondingDuration = ValidatorBackingBondingDuration;
+	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type OnSlash = ();
+	type LiquidStakingExchangeRateProvider = Homa;
+	type WeightInfo = ();
+	type OnIncreaseGuarantee = ();
+	type OnDecreaseGuarantee = ();
+	type BlockNumberProvider = RelaychainDataProvider<Runtime>;
+	type MaxNominations = ConstU32<24>;
+	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 }
 
 pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
@@ -1842,6 +1867,7 @@ construct_runtime!(
 		// Homa
 		Homa: module_homa = 116,
 		XcmInterface: module_xcm_interface = 117,
+		HomaValidatorList: module_homa_validator_list = 118,
 
 		// Acala Other
 		Incentives: module_incentives = 120,

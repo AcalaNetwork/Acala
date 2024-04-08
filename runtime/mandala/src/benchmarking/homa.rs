@@ -56,6 +56,7 @@ runtime_benchmarks! {
 			Some(Rate::saturating_from_rational(1, 100)),
 			Some(Rate::saturating_from_rational(20, 100)),
 			None,
+			None,
 		)?;
 		RelaychainDataProvider::<Runtime>::set_block_number(10);
 		Homa::update_bump_era_params(RawOrigin::Root.into(), None, Some(1))?;
@@ -74,6 +75,7 @@ runtime_benchmarks! {
 			RawOrigin::Root.into(),
 			Some(amount * 10),
 			Some(Rate::saturating_from_rational(1, 10000)),
+			None,
 			None,
 			None,
 		)?;
@@ -98,6 +100,7 @@ runtime_benchmarks! {
 			RawOrigin::Root.into(),
 			Some(mint_amount * 10),
 			Some(Rate::saturating_from_rational(1, 10000)),
+			None,
 			None,
 			None,
 		)?;
@@ -129,7 +132,9 @@ runtime_benchmarks! {
 		Some(1_000_000_000_000),
 		Some(Rate::saturating_from_rational(1, 100)),
 		Some(Rate::saturating_from_rational(1, 100)),
-		Some(Rate::saturating_from_rational(1, 100)))
+		Some(Rate::saturating_from_rational(1, 100)),
+		None
+	)
 
 	update_bump_era_params {
 		RelaychainDataProvider::<Runtime>::set_block_number(10000);

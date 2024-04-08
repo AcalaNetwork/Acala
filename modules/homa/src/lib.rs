@@ -29,12 +29,12 @@ use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, BlockNumberProvider, Bounded, CheckedDiv, CheckedSub, MaybeDisplay, One, Saturating,
+		AccountIdConversion, BlockNumberProvider, Bounded, CheckedDiv, CheckedSub, One, Saturating,
 		UniqueSaturatedInto, Zero,
 	},
 	ArithmeticError, FixedPointNumber,
 };
-use sp_std::{cmp::Ordering, convert::From, fmt::Debug, prelude::*, vec, vec::Vec};
+use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
 
 pub use module::*;
 pub use weights::WeightInfo;
@@ -46,6 +46,11 @@ pub mod weights;
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
+
+	pub type RelayChainAccountIdOf<T> = <<T as Config>::XcmInterface as HomaSubAccountXcm<
+		<T as frame_system::Config>::AccountId,
+		Balance,
+	>>::RelayChainAccountId;
 
 	/// The subaccount's staking ledger which kept by Homa protocol
 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
@@ -147,21 +152,12 @@ pub mod module {
 		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = BlockNumberFor<Self>>;
 
 		/// The XcmInterface to manage the staking of sub-account on relaychain.
-		type XcmInterface: HomaSubAccountXcm<Self::AccountId, Balance, Self::RelayChainAccountId>;
+		type XcmInterface: HomaSubAccountXcm<Self::AccountId, Balance>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
-		/// The AccountId of a relay chain account.
-		type RelayChainAccountId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ MaybeDisplay
-			+ Ord
-			+ MaxEncodedLen;
-
-		type GetNominations: Get<Vec<(u16, Vec<Self::RelayChainAccountId>)>>;
+		type NominationsProvider: Get<Vec<(u16, Vec<RelayChainAccountIdOf<Self>>)>>;
 	}
 
 	#[pallet::error]
@@ -263,7 +259,7 @@ pub mod module {
 		/// Nominate validators on RelayChain
 		HomaNominate {
 			sub_account_index: u16,
-			nominations: Vec<T::RelayChainAccountId>,
+			nominations: Vec<RelayChainAccountIdOf<T>>,
 		},
 	}
 
@@ -1144,7 +1140,7 @@ pub mod module {
 			let nominate_interval_era = NominateIntervalEra::<T>::get();
 			if !nominate_interval_era.is_zero() && new_era % nominate_interval_era == 0 {
 				let active_sub_accounts_list = T::ActiveSubAccountsIndexList::get();
-				for (sub_account_index, nominations) in T::GetNominations::get() {
+				for (sub_account_index, nominations) in T::NominationsProvider::get() {
 					if active_sub_accounts_list.contains(&sub_account_index) && !nominations.is_empty() {
 						T::XcmInterface::nominate_on_sub_account(sub_account_index, nominations.clone())?;
 
