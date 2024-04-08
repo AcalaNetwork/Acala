@@ -58,6 +58,7 @@ pub mod module {
 		ParachainFee(Box<MultiLocation>),
 		// `XcmPallet::reserve_transfer_assets` call via proxy account
 		ProxyReserveTransferAssets,
+		HomaNominate,
 	}
 
 	#[pallet::config]
@@ -84,7 +85,7 @@ pub mod module {
 		type SovereignSubAccountLocationConvert: Convert<u16, MultiLocation>;
 
 		/// The Call builder for communicating with RelayChain via XCM messaging.
-		type RelayChainCallBuilder: CallBuilder<AccountId = Self::AccountId, Balance = Balance>;
+		type RelayChainCallBuilder: CallBuilder<RelayChainAccountId = Self::AccountId, Balance = Balance>;
 
 		/// The interface to Cross-chain transfer.
 		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
@@ -204,7 +205,7 @@ pub mod module {
 		}
 	}
 
-	impl<T: Config> HomaSubAccountXcm<T::AccountId, Balance> for Pallet<T> {
+	impl<T: Config> HomaSubAccountXcm<T::AccountId, Balance, T::AccountId> for Pallet<T> {
 		/// Cross-chain transfer staking currency to sub account on relaychain.
 		fn transfer_staking_to_sub_account(
 			sender: &T::AccountId,
@@ -299,6 +300,28 @@ pub mod module {
 				target: "xcm-interface",
 				"subaccount {:?} send XCM to unbond {:?}, result: {:?}",
 				sub_account_index, amount, result
+			);
+
+			ensure!(result.is_ok(), Error::<T>::XcmFailed);
+			Ok(())
+		}
+
+		/// Send XCM message to the relaychain for sub account to nominate.
+		fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<T::AccountId>) -> DispatchResult {
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaNominate);
+			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
+				T::RelayChainCallBuilder::utility_as_derivative_call(
+					T::RelayChainCallBuilder::staking_nominate(targets.clone()),
+					sub_account_index,
+				),
+				xcm_fee,
+				xcm_dest_weight,
+			);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			log::debug!(
+				target: "xcm-interface",
+				"subaccount {:?} send XCM to nominate {:?}, result: {:?}",
+				sub_account_index, targets, result
 			);
 
 			ensure!(result.is_ok(), Error::<T>::XcmFailed);

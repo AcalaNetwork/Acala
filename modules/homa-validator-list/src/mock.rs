@@ -198,13 +198,12 @@ ord_parameter_types! {
 
 impl Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type RelaychainAccountId = AccountId;
+	type RelayChainAccountId = AccountId;
 	type LiquidTokenCurrency = LDOTCurrency;
 	type MinBondAmount = ConstU128<100>;
 	type BondingDuration = ConstU64<100>;
 	type ValidatorInsuranceThreshold = ConstU128<200>;
-	type FreezeOrigin = EnsureSignedBy<Admin, AccountId>;
-	type SlashOrigin = EnsureSignedBy<Admin, AccountId>;
+	type GovernanceOrigin = EnsureSignedBy<Admin, AccountId>;
 	type OnSlash = MockOnSlash;
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 	type WeightInfo = ();

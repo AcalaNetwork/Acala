@@ -696,6 +696,10 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 		Ok(())
 	}
 
+	fn nominate_on_sub_account(_: u16, _: Balance, _: Vec<AccountId>) -> DispatchResult {
+		Ok(())
+	}
+
 	fn get_xcm_transfer_fee() -> Balance {
 		1_000_000
 	}

@@ -28,7 +28,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{pallet_prelude::*, traits::Contains};
+use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 use module_support::{ExchangeRateProvider, Ratio};
 use orml_traits::{BasicCurrency, BasicLockableCurrency, Happened, LockIdentifier};
@@ -48,7 +48,7 @@ mod tests;
 
 pub use module::*;
 
-pub const HOMA_VALIDATOR_LIST_ID: LockIdentifier = *b"acalahvl";
+pub const HOMA_VALIDATOR_LIST_ID: LockIdentifier = *b"aca/hmvl";
 
 pub trait WeightInfo {
 	fn bond() -> Weight;
@@ -145,9 +145,9 @@ impl<BlockNumber: PartialOrd> Guarantee<BlockNumber> {
 /// Information on a relay chain validator's slash
 #[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct SlashInfo<Balance, RelaychainAccountId> {
+pub struct SlashInfo<Balance, RelayChainAccountId> {
 	/// Address of a validator on the relay chain
-	validator: RelaychainAccountId,
+	validator: RelayChainAccountId,
 	/// The amount of tokens a validator has in backing on the relay chain
 	relaychain_token_amount: Balance,
 }
@@ -168,42 +168,59 @@ pub mod module {
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
 		/// The AccountId of a relay chain account.
-		type RelaychainAccountId: Parameter
+		type RelayChainAccountId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ Debug
 			+ MaybeDisplay
 			+ Ord
-			+ Default
 			+ MaxEncodedLen;
+
 		/// The liquid representation of the staking token on the relay chain.
 		type LiquidTokenCurrency: BasicLockableCurrency<Self::AccountId, Balance = Balance>;
-		#[pallet::constant]
+
 		/// The minimum amount of tokens that can be bonded to a validator.
+		#[pallet::constant]
 		type MinBondAmount: Get<Balance>;
-		#[pallet::constant]
+
 		/// The number of blocks a token is bonded to a validator for.
-		type BondingDuration: Get<BlockNumberFor<Self>>;
 		#[pallet::constant]
+		type BondingDuration: Get<BlockNumberFor<Self>>;
+
 		/// The minimum amount of insurance a validator needs.
+		#[pallet::constant]
 		type ValidatorInsuranceThreshold: Get<Balance>;
-		/// The AccountId that can perform a freeze.
-		type FreezeOrigin: EnsureOrigin<Self::RuntimeOrigin>;
-		/// The AccountId that can perform a slash.
-		type SlashOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+
+		/// Origin represented Governance
+		type GovernanceOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+
 		/// Callback to be called when a slash occurs.
 		type OnSlash: Happened<Balance>;
+
 		/// Exchange rate between staked token and liquid token equivalent.
 		type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
-		type WeightInfo: WeightInfo;
-		/// Callback to be called when a validator's insurance increases.
-		type OnIncreaseGuarantee: Happened<(Self::AccountId, Self::RelaychainAccountId, Balance)>;
-		/// Callback to be called when a validator's insurance decreases.
-		type OnDecreaseGuarantee: Happened<(Self::AccountId, Self::RelaychainAccountId, Balance)>;
 
-		// The block number provider
+		type WeightInfo: WeightInfo;
+
+		/// Callback to be called when a validator's insurance increases.
+		type OnIncreaseGuarantee: Happened<(Self::AccountId, Self::RelayChainAccountId, Balance)>;
+
+		/// Callback to be called when a validator's insurance decreases.
+		type OnDecreaseGuarantee: Happened<(Self::AccountId, Self::RelayChainAccountId, Balance)>;
+
+		// The block number provider.
 		type BlockNumberProvider: BlockNumberProvider<BlockNumber = BlockNumberFor<Self>>;
+
+		/// Maximum number of nominations per nominator on relaychain.
+		#[pallet::constant]
+		type MaxNominations: Get<u32>;
+
+		/// The index list of active Homa subaccounts.
+		/// `active` means these subaccounts can continue do bond/unbond operations by Homa.
+		#[pallet::constant]
+		type ActiveSubAccountsIndexList: Get<Vec<u16>>;
 	}
 
 	#[pallet::error]
@@ -211,48 +228,49 @@ pub mod module {
 		BelowMinBondAmount,
 		UnbondingExists,
 		FrozenValidator,
+		ExceedMaxNominations,
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		FreezeValidator {
-			validator: T::RelaychainAccountId,
+			validator: T::RelayChainAccountId,
 		},
 		ThawValidator {
-			validator: T::RelaychainAccountId,
+			validator: T::RelayChainAccountId,
 		},
 		BondGuarantee {
 			who: T::AccountId,
-			validator: T::RelaychainAccountId,
+			validator: T::RelayChainAccountId,
 			bond: Balance,
 		},
 		UnbondGuarantee {
 			who: T::AccountId,
-			validator: T::RelaychainAccountId,
+			validator: T::RelayChainAccountId,
 			bond: Balance,
 		},
 		WithdrawnGuarantee {
 			who: T::AccountId,
-			validator: T::RelaychainAccountId,
+			validator: T::RelayChainAccountId,
 			bond: Balance,
 		},
 		SlashGuarantee {
 			who: T::AccountId,
-			validator: T::RelaychainAccountId,
+			validator: T::RelayChainAccountId,
 			bond: Balance,
 		},
 	}
 
 	/// The slash guarantee deposits for relaychain validators.
 	///
-	/// Guarantees: double_map RelaychainAccountId, AccountId => Option<Guarantee>
+	/// Guarantees: double_map RelayChainAccountId, AccountId => Option<Guarantee>
 	#[pallet::storage]
 	#[pallet::getter(fn guarantees)]
 	pub type Guarantees<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::RelaychainAccountId,
+		T::RelayChainAccountId,
 		Twox64Concat,
 		T::AccountId,
 		Guarantee<BlockNumberFor<T>>,
@@ -268,11 +286,19 @@ pub mod module {
 
 	/// Total deposit for validators.
 	///
-	/// ValidatorBackings: map RelaychainAccountId => Option<ValidatorBacking>
+	/// ValidatorBackings: map RelayChainAccountId => Option<ValidatorBacking>
 	#[pallet::storage]
 	#[pallet::getter(fn validator_backings)]
 	pub type ValidatorBackings<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::RelaychainAccountId, ValidatorBacking, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, ValidatorBacking, OptionQuery>;
+
+	/// Reserved validators.
+	///
+	/// ReservedValidators: map SubAccountIndex => Vec<AccountId>
+	#[pallet::storage]
+	#[pallet::getter(fn reserved_validators)]
+	pub type ReservedValidators<T: Config> =
+		StorageMap<_, Blake2_128Concat, u16, BoundedVec<T::RelayChainAccountId, T::MaxNominations>, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -291,7 +317,7 @@ pub mod module {
 		#[pallet::weight(T::WeightInfo::bond())]
 		pub fn bond(
 			origin: OriginFor<T>,
-			validator: T::RelaychainAccountId,
+			validator: T::RelayChainAccountId,
 			#[pallet::compact] amount: Balance,
 		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
@@ -330,7 +356,7 @@ pub mod module {
 		#[pallet::weight(T::WeightInfo::unbond())]
 		pub fn unbond(
 			origin: OriginFor<T>,
-			validator: T::RelaychainAccountId,
+			validator: T::RelayChainAccountId,
 			#[pallet::compact] amount: Balance,
 		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
@@ -366,7 +392,7 @@ pub mod module {
 		#[pallet::weight(T::WeightInfo::rebond())]
 		pub fn rebond(
 			origin: OriginFor<T>,
-			validator: T::RelaychainAccountId,
+			validator: T::RelayChainAccountId,
 			#[pallet::compact] amount: Balance,
 		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
@@ -386,7 +412,7 @@ pub mod module {
 		/// - `validator`: The AccountId of a validator on the relay chain to withdraw from
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
-		pub fn withdraw_unbonded(origin: OriginFor<T>, validator: T::RelaychainAccountId) -> DispatchResult {
+		pub fn withdraw_unbonded(origin: OriginFor<T>, validator: T::RelayChainAccountId) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
 			ensure!(
 				!Self::validator_backings(&validator).unwrap_or_default().is_frozen,
@@ -417,8 +443,8 @@ pub mod module {
 		/// - `validators`: The AccountIds of the validators on the relay chain to freeze
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::freeze(validators.len() as u32))]
-		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResult {
-			T::FreezeOrigin::ensure_origin(origin)?;
+		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::RelayChainAccountId>) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
 			validators.iter().for_each(|validator| {
 				ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
 					let mut v = maybe_validator.take().unwrap_or_default();
@@ -440,10 +466,8 @@ pub mod module {
 		/// - `validators`: The AccountIds of the validators on the relay chain to unfreeze
 		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::thaw())]
-		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResult {
-			// Using SlashOrigin instead of FreezeOrigin so that un-freezing requires more council members than
-			// freezing
-			T::SlashOrigin::ensure_origin(origin)?;
+		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::RelayChainAccountId>) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
 			validators.iter().for_each(|validator| {
 				ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
 					let mut v = maybe_validator.take().unwrap_or_default();
@@ -465,8 +489,8 @@ pub mod module {
 		/// - `slashes`: The SlashInfos of the validators to be slashed
 		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::slash())]
-		pub fn slash(origin: OriginFor<T>, slashes: Vec<SlashInfo<Balance, T::RelaychainAccountId>>) -> DispatchResult {
-			T::SlashOrigin::ensure_origin(origin)?;
+		pub fn slash(origin: OriginFor<T>, slashes: Vec<SlashInfo<Balance, T::RelayChainAccountId>>) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
 			let liquid_staking_exchange_rate = T::LiquidStakingExchangeRateProvider::get_exchange_rate();
 			let staking_liquid_exchange_rate = liquid_staking_exchange_rate.reciprocal().unwrap_or_default();
 			let mut actual_total_slashing: Balance = Zero::zero();
@@ -505,13 +529,60 @@ pub mod module {
 			T::OnSlash::happened(&actual_total_slashing);
 			Ok(())
 		}
+
+		#[pallet::call_index(7)]
+		#[pallet::weight(T::WeightInfo::slash())]
+		pub fn set_reserved_validators(
+			origin: OriginFor<T>,
+			updates: Vec<(u16, Vec<T::RelayChainAccountId>)>,
+		) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+			for (sub_account_index, reserved_validators) in updates {
+				let reserved: BoundedVec<T::RelayChainAccountId, T::MaxNominations> = reserved_validators
+					.try_into()
+					.map_err(|_| Error::<T>::ExceedMaxNominations)?;
+				ReservedValidators::<T>::insert(sub_account_index, reserved);
+			}
+			Ok(())
+		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
+	fn sort_voted_nominations() -> Vec<T::RelayChainAccountId> {
+		let mut all_reserved_validators: Vec<T::RelayChainAccountId> = vec![];
+		for sub_account_index in T::ActiveSubAccountsIndexList::get() {
+			all_reserved_validators.extend(ReservedValidators::<T>::get(sub_account_index));
+		}
+
+		let mut active_candidates: Vec<(T::RelayChainAccountId, ValidatorBacking)> = ValidatorBackings::<T>::iter()
+			.filter(
+				|(
+					candidate,
+					ValidatorBacking {
+						total_insurance,
+						is_frozen,
+					},
+				)| {
+					!is_frozen
+						&& *total_insurance >= T::ValidatorInsuranceThreshold::get()
+						&& !all_reserved_validators.contains(candidate)
+				},
+			)
+			.collect();
+
+		// sort by des
+		active_candidates.sort_by(|a, b| b.1.total_insurance.cmp(&a.1.total_insurance));
+
+		active_candidates
+			.iter()
+			.map(|(nomination, _)| nomination.clone())
+			.collect::<Vec<T::RelayChainAccountId>>()
+	}
+
 	fn update_guarantee(
 		guarantor: &T::AccountId,
-		validator: &T::RelaychainAccountId,
+		validator: &T::RelayChainAccountId,
 		f: impl FnOnce(&mut Guarantee<BlockNumberFor<T>>) -> DispatchResult,
 	) -> DispatchResult {
 		Guarantees::<T>::try_mutate_exists(validator, guarantor, |maybe_guarantee| -> DispatchResult {
@@ -572,11 +643,35 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> Contains<T::RelaychainAccountId> for Pallet<T> {
-	fn contains(relaychain_account_id: &T::RelaychainAccountId) -> bool {
-		Self::validator_backings(relaychain_account_id)
-			.unwrap_or_default()
-			.total_insurance
-			>= T::ValidatorInsuranceThreshold::get()
+impl<T: Config> Get<Vec<(u16, Vec<T::RelayChainAccountId>)>> for Pallet<T> {
+	fn get() -> Vec<(u16, Vec<T::RelayChainAccountId>)> {
+		let sub_accounts_index_list = T::ActiveSubAccountsIndexList::get();
+		let sort_voted_nominations = Self::sort_voted_nominations();
+
+		let mut nominations: Vec<(u16, Vec<T::RelayChainAccountId>)> = vec![];
+		let mut pick_index: usize = 0;
+		let max_nominations: usize = T::MaxNominations::get() as usize;
+
+		for sub_account_index in sub_accounts_index_list {
+			let reserved_validators = ReservedValidators::<T>::get(sub_account_index);
+			let remaining_seats: usize = max_nominations.saturating_sub(reserved_validators.len());
+
+			let voted_nominations: Vec<T::RelayChainAccountId> =
+				if sort_voted_nominations.len() < remaining_seats + pick_index {
+					pick_index = 0;
+					sort_voted_nominations.as_slice()[0..remaining_seats.min(sort_voted_nominations.len())].to_vec()
+				} else {
+					let previous_pick_index = pick_index;
+					pick_index += remaining_seats;
+					sort_voted_nominations.as_slice()[previous_pick_index..pick_index].to_vec()
+				};
+
+			nominations.push((
+				sub_account_index,
+				[&reserved_validators[..], &voted_nominations[..]].concat(),
+			));
+		}
+
+		nominations
 	}
 }
