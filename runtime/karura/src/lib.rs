@@ -39,7 +39,7 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdConversion, AccountIdLookup, BadOrigin, BlakeTwo256, Block as BlockT, Bounded, Convert,
+		AccountIdConversion, AccountIdLookup, BadOrigin, BlakeTwo256, Block as BlockT, Bounded, Convert, Hash as HashT,
 		IdentityLookup, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
@@ -61,7 +61,7 @@ use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 
-use cumulus_pallet_parachain_system::RelaychainDataProvider;
+use cumulus_pallet_parachain_system::{RelayChainStateProof, RelaychainDataProvider};
 use orml_traits::{
 	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
 	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey, MultiCurrency,
@@ -77,7 +77,7 @@ use frame_support::{
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU128, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency, Currency,
 		EnsureOrigin, EqualPrivilegeOnly, Get, Imbalance, InstanceFilter, LinearStoragePrice, LockIdentifier,
-		OnUnbalanced, SortedMembers,
+		OnUnbalanced, Randomness, SortedMembers,
 	},
 	transactional,
 	weights::{constants::RocksDbWeight, ConstantMultiplier, Weight},
@@ -1491,6 +1491,33 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGasV2 {
 	}
 }
 
+pub struct RandomnessSource<T>(sp_std::marker::PhantomData<T>);
+impl<T: frame_system::Config> Randomness<T::Hash, BlockNumber> for RandomnessSource<T> {
+	fn random(subject: &[u8]) -> (T::Hash, BlockNumber) {
+		let relay_storage_root = ParachainSystem::validation_data()
+			.expect("set in `set_validation_data`")
+			.relay_parent_storage_root;
+		let relay_chain_state = ParachainSystem::relay_state_proof().expect("set in `set_validation_data`");
+		let relay_chain_state_proof =
+			RelayChainStateProof::new(ParachainInfo::get(), relay_storage_root, relay_chain_state)
+				.expect("Invalid relay chain state proof, already constructed in `set_validation_data`");
+
+		let random: [u8; 32] = relay_chain_state_proof
+			.read_optional_entry(cumulus_primitives_core::relay_chain::well_known_keys::CURRENT_BLOCK_RANDOMNESS)
+			.ok()
+			.flatten()
+			.expect("expected to be able to read current block randomness from relay chain state proof");
+
+		let mut subject = subject.to_vec();
+		subject.reserve(32); // RANDOMNEqSS_LENGTH is 32
+		subject.extend_from_slice(&random);
+
+		let random = T::Hashing::hash(&subject[..]);
+
+		(random, System::block_number())
+	}
+}
+
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
@@ -1511,6 +1538,7 @@ impl module_evm::Config for Runtime {
 	type FreePublicationOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
+	type Randomness = RandomnessSource<Runtime>;
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;

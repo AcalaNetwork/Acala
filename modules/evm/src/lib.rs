@@ -1913,11 +1913,9 @@ impl<T: Config> Pallet<T> {
 		});
 	}
 
-	fn generate_random_number(seed: u32) -> u32 {
-		let (random_seed, _) = T::Randomness::random(&(seed).encode());
-		let random_number =
-			<u32>::decode(&mut random_seed.as_ref()).expect("secure hashes should always be bigger than u32; qed");
-		random_number
+	fn get_randomness() -> H256 {
+		let (random, _block_number) = T::Randomness::random(&("EVM-Random").encode());
+		H256::from_slice(random.as_ref())
 	}
 }
 
