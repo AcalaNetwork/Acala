@@ -193,7 +193,8 @@ pub mod module {
 					T::Currency::withdraw(&who, fee, WithdrawReasons::TRANSFER, ExistenceRequirement::KeepAlive)?;
 				T::OnUnstakeFee::on_unbalanced(unbalance);
 
-				T::OnUnbonded::happened(&(who.clone(), final_amount));
+				// remove all shares of the change amount.
+				T::OnUnbonded::happened(&(who.clone(), amount));
 				Self::deposit_event(Event::InstantUnbonded {
 					who,
 					amount: final_amount,
