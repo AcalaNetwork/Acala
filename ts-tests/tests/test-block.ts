@@ -7,19 +7,11 @@ import { Contract } from "ethers";
 import { BodhiSigner } from "@acala-network/bodhi";
 
 describeWithAcala("Acala RPC (Block)", (context) => {
-	let alice: BodhiSigner;
-	let contract: Contract;
-
-	before(async () => {
-		[alice] = context.wallets;
-		contract = await deployContract(alice, Block);
-	});
-
 	step("should be at block 0 at genesis", async function () {
-		expect(await context.provider.getBlockNumber()).to.equal(1);
+		expect(await context.provider.getBlockNumber()).to.equal(0);
 	});
 
 	step("should return genesis block by number", async function () {
-		expect(await context.provider.getBlockNumber()).to.equal(1);
+		expect(await context.provider.getBlockNumber()).to.equal(0);
 	});
 });

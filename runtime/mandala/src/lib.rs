@@ -1662,7 +1662,7 @@ impl<T: frame_system::Config> Randomness<T::Hash, BlockNumber> for RandomnessSou
 			.expect("expected to be able to read current block randomness from relay chain state proof");
 
 		let mut subject = subject.to_vec();
-		subject.reserve(32); // RANDOMNEqSS_LENGTH is 32
+		subject.reserve(32); // RANDOMNESS_LENGTH is 32
 		subject.extend_from_slice(&random);
 
 		let random = T::Hashing::hash(&subject[..]);
