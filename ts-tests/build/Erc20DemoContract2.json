@@ -279,9 +279,9 @@
   "evm": {
     "bytecode": {
       "functionDebugData": {
-        "@_1027": {
+        "@_1018": {
           "entryPoint": null,
-          "id": 1027,
+          "id": 1018,
           "parameterSlots": 0,
           "returnSlots": 0
         },
@@ -5029,9 +5029,9 @@
           "parameterSlots": 1,
           "returnSlots": 1
         },
-        "@decimals_1036": {
+        "@decimals_1027": {
           "entryPoint": 860,
-          "id": 1036,
+          "id": 1027,
           "parameterSlots": 0,
           "returnSlots": 1
         },

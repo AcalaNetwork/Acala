@@ -18,7 +18,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 			from: alice.getAddress(),
 			data: "0x" + Block.bytecode,
 		});
-		expect(gas.toNumber()).to.closeTo(11501114, 1000);
+		expect(gas.toNumber()).to.closeTo(11401114, 1000);
 	});
 
 	it("eth_estimateResources for contract creation", async function () {
@@ -27,8 +27,8 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 			data: "0x" + Block.bytecode,
 		});
 
-		expect(data.usedGas.toNumber()).to.be.eq(273973);
-		expect(data.gasLimit.toNumber()).closeTo(328767, 1000);
+		expect(data.usedGas.toNumber()).to.be.eq(263596);
+		expect(data.gasLimit.toNumber()).closeTo(316315, 1000);
 		expect(data.usedStorage.toNumber()).to.be.eq(11022);
 	});
 

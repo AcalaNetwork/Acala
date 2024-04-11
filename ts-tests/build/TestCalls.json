@@ -82,21 +82,21 @@
     },
     "deployedBytecode": {
       "functionDebugData": {
-        "@test_call_1414": {
+        "@test_call_1405": {
           "entryPoint": 171,
-          "id": 1414,
+          "id": 1405,
           "parameterSlots": 3,
           "returnSlots": 0
         },
-        "@test_delegate_call_1473": {
+        "@test_delegate_call_1464": {
           "entryPoint": 440,
-          "id": 1473,
+          "id": 1464,
           "parameterSlots": 3,
           "returnSlots": 0
         },
-        "@test_static_call_1436": {
+        "@test_static_call_1427": {
           "entryPoint": 708,
-          "id": 1436,
+          "id": 1427,
           "parameterSlots": 2,
           "returnSlots": 1
         },

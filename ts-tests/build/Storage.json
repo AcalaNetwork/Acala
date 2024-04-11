@@ -49,15 +49,15 @@
     },
     "deployedBytecode": {
       "functionDebugData": {
-        "@getStorage_1365": {
+        "@getStorage_1356": {
           "entryPoint": 132,
-          "id": 1365,
+          "id": 1356,
           "parameterSlots": 1,
           "returnSlots": 1
         },
-        "@setStorage_1374": {
+        "@setStorage_1365": {
           "entryPoint": 142,
-          "id": 1374,
+          "id": 1365,
           "parameterSlots": 2,
           "returnSlots": 0
         },

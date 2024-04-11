@@ -291,9 +291,9 @@
           "parameterSlots": 2,
           "returnSlots": 0
         },
-        "@_999": {
+        "@_990": {
           "entryPoint": null,
-          "id": 999,
+          "id": 990,
           "parameterSlots": 1,
           "returnSlots": 0
         },
@@ -5633,9 +5633,9 @@
           "parameterSlots": 1,
           "returnSlots": 1
         },
-        "@decimals_1008": {
+        "@decimals_999": {
           "entryPoint": 860,
-          "id": 1008,
+          "id": 999,
           "parameterSlots": 0,
           "returnSlots": 1
         },

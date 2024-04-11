@@ -33,11 +33,6 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 	});
 
 	// it doesn't work with mandala
-	// it("should get correct environmental difficulty", async function () {
-	// 	expect((await contract.difficulty()).toString()).to.eq('0x0000000000000000000000000000000000000000');
-	// });
-
-	// it doesn't work with mandala
 	// it("should get correct environmental prevrandao", async function () {
 	// 	expect((await contract.prevrandao()).toString()).to.eq('0x0000000000000000000000000000000000000000');
 	// });

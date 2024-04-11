@@ -48,7 +48,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 
 	step("should get code", async function () {
 		const code = await context.provider.getCode(contract.address);
-		expect(code.length).to.be.equal(2046);
+		expect(code.length).to.be.equal(1950);
 	});
 
 	step("should storage at", async function () {

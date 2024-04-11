@@ -16,9 +16,6 @@ contract Block {
     function coinbase() public view returns(address) {
         return block.coinbase;
     }
-    function difficulty() public view returns(uint) {
-        return block.difficulty;
-    }
     function prevrandao() public view returns(uint) {
         return block.prevrandao;
     }
