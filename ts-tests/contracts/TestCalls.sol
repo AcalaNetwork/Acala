@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity 0.8.2;
+pragma solidity ^0.8.2;
 
 contract TestCalls {
     function test_call(address target, bytes memory input, bytes memory output) public {

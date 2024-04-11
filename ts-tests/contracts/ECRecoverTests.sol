@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity 0.8.2;
+pragma solidity ^0.8.2;
 
 contract ECRecoverTests {
     function ecrecoverTest(bytes memory input) public returns(bytes memory) {

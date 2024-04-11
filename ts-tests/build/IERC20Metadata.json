@@ -225,6 +225,7 @@
   ],
   "evm": {
     "bytecode": {
+      "functionDebugData": {},
       "generatedSources": [],
       "linkReferences": {},
       "object": "",
@@ -232,6 +233,7 @@
       "sourceMap": ""
     },
     "deployedBytecode": {
+      "functionDebugData": {},
       "generatedSources": [],
       "immutableReferences": {},
       "linkReferences": {},

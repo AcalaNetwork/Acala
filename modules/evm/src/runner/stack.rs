@@ -622,11 +622,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_randomness(&self) -> Option<H256> {
-		if self.vicinity.block_randomness.is_some() {
-			self.vicinity.block_randomness
-		} else {
-			Some(Pallet::<T>::get_randomness())
-		}
+		Some(self.vicinity.block_randomness.unwrap_or(Pallet::<T>::get_randomness()))
 	}
 
 	fn block_hash(&self, number: U256) -> H256 {

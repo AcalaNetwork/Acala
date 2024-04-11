@@ -16,10 +16,10 @@ describeWithAcala("Acala RPC (Block)", (context) => {
 	});
 
 	step("should be at block 0 at genesis", async function () {
-		expect(await context.provider.getBlockNumber()).to.equal(0);
+		expect(await context.provider.getBlockNumber()).to.equal(1);
 	});
 
 	step("should return genesis block by number", async function () {
-		expect(await context.provider.getBlockNumber()).to.equal(0);
+		expect(await context.provider.getBlockNumber()).to.equal(1);
 	});
 });

@@ -48,7 +48,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 
 	step("should get code", async function () {
 		const code = await context.provider.getCode(contract.address);
-		expect(code.length).to.be.equal(1844);
+		expect(code.length).to.be.equal(2046);
 	});
 
 	step("should storage at", async function () {
@@ -91,7 +91,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 			await contract.populateTransaction.multiply(3)
 		);
 
-		expect(data.usedGas.toNumber()).to.be.eq(22038);
+		expect(data.usedGas.toNumber()).to.be.eq(22111);
 		expect(data.usedStorage.toNumber()).to.be.eq(0);
 		expect(data.gasLimit.toNumber()).to.closeTo(26445, 1000);
 	});
