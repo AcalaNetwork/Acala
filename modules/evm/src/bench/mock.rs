@@ -28,7 +28,7 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use module_support::{
-	mocks::{MockAddressMapping, MockErc20InfoMapping},
+	mocks::{MockAddressMapping, MockErc20InfoMapping, TestRandomness},
 	DEXIncentives, Price, PriceProvider, SpecificJointsSwap,
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
@@ -196,6 +196,7 @@ impl Config for Runtime {
 
 	type Runner = crate::runner::stack::Runner<Self>;
 	type FindAuthor = AuthorGiven;
+	type Randomness = TestRandomness<Self>;
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
 	type WeightInfo = ();

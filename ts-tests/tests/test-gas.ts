@@ -29,7 +29,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 
 		expect(data.usedGas.toNumber()).to.be.eq(263596);
 		expect(data.gasLimit.toNumber()).closeTo(316315, 1000);
-		expect(data.usedStorage.toNumber()).to.be.eq(11022);
+		expect(data.usedStorage.toNumber()).to.be.eq(10974);
 	});
 
 	it("eth_estimateGas for contract call", async function () {
