@@ -621,6 +621,12 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 		self.vicinity.origin
 	}
 
+	#[cfg(feature = "evm-tests")]
+	fn block_randomness(&self) -> Option<H256> {
+		self.vicinity.block_randomness
+	}
+
+	#[cfg(not(feature = "evm-tests"))]
 	fn block_randomness(&self) -> Option<H256> {
 		Some(self.vicinity.block_randomness.unwrap_or(Pallet::<T>::get_randomness()))
 	}
