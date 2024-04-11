@@ -241,7 +241,7 @@ fn liquidation_works() {
 						buf.to_vec()
 					},
 				}],
-				used_gas: 25083,
+				used_gas: 25061,
 				used_storage: 0,
 			}));
 		});
@@ -281,7 +281,7 @@ fn on_collateral_transfer_works() {
 						buf.to_vec()
 					},
 				}],
-				used_gas: 23573,
+				used_gas: 23560,
 				used_storage: 0,
 			}));
 		});
@@ -321,7 +321,7 @@ fn on_repayment_refund_works() {
 						buf.to_vec()
 					},
 				}],
-				used_gas: 23595,
+				used_gas: 23582,
 				used_storage: 0,
 			}));
 		});
@@ -419,7 +419,7 @@ fn tracing_should_work() {
 				"input": "0xa9059cbb00000000000000000000000010000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000064",
 				"value": "0x0",
 				"gas": 200000,
-				"gasUsed": 51929,
+				"gasUsed": 51897,
 				"output": "0x0000000000000000000000000000000000000000000000000000000000000001",
 				"error": null,
 				"revertReason": null,
