@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use frame_support::{
-	ord_parameter_types, parameter_types,
+	derive_impl, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, FindAuthor, Nothing},
 	weights::Weight,
 	ConsensusEngineId,
@@ -32,10 +32,10 @@ use primitives::{
 	ReserveIdentifier, TokenSymbol,
 };
 use scale_info::TypeInfo;
-use sp_core::{H160, H256};
+use sp_core::H160;
 pub use sp_runtime::AccountId32;
 use sp_runtime::{
-	traits::{BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, Zero},
+	traits::{BlockNumberProvider, Convert, IdentityLookup, Zero},
 	RuntimeDebug,
 };
 use std::str::FromStr;
@@ -44,33 +44,16 @@ type Block = frame_system::mocking::MockBlock<TestRuntime>;
 
 type Balance = u128;
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for TestRuntime {
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
-	type Nonce = primitives::Nonce;
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
 	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<10>;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
 	type OnKilledAccount = (
 		module_evm::CallKillAccount<TestRuntime>,
 		module_evm_accounts::CallKillAccount<TestRuntime>,
 	);
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
 }
 
 impl pallet_balances::Config for TestRuntime {

@@ -115,7 +115,6 @@ pub fn deploy_erc20_contracts() {
 		used_storage: 15130,
 	}));
 
-	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address_0()));
 	assert_ok!(AssetRegistry::register_erc20_asset(
 		RuntimeOrigin::root(),
 		erc20_address_0(),
@@ -151,7 +150,6 @@ pub fn deploy_erc20_contracts() {
 		used_storage: 15130,
 	}));
 
-	assert_ok!(EVM::publish_free(RuntimeOrigin::root(), erc20_address_1()));
 	assert_ok!(AssetRegistry::register_erc20_asset(
 		RuntimeOrigin::root(),
 		erc20_address_1(),

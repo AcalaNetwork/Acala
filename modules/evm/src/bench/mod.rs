@@ -206,10 +206,6 @@ macro_rules! evm_call {
 				result.exit_reason
 			);
 			assert_eq!(contract_address, result.value);
-			assert_ok!(EVM::publish_free(
-				RuntimeOrigin::signed(CouncilAccount::get()),
-				contract_address
-			));
 
 			let result = b
 				.bench(|| {

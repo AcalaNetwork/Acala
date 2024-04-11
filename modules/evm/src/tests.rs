@@ -165,9 +165,6 @@ fn should_create_and_call_contract() {
 
 		let contract_address = result.value;
 
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(contract_address);
-
 		assert_eq!(contract_address, H160::from_str("5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap());
 
 		assert_eq!(Pallet::<Runtime>::account_basic(&caller).nonce, 2.into());
@@ -282,9 +279,6 @@ fn call_reverts_with_message() {
 
 		let contract_address = result.value;
 
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(contract_address);
-
 		// call method `foo`
 		let foo = from_hex("0xc2985578").unwrap();
 		let result = <Runtime as Config>::Runner::call(
@@ -349,9 +343,6 @@ fn should_publish_payable_contract() {
 		)
 		.unwrap();
 		let contract_address = result.value;
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(contract_address);
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_storage, 287);
@@ -451,9 +442,6 @@ fn should_transfer_from_contract() {
 		);
 
 		let contract_address = result.value;
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(contract_address);
 
 		// send via transfer
 		let mut via_transfer = from_hex("0x636e082b").unwrap();
@@ -632,9 +620,6 @@ fn contract_should_publish_contracts() {
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
 
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(factory_contract_address);
-
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
@@ -713,9 +698,6 @@ fn contract_should_publish_contracts_without_payable() {
 		let factory_contract_address = result.value;
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(reserved_balance(factory_contract_address), 4640);
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(factory_contract_address);
 
 		// Factory.createContract
 		let create_contract = from_hex("0x412a5a6d").unwrap();
@@ -892,8 +874,6 @@ fn create_predeploy_contract_works() {
 			used_storage: 284,
 		}));
 
-		System::assert_last_event(RuntimeEvent::EVM(crate::Event::ContractPublished { contract: addr }));
-
 		assert_noop!(
 			EVM::create_predeploy_contract(
 				RuntimeOrigin::signed(NetworkContractAccount::get()),
@@ -1020,6 +1000,9 @@ fn should_publish() {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		// contract not created yet
 		assert_noop!(EVM::publish_contract(RuntimeOrigin::signed(alice_account_id.clone()), H160::default()), Error::<Runtime>::ContractNotFound);
 
@@ -1043,7 +1026,7 @@ fn should_publish() {
 		let contract_address = result.value;
 
 		assert_eq!(result.used_storage, 284);
-		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte();
+		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte() - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -1106,7 +1089,9 @@ fn should_publish() {
 		let code_size = Accounts::<Runtime>::get(contract_address).map_or(0, |account_info| -> u32 {
 			account_info.contract_info.map_or(0, |contract_info| CodeInfos::<Runtime>::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
 		});
-		assert_eq!(balance(alice()), INITIAL_BALANCE - PUBLICATION_FEE - ((NEW_CONTRACT_EXTRA_BYTES + code_size) as u128* EVM::get_storage_deposit_per_byte()));
+
+		let alice_balance = INITIAL_BALANCE - PUBLICATION_FEE - ((NEW_CONTRACT_EXTRA_BYTES + code_size) as u128* EVM::get_storage_deposit_per_byte()) - DEVELOPER_DEPOSIT;
+		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(Balances::free_balance(TreasuryAccount::get()), INITIAL_BALANCE + PUBLICATION_FEE);
 
 		// call method `multiply` will work
@@ -1143,6 +1128,10 @@ fn should_publish_free() {
 	new_test_ext().execute_with(|| {
 		// contract not created yet
 		assert_noop!(EVM::publish_free(RuntimeOrigin::signed(CouncilAccount::get()), H160::default()), Error::<Runtime>::ContractNotFound);
+
+		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
 
 		// create contract
 		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![], <Runtime as Config>::config()).unwrap();
@@ -1265,6 +1254,9 @@ fn should_set_code() {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		// create contract
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
@@ -1278,7 +1270,7 @@ fn should_set_code() {
 		.unwrap();
 		let contract_address = result.value;
 		assert_eq!(result.used_storage, 284);
-		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte();
+		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte() - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(reserved_balance(contract_address), 2840);
@@ -1408,6 +1400,9 @@ fn should_selfdestruct_without_schedule_task() {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		let amount = 1000u128;
 
 		let mut stored_value: Vec<u8> =
@@ -1428,7 +1423,7 @@ fn should_selfdestruct_without_schedule_task() {
 
 		let contract_address = result.value;
 		assert_eq!(result.used_storage, 287);
-		let alice_balance = INITIAL_BALANCE - 287 * EVM::get_storage_deposit_per_byte() - amount;
+		let alice_balance = INITIAL_BALANCE - 287 * EVM::get_storage_deposit_per_byte() - amount - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -1508,6 +1503,9 @@ fn should_selfdestruct_with_schedule_task() {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		let amount = 1000u128;
 
 		// create contract
@@ -1524,7 +1522,7 @@ fn should_selfdestruct_with_schedule_task() {
 
 		let contract_address = result.value;
 		assert_eq!(result.used_storage, 361);
-		let alice_balance = INITIAL_BALANCE - 361 * EVM::get_storage_deposit_per_byte() - amount;
+		let alice_balance = INITIAL_BALANCE - 361 * EVM::get_storage_deposit_per_byte() - amount - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -1680,9 +1678,6 @@ fn storage_limit_should_work() {
 		assert_eq!(balance(alice()), alice_balance);
 
 		let factory_contract_address = result.value;
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(factory_contract_address);
 
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
@@ -1846,9 +1841,6 @@ fn evm_execute_mode_should_work() {
 		assert_eq!(result.used_storage, expected_used_storage);
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(factory_contract_address);
 
 		let context = InvokeContext {
 			contract: factory_contract_address,
@@ -2059,9 +2051,6 @@ fn should_update_storage() {
 		assert_eq!(result.used_storage, used_storage as i32);
 
 		assert_eq!(ContractStorageSizes::<Runtime>::get(&contract_address), used_storage);
-
-		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		publish_free(contract_address);
 
 		// call method `set(123)`
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
@@ -2279,6 +2268,10 @@ fn auto_publish_works() {
 
 	new_test_ext().execute_with(|| {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		assert_ok!(EVM::create(
 			RuntimeOrigin::signed(alice_account_id.clone()),
 			code,
@@ -2522,6 +2515,12 @@ fn strict_call_works() {
 	).unwrap();
 
 	new_test_ext().execute_with(|| {
+		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
+
+		// so contracts are unpublished
+		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
+
 		// create contract
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
@@ -2535,9 +2534,6 @@ fn strict_call_works() {
 		.unwrap();
 
 		let contract_address = result.value;
-
-		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
-		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
 		assert_eq!(
 			Utility::batch_all(
@@ -2966,4 +2962,214 @@ fn should_not_allow_system_contracts_send_tx() {
 			Error::<Runtime>::NotEOA
 		);
 	});
+}
+
+#[cfg(feature = "tracing")]
+#[test]
+fn tracer_works() {
+	// pragma solidity =0.8.9;
+	//
+	// contract StorageManager {
+	//     Storage public s;
+	//
+	//     constructor() {
+	//         s = new Storage();
+	//     }
+	//
+	//     function loop_insert_and_remove(uint insert, uint remove) public {
+	//         loop_insert(insert);
+	//         loop_remove(remove);
+	//     }
+	//
+	//     function loop_insert(uint max) public {
+	//         for (uint i = 0; i < max; i++) {
+	//             s.insert(i, 1);
+	//         }
+	//     }
+	//
+	//     function loop_remove(uint max) public {
+	//         for (uint i = 0; i < max; i++) {
+	//             s.insert(i, 0);
+	//         }
+	//     }
+	// }
+	//
+	// contract Storage {
+	//     mapping(uint=>uint) table;
+	//
+	//     function insert(uint index, uint value) public {
+	//         if (value != 0) {
+	//             table[index] = value;
+	//         } else {
+	//             delete table[index];
+	//         }
+	//     }
+	// }
+	let contract = from_hex(
+		"0x608060405234801561001057600080fd5b5060405161001d9061007e565b604051809103906000f080158015610039573d6000803e3d6000fd5b506000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555061008b565b610147806105be83390190565b6105248061009a6000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c80630be6fe5d146100515780631358f5251461006d57806386b714e214610089578063da1385d5146100a7575b600080fd5b61006b60048036038101906100669190610298565b6100c3565b005b610087600480360381019061008291906102d8565b6100d9565b005b610091610189565b60405161009e9190610384565b60405180910390f35b6100c160048036038101906100bc91906102d8565b6101ad565b005b6100cc826101ad565b6100d5816100d9565b5050565b60005b818110156101855760008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16631d834a1b8260006040518363ffffffff1660e01b81526004016101409291906103e9565b600060405180830381600087803b15801561015a57600080fd5b505af115801561016e573d6000803e3d6000fd5b50505050808061017d90610441565b9150506100dc565b5050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b60005b818110156102595760008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16631d834a1b8260016040518363ffffffff1660e01b81526004016102149291906104c5565b600060405180830381600087803b15801561022e57600080fd5b505af1158015610242573d6000803e3d6000fd5b50505050808061025190610441565b9150506101b0565b5050565b600080fd5b6000819050919050565b61027581610262565b811461028057600080fd5b50565b6000813590506102928161026c565b92915050565b600080604083850312156102af576102ae61025d565b5b60006102bd85828601610283565b92505060206102ce85828601610283565b9150509250929050565b6000602082840312156102ee576102ed61025d565b5b60006102fc84828501610283565b91505092915050565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000819050919050565b600061034a61034561034084610305565b610325565b610305565b9050919050565b600061035c8261032f565b9050919050565b600061036e82610351565b9050919050565b61037e81610363565b82525050565b60006020820190506103996000830184610375565b92915050565b6103a881610262565b82525050565b6000819050919050565b60006103d36103ce6103c9846103ae565b610325565b610262565b9050919050565b6103e3816103b8565b82525050565b60006040820190506103fe600083018561039f565b61040b60208301846103da565b9392505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b600061044c82610262565b91507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff82141561047f5761047e610412565b5b600182019050919050565b6000819050919050565b60006104af6104aa6104a58461048a565b610325565b610262565b9050919050565b6104bf81610494565b82525050565b60006040820190506104da600083018561039f565b6104e760208301846104b6565b939250505056fea2646970667358221220c53549ea0c54d760bc0fd8aa7f8eeebf806e4474546e87e9783e4ad3f55dfa6564736f6c63430008090033608060405234801561001057600080fd5b50610127806100206000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c80631d834a1b14602d575b600080fd5b60436004803603810190603f919060b8565b6045565b005b600081146067578060008084815260200190815260200160002081905550607e565b600080838152602001908152602001600020600090555b5050565b600080fd5b6000819050919050565b6098816087565b811460a257600080fd5b50565b60008135905060b2816091565b92915050565b6000806040838503121560cc5760cb6082565b5b600060d88582860160a5565b925050602060e78582860160a5565b915050925092905056fea2646970667358221220941edb58b322ea8088f4f9091a8a48c92e59c2f39db303d8e126a0c3dd434dde64736f6c63430008090033"
+	).unwrap();
+
+	use primitives::evm::tracing::{OpcodeConfig, TraceOutcome, TracerConfig};
+
+	new_test_ext().execute_with(|| {
+		let mut tracer = crate::runner::tracing::Tracer::new(TracerConfig::CallTracer);
+		let result = crate::runner::tracing::using(&mut tracer, || {
+			// create contract
+			<Runtime as Config>::Runner::create(
+				alice(),
+				contract,
+				0,
+				500000,
+				100000,
+				vec![],
+				<Runtime as Config>::config(),
+			).unwrap()
+		});
+		let expected = r#"
+        [
+		  {
+			"type": "CREATE",
+			"from": "0x1000000000000000000000000000000000000001",
+			"to": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+			"input": "0x608060405234801561001057600080fd5b5060405161001d9061007e565b604051809103906000f080158015610039573d6000803e3d6000fd5b506000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555061008b565b610147806105be83390190565b6105248061009a6000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c80630be6fe5d146100515780631358f5251461006d57806386b714e214610089578063da1385d5146100a7575b600080fd5b61006b60048036038101906100669190610298565b6100c3565b005b610087600480360381019061008291906102d8565b6100d9565b005b610091610189565b60405161009e9190610384565b60405180910390f35b6100c160048036038101906100bc91906102d8565b6101ad565b005b6100cc826101ad565b6100d5816100d9565b5050565b60005b818110156101855760008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16631d834a1b8260006040518363ffffffff1660e01b81526004016101409291906103e9565b600060405180830381600087803b15801561015a57600080fd5b505af115801561016e573d6000803e3d6000fd5b50505050808061017d90610441565b9150506100dc565b5050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b60005b818110156102595760008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16631d834a1b8260016040518363ffffffff1660e01b81526004016102149291906104c5565b600060405180830381600087803b15801561022e57600080fd5b505af1158015610242573d6000803e3d6000fd5b50505050808061025190610441565b9150506101b0565b5050565b600080fd5b6000819050919050565b61027581610262565b811461028057600080fd5b50565b6000813590506102928161026c565b92915050565b600080604083850312156102af576102ae61025d565b5b60006102bd85828601610283565b92505060206102ce85828601610283565b9150509250929050565b6000602082840312156102ee576102ed61025d565b5b60006102fc84828501610283565b91505092915050565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000819050919050565b600061034a61034561034084610305565b610325565b610305565b9050919050565b600061035c8261032f565b9050919050565b600061036e82610351565b9050919050565b61037e81610363565b82525050565b60006020820190506103996000830184610375565b92915050565b6103a881610262565b82525050565b6000819050919050565b60006103d36103ce6103c9846103ae565b610325565b610262565b9050919050565b6103e3816103b8565b82525050565b60006040820190506103fe600083018561039f565b61040b60208301846103da565b9392505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b600061044c82610262565b91507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff82141561047f5761047e610412565b5b600182019050919050565b6000819050919050565b60006104af6104aa6104a58461048a565b610325565b610262565b9050919050565b6104bf81610494565b82525050565b60006040820190506104da600083018561039f565b6104e760208301846104b6565b939250505056fea2646970667358221220c53549ea0c54d760bc0fd8aa7f8eeebf806e4474546e87e9783e4ad3f55dfa6564736f6c63430008090033608060405234801561001057600080fd5b50610127806100206000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c80631d834a1b14602d575b600080fd5b60436004803603810190603f919060b8565b6045565b005b600081146067578060008084815260200190815260200160002081905550607e565b600080838152602001908152602001600020600090555b5050565b600080fd5b6000819050919050565b6098816087565b811460a257600080fd5b50565b60008135905060b2816091565b92915050565b6000806040838503121560cc5760cb6082565b5b600060d88582860160a5565b925050602060e78582860160a5565b915050925092905056fea2646970667358221220941edb58b322ea8088f4f9091a8a48c92e59c2f39db303d8e126a0c3dd434dde64736f6c63430008090033",
+			"value": "0x0",
+			"gas": 500000,
+			"gasUsed": 457161,
+			"output": null,
+			"error": null,
+			"revertReason": null,
+			"depth": 0,
+			"calls": [
+			  {
+				"type": "CREATE",
+				"from": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+				"to": "0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4",
+				"input": "0x608060405234801561001057600080fd5b50610127806100206000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c80631d834a1b14602d575b600080fd5b60436004803603810190603f919060b8565b6045565b005b600081146067578060008084815260200190815260200160002081905550607e565b600080838152602001908152602001600020600090555b5050565b600080fd5b6000819050919050565b6098816087565b811460a257600080fd5b50565b60008135905060b2816091565b92915050565b6000806040838503121560cc5760cb6082565b5b600060d88582860160a5565b925050602060e78582860160a5565b915050925092905056fea2646970667358221220941edb58b322ea8088f4f9091a8a48c92e59c2f39db303d8e126a0c3dd434dde64736f6c63430008090033",
+				"value": "0x0",
+				"gas": 419604,
+				"gasUsed": 91133,
+				"output": null,
+				"error": null,
+				"revertReason": null,
+				"depth": 1,
+				"calls": []
+			  }
+			]
+		  }
+		]
+        "#;
+		let expected = serde_json::from_str::<Vec<crate::runner::tracing::CallTrace>>(expected).unwrap();
+		assert_eq!(tracer.finalize(), TraceOutcome::Calls(expected));
+
+		let contract_address = result.value;
+
+		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+
+		let mut tracer = crate::runner::tracing::Tracer::new(TracerConfig::CallTracer);
+		crate::runner::tracing::using(&mut tracer, || {
+			assert_ok!(EVM::call(
+				RuntimeOrigin::signed(alice_account_id.clone()),
+				contract_address,
+				hex! {"
+					da1385d5
+					0000000000000000000000000000000000000000000000000000000000000001
+				"}
+				.to_vec(),
+				0,
+				1000000,
+				0,
+				vec![],
+			));
+		});
+
+		let expected = r#"
+        [
+		  {
+			"type": "CALL",
+			"from": "0x1000000000000000000000000000000000000001",
+			"to": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+			"input": "0xda1385d50000000000000000000000000000000000000000000000000000000000000001",
+			"value": "0x0",
+			"gas": 1000000,
+			"gasUsed": 50007,
+			"output": null,
+			"error": null,
+			"revertReason": null,
+			"depth": 0,
+			"calls": [
+			  {
+				"type": "CALL",
+				"from": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+				"to": "0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4",
+				"input": "0x1d834a1b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001",
+				"value": "0x0",
+				"gas": 973100,
+				"gasUsed": 22883,
+				"output": null,
+				"error": null,
+				"revertReason": null,
+				"depth": 1,
+				"calls": []
+			  }
+			]
+		  }
+		]
+        "#;
+		let expected = serde_json::from_str::<Vec<crate::runner::tracing::CallTrace>>(expected).unwrap();
+		assert_eq!(tracer.finalize(), TraceOutcome::Calls(expected));
+
+		let mut tracer = crate::runner::tracing::Tracer::new(TracerConfig::OpcodeTracer(OpcodeConfig {
+			page: 0,
+			page_size: 1_000,
+			disable_stack: false,
+			enable_memory: true,
+		}));
+		crate::runner::tracing::using(&mut tracer, || {
+			assert_ok!(EVM::call(
+				RuntimeOrigin::signed(alice_account_id.clone()),
+				contract_address,
+				hex! {"
+					da1385d5
+					0000000000000000000000000000000000000000000000000000000000000001
+				"}
+				.to_vec(),
+				0,
+				1000000,
+				0,
+				vec![],
+			));
+		});
+
+		match tracer.finalize() {
+			TraceOutcome::Steps(steps) => {
+				assert_eq!(steps.len(), 553);
+				let step = r#"
+					{
+						"op": 96,
+						"pc": 0,
+						"depth": 0,
+						"gas": 978796,
+						"stack": [],
+						"memory": null
+					}
+				"#;
+						let step = serde_json::from_str::<crate::runner::tracing::Step>(step).unwrap();
+						assert_eq!(steps.first().unwrap(), &step);
+
+						let step = r#"
+					{
+						"op": 0,
+						"pc": 194,
+						"depth": 0,
+						"gas": 949993,
+						"stack": [[218, 19, 133, 213]],
+						"memory": [[0], [0], [128], [0], [29, 131, 74, 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0], [0, 0, 0, 1]]
+					}
+				"#;
+				let step = serde_json::from_str::<crate::runner::tracing::Step>(step).unwrap();
+				assert_eq!(steps.last().unwrap(), &step);
+			}
+			_ => panic!("unexpected trace outcome"),
+		}
+	})
 }

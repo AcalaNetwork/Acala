@@ -1299,7 +1299,7 @@ impl<T: Config> Pallet<T> {
 			path_length >= 2 && path_length <= T::TradingPathLimit::get().saturated_into(),
 			Error::<T>::InvalidTradingPathLength
 		);
-		ensure!(path.get(0) != path.get(path_length - 1), Error::<T>::InvalidTradingPath);
+		ensure!(path.first() != path.last(), Error::<T>::InvalidTradingPath);
 
 		Ok(())
 	}

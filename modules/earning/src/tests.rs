@@ -173,7 +173,7 @@ fn unbonding_works() {
 			}
 			.into(),
 		);
-		OnUnbonded::assert_eq_and_clear(vec![(ALICE, 900)]);
+		OnUnbonded::assert_eq_and_clear(vec![(ALICE, 1000)]);
 		OnUnstakeFee::assert_eq_and_clear(vec![100]);
 		// takes instant unbonding fee
 		assert_eq!(

@@ -24,16 +24,15 @@ use super::*;
 use crate as liquid_crowdloan;
 
 use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
+	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	traits::{ConstU128, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
-use sp_core::{H160, H256};
+use sp_core::H160;
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
-use std::cell::RefCell;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -47,30 +46,12 @@ pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const VAULT: AccountId = AccountId32::new([3u8; 32]);
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = Everything;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
-	type Nonce = u64;
-	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<250>;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -136,9 +117,9 @@ impl module_currencies::Config for Runtime {
 	type OnDust = ();
 }
 
-thread_local! {
-	pub static TRANSFER_RECORD: RefCell<Option<(AccountId, AccountId, Balance)>> = RefCell::new(None);
-	pub static TRANSFER_OK: RefCell<bool> = RefCell::new(true);
+parameter_types! {
+	pub static TransferRecord: Option<(AccountId, AccountId, Balance)> = None;
+	pub static TransferOk: bool = true;
 }
 
 pub struct MockXcmTransfer;
@@ -148,8 +129,8 @@ impl CrowdloanVaultXcm<AccountId, Balance> for MockXcmTransfer {
 		recipient: AccountId,
 		amount: Balance,
 	) -> DispatchResult {
-		if TRANSFER_OK.with(|v| *v.borrow()) {
-			TRANSFER_RECORD.with(|v| *v.borrow_mut() = Some((vault, recipient, amount)));
+		if TransferOk::get() {
+			TransferRecord::mutate(|v| *v = Some((vault, recipient, amount)));
 			Ok(())
 		} else {
 			Err(DispatchError::Other("transfer failed"))
@@ -211,8 +192,8 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
-		TRANSFER_RECORD.with(|v| *v.borrow_mut() = None);
-		TRANSFER_OK.with(|v| *v.borrow_mut() = self.transfer_ok);
+		TransferRecord::mutate(|v| *v = None);
+		TransferOk::mutate(|v| *v = self.transfer_ok);
 
 		let mut t = frame_system::GenesisConfig::<Runtime>::default()
 			.build_storage()

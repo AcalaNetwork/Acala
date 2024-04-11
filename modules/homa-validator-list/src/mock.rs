@@ -22,16 +22,14 @@
 
 use super::*;
 use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
+	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	traits::{ConstU128, ConstU32, ConstU64, Nothing},
 };
 use frame_system::EnsureSignedBy;
 use module_support::ExchangeRate;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
-use sp_core::H256;
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
-use sp_std::cell::RefCell;
 use std::collections::HashMap;
 
 pub type AccountId = u128;
@@ -49,30 +47,12 @@ mod homa_validator_list {
 	pub use super::super::*;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type Nonce = u64;
-	type RuntimeCall = RuntimeCall;
-	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<250>;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type DbWeight = ();
-	type BaseCallFilter = Everything;
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -127,15 +107,15 @@ impl orml_currencies::Config for Runtime {
 	type WeightInfo = ();
 }
 
-thread_local! {
-	pub static SHARES: RefCell<HashMap<(AccountId, AccountId), Balance>> = RefCell::new(HashMap::new());
-	pub static ACCUMULATED_SLASH: RefCell<Balance> = RefCell::new(0);
+parameter_types! {
+	pub static Shares: HashMap<(AccountId, AccountId), Balance> = HashMap::new();
+	pub static AccumulatedSlash: Balance = 0;
 }
 
 pub struct MockOnSlash;
 impl Happened<Balance> for MockOnSlash {
 	fn happened(amount: &Balance) {
-		ACCUMULATED_SLASH.with(|v| *v.borrow_mut() += amount);
+		AccumulatedSlash::mutate(|v| *v += amount);
 	}
 }
 
@@ -143,15 +123,15 @@ pub struct MockOnIncreaseGuarantee;
 impl Happened<(AccountId, AccountId, Balance)> for MockOnIncreaseGuarantee {
 	fn happened(info: &(AccountId, AccountId, Balance)) {
 		let (account_id, relaychain_id, amount) = info;
-		SHARES.with(|v| {
-			let mut old_map = v.borrow().clone();
+		Shares::mutate(|v| {
+			let mut old_map = v.clone();
 			if let Some(share) = old_map.get_mut(&(*account_id, *relaychain_id)) {
 				*share = share.saturating_add(*amount);
 			} else {
 				old_map.insert((*account_id, *relaychain_id), *amount);
 			};
 
-			*v.borrow_mut() = old_map;
+			*v = old_map;
 		});
 	}
 }
@@ -160,15 +140,15 @@ pub struct MockOnDecreaseGuarantee;
 impl Happened<(AccountId, AccountId, Balance)> for MockOnDecreaseGuarantee {
 	fn happened(info: &(AccountId, AccountId, Balance)) {
 		let (account_id, relaychain_id, amount) = info;
-		SHARES.with(|v| {
-			let mut old_map = v.borrow().clone();
+		Shares::mutate(|v| {
+			let mut old_map = v.clone();
 			if let Some(share) = old_map.get_mut(&(*account_id, *relaychain_id)) {
 				*share = share.saturating_sub(*amount);
 			} else {
 				old_map.insert((*account_id, *relaychain_id), Default::default());
 			};
 
-			*v.borrow_mut() = old_map;
+			*v = old_map;
 		});
 	}
 }

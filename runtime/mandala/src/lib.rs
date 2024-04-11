@@ -53,7 +53,7 @@ use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
+use module_support::{AddressMapping, AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 use parity_scale_codec::{Decode, DecodeLimit, Encode};
 use scale_info::TypeInfo;
@@ -132,7 +132,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2230,
+	spec_version: 2240,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -244,6 +244,7 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type MaxConsumers = ConstU32<16>;
+	type RuntimeTask = ();
 }
 
 impl pallet_aura::Config for Runtime {
@@ -1724,13 +1725,14 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type OnSystemEvent = ();
 	type SelfParaId = ParachainInfo;
-	type DmpMessageHandler = DmpQueue;
+	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, xcm_config::RelayOrigin>;
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type CheckAssociatedRelayNumber =
 		CheckRelayNumber<EvmChainId<Runtime>, cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases>;
+	type WeightInfo = cumulus_pallet_parachain_system::weights::SubstrateWeight<Runtime>;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -2106,10 +2108,11 @@ construct_runtime!(
 		XcmpQueue: cumulus_pallet_xcmp_queue = 170,
 		PolkadotXcm: pallet_xcm = 171,
 		CumulusXcm: cumulus_pallet_xcm exclude_parts { Call } = 172,
-		DmpQueue: cumulus_pallet_dmp_queue = 173,
+		// DmpQueue is removed
 		XTokens: orml_xtokens = 174,
 		UnknownTokens: orml_unknown_tokens = 175,
 		OrmlXcm: orml_xcm = 176,
+		MessageQueue: pallet_message_queue = 177,
 
 		// Smart contracts
 		EVM: module_evm = 180,
@@ -2337,7 +2340,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance> for Runtime {
+	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance, AccountId> for Runtime {
 		fn block_limits() -> BlockLimits {
 			BlockLimits {
 				max_gas_limit: runtime_common::EvmLimits::<Runtime>::max_gas_limit(),
@@ -2421,6 +2424,50 @@ impl_runtime_apis! {
 			};
 
 			request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))
+		}
+
+		// required by xtokens precompile
+		#[transactional]
+		fn account_call(
+			from: AccountId,
+			to: H160,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			estimate: bool,
+		) -> Result<CallInfo, sp_runtime::DispatchError> {
+			let from = EvmAddressMapping::<Runtime>::get_or_create_evm_address(&from);
+
+			Self::call(from, to, data, value, gas_limit, storage_limit, access_list, estimate)
+		}
+
+		fn account_create(
+			from: AccountId,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			estimate: bool,
+		) -> Result<CreateInfo, sp_runtime::DispatchError> {
+			let from = EvmAddressMapping::<Runtime>::get_or_create_evm_address(&from);
+
+			Self::create(from, data, value, gas_limit, storage_limit, access_list, estimate)
+		}
+	}
+
+	#[cfg(feature = "tracing")]
+	impl module_evm_rpc_runtime_api::EVMTraceApi<Block> for Runtime {
+		fn trace_extrinsic(
+			extrinsic: <Block as BlockT>::Extrinsic,
+			tracer_config: primitives::evm::tracing::TracerConfig,
+		) -> Result<module_evm::runner::tracing::TraceOutcome, sp_runtime::transaction_validity::TransactionValidityError> {
+			let mut tracer = module_evm::runner::tracing::Tracer::new(tracer_config);
+			module_evm::runner::tracing::using(&mut tracer, || {
+				Executive::apply_extrinsic(extrinsic)
+			}).map(|_| tracer.finalize())
 		}
 	}
 
@@ -2539,7 +2586,6 @@ mod tests {
 	use super::*;
 	use frame_support::{dispatch::DispatchInfo, traits::WhitelistedStorageKeys};
 	use frame_system::offchain::CreateSignedTransaction;
-	use module_support::AddressMapping;
 	use sp_core::hexdisplay::HexDisplay;
 	use sp_runtime::traits::SignedExtension;
 	use std::collections::HashSet;

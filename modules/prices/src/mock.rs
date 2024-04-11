@@ -21,20 +21,16 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{ConstU64, Everything, Nothing},
-};
+use frame_support::{construct_runtime, derive_impl, ord_parameter_types, parameter_types, traits::Nothing};
 use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockErc20InfoMapping, ExchangeRate, SwapLimit};
 use orml_traits::{parameter_type_with_key, DataFeeder};
 use primitives::{currency::DexShare, Amount, TokenSymbol};
-use sp_core::{H160, H256};
+use sp_core::H160;
 use sp_runtime::{
 	traits::{IdentityLookup, One as OneT, Zero},
 	BuildStorage, DispatchError, FixedPointNumber,
 };
-use sp_std::cell::RefCell;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -56,44 +52,26 @@ mod prices {
 	pub use super::super::*;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type Nonce = u64;
-	type RuntimeCall = RuntimeCall;
-	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = ConstU64<250>;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = ();
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type DbWeight = ();
-	type BaseCallFilter = Everything;
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
-	type MaxConsumers = ConstU32<16>;
 }
 
-thread_local! {
-	static CHANGED: RefCell<bool> = RefCell::new(false);
+parameter_types! {
+	static Changed: bool = false;
 }
 
 pub fn mock_oracle_update() {
-	CHANGED.with(|v| *v.borrow_mut() = true)
+	Changed::mutate(|v| *v = true)
 }
 
 pub struct MockDataProvider;
 impl DataProvider<CurrencyId, Price> for MockDataProvider {
 	fn get(currency_id: &CurrencyId) -> Option<Price> {
-		if CHANGED.with(|v| *v.borrow_mut()) {
+		if Changed::get() {
 			match *currency_id {
 				AUSD => None,
 				TAI => Some(Price::saturating_from_integer(40000)),

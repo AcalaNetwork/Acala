@@ -58,7 +58,7 @@ use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
+use module_support::{AddressMapping, AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 
 use cumulus_pallet_parachain_system::{RelayChainStateProof, RelaychainDataProvider};
@@ -109,11 +109,11 @@ use runtime_common::{
 	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
 	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, ExistentialDepositsTimesOneHundred,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, FixedRateOfAsset, GasToWeight,
-	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
-	MaxTipsOfPriority, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
-	RuntimeBlockLength, RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
-	TimeStampedPrice, TipPerWeightStep, KAR, KSM, KUSD, LKSM, TAI,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
+	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
+	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength,
+	RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
+	TipPerWeightStep, KAR, KSM, KUSD, LKSM, TAI,
 };
 use xcm::v3::prelude::*;
 
@@ -133,7 +133,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2230,
+	spec_version: 2240,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -235,7 +235,8 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+				| pallet_xcm::Call::limited_teleport_assets { .. }
+				| pallet_xcm::Call::transfer_assets { .. } => {
 					return false;
 				}
 				pallet_xcm::Call::force_xcm_version { .. }
@@ -282,6 +283,7 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type MaxConsumers = ConstU32<16>;
+	type RuntimeTask = ();
 }
 
 impl pallet_aura::Config for Runtime {
@@ -1563,13 +1565,14 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type OnSystemEvent = ();
 	type SelfParaId = ParachainInfo;
-	type DmpMessageHandler = DmpQueue;
+	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, xcm_config::RelayOrigin>;
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type CheckAssociatedRelayNumber =
 		CheckRelayNumber<EvmChainId<Runtime>, cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases>;
+	type WeightInfo = cumulus_pallet_parachain_system::weights::SubstrateWeight<Runtime>;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -1822,10 +1825,11 @@ construct_runtime!(
 		XcmpQueue: cumulus_pallet_xcmp_queue = 50,
 		PolkadotXcm: pallet_xcm = 51,
 		CumulusXcm: cumulus_pallet_xcm exclude_parts { Call } = 52,
-		DmpQueue: cumulus_pallet_dmp_queue = 53,
+		// 53 was used by DmpQueue which is now replaced by MessageQueue
 		XTokens: orml_xtokens = 54,
 		UnknownTokens: orml_unknown_tokens = 55,
 		OrmlXcm: orml_xcm = 56,
+		MessageQueue: pallet_message_queue = 57,
 
 		// Governance
 		Authority: orml_authority = 60,
@@ -1933,8 +1937,13 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
+parameter_types! {
+	pub const DmpQueuePalletName: &'static str = "DmpQueue";
+}
+
 #[allow(unused_parens)]
-type Migrations = ();
+type Migrations =
+	(frame_support::migrations::RemovePallet<DmpQueuePalletName, <Runtime as frame_system::Config>::DbWeight>,);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -2132,7 +2141,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance> for Runtime {
+	impl module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance, AccountId> for Runtime {
 		fn block_limits() -> BlockLimits {
 			BlockLimits {
 				max_gas_limit: runtime_common::EvmLimits::<Runtime>::max_gas_limit(),
@@ -2216,6 +2225,50 @@ impl_runtime_apis! {
 			};
 
 			request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))
+		}
+
+		// required by xtokens precompile
+		#[transactional]
+		fn account_call(
+			from: AccountId,
+			to: H160,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			estimate: bool,
+		) -> Result<CallInfo, sp_runtime::DispatchError> {
+			let from = EvmAddressMapping::<Runtime>::get_or_create_evm_address(&from);
+
+			Self::call(from, to, data, value, gas_limit, storage_limit, access_list, estimate)
+		}
+
+		fn account_create(
+			from: AccountId,
+			data: Vec<u8>,
+			value: Balance,
+			gas_limit: u64,
+			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
+			estimate: bool,
+		) -> Result<CreateInfo, sp_runtime::DispatchError> {
+			let from = EvmAddressMapping::<Runtime>::get_or_create_evm_address(&from);
+
+			Self::create(from, data, value, gas_limit, storage_limit, access_list, estimate)
+		}
+	}
+
+	#[cfg(feature = "tracing")]
+	impl module_evm_rpc_runtime_api::EVMTraceApi<Block> for Runtime {
+		fn trace_extrinsic(
+			extrinsic: <Block as BlockT>::Extrinsic,
+			tracer_config: primitives::evm::tracing::TracerConfig,
+		) -> Result<module_evm::runner::tracing::TraceOutcome, sp_runtime::transaction_validity::TransactionValidityError> {
+			let mut tracer = module_evm::runner::tracing::Tracer::new(tracer_config);
+			module_evm::runner::tracing::using(&mut tracer, || {
+				Executive::apply_extrinsic(extrinsic)
+			}).map(|_| tracer.finalize())
 		}
 	}
 
