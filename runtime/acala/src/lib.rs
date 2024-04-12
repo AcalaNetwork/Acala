@@ -38,7 +38,7 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdConversion, AccountIdLookup, BadOrigin, BlakeTwo256, Block as BlockT, Bounded, Convert, Hash as HashT,
+		AccountIdConversion, AccountIdLookup, BadOrigin, BlakeTwo256, Block as BlockT, Bounded, Convert,
 		IdentityLookup, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
@@ -60,7 +60,7 @@ use module_relaychain::RelayChainCallBuilder;
 use module_support::{AddressMapping, AssetIdMapping, DispatchableTask, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 
-use cumulus_pallet_parachain_system::{RelayChainStateProof, RelaychainDataProvider};
+use cumulus_pallet_parachain_system::RelaychainDataProvider;
 use frame_support::{
 	construct_runtime,
 	pallet_prelude::InvalidTransaction,
@@ -70,7 +70,7 @@ use frame_support::{
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU128, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency, Currency,
 		EnsureOrigin, EqualPrivilegeOnly, Get, Imbalance, InstanceFilter, LinearStoragePrice, LockIdentifier,
-		OnUnbalanced, Randomness, SortedMembers,
+		OnUnbalanced, SortedMembers,
 	},
 	transactional,
 	weights::{constants::RocksDbWeight, ConstantMultiplier, Weight},
@@ -110,9 +110,9 @@ use runtime_common::{
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, ExistentialDepositsTimesOneHundred,
 	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
-	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength,
-	RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, TAP,
+	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, RandomnessSource, Rate, Ratio,
+	RuntimeBlockLength, RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, TAP,
 };
 use xcm::v3::prelude::*;
 
@@ -1466,33 +1466,6 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGasV2 {
 	fn get() -> I {
 		// NOTE: 100 GWei
 		I::from(100_000_000_000u128)
-	}
-}
-
-pub struct RandomnessSource<T>(sp_std::marker::PhantomData<T>);
-impl<T: frame_system::Config> Randomness<T::Hash, BlockNumber> for RandomnessSource<T> {
-	fn random(subject: &[u8]) -> (T::Hash, BlockNumber) {
-		let relay_storage_root = ParachainSystem::validation_data()
-			.expect("set in `set_validation_data`")
-			.relay_parent_storage_root;
-		let relay_chain_state = ParachainSystem::relay_state_proof().expect("set in `set_validation_data`");
-		let relay_chain_state_proof =
-			RelayChainStateProof::new(ParachainInfo::get(), relay_storage_root, relay_chain_state)
-				.expect("Invalid relay chain state proof, already constructed in `set_validation_data`");
-
-		let random: [u8; 32] = relay_chain_state_proof
-			.read_optional_entry(cumulus_primitives_core::relay_chain::well_known_keys::CURRENT_BLOCK_RANDOMNESS)
-			.ok()
-			.flatten()
-			.expect("expected to be able to read current block randomness from relay chain state proof");
-
-		let mut subject = subject.to_vec();
-		subject.reserve(32); // RANDOMNESS_LENGTH is 32
-		subject.extend_from_slice(&random);
-
-		let random = T::Hashing::hash(&subject[..]);
-
-		(random, System::block_number())
 	}
 }
 
