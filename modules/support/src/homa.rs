@@ -18,7 +18,7 @@
 
 use crate::{ExchangeRate, Rate};
 use sp_runtime::DispatchResult;
-use sp_std::fmt::Debug;
+use sp_std::{fmt::Debug, vec::Vec};
 use xcm::v3::prelude::*;
 
 pub trait HomaSubAccountXcm<AccountId, Balance> {

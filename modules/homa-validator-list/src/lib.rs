@@ -41,49 +41,16 @@ use sp_runtime::{
 	traits::{BlockNumberProvider, Bounded, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
-use sp_std::{fmt::Debug, vec::Vec};
+use sp_std::{fmt::Debug, vec, vec::Vec};
 
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
+pub use weights::WeightInfo;
 
 pub const HOMA_VALIDATOR_LIST_ID: LockIdentifier = *b"aca/hmvl";
-
-pub trait WeightInfo {
-	fn bond() -> Weight;
-	fn unbond() -> Weight;
-	fn rebond() -> Weight;
-	fn withdraw_unbonded() -> Weight;
-	fn freeze(u: u32) -> Weight;
-	fn thaw() -> Weight;
-	fn slash() -> Weight;
-}
-
-// TODO: do benchmarking test.
-impl WeightInfo for () {
-	fn bond() -> Weight {
-		Weight::from_parts(10_000, 0)
-	}
-	fn unbond() -> Weight {
-		Weight::from_parts(10_000, 0)
-	}
-	fn rebond() -> Weight {
-		Weight::from_parts(10_000, 0)
-	}
-	fn withdraw_unbonded() -> Weight {
-		Weight::from_parts(10_000, 0)
-	}
-	fn freeze(_u: u32) -> Weight {
-		Weight::from_parts(10_000, 0)
-	}
-	fn thaw() -> Weight {
-		Weight::from_parts(10_000, 0)
-	}
-	fn slash() -> Weight {
-		Weight::from_parts(10_000, 0)
-	}
-}
 
 /// Insurance for a validator from a single address
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, Eq, MaxEncodedLen, TypeInfo)]
@@ -147,13 +114,13 @@ impl<BlockNumber: PartialOrd> Guarantee<BlockNumber> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SlashInfo<Balance, RelayChainAccountId> {
 	/// Address of a validator on the relay chain
-	validator: RelayChainAccountId,
+	pub validator: RelayChainAccountId,
 	/// The amount of tokens a validator has in backing on the relay chain
-	relaychain_token_amount: Balance,
+	pub relaychain_token_amount: Balance,
 }
 
 /// Validator insurance and frozen status
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen, TypeInfo)]
+#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen, TypeInfo, PartialEq)]
 pub struct ValidatorBacking {
 	/// Total insurance from all guarantors
 	total_insurance: Balance,
@@ -259,6 +226,10 @@ pub mod module {
 			who: T::AccountId,
 			validator: T::RelayChainAccountId,
 			bond: Balance,
+		},
+		ResetReservedValidators {
+			sub_account_index: u16,
+			reserved_validators: Vec<T::RelayChainAccountId>,
 		},
 	}
 
@@ -465,7 +436,7 @@ pub mod module {
 		///
 		/// - `validators`: The AccountIds of the validators on the relay chain to unfreeze
 		#[pallet::call_index(5)]
-		#[pallet::weight(T::WeightInfo::thaw())]
+		#[pallet::weight(T::WeightInfo::thaw(validators.len() as u32))]
 		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::RelayChainAccountId>) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			validators.iter().for_each(|validator| {
@@ -488,7 +459,7 @@ pub mod module {
 		///
 		/// - `slashes`: The SlashInfos of the validators to be slashed
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::WeightInfo::slash())]
+		#[pallet::weight(T::WeightInfo::slash(slashes.len() as u32))]
 		pub fn slash(origin: OriginFor<T>, slashes: Vec<SlashInfo<Balance, T::RelayChainAccountId>>) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			let liquid_staking_exchange_rate = T::LiquidStakingExchangeRateProvider::get_exchange_rate();
@@ -531,17 +502,25 @@ pub mod module {
 		}
 
 		#[pallet::call_index(7)]
-		#[pallet::weight(T::WeightInfo::slash())]
+		#[pallet::weight(T::WeightInfo::set_reserved_validators(updates.len() as u32))]
 		pub fn set_reserved_validators(
 			origin: OriginFor<T>,
 			updates: Vec<(u16, Vec<T::RelayChainAccountId>)>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
-			for (sub_account_index, reserved_validators) in updates {
+			for (sub_account_index, mut reserved_validators) in updates {
+				reserved_validators.sort();
+				reserved_validators.dedup();
 				let reserved: BoundedVec<T::RelayChainAccountId, T::MaxNominations> = reserved_validators
+					.clone()
 					.try_into()
 					.map_err(|_| Error::<T>::ExceedMaxNominations)?;
 				ReservedValidators::<T>::insert(sub_account_index, reserved);
+
+				Self::deposit_event(Event::ResetReservedValidators {
+					sub_account_index,
+					reserved_validators,
+				});
 			}
 			Ok(())
 		}
@@ -555,24 +534,26 @@ impl<T: Config> Pallet<T> {
 			all_reserved_validators.extend(ReservedValidators::<T>::get(sub_account_index));
 		}
 
-		let mut active_candidates: Vec<(T::RelayChainAccountId, ValidatorBacking)> = ValidatorBackings::<T>::iter()
-			.filter(
-				|(
-					candidate,
-					ValidatorBacking {
-						total_insurance,
-						is_frozen,
-					},
-				)| {
-					!is_frozen
-						&& *total_insurance >= T::ValidatorInsuranceThreshold::get()
-						&& !all_reserved_validators.contains(candidate)
-				},
-			)
-			.collect();
+		let mut active_candidates: Vec<(T::RelayChainAccountId, Balance)> = vec![];
+
+		for (
+			candidate,
+			ValidatorBacking {
+				total_insurance,
+				is_frozen,
+			},
+		) in ValidatorBackings::<T>::iter()
+		{
+			if !is_frozen
+				&& total_insurance >= T::ValidatorInsuranceThreshold::get()
+				&& !all_reserved_validators.contains(&candidate)
+			{
+				active_candidates.push((candidate, total_insurance));
+			}
+		}
 
 		// sort by des
-		active_candidates.sort_by(|a, b| b.1.total_insurance.cmp(&a.1.total_insurance));
+		active_candidates.sort_by(|a, b| b.1.cmp(&a.1));
 
 		active_candidates
 			.iter()

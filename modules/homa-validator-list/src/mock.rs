@@ -22,10 +22,10 @@
 
 use super::*;
 use frame_support::{
-	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Nothing},
 };
-use frame_system::EnsureSignedBy;
+use frame_system::EnsureRoot;
 use module_support::ExchangeRate;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
@@ -37,9 +37,19 @@ pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
-pub const VALIDATOR_1: AccountId = 2;
-pub const VALIDATOR_2: AccountId = 3;
-pub const VALIDATOR_3: AccountId = 4;
+pub const CHARLIE: AccountId = 2;
+pub const VALIDATOR_1: AccountId = 11;
+pub const VALIDATOR_2: AccountId = 12;
+pub const VALIDATOR_3: AccountId = 13;
+pub const VALIDATOR_4: AccountId = 14;
+pub const VALIDATOR_5: AccountId = 15;
+pub const VALIDATOR_6: AccountId = 16;
+pub const VALIDATOR_7: AccountId = 17;
+pub const VALIDATOR_8: AccountId = 18;
+pub const VALIDATOR_9: AccountId = 19;
+pub const VALIDATOR_10: AccountId = 20;
+pub const VALIDATOR_11: AccountId = 21;
+pub const VALIDATOR_12: AccountId = 22;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
@@ -173,10 +183,6 @@ impl BlockNumberProvider for MockBlockNumberProvider {
 	}
 }
 
-ord_parameter_types! {
-	pub const Admin: AccountId = 10;
-}
-
 impl Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RelayChainAccountId = AccountId;
@@ -184,14 +190,14 @@ impl Config for Runtime {
 	type MinBondAmount = ConstU128<100>;
 	type BondingDuration = ConstU64<100>;
 	type ValidatorInsuranceThreshold = ConstU128<200>;
-	type GovernanceOrigin = EnsureSignedBy<Admin, AccountId>;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
 	type OnSlash = MockOnSlash;
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 	type WeightInfo = ();
 	type OnIncreaseGuarantee = MockOnIncreaseGuarantee;
 	type OnDecreaseGuarantee = MockOnDecreaseGuarantee;
 	type BlockNumberProvider = MockBlockNumberProvider;
-	type MaxNominations = ConstU32<24>;
+	type MaxNominations = ConstU32<5>;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 }
 
@@ -214,7 +220,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			balances: vec![(ALICE, LDOT, 1000), (BOB, LDOT, 1000)],
+			balances: vec![(ALICE, LDOT, 1000), (BOB, LDOT, 1000), (CHARLIE, LDOT, 1000000)],
 		}
 	}
 }
@@ -231,6 +237,10 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		t.into()
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| {
+			System::set_block_number(1);
+		});
+		ext
 	}
 }

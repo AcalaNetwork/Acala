@@ -2156,6 +2156,7 @@ mod benches {
 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
 		[module_evm, benchmarking::evm]
 		[module_homa, benchmarking::homa]
+		[module_homa_validator_list, benchmarking::homa_validator_list]
 		[module_honzon, benchmarking::honzon]
 		[module_cdp_treasury, benchmarking::cdp_treasury]
 		[module_collator_selection, benchmarking::collator_selection]

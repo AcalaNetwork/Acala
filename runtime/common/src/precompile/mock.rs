@@ -663,6 +663,7 @@ impl module_prices::Config for Test {
 /// mock XCM transfer.
 pub struct MockHomaSubAccountXcm;
 impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
+	type RelayChainAccountId = AccountId;
 	fn transfer_staking_to_sub_account(sender: &AccountId, _: u16, amount: Balance) -> DispatchResult {
 		Currencies::withdraw(StakingCurrencyId::get(), sender, amount)
 	}
@@ -679,7 +680,7 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 		Ok(())
 	}
 
-	fn nominate_on_sub_account(_: u16, _: Balance, _: Vec<AccountId>) -> DispatchResult {
+	fn nominate_on_sub_account(_: u16, _: Vec<Self::RelayChainAccountId>) -> DispatchResult {
 		Ok(())
 	}
 

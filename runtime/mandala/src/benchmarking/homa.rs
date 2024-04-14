@@ -133,7 +133,7 @@ runtime_benchmarks! {
 		Some(Rate::saturating_from_rational(1, 100)),
 		Some(Rate::saturating_from_rational(1, 100)),
 		Some(Rate::saturating_from_rational(1, 100)),
-		None
+		Some(7)
 	)
 
 	update_bump_era_params {
