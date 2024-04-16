@@ -442,7 +442,8 @@ where
 						.flatten()
 					{
 						randomness = current_block_randomness;
-						// maybe have a - 4 will make it secure enough
+						// the randomness is from relaychain so there is a delay have a - 4 to indicate the randomness
+						// is from previous relay block
 						block_number = frame_system::Pallet::<T>::block_number().saturating_sub(4u8.into())
 					}
 				}
