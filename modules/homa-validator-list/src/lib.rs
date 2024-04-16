@@ -27,6 +27,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
+#![allow(clippy::type_complexity)]
 
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
@@ -195,7 +196,6 @@ pub mod module {
 		BelowMinBondAmount,
 		UnbondingExists,
 		FrozenValidator,
-		ExceedMaxNominations,
 	}
 
 	#[pallet::event]
@@ -505,16 +505,18 @@ pub mod module {
 		#[pallet::weight(T::WeightInfo::set_reserved_validators(updates.len() as u32))]
 		pub fn set_reserved_validators(
 			origin: OriginFor<T>,
-			updates: Vec<(u16, Vec<T::RelayChainAccountId>)>,
+			updates: Vec<(u16, BoundedVec<T::RelayChainAccountId, T::MaxNominations>)>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
-			for (sub_account_index, mut reserved_validators) in updates {
+			for (sub_account_index, reserved_validators) in updates {
+				let mut reserved_validators: Vec<T::RelayChainAccountId> = reserved_validators.to_vec();
 				reserved_validators.sort();
 				reserved_validators.dedup();
+
 				let reserved: BoundedVec<T::RelayChainAccountId, T::MaxNominations> = reserved_validators
 					.clone()
 					.try_into()
-					.map_err(|_| Error::<T>::ExceedMaxNominations)?;
+					.expect("the length has been checked in params; qed");
 				ReservedValidators::<T>::insert(sub_account_index, reserved);
 
 				Self::deposit_event(Event::ResetReservedValidators {

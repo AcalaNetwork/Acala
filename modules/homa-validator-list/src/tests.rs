@@ -844,24 +844,6 @@ fn set_reserved_validators_work() {
 			BadOrigin
 		);
 
-		assert_noop!(
-			HomaValidatorListModule::set_reserved_validators(
-				RuntimeOrigin::root(),
-				vec![(
-					0,
-					vec![
-						VALIDATOR_1,
-						VALIDATOR_2,
-						VALIDATOR_3,
-						VALIDATOR_4,
-						VALIDATOR_5,
-						VALIDATOR_6
-					]
-				)]
-			),
-			Error::<Runtime>::ExceedMaxNominations
-		);
-
 		assert_eq!(HomaValidatorListModule::reserved_validators(0), vec![]);
 		assert_eq!(HomaValidatorListModule::reserved_validators(1), vec![]);
 		assert_eq!(HomaValidatorListModule::reserved_validators(2), vec![]);
@@ -871,17 +853,22 @@ fn set_reserved_validators_work() {
 			vec![
 				(
 					0,
-					vec![
-						VALIDATOR_1,
-						VALIDATOR_2,
-						VALIDATOR_3,
-						VALIDATOR_4,
-						VALIDATOR_5,
-						VALIDATOR_5
-					]
+					vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_3, VALIDATOR_4, VALIDATOR_5,]
+						.try_into()
+						.unwrap()
 				),
-				(2, vec![VALIDATOR_5, VALIDATOR_3, VALIDATOR_4, VALIDATOR_1]),
-				(1, vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_1, VALIDATOR_2, VALIDATOR_1]),
+				(
+					2,
+					vec![VALIDATOR_5, VALIDATOR_3, VALIDATOR_4, VALIDATOR_1]
+						.try_into()
+						.unwrap()
+				),
+				(
+					1,
+					vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_1, VALIDATOR_2, VALIDATOR_1]
+						.try_into()
+						.unwrap()
+				),
 			]
 		));
 		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
@@ -919,9 +906,14 @@ fn set_reserved_validators_work() {
 		assert_ok!(HomaValidatorListModule::set_reserved_validators(
 			RuntimeOrigin::root(),
 			vec![
-				(0, vec![VALIDATOR_3, VALIDATOR_4]),
-				(2, vec![]),
-				(1, vec![VALIDATOR_5, VALIDATOR_3, VALIDATOR_4, VALIDATOR_1]),
+				(0, vec![VALIDATOR_3, VALIDATOR_4].try_into().unwrap()),
+				(2, Default::default()),
+				(
+					1,
+					vec![VALIDATOR_5, VALIDATOR_3, VALIDATOR_4, VALIDATOR_1]
+						.try_into()
+						.unwrap()
+				),
 			]
 		));
 		assert_eq!(
@@ -1049,10 +1041,12 @@ fn sort_voted_nominations_work() {
 		assert_ok!(HomaValidatorListModule::set_reserved_validators(
 			RuntimeOrigin::root(),
 			vec![
-				(0, vec![VALIDATOR_8, VALIDATOR_10]),
+				(0, vec![VALIDATOR_8, VALIDATOR_10].try_into().unwrap()),
 				(
 					3,
 					vec![VALIDATOR_6, VALIDATOR_7, VALIDATOR_8, VALIDATOR_9, VALIDATOR_10]
+						.try_into()
+						.unwrap()
 				),
 			]
 		));
@@ -1173,7 +1167,10 @@ fn get_nominations_work() {
 		// set VALIDATOR_1 && VALIDATOR_2 as reserved validators
 		assert_ok!(HomaValidatorListModule::set_reserved_validators(
 			RuntimeOrigin::root(),
-			vec![(0, vec![VALIDATOR_1]), (1, vec![VALIDATOR_2]),]
+			vec![
+				(0, vec![VALIDATOR_1].try_into().unwrap()),
+				(1, vec![VALIDATOR_2].try_into().unwrap()),
+			]
 		));
 		assert_eq!(
 			HomaValidatorListModule::sort_voted_nominations(),
@@ -1198,7 +1195,7 @@ fn get_nominations_work() {
 		// set VALIDATOR_5 as reserved validator
 		assert_ok!(HomaValidatorListModule::set_reserved_validators(
 			RuntimeOrigin::root(),
-			vec![(2, vec![VALIDATOR_5]),]
+			vec![(2, vec![VALIDATOR_5].try_into().unwrap()),]
 		));
 		assert_eq!(
 			HomaValidatorListModule::sort_voted_nominations(),
@@ -1217,9 +1214,9 @@ fn get_nominations_work() {
 		assert_ok!(HomaValidatorListModule::set_reserved_validators(
 			RuntimeOrigin::root(),
 			vec![
-				(0, vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_5]),
-				(1, vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_5]),
-				(2, vec![VALIDATOR_1, VALIDATOR_2]),
+				(0, vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_5].try_into().unwrap()),
+				(1, vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_5].try_into().unwrap()),
+				(2, vec![VALIDATOR_1, VALIDATOR_2].try_into().unwrap()),
 			]
 		));
 		assert_eq!(
