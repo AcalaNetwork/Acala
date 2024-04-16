@@ -1561,6 +1561,7 @@ parameter_types! {
 	pub MinBondAmount: Balance = 10 * dollar(LDOT);
 	pub const ValidatorBackingBondingDuration: BlockNumber = 28 * DAYS;
 	pub ValidatorInsuranceThreshold: Balance = 100_000 * dollar(LDOT);
+	pub const MaxNominations: u32 = 24;
 }
 
 impl module_homa_validator_list::Config for Runtime {
@@ -1577,7 +1578,7 @@ impl module_homa_validator_list::Config for Runtime {
 	type OnIncreaseGuarantee = ();
 	type OnDecreaseGuarantee = ();
 	type BlockNumberProvider = RelaychainDataProvider<Runtime>;
-	type MaxNominations = ConstU32<24>;
+	type MaxNominations = MaxNominations;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 }
 

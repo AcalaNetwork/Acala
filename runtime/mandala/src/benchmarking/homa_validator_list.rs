@@ -17,12 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, Balance, HomaValidatorList, MinBondAmount, RelaychainDataProvider, Runtime,
+	AccountId, Balance, HomaValidatorList, MaxNominations, MinBondAmount, RelaychainDataProvider, Runtime,
 	ValidatorBackingBondingDuration, ValidatorInsuranceThreshold,
 };
 
 use super::utils::{set_balance, LIQUID};
 use frame_benchmarking::{account, whitelisted_caller};
+use frame_support::BoundedVec;
 use frame_system::RawOrigin;
 use module_homa_validator_list::SlashInfo;
 use orml_benchmarking::runtime_benchmarks;
@@ -146,11 +147,11 @@ runtime_benchmarks! {
 
 	set_reserved_validators {
 		let n in 1 .. 10;
-		let mut updates: Vec<(u16, Vec<AccountId>)> = vec![];
+		let mut updates: Vec<(u16, BoundedVec<AccountId, MaxNominations>)> = vec![];
 
 		for i in 0 .. n {
 			let validator: AccountId = account("validator", i, SEED);
-			updates.push((i.try_into().unwrap(), vec![validator]));
+			updates.push((i.try_into().unwrap(), vec![validator].try_into().unwrap()));
 		}
 	}: _(RawOrigin::Root, updates)
 }
