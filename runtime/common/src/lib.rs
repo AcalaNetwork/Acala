@@ -42,7 +42,7 @@ use primitives::{
 use scale_info::TypeInfo;
 use sp_core::H160;
 use sp_runtime::{
-	traits::{Convert, Hash, One},
+	traits::{Convert, Hash},
 	transaction_validity::TransactionPriority,
 	Perbill, RuntimeDebug, Saturating,
 };
@@ -418,6 +418,8 @@ where
 	T: frame_system::Config + cumulus_pallet_parachain_system::Config + parachain_info::Config,
 {
 	fn random(subject: &[u8]) -> (T::Hash, BlockNumberFor<T>) {
+		// If the relay randomness is not accessible, so insecure randomness is used and marked as stale
+		// with a block number of zero
 		let mut randomness: [u8; 32] = [0u8; 32];
 		randomness.clone_from_slice(frame_system::Pallet::<T>::parent_hash().as_ref());
 		let mut block_number = BlockNumberFor::<T>::default();
@@ -441,11 +443,7 @@ where
 					{
 						randomness = current_block_randomness;
 						// maybe have a - 4 will make it secure enough
-						block_number = frame_system::Pallet::<T>::block_number()
-							.saturating_sub(One::one())
-							.saturating_sub(One::one())
-							.saturating_sub(One::one())
-							.saturating_sub(One::one());
+						block_number = frame_system::Pallet::<T>::block_number().saturating_sub(4u8.into())
 					}
 				}
 			}
