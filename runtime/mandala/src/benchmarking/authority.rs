@@ -36,7 +36,7 @@ runtime_benchmarks! {
 		let ensure_root_call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 	}: _(RawOrigin::Root, AuthoritysOriginId::Root, Box::new(ensure_root_call.clone()))
 
-	// schdule a dispatchable to be dispatched at later block.
+	// schedule a dispatchable to be dispatched at later block.
 	schedule_dispatch_without_delay {
 		let ensure_root_call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
@@ -45,7 +45,7 @@ runtime_benchmarks! {
 		});
 	}: schedule_dispatch(RawOrigin::Root, DispatchTime::At(2), 0, false, Box::new(call.clone()))
 
-	// schdule a dispatchable to be dispatched at later block.
+	// schedule a dispatchable to be dispatched at later block.
 	// ensure that the delay is reached when scheduling
 	schedule_dispatch_with_delay {
 		let ensure_root_call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
