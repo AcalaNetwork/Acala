@@ -32,6 +32,7 @@ pub mod module_emergency_shutdown;
 pub mod module_evm;
 pub mod module_evm_accounts;
 pub mod module_homa;
+pub mod module_homa_validator_list;
 pub mod module_honzon;
 pub mod module_honzon_bridge;
 pub mod module_incentives;

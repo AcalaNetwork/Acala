@@ -707,7 +707,6 @@ parameter_types! {
 	pub const BondingDuration: EraIndex = 28;
 	pub const MintThreshold: Balance = 0;
 	pub const RedeemThreshold: Balance = 0;
-	pub VoidNominationsProvider: Vec<(u16, Vec<AccountId>)> = vec![];
 }
 
 impl module_homa::Config for Test {
@@ -726,7 +725,7 @@ impl module_homa::Config for Test {
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type XcmInterface = MockHomaSubAccountXcm;
 	type WeightInfo = ();
-	type NominationsProvider = VoidNominationsProvider;
+	type NominationsProvider = ();
 }
 
 impl orml_rewards::Config for Test {

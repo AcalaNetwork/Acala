@@ -1437,7 +1437,7 @@ impl module_homa_validator_list::Config for Runtime {
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type OnSlash = ();
 	type LiquidStakingExchangeRateProvider = Homa;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_homa_validator_list::WeightInfo<Runtime>;
 	type OnIncreaseGuarantee = ();
 	type OnDecreaseGuarantee = ();
 	type BlockNumberProvider = RelaychainDataProvider<Runtime>;

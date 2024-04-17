@@ -62,6 +62,9 @@ pub mod evm_accounts {
 pub mod homa {
 	include!("../../../mandala/src/benchmarking/homa.rs");
 }
+pub mod homa_validator_list {
+	include!("../../../mandala/src/benchmarking/homa_validator_list.rs");
+}
 pub mod honzon {
 	include!("../../../mandala/src/benchmarking/honzon.rs");
 }
