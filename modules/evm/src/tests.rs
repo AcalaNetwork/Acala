@@ -3039,6 +3039,22 @@ fn tracer_works() {
 			"error": null,
 			"revertReason": null,
 			"depth": 0,
+			"logs": [
+			  {
+			    "sLoad": {
+			      "address": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+			      "index": "0x0000000000000000000000000000000000000000000000000000000000000000",
+			      "value": "0x0000000000000000000000000000000000000000000000000000000000000000"
+			    }
+			  },
+			  {
+			    "sStore": {
+			      "address": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+			      "index": "0x0000000000000000000000000000000000000000000000000000000000000000",
+			      "value": "0x0000000000000000000000007b8f8ca099f6e33cf1817cf67d0556429cfc54e4"
+			    }
+			  }
+			],
 			"calls": [
 			  {
 				"type": "CREATE",
@@ -3052,6 +3068,7 @@ fn tracer_works() {
 				"error": null,
 				"revertReason": null,
 				"depth": 1,
+				"logs": [],
 				"calls": []
 			  }
 			]
@@ -3096,6 +3113,15 @@ fn tracer_works() {
 			"error": null,
 			"revertReason": null,
 			"depth": 0,
+			"logs": [
+			  {
+			    "sLoad": {
+			      "address": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+			      "index": "0x0000000000000000000000000000000000000000000000000000000000000000",
+			      "value": "0x0000000000000000000000007b8f8ca099f6e33cf1817cf67d0556429cfc54e4"
+			    }
+			  }
+			],
 			"calls": [
 			  {
 				"type": "CALL",
@@ -3109,6 +3135,15 @@ fn tracer_works() {
 				"error": null,
 				"revertReason": null,
 				"depth": 1,
+				"logs": [
+				  {
+				    "sStore": {
+				      "address": "0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4",
+				      "index": "0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5",
+				      "value": "0x0000000000000000000000000000000000000000000000000000000000000001"
+				    }
+				  }
+				],
 				"calls": []
 			  }
 			]
