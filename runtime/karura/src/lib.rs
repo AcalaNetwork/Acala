@@ -1584,7 +1584,7 @@ impl module_homa::Config for Runtime {
 
 parameter_types! {
 	pub MinBondAmount: Balance = 10 * dollar(LKSM);
-	pub const ValidatorBackingBondingDuration: BlockNumber = 7 * DAYS;
+	pub const ValidatorBackingBondingDuration: BlockNumber = 7 * 24 * 60 * 10; // 7 days on RelayChain
 	pub ValidatorInsuranceThreshold: Balance = 10_000 * dollar(LKSM);
 	pub const MaxNominations: u32 = 24;
 }
