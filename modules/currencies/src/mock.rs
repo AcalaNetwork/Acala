@@ -29,7 +29,10 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
-use module_support::{mocks::MockAddressMapping, AddressMapping};
+use module_support::{
+	mocks::{MockAddressMapping, TestRandomness},
+	AddressMapping,
+};
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use primitives::{evm::convert_decimals_to_evm, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
@@ -175,6 +178,7 @@ impl module_evm::Config for Runtime {
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Randomness = TestRandomness<Self>;
 	type Task = ();
 	type IdleScheduler = ();
 	type WeightInfo = ();
@@ -286,8 +290,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1235455,
-		used_storage: 5131,
+		used_gas: 1215220,
+		used_storage: 4996,
 	}));
 }
 

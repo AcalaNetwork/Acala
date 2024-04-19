@@ -33,9 +33,10 @@ use module_cdp_engine::CollateralCurrencyIds;
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
-	mocks::MockStableAsset, AddressMapping as AddressMappingT, AuctionManager, CrowdloanVaultXcm, DEXIncentives,
-	DispatchableTask, EmergencyShutdown, ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId,
-	PriceProvider, Rate, SpecificJointsSwap,
+	mocks::{MockStableAsset, TestRandomness},
+	AddressMapping as AddressMappingT, AuctionManager, CrowdloanVaultXcm, DEXIncentives, DispatchableTask,
+	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId, PriceProvider,
+	Rate, SpecificJointsSwap,
 };
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -588,6 +589,7 @@ impl module_evm::Config for Test {
 	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Randomness = TestRandomness<Self>;
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
 	type WeightInfo = ();

@@ -26,7 +26,7 @@ use frame_support::{
 	ConsensusEngineId,
 };
 use frame_system::EnsureSignedBy;
-use module_support::mocks::MockAddressMapping;
+use module_support::mocks::{MockAddressMapping, TestRandomness};
 use orml_traits::parameter_type_with_key;
 use primitives::{define_combined_task, Amount, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{bytes::from_hex, H160};
@@ -200,6 +200,7 @@ impl Config for Runtime {
 
 	type Runner = crate::runner::stack::Runner<Self>;
 	type FindAuthor = AuthorGiven;
+	type Randomness = TestRandomness<Self>;
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
 	type WeightInfo = ();

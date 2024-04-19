@@ -22,7 +22,6 @@ use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use nutsfinance_stable_asset::{
 	traits::StableAsset, PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo, SwapResult,
 };
-use parity_scale_codec::Encode;
 use primitives::{
 	currency::TokenInfo,
 	evm::{EvmAddress, H160_POSITION_TOKEN},
@@ -35,6 +34,8 @@ use sp_std::{marker::PhantomData, vec::Vec};
 
 #[cfg(feature = "std")]
 use frame_support::traits::Imbalance;
+use frame_system::pallet_prelude::BlockNumberFor;
+use parity_scale_codec::{Decode, Encode};
 
 pub struct MockAddressMapping;
 
@@ -406,5 +407,21 @@ impl<CurrencyId, Balance, AccountId, BlockNumber> StableAsset
 		_dy_bal: Self::Balance,
 	) -> Option<SwapResult<Self::Balance>> {
 		unimplemented!()
+	}
+}
+
+pub struct TestRandomness<T>(sp_std::marker::PhantomData<T>);
+
+impl<Output: Decode + Default, T> frame_support::traits::Randomness<Output, BlockNumberFor<T>> for TestRandomness<T>
+where
+	T: frame_system::Config,
+{
+	fn random(subject: &[u8]) -> (Output, BlockNumberFor<T>) {
+		use sp_runtime::traits::TrailingZeroInput;
+
+		(
+			Output::decode(&mut TrailingZeroInput::new(subject)).unwrap_or_default(),
+			frame_system::Pallet::<T>::block_number(),
+		)
 	}
 }
