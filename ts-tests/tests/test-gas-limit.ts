@@ -19,10 +19,10 @@ describeWithAcala("Acala RPC (GasLimit)", (context) => {
         const contract = await deployContract(alice, Factory);
         // limited by used_storage
         const result = await contract.createContractLoop(350);
-        expect(result.gasLimit.toNumber()).to.be.eq(3570298622);
+        expect(result.gasLimit.toNumber()).to.be.eq(3569798122);
 
         const result2 = await contract.incrementLoop(8130);
-        expect(result2.gasLimit.toNumber()).to.be.eq(29010806);
+        expect(result2.gasLimit.toNumber()).to.be.eq(27906506);
 
         const storages = await context.provider.api.query.evm.accountStorages.entries(contract.address);
         // 350 array items

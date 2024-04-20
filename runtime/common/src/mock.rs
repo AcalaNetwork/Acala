@@ -24,7 +24,10 @@ use frame_support::{
 };
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
-use module_support::{mocks::MockAddressMapping, DispatchableTask};
+use module_support::{
+	mocks::{MockAddressMapping, TestRandomness},
+	DispatchableTask,
+};
 use orml_traits::parameter_type_with_key;
 use parity_scale_codec::{Decode, Encode};
 use primitives::{
@@ -204,6 +207,7 @@ impl module_evm::Config for TestRuntime {
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = AuthorGiven;
+	type Randomness = TestRandomness<Self>;
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
 	type WeightInfo = ();

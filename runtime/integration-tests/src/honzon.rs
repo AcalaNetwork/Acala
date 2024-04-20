@@ -98,8 +98,8 @@ pub fn deploy_liquidation_contracts() {
 		from: repayment_evm_addr(),
 		contract: mock_liquidation_address_0(),
 		logs: vec![],
-		used_gas: 473376,
-		used_storage: 11949,
+		used_gas: 460625,
+		used_storage: 11887,
 	}));
 
 	assert_ok!(EVM::create(
@@ -115,8 +115,8 @@ pub fn deploy_liquidation_contracts() {
 		from: repayment_evm_addr(),
 		contract: mock_liquidation_address_1(),
 		logs: vec![],
-		used_gas: 473376,
-		used_storage: 11949,
+		used_gas: 460625,
+		used_storage: 11887,
 	}));
 }
 

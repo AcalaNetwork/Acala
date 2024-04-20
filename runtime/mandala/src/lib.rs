@@ -110,9 +110,9 @@ use runtime_common::{
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, ExistentialDepositsTimesOneHundred,
 	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
-	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength,
-	RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, ACA, AUSD, DOT, KSM, LCDOT, LDOT,
+	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, RandomnessSource, Rate, Ratio,
+	RuntimeBlockLength, RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LCDOT, LDOT,
 };
 use xcm::prelude::*;
 
@@ -142,7 +142,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	state_version: 0,
 };
 
-/// The version infromation used to identify this runtime when compiled
+/// The version information used to identify this runtime when compiled
 /// natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
@@ -1668,6 +1668,7 @@ impl module_evm::Config for Runtime {
 	type FreePublicationOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
+	type Randomness = RandomnessSource<Runtime>;
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;

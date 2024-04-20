@@ -182,7 +182,7 @@ pub mod module {
 
 			// self location is relative to self
 			let loc = T::SelfLocation::get();
-			// we need to reanchor it to the parent becuase the call is dispatched on parent
+			// we need to reanchor it to the parent because the call is dispatched on parent
 			let loc = loc
 				.reanchored(&MultiLocation::new(1, Here), Here)
 				.map_err(|_| Error::<T>::XcmFailed)?;

@@ -21,17 +21,17 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-use cumulus_pallet_parachain_system::CheckAssociatedRelayNumber;
+use cumulus_pallet_parachain_system::{CheckAssociatedRelayNumber, RelayChainStateProof};
 use frame_support::{
 	dispatch::DispatchClass,
 	parameter_types,
-	traits::{Contains, EitherOfDiverse, Get},
+	traits::{Contains, EitherOfDiverse, Get, Randomness},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_REF_TIME_PER_SECOND},
 		Weight,
 	},
 };
-use frame_system::{limits, EnsureRoot};
+use frame_system::{limits, pallet_prelude::BlockNumberFor, EnsureRoot};
 use orml_traits::{currency::MutationHooks, GetByKey};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use polkadot_parachain_primitives::primitives::RelayChainBlockNumber;
@@ -41,7 +41,11 @@ use primitives::{
 };
 use scale_info::TypeInfo;
 use sp_core::H160;
-use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill, RuntimeDebug};
+use sp_runtime::{
+	traits::{Convert, Hash},
+	transaction_validity::TransactionPriority,
+	Perbill, RuntimeDebug, Saturating,
+};
 use sp_std::{marker::PhantomData, prelude::*};
 use static_assertions::const_assert;
 
@@ -405,6 +409,54 @@ where
 	pub fn max_storage_limit() -> u32 {
 		let length = T::BlockLength::get();
 		*length.max.get(DispatchClass::Normal)
+	}
+}
+
+pub struct RandomnessSource<T>(sp_std::marker::PhantomData<T>);
+impl<T: frame_system::Config> Randomness<T::Hash, BlockNumberFor<T>> for RandomnessSource<T>
+where
+	T: frame_system::Config + cumulus_pallet_parachain_system::Config + parachain_info::Config,
+{
+	fn random(subject: &[u8]) -> (T::Hash, BlockNumberFor<T>) {
+		// If the relay randomness is not accessible, so insecure randomness is used and marked as stale
+		// with a block number of zero
+		let mut randomness: [u8; 32] = [0u8; 32];
+		randomness.clone_from_slice(frame_system::Pallet::<T>::parent_hash().as_ref());
+		let mut block_number = BlockNumberFor::<T>::default();
+
+		// ValidationData is removed at on_initialize and set at the inherent, this means it could be empty
+		// in the on_initialize hook for some pallets and some other inherents so this could fail when
+		// invoked by scheduler or some other pallet's on_initialize hook
+		if let Some(validation_data) = cumulus_pallet_parachain_system::Pallet::<T>::validation_data() {
+			let relay_storage_root = validation_data.relay_parent_storage_root;
+
+			if let Some(relay_state_proof) = cumulus_pallet_parachain_system::Pallet::<T>::relay_state_proof() {
+				if let Ok(relay_chain_state_proof) = RelayChainStateProof::new(
+					parachain_info::Pallet::<T>::get(),
+					relay_storage_root,
+					relay_state_proof,
+				) {
+					if let Some(current_block_randomness) = relay_chain_state_proof
+						.read_optional_entry(polkadot_primitives::well_known_keys::CURRENT_BLOCK_RANDOMNESS)
+						.ok()
+						.flatten()
+					{
+						randomness = current_block_randomness;
+						// the randomness is from relaychain so there is a delay have a - 4 to indicate the randomness
+						// is from previous relay block
+						block_number = frame_system::Pallet::<T>::block_number().saturating_sub(4u8.into())
+					}
+				}
+			}
+		}
+
+		let mut subject = subject.to_vec();
+		subject.reserve(32); // RANDOMNESS_LENGTH is 32
+		subject.extend_from_slice(&randomness);
+
+		let random = T::Hashing::hash(&subject[..]);
+
+		(random, block_number)
 	}
 }
 

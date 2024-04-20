@@ -20,9 +20,34 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 		expect((await contract.multiply(3)).toString()).to.equal("21");
 	});
 
+	it("should get correct environmental baseFee", async function () {
+		expect((await contract.baseFee()).toString()).to.eq('1');
+	});
+
+	it("should get correct environmental chainId", async function () {
+		expect((await contract.chainId()).toString()).to.eq('595');
+	});
+
+	it("should get correct environmental coinbase", async function () {
+		expect((await contract.coinbase()).toString()).to.eq('0x0000000000000000000000000000000000000000');
+	});
+
+	// it doesn't work with mandala
+	// it("should get correct environmental prevrandao", async function () {
+	// 	expect((await contract.prevrandao()).toString()).to.eq('0x0000000000000000000000000000000000000000');
+	// });
+
+	it("should get correct environmental block gaslimit", async function () {
+		expect((await contract.gasLimit()).toString()).to.eq('0');
+	});
+
+	it("should get correct environmental block timestamp", async function () {
+		expect((await contract.timestamp()).toString()).to.eq((parseInt(await context.provider.api.query.timestamp.now() / 1000)).toString());
+	});
+
 	it("should get correct environmental block number", async function () {
 		// Solidity `block.number` is expected to return the same height at which the runtime call was made.
-		let height = await contract.currentBlock();
+		let height = await contract.blockNumber();
 		let current_block_number = await context.provider.api.query.system.number();
 
 		expect(await height.toString()).to.eq(current_block_number.toString());
@@ -57,22 +82,6 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 		//expect(await contract.blockHash(number + 2)).to.not.eq(
 		//	"0x0000000000000000000000000000000000000000000000000000000000000000"
 		//);
-	});
-
-	it("should get correct environmental chainId", async function () {
-		expect((await contract.chainId()).toString()).to.eq('595');
-	});
-
-	it("should get correct environmental coinbase", async function () {
-		expect((await contract.coinbase()).toString()).to.eq('0x0000000000000000000000000000000000000000');
-	});
-
-	it("should get correct environmental block timestamp", async function () {
-		expect((await contract.timestamp()).toString()).to.eq((parseInt(await context.provider.api.query.timestamp.now() / 1000)).toString());
-	});
-
-	it("should get correct environmental block gaslimit", async function () {
-		expect((await contract.gasLimit()).toString()).to.eq('0');
 	});
 
 	// Requires error handling
