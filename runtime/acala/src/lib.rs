@@ -1633,6 +1633,7 @@ parameter_types!(
 impl module_idle_scheduler::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type Index = Nonce;
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = RelaychainDataProvider<Runtime>;
