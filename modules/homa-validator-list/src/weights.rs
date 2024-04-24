@@ -54,7 +54,6 @@ pub trait WeightInfo {
 	fn freeze(n: u32, ) -> Weight;
 	fn thaw(n: u32, ) -> Weight;
 	fn slash(n: u32, ) -> Weight;
-	fn set_reserved_validators(n: u32, ) -> Weight;
 }
 
 /// Weights for module_homa_validator_list using the Acala node and recommended hardware.
@@ -189,19 +188,6 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((2_u64).saturating_mul(n.into())))
 			.saturating_add(Weight::from_parts(0, 5232).saturating_mul(n.into()))
 	}
-	// Storage: `HomaValidatorList::ReservedValidators` (r:0 w:10)
-	// Proof: `HomaValidatorList::ReservedValidators` (`max_values`: None, `max_size`: Some(787), added: 3262, mode: `MaxEncodedLen`)
-	/// The range of component `n` is `[1, 10]`.
-	fn set_reserved_validators(n: u32, ) -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1001`
-		//  Estimated: `0`
-		// Minimum execution time: 13_000 nanoseconds.
-		Weight::from_parts(10_723_978, 0)
-			// Standard Error: 9_371
-			.saturating_add(Weight::from_parts(3_505_581, 0).saturating_mul(n.into()))
-			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
-	}
 }
 
 // For backwards compatibility and tests
@@ -334,18 +320,5 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(4))
 			.saturating_add(RocksDbWeight::get().writes((2_u64).saturating_mul(n.into())))
 			.saturating_add(Weight::from_parts(0, 5232).saturating_mul(n.into()))
-	}
-	// Storage: `HomaValidatorList::ReservedValidators` (r:0 w:10)
-	// Proof: `HomaValidatorList::ReservedValidators` (`max_values`: None, `max_size`: Some(787), added: 3262, mode: `MaxEncodedLen`)
-	/// The range of component `n` is `[1, 10]`.
-	fn set_reserved_validators(n: u32, ) -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1001`
-		//  Estimated: `0`
-		// Minimum execution time: 13_000 nanoseconds.
-		Weight::from_parts(10_723_978, 0)
-			// Standard Error: 9_371
-			.saturating_add(Weight::from_parts(3_505_581, 0).saturating_mul(n.into()))
-			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(n.into())))
 	}
 }

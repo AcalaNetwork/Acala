@@ -125,6 +125,7 @@ module-transaction-pause = { workspace = true }
 module-transaction-payment = { workspace = true }
 module-xcm-interface = { workspace = true }
 module-xnft = { workspace = true }
+module-nominees-election = { workspace = true }
 
 primitives = { workspace = true }
 runtime-common = { workspace = true }
@@ -260,6 +261,7 @@ std = [
 	"module-transaction-payment/std",
 	"module-xcm-interface/std",
 	"module-xnft/std",
+	"module-nominees-election/std",
 
 	"primitives/std",
 	"runtime-common/std",
@@ -399,6 +401,7 @@ try-runtime = [
 	"module-transaction-payment/try-runtime",
 	"module-xcm-interface/try-runtime",
 	"module-xnft/try-runtime",
+	"module-nominees-election/try-runtime",
 
 	"primitives/try-runtime",
 

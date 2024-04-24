@@ -16,13 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, MinCouncilBondThreshold, NomineesElection, Runtime};
+use crate::{AccountId, BondingDuration, Homa, MinCouncilBondThreshold, NomineesElection, Runtime};
 
 use super::utils::{set_balance, LIQUID};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use module_support::OnNewEra;
 use orml_benchmarking::runtime_benchmarks;
 use sp_std::prelude::*;
 
@@ -62,11 +61,11 @@ runtime_benchmarks! {
 		for _ in 0..c {
 			NomineesElection::unbond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get()/c as u128)?;
 		}
-		NomineesElection::on_new_era(1);
+		Homa::force_bump_current_era(RawOrigin::Root.into(), BondingDuration::get())?;
 	}: _(RawOrigin::Signed(caller))
 
 	nominate {
-		let c in 1 .. <Runtime as module_nominees_election::Config>::NominateesCount::get();
+		let c in 1 .. <Runtime as module_nominees_election::Config>::MaxNominateesCount::get();
 		let targets = (0..c).map(|c| account("nominatees", c, SEED)).collect::<Vec<_>>();
 
 		let caller: AccountId = whitelisted_caller();
@@ -75,7 +74,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), targets)
 
 	chill {
-		let c in 1 .. <Runtime as module_nominees_election::Config>::NominateesCount::get();
+		let c in 1 .. <Runtime as module_nominees_election::Config>::MaxNominateesCount::get();
 		let targets = (0..c).map(|c| account("nominatees", c, SEED)).collect::<Vec<_>>();
 
 		let caller: AccountId = whitelisted_caller();

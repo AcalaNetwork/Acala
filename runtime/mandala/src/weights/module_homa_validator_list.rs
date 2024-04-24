@@ -177,17 +177,4 @@ impl<T: frame_system::Config> module_homa_validator_list::WeightInfo for WeightI
 			.saturating_add(T::DbWeight::get().writes((2_u64).saturating_mul(n.into())))
 			.saturating_add(Weight::from_parts(0, 5232).saturating_mul(n.into()))
 	}
-	// Storage: `HomaValidatorList::ReservedValidators` (r:0 w:10)
-	// Proof: `HomaValidatorList::ReservedValidators` (`max_values`: None, `max_size`: Some(787), added: 3262, mode: `MaxEncodedLen`)
-	/// The range of component `n` is `[1, 10]`.
-	fn set_reserved_validators(n: u32, ) -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1001`
-		//  Estimated: `0`
-		// Minimum execution time: 11_000 nanoseconds.
-		Weight::from_parts(8_884_853, 0)
-			// Standard Error: 9_313
-			.saturating_add(Weight::from_parts(2_736_483, 0).saturating_mul(n.into()))
-			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
-	}
 }

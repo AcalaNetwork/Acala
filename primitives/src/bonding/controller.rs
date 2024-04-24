@@ -48,7 +48,6 @@ where
 	type MaxUnbondingChunks: Get<u32>;
 	type Moment: Ord + Eq + Copy;
 	type AccountId: Parameter + Member;
-
 	type Ledger: StorageMap<Self::AccountId, BondingLedgerOf<Self>, Query = Option<BondingLedgerOf<Self>>>;
 
 	fn available_balance(who: &Self::AccountId, ledger: &BondingLedgerOf<Self>) -> Balance;

@@ -176,12 +176,28 @@ parameter_types! {
 	pub static MintThreshold: Balance = 0;
 	pub static RedeemThreshold: Balance = 0;
 	pub static MockRelayBlockNumberProvider: BlockNumber = 0;
-	pub GetNominations: Vec<(u16, Vec<AccountId>)> = vec![
-		(0, vec![VALIDATOR_A, VALIDATOR_B]),
-		(1, vec![]),
-		(2, vec![VALIDATOR_A, VALIDATOR_C]),
-		(3, vec![VALIDATOR_D]),
-	];
+}
+
+pub struct MockNominationsProvider;
+impl NomineesProvider<AccountId> for MockNominationsProvider {
+	fn nominees() -> Vec<AccountId> {
+		unimplemented!()
+	}
+
+	fn nominees_in_groups(group_index_list: Vec<u16>) -> Vec<(u16, Vec<AccountId>)> {
+		group_index_list
+			.iter()
+			.map(|group_index| {
+				let nominees: Vec<AccountId> = match *group_index {
+					0 => vec![VALIDATOR_A, VALIDATOR_B],
+					2 => vec![VALIDATOR_A, VALIDATOR_C],
+					3 => vec![VALIDATOR_D],
+					_ => vec![],
+				};
+				(*group_index, nominees)
+			})
+			.collect()
+	}
 }
 
 impl Config for Runtime {
@@ -200,7 +216,7 @@ impl Config for Runtime {
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type XcmInterface = MockHomaSubAccountXcm;
 	type WeightInfo = ();
-	type NominationsProvider = GetNominations;
+	type NominationsProvider = MockNominationsProvider;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;

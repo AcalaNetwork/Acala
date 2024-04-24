@@ -167,6 +167,7 @@ parameter_types! {
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
+	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
@@ -1536,6 +1537,7 @@ parameter_types! {
 	];
 	pub MintThreshold: Balance = dollar(DOT);
 	pub RedeemThreshold: Balance = 5 * dollar(LDOT);
+	pub const BondingDuration: EraIndex = 28;
 }
 
 impl module_homa::Config for Runtime {
@@ -1548,20 +1550,18 @@ impl module_homa::Config for Runtime {
 	type TreasuryAccount = HomaTreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
-	type BondingDuration = ConstU32<28>;
+	type BondingDuration = BondingDuration;
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
-	type NominationsProvider = HomaValidatorList;
+	type NominationsProvider = NomineesElection;
 }
 
 parameter_types! {
 	pub MinBondAmount: Balance = 1_000 * dollar(LDOT);
-	pub const ValidatorBackingBondingDuration: BlockNumber = 28 * 24 * 60 * 10; // 28 days on relaychain
 	pub ValidatorInsuranceThreshold: Balance = 10_000 * dollar(LDOT);
-	pub const MaxNominations: u32 = 16;
 }
 
 impl module_homa_validator_list::Config for Runtime {
@@ -1569,17 +1569,34 @@ impl module_homa_validator_list::Config for Runtime {
 	type RelayChainAccountId = AccountId;
 	type LiquidTokenCurrency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 	type MinBondAmount = MinBondAmount;
-	type BondingDuration = ValidatorBackingBondingDuration;
+	type BondingDuration = BondingDuration;
 	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
-	type OnSlash = ();
 	type LiquidStakingExchangeRateProvider = Homa;
+	type CurrentEra = Homa;
 	type WeightInfo = weights::module_homa_validator_list::WeightInfo<Runtime>;
-	type OnIncreaseGuarantee = ();
-	type OnDecreaseGuarantee = ();
-	type BlockNumberProvider = RelaychainDataProvider<Runtime>;
-	type MaxNominations = MaxNominations;
-	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
+}
+
+parameter_types! {
+	pub MinCouncilBondThreshold: Balance = dollar(LDOT);
+	pub const MaxNominateesCount: u32 = 16;
+}
+
+impl module_nominees_election::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
+	type NomineeId = AccountId;
+	type PalletId = NomineesElectionId;
+	type MinBond = MinCouncilBondThreshold;
+	type BondingDuration = BondingDuration;
+	type MaxNominateesCount = MaxNominateesCount;
+	type MaxUnbondingChunks = ConstU32<7>;
+	type NomineeFilter = HomaValidatorList;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type OnBond = ();
+	type OnUnbond = ();
+	type CurrentEra = Homa;
+	type WeightInfo = ();
 }
 
 pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
@@ -1869,6 +1886,7 @@ construct_runtime!(
 		Homa: module_homa = 116,
 		XcmInterface: module_xcm_interface = 117,
 		HomaValidatorList: module_homa_validator_list = 118,
+		NomineesElection: module_nominees_election = 119,
 
 		// Acala Other
 		Incentives: module_incentives = 120,

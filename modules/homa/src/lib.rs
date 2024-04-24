@@ -23,7 +23,9 @@
 
 use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{ExchangeRate, ExchangeRateProvider, FractionalRate, HomaManager, HomaSubAccountXcm, Rate, Ratio};
+use module_support::{
+	ExchangeRate, ExchangeRateProvider, FractionalRate, HomaManager, HomaSubAccountXcm, NomineesProvider, Rate, Ratio,
+};
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
@@ -157,7 +159,7 @@ pub mod module {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
-		type NominationsProvider: Get<Vec<(u16, Vec<RelayChainAccountIdOf<Self>>)>>;
+		type NominationsProvider: NomineesProvider<RelayChainAccountIdOf<Self>>;
 	}
 
 	#[pallet::error]
@@ -269,13 +271,6 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn relay_chain_current_era)]
 	pub type RelayChainCurrentEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
-
-	// /// The latest processed era of Homa, it should be always <= RelayChainCurrentEra
-	// ///
-	// /// ProcessedEra : EraIndex
-	// #[pallet::storage]
-	// #[pallet::getter(fn processed_era)]
-	// pub type ProcessedEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
 
 	/// The staking ledger of Homa subaccounts.
 	///
@@ -1139,9 +1134,10 @@ pub mod module {
 			// check whether need to nominate
 			let nominate_interval_era = NominateIntervalEra::<T>::get();
 			if !nominate_interval_era.is_zero() && new_era % nominate_interval_era == 0 {
-				let active_sub_accounts_list = T::ActiveSubAccountsIndexList::get();
-				for (sub_account_index, nominations) in T::NominationsProvider::get() {
-					if active_sub_accounts_list.contains(&sub_account_index) && !nominations.is_empty() {
+				for (sub_account_index, nominations) in
+					T::NominationsProvider::nominees_in_groups(T::ActiveSubAccountsIndexList::get())
+				{
+					if !nominations.is_empty() {
 						T::XcmInterface::nominate_on_sub_account(sub_account_index, nominations.clone())?;
 
 						Self::deposit_event(Event::<T>::HomaNominate {
@@ -1210,11 +1206,17 @@ pub mod module {
 			T::Currency::deposit(T::StakingCurrencyId::get(), who, amount)
 		}
 	}
+}
 
-	impl<T: Config> ExchangeRateProvider for Pallet<T> {
-		fn get_exchange_rate() -> ExchangeRate {
-			Self::current_exchange_rate()
-		}
+impl<T: Config> ExchangeRateProvider for Pallet<T> {
+	fn get_exchange_rate() -> ExchangeRate {
+		Self::current_exchange_rate()
+	}
+}
+
+impl<T: Config> Get<EraIndex> for Pallet<T> {
+	fn get() -> EraIndex {
+		Self::relay_chain_current_era()
 	}
 }
 

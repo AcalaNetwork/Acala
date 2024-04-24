@@ -30,16 +30,17 @@
 #![allow(clippy::type_complexity)]
 
 use frame_support::pallet_prelude::*;
+use frame_support::traits::Contains;
 use frame_system::pallet_prelude::*;
 use module_support::{ExchangeRateProvider, Ratio};
-use orml_traits::{BasicCurrency, BasicLockableCurrency, Happened, LockIdentifier};
+use orml_traits::{BasicCurrency, BasicLockableCurrency, LockIdentifier};
 use parity_scale_codec::MaxEncodedLen;
-use primitives::Balance;
+use primitives::{Balance, EraIndex};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
-	traits::{BlockNumberProvider, Bounded, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
+	traits::{Bounded, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, vec, vec::Vec};
@@ -55,20 +56,20 @@ pub const HOMA_VALIDATOR_LIST_ID: LockIdentifier = *b"aca/hmvl";
 
 /// Insurance for a validator from a single address
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, Eq, MaxEncodedLen, TypeInfo)]
-pub struct Guarantee<BlockNumber> {
+pub struct Guarantee<EraIndex> {
 	/// The total tokens the validator has in insurance
 	total: Balance,
 	/// The number of tokens that are actively bonded for insurance
 	bonded: Balance,
 	/// The number of tokens that are in the process of unbonding for insurance
-	unbonding: Option<(Balance, BlockNumber)>,
+	unbonding: Option<(Balance, EraIndex)>,
 }
 
-impl<BlockNumber: PartialOrd> Guarantee<BlockNumber> {
+impl<EraIndex: PartialOrd> Guarantee<EraIndex> {
 	/// Take `unbonding` that are sufficiently old
-	fn consolidate_unbonding(mut self, current_block: BlockNumber) -> Self {
+	fn consolidate_unbonding(mut self, current_era: EraIndex) -> Self {
 		match self.unbonding {
-			Some((_, expired_block)) if expired_block <= current_block => {
+			Some((_, expired_era)) if expired_era <= current_era => {
 				self.unbonding = None;
 			}
 			_ => {}
@@ -153,9 +154,9 @@ pub mod module {
 		#[pallet::constant]
 		type MinBondAmount: Get<Balance>;
 
-		/// The number of blocks a token is bonded to a validator for.
+		/// The waiting eras when unbond token.
 		#[pallet::constant]
-		type BondingDuration: Get<BlockNumberFor<Self>>;
+		type BondingDuration: Get<EraIndex>;
 
 		/// The minimum amount of insurance a validator needs.
 		#[pallet::constant]
@@ -164,31 +165,13 @@ pub mod module {
 		/// Origin represented Governance
 		type GovernanceOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-		/// Callback to be called when a slash occurs.
-		type OnSlash: Happened<Balance>;
-
 		/// Exchange rate between staked token and liquid token equivalent.
 		type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
 
+		/// Current era.
+		type CurrentEra: Get<EraIndex>;
+
 		type WeightInfo: WeightInfo;
-
-		/// Callback to be called when a validator's insurance increases.
-		type OnIncreaseGuarantee: Happened<(Self::AccountId, Self::RelayChainAccountId, Balance)>;
-
-		/// Callback to be called when a validator's insurance decreases.
-		type OnDecreaseGuarantee: Happened<(Self::AccountId, Self::RelayChainAccountId, Balance)>;
-
-		// The block number provider.
-		type BlockNumberProvider: BlockNumberProvider<BlockNumber = BlockNumberFor<Self>>;
-
-		/// Maximum number of nominations per nominator on relaychain.
-		#[pallet::constant]
-		type MaxNominations: Get<u32>;
-
-		/// The index list of active Homa subaccounts.
-		/// `active` means these subaccounts can continue do bond/unbond operations by Homa.
-		#[pallet::constant]
-		type ActiveSubAccountsIndexList: Get<Vec<u16>>;
 	}
 
 	#[pallet::error]
@@ -227,10 +210,6 @@ pub mod module {
 			validator: T::RelayChainAccountId,
 			bond: Balance,
 		},
-		ResetReservedValidators {
-			sub_account_index: u16,
-			reserved_validators: Vec<T::RelayChainAccountId>,
-		},
 	}
 
 	/// The slash guarantee deposits for relaychain validators.
@@ -244,7 +223,7 @@ pub mod module {
 		T::RelayChainAccountId,
 		Twox64Concat,
 		T::AccountId,
-		Guarantee<BlockNumberFor<T>>,
+		Guarantee<EraIndex>,
 		OptionQuery,
 	>;
 
@@ -262,14 +241,6 @@ pub mod module {
 	#[pallet::getter(fn validator_backings)]
 	pub type ValidatorBackings<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, ValidatorBacking, OptionQuery>;
-
-	/// Reserved validators.
-	///
-	/// ReservedValidators: map SubAccountIndex => Vec<AccountId>
-	#[pallet::storage]
-	#[pallet::getter(fn reserved_validators)]
-	pub type ReservedValidators<T: Config> =
-		StorageMap<_, Blake2_128Concat, u16, BoundedVec<T::RelayChainAccountId, T::MaxNominations>, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -341,8 +312,8 @@ pub mod module {
 						guarantee.bonded.is_zero() || guarantee.bonded >= T::MinBondAmount::get(),
 						Error::<T>::BelowMinBondAmount,
 					);
-					let expired_block = T::BlockNumberProvider::current_block_number() + T::BondingDuration::get();
-					guarantee.unbonding = Some((amount, expired_block));
+					let expired_era = T::CurrentEra::get() + T::BondingDuration::get();
+					guarantee.unbonding = Some((amount, expired_era));
 
 					Self::deposit_event(Event::UnbondGuarantee {
 						who: guarantor.clone(),
@@ -391,7 +362,7 @@ pub mod module {
 			);
 			Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 				let old_total = guarantee.total;
-				*guarantee = guarantee.consolidate_unbonding(T::BlockNumberProvider::current_block_number());
+				*guarantee = guarantee.consolidate_unbonding(T::CurrentEra::get());
 				let new_total = guarantee
 					.bonded
 					.saturating_add(guarantee.unbonding.unwrap_or_default().0);
@@ -497,76 +468,16 @@ pub mod module {
 				}
 			}
 
-			T::OnSlash::happened(&actual_total_slashing);
-			Ok(())
-		}
-
-		#[pallet::call_index(7)]
-		#[pallet::weight(T::WeightInfo::set_reserved_validators(updates.len() as u32))]
-		pub fn set_reserved_validators(
-			origin: OriginFor<T>,
-			updates: Vec<(u16, BoundedVec<T::RelayChainAccountId, T::MaxNominations>)>,
-		) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
-			for (sub_account_index, reserved_validators) in updates {
-				let mut reserved_validators: Vec<T::RelayChainAccountId> = reserved_validators.to_vec();
-				reserved_validators.sort();
-				reserved_validators.dedup();
-
-				let reserved: BoundedVec<T::RelayChainAccountId, T::MaxNominations> = reserved_validators
-					.clone()
-					.try_into()
-					.expect("the length has been checked in params; qed");
-				ReservedValidators::<T>::insert(sub_account_index, reserved);
-
-				Self::deposit_event(Event::ResetReservedValidators {
-					sub_account_index,
-					reserved_validators,
-				});
-			}
 			Ok(())
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
-	fn sort_voted_nominations() -> Vec<T::RelayChainAccountId> {
-		let mut all_reserved_validators: Vec<T::RelayChainAccountId> = vec![];
-		for sub_account_index in T::ActiveSubAccountsIndexList::get() {
-			all_reserved_validators.extend(ReservedValidators::<T>::get(sub_account_index));
-		}
-
-		let mut active_candidates: Vec<(T::RelayChainAccountId, Balance)> = vec![];
-
-		for (
-			candidate,
-			ValidatorBacking {
-				total_insurance,
-				is_frozen,
-			},
-		) in ValidatorBackings::<T>::iter()
-		{
-			if !is_frozen
-				&& total_insurance >= T::ValidatorInsuranceThreshold::get()
-				&& !all_reserved_validators.contains(&candidate)
-			{
-				active_candidates.push((candidate, total_insurance));
-			}
-		}
-
-		// sort by des
-		active_candidates.sort_by(|a, b| b.1.cmp(&a.1));
-
-		active_candidates
-			.iter()
-			.map(|(nomination, _)| nomination.clone())
-			.collect::<Vec<T::RelayChainAccountId>>()
-	}
-
 	fn update_guarantee(
 		guarantor: &T::AccountId,
 		validator: &T::RelayChainAccountId,
-		f: impl FnOnce(&mut Guarantee<BlockNumberFor<T>>) -> DispatchResult,
+		f: impl FnOnce(&mut Guarantee<EraIndex>) -> DispatchResult,
 	) -> DispatchResult {
 		Guarantees::<T>::try_mutate_exists(validator, guarantor, |maybe_guarantee| -> DispatchResult {
 			let mut guarantee = maybe_guarantee.take().unwrap_or_default();
@@ -596,12 +507,10 @@ impl<T: Config> Pallet<T> {
 										let gap = new_total - old_total;
 										vb.total_insurance = vb.total_insurance.saturating_add(gap);
 										tl = tl.saturating_add(gap);
-										T::OnIncreaseGuarantee::happened(&(guarantor.clone(), validator.clone(), gap));
 									} else {
 										let gap = old_total - new_total;
 										vb.total_insurance = vb.total_insurance.saturating_sub(gap);
 										tl = tl.saturating_sub(gap);
-										T::OnDecreaseGuarantee::happened(&(guarantor.clone(), validator.clone(), gap));
 									};
 
 									if tl.is_zero() {
@@ -626,35 +535,9 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> Get<Vec<(u16, Vec<T::RelayChainAccountId>)>> for Pallet<T> {
-	fn get() -> Vec<(u16, Vec<T::RelayChainAccountId>)> {
-		let sub_accounts_index_list = T::ActiveSubAccountsIndexList::get();
-		let sort_voted_nominations = Self::sort_voted_nominations();
-
-		let mut nominations: Vec<(u16, Vec<T::RelayChainAccountId>)> = vec![];
-		let mut pick_index: usize = 0;
-		let max_nominations: usize = T::MaxNominations::get() as usize;
-
-		for sub_account_index in sub_accounts_index_list {
-			let reserved_validators = ReservedValidators::<T>::get(sub_account_index);
-			let remaining_seats: usize = max_nominations.saturating_sub(reserved_validators.len());
-
-			let voted_nominations: Vec<T::RelayChainAccountId> =
-				if sort_voted_nominations.len() < remaining_seats + pick_index {
-					pick_index = 0;
-					sort_voted_nominations.as_slice()[0..remaining_seats.min(sort_voted_nominations.len())].to_vec()
-				} else {
-					let previous_pick_index = pick_index;
-					pick_index += remaining_seats;
-					sort_voted_nominations.as_slice()[previous_pick_index..pick_index].to_vec()
-				};
-
-			nominations.push((
-				sub_account_index,
-				[&reserved_validators[..], &voted_nominations[..]].concat(),
-			));
-		}
-
-		nominations
+impl<T: Config> Contains<T::RelayChainAccountId> for Pallet<T> {
+	fn contains(account: &T::RelayChainAccountId) -> bool {
+		ValidatorBackings::<T>::get(account)
+			.is_some_and(|vb| vb.total_insurance >= T::ValidatorInsuranceThreshold::get() && !vb.is_frozen)
 	}
 }

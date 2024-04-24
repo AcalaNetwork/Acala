@@ -23,14 +23,13 @@
 use super::*;
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Nothing},
+	traits::{ConstU128, ConstU32, Nothing},
 };
 use frame_system::EnsureRoot;
 use module_support::ExchangeRate;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
-use std::collections::HashMap;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -41,15 +40,6 @@ pub const CHARLIE: AccountId = 2;
 pub const VALIDATOR_1: AccountId = 11;
 pub const VALIDATOR_2: AccountId = 12;
 pub const VALIDATOR_3: AccountId = 13;
-pub const VALIDATOR_4: AccountId = 14;
-pub const VALIDATOR_5: AccountId = 15;
-pub const VALIDATOR_6: AccountId = 16;
-pub const VALIDATOR_7: AccountId = 17;
-pub const VALIDATOR_8: AccountId = 18;
-pub const VALIDATOR_9: AccountId = 19;
-pub const VALIDATOR_10: AccountId = 20;
-pub const VALIDATOR_11: AccountId = 21;
-pub const VALIDATOR_12: AccountId = 22;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
@@ -117,52 +107,6 @@ impl orml_currencies::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub static Shares: HashMap<(AccountId, AccountId), Balance> = HashMap::new();
-	pub static AccumulatedSlash: Balance = 0;
-}
-
-pub struct MockOnSlash;
-impl Happened<Balance> for MockOnSlash {
-	fn happened(amount: &Balance) {
-		AccumulatedSlash::mutate(|v| *v += amount);
-	}
-}
-
-pub struct MockOnIncreaseGuarantee;
-impl Happened<(AccountId, AccountId, Balance)> for MockOnIncreaseGuarantee {
-	fn happened(info: &(AccountId, AccountId, Balance)) {
-		let (account_id, relaychain_id, amount) = info;
-		Shares::mutate(|v| {
-			let mut old_map = v.clone();
-			if let Some(share) = old_map.get_mut(&(*account_id, *relaychain_id)) {
-				*share = share.saturating_add(*amount);
-			} else {
-				old_map.insert((*account_id, *relaychain_id), *amount);
-			};
-
-			*v = old_map;
-		});
-	}
-}
-
-pub struct MockOnDecreaseGuarantee;
-impl Happened<(AccountId, AccountId, Balance)> for MockOnDecreaseGuarantee {
-	fn happened(info: &(AccountId, AccountId, Balance)) {
-		let (account_id, relaychain_id, amount) = info;
-		Shares::mutate(|v| {
-			let mut old_map = v.clone();
-			if let Some(share) = old_map.get_mut(&(*account_id, *relaychain_id)) {
-				*share = share.saturating_sub(*amount);
-			} else {
-				old_map.insert((*account_id, *relaychain_id), Default::default());
-			};
-
-			*v = old_map;
-		});
-	}
-}
-
 pub struct MockLiquidStakingExchangeProvider;
 impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 	fn get_exchange_rate() -> ExchangeRate {
@@ -171,16 +115,9 @@ impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 }
 
 parameter_types! {
-	pub static MockBlockNumberProvider: u64 = 0;
+	pub static MockCurrentEra: EraIndex = 0;
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![0, 1, 2];
-}
-
-impl BlockNumberProvider for MockBlockNumberProvider {
-	type BlockNumber = u64;
-
-	fn current_block_number() -> Self::BlockNumber {
-		Self::get()
-	}
+	pub const BondingDuration: EraIndex = 28;
 }
 
 impl Config for Runtime {
@@ -188,17 +125,12 @@ impl Config for Runtime {
 	type RelayChainAccountId = AccountId;
 	type LiquidTokenCurrency = LDOTCurrency;
 	type MinBondAmount = ConstU128<100>;
-	type BondingDuration = ConstU64<100>;
+	type BondingDuration = BondingDuration;
 	type ValidatorInsuranceThreshold = ConstU128<200>;
 	type GovernanceOrigin = EnsureRoot<AccountId>;
-	type OnSlash = MockOnSlash;
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
+	type CurrentEra = MockCurrentEra;
 	type WeightInfo = ();
-	type OnIncreaseGuarantee = MockOnIncreaseGuarantee;
-	type OnDecreaseGuarantee = MockOnDecreaseGuarantee;
-	type BlockNumberProvider = MockBlockNumberProvider;
-	type MaxNominations = ConstU32<5>;
-	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;

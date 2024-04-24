@@ -17,17 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, Balance, HomaValidatorList, MaxNominations, MinBondAmount, RelaychainDataProvider, Runtime,
-	ValidatorBackingBondingDuration, ValidatorInsuranceThreshold,
+	AccountId, Balance, BondingDuration, Homa, HomaValidatorList, MinBondAmount, Runtime, ValidatorInsuranceThreshold,
 };
 
 use super::utils::{set_balance, LIQUID};
 use frame_benchmarking::{account, whitelisted_caller};
-use frame_support::BoundedVec;
 use frame_system::RawOrigin;
 use module_homa_validator_list::SlashInfo;
 use orml_benchmarking::runtime_benchmarks;
-use sp_runtime::traits::BlockNumberProvider;
 use sp_std::{prelude::*, vec};
 
 const SEED: u32 = 0;
@@ -75,7 +72,6 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		let validator: AccountId = account("validator", 0, SEED);
 
-		RelaychainDataProvider::<Runtime>::set_block_number(10);
 		set_balance(LIQUID, &caller, MinBondAmount::get() * 10);
 		HomaValidatorList::bond(
 			RawOrigin::Signed(caller.clone()).into(),
@@ -87,7 +83,7 @@ runtime_benchmarks! {
 			validator.clone(),
 			MinBondAmount::get() * 5
 		)?;
-		RelaychainDataProvider::<Runtime>::set_block_number(10 + ValidatorBackingBondingDuration::get());
+		Homa::force_bump_current_era(RawOrigin::Root.into(), BondingDuration::get())?;
 	}: _(RawOrigin::Signed(caller), validator)
 
 	freeze {
@@ -144,16 +140,6 @@ runtime_benchmarks! {
 			});
 		}
 	}: _(RawOrigin::Root, slashes)
-
-	set_reserved_validators {
-		let n in 1 .. 10;
-		let mut updates: Vec<(u16, BoundedVec<AccountId, MaxNominations>)> = vec![];
-
-		for i in 0 .. n {
-			let validator: AccountId = account("validator", i, SEED);
-			updates.push((i.try_into().unwrap(), vec![validator].try_into().unwrap()));
-		}
-	}: _(RawOrigin::Root, updates)
 }
 
 #[cfg(test)]

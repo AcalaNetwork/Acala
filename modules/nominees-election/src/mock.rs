@@ -27,15 +27,32 @@ use frame_support::{
 	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, Nothing},
 };
+use frame_system::EnsureRoot;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId, TokenSymbol};
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
+use std::collections::HashMap;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
+pub const CHARLIE: AccountId = 2;
+pub const DAVE: AccountId = 3;
+pub const EVE: AccountId = 4;
+pub const NOMINATEE_1: AccountId = 10;
+pub const NOMINATEE_2: AccountId = 11;
+pub const NOMINATEE_3: AccountId = 12;
+pub const NOMINATEE_4: AccountId = 13;
+pub const NOMINATEE_5: AccountId = 14;
+pub const NOMINATEE_6: AccountId = 15;
+pub const NOMINATEE_7: AccountId = 16;
+pub const NOMINATEE_8: AccountId = 17;
+pub const NOMINATEE_9: AccountId = 18;
+pub const NOMINATEE_10: AccountId = 19;
+pub const NOMINATEE_11: AccountId = 20;
+pub const NOMINATEE_12: AccountId = 21;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
@@ -107,10 +124,49 @@ parameter_types! {
 	pub const PalletId: LockIdentifier = *b"1       ";
 }
 
-pub struct MockNomineeFilter;
-impl Contains<AccountId> for MockNomineeFilter {
+parameter_types! {
+	pub static Shares: HashMap<AccountId, Balance> = HashMap::new();
+	pub static InvalidNominees: Vec<AccountId> = vec![];
+	pub static MockCurrentEra: EraIndex = 0;
+}
+
+pub struct MockOnBond;
+impl Happened<(AccountId, Balance)> for MockOnBond {
+	fn happened(info: &(AccountId, Balance)) {
+		let (account_id, amount) = info;
+		Shares::mutate(|v| {
+			let mut old_map = v.clone();
+			if let Some(share) = old_map.get_mut(account_id) {
+				*share = share.saturating_add(*amount);
+			} else {
+				old_map.insert(*account_id, *amount);
+			};
+
+			*v = old_map;
+		});
+	}
+}
+
+pub struct MockOnUnbond;
+impl Happened<(AccountId, Balance)> for MockOnUnbond {
+	fn happened(info: &(AccountId, Balance)) {
+		let (account_id, amount) = info;
+		Shares::mutate(|v| {
+			let mut old_map = v.clone();
+			if let Some(share) = old_map.get_mut(account_id) {
+				*share = share.saturating_sub(*amount);
+			} else {
+				old_map.insert(*account_id, Default::default());
+			};
+
+			*v = old_map;
+		});
+	}
+}
+
+impl Contains<AccountId> for InvalidNominees {
 	fn contains(a: &AccountId) -> bool {
-		(0..=6).contains(a)
+		!Self::get().contains(a)
 	}
 }
 
@@ -121,9 +177,13 @@ impl Config for Runtime {
 	type PalletId = PalletId;
 	type MinBond = ConstU128<5>;
 	type BondingDuration = ConstU32<4>;
-	type NominateesCount = ConstU32<5>;
+	type MaxNominateesCount = ConstU32<5>;
 	type MaxUnbondingChunks = ConstU32<3>;
-	type NomineeFilter = MockNomineeFilter;
+	type NomineeFilter = InvalidNominees;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type OnBond = MockOnBond;
+	type OnUnbond = MockOnUnbond;
+	type CurrentEra = MockCurrentEra;
 	type WeightInfo = ();
 }
 
@@ -146,7 +206,13 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			balances: vec![(ALICE, LDOT, 1000), (BOB, LDOT, 1000)],
+			balances: vec![
+				(ALICE, LDOT, 1000),
+				(BOB, LDOT, 1000),
+				(CHARLIE, LDOT, 1000),
+				(DAVE, LDOT, 1000),
+				(EVE, LDOT, 1000),
+			],
 		}
 	}
 }
@@ -163,6 +229,10 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		t.into()
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| {
+			System::set_block_number(1);
+		});
+		ext
 	}
 }

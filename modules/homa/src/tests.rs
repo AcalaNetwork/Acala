@@ -1193,7 +1193,7 @@ fn process_nominate_works() {
 			sub_account_index: 2,
 			nominations: vec![VALIDATOR_A, VALIDATOR_C],
 		}));
-		// will not nominate for subaccount#1 because doesn't get nominations from GetNominations
+		// will not nominate for subaccount#1 because doesn't get nominations
 	});
 }
 
