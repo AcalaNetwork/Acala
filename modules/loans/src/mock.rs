@@ -92,7 +92,6 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
-	type MaxHolds = ();
 	type MaxFreezes = ();
 }
 
@@ -204,8 +203,8 @@ parameter_types! {
 }
 
 pub struct MockOnUpdateLoan;
-impl Happened<(AccountId, CurrencyId, Amount, Balance)> for MockOnUpdateLoan {
-	fn happened(info: &(AccountId, CurrencyId, Amount, Balance)) {
+impl Handler<(AccountId, CurrencyId, Amount, Balance)> for MockOnUpdateLoan {
+	fn handle(info: &(AccountId, CurrencyId, Amount, Balance)) -> DispatchResult {
 		let (who, currency_id, adjustment, previous_amount) = info;
 		let adjustment_abs = TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
 		let new_share_amount = if adjustment.is_positive() {
@@ -221,6 +220,7 @@ impl Happened<(AccountId, CurrencyId, Amount, Balance)> for MockOnUpdateLoan {
 				*v = old_map;
 			});
 		}
+		return Ok(());
 	}
 }
 

@@ -33,7 +33,7 @@ use xcm_builder::{
 	TakeRevenue, TakeWeightCredit, TrailingSetTopicAsId, WithComputedOrigin,
 };
 
-/// Type for specifying how a `MultiLocation` can be converted into an `AccountId`. This is used
+/// Type for specifying how a `Location` can be converted into an `AccountId`. This is used
 /// when determining ownership of accounts for asset transacting and when attempting to use XCM
 /// `Transact` in order to determine the dispatch RuntimeOrigin.
 pub type LocationToAccountId<RelayNetwork, EvmAddressMapping> = (
@@ -95,12 +95,12 @@ impl<CurrencyIdConvert, AcalaTreasuryAccount, Currencies> TakeRevenue
 	for ToTreasury<CurrencyIdConvert, AcalaTreasuryAccount, Currencies>
 where
 	AcalaTreasuryAccount: Get<AccountId>,
-	CurrencyIdConvert: Convert<MultiLocation, Option<CurrencyId>>,
+	CurrencyIdConvert: Convert<Location, Option<CurrencyId>>,
 	Currencies: MultiCurrency<AccountId, CurrencyId = CurrencyId, Balance = Balance>,
 {
-	fn take_revenue(revenue: MultiAsset) {
-		if let MultiAsset {
-			id: Concrete(location),
+	fn take_revenue(revenue: Asset) {
+		if let Asset {
+			id: AssetId(location),
 			fun: Fungible(amount),
 		} = revenue
 		{
@@ -114,19 +114,19 @@ where
 	}
 }
 
-pub struct AccountIdToMultiLocation;
-impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
-	fn convert(account: AccountId) -> MultiLocation {
-		X1(AccountId32 {
+pub struct AccountIdToLocation;
+impl Convert<AccountId, Location> for AccountIdToLocation {
+	fn convert(account: AccountId) -> Location {
+		AccountId32 {
 			network: None,
 			id: account.into(),
-		})
+		}
 		.into()
 	}
 }
 
 parameter_types! {
-	pub const RelayLocation: MultiLocation = MultiLocation::parent();
+	pub const RelayLocation: Location = Location::parent();
 }
 
 // define assets that can be trusted to teleport by remotes

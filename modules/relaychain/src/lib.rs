@@ -33,7 +33,7 @@ use primitives::{AccountId, Balance};
 use sp_std::{boxed::Box, marker::PhantomData, prelude::*};
 
 pub use cumulus_primitives_core::ParaId;
-use xcm::{prelude::*, v3::Weight as XcmWeight};
+use xcm::v4::{prelude::*, Weight as XcmWeight};
 
 /// The encoded index correspondes to Kusama's Runtime module configuration.
 /// https://github.com/paritytech/polkadot/blob/444e96ae34bcec8362f0f947a07bd912b32ca48f/runtime/kusama/src/lib.rs#L1379
@@ -143,9 +143,9 @@ where
 	}
 
 	fn xcm_pallet_reserve_transfer_assets(
-		dest: MultiLocation,
-		beneficiary: MultiLocation,
-		assets: MultiAssets,
+		dest: Location,
+		beneficiary: Location,
+		assets: Assets,
 		fee_assets_item: u32,
 	) -> RCC {
 		RCC::xcm_pallet(XcmCall::LimitedReserveTransferAssets(
@@ -162,8 +162,8 @@ where
 	}
 
 	fn finalize_call_into_xcm_message(call: RCC, extra_fee: Self::Balance, weight: XcmWeight) -> Xcm<()> {
-		let asset = MultiAsset {
-			id: Concrete(MultiLocation::here()),
+		let asset = Asset {
+			id: AssetId(Location::here()),
 			fun: Fungibility::Fungible(extra_fee),
 		};
 		Xcm(vec![
@@ -180,17 +180,17 @@ where
 			RefundSurplus,
 			DepositAsset {
 				assets: AllCounted(1).into(), // there is only 1 asset on relaychain
-				beneficiary: MultiLocation {
+				beneficiary: Location {
 					parents: 0,
-					interior: X1(Parachain(ParachainId::get().into())),
+					interior: Parachain(ParachainId::get().into()).into(),
 				},
 			},
 		])
 	}
 
 	fn finalize_multiple_calls_into_xcm_message(calls: Vec<(RCC, XcmWeight)>, extra_fee: Self::Balance) -> Xcm<()> {
-		let asset = MultiAsset {
-			id: Concrete(MultiLocation::here()),
+		let asset = Asset {
+			id: AssetId(Location::here()),
 			fun: Fungibility::Fungible(extra_fee),
 		};
 
@@ -216,9 +216,9 @@ where
 				RefundSurplus,
 				DepositAsset {
 					assets: AllCounted(1).into(), // there is only 1 asset on relaychain
-					beneficiary: MultiLocation {
+					beneficiary: Location {
 						parents: 0,
-						interior: X1(Parachain(ParachainId::get().into())),
+						interior: Parachain(ParachainId::get().into()).into(),
 					},
 				},
 			],

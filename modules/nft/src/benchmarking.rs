@@ -189,7 +189,6 @@ mod mock {
 		type RuntimeHoldReason = RuntimeHoldReason;
 		type RuntimeFreezeReason = RuntimeFreezeReason;
 		type FreezeIdentifier = ();
-		type MaxHolds = ();
 		type MaxFreezes = ();
 	}
 	impl pallet_utility::Config for Runtime {

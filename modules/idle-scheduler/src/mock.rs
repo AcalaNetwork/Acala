@@ -25,7 +25,6 @@ use frame_support::weights::Weight;
 use frame_support::{construct_runtime, derive_impl, parameter_types, traits::ConstU32};
 use module_support::DispatchableTask;
 use primitives::{define_combined_task, task::TaskResult};
-pub use sp_runtime::offchain::storage::StorageValueRef;
 use sp_runtime::BuildStorage;
 
 use super::*;

@@ -50,8 +50,8 @@ use xcm_builder::{
 parameter_types! {
 	pub const RelayNetwork: NetworkId = NetworkId::Kusama;
 	pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
-	pub UniversalLocation: InteriorMultiLocation = X2(GlobalConsensus(RelayNetwork::get()), Parachain(ParachainInfo::parachain_id().into()));
-	pub NftPalletLocation: InteriorMultiLocation = X1(PalletInstance(121));
+	pub UniversalLocation: InteriorLocation = [GlobalConsensus(RelayNetwork::get()), Parachain(ParachainInfo::parachain_id().into())].into();
+	pub NftPalletLocation: InteriorLocation = PalletInstance(121).into();
 	pub CheckingAccount: AccountId = PolkadotXcm::check_account();
 }
 
@@ -74,7 +74,7 @@ parameter_types! {
 	pub const UnitWeightCost: XcmWeight = XcmWeight::from_parts(200_000_000, 0);
 	pub const MaxInstructions: u32 = 100;
 	pub KsmPerSecond: (AssetId, u128, u128) = (
-		MultiLocation::parent().into(),
+		Location::parent().into(),
 		ksm_per_second(),
 		0
 	);
@@ -102,9 +102,9 @@ parameter_types! {
 		0
 	);
 	pub PHAPerSecond: (AssetId, u128, u128) = (
-		MultiLocation::new(
+		Location::new(
 			1,
-			X1(Parachain(parachains::phala::ID)),
+			Parachain(parachains::phala::ID),
 		).into(),
 		// PHA:KSM = 400:1
 		ksm_per_second() * 400,
@@ -279,16 +279,16 @@ impl pallet_message_queue::Config for Runtime {
 }
 
 parameter_types! {
-	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
+	pub SelfLocation: Location = Location::new(1, Parachain(ParachainInfo::get().into()));
 	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_parts(100_000_000, 0);
 	pub const MaxAssetsForTransfer: usize = 2;
 }
 
 parameter_type_with_key! {
-	pub ParachainMinFee: |location: MultiLocation| -> Option<u128> {
+	pub ParachainMinFee: |location: Location| -> Option<u128> {
 		#[allow(clippy::match_ref_pats)] // false positive
 		match (location.parents, location.first_interior()) {
-			(1, Some(Parachain(parachains::asset_hub_kusama::ID))) => Some(XcmInterface::get_parachain_fee(*location)),
+			(1, Some(Parachain(parachains::asset_hub_kusama::ID))) => Some(XcmInterface::get_parachain_fee(location.clone())),
 			_ => None,
 		}
 	};
@@ -299,7 +299,7 @@ impl orml_xtokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
-	type AccountIdToMultiLocation = runtime_common::xcm_config::AccountIdToMultiLocation;
+	type AccountIdToLocation = runtime_common::xcm_config::AccountIdToLocation;
 	type XcmExecutor = XcmExecutor;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type BaseXcmWeight = BaseXcmWeight;
@@ -307,8 +307,10 @@ impl orml_xtokens::Config for Runtime {
 	type UniversalLocation = UniversalLocation;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
-	type MultiLocationsFilter = Everything;
+	type LocationsFilter = Everything;
 	type ReserveProvider = AbsoluteReserveProvider;
+	type RateLimiter = ();
+	type RateLimiterId = ();
 }
 
 pub type LocalAssetTransactor = (
@@ -327,12 +329,12 @@ pub type LocalAssetTransactor = (
 
 pub struct CurrencyIdConvert;
 
-impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
-	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+impl Convert<CurrencyId, Option<Location>> for CurrencyIdConvert {
+	fn convert(id: CurrencyId) -> Option<Location> {
 		use primitives::TokenSymbol::*;
 		use CurrencyId::{Erc20, ForeignAsset, StableAssetPoolToken, Token};
 		match id {
-			Token(KSM) => Some(MultiLocation::parent()),
+			Token(KSM) => Some(Location::parent()),
 			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(TAI) => {
 				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
@@ -345,42 +347,39 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			// Bifrost Voucher Slot KSM
 			Token(VSKSM) => native_currency_location(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY.to_vec()),
 			// Phala Native token
-			Token(PHA) => Some(MultiLocation::new(1, X1(Parachain(parachains::phala::ID)))),
+			Token(PHA) => Some(Location::new(1, Parachain(parachains::phala::ID))),
 			// Kintsugi Native token
 			Token(KINT) => native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY.to_vec()),
 			// Kintsugi wrapped BTC
 			Token(KBTC) => native_currency_location(parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY.to_vec()),
-			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
+			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_location(foreign_asset_id),
 			_ => None,
 		}
 	}
 }
 
-impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+impl Convert<Location, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(location: Location) -> Option<CurrencyId> {
 		use primitives::TokenSymbol::*;
 		use CurrencyId::{Erc20, StableAssetPoolToken, Token};
 
-		if location == MultiLocation::parent() {
+		if location == Location::parent() {
 			return Some(Token(KSM));
 		}
 
-		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location) {
+		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location.clone()) {
 			return Some(currency_id);
 		}
 
-		match location {
-			MultiLocation {
-				parents: 1,
-				interior: X2(Parachain(para_id), GeneralKey { data, length }),
-			} => {
-				match (para_id, &data[..data.len().min(length as usize)]) {
-					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
-					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
-					(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY) => Some(Token(KINT)),
-					(parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY) => Some(Token(KBTC)),
+		match location.unpack() {
+			(1, [Parachain(para_id), GeneralKey { data, length }]) => {
+				match (para_id, &data[..data.len().min(*length as usize)]) {
+					(&parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
+					(&parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
+					(&parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY) => Some(Token(KINT)),
+					(&parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY) => Some(Token(KBTC)),
 
-					(id, key) if id == u32::from(ParachainInfo::get()) => {
+					(id, key) if *id == u32::from(ParachainInfo::get()) => {
 						// Karura
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
@@ -398,16 +397,10 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 					_ => None,
 				}
 			}
-			MultiLocation {
-				parents: 1,
-				interior: X1(Parachain(parachains::phala::ID)),
-			} => Some(Token(PHA)),
+			(1, [Parachain(parachains::phala::ID)]) => Some(Token(PHA)),
 			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
-			MultiLocation {
-				parents: 0,
-				interior: X1(GeneralKey { data, length }),
-			} => {
-				let key = &data[..data.len().min(length as usize)];
+			(0, [GeneralKey { data, length }]) => {
+				let key = &data[..data.len().min(*length as usize)];
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
 					Token(KAR) | Token(KUSD) | Token(LKSM) | Token(TAI) => Some(currency_id),
@@ -421,15 +414,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	}
 }
 
-impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
-		if let MultiAsset {
-			id: Concrete(location), ..
-		} = asset
-		{
-			Self::convert(location)
-		} else {
-			None
-		}
+impl Convert<Asset, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(asset: Asset) -> Option<CurrencyId> {
+		let AssetId(location) = asset.id;
+		Self::convert(location)
 	}
 }

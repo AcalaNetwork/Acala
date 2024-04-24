@@ -29,7 +29,7 @@
 
 use frame_support::{pallet_prelude::*, transactional, PalletId};
 use module_support::{CDPTreasury, RiskManager};
-use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
+use orml_traits::{Handler, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId, Position};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
@@ -70,7 +70,7 @@ pub mod module {
 		type PalletId: Get<PalletId>;
 
 		/// Event handler which calls when update loan.
-		type OnUpdateLoan: Happened<(Self::AccountId, CurrencyId, Amount, Balance)>;
+		type OnUpdateLoan: Handler<(Self::AccountId, CurrencyId, Amount, Balance)>;
 	}
 
 	#[pallet::error]
@@ -308,7 +308,7 @@ impl<T: Config> Pallet<T> {
 			// NOTE: but for KSM loans in Karura, the debit amount was used before,
 			// and the data will been messed up, before migration or calibration,
 			// it is forbidden to turn on incentives for pool LoansIncentive(KSM).
-			T::OnUpdateLoan::happened(&(who.clone(), currency_id, collateral_adjustment, p.collateral));
+			T::OnUpdateLoan::handle(&(who.clone(), currency_id, collateral_adjustment, p.collateral))?;
 			p.collateral = new_collateral;
 			p.debit = new_debit;
 

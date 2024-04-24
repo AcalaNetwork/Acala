@@ -1,15 +1,16 @@
 ---
 source: modules/xcm-interface/src/tests.rs
+assertion_line: 31
 expression: xcm
 ---
 Xcm(
     [
         WithdrawAsset(
-            MultiAssets(
+            Assets(
                 [
-                    MultiAsset {
-                        id: Concrete(
-                            MultiLocation {
+                    Asset {
+                        id: AssetId(
+                            Location {
                                 parents: 0,
                                 interior: Here,
                             },
@@ -22,9 +23,9 @@ Xcm(
             ),
         ),
         BuyExecution {
-            fees: MultiAsset {
-                id: Concrete(
-                    MultiLocation {
+            fees: Asset {
+                id: AssetId(
+                    Location {
                         parents: 0,
                         interior: Here,
                     },
@@ -41,7 +42,7 @@ Xcm(
                 ref_time: 0,
                 proof_size: 0,
             },
-            call: "0x1d0000010101010101010101010101010101010101010101010101010101010101010100630803000100411f03000101000202020202020202020202020202020202020202020202020202020202020202030400000000070010a5d4e80000000000",
+            call: "0x1d0000010101010101010101010101010101010101010101010101010101010101010100630804000100411f040001010002020202020202020202020202020202020202020202020202020202020202020404000000070010a5d4e80000000000",
         },
         RefundSurplus,
         DepositAsset {
@@ -50,12 +51,14 @@ Xcm(
                     1,
                 ),
             ),
-            beneficiary: MultiLocation {
+            beneficiary: Location {
                 parents: 0,
                 interior: X1(
-                    Parachain(
-                        2000,
-                    ),
+                    [
+                        Parachain(
+                            2000,
+                        ),
+                    ],
                 ),
             },
         },

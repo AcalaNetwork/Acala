@@ -473,9 +473,9 @@ mod tests {
 				RuntimeOrigin::signed(ALICE),
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(50, 100)),]
 			));
-			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
+			assert_ok!(Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100));
 			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000));
-			Rewards::add_share(&bob(), &PoolId::Loans(ACA), 100);
+			assert_ok!(Rewards::add_share(&bob(), &PoolId::Loans(ACA), 100));
 			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000));
 
 			assert_eq!(
@@ -577,11 +577,11 @@ mod tests {
 				vec![(PoolId::Loans(ACA), Rate::saturating_from_rational(50, 100)),]
 			));
 
-			Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100);
+			assert_ok!(Rewards::add_share(&alice(), &PoolId::Loans(ACA), 100));
 			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), ACA, 1_000));
-			Rewards::add_share(&bob(), &PoolId::Loans(ACA), 100);
+			assert_ok!(Rewards::add_share(&bob(), &PoolId::Loans(ACA), 100));
 			assert_ok!(Rewards::accumulate_reward(&PoolId::Loans(ACA), AUSD, 1_000));
-			Rewards::remove_share(&alice(), &PoolId::Loans(ACA), 100);
+			assert_ok!(Rewards::remove_share(&alice(), &PoolId::Loans(ACA), 100));
 
 			assert_eq!(
 				Incentives::get_pending_rewards(PoolId::Loans(ACA), alice(), vec![ACA, AUSD]),

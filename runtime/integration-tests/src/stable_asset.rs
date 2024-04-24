@@ -392,12 +392,12 @@ fn three_usd_pool_works() {
 			assert_ok!(AssetRegistry::register_foreign_asset(
 				RuntimeOrigin::root(),
 				Box::new(
-					MultiLocation::new(
+					Location::new(
 						1,
-						X2(
+						[
 							Parachain(1000),
 							Junction::from(BoundedVec::try_from("USDT".as_bytes().to_vec()).unwrap())
-						)
+						]
 					)
 					.into()
 				),

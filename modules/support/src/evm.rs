@@ -239,13 +239,13 @@ pub trait AddressMapping<AccountId> {
 }
 
 /// A mapping between AssetId and AssetMetadata.
-pub trait AssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
+pub trait AssetIdMapping<ForeignAssetId, Location, AssetMetadata> {
 	/// Returns the AssetMetadata associated with a given `AssetIds`.
 	fn get_asset_metadata(asset_ids: AssetIds) -> Option<AssetMetadata>;
 	/// Returns the MultiLocation associated with a given ForeignAssetId.
-	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation>;
+	fn get_location(foreign_asset_id: ForeignAssetId) -> Option<Location>;
 	/// Returns the CurrencyId associated with a given MultiLocation.
-	fn get_currency_id(multi_location: MultiLocation) -> Option<CurrencyId>;
+	fn get_currency_id(location: Location) -> Option<CurrencyId>;
 }
 
 /// A mapping between u32 and Erc20 address.

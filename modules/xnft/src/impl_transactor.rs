@@ -25,31 +25,19 @@ where
 	TokenIdOf<T>: TryFrom<u128>,
 	ClassIdOf<T>: TryFrom<u128>,
 {
-	fn can_check_in(
-		_origin: &xcm::v3::MultiLocation,
-		_what: &MultiAsset,
-		_context: &xcm::v3::XcmContext,
-	) -> xcm::v3::Result {
-		Err(xcm::v3::Error::Unimplemented)
+	fn can_check_in(_origin: &Location, _what: &Asset, _context: &XcmContext) -> XcmResult {
+		Err(XcmError::Unimplemented)
 	}
 
-	fn check_in(_origin: &xcm::v3::MultiLocation, _what: &MultiAsset, _context: &xcm::v3::XcmContext) {}
+	fn check_in(_origin: &Location, _what: &Asset, _context: &XcmContext) {}
 
-	fn can_check_out(
-		_dest: &xcm::v3::MultiLocation,
-		_what: &MultiAsset,
-		_context: &xcm::v3::XcmContext,
-	) -> xcm::v3::Result {
-		Err(xcm::v3::Error::Unimplemented)
+	fn can_check_out(_dest: &Location, _what: &Asset, _context: &XcmContext) -> XcmResult {
+		Err(XcmError::Unimplemented)
 	}
 
-	fn check_out(_dest: &xcm::v3::MultiLocation, _what: &MultiAsset, _context: &xcm::v3::XcmContext) {}
+	fn check_out(_dest: &Location, _what: &Asset, _context: &XcmContext) {}
 
-	fn deposit_asset(
-		what: &MultiAsset,
-		who: &xcm::v3::MultiLocation,
-		context: Option<&xcm::v3::XcmContext>,
-	) -> XcmResult {
+	fn deposit_asset(what: &Asset, who: &Location, context: Option<&XcmContext>) -> XcmResult {
 		log::trace!(
 			target: LOG_TARGET,
 			"deposit_asset what: {:?}, who: {:?}, context: {:?}",
@@ -73,10 +61,10 @@ where
 	}
 
 	fn withdraw_asset(
-		what: &MultiAsset,
-		who: &xcm::v3::MultiLocation,
-		maybe_context: Option<&xcm::v3::XcmContext>,
-	) -> Result<xcm_executor::Assets, xcm::v3::Error> {
+		what: &Asset,
+		who: &Location,
+		maybe_context: Option<&XcmContext>,
+	) -> Result<AssetsInHolding, XcmError> {
 		log::trace!(
 			target: LOG_TARGET,
 			"withdraw_asset what: {:?}, who: {:?}, maybe_context: {:?}",
@@ -102,11 +90,11 @@ where
 	}
 
 	fn internal_transfer_asset(
-		asset: &MultiAsset,
-		from: &xcm::v3::MultiLocation,
-		to: &xcm::v3::MultiLocation,
-		context: &xcm::v3::XcmContext,
-	) -> Result<xcm_executor::Assets, xcm::v3::Error> {
+		asset: &Asset,
+		from: &Location,
+		to: &Location,
+		context: &XcmContext,
+	) -> Result<AssetsInHolding, XcmError> {
 		log::trace!(
 			target: LOG_TARGET,
 			"internal_transfer_asset: {:?}, from: {:?}, to: {:?}, context: {:?}",

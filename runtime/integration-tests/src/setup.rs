@@ -30,7 +30,7 @@ pub use runtime_common::{
 	cent, dollar, millicent, FixedRateOfAsset, MaxTipsOfPriority, ProxyType, Ratio, TipPerWeightStep, ACA, AUSD, DOT,
 	LDOT,
 };
-pub use xcm::v3::{prelude::*, Weight as XcmWeight};
+pub use xcm::v4::{prelude::*, Weight as XcmWeight};
 pub use xcm_executor::XcmExecutor;
 
 pub use module_support::{
@@ -56,8 +56,6 @@ pub use sp_runtime::{
 	Perbill, Permill,
 };
 
-pub use xcm::v3::prelude::*;
-
 #[cfg(feature = "with-mandala-runtime")]
 pub use mandala_imports::*;
 #[cfg(feature = "with-mandala-runtime")]
@@ -65,7 +63,7 @@ mod mandala_imports {
 	pub use mandala_runtime::xcm_config::*;
 	use mandala_runtime::AlternativeFeeSurplus;
 	pub use mandala_runtime::{
-		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AcalaSwap, AccountId, AggregatedDex,
+		create_x2_parachain_location, get_all_module_accounts, AcalaOracle, AcalaSwap, AccountId, AggregatedDex,
 		AssetRegistry, AuctionManager, Aura, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber,
 		CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CollatorSelection, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DealWithFees, DefaultDebitExchangeRate,
@@ -111,7 +109,7 @@ mod karura_imports {
 	pub use karura_runtime::xcm_config::*;
 	use karura_runtime::AlternativeFeeSurplus;
 	pub use karura_runtime::{
-		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AcalaSwap,
+		constants::parachains, create_x2_parachain_location, get_all_module_accounts, AcalaOracle, AcalaSwap,
 		AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, Authority, AuthoritysOriginId, Balance,
 		Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DefaultDebitExchangeRate, DefaultExchangeRate,
@@ -155,7 +153,7 @@ mod acala_imports {
 	pub use acala_runtime::xcm_config::*;
 	use acala_runtime::AlternativeFeeSurplus;
 	pub use acala_runtime::{
-		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts,
+		constants::parachains, create_x2_parachain_location, get_all_module_accounts, AcalaFoundationAccounts,
 		AcalaOracle, AcalaSwap, AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, Authority,
 		AuthoritysOriginId, Balance, Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine,
 		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte,

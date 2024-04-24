@@ -231,7 +231,7 @@ pub fn run() -> sc_cli::Result<()> {
 									.into());
 							}
 
-							cmd.run::<Block, ()>(config)
+							cmd.run::<sp_runtime::traits::HashingFor<Block>, ()>(config)
 						}
 						BenchmarkCmd::Block(cmd) => {
 							let partials = new_partial(&config, true, false)?;

@@ -85,7 +85,8 @@ pub fn feed_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	for i in 0..MinimumCount::get() {
 		let oracle: AccountId = account("oracle", 0, i);
 		if !OperatorMembershipAcala::contains(&oracle) {
-			OperatorMembershipAcala::add_member(RawOrigin::Root.into(), MultiAddress::Id(oracle.clone()))?;
+			OperatorMembershipAcala::add_member(RawOrigin::Root.into(), MultiAddress::Id(oracle.clone()))
+				.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 		}
 		AcalaOracle::feed_values(RawOrigin::Signed(oracle).into(), prices.to_vec().try_into().unwrap())
 			.map_or_else(|e| Err(e.error), |_| Ok(()))?;
