@@ -241,7 +241,7 @@ fn liquidation_works() {
 						buf.to_vec()
 					},
 				}],
-				used_gas: 25083,
+				used_gas: 25061,
 				used_storage: 0,
 			}));
 		});
@@ -281,7 +281,7 @@ fn on_collateral_transfer_works() {
 						buf.to_vec()
 					},
 				}],
-				used_gas: 23573,
+				used_gas: 23560,
 				used_storage: 0,
 			}));
 		});
@@ -321,7 +321,7 @@ fn on_repayment_refund_works() {
 						buf.to_vec()
 					},
 				}],
-				used_gas: 23595,
+				used_gas: 23582,
 				used_storage: 0,
 			}));
 		});
@@ -393,6 +393,15 @@ fn tracing_should_work() {
 				"error": null,
 				"revertReason": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000002645524332303a207472616e7366657220616d6f756e7420657863656564732062616c616e63650000000000000000000000000000000000000000000000000000",
 				"depth": 0,
+				"logs": [
+				  {
+				    "sLoad": {
+				      "address": "0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643",
+				      "index": "0xfb750de6f7d0583f749efc558ce6626b24fed04efd7219dc3f4294c408699e8c",
+				      "value": "0x0000000000000000000000000000000000000000000000000000000000000000"
+				    }
+				  }
+				],
 				"calls": []
 			  }
 			]"#;
@@ -419,11 +428,52 @@ fn tracing_should_work() {
 				"input": "0xa9059cbb00000000000000000000000010000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000064",
 				"value": "0x0",
 				"gas": 200000,
-				"gasUsed": 51929,
+				"gasUsed": 51897,
 				"output": "0x0000000000000000000000000000000000000000000000000000000000000001",
 				"error": null,
 				"revertReason": null,
 				"depth": 0,
+				"logs": [
+				  {
+				    "sLoad": {
+				      "address": "0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643",
+				      "index": "0xe6f18b3f6d2cdeb50fb82c61f7a7a249abf7b534575880ddcfde84bba07ce81d",
+				      "value": "0x00000000000000000000000000000000000000000000152d02c7e14af6800000"
+				    }
+				  },
+				  {
+				    "sStore": {
+				      "address": "0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643",
+				      "index": "0xe6f18b3f6d2cdeb50fb82c61f7a7a249abf7b534575880ddcfde84bba07ce81d",
+				      "value": "0x00000000000000000000000000000000000000000000152d02c7e14af67fff9c"
+				    }
+				  },
+				  {
+				    "sLoad": {
+				      "address": "0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643",
+				      "index": "0xfb750de6f7d0583f749efc558ce6626b24fed04efd7219dc3f4294c408699e8c",
+				      "value": "0x0000000000000000000000000000000000000000000000000000000000000000"
+				    }
+				  },
+				  {
+				    "sStore": {
+				      "address": "0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643",
+				      "index": "0xfb750de6f7d0583f749efc558ce6626b24fed04efd7219dc3f4294c408699e8c",
+				      "value": "0x0000000000000000000000000000000000000000000000000000000000000064"
+				    }
+				  },
+				  {
+				    "log": {
+				      "address": "0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643",
+				      "topics": [
+				        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+				        "0x0000000000000000000000001000000000000000000000000000000000000001",
+				        "0x0000000000000000000000001000000000000000000000000000000000000002"
+				      ],
+				      "data": "0x0000000000000000000000000000000000000000000000000000000000000064"
+				    }
+				  }
+				],
 				"calls": []
 			  }
 			]"#;

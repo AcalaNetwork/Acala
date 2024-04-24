@@ -24,11 +24,14 @@ use frame_support::{
 };
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
-use module_support::{mocks::MockAddressMapping, DispatchableTask};
+use module_support::{
+	mocks::{MockAddressMapping, TestRandomness},
+	DispatchableTask,
+};
 use orml_traits::parameter_type_with_key;
 use parity_scale_codec::{Decode, Encode};
 use primitives::{
-	define_combined_task, evm::convert_decimals_to_evm, task::TaskResult, Amount, BlockNumber, CurrencyId,
+	define_combined_task, evm::convert_decimals_to_evm, task::TaskResult, Amount, BlockNumber, CurrencyId, Nonce,
 	ReserveIdentifier, TokenSymbol,
 };
 use scale_info::TypeInfo;
@@ -135,6 +138,7 @@ parameter_types! {
 impl module_idle_scheduler::Config for TestRuntime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type Index = Nonce;
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
@@ -202,6 +206,7 @@ impl module_evm::Config for TestRuntime {
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = AuthorGiven;
+	type Randomness = TestRandomness<Self>;
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
 	type WeightInfo = ();

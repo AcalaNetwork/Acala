@@ -31,7 +31,10 @@ pub use frame_support::{
 };
 pub use frame_system::EnsureRoot;
 pub use module_evm_accounts::EvmAddressMapping;
-pub use module_support::{mocks::MockAddressMapping, AddressMapping};
+pub use module_support::{
+	mocks::{MockAddressMapping, TestRandomness},
+	AddressMapping,
+};
 pub use orml_traits::{parameter_type_with_key, MultiCurrency};
 use sp_core::{H160, H256, U256};
 use sp_runtime::{traits::AccountIdConversion, BuildStorage};
@@ -152,6 +155,7 @@ impl module_evm::Config for Runtime {
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Randomness = TestRandomness<Self>;
 	type Task = ();
 	type IdleScheduler = ();
 	type WeightInfo = ();
@@ -243,8 +247,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1235455,
-		used_storage: 5131,
+		used_gas: 1215220,
+		used_storage: 4996,
 	}));
 }
 

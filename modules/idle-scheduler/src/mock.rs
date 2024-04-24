@@ -24,7 +24,7 @@ use crate as module_idle_scheduler;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, derive_impl, parameter_types, traits::ConstU32};
 use module_support::DispatchableTask;
-use primitives::{define_combined_task, task::TaskResult};
+use primitives::{define_combined_task, task::TaskResult, Nonce};
 use sp_runtime::BuildStorage;
 
 use super::*;
@@ -61,6 +61,7 @@ parameter_types! {
 impl module_idle_scheduler::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type Index = Nonce;
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;

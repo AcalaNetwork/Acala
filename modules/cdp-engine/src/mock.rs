@@ -27,7 +27,10 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
-use module_support::{mocks::MockStableAsset, AuctionManager, EmergencyShutdown, SpecificJointsSwap};
+use module_support::{
+	mocks::{MockStableAsset, TestRandomness},
+	AuctionManager, EmergencyShutdown, SpecificJointsSwap,
+};
 use orml_traits::parameter_type_with_key;
 use primitives::{evm::convert_decimals_to_evm, DexShare, Moment, ReserveIdentifier, TokenSymbol, TradingPair};
 use sp_core::crypto::AccountId32;
@@ -295,6 +298,7 @@ impl module_evm::Config for Runtime {
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Randomness = TestRandomness<Self>;
 	type Task = ();
 	type IdleScheduler = ();
 	type WeightInfo = ();

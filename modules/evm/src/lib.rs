@@ -36,7 +36,7 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		BalanceStatus, Currency, EitherOfDiverse, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
-		NamedReservableCurrency, OnKilledAccount,
+		NamedReservableCurrency, OnKilledAccount, Randomness,
 	},
 	transactional,
 	weights::Weight,
@@ -241,11 +241,14 @@ pub mod module {
 		/// Find author for the current block.
 		type FindAuthor: FindAuthor<Self::AccountId>;
 
+		/// Provides randomness in the runtime.
+		type Randomness: Randomness<Self::Hash, BlockNumberFor<Self>>;
+
 		/// Dispatchable tasks
 		type Task: DispatchableTask + FullCodec + Debug + Clone + PartialEq + TypeInfo + From<EvmTask<Self>>;
 
 		/// Idle scheduler for the evm task.
-		type IdleScheduler: IdleScheduler<Self::Task>;
+		type IdleScheduler: IdleScheduler<Nonce, Self::Task>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -259,13 +262,13 @@ pub mod module {
 	}
 
 	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
-	pub struct AccountInfo<Index> {
-		pub nonce: Index,
+	pub struct AccountInfo<Nonce> {
+		pub nonce: Nonce,
 		pub contract_info: Option<ContractInfo>,
 	}
 
-	impl<Index> AccountInfo<Index> {
-		pub fn new(nonce: Index, contract_info: Option<ContractInfo>) -> Self {
+	impl<Nonce> AccountInfo<Nonce> {
+		pub fn new(nonce: Nonce, contract_info: Option<ContractInfo>) -> Self {
 			Self { nonce, contract_info }
 		}
 	}
@@ -278,9 +281,9 @@ pub mod module {
 
 	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Serialize, Deserialize)]
 	/// Account definition used for genesis block construction.
-	pub struct GenesisAccount<Balance, Index> {
+	pub struct GenesisAccount<Balance, Nonce> {
 		/// Account nonce.
-		pub nonce: Index,
+		pub nonce: Nonce,
 		/// Account balance.
 		pub balance: Balance,
 		/// Full account storage.
@@ -432,8 +435,8 @@ pub mod module {
 					let out = runtime.machine().return_value();
 					<Pallet<T>>::create_contract(source, *address, true, out);
 
-					for (index, value) in &account.storage {
-						AccountStorages::<T>::insert(address, index, value);
+					for (nonce, value) in &account.storage {
+						AccountStorages::<T>::insert(address, nonce, value);
 					}
 				}
 			});
@@ -1903,6 +1906,11 @@ impl<T: Config> Pallet<T> {
 				});
 			}
 		});
+	}
+
+	fn get_randomness() -> H256 {
+		let (random, _block_number) = T::Randomness::random(&("EVM-Random").encode());
+		H256::from_slice(random.as_ref())
 	}
 }
 
