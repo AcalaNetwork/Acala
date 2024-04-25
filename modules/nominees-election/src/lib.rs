@@ -330,7 +330,7 @@ pub mod module {
 		}
 
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::WeightInfo::reset_reserved_nominees(T::MaxNominateesCount::get()))]
+		#[pallet::weight(T::WeightInfo::reset_reserved_nominees(updates.len() as u32))]
 		pub fn reset_reserved_nominees(
 			origin: OriginFor<T>,
 			updates: Vec<(u16, BoundedVec<T::NomineeId, T::MaxNominateesCount>)>,

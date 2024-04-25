@@ -1458,7 +1458,7 @@ impl module_nominees_election::Config for Runtime {
 	type OnBonded = module_incentives::OnNomineesElectionBonded<Runtime>;
 	type OnUnbonded = module_incentives::OnNomineesElectionUnbonded<Runtime>;
 	type CurrentEra = Homa;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 }
 
 parameter_types! {

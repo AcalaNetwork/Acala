@@ -92,6 +92,9 @@ pub mod nutsfinance_stable_asset {
 pub mod aggregated_dex {
 	include!("../../../mandala/src/benchmarking/aggregated_dex.rs");
 }
+pub mod nominees_election {
+	include!("../../../mandala/src/benchmarking/nominees_election.rs");
+}
 
 // orml benchmarking
 pub mod auction {

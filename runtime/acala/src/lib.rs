@@ -1596,7 +1596,7 @@ impl module_nominees_election::Config for Runtime {
 	type OnBonded = module_incentives::OnNomineesElectionBonded<Runtime>;
 	type OnUnbonded = module_incentives::OnNomineesElectionUnbonded<Runtime>;
 	type CurrentEra = Homa;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 }
 
 pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
@@ -1993,6 +1993,7 @@ mod benches {
 		[module_idle_scheduler, benchmarking::idle_scheduler]
 		[module_aggregated_dex, benchmarking::aggregated_dex]
 		[module_liquid_crowdloan, benchmarking::liquid_crowdloan]
+		[module_nominees_election, benchmarking::nominees_election]
 	);
 }
 

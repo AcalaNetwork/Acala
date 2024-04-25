@@ -21,13 +21,13 @@
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 32.0.0
 //! DATE: 2024-04-25, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
 //! HOSTNAME: `192.168.1.3`, CPU: `<UNKNOWN>`
-//! WASM-EXECUTION: Compiled, CHAIN: Some("dev"), DB CACHE: 1024
+//! WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
 // target/production/acala
 // benchmark
 // pallet
-// --chain=dev
+// --chain=karura-dev
 // --steps=50
 // --repeat=20
 // --pallet=*
@@ -35,7 +35,7 @@
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --template=./templates/runtime-weight-template.hbs
-// --output=./runtime/mandala/src/weights/
+// --output=./runtime/karura/src/weights/
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
