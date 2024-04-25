@@ -130,8 +130,8 @@ parameter_types! {
 	pub static MockCurrentEra: EraIndex = 0;
 }
 
-pub struct MockOnBond;
-impl Happened<(AccountId, Balance)> for MockOnBond {
+pub struct MockOnBonded;
+impl Happened<(AccountId, Balance)> for MockOnBonded {
 	fn happened(info: &(AccountId, Balance)) {
 		let (account_id, amount) = info;
 		Shares::mutate(|v| {
@@ -147,8 +147,8 @@ impl Happened<(AccountId, Balance)> for MockOnBond {
 	}
 }
 
-pub struct MockOnUnbond;
-impl Happened<(AccountId, Balance)> for MockOnUnbond {
+pub struct MockOnUnbonded;
+impl Happened<(AccountId, Balance)> for MockOnUnbonded {
 	fn happened(info: &(AccountId, Balance)) {
 		let (account_id, amount) = info;
 		Shares::mutate(|v| {
@@ -181,8 +181,8 @@ impl Config for Runtime {
 	type MaxUnbondingChunks = ConstU32<3>;
 	type NomineeFilter = InvalidNominees;
 	type GovernanceOrigin = EnsureRoot<AccountId>;
-	type OnBond = MockOnBond;
-	type OnUnbond = MockOnUnbond;
+	type OnBonded = MockOnBonded;
+	type OnUnbonded = MockOnUnbonded;
 	type CurrentEra = MockCurrentEra;
 	type WeightInfo = ();
 }

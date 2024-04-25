@@ -1455,10 +1455,10 @@ impl module_nominees_election::Config for Runtime {
 	type MaxUnbondingChunks = ConstU32<7>;
 	type NomineeFilter = HomaValidatorList;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
-	type OnBond = ();
-	type OnUnbond = ();
+	type OnBonded = module_incentives::OnNomineesElectionBonded<Runtime>;
+	type OnUnbonded = module_incentives::OnNomineesElectionUnbonded<Runtime>;
 	type CurrentEra = Homa;
-	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
+	type WeightInfo = ();
 }
 
 parameter_types! {

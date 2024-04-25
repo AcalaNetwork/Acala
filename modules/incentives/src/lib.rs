@@ -617,3 +617,17 @@ impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningUnbonded<T> {
 		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), *amount);
 	}
 }
+
+pub struct OnNomineesElectionBonded<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> Happened<(T::AccountId, Balance)> for OnNomineesElectionBonded<T> {
+	fn happened((who, amount): &(T::AccountId, Balance)) {
+		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::NomineesElection, *amount);
+	}
+}
+
+pub struct OnNomineesElectionUnbonded<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> Happened<(T::AccountId, Balance)> for OnNomineesElectionUnbonded<T> {
+	fn happened((who, amount): &(T::AccountId, Balance)) {
+		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::NomineesElection, *amount);
+	}
+}

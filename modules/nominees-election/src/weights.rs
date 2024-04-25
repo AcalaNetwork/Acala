@@ -53,6 +53,7 @@ pub trait WeightInfo {
 	fn withdraw_unbonded(c: u32, ) -> Weight;
 	fn nominate(c: u32, ) -> Weight;
 	fn chill(c: u32, ) -> Weight;
+	fn reset_reserved_nominees(c: u32, ) -> Weight;
 }
 
 /// Weights for module_nominees_election using the Acala node and recommended hardware.
@@ -100,6 +101,15 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
+	fn reset_reserved_nominees(c: u32, ) -> Weight {
+		Weight::from_parts(5_871_000, 0)
+			// Standard Error: 15_000
+			.saturating_add(Weight::from_parts(3_870_000, 0).saturating_mul(c as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
+	}
 }
 
 // For backwards compatibility and tests
@@ -138,6 +148,15 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
 	}
 	fn chill(c: u32, ) -> Weight {
+		Weight::from_parts(5_871_000, 0)
+			// Standard Error: 15_000
+			.saturating_add(Weight::from_parts(3_870_000, 0).saturating_mul(c as u64))
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
+			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(c as u64)))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(c as u64)))
+	}
+	fn reset_reserved_nominees(c: u32, ) -> Weight {
 		Weight::from_parts(5_871_000, 0)
 			// Standard Error: 15_000
 			.saturating_add(Weight::from_parts(3_870_000, 0).saturating_mul(c as u64))

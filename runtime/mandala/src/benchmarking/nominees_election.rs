@@ -16,13 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, BondingDuration, Homa, MinCouncilBondThreshold, NomineesElection, Runtime};
+use crate::{
+	AccountId, Balance, BondingDuration, Homa, HomaValidatorList, MinCouncilBondThreshold, NomineesElection, Runtime,
+	ValidatorInsuranceThreshold,
+};
 
 use super::utils::{set_balance, LIQUID};
 use frame_benchmarking::{account, whitelisted_caller};
-use frame_support::traits::Get;
+use frame_support::{traits::Get, BoundedVec};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
+use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
@@ -66,22 +70,41 @@ runtime_benchmarks! {
 
 	nominate {
 		let c in 1 .. <Runtime as module_nominees_election::Config>::MaxNominateesCount::get();
-		let targets = (0..c).map(|c| account("nominatees", c, SEED)).collect::<Vec<_>>();
+		let targets: Vec<AccountId> = (0..c).map(|c| account("nominatees", c, SEED)).collect();
+		let caller: AccountId = whitelisted_caller();
+		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get() + ValidatorInsuranceThreshold::get() * targets.len().saturated_into::<Balance>());
+
+		for validator in targets.iter() {
+			HomaValidatorList::bond(RawOrigin::Signed(caller.clone()).into(), validator.clone(), ValidatorInsuranceThreshold::get())?;
+		}
 
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
 		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get())?;
 	}: _(RawOrigin::Signed(caller), targets)
 
 	chill {
 		let c in 1 .. <Runtime as module_nominees_election::Config>::MaxNominateesCount::get();
-		let targets = (0..c).map(|c| account("nominatees", c, SEED)).collect::<Vec<_>>();
+		let targets: Vec<AccountId> = (0..c).map(|c| account("nominatees", c, SEED)).collect();
 
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
+		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get() + ValidatorInsuranceThreshold::get() * targets.len().saturated_into::<Balance>());
+
+		for validator in targets.iter() {
+			HomaValidatorList::bond(RawOrigin::Signed(caller.clone()).into(), validator.clone(), ValidatorInsuranceThreshold::get())?;
+		}
+
 		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get())?;
 		NomineesElection::nominate(RawOrigin::Signed(caller.clone()).into(), targets)?;
 	}: _(RawOrigin::Signed(caller))
+
+	reset_reserved_nominees {
+		let c in 1 .. 4;
+		let updates: Vec<(u16, BoundedVec<AccountId, <Runtime as module_nominees_election::Config>::MaxNominateesCount>)> = (0..c).map(|c| {
+			let reserved: BoundedVec<AccountId, <Runtime as module_nominees_election::Config>::MaxNominateesCount> =
+				(0..<Runtime as module_nominees_election::Config>::MaxNominateesCount::get()).map(|c| account("nominatees", c, SEED)).collect::<Vec<AccountId>>().try_into().unwrap();
+			(c.saturated_into(), reserved)
+		}).collect();
+	}: _(RawOrigin::Root, updates)
 }
 
 #[cfg(test)]

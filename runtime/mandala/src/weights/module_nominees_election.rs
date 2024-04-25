@@ -159,4 +159,18 @@ impl<T: frame_system::Config> module_nominees_election::WeightInfo for WeightInf
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
 			.saturating_add(Weight::from_parts(0, 2760).saturating_mul(c.into()))
 	}
+	fn reset_reserved_nominees(c: u32, ) -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1030 + c * (95 ±0)`
+		//  Estimated: `11013 + c * (2760 ±0)`
+		// Minimum execution time: 20_718 nanoseconds.
+		Weight::from_parts(18_784_416, 11013)
+			// Standard Error: 13_881
+			.saturating_add(Weight::from_parts(3_723_048, 0).saturating_mul(c.into()))
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
+			.saturating_add(T::DbWeight::get().writes(1))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
+			.saturating_add(Weight::from_parts(0, 2760).saturating_mul(c.into()))
+	}
 }

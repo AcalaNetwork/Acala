@@ -83,11 +83,11 @@ pub mod module {
 		/// Origin represented Governance
 		type GovernanceOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-		/// Callback when an account bond.
-		type OnBond: Happened<(Self::AccountId, Balance)>;
+		/// Callback when an account bonded.
+		type OnBonded: Happened<(Self::AccountId, Balance)>;
 
-		/// Callback when an account unbond.
-		type OnUnbond: Happened<(Self::AccountId, Balance)>;
+		/// Callback when an account unbonded.
+		type OnUnbonded: Happened<(Self::AccountId, Balance)>;
 
 		/// Current era.
 		type CurrentEra: Get<EraIndex>;
@@ -199,7 +199,7 @@ pub mod module {
 
 				Self::update_votes(change.old, &old_nominations, change.new, &old_nominations);
 
-				T::OnBond::happened(&(who.clone(), change.change));
+				T::OnBonded::happened(&(who.clone(), change.change));
 
 				Self::deposit_event(Event::Bond {
 					who,
@@ -222,7 +222,7 @@ pub mod module {
 
 				Self::update_votes(change.old, &old_nominations, change.new, &old_nominations);
 
-				T::OnUnbond::happened(&(who.clone(), change.change));
+				T::OnUnbonded::happened(&(who.clone(), change.change));
 
 				Self::deposit_event(Event::Unbond {
 					who,
@@ -245,7 +245,7 @@ pub mod module {
 
 				Self::update_votes(change.old, &old_nominations, change.new, &old_nominations);
 
-				T::OnBond::happened(&(who.clone(), change.change));
+				T::OnBonded::happened(&(who.clone(), change.change));
 
 				Self::deposit_event(Event::Rebond {
 					who,
@@ -330,7 +330,7 @@ pub mod module {
 		}
 
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::WeightInfo::chill(T::MaxNominateesCount::get()))]
+		#[pallet::weight(T::WeightInfo::reset_reserved_nominees(T::MaxNominateesCount::get()))]
 		pub fn reset_reserved_nominees(
 			origin: OriginFor<T>,
 			updates: Vec<(u16, BoundedVec<T::NomineeId, T::MaxNominateesCount>)>,
