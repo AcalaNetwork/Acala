@@ -1440,7 +1440,7 @@ impl module_homa_validator_list::Config for Runtime {
 }
 
 parameter_types! {
-	pub MinCouncilBondThreshold: Balance = dollar(LDOT);
+	pub MinNomineesElectionBondThreshold: Balance = 10 * dollar(LDOT);
 	pub const MaxNominateesCount: u32 = 16;
 }
 
@@ -1449,7 +1449,7 @@ impl module_nominees_election::Config for Runtime {
 	type Currency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 	type NomineeId = AccountId;
 	type PalletId = NomineesElectionId;
-	type MinBond = MinCouncilBondThreshold;
+	type MinBond = MinNomineesElectionBondThreshold;
 	type BondingDuration = BondingDuration;
 	type MaxNominateesCount = MaxNominateesCount;
 	type MaxUnbondingChunks = ConstU32<7>;

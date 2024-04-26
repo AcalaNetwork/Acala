@@ -1585,8 +1585,8 @@ impl module_homa::Config for Runtime {
 }
 
 parameter_types! {
-	pub MinBondAmount: Balance = 10 * dollar(LKSM);
-	pub ValidatorInsuranceThreshold: Balance = 10_000 * dollar(LKSM);
+	pub MinBondAmount: Balance = 100 * dollar(LKSM);
+	pub ValidatorInsuranceThreshold: Balance = 1_000 * dollar(LKSM);
 }
 
 impl module_homa_validator_list::Config for Runtime {
@@ -1603,7 +1603,7 @@ impl module_homa_validator_list::Config for Runtime {
 }
 
 parameter_types! {
-	pub MinCouncilBondThreshold: Balance = dollar(LKSM);
+	pub MinNomineesElectionBondThreshold: Balance = dollar(LKSM);
 	pub const MaxNominateesCount: u32 = 24;
 }
 
@@ -1612,7 +1612,7 @@ impl module_nominees_election::Config for Runtime {
 	type Currency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 	type NomineeId = AccountId;
 	type PalletId = NomineesElectionId;
-	type MinBond = MinCouncilBondThreshold;
+	type MinBond = MinNomineesElectionBondThreshold;
 	type BondingDuration = BondingDuration;
 	type MaxNominateesCount = MaxNominateesCount;
 	type MaxUnbondingChunks = ConstU32<7>;
