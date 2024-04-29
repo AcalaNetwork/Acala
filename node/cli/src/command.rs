@@ -23,6 +23,7 @@ use std::net::SocketAddr;
 
 use crate::cli::{Cli, RelayChainCli, Subcommand};
 use acala_service::{chain_spec, new_partial, Block, IdentifyVariant};
+use cumulus_client_service::storage_proof_size::HostFunctions as ReclaimHostFunctions;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
@@ -231,7 +232,7 @@ pub fn run() -> sc_cli::Result<()> {
 									.into());
 							}
 
-							cmd.run::<sp_runtime::traits::HashingFor<Block>, ()>(config)
+							cmd.run::<sp_runtime::traits::HashingFor<Block>, ReclaimHostFunctions>(config)
 						}
 						BenchmarkCmd::Block(cmd) => {
 							let partials = new_partial(&config, true, false)?;
