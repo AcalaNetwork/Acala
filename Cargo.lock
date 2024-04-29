@@ -6994,7 +6994,7 @@ dependencies = [
 
 [[package]]
 name = "module-liquid-crowdloan"
-version = "2.16.0"
+version = "2.24.0"
 dependencies = [
  "acala-primitives",
  "frame-support 31.0.0",

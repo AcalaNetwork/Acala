@@ -108,7 +108,6 @@ pub mod module {
 	#[pallet::genesis_build]
 	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
-			assert!(!self.session_duration.is_zero(), "SessionDuration can't be zero");
 			SessionDuration::<T>::put(self.session_duration);
 		}
 	}

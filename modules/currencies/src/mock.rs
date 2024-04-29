@@ -25,7 +25,7 @@ pub use crate as currencies;
 
 use frame_support::{
 	assert_ok, derive_impl, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Nothing, VariantCount},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -109,6 +109,15 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
 }
 
+#[derive(Encode, Decode, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, MaxEncodedLen, TypeInfo, RuntimeDebug)]
+pub enum TestId {
+	Foo,
+}
+
+impl VariantCount for TestId {
+	const VARIANT_COUNT: u32 = 1;
+}
+
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -119,7 +128,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = TestId;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
