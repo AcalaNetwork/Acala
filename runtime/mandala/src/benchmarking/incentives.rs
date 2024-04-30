@@ -75,7 +75,7 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		let pool_id = PoolId::Loans(STAKING);
 
-		assert_ok!(Rewards::add_share(&caller, &pool_id, 100));
+		assert_ok!(Rewards::add_share(&caller, &pool_id, dollar(NATIVE)));
 		Currencies::deposit(NATIVE, &Incentives::account_id(), 80 * dollar(NATIVE))?;
 		Rewards::accumulate_reward(&pool_id, NATIVE, 80 * dollar(NATIVE))?;
 	}: _(RawOrigin::Signed(caller), pool_id)
