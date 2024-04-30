@@ -1302,8 +1302,16 @@ impl module_asset_registry::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub MinimalShares: |_pool_id: PoolId| -> Balance {
-		0 // TODO: config
+	pub MinimalShares: |pool_id: PoolId| -> Balance {
+		match pool_id {
+			PoolId::Loans(currency_id) | PoolId::Dex(currency_id) | PoolId::Earning(currency_id) => {
+				if *currency_id == GetNativeCurrencyId::get() {
+					NativeTokenExistentialDeposit::get()
+				} else {
+					ExistentialDeposits::get(currency_id)
+				}
+			}
+		}
 	};
 }
 
