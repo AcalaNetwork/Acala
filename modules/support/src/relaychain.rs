@@ -56,13 +56,7 @@ pub enum XcmCall {
 	/// `limited_reserve_transfer_assets(dest, beneficiary, assets, fee_asset_item, weight_limit)`
 	/// call.
 	#[codec(index = 8)]
-	LimitedReserveTransferAssets(
-		VersionedMultiLocation,
-		VersionedMultiLocation,
-		VersionedMultiAssets,
-		u32,
-		WeightLimit,
-	),
+	LimitedReserveTransferAssets(VersionedLocation, VersionedLocation, VersionedAssets, u32, WeightLimit),
 }
 
 // Same to `Polkadot` and `Kusama` runtime `Lookup` config.
@@ -124,9 +118,9 @@ pub trait CallBuilder {
 	/// - assets: The assets to be transferred.
 	/// - fee_assets_item: The index of assets for fees.
 	fn xcm_pallet_reserve_transfer_assets(
-		dest: MultiLocation,
-		beneficiary: MultiLocation,
-		assets: MultiAssets,
+		dest: Location,
+		beneficiary: Location,
+		assets: Assets,
 		fee_assets_item: u32,
 	) -> Self::RelayChainCall;
 

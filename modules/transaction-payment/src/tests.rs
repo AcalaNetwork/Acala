@@ -40,7 +40,7 @@ use sp_runtime::{
 	testing::TestXt,
 	traits::{One, UniqueSaturatedInto},
 };
-use xcm::v3::prelude::*;
+use xcm::v4::prelude::*;
 
 const CALL: <Runtime as frame_system::Config>::RuntimeCall =
 	RuntimeCall::Currencies(module_currencies::Call::transfer {
@@ -1591,24 +1591,23 @@ fn max_tip_has_same_priority() {
 }
 
 struct CurrencyIdConvert;
-impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+impl Convert<Location, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(location: Location) -> Option<CurrencyId> {
 		use CurrencyId::Token;
 		use TokenSymbol::*;
 
-		if location == MultiLocation::parent() {
+		if location == Location::parent() {
 			return Some(Token(DOT));
 		}
 
-		match location {
-			MultiLocation {
-				interior: X1(GeneralKey { data, length }),
-				..
-			} => {
-				let key = &data[..data.len().min(length as usize)];
-				CurrencyId::decode(&mut &*key).ok()
-			}
-			_ => None,
+		match location.unpack() {
+			(_parents, interior) => match interior {
+				[GeneralKey { data, length }] => {
+					let key = &data[..data.len().min(*length as usize)];
+					CurrencyId::decode(&mut &*key).ok()
+				}
+				_ => None,
+			},
 		}
 	}
 }
@@ -1617,22 +1616,19 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 fn buy_weight_transaction_fee_pool_works() {
 	builder_with_dex_and_fee_pool(true).execute_with(|| {
 		// Location convert return None.
-		let location = MultiLocation::new(1, X1(Junction::Parachain(2000)));
+		let location = Location::new(1, Junction::Parachain(2000));
 		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
 		assert_eq!(rate, None);
 
 		// Token not in charge fee pool
 		let currency_id = CurrencyId::Token(TokenSymbol::LDOT);
 
-		let location = MultiLocation::new(
-			1,
-			X1(Junction::from(BoundedVec::try_from(currency_id.encode()).unwrap())),
-		);
+		let location = Location::new(1, Junction::from(BoundedVec::try_from(currency_id.encode()).unwrap()));
 		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
 		assert_eq!(rate, None);
 
 		// DOT Token is in charge fee pool.
-		let location = MultiLocation::parent();
+		let location = Location::parent();
 		let rate = <BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>::calculate_rate(location);
 		assert_eq!(rate, Some(Ratio::saturating_from_rational(1, 10)));
 	});

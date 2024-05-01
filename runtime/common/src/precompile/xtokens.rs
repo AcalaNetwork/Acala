@@ -32,7 +32,7 @@ use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::{
 	prelude::*,
-	v3::{MultiAsset, MultiAssets, MultiLocation},
+	v4::{Asset, Assets, Location},
 };
 
 /// The `Xtokens` impl precompile.
@@ -86,7 +86,7 @@ where
 				let amount = input.balance_at(3)?;
 
 				let dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest: Location = decode_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -129,13 +129,13 @@ where
 				let from = input.account_id_at(1)?;
 
 				let asset_bytes: &[u8] = &input.bytes_at(2)?[..];
-				let asset: MultiAsset = decode_multi_asset(asset_bytes).ok_or(PrecompileFailure::Revert {
+				let asset: Asset = decode_asset(asset_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid multi asset".into(),
 				})?;
 
 				let dest_bytes: &[u8] = &input.bytes_at(3)?[..];
-				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest: Location = decode_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -181,7 +181,7 @@ where
 				let fee = input.balance_at(4)?;
 
 				let dest_bytes: &[u8] = &input.bytes_at(5)?[..];
-				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest: Location = decode_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -224,19 +224,19 @@ where
 				let from = input.account_id_at(1)?;
 
 				let asset_bytes: &[u8] = &input.bytes_at(2)?[..];
-				let asset: MultiAsset = decode_multi_asset(asset_bytes).ok_or(PrecompileFailure::Revert {
+				let asset: Asset = decode_asset(asset_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid multi asset".into(),
 				})?;
 
 				let fee_bytes: &[u8] = &input.bytes_at(3)?[..];
-				let fee: MultiAsset = decode_multi_asset(fee_bytes).ok_or(PrecompileFailure::Revert {
+				let fee: Asset = decode_asset(fee_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid fee asset".into(),
 				})?;
 
 				let dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest: Location = decode_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -302,7 +302,7 @@ where
 				let fee_item = input.u32_at(3)?;
 
 				let dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest: Location = decode_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -345,19 +345,19 @@ where
 				let from = input.account_id_at(1)?;
 
 				let assets_bytes: &[u8] = &input.bytes_at(2)?[..];
-				let assets: MultiAssets = decode_multi_assets(assets_bytes).ok_or(PrecompileFailure::Revert {
+				let assets: Assets = decode_assets(assets_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid multi assets".into(),
 				})?;
 
 				let fee_item = input.u32_at(3)?;
-				let fee: &MultiAsset = assets.get(fee_item as usize).ok_or(PrecompileFailure::Revert {
+				let fee: &Asset = assets.get(fee_item as usize).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid fee index".into(),
 				})?;
 
 				let dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest: MultiLocation = decode_multi_location(dest_bytes).ok_or(PrecompileFailure::Revert {
+				let dest: Location = decode_location(dest_bytes).ok_or(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -400,16 +400,16 @@ where
 	}
 }
 
-fn decode_multi_asset(mut bytes: &[u8]) -> Option<MultiAsset> {
-	VersionedMultiAsset::decode(&mut bytes).ok()?.try_into().ok()
+fn decode_asset(mut bytes: &[u8]) -> Option<Asset> {
+	VersionedAsset::decode(&mut bytes).ok()?.try_into().ok()
 }
 
-fn decode_multi_assets(mut bytes: &[u8]) -> Option<MultiAssets> {
-	VersionedMultiAssets::decode(&mut bytes).ok()?.try_into().ok()
+fn decode_assets(mut bytes: &[u8]) -> Option<Assets> {
+	VersionedAssets::decode(&mut bytes).ok()?.try_into().ok()
 }
 
-fn decode_multi_location(mut bytes: &[u8]) -> Option<MultiLocation> {
-	VersionedMultiLocation::decode(&mut bytes).ok()?.try_into().ok()
+fn decode_location(mut bytes: &[u8]) -> Option<Location> {
+	VersionedLocation::decode(&mut bytes).ok()?.try_into().ok()
 }
 
 struct Pricer<R>(PhantomData<R>);
@@ -437,7 +437,7 @@ where
 				let amount = input.balance_at(3)?;
 
 				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest = VersionedMultiLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
+				let dest = VersionedLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -450,13 +450,13 @@ where
 			}
 			Action::TransferMultiAsset => {
 				let mut asset_bytes: &[u8] = &input.bytes_at(2)?[..];
-				let asset = VersionedMultiAsset::decode(&mut asset_bytes).map_err(|_| PrecompileFailure::Revert {
+				let asset = VersionedAsset::decode(&mut asset_bytes).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid multi asset".into(),
 				})?;
 
 				let mut dest_bytes: &[u8] = &input.bytes_at(3)?[..];
-				let dest = VersionedMultiLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
+				let dest = VersionedLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -472,7 +472,7 @@ where
 				let amount = input.balance_at(3)?;
 
 				let mut dest_bytes: &[u8] = &input.bytes_at(5)?[..];
-				let dest = VersionedMultiLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
+				let dest = VersionedLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -485,13 +485,13 @@ where
 			}
 			Action::TransferMultiAssetWithFee => {
 				let mut asset_bytes: &[u8] = &input.bytes_at(2)?[..];
-				let asset = VersionedMultiAsset::decode(&mut asset_bytes).map_err(|_| PrecompileFailure::Revert {
+				let asset = VersionedAsset::decode(&mut asset_bytes).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid multi asset".into(),
 				})?;
 
 				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest = VersionedMultiLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
+				let dest = VersionedLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -529,7 +529,7 @@ where
 				let fee_item = input.u32_at(3)?;
 
 				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest = VersionedMultiLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
+				let dest = VersionedLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -543,16 +543,15 @@ where
 			}
 			Action::TransferMultiAssets => {
 				let mut assets_bytes: &[u8] = &input.bytes_at(2)?[..];
-				let assets =
-					VersionedMultiAssets::decode(&mut assets_bytes).map_err(|_| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: "invalid multi asset".into(),
-					})?;
+				let assets = VersionedAssets::decode(&mut assets_bytes).map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid multi asset".into(),
+				})?;
 
 				let fee_item = input.u32_at(3)?;
 
 				let mut dest_bytes: &[u8] = &input.bytes_at(4)?[..];
-				let dest = VersionedMultiLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
+				let dest = VersionedLocation::decode(&mut dest_bytes).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid dest".into(),
 				})?;
@@ -587,19 +586,19 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(MultiLocation::new(
+			let dest: VersionedLocation = VersionedLocation::V4(Location::new(
 				1,
-				X2(
+				[
 					Parachain(2002),
 					Junction::AccountId32 {
 						network: None,
 						id: BOB.into(),
 					},
-				),
+				],
 			));
 			assert_eq!(
 				dest.encode(),
-				hex!("03010200491f01000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("04010200491f01000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Unlimited;
@@ -653,10 +652,10 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let asset: VersionedMultiAsset = (Here, 1_000_000_000_000u128).into();
-			assert_eq!(asset.encode(), hex!("0300000000070010a5d4e8"));
+			let asset: VersionedAsset = (Here, 1_000_000_000_000u128).into();
+			assert_eq!(asset.encode(), hex!("04000000070010a5d4e8"));
 
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(
+			let dest: VersionedLocation = VersionedLocation::V4(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -665,7 +664,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -718,7 +717,7 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(
+			let dest: VersionedLocation = VersionedLocation::V4(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -727,7 +726,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -780,13 +779,13 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let asset: VersionedMultiAsset = (Here, 1_000_000_000_000u128).into();
-			assert_eq!(asset.encode(), hex!("0300000000070010a5d4e8"));
+			let asset: VersionedAsset = (Here, 1_000_000_000_000u128).into();
+			assert_eq!(asset.encode(), hex!("04000000070010a5d4e8"));
 
-			let fee: VersionedMultiAsset = (Here, 1_000_000).into();
-			assert_eq!(fee.encode(), hex!("030000000002093d00"));
+			let fee: VersionedAsset = (Here, 1_000_000).into();
+			assert_eq!(fee.encode(), hex!("0400000002093d00"));
 
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(
+			let dest: VersionedLocation = VersionedLocation::V4(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -795,7 +794,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -854,7 +853,7 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(
+			let dest: VersionedLocation = VersionedLocation::V4(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -863,7 +862,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -927,11 +926,10 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let assets: VersionedMultiAssets =
-				VersionedMultiAssets::from(MultiAssets::from((Here, 1_000_000_000_000u128)));
-			assert_eq!(assets.encode(), hex!("030400000000070010a5d4e8"));
+			let assets: VersionedAssets = VersionedAssets::from(Assets::from((Here, 1_000_000_000_000u128)));
+			assert_eq!(assets.encode(), hex!("0404000000070010a5d4e8"));
 
-			let dest: VersionedMultiLocation = VersionedMultiLocation::V3(
+			let dest: VersionedLocation = VersionedLocation::V4(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -940,7 +938,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("03000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));

@@ -31,7 +31,7 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::H160;
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
-use xcm::v3::prelude::*;
+use xcm::v4::prelude::*;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -72,7 +72,7 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 		1_000_000
 	}
 
-	fn get_parachain_fee(_: MultiLocation) -> Balance {
+	fn get_parachain_fee(_: Location) -> Balance {
 		1_000_000
 	}
 }
@@ -118,7 +118,6 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
-	type MaxHolds = ();
 	type MaxFreezes = ();
 }
 

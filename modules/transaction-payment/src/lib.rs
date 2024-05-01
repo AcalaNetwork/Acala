@@ -57,7 +57,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, Percent, Perquintill,
 };
 use sp_std::prelude::*;
-use xcm::v3::prelude::MultiLocation;
+use xcm::v4::prelude::Location;
 
 mod mock;
 mod tests;
@@ -1228,10 +1228,10 @@ where
 pub struct BuyWeightRateOfTransactionFeePool<T, C>(sp_std::marker::PhantomData<(T, C)>);
 impl<T: Config, C> BuyWeightRate for BuyWeightRateOfTransactionFeePool<T, C>
 where
-	C: Convert<MultiLocation, Option<CurrencyId>>,
+	C: Convert<Location, Option<CurrencyId>>,
 {
-	fn calculate_rate(multi_location: MultiLocation) -> Option<Ratio> {
-		C::convert(multi_location).and_then(TokenExchangeRate::<T>::get)
+	fn calculate_rate(location: Location) -> Option<Ratio> {
+		C::convert(location).and_then(TokenExchangeRate::<T>::get)
 	}
 }
 

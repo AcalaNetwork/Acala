@@ -176,3 +176,6 @@ wasm-bench = [
 
 	"xcm-builder/runtime-benchmarks",
 ]
+runtime-benchmarks = [
+	"orml-oracle/runtime-benchmarks"
+]

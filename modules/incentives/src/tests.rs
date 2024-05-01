@@ -343,7 +343,7 @@ fn on_update_loan_works() {
 			Default::default(),
 		);
 
-		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, 100, 0));
+		assert_ok!(OnUpdateLoan::<Runtime>::handle(&(ALICE::get(), BTC, 100, 0)));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(BTC)),
 			PoolInfo {
@@ -356,7 +356,7 @@ fn on_update_loan_works() {
 			(100, Default::default())
 		);
 
-		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, 100, 100));
+		assert_ok!(OnUpdateLoan::<Runtime>::handle(&(ALICE::get(), BTC, 100, 100)));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(BTC)),
 			PoolInfo {
@@ -369,7 +369,7 @@ fn on_update_loan_works() {
 			(200, Default::default())
 		);
 
-		OnUpdateLoan::<Runtime>::happened(&(BOB::get(), BTC, 600, 0));
+		assert_ok!(OnUpdateLoan::<Runtime>::handle(&(BOB::get(), BTC, 600, 0)));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(BTC)),
 			PoolInfo {
@@ -382,7 +382,7 @@ fn on_update_loan_works() {
 			(600, Default::default())
 		);
 
-		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, -50, 200));
+		assert_ok!(OnUpdateLoan::<Runtime>::handle(&(ALICE::get(), BTC, -50, 200)));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(BTC)),
 			PoolInfo {
@@ -395,7 +395,7 @@ fn on_update_loan_works() {
 			(150, Default::default())
 		);
 
-		OnUpdateLoan::<Runtime>::happened(&(BOB::get(), BTC, -600, 600));
+		assert_ok!(OnUpdateLoan::<Runtime>::handle(&(BOB::get(), BTC, -600, 600)));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(BTC)),
 			PoolInfo {
@@ -437,8 +437,8 @@ fn transfer_failed_when_claim_rewards() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(TokensModule::deposit(AUSD, &VAULT::get(), 27));
 		assert_ok!(TokensModule::deposit(DOT, &VAULT::get(), 30));
-		RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(BTC), 100);
-		RewardsModule::add_share(&BOB::get(), &PoolId::Loans(BTC), 200);
+		assert_ok!(RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(BTC), 100));
+		assert_ok!(RewardsModule::add_share(&BOB::get(), &PoolId::Loans(BTC), 200));
 		assert_ok!(RewardsModule::accumulate_reward(&PoolId::Loans(BTC), AUSD, 27));
 		assert_ok!(RewardsModule::accumulate_reward(&PoolId::Loans(BTC), DOT, 30));
 
@@ -662,11 +662,11 @@ fn claim_rewards_works() {
 		));
 
 		// alice add shares before accumulate rewards
-		RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(BTC), 100);
-		RewardsModule::add_share(&ALICE::get(), &PoolId::Dex(BTC_AUSD_LP), 100);
+		assert_ok!(RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(BTC), 100));
+		assert_ok!(RewardsModule::add_share(&ALICE::get(), &PoolId::Dex(BTC_AUSD_LP), 100));
 
 		// bob add shares before accumulate rewards
-		RewardsModule::add_share(&BOB::get(), &PoolId::Dex(BTC_AUSD_LP), 100);
+		assert_ok!(RewardsModule::add_share(&BOB::get(), &PoolId::Dex(BTC_AUSD_LP), 100));
 
 		// accumulate rewards for different pools
 		assert_ok!(RewardsModule::accumulate_reward(&PoolId::Loans(BTC), ACA, 2000));
@@ -674,7 +674,7 @@ fn claim_rewards_works() {
 		assert_ok!(RewardsModule::accumulate_reward(&PoolId::Dex(BTC_AUSD_LP), AUSD, 2000));
 
 		// bob add share after accumulate rewards
-		RewardsModule::add_share(&BOB::get(), &PoolId::Loans(BTC), 100);
+		assert_ok!(RewardsModule::add_share(&BOB::get(), &PoolId::Loans(BTC), 100));
 
 		// accumulate LDOT rewards for PoolId::Loans(BTC)
 		assert_ok!(RewardsModule::accumulate_reward(&PoolId::Loans(BTC), LDOT, 500));
@@ -793,7 +793,11 @@ fn claim_rewards_works() {
 			IncentivesModule::pending_multi_rewards(PoolId::Dex(BTC_AUSD_LP), ALICE::get()),
 			BTreeMap::default()
 		);
-		RewardsModule::remove_share(&ALICE::get(), &PoolId::Dex(BTC_AUSD_LP), 50);
+		assert_ok!(RewardsModule::remove_share(
+			&ALICE::get(),
+			&PoolId::Dex(BTC_AUSD_LP),
+			50
+		));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Dex(BTC_AUSD_LP)),
 			PoolInfo {
@@ -874,10 +878,10 @@ fn on_initialize_should_work() {
 			],
 		));
 
-		RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(BTC), 1);
-		RewardsModule::add_share(&ALICE::get(), &PoolId::Dex(BTC_AUSD_LP), 1);
-		RewardsModule::add_share(&ALICE::get(), &PoolId::Dex(DOT_AUSD_LP), 1);
-		RewardsModule::add_share(&ALICE::get(), &PoolId::Earning(ACA), 1);
+		assert_ok!(RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(BTC), 1));
+		assert_ok!(RewardsModule::add_share(&ALICE::get(), &PoolId::Dex(BTC_AUSD_LP), 1));
+		assert_ok!(RewardsModule::add_share(&ALICE::get(), &PoolId::Dex(DOT_AUSD_LP), 1));
+		assert_ok!(RewardsModule::add_share(&ALICE::get(), &PoolId::Earning(ACA), 1));
 
 		assert_eq!(TokensModule::free_balance(ACA, &RewardsSource::get()), 10000);
 		assert_eq!(TokensModule::free_balance(AUSD, &RewardsSource::get()), 10000);
@@ -979,7 +983,7 @@ fn on_initialize_should_work() {
 		);
 
 		// add share for PoolId::Loans(DOT)
-		RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(DOT), 1);
+		assert_ok!(RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(DOT), 1));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(DOT)),
 			PoolInfo {
@@ -1102,7 +1106,7 @@ fn on_initialize_should_work() {
 #[test]
 fn earning_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		OnEarningBonded::<Runtime>::happened(&(ALICE::get(), 80));
+		assert_ok!(OnEarningBonded::<Runtime>::handle(&(ALICE::get(), 80)));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Earning(ACA)),
 			PoolInfo {
@@ -1115,7 +1119,7 @@ fn earning_should_work() {
 			(80, Default::default())
 		);
 
-		OnEarningUnbonded::<Runtime>::happened(&(ALICE::get(), 20));
+		assert_ok!(OnEarningUnbonded::<Runtime>::handle(&(ALICE::get(), 20)));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Earning(ACA)),
 			PoolInfo {
@@ -1128,7 +1132,7 @@ fn earning_should_work() {
 			(60, Default::default())
 		);
 
-		OnEarningUnbonded::<Runtime>::happened(&(ALICE::get(), 60));
+		assert_ok!(OnEarningUnbonded::<Runtime>::handle(&(ALICE::get(), 60)));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Earning(ACA)),
 			PoolInfo { ..Default::default() }
@@ -1170,7 +1174,7 @@ fn transfer_reward_and_update_rewards_storage_atomically_when_accumulate_incenti
 		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 0);
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 0);
 
-		RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(LDOT), 1);
+		assert_ok!(RewardsModule::add_share(&ALICE::get(), &PoolId::Loans(LDOT), 1));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(LDOT)),
 			PoolInfo {
@@ -1263,10 +1267,10 @@ fn claim_reward_deduction_currency_works() {
 		assert_ok!(TokensModule::deposit(AUSD, &VAULT::get(), 10000));
 
 		// alice add shares before accumulate rewards
-		RewardsModule::add_share(&ALICE::get(), &pool_id, 100);
+		assert_ok!(RewardsModule::add_share(&ALICE::get(), &pool_id, 100));
 
 		// bob add shares before accumulate rewards
-		RewardsModule::add_share(&BOB::get(), &pool_id, 100);
+		assert_ok!(RewardsModule::add_share(&BOB::get(), &pool_id, 100));
 
 		// accumulate rewards
 		assert_ok!(RewardsModule::accumulate_reward(&pool_id, ACA, 1000));

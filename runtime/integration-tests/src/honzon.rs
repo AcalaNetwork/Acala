@@ -730,6 +730,17 @@ fn cdp_engine_minimum_collateral_amount_works() {
 				assert_eq!(relaychain_minimum_collateral_amount, cent(KSM));
 			}
 
+			// Native add shares cannot be below the minimum share
+			assert_noop!(
+				CdpEngine::adjust_position(
+					&AccountId::from(ALICE),
+					NATIVE_CURRENCY,
+					(NativeTokenExistentialDeposit::get() - 1) as i128,
+					0i128,
+				),
+				orml_rewards::Error::<Runtime>::ShareBelowMinimal
+			);
+
 			// Native collateral cannot be below the minimum when debit is 0
 			assert_noop!(
 				CdpEngine::adjust_position(
@@ -739,6 +750,17 @@ fn cdp_engine_minimum_collateral_amount_works() {
 					0i128,
 				),
 				module_cdp_engine::Error::<Runtime>::CollateralAmountBelowMinimum
+			);
+
+			// Other token add shares cannot be below the minimum share
+			assert_noop!(
+				CdpEngine::adjust_position(
+					&AccountId::from(ALICE),
+					RELAY_CHAIN_CURRENCY,
+					(ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY) - 1) as i128,
+					0i128,
+				),
+				orml_rewards::Error::<Runtime>::ShareBelowMinimal
 			);
 
 			// Other token collaterals cannot be below the minimum when debit is 0

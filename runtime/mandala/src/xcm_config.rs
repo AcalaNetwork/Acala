@@ -49,10 +49,10 @@ use xcm_builder::{
 };
 
 parameter_types! {
-	pub const DotLocation: MultiLocation = MultiLocation::parent();
+	pub const DotLocation: Location = Location::parent();
 	pub const RelayNetwork: NetworkId = NetworkId::Polkadot;
 	pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
-	pub UniversalLocation: InteriorMultiLocation = X2(GlobalConsensus(RelayNetwork::get()), Parachain(ParachainInfo::parachain_id().into()));
+	pub UniversalLocation: InteriorLocation = [GlobalConsensus(RelayNetwork::get()), Parachain(ParachainInfo::parachain_id().into())].into();
 	pub CheckingAccount: AccountId = PolkadotXcm::check_account();
 }
 
@@ -75,7 +75,7 @@ parameter_types! {
 	pub UnitWeightCost: XcmWeight = XcmWeight::from_parts(1_000_000, 0);
 	pub const MaxInstructions: u32 = 100;
 	pub DotPerSecond: (AssetId, u128, u128) = (
-		MultiLocation::parent().into(),
+		Location::parent().into(),
 		dot_per_second(),
 		0
 	);
@@ -233,12 +233,12 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 >;
 
 pub struct CurrencyIdConvert;
-impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
-	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+impl Convert<CurrencyId, Option<Location>> for CurrencyIdConvert {
+	fn convert(id: CurrencyId) -> Option<Location> {
 		use primitives::TokenSymbol::*;
 		use CurrencyId::{Erc20, ForeignAsset, StableAssetPoolToken, Token};
 		match id {
-			Token(DOT) => Some(MultiLocation::parent()),
+			Token(DOT) => Some(Location::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAI) => {
 				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
@@ -246,31 +246,30 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
 			StableAssetPoolToken(_pool_id) => native_currency_location(ParachainInfo::get().into(), id.encode()),
-			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
+			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_location(foreign_asset_id),
 			_ => None,
 		}
 	}
 }
-impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+impl Convert<Location, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(location: Location) -> Option<CurrencyId> {
 		use primitives::TokenSymbol::*;
 		use CurrencyId::{Erc20, StableAssetPoolToken, Token};
 
-		if location == MultiLocation::parent() {
+		if location == Location::parent() {
 			return Some(Token(DOT));
 		}
 
-		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location) {
+		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location.clone()) {
 			return Some(currency_id);
 		}
 
-		match location {
-			MultiLocation {
-				parents,
-				interior: X2(Parachain(para_id), GeneralKey { data, length }),
-			} if parents == 1 && ParaId::from(para_id) == ParachainInfo::get() => {
+		match location.unpack() {
+			(parents, [Parachain(para_id), GeneralKey { data, length }])
+				if parents == 1 && ParaId::from(*para_id) == ParachainInfo::get() =>
+			{
 				// decode the general key
-				let key = &data[..data.len().min(length as usize)];
+				let key = &data[..data.len().min(*length as usize)];
 				if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 					// check if `currency_id` is cross-chain asset
 					match currency_id {
@@ -284,11 +283,8 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				}
 			}
 			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
-			MultiLocation {
-				parents: 0,
-				interior: X1(GeneralKey { data, length }),
-			} => {
-				let key = &data[..data.len().min(length as usize)];
+			(0, [GeneralKey { data, length }]) => {
+				let key = &data[..data.len().min(*length as usize)];
 				if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 					match currency_id {
 						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAI) => Some(currency_id),
@@ -304,38 +300,32 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		}
 	}
 }
-impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
-		if let MultiAsset {
-			id: Concrete(location), ..
-		} = asset
-		{
-			Self::convert(location)
-		} else {
-			None
-		}
+impl Convert<Asset, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(asset: Asset) -> Option<CurrencyId> {
+		let AssetId(location) = asset.id;
+		Self::convert(location)
 	}
 }
 
-pub struct AccountIdToMultiLocation;
-impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
-	fn convert(account: AccountId) -> MultiLocation {
-		X1(AccountId32 {
+pub struct AccountIdToLocation;
+impl Convert<AccountId, Location> for AccountIdToLocation {
+	fn convert(account: AccountId) -> Location {
+		AccountId32 {
 			network: None,
 			id: account.into(),
-		})
+		}
 		.into()
 	}
 }
 
 parameter_types! {
-	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
+	pub SelfLocation: Location = Location::new(1, Parachain(ParachainInfo::get().into()));
 	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_parts(100_000_000, 0);
 	pub const MaxAssetsForTransfer: usize = 2;
 }
 
 parameter_type_with_key! {
-	pub ParachainMinFee: |_location: MultiLocation| -> Option<u128> {
+	pub ParachainMinFee: |_location: Location| -> Option<u128> {
 		None
 	};
 }
@@ -345,7 +335,7 @@ impl orml_xtokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
-	type AccountIdToMultiLocation = AccountIdToMultiLocation;
+	type AccountIdToLocation = AccountIdToLocation;
 	type SelfLocation = SelfLocation;
 	type XcmExecutor = XcmExecutor;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
@@ -353,6 +343,8 @@ impl orml_xtokens::Config for Runtime {
 	type UniversalLocation = UniversalLocation;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
-	type MultiLocationsFilter = Everything;
+	type LocationsFilter = Everything;
 	type ReserveProvider = AbsoluteReserveProvider;
+	type RateLimiter = ();
+	type RateLimiterId = ();
 }

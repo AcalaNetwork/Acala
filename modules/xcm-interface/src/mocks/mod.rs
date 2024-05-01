@@ -49,8 +49,8 @@ parameter_types! {
 
 parameter_types! {
 	pub const RelayNetwork: NetworkId = NetworkId::Polkadot;
-	pub UniversalLocation: InteriorMultiLocation =
-		X1(Parachain(2000).into());
+	pub UniversalLocation: InteriorLocation =
+		Parachain(2000).into();
 }
 
 ord_parameter_types! {
@@ -61,12 +61,12 @@ parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const ParachainAccount: AccountId = AccountId32::new([0u8; 32]);
 	pub const ParachainId: module_relaychain::ParaId = module_relaychain::ParaId::new(2000);
-	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainId::get().into())));
+	pub SelfLocation: Location = Location::new(1, Parachain(ParachainId::get().into()));
 }
 
-pub struct SubAccountIndexMultiLocationConvertor;
-impl Convert<u16, MultiLocation> for SubAccountIndexMultiLocationConvertor {
-	fn convert(_sub_account_index: u16) -> MultiLocation {
+pub struct SubAccountIndexLocationConvertor;
+impl Convert<u16, Location> for SubAccountIndexLocationConvertor {
+	fn convert(_sub_account_index: u16) -> Location {
 		(Parent, Parachain(2000)).into()
 	}
 }
@@ -77,17 +77,17 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcmTransfer {
 		_who: AccountId,
 		_currency_id: CurrencyId,
 		_amount: Balance,
-		_dest: MultiLocation,
+		_dest: Location,
 		_dest_weight_limit: WeightLimit,
 	) -> Result<Transferred<AccountId32>, DispatchError> {
 		unimplemented!()
 	}
 
-	/// Transfer `MultiAsset`
+	/// Transfer `Asset`
 	fn transfer_multiasset(
 		_who: AccountId,
-		_asset: MultiAsset,
-		_dest: MultiLocation,
+		_asset: Asset,
+		_dest: Location,
 		_dest_weight_limit: WeightLimit,
 	) -> Result<Transferred<AccountId32>, DispatchError> {
 		unimplemented!()
@@ -98,18 +98,18 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcmTransfer {
 		_currency_id: CurrencyId,
 		_amount: Balance,
 		_fee: Balance,
-		_dest: MultiLocation,
+		_dest: Location,
 		_dest_weight_limit: WeightLimit,
 	) -> Result<Transferred<AccountId>, DispatchError> {
 		unimplemented!()
 	}
 
-	/// Transfer `MultiAssetWithFee`
+	/// Transfer `AssetWithFee`
 	fn transfer_multiasset_with_fee(
 		_who: AccountId,
-		_asset: MultiAsset,
-		_fee: MultiAsset,
-		_dest: MultiLocation,
+		_asset: Asset,
+		_fee: Asset,
+		_dest: Location,
 		_dest_weight_limit: WeightLimit,
 	) -> Result<Transferred<AccountId32>, DispatchError> {
 		unimplemented!()
@@ -119,7 +119,7 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcmTransfer {
 		_who: AccountId,
 		_currencies: Vec<(CurrencyId, Balance)>,
 		_fee_item: u32,
-		_dest: MultiLocation,
+		_dest: Location,
 		_dest_weight_limit: WeightLimit,
 	) -> Result<Transferred<AccountId32>, DispatchError> {
 		unimplemented!()
@@ -127,22 +127,22 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcmTransfer {
 
 	fn transfer_multiassets(
 		_who: AccountId,
-		_assets: MultiAssets,
-		_fee: MultiAsset,
-		_dest: MultiLocation,
+		_assets: Assets,
+		_fee: Asset,
+		_dest: Location,
 		_dest_weight_limit: WeightLimit,
 	) -> Result<Transferred<AccountId32>, DispatchError> {
 		unimplemented!()
 	}
 }
 
-pub struct AccountIdToMultiLocation;
-impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
-	fn convert(account: AccountId) -> MultiLocation {
-		X1(Junction::AccountId32 {
+pub struct AccountIdToLocation;
+impl Convert<AccountId, Location> for AccountIdToLocation {
+	fn convert(account: AccountId) -> Location {
+		Junction::AccountId32 {
 			network: None,
 			id: account.into(),
-		})
+		}
 		.into()
 	}
 }
@@ -162,19 +162,14 @@ impl<T> ExecuteXcm<T> for MockExec {
 		unreachable!()
 	}
 
-	fn execute(
-		_origin: impl Into<MultiLocation>,
-		_pre: Weightless,
-		_hash: &mut XcmHash,
-		_weight_credit: Weight,
-	) -> Outcome {
+	fn execute(_origin: impl Into<Location>, _pre: Weightless, _hash: &mut XcmHash, _weight_credit: Weight) -> Outcome {
 		unreachable!()
 	}
 
-	fn execute_xcm_in_credit(
-		_origin: impl Into<MultiLocation>,
+	fn prepare_and_execute(
+		_origin: impl Into<Location>,
 		message: Xcm<T>,
-		_hash: XcmHash,
+		_id: &mut XcmHash,
 		weight_limit: Weight,
 		_weight_credit: Weight,
 	) -> Outcome {
@@ -186,21 +181,25 @@ impl<T> ExecuteXcm<T> for MockExec {
 				}),
 			) => {
 				if require_weight_at_most.all_lte(weight_limit) {
-					Outcome::Complete(*require_weight_at_most)
+					Outcome::Complete {
+						used: *require_weight_at_most,
+					}
 				} else {
-					Outcome::Error(XcmError::WeightLimitReached(*require_weight_at_most))
+					Outcome::Error {
+						error: XcmError::WeightLimitReached(*require_weight_at_most),
+					}
 				}
 			}
 			// use 1000 to decide that it's not supported.
-			_ => Outcome::Incomplete(
-				Weight::from_parts(1000, 1000).min(weight_limit),
-				XcmError::Unimplemented,
-			),
+			_ => Outcome::Incomplete {
+				used: Weight::from_parts(1000, 1000).min(weight_limit),
+				error: XcmError::Unimplemented,
+			},
 		};
 		o
 	}
 
-	fn charge_fees(_location: impl Into<MultiLocation>, _fees: MultiAssets) -> XcmResult {
+	fn charge_fees(_location: impl Into<Location>, _fees: Assets) -> XcmResult {
 		Err(XcmError::Unimplemented)
 	}
 }
@@ -238,7 +237,6 @@ macro_rules! impl_mock {
 			type RuntimeHoldReason = RuntimeHoldReason;
 			type RuntimeFreezeReason = RuntimeFreezeReason;
 			type FreezeIdentifier = ();
-			type MaxHolds = ();
 			type MaxFreezes = ();
 		}
 
@@ -274,11 +272,11 @@ macro_rules! impl_mock {
 			type StakingCurrencyId = GetStakingCurrencyId;
 			type ParachainAccount = ParachainAccount;
 			type RelayChainUnbondingSlashingSpans = ConstU32<28>;
-			type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
+			type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
 			type RelayChainCallBuilder = module_relaychain::RelayChainCallBuilder<ParachainId, $relaychain>;
 			type XcmTransfer = MockXcmTransfer;
 			type SelfLocation = SelfLocation;
-			type AccountIdToMultiLocation = AccountIdToMultiLocation;
+			type AccountIdToLocation = AccountIdToLocation;
 		}
 
 		construct_runtime!(

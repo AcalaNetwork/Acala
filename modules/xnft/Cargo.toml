@@ -1,7 +1,7 @@
 [package]
 name = "module-xnft"
 description = "XCM NFT PoC"
-version = "0.1.0-dev"
+version = "2.24.0"
 authors = ["Unique Network Developers"]
 edition = "2021"
 

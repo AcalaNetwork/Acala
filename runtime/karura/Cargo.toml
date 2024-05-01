@@ -296,6 +296,7 @@ runtime-benchmarks = [
 	"xcm-executor/runtime-benchmarks",
 
 	"orml-authority/runtime-benchmarks",
+	"orml-oracle/runtime-benchmarks",
 	"orml-parameters/runtime-benchmarks",
 	"orml-tokens/runtime-benchmarks",
 	"orml-vesting/runtime-benchmarks",

@@ -200,5 +200,5 @@ impl<AccountId> LiquidateCollateral<AccountId> for Tuple {
 }
 
 pub trait BuyWeightRate {
-	fn calculate_rate(location: MultiLocation) -> Option<Ratio>;
+	fn calculate_rate(location: Location) -> Option<Ratio>;
 }

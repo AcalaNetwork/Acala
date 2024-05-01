@@ -26,13 +26,17 @@ use module_nft::{ClassIdOf, TokenIdOf};
 use sp_runtime::{traits::AccountIdConversion, DispatchResult};
 use sp_std::boxed::Box;
 use xcm::{
-	v3::{
-		AssetId, AssetInstance, Error as XcmError, Fungibility, InteriorMultiLocation, Junction::*, MultiAsset,
-		Result as XcmResult,
+	v3,
+	v4::{
+		Asset, AssetId, AssetInstance, Error as XcmError, Fungibility, InteriorLocation, Junction::*, Location,
+		Result as XcmResult, XcmContext,
 	},
 	VersionedAssetId,
 };
-use xcm_executor::traits::{ConvertLocation, Error as XcmExecutorError, TransactAsset};
+use xcm_executor::{
+	traits::{ConvertLocation, Error as XcmExecutorError, TransactAsset},
+	AssetsInHolding,
+};
 
 pub mod impl_transactor;
 pub mod xcm_helpers;
@@ -60,7 +64,7 @@ pub mod pallet {
 
 		type SelfParaId: Get<ParaId>;
 
-		type NtfPalletLocation: Get<InteriorMultiLocation>;
+		type NtfPalletLocation: Get<InteriorLocation>;
 
 		type RegisterOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 	}
@@ -86,35 +90,21 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn foreign_asset_to_class)]
-	pub type ForeignAssetToClass<T: Config> = StorageMap<_, Twox64Concat, xcm::v3::AssetId, ClassIdOf<T>, OptionQuery>;
+	pub type ForeignAssetToClass<T: Config> = StorageMap<_, Twox64Concat, v3::AssetId, ClassIdOf<T>, OptionQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn class_to_foreign_asset)]
-	pub type ClassToForeignAsset<T: Config> = StorageMap<_, Twox64Concat, ClassIdOf<T>, xcm::v3::AssetId, OptionQuery>;
+	pub type ClassToForeignAsset<T: Config> = StorageMap<_, Twox64Concat, ClassIdOf<T>, v3::AssetId, OptionQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn asset_instance_to_item)]
-	pub type AssetInstanceToItem<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		ClassIdOf<T>,
-		Blake2_128Concat,
-		xcm::v3::AssetInstance,
-		TokenIdOf<T>,
-		OptionQuery,
-	>;
+	pub type AssetInstanceToItem<T: Config> =
+		StorageDoubleMap<_, Twox64Concat, ClassIdOf<T>, Blake2_128Concat, v3::AssetInstance, TokenIdOf<T>, OptionQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn item_to_asset_instance)]
-	pub type ItemToAssetInstance<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		ClassIdOf<T>,
-		Blake2_128Concat,
-		TokenIdOf<T>,
-		xcm::v3::AssetInstance,
-		OptionQuery,
-	>;
+	pub type ItemToAssetInstance<T: Config> =
+		StorageDoubleMap<_, Twox64Concat, ClassIdOf<T>, Blake2_128Concat, TokenIdOf<T>, v3::AssetInstance, OptionQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -129,7 +119,7 @@ pub mod pallet {
 		pub fn register_asset(origin: OriginFor<T>, versioned_foreign_asset: Box<VersionedAssetId>) -> DispatchResult {
 			T::RegisterOrigin::ensure_origin(origin)?;
 
-			let foreign_asset: AssetId = versioned_foreign_asset
+			let foreign_asset: v3::AssetId = versioned_foreign_asset
 				.as_ref()
 				.clone()
 				.try_into()
