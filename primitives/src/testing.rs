@@ -69,6 +69,13 @@ macro_rules! mock_handler {
 					Self::push(val.clone());
 				}
 			}
+
+			impl $crate::testing::orml_traits::Handler<$t> for $name {
+				fn handle(val: &$t) -> DispatchResult {
+					Self::push(val.clone());
+					Ok(())
+				}
+			}
 		}
 
 		$crate::mock_handler!( $( $rest )* );

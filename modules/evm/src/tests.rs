@@ -2286,8 +2286,8 @@ fn auto_publish_works() {
 			from: alice(),
 			contract: factory,
 			logs: vec![],
-			used_gas: 593369,
-			used_storage: 2609,
+			used_gas: 596931,
+			used_storage: 2620,
 		}));
 
 		// call method `createContract()`
@@ -2321,14 +2321,14 @@ fn auto_publish_works() {
 					data: vec![],
 				},
 			],
-			used_gas: 387768,
-			used_storage: 1530,
+			used_gas: 389159,
+			used_storage: 1537,
 		}));
 
 		assert_eq!(
 			EVM::accounts(factory).unwrap().contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0xd007bd109daec7dec73d897c079b67b3d2fd6ad4892a916c5e03e21bb60ff384")
+				code_hash: H256::from_str("0xa117e3bd6b1612af03f5876415d209b189ae474262958b00a2811c963d1ad717")
 					.unwrap(),
 				maintainer: alice(),
 				published: false
@@ -2339,7 +2339,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0xe12fa7753d9cd8de1f8b597fef33ab91c2749fe4a1022b648f949ab2566f391f")
+				code_hash: H256::from_str("0x0d9c1791bf0e7a5c3fc114885f45142815122dd7231aad0aeab4ab2c0b746c69")
 					.unwrap(),
 				maintainer: factory,
 				published: false
@@ -2350,7 +2350,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0x46460b564756d0e02bbfdc8fc3d47d1a68c3b3d8301b5de90da83d6d75e0b6c7")
+				code_hash: H256::from_str("0x1d07e7e9217fc910f5bbd51c260bbb2fb3564181dfbb3054e853bda4e50418d2")
 					.unwrap(),
 				maintainer: H160::from_str("0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap(),
 				published: false
@@ -2391,14 +2391,14 @@ fn auto_publish_works() {
 					data: vec![],
 				},
 			],
-			used_gas: 370668,
-			used_storage: 1466,
+			used_gas: 372059,
+			used_storage: 1473,
 		}));
 
 		assert_eq!(
 			EVM::accounts(factory).unwrap().contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0xd007bd109daec7dec73d897c079b67b3d2fd6ad4892a916c5e03e21bb60ff384")
+				code_hash: H256::from_str("0xa117e3bd6b1612af03f5876415d209b189ae474262958b00a2811c963d1ad717")
 					.unwrap(),
 				maintainer: alice(),
 				published: true
@@ -2409,7 +2409,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0xe12fa7753d9cd8de1f8b597fef33ab91c2749fe4a1022b648f949ab2566f391f")
+				code_hash: H256::from_str("0x0d9c1791bf0e7a5c3fc114885f45142815122dd7231aad0aeab4ab2c0b746c69")
 					.unwrap(),
 				maintainer: H160::from_str("0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap(),
 				published: true
@@ -2420,7 +2420,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0x46460b564756d0e02bbfdc8fc3d47d1a68c3b3d8301b5de90da83d6d75e0b6c7")
+				code_hash: H256::from_str("0x1d07e7e9217fc910f5bbd51c260bbb2fb3564181dfbb3054e853bda4e50418d2")
 					.unwrap(),
 				maintainer: H160::from_str("0x39b26a36a8a175ce7d498b5ef187d1ab2f381bbd").unwrap(),
 				published: true
@@ -2448,8 +2448,8 @@ fn auto_publish_works() {
 				],
 				data: vec![],
 			}],
-			used_gas: 147228,
-			used_storage: 407,
+			used_gas: 145811,
+			used_storage: 400,
 		}));
 
 		assert_eq!(
@@ -2457,7 +2457,7 @@ fn auto_publish_works() {
 				.unwrap()
 				.contract_info,
 			Some(ContractInfo {
-				code_hash: H256::from_str("0x46460b564756d0e02bbfdc8fc3d47d1a68c3b3d8301b5de90da83d6d75e0b6c7")
+				code_hash: H256::from_str("0x1d07e7e9217fc910f5bbd51c260bbb2fb3564181dfbb3054e853bda4e50418d2")
 					.unwrap(),
 				maintainer: H160::from_str("0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap(),
 				published: true
@@ -2561,7 +2561,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1464914680, 7186)),
+					actual_weight: Some(Weight::from_parts(1441274680, 7186)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::NoPermission.into(),
@@ -2594,7 +2594,7 @@ fn strict_call_works() {
 			),
 			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1463958382, 7186)),
+					actual_weight: Some(Weight::from_parts(1440318382, 7186)),
 					pays_fee: Pays::Yes
 				},
 				error: Error::<Runtime>::StrictCallFailed.into(),
@@ -3039,6 +3039,22 @@ fn tracer_works() {
 			"error": null,
 			"revertReason": null,
 			"depth": 0,
+			"logs": [
+			  {
+			    "sLoad": {
+			      "address": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+			      "index": "0x0000000000000000000000000000000000000000000000000000000000000000",
+			      "value": "0x0000000000000000000000000000000000000000000000000000000000000000"
+			    }
+			  },
+			  {
+			    "sStore": {
+			      "address": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+			      "index": "0x0000000000000000000000000000000000000000000000000000000000000000",
+			      "value": "0x0000000000000000000000007b8f8ca099f6e33cf1817cf67d0556429cfc54e4"
+			    }
+			  }
+			],
 			"calls": [
 			  {
 				"type": "CREATE",
@@ -3052,6 +3068,7 @@ fn tracer_works() {
 				"error": null,
 				"revertReason": null,
 				"depth": 1,
+				"logs": [],
 				"calls": []
 			  }
 			]
@@ -3096,6 +3113,15 @@ fn tracer_works() {
 			"error": null,
 			"revertReason": null,
 			"depth": 0,
+			"logs": [
+			  {
+			    "sLoad": {
+			      "address": "0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d",
+			      "index": "0x0000000000000000000000000000000000000000000000000000000000000000",
+			      "value": "0x0000000000000000000000007b8f8ca099f6e33cf1817cf67d0556429cfc54e4"
+			    }
+			  }
+			],
 			"calls": [
 			  {
 				"type": "CALL",
@@ -3109,6 +3135,15 @@ fn tracer_works() {
 				"error": null,
 				"revertReason": null,
 				"depth": 1,
+				"logs": [
+				  {
+				    "sStore": {
+				      "address": "0x7b8f8ca099f6e33cf1817cf67d0556429cfc54e4",
+				      "index": "0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5",
+				      "value": "0x0000000000000000000000000000000000000000000000000000000000000001"
+				    }
+				  }
+				],
 				"calls": []
 			  }
 			]

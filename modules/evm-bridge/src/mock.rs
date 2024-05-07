@@ -26,7 +26,10 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, ConstU64},
 };
 use frame_system::EnsureSignedBy;
-use module_support::{mocks::MockAddressMapping, AddressMapping};
+use module_support::{
+	mocks::{MockAddressMapping, TestRandomness},
+	AddressMapping,
+};
 use primitives::{evm::convert_decimals_to_evm, evm::EvmAddress, ReserveIdentifier};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
@@ -60,7 +63,6 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
-	type MaxHolds = ();
 	type MaxFreezes = ();
 }
 
@@ -104,6 +106,7 @@ impl module_evm::Config for Runtime {
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Randomness = TestRandomness<Self>;
 	type Task = ();
 	type IdleScheduler = ();
 	type WeightInfo = ();
@@ -185,8 +188,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1235455,
-		used_storage: 5131,
+		used_gas: 1215220,
+		used_storage: 4996,
 	}));
 }
 
@@ -207,8 +210,8 @@ pub fn deploy_liquidation_ok_contracts() {
 		from: alice_evm_addr(),
 		contract: erc20_address(),
 		logs: vec![],
-		used_gas: 235330,
-		used_storage: 844,
+		used_gas: 234056,
+		used_storage: 837,
 	}));
 }
 
@@ -229,8 +232,8 @@ pub fn deploy_liquidation_err_contracts() {
 		from: alice_evm_addr(),
 		contract: erc20_address(),
 		logs: vec![],
-		used_gas: 228338,
-		used_storage: 818,
+		used_gas: 226860,
+		used_storage: 810,
 	}));
 }
 

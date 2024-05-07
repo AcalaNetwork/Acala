@@ -1,6 +1,6 @@
 [package]
 name = "mandala-runtime"
-version = "2.24.0"
+version = "2.25.0"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -320,6 +320,7 @@ runtime-benchmarks = [
 	"acala-service/runtime-benchmarks",
 
 	"orml-authority/runtime-benchmarks",
+	"orml-oracle/runtime-benchmarks",
 	"orml-parameters/runtime-benchmarks",
 	"orml-tokens/runtime-benchmarks",
 	"orml-vesting/runtime-benchmarks",

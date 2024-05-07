@@ -26,7 +26,6 @@ use frame_support::{
 	traits::{ConstU64, Nothing},
 };
 use frame_system::EnsureSignedBy;
-pub use module_support::{Price, Ratio, SwapLimit};
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol};
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
@@ -102,11 +101,18 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 	}
 }
 
+parameter_type_with_key! {
+	pub MinimalShares: |_pool_id: PoolId| -> Balance {
+		0
+	};
+}
+
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = PoolId;
 	type CurrencyId = CurrencyId;
+	type MinimalShares = MinimalShares;
 	type Handler = IncentivesModule;
 }
 

@@ -339,16 +339,17 @@ pub mod tracing {
 	use module_evm_utility::evm::Opcode;
 	use parity_scale_codec::{Decode, Encode};
 	use scale_info::TypeInfo;
-	use sp_core::{H160, U256};
+	use sp_core::{H160, H256, U256};
 	use sp_runtime::RuntimeDebug;
 	use sp_std::vec::Vec;
 
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
 
-	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[derive(Clone, Eq, PartialEq, Default, Encode, Decode, RuntimeDebug, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum CallType {
+		#[default]
 		CALL,
 		CALLCODE,
 		STATICCALL,
@@ -404,7 +405,7 @@ pub mod tracing {
 		}
 	}
 
-	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[derive(Clone, Eq, PartialEq, Default, Encode, Decode, RuntimeDebug, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub struct CallTrace {
@@ -432,8 +433,32 @@ pub mod tracing {
 		// depth of the call
 		#[codec(compact)]
 		pub depth: u32,
+		// List of logs
+		pub logs: Vec<LogTrace>,
 		// List of sub-calls
 		pub calls: Vec<CallTrace>,
+	}
+
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	pub enum LogTrace {
+		Log {
+			address: H160,
+			topics: Vec<H256>,
+			#[cfg_attr(feature = "std", serde(with = "sp_core::bytes"))]
+			data: Vec<u8>,
+		},
+		SLoad {
+			address: H160,
+			index: H256,
+			value: H256,
+		},
+		SStore {
+			address: H160,
+			index: H256,
+			value: H256,
+		},
 	}
 
 	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]

@@ -65,11 +65,15 @@ mod fake_runtime_api;
 pub mod instant_finalize;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
-type HostFunctions = sp_io::SubstrateHostFunctions;
+type HostFunctions = (
+	sp_io::SubstrateHostFunctions,
+	cumulus_client_service::storage_proof_size::HostFunctions,
+);
 
 #[cfg(feature = "runtime-benchmarks")]
 type HostFunctions = (
 	sp_io::SubstrateHostFunctions,
+	cumulus_client_service::storage_proof_size::HostFunctions,
 	frame_benchmarking::benchmarking::HostFunctions,
 );
 
@@ -159,10 +163,11 @@ pub fn new_partial(
 		.build();
 
 	let (client, backend, keystore_container, task_manager) =
-		sc_service::new_full_parts::<Block, fake_runtime_api::RuntimeApi, _>(
+		sc_service::new_full_parts_record_import::<Block, fake_runtime_api::RuntimeApi, _>(
 			config,
 			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
 			executor,
+			true,
 		)?;
 	let client = Arc::new(client);
 

@@ -26,12 +26,15 @@ pub use frame_support::{
 	assert_ok, construct_runtime, derive_impl, ord_parameter_types,
 	pallet_prelude::*,
 	parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Nothing},
 	PalletId,
 };
-pub use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
+pub use frame_system::EnsureRoot;
 pub use module_evm_accounts::EvmAddressMapping;
-pub use module_support::{mocks::MockAddressMapping, AddressMapping};
+pub use module_support::{
+	mocks::{MockAddressMapping, TestRandomness},
+	AddressMapping,
+};
 pub use orml_traits::{parameter_type_with_key, MultiCurrency};
 use sp_core::{H160, H256, U256};
 use sp_runtime::{traits::AccountIdConversion, BuildStorage};
@@ -90,7 +93,6 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
-	type MaxHolds = ();
 	type MaxFreezes = ();
 }
 
@@ -153,6 +155,7 @@ impl module_evm::Config for Runtime {
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Randomness = TestRandomness<Self>;
 	type Task = ();
 	type IdleScheduler = ();
 	type WeightInfo = ();
@@ -244,8 +247,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1235455,
-		used_storage: 5131,
+		used_gas: 1215220,
+		used_storage: 4996,
 	}));
 }
 

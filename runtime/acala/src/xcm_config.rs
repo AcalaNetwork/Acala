@@ -52,7 +52,7 @@ use xcm_builder::{
 parameter_types! {
 	pub const RelayNetwork: NetworkId = NetworkId::Polkadot;
 	pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
-	pub UniversalLocation: InteriorMultiLocation = X2(GlobalConsensus(RelayNetwork::get()), Parachain(ParachainInfo::parachain_id().into()));
+	pub UniversalLocation: InteriorLocation = [GlobalConsensus(RelayNetwork::get()), Parachain(ParachainInfo::parachain_id().into())].into();
 	pub CheckingAccount: AccountId = PolkadotXcm::check_account();
 }
 
@@ -74,7 +74,7 @@ parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: XcmWeight = XcmWeight::from_parts(200_000_000, 0);
 	pub const MaxInstructions: u32 = 100;
-	pub DotPerSecond: (AssetId, u128, u128) = (MultiLocation::parent().into(), dot_per_second(), 0);
+	pub DotPerSecond: (AssetId, u128, u128) = (Location::parent().into(), dot_per_second(), 0);
 	pub AusdPerSecond: (AssetId, u128, u128) = (
 		local_currency_location(AUSD).unwrap().into(),
 		// aUSD:DOT = 40:1
@@ -243,12 +243,12 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 >;
 
 pub struct CurrencyIdConvert;
-impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
-	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+impl Convert<CurrencyId, Option<Location>> for CurrencyIdConvert {
+	fn convert(id: CurrencyId) -> Option<Location> {
 		use primitives::TokenSymbol::*;
 		use CurrencyId::{Erc20, ForeignAsset, LiquidCrowdloan, StableAssetPoolToken, Token};
 		match id {
-			Token(DOT) => Some(MultiLocation::parent()),
+			Token(DOT) => Some(Location::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => {
 				native_currency_location(ParachainInfo::get().into(), id.encode())
 			}
@@ -257,31 +257,28 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			}
 			LiquidCrowdloan(_lease) => native_currency_location(ParachainInfo::get().into(), id.encode()),
 			StableAssetPoolToken(_pool_id) => native_currency_location(ParachainInfo::get().into(), id.encode()),
-			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
+			ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_location(foreign_asset_id),
 			_ => None,
 		}
 	}
 }
-impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+impl Convert<Location, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(location: Location) -> Option<CurrencyId> {
 		use primitives::TokenSymbol::*;
 		use CurrencyId::{Erc20, LiquidCrowdloan, StableAssetPoolToken, Token};
 
-		if location == MultiLocation::parent() {
+		if location == Location::parent() {
 			return Some(Token(DOT));
 		}
 
-		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location) {
+		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location.clone()) {
 			return Some(currency_id);
 		}
 
-		match location {
-			MultiLocation {
-				parents: 1,
-				interior: X2(Parachain(para_id), GeneralKey { data, length }),
-			} => {
-				match (para_id, &data[..data.len().min(length as usize)]) {
-					(id, key) if id == u32::from(ParachainInfo::get()) => {
+		match location.unpack() {
+			(1, [Parachain(para_id), GeneralKey { data, length }]) => {
+				match (para_id, &data[..data.len().min(*length as usize)]) {
+					(id, key) if *id == u32::from(ParachainInfo::get()) => {
 						// Acala
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
@@ -301,11 +298,8 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				}
 			}
 			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
-			MultiLocation {
-				parents: 0,
-				interior: X1(GeneralKey { data, length }),
-			} => {
-				let key = &data[..data.len().min(length as usize)];
+			(0, [GeneralKey { data, length }]) => {
+				let key = &data[..data.len().min(*length as usize)];
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
 					Token(ACA) | Token(AUSD) | Token(LDOT) | Token(TAP) => Some(currency_id),
@@ -319,30 +313,24 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		}
 	}
 }
-impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
-		if let MultiAsset {
-			id: Concrete(location), ..
-		} = asset
-		{
-			Self::convert(location)
-		} else {
-			None
-		}
+impl Convert<Asset, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(asset: Asset) -> Option<CurrencyId> {
+		let AssetId(location) = asset.id;
+		Self::convert(location)
 	}
 }
 
 parameter_types! {
-	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
+	pub SelfLocation: Location = Location::new(1, Parachain(ParachainInfo::get().into()));
 	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_parts(100_000_000, 0);
 	pub const MaxAssetsForTransfer: usize = 2;
 }
 
 parameter_type_with_key! {
-	pub ParachainMinFee: |location: MultiLocation| -> Option<u128> {
+	pub ParachainMinFee: |location: Location| -> Option<u128> {
 		#[allow(clippy::match_ref_pats)] // false positive
 		match (location.parents, location.first_interior()) {
-			(1, Some(Parachain(parachains::asset_hub_polkadot::ID))) => Some(XcmInterface::get_parachain_fee(*location)),
+			(1, Some(Parachain(parachains::asset_hub_polkadot::ID))) => Some(XcmInterface::get_parachain_fee(location.clone())),
 			_ => None,
 		}
 	};
@@ -353,7 +341,7 @@ impl orml_xtokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
-	type AccountIdToMultiLocation = runtime_common::xcm_config::AccountIdToMultiLocation;
+	type AccountIdToLocation = runtime_common::xcm_config::AccountIdToLocation;
 	type SelfLocation = SelfLocation;
 	type XcmExecutor = XcmExecutor;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
@@ -361,6 +349,8 @@ impl orml_xtokens::Config for Runtime {
 	type UniversalLocation = UniversalLocation;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
-	type MultiLocationsFilter = Everything;
+	type LocationsFilter = Everything;
 	type ReserveProvider = AbsoluteReserveProvider;
+	type RateLimiter = ();
+	type RateLimiterId = ();
 }

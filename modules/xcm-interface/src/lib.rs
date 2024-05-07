@@ -55,7 +55,7 @@ pub mod module {
 		HomaBondExtra,
 		HomaUnbond,
 		// Parachain fee with location info
-		ParachainFee(Box<MultiLocation>),
+		ParachainFee(Box<Location>),
 		// `XcmPallet::reserve_transfer_assets` call via proxy account
 		ProxyReserveTransferAssets,
 		HomaNominate,
@@ -80,9 +80,9 @@ pub mod module {
 		#[pallet::constant]
 		type RelayChainUnbondingSlashingSpans: Get<EraIndex>;
 
-		/// The convert for convert sovereign subacocunt index to the MultiLocation where the
+		/// The convert for convert sovereign subacocunt index to the Location where the
 		/// staking currencies are sent to.
-		type SovereignSubAccountLocationConvert: Convert<u16, MultiLocation>;
+		type SovereignSubAccountLocationConvert: Convert<u16, Location>;
 
 		/// The Call builder for communicating with RelayChain via XCM messaging.
 		type RelayChainCallBuilder: CallBuilder<RelayChainAccountId = Self::AccountId, Balance = Balance>;
@@ -92,10 +92,10 @@ pub mod module {
 
 		/// Self parachain location.
 		#[pallet::constant]
-		type SelfLocation: Get<MultiLocation>;
+		type SelfLocation: Get<Location>;
 
-		/// Convert AccountId to MultiLocation to build XCM message.
-		type AccountIdToMultiLocation: Convert<Self::AccountId, MultiLocation>;
+		/// Convert AccountId to Location to build XCM message.
+		type AccountIdToLocation: Convert<Self::AccountId, Location>;
 	}
 
 	#[pallet::error]
@@ -183,18 +183,18 @@ pub mod module {
 
 			// self location is relative to self
 			let loc = T::SelfLocation::get();
-			// we need to reanchor it to the parent becuase the call is dispatched on parent
+			// we need to reanchor it to the parent because the call is dispatched on parent
 			let loc = loc
-				.reanchored(&MultiLocation::new(1, Here), Here)
+				.reanchored(&Location::new(1, Here), &Here)
 				.map_err(|_| Error::<T>::XcmFailed)?;
 
 			let proxy_call = T::RelayChainCallBuilder::proxy_call(
 				vault,
 				T::RelayChainCallBuilder::xcm_pallet_reserve_transfer_assets(
 					loc,
-					T::AccountIdToMultiLocation::convert(recipient),
+					T::AccountIdToLocation::convert(recipient),
 					// Note this message is executed in the relay chain context.
-					vec![(Concrete(Here.into()), amount).into()].into(),
+					vec![(Here, amount).into()].into(),
 					0,
 				),
 			);
@@ -336,7 +336,7 @@ pub mod module {
 		}
 
 		/// The fee of parachain transfer.
-		fn get_parachain_fee(location: MultiLocation) -> Balance {
+		fn get_parachain_fee(location: Location) -> Balance {
 			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ParachainFee(Box::new(location))).1
 		}
 	}

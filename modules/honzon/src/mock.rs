@@ -29,8 +29,8 @@ use frame_support::{
 use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_support::{
-	mocks::MockStableAsset, AuctionManager, ExchangeRate, FractionalRate, Price, PriceProvider, Rate, Ratio,
-	SpecificJointsSwap,
+	mocks::{MockStableAsset, TestRandomness},
+	AuctionManager, ExchangeRate, FractionalRate, Price, PriceProvider, Rate, Ratio, SpecificJointsSwap,
 };
 use orml_traits::parameter_type_with_key;
 use primitives::{
@@ -102,7 +102,6 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
-	type MaxHolds = ();
 	type MaxFreezes = ();
 }
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
@@ -261,6 +260,7 @@ impl module_evm::Config for Runtime {
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Randomness = TestRandomness<Self>;
 	type Task = ();
 	type IdleScheduler = ();
 	type WeightInfo = ();

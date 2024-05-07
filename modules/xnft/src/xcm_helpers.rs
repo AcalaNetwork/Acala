@@ -20,7 +20,6 @@ use crate::*;
 use module_nft::BalanceOf;
 use primitives::nft::Attributes;
 use sp_std::vec::Vec;
-use xcm::v3::AssetId::Concrete;
 use xcm_executor::traits::Error as MatchError;
 
 pub enum ClassLocality<T: Config> {
@@ -34,16 +33,15 @@ where
 	ClassIdOf<T>: TryFrom<u128>,
 {
 	pub fn asset_to_collection(asset: &AssetId) -> Result<ClassLocality<T>, MatchError> {
-		Self::foreign_asset_to_class(asset)
+		let v3_asset = v3::AssetId::try_from(asset.clone()).map_err(|_| MatchError::AssetIdConversionFailed)?;
+		Self::foreign_asset_to_class(v3_asset)
 			.map(ClassLocality::Foreign)
 			.or_else(|| Self::local_asset_to_class(asset).map(ClassLocality::Local))
 			.ok_or(MatchError::AssetIdConversionFailed)
 	}
 
 	fn local_asset_to_class(asset: &AssetId) -> Option<ClassIdOf<T>> {
-		let Concrete(asset_location) = asset else {
-			return None;
-		};
+		let AssetId(asset_location) = asset;
 
 		let prefix = if asset_location.parents == 0 {
 			T::NtfPalletLocation::get()
@@ -65,7 +63,9 @@ where
 	}
 
 	pub fn deposit_foreign_asset(to: &T::AccountId, asset: ClassIdOf<T>, asset_instance: &AssetInstance) -> XcmResult {
-		match Self::asset_instance_to_item(asset, asset_instance) {
+		let v3_asset_instance =
+			v3::AssetInstance::try_from(*asset_instance).map_err(|_| MatchError::InstanceConversionFailed)?;
+		match Self::asset_instance_to_item(asset, v3_asset_instance) {
 			Some(token_id) => <ModuleNftPallet<T>>::do_transfer(&Self::account_id(), to, (asset, token_id))
 				.map_err(|_| XcmError::FailedToTransactAsset("non-fungible foreign item deposit failed")),
 			None => {
@@ -80,8 +80,8 @@ where
 				)
 				.map_err(|_| XcmError::FailedToTransactAsset("non-fungible new foreign item deposit failed"))?;
 
-				<AssetInstanceToItem<T>>::insert(asset, asset_instance, token_id);
-				<ItemToAssetInstance<T>>::insert(asset, token_id, asset_instance);
+				<AssetInstanceToItem<T>>::insert(asset, v3_asset_instance, token_id);
+				<ItemToAssetInstance<T>>::insert(asset, token_id, v3_asset_instance);
 
 				Ok(())
 			}
@@ -98,9 +98,10 @@ where
 		class_locality: ClassLocality<T>,
 		asset_instance: &AssetInstance,
 	) -> Option<(ClassIdOf<T>, TokenIdOf<T>)> {
+		let v3_asset_instance = v3::AssetInstance::try_from(*asset_instance).ok()?;
 		match class_locality {
 			ClassLocality::Foreign(class_id) => {
-				Self::asset_instance_to_item(class_id, asset_instance).map(|token_id| (class_id, token_id))
+				Self::asset_instance_to_item(class_id, v3_asset_instance).map(|token_id| (class_id, token_id))
 			}
 			ClassLocality::Local(class_id) => Self::convert_asset_instance(asset_instance)
 				.map(|token_id| (class_id, token_id))

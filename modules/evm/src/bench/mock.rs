@@ -28,7 +28,7 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use module_support::{
-	mocks::{MockAddressMapping, MockErc20InfoMapping},
+	mocks::{MockAddressMapping, MockErc20InfoMapping, TestRandomness},
 	DEXIncentives, Price, PriceProvider, SpecificJointsSwap,
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
@@ -73,7 +73,6 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
-	type MaxHolds = ();
 	type MaxFreezes = ();
 }
 
@@ -139,6 +138,7 @@ parameter_types! {
 impl module_idle_scheduler::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type Index = Nonce;
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
@@ -196,6 +196,7 @@ impl Config for Runtime {
 
 	type Runner = crate::runner::stack::Runner<Self>;
 	type FindAuthor = AuthorGiven;
+	type Randomness = TestRandomness<Self>;
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
 	type WeightInfo = ();

@@ -110,9 +110,9 @@ use runtime_common::{
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, ExistentialDepositsTimesOneHundred,
 	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
-	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RuntimeBlockLength,
-	RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, ACA, AUSD, DOT, KSM, LCDOT, LDOT,
+	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, RandomnessSource, Rate, Ratio,
+	RuntimeBlockLength, RuntimeBlockWeights, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LCDOT, LDOT,
 };
 use xcm::prelude::*;
 
@@ -132,7 +132,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2240,
+	spec_version: 2250,
 	impl_version: 0,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -142,7 +142,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	state_version: 0,
 };
 
-/// The version infromation used to identify this runtime when compiled
+/// The version information used to identify this runtime when compiled
 /// natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
@@ -245,6 +245,11 @@ impl frame_system::Config for Runtime {
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type MaxConsumers = ConstU32<16>;
 	type RuntimeTask = ();
+	type SingleBlockMigrations = ();
+	type MultiBlockMigrator = ();
+	type PreInherents = ();
+	type PostInherents = ();
+	type PostTransactions = ();
 }
 
 impl pallet_aura::Config for Runtime {
@@ -355,7 +360,6 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
-	type MaxHolds = MaxReserves;
 	type MaxFreezes = ();
 }
 
@@ -534,7 +538,7 @@ impl pallet_multisig::Config for Runtime {
 pub struct GeneralCouncilProvider;
 impl SortedMembers<AccountId> for GeneralCouncilProvider {
 	fn sorted_members() -> Vec<AccountId> {
-		GeneralCouncil::members()
+		pallet_collective::Members::<Runtime, pallet_collective::Instance1>::get() // GeneralCouncil::members()
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
@@ -723,7 +727,7 @@ impl orml_authority::Config for Runtime {
 pub struct PaymentsDisputeResolver;
 impl orml_payments::DisputeResolver<AccountId> for PaymentsDisputeResolver {
 	fn get_resolver_account() -> AccountId {
-		Sudo::key().expect("Sudo key not set!")
+		TreasuryAccount::get()
 	}
 }
 
@@ -737,7 +741,7 @@ impl orml_payments::FeeHandler<Runtime> for PaymentsFeeHandler {
 	) -> (AccountId, Percent) {
 		// we do not charge any fee
 		const MARKETPLACE_FEE_PERCENT: Percent = Percent::from_percent(0);
-		let fee_receiver = Sudo::key().expect("Sudo key not set!");
+		let fee_receiver = TreasuryAccount::get();
 		(fee_receiver, MARKETPLACE_FEE_PERCENT)
 	}
 }
@@ -797,6 +801,15 @@ parameter_types! {
 	pub const MaxFeedValues: u32 = 10; // max 10 values allowd to feed in one call.
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct BenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl orml_oracle::BenchmarkHelper<CurrencyId, Price, MaxFeedValues> for BenchmarkHelper {
+	fn get_currency_id_value_pairs() -> sp_runtime::BoundedVec<(CurrencyId, Price), MaxFeedValues> {
+		sp_runtime::BoundedVec::default()
+	}
+}
+
 type AcalaDataProvider = orml_oracle::Instance1;
 impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -810,6 +823,8 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type MaxHasDispatchedSize = ConstU32<40>;
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 	type MaxFeedValues = MaxFeedValues;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = BenchmarkHelper;
 }
 
 create_median_value_data_provider!(
@@ -1352,11 +1367,29 @@ impl module_asset_registry::Config for Runtime {
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
 }
 
+parameter_type_with_key! {
+	pub MinimalShares: |pool_id: PoolId| -> Balance {
+		match pool_id {
+			PoolId::Loans(currency_id) | PoolId::Dex(currency_id) | PoolId::Earning(currency_id) => {
+				if *currency_id == GetNativeCurrencyId::get() {
+					NativeTokenExistentialDeposit::get()
+				} else {
+					ExistentialDeposits::get(currency_id)
+				}
+			}
+			PoolId::NomineesElection => {
+				ExistentialDeposits::get(&GetLiquidCurrencyId::get())
+			}
+		}
+	};
+}
+
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = PoolId;
 	type CurrencyId = CurrencyId;
+	type MinimalShares = MinimalShares;
 	type Handler = Incentives;
 }
 
@@ -1382,13 +1415,13 @@ parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
 }
 
-pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
-	MultiLocation::new(
+pub fn create_x2_parachain_location(index: u16) -> Location {
+	Location::new(
 		1,
-		X1(AccountId32 {
+		AccountId32 {
 			network: None,
 			id: Utility::derivative_account_id(ParachainInfo::get().into_account_truncating(), index).into(),
-		}),
+		},
 	)
 }
 
@@ -1465,10 +1498,10 @@ parameter_types! {
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account_truncating();
 }
 
-pub struct SubAccountIndexMultiLocationConvertor;
-impl Convert<u16, MultiLocation> for SubAccountIndexMultiLocationConvertor {
-	fn convert(sub_account_index: u16) -> MultiLocation {
-		create_x2_parachain_multilocation(sub_account_index)
+pub struct SubAccountIndexLocationConvertor;
+impl Convert<u16, Location> for SubAccountIndexLocationConvertor {
+	fn convert(sub_account_index: u16) -> Location {
+		create_x2_parachain_location(sub_account_index)
 	}
 }
 
@@ -1478,11 +1511,11 @@ impl module_xcm_interface::Config for Runtime {
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type ParachainAccount = ParachainAccount;
 	type RelayChainUnbondingSlashingSpans = ConstU32<5>;
-	type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
+	type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
 	type RelayChainCallBuilder = RelayChainCallBuilder<ParachainInfo, module_relaychain::PolkadotRelayChainCall>;
 	type XcmTransfer = XTokens;
 	type SelfLocation = xcm_config::SelfLocation;
-	type AccountIdToMultiLocation = xcm_config::AccountIdToMultiLocation;
+	type AccountIdToLocation = xcm_config::AccountIdToLocation;
 }
 
 parameter_types! {
@@ -1693,6 +1726,7 @@ impl module_evm::Config for Runtime {
 	type FreePublicationOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
+	type Randomness = RandomnessSource<Runtime>;
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
@@ -1824,6 +1858,7 @@ parameter_types!(
 impl module_idle_scheduler::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::module_idle_scheduler::WeightInfo<Runtime>;
+	type Index = Nonce;
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = RelaychainDataProvider<Runtime>;
@@ -2191,7 +2226,7 @@ impl_runtime_apis! {
 			Executive::execute_block(block)
 		}
 
-		fn initialize_block(header: &<Block as BlockT>::Header) {
+		fn initialize_block(header: &<Block as BlockT>::Header) -> sp_runtime::ExtrinsicInclusionMode {
 			Executive::initialize_block(header)
 		}
 	}

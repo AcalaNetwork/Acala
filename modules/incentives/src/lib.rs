@@ -42,7 +42,7 @@
 use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use module_support::{DEXIncentives, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate};
-use orml_traits::{Happened, MultiCurrency, RewardHandler};
+use orml_traits::{Handler, Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto, Zero},
@@ -512,7 +512,7 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		ensure!(lp_currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 
 		T::Currency::transfer(lp_currency_id, who, &Self::account_id(), amount)?;
-		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into());
+		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into())?;
 
 		Self::deposit_event(Event::DepositDexShare {
 			who: who.clone(),
@@ -530,7 +530,7 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		);
 
 		T::Currency::transfer(lp_currency_id, &Self::account_id(), who, amount)?;
-		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into());
+		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into())?;
 
 		Self::deposit_event(Event::WithdrawDexShare {
 			who: who.clone(),
@@ -574,16 +574,16 @@ impl<T: Config> IncentivesManager<T::AccountId, Balance, CurrencyId, PoolId> for
 }
 
 pub struct OnUpdateLoan<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> Happened<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpdateLoan<T> {
-	fn happened(info: &(T::AccountId, CurrencyId, Amount, Balance)) {
+impl<T: Config> Handler<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpdateLoan<T> {
+	fn handle(info: &(T::AccountId, CurrencyId, Amount, Balance)) -> DispatchResult {
 		let (who, currency_id, adjustment, _previous_amount) = info;
 		let adjustment_abs = TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
 
 		if adjustment.is_positive() {
-			<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Loans(*currency_id), adjustment_abs);
+			<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Loans(*currency_id), adjustment_abs)
 		} else {
-			<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Loans(*currency_id), adjustment_abs);
-		};
+			<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Loans(*currency_id), adjustment_abs)
+		}
 	}
 }
 
@@ -605,29 +605,29 @@ impl<T: Config> RewardHandler<T::AccountId, CurrencyId> for Pallet<T> {
 }
 
 pub struct OnEarningBonded<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningBonded<T> {
-	fn happened((who, amount): &(T::AccountId, Balance)) {
-		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), *amount);
+impl<T: Config> Handler<(T::AccountId, Balance)> for OnEarningBonded<T> {
+	fn handle((who, amount): &(T::AccountId, Balance)) -> DispatchResult {
+		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), *amount)
 	}
 }
 
 pub struct OnEarningUnbonded<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningUnbonded<T> {
-	fn happened((who, amount): &(T::AccountId, Balance)) {
-		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), *amount);
+impl<T: Config> Handler<(T::AccountId, Balance)> for OnEarningUnbonded<T> {
+	fn handle((who, amount): &(T::AccountId, Balance)) -> DispatchResult {
+		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), *amount)
 	}
 }
 
 pub struct OnNomineesElectionBonded<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, Balance)> for OnNomineesElectionBonded<T> {
 	fn happened((who, amount): &(T::AccountId, Balance)) {
-		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::NomineesElection, *amount);
+		let _ = <orml_rewards::Pallet<T>>::add_share(who, &PoolId::NomineesElection, *amount);
 	}
 }
 
 pub struct OnNomineesElectionUnbonded<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, Balance)> for OnNomineesElectionUnbonded<T> {
 	fn happened((who, amount): &(T::AccountId, Balance)) {
-		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::NomineesElection, *amount);
+		let _ = <orml_rewards::Pallet<T>>::remove_share(who, &PoolId::NomineesElection, *amount);
 	}
 }

@@ -22,7 +22,7 @@
 #![allow(clippy::type_complexity)]
 
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
-use primitives::{task::TaskResult, Balance, CurrencyId, Multiplier, Nonce, ReserveIdentifier};
+use primitives::{task::TaskResult, Balance, CurrencyId, Multiplier, ReserveIdentifier};
 use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
@@ -139,9 +139,9 @@ pub trait DispatchableTask {
 }
 
 /// Idle scheduler trait
-pub trait IdleScheduler<Task> {
-	fn schedule(task: Task) -> Result<Nonce, DispatchError>;
-	fn dispatch(id: Nonce, weight: Weight) -> Weight;
+pub trait IdleScheduler<Index, Task> {
+	fn schedule(task: Task) -> Result<Index, DispatchError>;
+	fn dispatch(id: Index, weight: Weight) -> Weight;
 }
 
 #[cfg(feature = "std")]
@@ -152,11 +152,11 @@ impl DispatchableTask for () {
 }
 
 #[cfg(feature = "std")]
-impl<Task> IdleScheduler<Task> for () {
-	fn schedule(_task: Task) -> Result<Nonce, DispatchError> {
+impl<Index, Task> IdleScheduler<Index, Task> for () {
+	fn schedule(_task: Task) -> Result<Index, DispatchError> {
 		unimplemented!()
 	}
-	fn dispatch(_id: Nonce, _weight: Weight) -> Weight {
+	fn dispatch(_id: Index, _weight: Weight) -> Weight {
 		unimplemented!()
 	}
 }
@@ -211,5 +211,5 @@ impl<AccountId> LiquidateCollateral<AccountId> for Tuple {
 }
 
 pub trait BuyWeightRate {
-	fn calculate_rate(location: MultiLocation) -> Option<Ratio>;
+	fn calculate_rate(location: Location) -> Option<Ratio>;
 }

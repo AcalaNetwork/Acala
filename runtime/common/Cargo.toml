@@ -1,6 +1,6 @@
 [package]
 name = "runtime-common"
-version = "2.24.0"
+version = "2.25.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -40,6 +40,7 @@ cumulus-pallet-xcm = { workspace = true }
 
 # polkadot
 pallet-xcm = { workspace = true }
+parachain-info = { workspace = true }
 parachains-common = { workspace = true }
 polkadot-parachain-primitives = { workspace = true }
 polkadot-primitives = { workspace = true }
@@ -111,6 +112,7 @@ std = [
 	"cumulus-pallet-parachain-system/std",
 
 	"pallet-xcm/std",
+	"parachain-info/std",
 	"parachains-common/std",
 	"polkadot-parachain-primitives/std",
 	"polkadot-primitives/std",
@@ -173,4 +175,7 @@ wasm-bench = [
 	"orml-tokens/runtime-benchmarks",
 
 	"xcm-builder/runtime-benchmarks",
+]
+runtime-benchmarks = [
+	"orml-oracle/runtime-benchmarks"
 ]

@@ -26,7 +26,7 @@ use frame_support::{
 	traits::{Currency, ExistenceRequirement, LockIdentifier, LockableCurrency, OnUnbalanced, WithdrawReasons},
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::{define_parameters, parameters::ParameterStore, Happened};
+use orml_traits::{define_parameters, parameters::ParameterStore, Handler};
 use primitives::{
 	bonding::{self, BondingController},
 	Balance,
@@ -59,8 +59,8 @@ pub mod module {
 
 		type ParameterStore: ParameterStore<Parameters>;
 
-		type OnBonded: Happened<(Self::AccountId, Balance)>;
-		type OnUnbonded: Happened<(Self::AccountId, Balance)>;
+		type OnBonded: Handler<(Self::AccountId, Balance)>;
+		type OnUnbonded: Handler<(Self::AccountId, Balance)>;
 		type OnUnstakeFee: OnUnbalanced<NegativeImbalanceOf<Self>>;
 
 		#[pallet::constant]
@@ -141,7 +141,7 @@ pub mod module {
 			let change = <Self as BondingController>::bond(&who, amount)?;
 
 			if let Some(change) = change {
-				T::OnBonded::happened(&(who.clone(), change.change));
+				T::OnBonded::handle(&(who.clone(), change.change))?;
 				Self::deposit_event(Event::Bonded {
 					who,
 					amount: change.change,
@@ -162,7 +162,7 @@ pub mod module {
 			let change = <Self as BondingController>::unbond(&who, amount, unbond_at)?;
 
 			if let Some(change) = change {
-				T::OnUnbonded::happened(&(who.clone(), change.change));
+				T::OnUnbonded::handle(&(who.clone(), change.change))?;
 				Self::deposit_event(Event::Unbonded {
 					who,
 					amount: change.change,
@@ -193,7 +193,8 @@ pub mod module {
 					T::Currency::withdraw(&who, fee, WithdrawReasons::TRANSFER, ExistenceRequirement::KeepAlive)?;
 				T::OnUnstakeFee::on_unbalanced(unbalance);
 
-				T::OnUnbonded::happened(&(who.clone(), final_amount));
+				// remove all shares of the change amount.
+				T::OnUnbonded::handle(&(who.clone(), amount))?;
 				Self::deposit_event(Event::InstantUnbonded {
 					who,
 					amount: final_amount,
@@ -215,7 +216,7 @@ pub mod module {
 			let change = <Self as BondingController>::rebond(&who, amount)?;
 
 			if let Some(change) = change {
-				T::OnBonded::happened(&(who.clone(), change.change));
+				T::OnBonded::handle(&(who.clone(), change.change))?;
 				Self::deposit_event(Event::Rebonded {
 					who,
 					amount: change.change,

@@ -19,7 +19,7 @@
 use crate::{ExchangeRate, Rate};
 use sp_runtime::DispatchResult;
 use sp_std::{fmt::Debug, vec::Vec};
-use xcm::v3::prelude::*;
+use xcm::v4::prelude::*;
 
 pub trait HomaSubAccountXcm<AccountId, Balance> {
 	type RelayChainAccountId: Debug + Clone + Ord;
@@ -37,7 +37,7 @@ pub trait HomaSubAccountXcm<AccountId, Balance> {
 	/// The fee of cross-chain transfer is deducted from the recipient.
 	fn get_xcm_transfer_fee() -> Balance;
 	/// The fee of parachain
-	fn get_parachain_fee(location: MultiLocation) -> Balance;
+	fn get_parachain_fee(location: Location) -> Balance;
 }
 
 pub trait HomaManager<AccountId, Balance> {

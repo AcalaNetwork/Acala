@@ -33,9 +33,10 @@ use module_cdp_engine::CollateralCurrencyIds;
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
-	mocks::MockStableAsset, AddressMapping as AddressMappingT, AuctionManager, CrowdloanVaultXcm, DEXIncentives,
-	DispatchableTask, EmergencyShutdown, ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId,
-	PriceProvider, Rate, SpecificJointsSwap,
+	mocks::{MockStableAsset, TestRandomness},
+	AddressMapping as AddressMappingT, AuctionManager, CrowdloanVaultXcm, DEXIncentives, DispatchableTask,
+	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId, PriceProvider,
+	Rate, SpecificJointsSwap,
 };
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -53,7 +54,7 @@ use sp_runtime::{
 	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, RuntimeDebug,
 };
 use sp_std::prelude::*;
-use xcm::{prelude::*, v3::Xcm};
+use xcm::{prelude::*, v4::Xcm};
 use xcm_builder::FixedWeightBounds;
 
 pub type AccountId = AccountId32;
@@ -86,6 +87,19 @@ impl SortedMembers<AccountId> for Members {
 	}
 }
 
+parameter_types! {
+	pub const MaxFeedValues: u32 = 10; // max 10 values allowd to feed in one call.
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+pub struct BenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl orml_oracle::BenchmarkHelper<Key, Price, MaxFeedValues> for BenchmarkHelper {
+	fn get_currency_id_value_pairs() -> sp_runtime::BoundedVec<(CurrencyId, Price), MaxFeedValues> {
+		sp_runtime::BoundedVec::default()
+	}
+}
+
 impl orml_oracle::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type OnNewData = ();
@@ -97,7 +111,9 @@ impl orml_oracle::Config for Test {
 	type Members = Members;
 	type WeightInfo = ();
 	type MaxHasDispatchedSize = ConstU32<40>;
-	type MaxFeedValues = ConstU32<10>;
+	type MaxFeedValues = MaxFeedValues;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = BenchmarkHelper;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -140,7 +156,6 @@ impl pallet_balances::Config for Test {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
-	type MaxHolds = ConstU32<50>;
 	type MaxFreezes = ();
 }
 
@@ -208,6 +223,7 @@ parameter_types! {
 impl module_idle_scheduler::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type Index = Nonce;
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
@@ -588,6 +604,7 @@ impl module_evm::Config for Test {
 	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Randomness = TestRandomness<Self>;
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
 	type WeightInfo = ();
@@ -688,7 +705,7 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 		1_000_000
 	}
 
-	fn get_parachain_fee(_: MultiLocation) -> Balance {
+	fn get_parachain_fee(_: Location) -> Balance {
 		1_000_000
 	}
 }
@@ -728,11 +745,18 @@ impl module_homa::Config for Test {
 	type NominationsProvider = ();
 }
 
+parameter_type_with_key! {
+	pub MinimalShares: |_pool_id: PoolId| -> Balance {
+		0
+	};
+}
+
 impl orml_rewards::Config for Test {
 	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = PoolId;
 	type CurrencyId = CurrencyId;
+	type MinimalShares = MinimalShares;
 	type Handler = Incentives;
 }
 
@@ -757,61 +781,55 @@ impl module_incentives::Config for Test {
 }
 
 parameter_types! {
-	pub UniversalLocation: InteriorMultiLocation = Here;
+	pub UniversalLocation: InteriorLocation = Here;
 }
 
 pub struct CurrencyIdConvert;
-impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
-	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+impl Convert<CurrencyId, Option<Location>> for CurrencyIdConvert {
+	fn convert(id: CurrencyId) -> Option<Location> {
 		use primitives::TokenSymbol::*;
 		use CurrencyId::Token;
 		match id {
-			Token(DOT) => Some(MultiLocation::parent()),
+			Token(DOT) => Some(Location::parent()),
 			_ => None,
 		}
 	}
 }
-impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+impl Convert<Location, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(location: Location) -> Option<CurrencyId> {
 		use primitives::TokenSymbol::*;
 		use CurrencyId::Token;
 
-		if location == MultiLocation::parent() {
+		if location == Location::parent() {
 			return Some(Token(DOT));
 		}
 		None
 	}
 }
-impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
-		if let MultiAsset {
-			id: Concrete(location), ..
-		} = asset
-		{
-			Self::convert(location)
-		} else {
-			None
-		}
+impl Convert<Asset, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(asset: Asset) -> Option<CurrencyId> {
+		let AssetId(location) = asset.id;
+		Self::convert(location)
 	}
 }
 
 parameter_types! {
-	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(2000)));
+	pub SelfLocation: Location = Location::new(1, Parachain(2000));
 }
 
-pub struct AccountIdToMultiLocation;
-impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
-	fn convert(account: AccountId) -> MultiLocation {
-		X1(Junction::AccountId32 {
+pub struct AccountIdToLocation;
+impl Convert<AccountId, Location> for AccountIdToLocation {
+	fn convert(account: AccountId) -> Location {
+		Junction::AccountId32 {
 			network: None,
 			id: account.into(),
-		})
+		}
 		.into()
 	}
 }
 
 parameter_type_with_key! {
-	pub ParachainMinFee: |location: MultiLocation| -> Option<u128> {
+	pub ParachainMinFee: |location: Location| -> Option<u128> {
 		#[allow(clippy::match_ref_pats)] // false positive
 		match (location.parents, location.first_interior()) {
 			(1, Some(Parachain(3))) => Some(100),
@@ -835,19 +853,14 @@ impl ExecuteXcm<RuntimeCall> for MockExec {
 		unreachable!()
 	}
 
-	fn execute(
-		_origin: impl Into<MultiLocation>,
-		_pre: Weightless,
-		_hash: &mut XcmHash,
-		_weight_credit: Weight,
-	) -> Outcome {
+	fn execute(_origin: impl Into<Location>, _pre: Weightless, _hash: &mut XcmHash, _weight_credit: Weight) -> Outcome {
 		unreachable!()
 	}
 
-	fn execute_xcm_in_credit(
-		_origin: impl Into<MultiLocation>,
+	fn prepare_and_execute(
+		_origin: impl Into<Location>,
 		message: Xcm<RuntimeCall>,
-		_hash: XcmHash,
+		_id: &mut XcmHash,
 		weight_limit: Weight,
 		_weight_credit: Weight,
 	) -> Outcome {
@@ -859,21 +872,25 @@ impl ExecuteXcm<RuntimeCall> for MockExec {
 				}),
 			) => {
 				if require_weight_at_most.all_lte(weight_limit) {
-					Outcome::Complete(*require_weight_at_most)
+					Outcome::Complete {
+						used: *require_weight_at_most,
+					}
 				} else {
-					Outcome::Error(XcmError::WeightLimitReached(*require_weight_at_most))
+					Outcome::Error {
+						error: XcmError::WeightLimitReached(*require_weight_at_most),
+					}
 				}
 			}
 			// use 1000 to decide that it's not supported.
-			_ => Outcome::Incomplete(
-				Weight::from_parts(1000, 1000).min(weight_limit),
-				XcmError::Unimplemented,
-			),
+			_ => Outcome::Incomplete {
+				used: Weight::from_parts(1000, 1000).min(weight_limit),
+				error: XcmError::Unimplemented,
+			},
 		};
 		o
 	}
 
-	fn charge_fees(_location: impl Into<MultiLocation>, _fees: MultiAssets) -> XcmResult {
+	fn charge_fees(_location: impl Into<Location>, _fees: Assets) -> XcmResult {
 		Err(XcmError::Unimplemented)
 	}
 }
@@ -891,7 +908,7 @@ impl orml_xtokens::Config for Test {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
-	type AccountIdToMultiLocation = AccountIdToMultiLocation;
+	type AccountIdToLocation = AccountIdToLocation;
 	type SelfLocation = SelfLocation;
 	type XcmExecutor = MockExec;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
@@ -899,8 +916,10 @@ impl orml_xtokens::Config for Test {
 	type UniversalLocation = UniversalLocation;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
-	type MultiLocationsFilter = Everything;
+	type LocationsFilter = Everything;
 	type ReserveProvider = AbsoluteReserveProvider;
+	type RateLimiter = ();
+	type RateLimiterId = ();
 }
 
 parameter_types!(

@@ -25,11 +25,14 @@ pub use crate as currencies;
 
 use frame_support::{
 	assert_ok, derive_impl, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Nothing, VariantCount},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
-use module_support::{mocks::MockAddressMapping, AddressMapping};
+use module_support::{
+	mocks::{MockAddressMapping, TestRandomness},
+	AddressMapping,
+};
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use primitives::{evm::convert_decimals_to_evm, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
@@ -106,6 +109,15 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
 }
 
+#[derive(Encode, Decode, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, MaxEncodedLen, TypeInfo, RuntimeDebug)]
+pub enum TestId {
+	Foo,
+}
+
+impl VariantCount for TestId {
+	const VARIANT_COUNT: u32 = 1;
+}
+
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -116,10 +128,9 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = TestId;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
-	type MaxHolds = ConstU32<1>;
 	type MaxFreezes = ();
 }
 
@@ -175,6 +186,7 @@ impl module_evm::Config for Runtime {
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Randomness = TestRandomness<Self>;
 	type Task = ();
 	type IdleScheduler = ();
 	type WeightInfo = ();
@@ -286,8 +298,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1235455,
-		used_storage: 5131,
+		used_gas: 1215220,
+		used_storage: 4996,
 	}));
 }
 
