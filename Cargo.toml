@@ -161,7 +161,7 @@ k256 = { version = "0.11.5", default-features = false }
 # - "client" dependencies are only used in the client, and thus don't need to be no_std compatible.
 
 # ORML & Acala (wasm)
-wasm-bencher = { git = "https://github.com/open-web3-stack/wasm-bencher", branch = "polkadot-v1.6.0", default-features = false }
+wasm-bencher = { git = "https://github.com/open-web3-stack/wasm-bencher", branch = "polkadot-v1.9.0", default-features = false }
 orml-auction = { path = "orml/auction", default-features = false }
 orml-authority = { path = "orml/authority", default-features = false }
 orml-benchmarking = { path = "orml/benchmarking", default-features = false }
