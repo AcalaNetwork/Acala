@@ -388,7 +388,7 @@ pub mod module {
 				} else {
 					account.balance
 				};
-				T::Currency::deposit_creating(&account_id, amount);
+				let _ = T::Currency::deposit_creating(&account_id, amount);
 
 				if account.enable_contract_development {
 					T::Currency::ensure_reserved_named(
