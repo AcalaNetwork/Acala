@@ -139,7 +139,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	#[cfg(feature = "disable-runtime-api")]
 	apis: sp_version::create_apis_vec![[]],
 	transaction_version: 3,
-	state_version: 0,
+	state_version: 1,
 };
 
 /// The version information used to identify this runtime when compiled
@@ -1872,6 +1872,33 @@ impl orml_parameters::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	// The deposit configuration for the singed migration. Specially if you want to allow any signed account to do the migration (see `SignedFilter`, these deposits should be high)
+	pub MigrationSignedDepositPerItem: Balance = dollar(ACA);
+	pub MigrationSignedDepositBase: Balance = dollar(ACA);
+	pub const MigrationMaxKeyLen: u32 = 512;
+}
+
+frame_support::ord_parameter_types! {
+	// Empty account
+	pub const SignedFilterController: AccountId = AccountId::from(hex_literal::hex!("0000000000000000000000000000000000000000000000000000000000000000"));
+}
+
+impl pallet_state_trie_migration::Config for Runtime {
+	// An origin that can control the whole pallet: should be Root, or a part of your council.
+	type ControlOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
+	// specific account for the migration, can trigger the signed migrations.
+	type SignedFilter = frame_system::EnsureSignedBy<SignedFilterController, AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type MaxKeyLen = MigrationMaxKeyLen;
+	type SignedDepositPerItem = MigrationSignedDepositPerItem;
+	type SignedDepositBase = MigrationSignedDepositBase;
+	// Replace this with weight based on your runtime.
+	type WeightInfo = pallet_state_trie_migration::weights::SubstrateWeight<Runtime>;
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct ConvertEthereumTx;
 
@@ -2140,6 +2167,8 @@ construct_runtime!(
 
 		// Parachain System, always put it at the end
 		ParachainSystem: cumulus_pallet_parachain_system = 160,
+
+		StateTrieMigration: pallet_state_trie_migration = 254,
 
 		// Dev
 		Sudo: pallet_sudo = 255,

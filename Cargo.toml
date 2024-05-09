@@ -311,6 +311,7 @@ sp-weights = { version = "30.0.0", default-features = false }
 xcm = { version = "10.0.0", package = "staging-xcm", default-features = false }
 xcm-builder = { version = "10.0.0", package = "staging-xcm-builder", default-features = false }
 xcm-executor = { version = "10.0.0", package = "staging-xcm-executor", default-features = false }
+pallet-state-trie-migration = { version = "32.0.0", default-features = false }
 
 # polkadot-sdk (client)
 cumulus-client-cli = { version = "0.10.0" }
