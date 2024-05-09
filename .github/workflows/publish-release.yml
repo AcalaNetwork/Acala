@@ -75,6 +75,7 @@ jobs:
         with:
           chain: ${{ env.CHAIN }}
           tag: ${{ github.event.inputs.srtool_image }}
+          profile: production
 
       # Output the build summary
       - name: Build Summary
