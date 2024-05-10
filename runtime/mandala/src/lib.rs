@@ -1879,16 +1879,11 @@ parameter_types! {
 	pub const MigrationMaxKeyLen: u32 = 512;
 }
 
-frame_support::ord_parameter_types! {
-	// Empty account
-	pub const SignedFilterController: AccountId = AccountId::from(hex_literal::hex!("0000000000000000000000000000000000000000000000000000000000000000"));
-}
-
 impl pallet_state_trie_migration::Config for Runtime {
 	// An origin that can control the whole pallet: should be Root, or a part of your council.
 	type ControlOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	// specific account for the migration, can trigger the signed migrations.
-	type SignedFilter = frame_system::EnsureSignedBy<SignedFilterController, AccountId>;
+	type SignedFilter = frame_support::traits::NeverEnsureOrigin<AccountId>;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type RuntimeHoldReason = RuntimeHoldReason;
