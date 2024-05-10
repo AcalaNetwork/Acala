@@ -6040,6 +6040,7 @@ dependencies = [
  "pallet-root-testing",
  "pallet-scheduler",
  "pallet-session",
+ "pallet-state-trie-migration",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-tips",
