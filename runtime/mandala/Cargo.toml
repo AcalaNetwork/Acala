@@ -58,7 +58,6 @@ sp-staking = { workspace = true }
 sp-std = { workspace = true }
 sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
-pallet-state-trie-migration = { workspace = true, optional = true }
 
 # cumulus
 cumulus-pallet-aura-ext = { workspace = true }
@@ -209,7 +208,6 @@ std = [
 	"sp-transaction-pool/std",
 	"sp-version/std",
 	"substrate-wasm-builder",
-	"pallet-state-trie-migration/std",
 
 	"cumulus-pallet-aura-ext/std",
 	"cumulus-pallet-parachain-system/std",
@@ -309,7 +307,6 @@ runtime-benchmarks = [
 	"pallet-utility/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"sp-staking/runtime-benchmarks",
-	"pallet-state-trie-migration/runtime-benchmarks",
 
 	"cumulus-pallet-parachain-system/runtime-benchmarks",
 	"cumulus-pallet-xcmp-queue/runtime-benchmarks",
@@ -383,7 +380,6 @@ try-runtime = [
 	"pallet-transaction-payment/try-runtime",
 	"pallet-treasury/try-runtime",
 	"pallet-utility/try-runtime",
-	"pallet-state-trie-migration/try-runtime",
 
 	"cumulus-pallet-aura-ext/try-runtime",
 	"cumulus-pallet-parachain-system/try-runtime",
