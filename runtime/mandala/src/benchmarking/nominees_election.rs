@@ -16,14 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, MinCouncilBondThreshold, NomineesElection, Runtime};
+use crate::{
+	AccountId, Balance, BondingDuration, Homa, HomaValidatorList, MinNomineesElectionBondThreshold, NomineesElection,
+	Runtime, ValidatorInsuranceThreshold,
+};
 
 use super::utils::{set_balance, LIQUID};
 use frame_benchmarking::{account, whitelisted_caller};
-use frame_support::traits::Get;
+use frame_support::{traits::Get, BoundedVec};
 use frame_system::RawOrigin;
-use module_support::OnNewEra;
 use orml_benchmarking::runtime_benchmarks;
+use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
@@ -33,56 +36,75 @@ runtime_benchmarks! {
 
 	bond {
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
-	}: _(RawOrigin::Signed(caller), MinCouncilBondThreshold::get())
+		set_balance(LIQUID, &caller, 2 * MinNomineesElectionBondThreshold::get());
+	}: _(RawOrigin::Signed(caller), MinNomineesElectionBondThreshold::get())
 
 	unbond {
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
-		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get())?;
-	}: _(RawOrigin::Signed(caller), MinCouncilBondThreshold::get())
+		set_balance(LIQUID, &caller, 2 * MinNomineesElectionBondThreshold::get());
+		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), MinNomineesElectionBondThreshold::get())?;
+	}: _(RawOrigin::Signed(caller), MinNomineesElectionBondThreshold::get())
 
 	rebond {
 		let c in 1 .. <Runtime as module_nominees_election::Config>::MaxUnbondingChunks::get();
 
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
-		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), 2 * MinCouncilBondThreshold::get())?;
+		set_balance(LIQUID, &caller, 2 * MinNomineesElectionBondThreshold::get());
+		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), 2 * MinNomineesElectionBondThreshold::get())?;
 		for _ in 0..c {
-			NomineesElection::unbond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get()/c as u128)?;
+			NomineesElection::unbond(RawOrigin::Signed(caller.clone()).into(), MinNomineesElectionBondThreshold::get()/c as u128)?;
 		}
-	}: _(RawOrigin::Signed(caller), MinCouncilBondThreshold::get())
+	}: _(RawOrigin::Signed(caller), MinNomineesElectionBondThreshold::get())
 
 	withdraw_unbonded {
 		let c in 1 .. <Runtime as module_nominees_election::Config>::MaxUnbondingChunks::get();
 
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
-		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), 2 * MinCouncilBondThreshold::get())?;
+		set_balance(LIQUID, &caller, 2 * MinNomineesElectionBondThreshold::get());
+		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), 2 * MinNomineesElectionBondThreshold::get())?;
 		for _ in 0..c {
-			NomineesElection::unbond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get()/c as u128)?;
+			NomineesElection::unbond(RawOrigin::Signed(caller.clone()).into(), MinNomineesElectionBondThreshold::get()/c as u128)?;
 		}
-		NomineesElection::on_new_era(1);
+		Homa::force_bump_current_era(RawOrigin::Root.into(), BondingDuration::get())?;
 	}: _(RawOrigin::Signed(caller))
 
 	nominate {
-		let c in 1 .. <Runtime as module_nominees_election::Config>::NominateesCount::get();
-		let targets = (0..c).map(|c| account("nominatees", c, SEED)).collect::<Vec<_>>();
+		let c in 1 .. <Runtime as module_nominees_election::Config>::MaxNominateesCount::get();
+		let targets: Vec<AccountId> = (0..c).map(|c| account("nominatees", c, SEED)).collect();
+		let caller: AccountId = whitelisted_caller();
+		set_balance(LIQUID, &caller, 2 * MinNomineesElectionBondThreshold::get() + ValidatorInsuranceThreshold::get() * targets.len().saturated_into::<Balance>());
+
+		for validator in targets.iter() {
+			HomaValidatorList::bond(RawOrigin::Signed(caller.clone()).into(), validator.clone(), ValidatorInsuranceThreshold::get())?;
+		}
 
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
-		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get())?;
+		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), MinNomineesElectionBondThreshold::get())?;
 	}: _(RawOrigin::Signed(caller), targets)
 
 	chill {
-		let c in 1 .. <Runtime as module_nominees_election::Config>::NominateesCount::get();
-		let targets = (0..c).map(|c| account("nominatees", c, SEED)).collect::<Vec<_>>();
+		let c in 1 .. <Runtime as module_nominees_election::Config>::MaxNominateesCount::get();
+		let targets: Vec<AccountId> = (0..c).map(|c| account("nominatees", c, SEED)).collect();
 
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
-		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get())?;
+		set_balance(LIQUID, &caller, 2 * MinNomineesElectionBondThreshold::get() + ValidatorInsuranceThreshold::get() * targets.len().saturated_into::<Balance>());
+
+		for validator in targets.iter() {
+			HomaValidatorList::bond(RawOrigin::Signed(caller.clone()).into(), validator.clone(), ValidatorInsuranceThreshold::get())?;
+		}
+
+		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), MinNomineesElectionBondThreshold::get())?;
 		NomineesElection::nominate(RawOrigin::Signed(caller.clone()).into(), targets)?;
 	}: _(RawOrigin::Signed(caller))
+
+	reset_reserved_nominees {
+		let c in 1 .. 4;
+		let updates: Vec<(u16, BoundedVec<AccountId, <Runtime as module_nominees_election::Config>::MaxNominateesCount>)> = (0..c).map(|c| {
+			let reserved: BoundedVec<AccountId, <Runtime as module_nominees_election::Config>::MaxNominateesCount> =
+				(0..<Runtime as module_nominees_election::Config>::MaxNominateesCount::get()).map(|c| account("nominatees", c, SEED)).collect::<Vec<AccountId>>().try_into().unwrap();
+			(c.saturated_into(), reserved)
+		}).collect();
+	}: _(RawOrigin::Root, updates)
 }
 
 #[cfg(test)]

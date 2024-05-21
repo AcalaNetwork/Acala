@@ -204,6 +204,7 @@ module-evm-bridge = { path = "modules/evm-bridge", default-features = false }
 module-evm-rpc-runtime-api = { path = "modules/evm/rpc/runtime-api", default-features = false }
 module-evm-utility = { path = "modules/evm-utility", default-features = false }
 module-homa = { path = "modules/homa", default-features = false }
+module-homa-validator-list = { path = "modules/homa-validator-list", default-features = false }
 module-honzon = { path = "modules/honzon", default-features = false }
 module-honzon-bridge = { path = "modules/honzon-bridge", default-features = false }
 module-idle-scheduler = { path = "modules/idle-scheduler", default-features = false }
