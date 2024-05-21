@@ -118,7 +118,7 @@ where
 	ParachainId: Get<ParaId>,
 	RCC: RelayChainCall + FullCodec,
 {
-	type AccountId = AccountId;
+	type RelayChainAccountId = AccountId;
 	type Balance = Balance;
 	type RelayChainCall = RCC;
 
@@ -138,7 +138,13 @@ where
 		RCC::staking(StakingCall::WithdrawUnbonded(num_slashing_spans))
 	}
 
-	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> RCC {
+	fn staking_nominate(targets: Vec<Self::RelayChainAccountId>) -> RCC {
+		RCC::staking(StakingCall::Nominate(
+			targets.iter().map(|a| RelayChainLookup::unlookup(a.clone())).collect(),
+		))
+	}
+
+	fn balances_transfer_keep_alive(to: Self::RelayChainAccountId, amount: Self::Balance) -> RCC {
 		RCC::balances(BalancesCall::TransferKeepAlive(RelayChainLookup::unlookup(to), amount))
 	}
 
@@ -157,7 +163,7 @@ where
 		))
 	}
 
-	fn proxy_call(real: Self::AccountId, call: RCC) -> RCC {
+	fn proxy_call(real: Self::RelayChainAccountId, call: RCC) -> RCC {
 		RCC::proxy(ProxyCall::Proxy(RelayChainLookup::unlookup(real), None, call))
 	}
 

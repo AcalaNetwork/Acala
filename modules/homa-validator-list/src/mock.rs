@@ -22,24 +22,24 @@
 
 use super::*;
 use frame_support::{
-	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Nothing},
+	construct_runtime, derive_impl, parameter_types,
+	traits::{ConstU128, ConstU32, Nothing},
 };
-use frame_system::EnsureSignedBy;
+use frame_system::EnsureRoot;
 use module_support::ExchangeRate;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
-use std::collections::HashMap;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
-pub const VALIDATOR_1: AccountId = 2;
-pub const VALIDATOR_2: AccountId = 3;
-pub const VALIDATOR_3: AccountId = 4;
+pub const CHARLIE: AccountId = 2;
+pub const VALIDATOR_1: AccountId = 11;
+pub const VALIDATOR_2: AccountId = 12;
+pub const VALIDATOR_3: AccountId = 13;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
@@ -106,52 +106,6 @@ impl orml_currencies::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub static Shares: HashMap<(AccountId, AccountId), Balance> = HashMap::new();
-	pub static AccumulatedSlash: Balance = 0;
-}
-
-pub struct MockOnSlash;
-impl Happened<Balance> for MockOnSlash {
-	fn happened(amount: &Balance) {
-		AccumulatedSlash::mutate(|v| *v += amount);
-	}
-}
-
-pub struct MockOnIncreaseGuarantee;
-impl Happened<(AccountId, AccountId, Balance)> for MockOnIncreaseGuarantee {
-	fn happened(info: &(AccountId, AccountId, Balance)) {
-		let (account_id, relaychain_id, amount) = info;
-		Shares::mutate(|v| {
-			let mut old_map = v.clone();
-			if let Some(share) = old_map.get_mut(&(*account_id, *relaychain_id)) {
-				*share = share.saturating_add(*amount);
-			} else {
-				old_map.insert((*account_id, *relaychain_id), *amount);
-			};
-
-			*v = old_map;
-		});
-	}
-}
-
-pub struct MockOnDecreaseGuarantee;
-impl Happened<(AccountId, AccountId, Balance)> for MockOnDecreaseGuarantee {
-	fn happened(info: &(AccountId, AccountId, Balance)) {
-		let (account_id, relaychain_id, amount) = info;
-		Shares::mutate(|v| {
-			let mut old_map = v.clone();
-			if let Some(share) = old_map.get_mut(&(*account_id, *relaychain_id)) {
-				*share = share.saturating_sub(*amount);
-			} else {
-				old_map.insert((*account_id, *relaychain_id), Default::default());
-			};
-
-			*v = old_map;
-		});
-	}
-}
-
 pub struct MockLiquidStakingExchangeProvider;
 impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 	fn get_exchange_rate() -> ExchangeRate {
@@ -160,36 +114,22 @@ impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 }
 
 parameter_types! {
-	pub static MockBlockNumberProvider: u64 = 0;
-}
-
-impl BlockNumberProvider for MockBlockNumberProvider {
-	type BlockNumber = u64;
-
-	fn current_block_number() -> Self::BlockNumber {
-		Self::get()
-	}
-}
-
-ord_parameter_types! {
-	pub const Admin: AccountId = 10;
+	pub static MockCurrentEra: EraIndex = 0;
+	pub ActiveSubAccountsIndexList: Vec<u16> = vec![0, 1, 2];
+	pub const BondingDuration: EraIndex = 28;
 }
 
 impl Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type RelaychainAccountId = AccountId;
+	type RelayChainAccountId = AccountId;
 	type LiquidTokenCurrency = LDOTCurrency;
 	type MinBondAmount = ConstU128<100>;
-	type BondingDuration = ConstU64<100>;
+	type BondingDuration = BondingDuration;
 	type ValidatorInsuranceThreshold = ConstU128<200>;
-	type FreezeOrigin = EnsureSignedBy<Admin, AccountId>;
-	type SlashOrigin = EnsureSignedBy<Admin, AccountId>;
-	type OnSlash = MockOnSlash;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
+	type CurrentEra = MockCurrentEra;
 	type WeightInfo = ();
-	type OnIncreaseGuarantee = MockOnIncreaseGuarantee;
-	type OnDecreaseGuarantee = MockOnDecreaseGuarantee;
-	type BlockNumberProvider = MockBlockNumberProvider;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -211,7 +151,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			balances: vec![(ALICE, LDOT, 1000), (BOB, LDOT, 1000)],
+			balances: vec![(ALICE, LDOT, 1000), (BOB, LDOT, 1000), (CHARLIE, LDOT, 1000000)],
 		}
 	}
 }
@@ -228,6 +168,10 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		t.into()
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| {
+			System::set_block_number(1);
+		});
+		ext
 	}
 }

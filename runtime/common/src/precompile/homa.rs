@@ -236,6 +236,7 @@ mod tests {
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
+				None,
 			));
 
 			assert_ok!(Currencies::update_balance(
@@ -275,6 +276,7 @@ mod tests {
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				Some(FixedU128::saturating_from_rational(1, 10)),
+				None,
 			));
 
 			assert_ok!(Currencies::update_balance(
@@ -353,6 +355,7 @@ mod tests {
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				None,
 				None,
+				None,
 			));
 
 			// getEstimatedRewardRate() -> 0xd313f77e
@@ -384,6 +387,7 @@ mod tests {
 				None,
 				Some(FixedU128::saturating_from_rational(1, 10)),
 				None,
+				None,
 			));
 
 			// getCommissionRate() => 0x3e4eb36c
@@ -413,6 +417,7 @@ mod tests {
 				None,
 				None,
 				Some(FixedU128::saturating_from_rational(1, 10)),
+				None,
 			));
 
 			// getFastMatchFee() => 0xc18290dd

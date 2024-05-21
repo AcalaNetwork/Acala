@@ -172,6 +172,7 @@ parameter_types! {
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
 	pub const HonzonBridgePalletId: PalletId = PalletId(*b"aca/hzbg");
+	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
@@ -1317,6 +1318,9 @@ parameter_type_with_key! {
 					ExistentialDeposits::get(currency_id)
 				}
 			}
+			PoolId::NomineesElection => {
+				ExistentialDeposits::get(&GetLiquidCurrencyId::get())
+			}
 		}
 	};
 }
@@ -1593,6 +1597,7 @@ parameter_types! {
 	];
 	pub MintThreshold: Balance = 10 * cent(KSM);
 	pub RedeemThreshold: Balance = 50 * cent(LKSM);
+	pub const BondingDuration: EraIndex = 28;
 }
 
 impl module_homa::Config for Runtime {
@@ -1605,12 +1610,53 @@ impl module_homa::Config for Runtime {
 	type TreasuryAccount = HomaTreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
-	type BondingDuration = ConstU32<28>;
+	type BondingDuration = BondingDuration;
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
+	type NominationsProvider = NomineesElection;
+}
+
+parameter_types! {
+	pub MinBondAmount: Balance = 100 * dollar(LKSM);
+	pub ValidatorInsuranceThreshold: Balance = 1_000 * dollar(LKSM);
+}
+
+impl module_homa_validator_list::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RelayChainAccountId = AccountId;
+	type LiquidTokenCurrency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
+	type MinBondAmount = MinBondAmount;
+	type BondingDuration = BondingDuration;
+	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type LiquidStakingExchangeRateProvider = Homa;
+	type CurrentEra = Homa;
+	type WeightInfo = weights::module_homa_validator_list::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	pub MinNomineesElectionBondThreshold: Balance = dollar(LKSM);
+	pub const MaxNominateesCount: u32 = 24;
+}
+
+impl module_nominees_election::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
+	type NomineeId = AccountId;
+	type PalletId = NomineesElectionId;
+	type MinBond = MinNomineesElectionBondThreshold;
+	type BondingDuration = BondingDuration;
+	type MaxNominateesCount = MaxNominateesCount;
+	type MaxUnbondingChunks = ConstU32<7>;
+	type NomineeFilter = HomaValidatorList;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type OnBonded = module_incentives::OnNomineesElectionBonded<Runtime>;
+	type OnUnbonded = module_incentives::OnNomineesElectionUnbonded<Runtime>;
+	type CurrentEra = Homa;
+	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 }
 
 pub fn create_x2_parachain_location(index: u16) -> Location {
@@ -1901,6 +1947,8 @@ construct_runtime!(
 		// Homa
 		Homa: module_homa = 116,
 		XcmInterface: module_xcm_interface = 117,
+		HomaValidatorList: module_homa_validator_list = 118,
+		NomineesElection: module_nominees_election = 119,
 
 		// Karura Other
 		Incentives: module_incentives = 120,
@@ -1989,6 +2037,7 @@ mod benches {
 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
 		[module_evm, benchmarking::evm]
 		[module_homa, benchmarking::homa]
+		[module_homa_validator_list, benchmarking::homa_validator_list]
 		[module_honzon, benchmarking::honzon]
 		[module_cdp_treasury, benchmarking::cdp_treasury]
 		[module_collator_selection, benchmarking::collator_selection]
@@ -2008,6 +2057,7 @@ mod benches {
 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 		[module_idle_scheduler, benchmarking::idle_scheduler]
 		[module_aggregated_dex, benchmarking::aggregated_dex]
+		[module_nominees_election, benchmarking::nominees_election]
 	);
 }
 

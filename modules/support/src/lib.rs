@@ -26,7 +26,7 @@ use primitives::{task::TaskResult, Balance, CurrencyId, Multiplier, ReserveIdent
 use sp_runtime::{
 	traits::CheckedDiv, transaction_validity::TransactionValidityError, DispatchError, DispatchResult, FixedU128,
 };
-use sp_std::{prelude::*, result::Result};
+use sp_std::{prelude::*, result::Result, vec};
 use xcm::prelude::*;
 
 pub mod bounded;
@@ -168,6 +168,17 @@ pub trait OnNewEra<EraIndex> {
 
 pub trait NomineesProvider<AccountId> {
 	fn nominees() -> Vec<AccountId>;
+	fn nominees_in_groups(group_index_list: Vec<u16>) -> Vec<(u16, Vec<AccountId>)>;
+}
+
+impl<AccountId> NomineesProvider<AccountId> for () {
+	fn nominees() -> Vec<AccountId> {
+		vec![]
+	}
+
+	fn nominees_in_groups(_: Vec<u16>) -> Vec<(u16, Vec<AccountId>)> {
+		vec![]
+	}
 }
 
 pub trait LiquidateCollateral<AccountId> {
