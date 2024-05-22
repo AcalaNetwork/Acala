@@ -130,8 +130,8 @@ parameter_types! {
 }
 
 pub struct MockOnBonded;
-impl Happened<(AccountId, Balance)> for MockOnBonded {
-	fn happened(info: &(AccountId, Balance)) {
+impl Handler<(AccountId, Balance)> for MockOnBonded {
+	fn handle(info: &(AccountId, Balance)) -> DispatchResult {
 		let (account_id, amount) = info;
 		Shares::mutate(|v| {
 			let mut old_map = v.clone();
@@ -143,12 +143,13 @@ impl Happened<(AccountId, Balance)> for MockOnBonded {
 
 			*v = old_map;
 		});
+		Ok(())
 	}
 }
 
 pub struct MockOnUnbonded;
-impl Happened<(AccountId, Balance)> for MockOnUnbonded {
-	fn happened(info: &(AccountId, Balance)) {
+impl Handler<(AccountId, Balance)> for MockOnUnbonded {
+	fn handle(info: &(AccountId, Balance)) -> DispatchResult {
 		let (account_id, amount) = info;
 		Shares::mutate(|v| {
 			let mut old_map = v.clone();
@@ -160,6 +161,7 @@ impl Happened<(AccountId, Balance)> for MockOnUnbonded {
 
 			*v = old_map;
 		});
+		Ok(())
 	}
 }
 

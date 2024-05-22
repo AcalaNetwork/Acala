@@ -27,7 +27,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 use module_support::NomineesProvider;
-use orml_traits::{BasicCurrency, BasicLockableCurrency, Happened};
+use orml_traits::{BasicCurrency, BasicLockableCurrency, Handler};
 use primitives::{
 	bonding::{self, BondingController},
 	Balance, EraIndex,
@@ -84,10 +84,10 @@ pub mod module {
 		type GovernanceOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Callback when an account bonded.
-		type OnBonded: Happened<(Self::AccountId, Balance)>;
+		type OnBonded: Handler<(Self::AccountId, Balance)>;
 
 		/// Callback when an account unbonded.
-		type OnUnbonded: Happened<(Self::AccountId, Balance)>;
+		type OnUnbonded: Handler<(Self::AccountId, Balance)>;
 
 		/// Current era.
 		type CurrentEra: Get<EraIndex>;
@@ -199,7 +199,7 @@ pub mod module {
 
 				Self::update_votes(change.old, &old_nominations, change.new, &old_nominations);
 
-				T::OnBonded::happened(&(who.clone(), change.change));
+				T::OnBonded::handle(&(who.clone(), change.change))?;
 
 				Self::deposit_event(Event::Bond {
 					who,
@@ -222,7 +222,7 @@ pub mod module {
 
 				Self::update_votes(change.old, &old_nominations, change.new, &old_nominations);
 
-				T::OnUnbonded::happened(&(who.clone(), change.change));
+				T::OnUnbonded::handle(&(who.clone(), change.change))?;
 
 				Self::deposit_event(Event::Unbond {
 					who,
@@ -245,7 +245,7 @@ pub mod module {
 
 				Self::update_votes(change.old, &old_nominations, change.new, &old_nominations);
 
-				T::OnBonded::happened(&(who.clone(), change.change));
+				T::OnBonded::handle(&(who.clone(), change.change))?;
 
 				Self::deposit_event(Event::Rebond {
 					who,
