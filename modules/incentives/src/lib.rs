@@ -619,15 +619,15 @@ impl<T: Config> Handler<(T::AccountId, Balance)> for OnEarningUnbonded<T> {
 }
 
 pub struct OnNomineesElectionBonded<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> Happened<(T::AccountId, Balance)> for OnNomineesElectionBonded<T> {
-	fn happened((who, amount): &(T::AccountId, Balance)) {
-		let _ = <orml_rewards::Pallet<T>>::add_share(who, &PoolId::NomineesElection, *amount);
+impl<T: Config> Handler<(T::AccountId, Balance)> for OnNomineesElectionBonded<T> {
+	fn handle((who, amount): &(T::AccountId, Balance)) -> DispatchResult {
+		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::NomineesElection, *amount)
 	}
 }
 
 pub struct OnNomineesElectionUnbonded<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> Happened<(T::AccountId, Balance)> for OnNomineesElectionUnbonded<T> {
-	fn happened((who, amount): &(T::AccountId, Balance)) {
-		let _ = <orml_rewards::Pallet<T>>::remove_share(who, &PoolId::NomineesElection, *amount);
+impl<T: Config> Handler<(T::AccountId, Balance)> for OnNomineesElectionUnbonded<T> {
+	fn handle((who, amount): &(T::AccountId, Balance)) -> DispatchResult {
+		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::NomineesElection, *amount)
 	}
 }
