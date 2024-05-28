@@ -137,7 +137,7 @@ impl orml_authority::AsOriginId<RuntimeOrigin, OriginCaller> for AuthoritysOrigi
 	}
 }
 
-/// Compares privilages
+/// Compares privilege
 fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
 	if left == right {
 		return Some(Ordering::Equal);
