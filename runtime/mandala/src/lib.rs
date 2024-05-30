@@ -2573,7 +2573,6 @@ impl_runtime_apis! {
 
 			const UNITS: Balance = 1_000_000_000_000;
 			const CENTS: Balance = UNITS / 100;
-			const MILLICENTS: Balance = CENTS / 1_000;
 
 			parameter_types! {
 				pub FeeAssetId: AssetId = AssetId(Location::parent());
