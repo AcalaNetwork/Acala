@@ -40,6 +40,7 @@ pub mod emergency_shutdown;
 pub mod evm;
 pub mod evm_accounts;
 pub mod homa;
+pub mod homa_validator_list;
 pub mod honzon;
 pub mod idle_scheduler;
 pub mod incentives;

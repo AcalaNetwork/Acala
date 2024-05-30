@@ -23,6 +23,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::*;
+use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn bond_below_min_bond_threshold() {
@@ -37,20 +38,32 @@ fn bond_below_min_bond_threshold() {
 #[test]
 fn bond_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(SHARES.with(|v| *v.borrow().get(&ALICE).unwrap_or(&0)), 0);
+		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 0);
+		assert_eq!(NomineesElectionModule::ledger(&ALICE), None);
 		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 50));
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(crate::Event::Bond {
+			who: ALICE,
+			amount: 50,
+		}));
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 50);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 50);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 50);
-	});
-}
+		assert_eq!(SHARES.with(|v| *v.borrow().get(&ALICE).unwrap_or(&0)), 50);
 
-#[test]
-fn bond_amount_over_remain_free() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 2000));
-		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 1000);
-		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 1000);
-		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 1000);
+		// bond amount over remain free
+		assert_eq!(SHARES.with(|v| *v.borrow().get(&BOB).unwrap_or(&0)), 0);
+		assert_eq!(TokensModule::accounts(&BOB, LDOT).frozen, 0);
+		assert_eq!(NomineesElectionModule::ledger(&BOB), None);
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(BOB), 2000));
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(crate::Event::Bond {
+			who: BOB,
+			amount: 1000,
+		}));
+		assert_eq!(TokensModule::accounts(&BOB, LDOT).frozen, 1000);
+		assert_eq!(NomineesElectionModule::ledger(&BOB).unwrap().total(), 1000);
+		assert_eq!(NomineesElectionModule::ledger(&BOB).unwrap().active(), 1000);
+		assert_eq!(SHARES.with(|v| *v.borrow().get(&BOB).unwrap_or(&0)), 1000);
 	});
 }
 
@@ -58,14 +71,36 @@ fn bond_amount_over_remain_free() {
 fn unbond_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 200));
+		assert_eq!(SHARES.with(|v| *v.borrow().get(&ALICE).unwrap_or(&0)), 200);
+		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 200);
+		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 200);
+		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 200);
+
 		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(crate::Event::Unbond {
+			who: ALICE,
+			amount: 100,
+		}));
+		assert_eq!(SHARES.with(|v| *v.borrow().get(&ALICE).unwrap_or(&0)), 100);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 200);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 100);
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 200);
-		NomineesElectionModule::on_new_era(4);
+
+		MockCurrentEra::set(4);
 		assert_ok!(NomineesElectionModule::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 100);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 100);
+		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 100);
+
+		// unbond amount over active
+		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 200));
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(crate::Event::Unbond {
+			who: ALICE,
+			amount: 100,
+		}));
+		assert_eq!(SHARES.with(|v| *v.borrow().get(&ALICE).unwrap_or(&0)), 0);
+		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 100);
+		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 0);
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 100);
 	});
 }
@@ -75,30 +110,15 @@ fn unbond_exceed_max_unlock_chunk() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 1000));
 		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
-		NomineesElectionModule::on_new_era(1);
+		MockCurrentEra::set(1);
 		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
-		NomineesElectionModule::on_new_era(2);
+		MockCurrentEra::set(2);
 		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
-		NomineesElectionModule::on_new_era(3);
+		MockCurrentEra::set(3);
 		assert_noop!(
 			NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100),
 			Error::<Runtime>::MaxUnlockChunksExceeded,
 		);
-	});
-}
-
-#[test]
-fn unbond_amount_over_active() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 1000));
-		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 1500));
-		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 1000);
-		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 0);
-		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 1000);
-		NomineesElectionModule::on_new_era(4);
-		assert_ok!(NomineesElectionModule::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
-		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 0);
-		assert_eq!(TokensModule::accounts(&ALICE, LDOT).free, 1000);
 	});
 }
 
@@ -116,37 +136,41 @@ fn unbond_remain_below_threshold() {
 #[test]
 fn rebond_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-
 		assert_noop!(
 			NomineesElectionModule::rebond(RuntimeOrigin::signed(ALICE), 100),
 			Error::<Runtime>::NotBonded,
 		);
 		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 1000));
 		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
-		NomineesElectionModule::on_new_era(1);
+		MockCurrentEra::set(1);
 		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
-		NomineesElectionModule::on_new_era(2);
+		MockCurrentEra::set(2);
 		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
-		NomineesElectionModule::on_new_era(3);
+		MockCurrentEra::set(3);
+		assert_eq!(SHARES.with(|v| *v.borrow().get(&ALICE).unwrap_or(&0)), 700);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 1000);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 700);
+
 		assert_ok!(NomineesElectionModule::rebond(RuntimeOrigin::signed(ALICE), 150));
 		System::assert_last_event(mock::RuntimeEvent::NomineesElectionModule(crate::Event::Rebond {
 			who: ALICE,
 			amount: 150,
 		}));
-		NomineesElectionModule::on_new_era(4);
+		assert_eq!(SHARES.with(|v| *v.borrow().get(&ALICE).unwrap_or(&0)), 850);
+
+		MockCurrentEra::set(4);
 		assert_ok!(NomineesElectionModule::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 900);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 850);
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 900);
 
+		// rebond amount over unbonding
 		assert_ok!(NomineesElectionModule::rebond(RuntimeOrigin::signed(ALICE), 200));
 		System::assert_last_event(mock::RuntimeEvent::NomineesElectionModule(crate::Event::Rebond {
 			who: ALICE,
 			amount: 50,
 		}));
+		assert_eq!(SHARES.with(|v| *v.borrow().get(&ALICE).unwrap_or(&0)), 900);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 900);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().active(), 900);
 		assert_eq!(TokensModule::accounts(&ALICE, LDOT).frozen, 900);
@@ -156,17 +180,25 @@ fn rebond_work() {
 #[test]
 fn withdraw_unbonded_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(NomineesElectionModule::current_era(), 0);
+		assert_eq!(MockCurrentEra::get(), 0);
 		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 1000));
 		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 1000);
-		NomineesElectionModule::on_new_era(3);
+
+		MockCurrentEra::set(3);
 		assert_ok!(NomineesElectionModule::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 1000);
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().unlocking_len(), 1);
 		assert_ok!(NomineesElectionModule::unbond(RuntimeOrigin::signed(ALICE), 100));
-		NomineesElectionModule::on_new_era(4);
+
+		MockCurrentEra::set(4);
 		assert_ok!(NomineesElectionModule::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(
+			crate::Event::WithdrawUnbonded {
+				who: ALICE,
+				amount: 100,
+			},
+		));
 		assert_eq!(NomineesElectionModule::ledger(&ALICE).unwrap().total(), 900);
 	});
 }
@@ -175,7 +207,7 @@ fn withdraw_unbonded_work() {
 fn nominate_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			NomineesElectionModule::nominate(RuntimeOrigin::signed(ALICE), vec![1, 2, 3, 4, 5]),
+			NomineesElectionModule::nominate(RuntimeOrigin::signed(ALICE), vec![NOMINATEE_1]),
 			Error::<Runtime>::NotBonded,
 		);
 
@@ -186,26 +218,67 @@ fn nominate_work() {
 			Error::<Runtime>::InvalidTargetsLength,
 		);
 		assert_noop!(
-			NomineesElectionModule::nominate(RuntimeOrigin::signed(ALICE), vec![1, 2, 3, 4, 5, 6]),
+			NomineesElectionModule::nominate(
+				RuntimeOrigin::signed(ALICE),
+				vec![
+					NOMINATEE_1,
+					NOMINATEE_2,
+					NOMINATEE_3,
+					NOMINATEE_4,
+					NOMINATEE_5,
+					NOMINATEE_6
+				]
+			),
 			Error::<Runtime>::InvalidTargetsLength,
 		);
 
 		assert_eq!(NomineesElectionModule::nominations(&ALICE), vec![]);
-		assert_eq!(NomineesElectionModule::votes(1), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_5), 0);
 		assert_ok!(NomineesElectionModule::nominate(
 			RuntimeOrigin::signed(ALICE),
-			vec![1, 2, 3, 4, 5]
+			vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5]
 		));
-		assert_eq!(NomineesElectionModule::nominations(&ALICE), vec![1, 2, 3, 4, 5]);
-		assert_eq!(NomineesElectionModule::votes(1), 500);
-		assert_eq!(NomineesElectionModule::votes(2), 500);
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(crate::Event::Nominate {
+			who: ALICE,
+			targets: vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5],
+		}));
+		assert_eq!(
+			NomineesElectionModule::nominations(&ALICE),
+			vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5]
+		);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_5), 500);
 		assert_ok!(NomineesElectionModule::nominate(
 			RuntimeOrigin::signed(ALICE),
-			vec![2, 3, 4, 5, 6]
+			vec![NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5, NOMINATEE_6]
 		));
-		assert_eq!(NomineesElectionModule::nominations(&ALICE), vec![2, 3, 4, 5, 6]);
-		assert_eq!(NomineesElectionModule::votes(1), 0);
-		assert_eq!(NomineesElectionModule::votes(2), 500);
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(crate::Event::Nominate {
+			who: ALICE,
+			targets: vec![NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5, NOMINATEE_6],
+		}));
+		assert_eq!(
+			NomineesElectionModule::nominations(&ALICE),
+			vec![NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5, NOMINATEE_6]
+		);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_5), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_6), 500);
+
+		InvalidNominees::set(vec![NOMINATEE_8]);
+		assert_noop!(
+			NomineesElectionModule::nominate(RuntimeOrigin::signed(ALICE), vec![NOMINATEE_8]),
+			Error::<Runtime>::InvalidNominee,
+		);
 	});
 }
 
@@ -215,59 +288,540 @@ fn chill_work() {
 		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 500));
 		assert_ok!(NomineesElectionModule::nominate(
 			RuntimeOrigin::signed(ALICE),
-			vec![1, 2, 3, 4, 5]
+			vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5]
 		));
-		assert_eq!(NomineesElectionModule::nominations(&ALICE), vec![1, 2, 3, 4, 5]);
-		assert_eq!(NomineesElectionModule::votes(1), 500);
-		assert_eq!(NomineesElectionModule::votes(2), 500);
-		assert_ok!(NomineesElectionModule::chill(RuntimeOrigin::signed(ALICE)));
-		assert_eq!(NomineesElectionModule::nominations(&ALICE), vec![]);
-		assert_eq!(NomineesElectionModule::votes(1), 0);
-		assert_eq!(NomineesElectionModule::votes(2), 0);
-	});
-}
+		assert_eq!(
+			NomineesElectionModule::nominations(&ALICE),
+			vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5]
+		);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 500);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_5), 500);
 
-#[test]
-fn rebalance_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 500));
-		assert_ok!(NomineesElectionModule::nominate(
-			RuntimeOrigin::signed(ALICE),
-			vec![1, 2, 3, 4, 5]
-		));
-		assert_eq!(NomineesElectionModule::nominees(), vec![]);
-		assert_eq!(NomineesElectionModule::nominees().len(), 0);
-		NomineesElectionModule::rebalance();
-		assert_eq!(NomineesElectionModule::nominees().len(), 5);
-		assert!(NomineesElectionModule::nominees().contains(&1));
-		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(BOB), 600));
-		assert_ok!(NomineesElectionModule::nominate(
-			RuntimeOrigin::signed(ALICE),
-			vec![2, 3, 4, 5, 6]
-		));
-		NomineesElectionModule::rebalance();
-		assert_eq!(NomineesElectionModule::nominees().len(), 5);
-		assert!(!NomineesElectionModule::nominees().contains(&1));
+		assert_ok!(NomineesElectionModule::chill(RuntimeOrigin::signed(ALICE)));
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(crate::Event::Nominate {
+			who: ALICE,
+			targets: vec![],
+		}));
+		assert_eq!(NomineesElectionModule::nominations(&ALICE), vec![]);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_5), 0);
 	});
 }
 
 #[test]
 fn update_votes_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		<Votes<Runtime>>::insert(1, 50);
-		<Votes<Runtime>>::insert(2, 100);
-		NomineesElectionModule::update_votes(30, &[1, 2], 50, &[1, 2]);
-		assert_eq!(NomineesElectionModule::votes(1), 70);
-		assert_eq!(NomineesElectionModule::votes(2), 120);
-		NomineesElectionModule::update_votes(0, &[1, 2], 50, &[3, 4]);
-		assert_eq!(NomineesElectionModule::votes(1), 70);
-		assert_eq!(NomineesElectionModule::votes(2), 120);
-		assert_eq!(NomineesElectionModule::votes(3), 50);
-		assert_eq!(NomineesElectionModule::votes(4), 50);
-		NomineesElectionModule::update_votes(200, &[1, 2, 3, 4], 10, &[3, 4]);
-		assert_eq!(NomineesElectionModule::votes(1), 0);
-		assert_eq!(NomineesElectionModule::votes(2), 0);
-		assert_eq!(NomineesElectionModule::votes(3), 10);
-		assert_eq!(NomineesElectionModule::votes(4), 10);
+		<Votes<Runtime>>::insert(NOMINATEE_1, 50);
+		<Votes<Runtime>>::insert(NOMINATEE_2, 100);
+		NomineesElectionModule::update_votes(30, &[NOMINATEE_1, NOMINATEE_2], 50, &[NOMINATEE_1, NOMINATEE_2]);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 70);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 120);
+		NomineesElectionModule::update_votes(0, &[NOMINATEE_1, NOMINATEE_2], 50, &[NOMINATEE_3, NOMINATEE_4]);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 70);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 120);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 50);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 50);
+		NomineesElectionModule::update_votes(
+			200,
+			&[NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4],
+			10,
+			&[NOMINATEE_3, NOMINATEE_4],
+		);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 0);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 10);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 10);
+	});
+}
+
+#[test]
+fn reset_reserved_nominees_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			NomineesElectionModule::reset_reserved_nominees(RuntimeOrigin::signed(ALICE), vec![]),
+			BadOrigin
+		);
+
+		assert_eq!(NomineesElectionModule::reserved_nominees(0), vec![]);
+		assert_eq!(NomineesElectionModule::reserved_nominees(1), vec![]);
+		assert_eq!(NomineesElectionModule::reserved_nominees(2), vec![]);
+
+		assert_ok!(NomineesElectionModule::reset_reserved_nominees(
+			RuntimeOrigin::root(),
+			vec![
+				(
+					0,
+					vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5]
+						.try_into()
+						.unwrap()
+				),
+				(
+					2,
+					vec![NOMINATEE_5, NOMINATEE_3, NOMINATEE_4, NOMINATEE_1]
+						.try_into()
+						.unwrap()
+				),
+				(
+					1,
+					vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_1, NOMINATEE_2, NOMINATEE_1]
+						.try_into()
+						.unwrap()
+				),
+			]
+		));
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(
+			crate::Event::ResetReservedNominees {
+				group_index: 0,
+				reserved_nominees: vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5],
+			},
+		));
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(
+			crate::Event::ResetReservedNominees {
+				group_index: 2,
+				reserved_nominees: vec![NOMINATEE_1, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5],
+			},
+		));
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(
+			crate::Event::ResetReservedNominees {
+				group_index: 1,
+				reserved_nominees: vec![NOMINATEE_1, NOMINATEE_2],
+			},
+		));
+		assert_eq!(
+			NomineesElectionModule::reserved_nominees(0),
+			vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5]
+		);
+		assert_eq!(
+			NomineesElectionModule::reserved_nominees(1),
+			vec![NOMINATEE_1, NOMINATEE_2]
+		);
+		assert_eq!(
+			NomineesElectionModule::reserved_nominees(2),
+			vec![NOMINATEE_1, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5]
+		);
+
+		assert_ok!(NomineesElectionModule::reset_reserved_nominees(
+			RuntimeOrigin::root(),
+			vec![(2, Default::default())]
+		));
+		System::assert_has_event(mock::RuntimeEvent::NomineesElectionModule(
+			crate::Event::ResetReservedNominees {
+				group_index: 2,
+				reserved_nominees: vec![],
+			},
+		));
+		assert_eq!(NomineesElectionModule::reserved_nominees(2), vec![]);
+	});
+}
+
+#[test]
+fn sort_voted_nominees_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(BOB), 101));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(CHARLIE), 102));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(DAVE), 103));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(EVE), 104));
+
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(ALICE),
+			vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5]
+		));
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_5), 100);
+		assert_eq!(
+			NomineesElectionModule::sort_voted_nominees(),
+			vec![NOMINATEE_5, NOMINATEE_4, NOMINATEE_2, NOMINATEE_1, NOMINATEE_3]
+		);
+
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(BOB),
+			vec![NOMINATEE_2, NOMINATEE_6, NOMINATEE_10]
+		));
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 201);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_5), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_6), 101);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_10), 101);
+		assert_eq!(
+			NomineesElectionModule::sort_voted_nominees(),
+			vec![
+				NOMINATEE_2,
+				NOMINATEE_6,
+				NOMINATEE_10,
+				NOMINATEE_5,
+				NOMINATEE_4,
+				NOMINATEE_1,
+				NOMINATEE_3
+			]
+		);
+
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(CHARLIE),
+			vec![NOMINATEE_3, NOMINATEE_7, NOMINATEE_11]
+		));
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 201);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 202);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_5), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_6), 101);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_7), 102);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_10), 101);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_11), 102);
+		assert_eq!(
+			NomineesElectionModule::sort_voted_nominees(),
+			vec![
+				NOMINATEE_3,
+				NOMINATEE_2,
+				NOMINATEE_11,
+				NOMINATEE_7,
+				NOMINATEE_6,
+				NOMINATEE_10,
+				NOMINATEE_5,
+				NOMINATEE_4,
+				NOMINATEE_1
+			]
+		);
+
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(DAVE),
+			vec![NOMINATEE_4, NOMINATEE_8, NOMINATEE_12]
+		));
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 201);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 202);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 203);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_5), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_6), 101);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_7), 102);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_8), 103);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_10), 101);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_11), 102);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_12), 103);
+		assert_eq!(
+			NomineesElectionModule::sort_voted_nominees(),
+			vec![
+				NOMINATEE_4,
+				NOMINATEE_3,
+				NOMINATEE_2,
+				NOMINATEE_8,
+				NOMINATEE_12,
+				NOMINATEE_11,
+				NOMINATEE_7,
+				NOMINATEE_6,
+				NOMINATEE_10,
+				NOMINATEE_5,
+				NOMINATEE_1
+			]
+		);
+
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(EVE),
+			vec![NOMINATEE_5, NOMINATEE_9, NOMINATEE_10, NOMINATEE_11, NOMINATEE_12]
+		));
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 201);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 202);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 203);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_5), 204);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_6), 101);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_7), 102);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_8), 103);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_9), 104);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_10), 205);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_11), 206);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_12), 207);
+		assert_eq!(
+			NomineesElectionModule::sort_voted_nominees(),
+			vec![
+				NOMINATEE_12,
+				NOMINATEE_11,
+				NOMINATEE_10,
+				NOMINATEE_5,
+				NOMINATEE_4,
+				NOMINATEE_3,
+				NOMINATEE_2,
+				NOMINATEE_9,
+				NOMINATEE_8,
+				NOMINATEE_7,
+				NOMINATEE_6,
+				NOMINATEE_1
+			]
+		);
+
+		InvalidNominees::set(vec![NOMINATEE_12, NOMINATEE_11, NOMINATEE_2, NOMINATEE_9]);
+		assert_eq!(
+			NomineesElectionModule::sort_voted_nominees(),
+			vec![
+				NOMINATEE_10,
+				NOMINATEE_5,
+				NOMINATEE_4,
+				NOMINATEE_3,
+				NOMINATEE_8,
+				NOMINATEE_7,
+				NOMINATEE_6,
+				NOMINATEE_1
+			]
+		);
+	});
+}
+
+#[test]
+fn nominees_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(NomineesElectionModule::nominees(), vec![]);
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(BOB), 101));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(CHARLIE), 102));
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(BOB),
+			vec![NOMINATEE_2, NOMINATEE_6, NOMINATEE_10]
+		));
+		assert_eq!(
+			NomineesElectionModule::nominees(),
+			vec![NOMINATEE_2, NOMINATEE_6, NOMINATEE_10]
+		);
+
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(ALICE),
+			vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5]
+		));
+		assert_eq!(
+			NomineesElectionModule::nominees(),
+			vec![NOMINATEE_2, NOMINATEE_6, NOMINATEE_10, NOMINATEE_5, NOMINATEE_4]
+		);
+
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(CHARLIE),
+			vec![NOMINATEE_3, NOMINATEE_7, NOMINATEE_11]
+		));
+		assert_eq!(
+			NomineesElectionModule::nominees(),
+			vec![NOMINATEE_3, NOMINATEE_2, NOMINATEE_11, NOMINATEE_7, NOMINATEE_6]
+		);
+	});
+}
+
+#[test]
+fn nominees_in_groups_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(ALICE), 100));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(BOB), 101));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(CHARLIE), 102));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(DAVE), 103));
+		assert_ok!(NomineesElectionModule::bond(RuntimeOrigin::signed(EVE), 104));
+
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(ALICE),
+			vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_3, NOMINATEE_4, NOMINATEE_5]
+		));
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(BOB),
+			vec![NOMINATEE_2, NOMINATEE_6, NOMINATEE_10]
+		));
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(CHARLIE),
+			vec![NOMINATEE_3, NOMINATEE_7, NOMINATEE_11]
+		));
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(DAVE),
+			vec![NOMINATEE_4, NOMINATEE_8, NOMINATEE_12]
+		));
+		assert_ok!(NomineesElectionModule::nominate(
+			RuntimeOrigin::signed(EVE),
+			vec![NOMINATEE_5, NOMINATEE_9, NOMINATEE_10, NOMINATEE_11, NOMINATEE_12]
+		));
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_1), 100);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_2), 201);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_3), 202);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_4), 203);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_5), 204);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_6), 101);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_7), 102);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_8), 103);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_9), 104);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_10), 205);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_11), 206);
+		assert_eq!(NomineesElectionModule::votes(NOMINATEE_12), 207);
+		assert_eq!(
+			NomineesElectionModule::sort_voted_nominees(),
+			vec![
+				NOMINATEE_12,
+				NOMINATEE_11,
+				NOMINATEE_10,
+				NOMINATEE_5,
+				NOMINATEE_4,
+				NOMINATEE_3,
+				NOMINATEE_2,
+				NOMINATEE_9,
+				NOMINATEE_8,
+				NOMINATEE_7,
+				NOMINATEE_6,
+				NOMINATEE_1
+			]
+		);
+
+		assert_eq!(
+			NomineesElectionModule::nominees(),
+			vec![NOMINATEE_12, NOMINATEE_11, NOMINATEE_10, NOMINATEE_5, NOMINATEE_4]
+		);
+		assert_eq!(
+			NomineesElectionModule::nominees_in_groups(vec![0]),
+			vec![(
+				0,
+				vec![NOMINATEE_12, NOMINATEE_11, NOMINATEE_10, NOMINATEE_5, NOMINATEE_4]
+			)]
+		);
+		assert_eq!(
+			NomineesElectionModule::nominees_in_groups(vec![0, 1]),
+			vec![
+				(
+					0,
+					vec![NOMINATEE_12, NOMINATEE_10, NOMINATEE_4, NOMINATEE_2, NOMINATEE_8]
+				),
+				(
+					1,
+					vec![NOMINATEE_11, NOMINATEE_5, NOMINATEE_3, NOMINATEE_9, NOMINATEE_7]
+				)
+			]
+		);
+		assert_eq!(
+			NomineesElectionModule::nominees_in_groups(vec![0, 1, 2]),
+			vec![
+				(0, vec![NOMINATEE_12, NOMINATEE_5, NOMINATEE_2, NOMINATEE_7]),
+				(1, vec![NOMINATEE_11, NOMINATEE_4, NOMINATEE_9, NOMINATEE_6]),
+				(2, vec![NOMINATEE_10, NOMINATEE_3, NOMINATEE_8, NOMINATEE_1])
+			]
+		);
+
+		assert_ok!(NomineesElectionModule::reset_reserved_nominees(
+			RuntimeOrigin::root(),
+			vec![(0, vec![NOMINATEE_10, NOMINATEE_2, NOMINATEE_1].try_into().unwrap())]
+		));
+		assert_eq!(
+			NomineesElectionModule::nominees_in_groups(vec![0]),
+			vec![(
+				0,
+				vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_10, NOMINATEE_12, NOMINATEE_11]
+			)]
+		);
+		assert_eq!(
+			NomineesElectionModule::nominees_in_groups(vec![0, 1]),
+			vec![
+				(
+					0,
+					vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_10, NOMINATEE_5, NOMINATEE_3]
+				),
+				(
+					1,
+					vec![NOMINATEE_12, NOMINATEE_11, NOMINATEE_10, NOMINATEE_4, NOMINATEE_2]
+				)
+			]
+		);
+		assert_eq!(
+			NomineesElectionModule::nominees_in_groups(vec![0, 1, 2]),
+			vec![
+				(
+					0,
+					vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_10, NOMINATEE_9, NOMINATEE_7]
+				),
+				(
+					1,
+					vec![NOMINATEE_12, NOMINATEE_10, NOMINATEE_4, NOMINATEE_2, NOMINATEE_6]
+				),
+				(
+					2,
+					vec![NOMINATEE_11, NOMINATEE_5, NOMINATEE_3, NOMINATEE_8, NOMINATEE_1]
+				)
+			]
+		);
+		assert_eq!(
+			NomineesElectionModule::nominees_in_groups(vec![0, 1, 2, 3]),
+			vec![
+				(0, vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_10, NOMINATEE_7]),
+				(1, vec![NOMINATEE_12, NOMINATEE_5, NOMINATEE_2, NOMINATEE_6]),
+				(2, vec![NOMINATEE_11, NOMINATEE_4, NOMINATEE_9, NOMINATEE_1]),
+				(3, vec![NOMINATEE_10, NOMINATEE_3, NOMINATEE_8])
+			]
+		);
+
+		assert_ok!(NomineesElectionModule::reset_reserved_nominees(
+			RuntimeOrigin::root(),
+			vec![
+				(0, vec![NOMINATEE_10, NOMINATEE_2, NOMINATEE_1].try_into().unwrap()),
+				(1, vec![NOMINATEE_11, NOMINATEE_4, NOMINATEE_3].try_into().unwrap()),
+				(2, vec![NOMINATEE_12, NOMINATEE_6, NOMINATEE_5].try_into().unwrap())
+			]
+		));
+		assert_eq!(
+			NomineesElectionModule::nominees_in_groups(vec![0]),
+			vec![(
+				0,
+				vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_10, NOMINATEE_12, NOMINATEE_11]
+			)]
+		);
+		assert_eq!(
+			NomineesElectionModule::nominees_in_groups(vec![0, 1]),
+			vec![
+				(
+					0,
+					vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_10, NOMINATEE_12, NOMINATEE_11]
+				),
+				(
+					1,
+					vec![NOMINATEE_3, NOMINATEE_4, NOMINATEE_11, NOMINATEE_10, NOMINATEE_5]
+				)
+			]
+		);
+		assert_eq!(
+			NomineesElectionModule::nominees_in_groups(vec![0, 1, 2]),
+			vec![
+				(
+					0,
+					vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_10, NOMINATEE_12, NOMINATEE_5]
+				),
+				(
+					1,
+					vec![NOMINATEE_3, NOMINATEE_4, NOMINATEE_11, NOMINATEE_10, NOMINATEE_2]
+				),
+				(
+					2,
+					vec![NOMINATEE_5, NOMINATEE_6, NOMINATEE_12, NOMINATEE_11, NOMINATEE_4]
+				)
+			]
+		);
+		assert_eq!(
+			NomineesElectionModule::nominees_in_groups(vec![0, 1, 2, 3]),
+			vec![
+				(
+					0,
+					vec![NOMINATEE_1, NOMINATEE_2, NOMINATEE_10, NOMINATEE_5, NOMINATEE_9]
+				),
+				(
+					1,
+					vec![NOMINATEE_3, NOMINATEE_4, NOMINATEE_11, NOMINATEE_2, NOMINATEE_8]
+				),
+				(
+					2,
+					vec![NOMINATEE_5, NOMINATEE_6, NOMINATEE_12, NOMINATEE_4, NOMINATEE_7]
+				),
+				(
+					3,
+					vec![NOMINATEE_12, NOMINATEE_11, NOMINATEE_10, NOMINATEE_3, NOMINATEE_6]
+				),
+			]
+		);
 	});
 }

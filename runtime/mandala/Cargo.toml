@@ -58,7 +58,6 @@ sp-staking = { workspace = true }
 sp-std = { workspace = true }
 sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
-pallet-state-trie-migration = { workspace = true, optional = true }
 
 # cumulus
 cumulus-pallet-aura-ext = { workspace = true }
@@ -125,6 +124,7 @@ module-prices = { workspace = true }
 module-incentives = { workspace = true }
 module-support = { workspace = true }
 module-homa = { workspace = true }
+module-homa-validator-list = { workspace = true }
 module-xcm-interface = { workspace = true }
 module-nominees-election = { workspace = true }
 module-session-manager = { workspace = true }
@@ -210,7 +210,6 @@ std = [
 	"sp-transaction-pool/std",
 	"sp-version/std",
 	"substrate-wasm-builder",
-	"pallet-state-trie-migration/std",
 
 	"cumulus-pallet-aura-ext/std",
 	"cumulus-pallet-parachain-system/std",
@@ -266,6 +265,7 @@ std = [
 	"module-evm-utility/std",
 	"module-evm/std",
 	"module-homa/std",
+	"module-homa-validator-list/std",
 	"module-honzon/std",
 	"module-idle-scheduler/std",
 	"module-incentives/std",
@@ -311,7 +311,6 @@ runtime-benchmarks = [
 	"pallet-utility/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"sp-staking/runtime-benchmarks",
-	"pallet-state-trie-migration/runtime-benchmarks",
 
 	"cumulus-pallet-parachain-system/runtime-benchmarks",
 	"cumulus-pallet-xcmp-queue/runtime-benchmarks",
@@ -387,7 +386,6 @@ try-runtime = [
 	"pallet-transaction-payment/try-runtime",
 	"pallet-treasury/try-runtime",
 	"pallet-utility/try-runtime",
-	"pallet-state-trie-migration/try-runtime",
 
 	"cumulus-pallet-aura-ext/try-runtime",
 	"cumulus-pallet-parachain-system/try-runtime",
@@ -424,6 +422,7 @@ try-runtime = [
 	"module-evm-bridge/try-runtime",
 	"module-evm/try-runtime",
 	"module-homa/try-runtime",
+	"module-homa-validator-list/try-runtime",
 	"module-honzon/try-runtime",
 	"module-idle-scheduler/try-runtime",
 	"module-incentives/try-runtime",

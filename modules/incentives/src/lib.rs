@@ -23,7 +23,7 @@
 //! Acala platform need support different types of rewards for some other protocol.
 //! Each Pool has its own multi currencies rewards and reward accumulation
 //! mechanism. ORML rewards module records the total shares, total multi currencies rewards anduser
-//! shares of specific pool. Incentives module provides hooks to other protocals to manage shares,
+//! shares of specific pool. Incentives module provides hooks to other protocols to manage shares,
 //! accumulates rewards and distributes rewards to users based on their shares.
 //!
 //! Pool types:
@@ -255,7 +255,7 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Claim all avalible multi currencies rewards for specific PoolId.
+		/// Claim all available multi currencies rewards for specific PoolId.
 		///
 		/// The dispatch origin of this call must be `Signed` by the transactor.
 		///
@@ -615,5 +615,19 @@ pub struct OnEarningUnbonded<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Handler<(T::AccountId, Balance)> for OnEarningUnbonded<T> {
 	fn handle((who, amount): &(T::AccountId, Balance)) -> DispatchResult {
 		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Earning(T::NativeCurrencyId::get()), *amount)
+	}
+}
+
+pub struct OnNomineesElectionBonded<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> Handler<(T::AccountId, Balance)> for OnNomineesElectionBonded<T> {
+	fn handle((who, amount): &(T::AccountId, Balance)) -> DispatchResult {
+		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::NomineesElection, *amount)
+	}
+}
+
+pub struct OnNomineesElectionUnbonded<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> Handler<(T::AccountId, Balance)> for OnNomineesElectionUnbonded<T> {
+	fn handle((who, amount): &(T::AccountId, Balance)) -> DispatchResult {
+		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::NomineesElection, *amount)
 	}
 }

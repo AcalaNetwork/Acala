@@ -35,7 +35,7 @@ use sp_std::{boxed::Box, marker::PhantomData, prelude::*};
 pub use cumulus_primitives_core::ParaId;
 use xcm::v4::{prelude::*, Weight as XcmWeight};
 
-/// The encoded index correspondes to Kusama's Runtime module configuration.
+/// The encoded index corresponds to Kusama's Runtime module configuration.
 /// https://github.com/paritytech/polkadot/blob/444e96ae34bcec8362f0f947a07bd912b32ca48f/runtime/kusama/src/lib.rs#L1379
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum KusamaRelayChainCall {
@@ -73,7 +73,7 @@ impl RelayChainCall for KusamaRelayChainCall {
 	}
 }
 
-/// The encoded index correspondes to Polkadot's Runtime module configuration.
+/// The encoded index corresponds to Polkadot's Runtime module configuration.
 /// https://github.com/paritytech/polkadot/blob/84a3962e76151ac5ed3afa4ef1e0af829531ab42/runtime/polkadot/src/lib.rs#L1040
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum PolkadotRelayChainCall {
@@ -118,7 +118,7 @@ where
 	ParachainId: Get<ParaId>,
 	RCC: RelayChainCall + FullCodec,
 {
-	type AccountId = AccountId;
+	type RelayChainAccountId = AccountId;
 	type Balance = Balance;
 	type RelayChainCall = RCC;
 
@@ -138,7 +138,13 @@ where
 		RCC::staking(StakingCall::WithdrawUnbonded(num_slashing_spans))
 	}
 
-	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> RCC {
+	fn staking_nominate(targets: Vec<Self::RelayChainAccountId>) -> RCC {
+		RCC::staking(StakingCall::Nominate(
+			targets.iter().map(|a| RelayChainLookup::unlookup(a.clone())).collect(),
+		))
+	}
+
+	fn balances_transfer_keep_alive(to: Self::RelayChainAccountId, amount: Self::Balance) -> RCC {
 		RCC::balances(BalancesCall::TransferKeepAlive(RelayChainLookup::unlookup(to), amount))
 	}
 
@@ -157,7 +163,7 @@ where
 		))
 	}
 
-	fn proxy_call(real: Self::AccountId, call: RCC) -> RCC {
+	fn proxy_call(real: Self::RelayChainAccountId, call: RCC) -> RCC {
 		RCC::proxy(ProxyCall::Proxy(RelayChainLookup::unlookup(real), None, call))
 	}
 

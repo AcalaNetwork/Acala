@@ -140,7 +140,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	#[cfg(feature = "disable-runtime-api")]
 	apis: sp_version::create_apis_vec![[]],
 	transaction_version: 2,
-	state_version: 0,
+	state_version: 1,
 };
 
 /// The version information used to identify this runtime when compiled
@@ -172,6 +172,7 @@ parameter_types! {
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
 	pub const HonzonBridgePalletId: PalletId = PalletId(*b"aca/hzbg");
+	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
@@ -1317,6 +1318,9 @@ parameter_type_with_key! {
 					ExistentialDeposits::get(currency_id)
 				}
 			}
+			PoolId::NomineesElection => {
+				ExistentialDeposits::get(&GetLiquidCurrencyId::get())
+			}
 		}
 	};
 }
@@ -1593,6 +1597,7 @@ parameter_types! {
 	];
 	pub MintThreshold: Balance = 10 * cent(KSM);
 	pub RedeemThreshold: Balance = 50 * cent(LKSM);
+	pub const BondingDuration: EraIndex = 28;
 }
 
 impl module_homa::Config for Runtime {
@@ -1605,12 +1610,53 @@ impl module_homa::Config for Runtime {
 	type TreasuryAccount = HomaTreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
-	type BondingDuration = ConstU32<28>;
+	type BondingDuration = BondingDuration;
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
+	type NominationsProvider = NomineesElection;
+}
+
+parameter_types! {
+	pub MinBondAmount: Balance = 100 * dollar(LKSM);
+	pub ValidatorInsuranceThreshold: Balance = 1_000 * dollar(LKSM);
+}
+
+impl module_homa_validator_list::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RelayChainAccountId = AccountId;
+	type LiquidTokenCurrency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
+	type MinBondAmount = MinBondAmount;
+	type BondingDuration = BondingDuration;
+	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type LiquidStakingExchangeRateProvider = Homa;
+	type CurrentEra = Homa;
+	type WeightInfo = weights::module_homa_validator_list::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	pub MinNomineesElectionBondThreshold: Balance = dollar(LKSM);
+	pub const MaxNominateesCount: u32 = 24;
+}
+
+impl module_nominees_election::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
+	type NomineeId = AccountId;
+	type PalletId = NomineesElectionId;
+	type MinBond = MinNomineesElectionBondThreshold;
+	type BondingDuration = BondingDuration;
+	type MaxNominateesCount = MaxNominateesCount;
+	type MaxUnbondingChunks = ConstU32<7>;
+	type NomineeFilter = HomaValidatorList;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type OnBonded = module_incentives::OnNomineesElectionBonded<Runtime>;
+	type OnUnbonded = module_incentives::OnNomineesElectionUnbonded<Runtime>;
+	type CurrentEra = Homa;
+	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 }
 
 pub fn create_x2_parachain_location(index: u16) -> Location {
@@ -1789,6 +1835,28 @@ impl orml_parameters::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	// The deposit configuration for the singed migration. Specially if you want to allow any signed account to do the migration (see `SignedFilter`, these deposits should be high)
+	pub MigrationSignedDepositPerItem: Balance = dollar(KAR);
+	pub MigrationSignedDepositBase: Balance = dollar(KAR);
+	pub const MigrationMaxKeyLen: u32 = 512;
+}
+
+impl pallet_state_trie_migration::Config for Runtime {
+	// An origin that can control the whole pallet: should be Root, or a part of your council.
+	type ControlOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
+	// specific account for the migration, can trigger the signed migrations.
+	type SignedFilter = frame_support::traits::NeverEnsureOrigin<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type MaxKeyLen = MigrationMaxKeyLen;
+	type SignedDepositPerItem = MigrationSignedDepositPerItem;
+	type SignedDepositBase = MigrationSignedDepositBase;
+	// Replace this with weight based on your runtime.
+	type WeightInfo = pallet_state_trie_migration::weights::SubstrateWeight<Runtime>;
+}
+
 construct_runtime!(
 	pub enum Runtime {
 		// Core & Utility
@@ -1879,6 +1947,8 @@ construct_runtime!(
 		// Homa
 		Homa: module_homa = 116,
 		XcmInterface: module_xcm_interface = 117,
+		HomaValidatorList: module_homa_validator_list = 118,
+		NomineesElection: module_nominees_election = 119,
 
 		// Karura Other
 		Incentives: module_incentives = 120,
@@ -1896,6 +1966,8 @@ construct_runtime!(
 
 		// Parachain System, always put it at the end
 		ParachainSystem: cumulus_pallet_parachain_system = 30,
+
+		StateTrieMigration: pallet_state_trie_migration = 254,
 
 		// Temporary
 		Sudo: pallet_sudo = 255,
@@ -1956,39 +2028,41 @@ extern crate orml_benchmarking;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
-	// define_benchmarks!(
-	// 	[module_dex, benchmarking::dex]
-	// 	[module_dex_oracle, benchmarking::dex_oracle]
-	// 	[module_asset_registry, benchmarking::asset_registry]
-	// 	[module_auction_manager, benchmarking::auction_manager]
-	// 	[module_cdp_engine, benchmarking::cdp_engine]
-	// 	[module_emergency_shutdown, benchmarking::emergency_shutdown]
-	// 	[module_evm, benchmarking::evm]
-	// 	[module_homa, benchmarking::homa]
-	// 	[module_honzon, benchmarking::honzon]
-	// 	[module_cdp_treasury, benchmarking::cdp_treasury]
-	// 	[module_collator_selection, benchmarking::collator_selection]
-	// 	[module_transaction_pause, benchmarking::transaction_pause]
-	// 	[module_transaction_payment, benchmarking::transaction_payment]
-	// 	[module_incentives, benchmarking::incentives]
-	// 	[module_prices, benchmarking::prices]
-	// 	[module_evm_accounts, benchmarking::evm_accounts]
-	// 	[module_currencies, benchmarking::currencies]
-	// 	[module_session_manager, benchmarking::session_manager]
-	// 	[module_honzon_bridge, benchmarking::honzon_bridge]
-	// 	[orml_tokens, benchmarking::tokens]
-	// 	[orml_vesting, benchmarking::vesting]
-	// 	[orml_auction, benchmarking::auction]
-	// 	[orml_authority, benchmarking::authority]
-	// 	[orml_oracle, benchmarking::oracle]
-	// 	[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
-	// 	[module_idle_scheduler, benchmarking::idle_scheduler]
-	// 	[module_aggregated_dex, benchmarking::aggregated_dex]
-	// );
-	frame_benchmarking::define_benchmarks!(
+// 	define_benchmarks!(
+// 		[module_dex, benchmarking::dex]
+// 		[module_dex_oracle, benchmarking::dex_oracle]
+// 		[module_asset_registry, benchmarking::asset_registry]
+// 		[module_auction_manager, benchmarking::auction_manager]
+// 		[module_cdp_engine, benchmarking::cdp_engine]
+// 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
+// 		[module_evm, benchmarking::evm]
+// 		[module_homa, benchmarking::homa]
+// 		[module_homa_validator_list, benchmarking::homa_validator_list]
+// 		[module_honzon, benchmarking::honzon]
+// 		[module_cdp_treasury, benchmarking::cdp_treasury]
+// 		[module_collator_selection, benchmarking::collator_selection]
+// 		[module_transaction_pause, benchmarking::transaction_pause]
+// 		[module_transaction_payment, benchmarking::transaction_payment]
+// 		[module_incentives, benchmarking::incentives]
+// 		[module_prices, benchmarking::prices]
+// 		[module_evm_accounts, benchmarking::evm_accounts]
+// 		[module_currencies, benchmarking::currencies]
+// 		[module_session_manager, benchmarking::session_manager]
+// 		[module_honzon_bridge, benchmarking::honzon_bridge]
+// 		[orml_tokens, benchmarking::tokens]
+// 		[orml_vesting, benchmarking::vesting]
+// 		[orml_auction, benchmarking::auction]
+// 		[orml_authority, benchmarking::authority]
+// 		[orml_oracle, benchmarking::oracle]
+// 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
+// 		[module_idle_scheduler, benchmarking::idle_scheduler]
+// 		[module_aggregated_dex, benchmarking::aggregated_dex]
+// 		[module_nominees_election, benchmarking::nominees_election]
+// 	);
+  frame_benchmarking::define_benchmarks!(
 		// XCM
 		[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>]
-	);
+  );
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]

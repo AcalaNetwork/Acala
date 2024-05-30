@@ -23,7 +23,9 @@
 
 use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{ExchangeRate, ExchangeRateProvider, FractionalRate, HomaManager, HomaSubAccountXcm, Rate, Ratio};
+use module_support::{
+	ExchangeRate, ExchangeRateProvider, FractionalRate, HomaManager, HomaSubAccountXcm, NomineesProvider, Rate, Ratio,
+};
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
@@ -46,6 +48,11 @@ pub mod weights;
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
+
+	pub type RelayChainAccountIdOf<T> = <<T as Config>::XcmInterface as HomaSubAccountXcm<
+		<T as frame_system::Config>::AccountId,
+		Balance,
+	>>::RelayChainAccountId;
 
 	/// The subaccount's staking ledger which kept by Homa protocol
 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
@@ -151,6 +158,8 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		type NominationsProvider: NomineesProvider<RelayChainAccountIdOf<Self>>;
 	}
 
 	#[pallet::error]
@@ -241,6 +250,19 @@ pub mod module {
 		LastEraBumpedBlockUpdated { last_era_bumped_block: BlockNumberFor<T> },
 		/// The frequency to bump era has been updated.
 		BumpEraFrequencyUpdated { frequency: BlockNumberFor<T> },
+		/// The interval eras to nominate.
+		NominateIntervalEraUpdated { eras: EraIndex },
+		/// Withdraw unbonded from RelayChain
+		HomaWithdrawUnbonded { sub_account_index: u16, amount: Balance },
+		/// Unbond staking currency of sub account on RelayChain
+		HomaUnbond { sub_account_index: u16, amount: Balance },
+		/// Transfer staking currency to sub account and bond on RelayChain
+		HomaBondExtra { sub_account_index: u16, amount: Balance },
+		/// Nominate validators on RelayChain
+		HomaNominate {
+			sub_account_index: u16,
+			nominations: Vec<RelayChainAccountIdOf<T>>,
+		},
 	}
 
 	/// The current era of relaychain
@@ -249,13 +271,6 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn relay_chain_current_era)]
 	pub type RelayChainCurrentEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
-
-	// /// The latest processed era of Homa, it should be always <= RelayChainCurrentEra
-	// ///
-	// /// ProcessedEra : EraIndex
-	// #[pallet::storage]
-	// #[pallet::getter(fn processed_era)]
-	// pub type ProcessedEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
 
 	/// The staking ledger of Homa subaccounts.
 	///
@@ -345,12 +360,19 @@ pub mod module {
 	#[pallet::getter(fn last_era_bumped_block)]
 	pub type LastEraBumpedBlock<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
-	/// The internal of relaychain block number of relaychain to bump local current era.
+	/// The interval of relaychain block number of relaychain to bump local current era.
 	///
 	/// LastEraBumpedRelayChainBlock: value: BlockNumberFor<T>
 	#[pallet::storage]
 	#[pallet::getter(fn bump_era_frequency)]
 	pub type BumpEraFrequency<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
+
+	/// The interval of eras to nominate on relaychain.
+	///
+	/// NominateIntervalEra: value: EraIndex
+	#[pallet::storage]
+	#[pallet::getter(fn nominate_interval_era)]
+	pub type NominateIntervalEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
@@ -489,6 +511,7 @@ pub mod module {
 			estimated_reward_rate_per_era: Option<Rate>,
 			commission_rate: Option<Rate>,
 			fast_match_fee_rate: Option<Rate>,
+			nominate_interval_era: Option<EraIndex>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
@@ -515,6 +538,10 @@ pub mod module {
 						.map_err(|_| Error::<T>::InvalidRate.into())
 				})?;
 				Self::deposit_event(Event::<T>::FastMatchFeeRateUpdated { fast_match_fee_rate });
+			}
+			if let Some(interval) = nominate_interval_era {
+				NominateIntervalEra::<T>::set(interval);
+				Self::deposit_event(Event::<T>::NominateIntervalEraUpdated { eras: interval });
 			}
 
 			Ok(())
@@ -971,6 +998,11 @@ pub mod module {
 						Ok(())
 					})?;
 					total_withdrawn_staking = total_withdrawn_staking.saturating_add(expired_unlocking);
+
+					Self::deposit_event(Event::<T>::HomaWithdrawUnbonded {
+						sub_account_index,
+						amount: expired_unlocking,
+					});
 				}
 			}
 
@@ -1018,6 +1050,11 @@ pub mod module {
 							ledger.bonded = ledger.bonded.saturating_add(bond_amount);
 							Ok(())
 						})?;
+
+						Self::deposit_event(Event::<T>::HomaBondExtra {
+							sub_account_index,
+							amount: bond_amount,
+						});
 					}
 				}
 
@@ -1080,11 +1117,38 @@ pub mod module {
 						});
 						Ok(())
 					})?;
+
+					Self::deposit_event(Event::<T>::HomaUnbond {
+						sub_account_index,
+						amount: unbond_amount,
+					});
 				}
 			}
 
 			// burn total_redeem_amount.
 			Self::burn_liquid_currency(&Self::account_id(), total_redeem_amount)
+		}
+
+		/// Process nominate validators for subaccounts on relaychain.
+		pub fn process_nominate(new_era: EraIndex) -> DispatchResult {
+			// check whether need to nominate
+			let nominate_interval_era = NominateIntervalEra::<T>::get();
+			if !nominate_interval_era.is_zero() && new_era % nominate_interval_era == 0 {
+				for (sub_account_index, nominations) in
+					T::NominationsProvider::nominees_in_groups(T::ActiveSubAccountsIndexList::get())
+				{
+					if !nominations.is_empty() {
+						T::XcmInterface::nominate_on_sub_account(sub_account_index, nominations.clone())?;
+
+						Self::deposit_event(Event::<T>::HomaNominate {
+							sub_account_index,
+							nominations,
+						});
+					}
+				}
+			}
+
+			Ok(())
 		}
 
 		pub fn era_amount_should_to_bump(relaychain_block_number: BlockNumberFor<T>) -> EraIndex {
@@ -1113,6 +1177,7 @@ pub mod module {
 				Self::process_scheduled_unbond(new_era)?;
 				Self::process_to_bond_pool()?;
 				Self::process_redeem_requests(new_era)?;
+				Self::process_nominate(new_era)?;
 				Ok(())
 			}();
 
@@ -1141,11 +1206,17 @@ pub mod module {
 			T::Currency::deposit(T::StakingCurrencyId::get(), who, amount)
 		}
 	}
+}
 
-	impl<T: Config> ExchangeRateProvider for Pallet<T> {
-		fn get_exchange_rate() -> ExchangeRate {
-			Self::current_exchange_rate()
-		}
+impl<T: Config> ExchangeRateProvider for Pallet<T> {
+	fn get_exchange_rate() -> ExchangeRate {
+		Self::current_exchange_rate()
+	}
+}
+
+impl<T: Config> Get<EraIndex> for Pallet<T> {
+	fn get() -> EraIndex {
+		Self::relay_chain_current_era()
 	}
 }
 

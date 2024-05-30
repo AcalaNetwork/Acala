@@ -167,6 +167,7 @@ parameter_types! {
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
+	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
@@ -1311,6 +1312,9 @@ parameter_type_with_key! {
 					ExistentialDeposits::get(currency_id)
 				}
 			}
+			PoolId::NomineesElection => {
+				ExistentialDeposits::get(&GetLiquidCurrencyId::get())
+			}
 		}
 	};
 }
@@ -1568,6 +1572,7 @@ parameter_types! {
 	];
 	pub MintThreshold: Balance = dollar(DOT);
 	pub RedeemThreshold: Balance = 5 * dollar(LDOT);
+	pub const BondingDuration: EraIndex = 28;
 }
 
 impl module_homa::Config for Runtime {
@@ -1580,12 +1585,53 @@ impl module_homa::Config for Runtime {
 	type TreasuryAccount = HomaTreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
-	type BondingDuration = ConstU32<28>;
+	type BondingDuration = BondingDuration;
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
+	type NominationsProvider = NomineesElection;
+}
+
+parameter_types! {
+	pub MinBondAmount: Balance = 1_000 * dollar(LDOT);
+	pub ValidatorInsuranceThreshold: Balance = 10_000 * dollar(LDOT);
+}
+
+impl module_homa_validator_list::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RelayChainAccountId = AccountId;
+	type LiquidTokenCurrency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
+	type MinBondAmount = MinBondAmount;
+	type BondingDuration = BondingDuration;
+	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type LiquidStakingExchangeRateProvider = Homa;
+	type CurrentEra = Homa;
+	type WeightInfo = weights::module_homa_validator_list::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	pub MinNomineesElectionBondThreshold: Balance = 10 * dollar(LDOT);
+	pub const MaxNominateesCount: u32 = 16;
+}
+
+impl module_nominees_election::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
+	type NomineeId = AccountId;
+	type PalletId = NomineesElectionId;
+	type MinBond = MinNomineesElectionBondThreshold;
+	type BondingDuration = BondingDuration;
+	type MaxNominateesCount = MaxNominateesCount;
+	type MaxUnbondingChunks = ConstU32<7>;
+	type NomineeFilter = HomaValidatorList;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type OnBonded = module_incentives::OnNomineesElectionBonded<Runtime>;
+	type OnUnbonded = module_incentives::OnNomineesElectionUnbonded<Runtime>;
+	type CurrentEra = Homa;
+	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 }
 
 pub fn create_x2_parachain_location(index: u16) -> Location {
@@ -1875,6 +1921,8 @@ construct_runtime!(
 		// Homa
 		Homa: module_homa = 116,
 		XcmInterface: module_xcm_interface = 117,
+		HomaValidatorList: module_homa_validator_list = 118,
+		NomineesElection: module_nominees_election = 119,
 
 		// Acala Other
 		Incentives: module_incentives = 120,
@@ -1952,35 +2000,37 @@ extern crate orml_benchmarking;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
-	// define_benchmarks!(
-	// 	[module_dex, benchmarking::dex]
-	// 	[module_dex_oracle, benchmarking::dex_oracle]
-	// 	[module_asset_registry, benchmarking::asset_registry]
-	// 	[module_auction_manager, benchmarking::auction_manager]
-	// 	[module_cdp_engine, benchmarking::cdp_engine]
-	// 	[module_emergency_shutdown, benchmarking::emergency_shutdown]
-	// 	[module_evm, benchmarking::evm]
-	// 	[module_homa, benchmarking::homa]
-	// 	[module_honzon, benchmarking::honzon]
-	// 	[module_cdp_treasury, benchmarking::cdp_treasury]
-	// 	[module_collator_selection, benchmarking::collator_selection]
-	// 	[module_transaction_pause, benchmarking::transaction_pause]
-	// 	[module_transaction_payment, benchmarking::transaction_payment]
-	// 	[module_incentives, benchmarking::incentives]
-	// 	[module_prices, benchmarking::prices]
-	// 	[module_evm_accounts, benchmarking::evm_accounts]
-	// 	[module_currencies, benchmarking::currencies]
-	// 	[module_session_manager, benchmarking::session_manager]
-	// 	[orml_tokens, benchmarking::tokens]
-	// 	[orml_vesting, benchmarking::vesting]
-	// 	[orml_auction, benchmarking::auction]
-	// 	[orml_authority, benchmarking::authority]
-	// 	[orml_oracle, benchmarking::oracle]
-	// 	[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
-	// 	[module_idle_scheduler, benchmarking::idle_scheduler]
-	// 	[module_aggregated_dex, benchmarking::aggregated_dex]
-	// 	[module_liquid_crowdloan, benchmarking::liquid_crowdloan]
-	// );
+// 	define_benchmarks!(
+// 		[module_dex, benchmarking::dex]
+// 		[module_dex_oracle, benchmarking::dex_oracle]
+// 		[module_asset_registry, benchmarking::asset_registry]
+// 		[module_auction_manager, benchmarking::auction_manager]
+// 		[module_cdp_engine, benchmarking::cdp_engine]
+// 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
+// 		[module_evm, benchmarking::evm]
+// 		[module_homa, benchmarking::homa]
+// 		[module_homa_validator_list, benchmarking::homa_validator_list]
+// 		[module_honzon, benchmarking::honzon]
+// 		[module_cdp_treasury, benchmarking::cdp_treasury]
+// 		[module_collator_selection, benchmarking::collator_selection]
+// 		[module_transaction_pause, benchmarking::transaction_pause]
+// 		[module_transaction_payment, benchmarking::transaction_payment]
+// 		[module_incentives, benchmarking::incentives]
+// 		[module_prices, benchmarking::prices]
+// 		[module_evm_accounts, benchmarking::evm_accounts]
+// 		[module_currencies, benchmarking::currencies]
+// 		[module_session_manager, benchmarking::session_manager]
+// 		[orml_tokens, benchmarking::tokens]
+// 		[orml_vesting, benchmarking::vesting]
+// 		[orml_auction, benchmarking::auction]
+// 		[orml_authority, benchmarking::authority]
+// 		[orml_oracle, benchmarking::oracle]
+// 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
+// 		[module_idle_scheduler, benchmarking::idle_scheduler]
+// 		[module_aggregated_dex, benchmarking::aggregated_dex]
+// 		[module_liquid_crowdloan, benchmarking::liquid_crowdloan]
+// 		[module_nominees_election, benchmarking::nominees_election]
+//   );
 	frame_benchmarking::define_benchmarks!(
 		// XCM
 		[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>]

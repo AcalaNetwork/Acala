@@ -1338,3 +1338,44 @@ fn claim_reward_deduction_currency_works() {
 		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 1900);
 	});
 }
+
+#[test]
+fn nominees_election_should_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		OnNomineesElectionBonded::<Runtime>::handle(&(ALICE::get(), 80));
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::NomineesElection),
+			PoolInfo {
+				total_shares: 80,
+				..Default::default()
+			}
+		);
+		assert_eq!(
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::NomineesElection, ALICE::get()),
+			(80, Default::default())
+		);
+
+		OnNomineesElectionUnbonded::<Runtime>::handle(&(ALICE::get(), 20));
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::NomineesElection),
+			PoolInfo {
+				total_shares: 60,
+				..Default::default()
+			}
+		);
+		assert_eq!(
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::NomineesElection, ALICE::get()),
+			(60, Default::default())
+		);
+
+		OnNomineesElectionUnbonded::<Runtime>::handle(&(ALICE::get(), 60));
+		assert_eq!(
+			RewardsModule::pool_infos(PoolId::NomineesElection),
+			PoolInfo { ..Default::default() }
+		);
+		assert_eq!(
+			RewardsModule::shares_and_withdrawn_rewards(PoolId::NomineesElection, ALICE::get()),
+			(0, Default::default())
+		);
+	});
+}

@@ -48,10 +48,16 @@ pub const HOMA_TREASURY: AccountId = AccountId32::new([255u8; 32]);
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const STAKING_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LIQUID_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+pub const VALIDATOR_A: AccountId = AccountId32::new([200u8; 32]);
+pub const VALIDATOR_B: AccountId = AccountId32::new([201u8; 32]);
+pub const VALIDATOR_C: AccountId = AccountId32::new([202u8; 32]);
+pub const VALIDATOR_D: AccountId = AccountId32::new([203u8; 32]);
 
 /// mock XCM transfer.
 pub struct MockHomaSubAccountXcm;
 impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
+	type RelayChainAccountId = AccountId;
+
 	fn transfer_staking_to_sub_account(sender: &AccountId, _: u16, amount: Balance) -> DispatchResult {
 		Currencies::withdraw(StakingCurrencyId::get(), sender, amount)
 	}
@@ -65,6 +71,10 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 	}
 
 	fn unbond_on_sub_account(_: u16, _: Balance) -> DispatchResult {
+		Ok(())
+	}
+
+	fn nominate_on_sub_account(_: u16, _: Vec<Self::RelayChainAccountId>) -> DispatchResult {
 		Ok(())
 	}
 
@@ -167,6 +177,28 @@ parameter_types! {
 	pub static MockRelayBlockNumberProvider: BlockNumber = 0;
 }
 
+pub struct MockNominationsProvider;
+impl NomineesProvider<AccountId> for MockNominationsProvider {
+	fn nominees() -> Vec<AccountId> {
+		unimplemented!()
+	}
+
+	fn nominees_in_groups(group_index_list: Vec<u16>) -> Vec<(u16, Vec<AccountId>)> {
+		group_index_list
+			.iter()
+			.map(|group_index| {
+				let nominees: Vec<AccountId> = match *group_index {
+					0 => vec![VALIDATOR_A, VALIDATOR_B],
+					2 => vec![VALIDATOR_A, VALIDATOR_C],
+					3 => vec![VALIDATOR_D],
+					_ => vec![],
+				};
+				(*group_index, nominees)
+			})
+			.collect()
+	}
+}
+
 impl Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
@@ -183,6 +215,7 @@ impl Config for Runtime {
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type XcmInterface = MockHomaSubAccountXcm;
 	type WeightInfo = ();
+	type NominationsProvider = MockNominationsProvider;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;
