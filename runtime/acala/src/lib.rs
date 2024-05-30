@@ -2000,41 +2000,41 @@ extern crate orml_benchmarking;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
-	// 	define_benchmarks!(
-	// 		[module_dex, benchmarking::dex]
-	// 		[module_dex_oracle, benchmarking::dex_oracle]
-	// 		[module_asset_registry, benchmarking::asset_registry]
-	// 		[module_auction_manager, benchmarking::auction_manager]
-	// 		[module_cdp_engine, benchmarking::cdp_engine]
-	// 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
-	// 		[module_evm, benchmarking::evm]
-	// 		[module_homa, benchmarking::homa]
-	// 		[module_homa_validator_list, benchmarking::homa_validator_list]
-	// 		[module_honzon, benchmarking::honzon]
-	// 		[module_cdp_treasury, benchmarking::cdp_treasury]
-	// 		[module_collator_selection, benchmarking::collator_selection]
-	// 		[module_transaction_pause, benchmarking::transaction_pause]
-	// 		[module_transaction_payment, benchmarking::transaction_payment]
-	// 		[module_incentives, benchmarking::incentives]
-	// 		[module_prices, benchmarking::prices]
-	// 		[module_evm_accounts, benchmarking::evm_accounts]
-	// 		[module_currencies, benchmarking::currencies]
-	// 		[module_session_manager, benchmarking::session_manager]
-	// 		[orml_tokens, benchmarking::tokens]
-	// 		[orml_vesting, benchmarking::vesting]
-	// 		[orml_auction, benchmarking::auction]
-	// 		[orml_authority, benchmarking::authority]
-	// 		[orml_oracle, benchmarking::oracle]
-	// 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
-	// 		[module_idle_scheduler, benchmarking::idle_scheduler]
-	// 		[module_aggregated_dex, benchmarking::aggregated_dex]
-	// 		[module_liquid_crowdloan, benchmarking::liquid_crowdloan]
-	// 		[module_nominees_election, benchmarking::nominees_election]
-	//   );
-	frame_benchmarking::define_benchmarks!(
-		// XCM
-		[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>]
+	define_benchmarks!(
+		[module_dex, benchmarking::dex]
+		[module_dex_oracle, benchmarking::dex_oracle]
+		[module_asset_registry, benchmarking::asset_registry]
+		[module_auction_manager, benchmarking::auction_manager]
+		[module_cdp_engine, benchmarking::cdp_engine]
+		[module_emergency_shutdown, benchmarking::emergency_shutdown]
+		[module_evm, benchmarking::evm]
+		[module_homa, benchmarking::homa]
+		[module_homa_validator_list, benchmarking::homa_validator_list]
+		[module_honzon, benchmarking::honzon]
+		[module_cdp_treasury, benchmarking::cdp_treasury]
+		[module_collator_selection, benchmarking::collator_selection]
+		[module_transaction_pause, benchmarking::transaction_pause]
+		[module_transaction_payment, benchmarking::transaction_payment]
+		[module_incentives, benchmarking::incentives]
+		[module_prices, benchmarking::prices]
+		[module_evm_accounts, benchmarking::evm_accounts]
+		[module_currencies, benchmarking::currencies]
+		[module_session_manager, benchmarking::session_manager]
+		[orml_tokens, benchmarking::tokens]
+		[orml_vesting, benchmarking::vesting]
+		[orml_auction, benchmarking::auction]
+		[orml_authority, benchmarking::authority]
+		[orml_oracle, benchmarking::oracle]
+		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
+		[module_idle_scheduler, benchmarking::idle_scheduler]
+		[module_aggregated_dex, benchmarking::aggregated_dex]
+		[module_liquid_crowdloan, benchmarking::liquid_crowdloan]
+		[module_nominees_election, benchmarking::nominees_election]
 	);
+	// frame_benchmarking::define_benchmarks!(
+	// 	// XCM
+	// 	[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>]
+	// );
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]
@@ -2371,11 +2371,11 @@ sp_api::impl_runtime_apis! {
 			use frame_benchmarking::{Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use module_nft::benchmarking::Pallet as NftBench;
-			use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
+			// use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
-			// frame_list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
+			frame_list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
 			list_benchmarks!(list, extra);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
@@ -2390,82 +2390,82 @@ sp_api::impl_runtime_apis! {
 			use module_nft::benchmarking::Pallet as NftBench;
 			use frame_support::traits::{WhitelistedStorageKeys, TrackedStorageKey};
 
-			const UNITS: Balance = 1_000_000_000_000;
-			const CENTS: Balance = UNITS / 100;
+			// const UNITS: Balance = 1_000_000_000_000;
+			// const CENTS: Balance = UNITS / 100;
 
-			parameter_types! {
-				pub FeeAssetId: AssetId = AssetId(Location::parent());
-				pub const BaseDeliveryFee: u128 = CENTS.saturating_mul(3);
-			}
-			pub type PriceForParentDelivery = polkadot_runtime_common::xcm_sender::ExponentialPrice<
-				FeeAssetId,
-				BaseDeliveryFee,
-				TransactionByteFee,
-				ParachainSystem,
-			>;
+			// parameter_types! {
+			// 	pub FeeAssetId: AssetId = AssetId(Location::parent());
+			// 	pub const BaseDeliveryFee: u128 = CENTS.saturating_mul(3);
+			// }
+			// pub type PriceForParentDelivery = polkadot_runtime_common::xcm_sender::ExponentialPrice<
+			// 	FeeAssetId,
+			// 	BaseDeliveryFee,
+			// 	TransactionByteFee,
+			// 	ParachainSystem,
+			// >;
 
-			use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
-			impl pallet_xcm::benchmarking::Config for Runtime {
-				type DeliveryHelper = cumulus_primitives_utility::ToParentDeliveryHelper<
-					xcm_config::XcmConfig,
-					ExistentialDepositAsset,
-					PriceForParentDelivery,
-				>;
-				fn reachable_dest() -> Option<Location> {
-					Some(Parent.into())
-				}
+			// use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
+			// impl pallet_xcm::benchmarking::Config for Runtime {
+			// 	type DeliveryHelper = cumulus_primitives_utility::ToParentDeliveryHelper<
+			// 		xcm_config::XcmConfig,
+			// 		ExistentialDepositAsset,
+			// 		PriceForParentDelivery,
+			// 	>;
+			// 	fn reachable_dest() -> Option<Location> {
+			// 		Some(Parent.into())
+			// 	}
 
-				fn teleportable_asset_and_dest() -> Option<(Asset, Location)> {
-					Some((
-						Asset {
-							fun: Fungible(NativeTokenExistentialDeposit::get()),
-							id: AssetId(Parent.into())
-						},
-						Parent.into(),
-					))
-				}
+			// 	fn teleportable_asset_and_dest() -> Option<(Asset, Location)> {
+			// 		Some((
+			// 			Asset {
+			// 				fun: Fungible(NativeTokenExistentialDeposit::get()),
+			// 				id: AssetId(Parent.into())
+			// 			},
+			// 			Parent.into(),
+			// 		))
+			// 	}
 
-				fn reserve_transferable_asset_and_dest() -> Option<(Asset, Location)> {
-					None
-				}
+			// 	fn reserve_transferable_asset_and_dest() -> Option<(Asset, Location)> {
+			// 		None
+			// 	}
 
-				fn get_asset() -> Asset {
-					Asset {
-						id: AssetId(Location::parent()),
-						fun: Fungible(UNITS),
-					}
-				}
-			}
+			// 	fn get_asset() -> Asset {
+			// 		Asset {
+			// 			id: AssetId(Location::parent()),
+			// 			fun: Fungible(UNITS),
+			// 		}
+			// 	}
+			// }
 
-			parameter_types! {
-				pub ExistentialDepositAsset: Option<Asset> = Some((
-					Location::parent(),
-					NativeTokenExistentialDeposit::get()
-				).into());
-			}
+			// parameter_types! {
+			// 	pub ExistentialDepositAsset: Option<Asset> = Some((
+			// 		Location::parent(),
+			// 		NativeTokenExistentialDeposit::get()
+			// 	).into());
+			// }
 
-			impl pallet_xcm_benchmarks::Config for Runtime {
-				type XcmConfig = xcm_config::XcmConfig;
-				type AccountIdConverter = xcm_config::LocationToAccountId;
-				type DeliveryHelper = cumulus_primitives_utility::ToParentDeliveryHelper<
-					xcm_config::XcmConfig,
-					ExistentialDepositAsset,
-					PriceForParentDelivery,
-				>;
-				fn valid_destination() -> Result<Location, BenchmarkError> {
-					Ok(Location::parent())
-				}
-				fn worst_case_holding(_depositable_count: u32) -> Assets {
-					// just concrete assets according to relay chain.
-					let assets: Vec<Asset> = vec![
-						Asset {
-							id: AssetId(Location::parent()),
-							fun: Fungible(1_000_000 * UNITS),
-						}
-					];
-					assets.into()
-				}
-			}
+			// impl pallet_xcm_benchmarks::Config for Runtime {
+			// 	type XcmConfig = xcm_config::XcmConfig;
+			// 	type AccountIdConverter = xcm_config::LocationToAccountId;
+			// 	type DeliveryHelper = cumulus_primitives_utility::ToParentDeliveryHelper<
+			// 		xcm_config::XcmConfig,
+			// 		ExistentialDepositAsset,
+			// 		PriceForParentDelivery,
+			// 	>;
+			// 	fn valid_destination() -> Result<Location, BenchmarkError> {
+			// 		Ok(Location::parent())
+			// 	}
+			// 	fn worst_case_holding(_depositable_count: u32) -> Assets {
+			// 		// just concrete assets according to relay chain.
+			// 		let assets: Vec<Asset> = vec![
+			// 			Asset {
+			// 				id: AssetId(Location::parent()),
+			// 				fun: Fungible(1_000_000 * UNITS),
+			// 			}
+			// 		];
+			// 		assets.into()
+			// 	}
+			// }
 
 			let mut whitelist: Vec<TrackedStorageKey> = AllPalletsWithSystem::whitelisted_storage_keys();
 
