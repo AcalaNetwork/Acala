@@ -2031,6 +2031,10 @@ mod benches {
 		[module_liquid_crowdloan, benchmarking::liquid_crowdloan]
 		[module_nominees_election, benchmarking::nominees_election]
 	);
+	// frame_benchmarking::define_benchmarks!(
+	// 	// XCM
+	// 	[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>]
+	// );
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]
@@ -2367,6 +2371,7 @@ sp_api::impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark as frame_list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use module_nft::benchmarking::Pallet as NftBench;
+			// use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -2381,9 +2386,86 @@ sp_api::impl_runtime_apis! {
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark as frame_add_benchmark};
+			use frame_benchmarking::{Benchmarking, BenchmarkBatch, BenchmarkError, add_benchmark as frame_add_benchmark};
 			use module_nft::benchmarking::Pallet as NftBench;
 			use frame_support::traits::{WhitelistedStorageKeys, TrackedStorageKey};
+
+			// const UNITS: Balance = 1_000_000_000_000;
+			// const CENTS: Balance = UNITS / 100;
+
+			// parameter_types! {
+			// 	pub FeeAssetId: AssetId = AssetId(Location::parent());
+			// 	pub const BaseDeliveryFee: u128 = CENTS.saturating_mul(3);
+			// }
+			// pub type PriceForParentDelivery = polkadot_runtime_common::xcm_sender::ExponentialPrice<
+			// 	FeeAssetId,
+			// 	BaseDeliveryFee,
+			// 	TransactionByteFee,
+			// 	ParachainSystem,
+			// >;
+
+			// use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
+			// impl pallet_xcm::benchmarking::Config for Runtime {
+			// 	type DeliveryHelper = cumulus_primitives_utility::ToParentDeliveryHelper<
+			// 		xcm_config::XcmConfig,
+			// 		ExistentialDepositAsset,
+			// 		PriceForParentDelivery,
+			// 	>;
+			// 	fn reachable_dest() -> Option<Location> {
+			// 		Some(Parent.into())
+			// 	}
+
+			// 	fn teleportable_asset_and_dest() -> Option<(Asset, Location)> {
+			// 		Some((
+			// 			Asset {
+			// 				fun: Fungible(NativeTokenExistentialDeposit::get()),
+			// 				id: AssetId(Parent.into())
+			// 			},
+			// 			Parent.into(),
+			// 		))
+			// 	}
+
+			// 	fn reserve_transferable_asset_and_dest() -> Option<(Asset, Location)> {
+			// 		None
+			// 	}
+
+			// 	fn get_asset() -> Asset {
+			// 		Asset {
+			// 			id: AssetId(Location::parent()),
+			// 			fun: Fungible(UNITS),
+			// 		}
+			// 	}
+			// }
+
+			// parameter_types! {
+			// 	pub ExistentialDepositAsset: Option<Asset> = Some((
+			// 		Location::parent(),
+			// 		NativeTokenExistentialDeposit::get()
+			// 	).into());
+			// }
+
+			// impl pallet_xcm_benchmarks::Config for Runtime {
+			// 	type XcmConfig = xcm_config::XcmConfig;
+			// 	type AccountIdConverter = xcm_config::LocationToAccountId;
+			// 	type DeliveryHelper = cumulus_primitives_utility::ToParentDeliveryHelper<
+			// 		xcm_config::XcmConfig,
+			// 		ExistentialDepositAsset,
+			// 		PriceForParentDelivery,
+			// 	>;
+			// 	fn valid_destination() -> Result<Location, BenchmarkError> {
+			// 		Ok(Location::parent())
+			// 	}
+			// 	fn worst_case_holding(_depositable_count: u32) -> Assets {
+			// 		// just concrete assets according to relay chain.
+			// 		let assets: Vec<Asset> = vec![
+			// 			Asset {
+			// 				id: AssetId(Location::parent()),
+			// 				fun: Fungible(1_000_000 * UNITS),
+			// 			}
+			// 		];
+			// 		assets.into()
+			// 	}
+			// }
 
 			let mut whitelist: Vec<TrackedStorageKey> = AllPalletsWithSystem::whitelisted_storage_keys();
 

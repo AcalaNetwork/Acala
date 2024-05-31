@@ -1342,7 +1342,7 @@ fn claim_reward_deduction_currency_works() {
 #[test]
 fn nominees_election_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		OnNomineesElectionBonded::<Runtime>::handle(&(ALICE::get(), 80));
+		assert_ok!(OnNomineesElectionBonded::<Runtime>::handle(&(ALICE::get(), 80)));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::NomineesElection),
 			PoolInfo {
@@ -1355,7 +1355,7 @@ fn nominees_election_should_work() {
 			(80, Default::default())
 		);
 
-		OnNomineesElectionUnbonded::<Runtime>::handle(&(ALICE::get(), 20));
+		assert_ok!(OnNomineesElectionUnbonded::<Runtime>::handle(&(ALICE::get(), 20)));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::NomineesElection),
 			PoolInfo {
@@ -1368,7 +1368,7 @@ fn nominees_election_should_work() {
 			(60, Default::default())
 		);
 
-		OnNomineesElectionUnbonded::<Runtime>::handle(&(ALICE::get(), 60));
+		assert_ok!(OnNomineesElectionUnbonded::<Runtime>::handle(&(ALICE::get(), 60)));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::NomineesElection),
 			PoolInfo { ..Default::default() }

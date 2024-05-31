@@ -272,6 +272,7 @@ pallet-transaction-payment-rpc-runtime-api = { version = "31.0.0", default-featu
 pallet-treasury = { version = "30.0.0", default-features = false }
 pallet-utility = { version = "31.0.0", default-features = false }
 pallet-xcm = { version = "10.0.1", default-features = false }
+pallet-xcm-benchmarks = { version = "10.0.0", default-features = false }
 parachain-info = { version = "0.10.0", package = "staging-parachain-info", default-features = false }
 parachains-common = { version = "10.0.0", default-features = false }
 polkadot-core-primitives = { version = "10.0.0", default-features = false }
