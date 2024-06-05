@@ -22,9 +22,10 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
+use frame_system::RawOrigin;
 use mock::{
 	alice, deploy_contracts, deploy_contracts_same_prefix, erc20_address, erc20_address_not_exists,
-	erc20_address_same_prefix, AssetRegistry, CouncilAccount, ExtBuilder, Runtime, RuntimeEvent, RuntimeOrigin, System,
+	erc20_address_same_prefix, AssetRegistry, ExtBuilder, Runtime, RuntimeEvent, System,
 };
 use primitives::TokenSymbol;
 use sp_core::H160;
@@ -121,7 +122,7 @@ fn register_foreign_asset_work() {
 		});
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			Box::new(v2_versioned_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
@@ -169,7 +170,7 @@ fn register_foreign_asset_work() {
 		});
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			Box::new(v3_versioned_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Another Token Name".to_vec(),
@@ -217,7 +218,7 @@ fn register_foreign_asset_work() {
 		));
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			Box::new(v4_versioned_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Another Token Name2".to_vec(),
@@ -263,7 +264,7 @@ fn register_foreign_asset_should_not_work() {
 		let v4_location = VersionedLocation::V4(Location::new(0, [Parachain(1000)]));
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			Box::new(v4_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
@@ -275,7 +276,7 @@ fn register_foreign_asset_should_not_work() {
 
 		assert_noop!(
 			AssetRegistry::register_foreign_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				Box::new(v4_location.clone()),
 				Box::new(AssetMetadata {
 					name: b"Token Name".to_vec(),
@@ -290,7 +291,7 @@ fn register_foreign_asset_should_not_work() {
 		NextForeignAssetId::<Runtime>::set(u16::MAX);
 		assert_noop!(
 			AssetRegistry::register_foreign_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				Box::new(v4_location),
 				Box::new(AssetMetadata {
 					name: b"Token Name".to_vec(),
@@ -310,7 +311,7 @@ fn update_foreign_asset_work() {
 		let v4_versioned_location = VersionedLocation::V4(Location::new(0, [Parachain(1000)]));
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			Box::new(v4_versioned_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
@@ -321,7 +322,7 @@ fn update_foreign_asset_work() {
 		));
 
 		assert_ok!(AssetRegistry::update_foreign_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			0,
 			Box::new(v4_versioned_location.clone()),
 			Box::new(AssetMetadata {
@@ -364,7 +365,7 @@ fn update_foreign_asset_work() {
 		let new_v4_versioned_location = VersionedLocation::V4(Location::new(0, [Parachain(2000)]));
 
 		assert_ok!(AssetRegistry::update_foreign_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			0,
 			Box::new(new_v4_versioned_location.clone()),
 			Box::new(AssetMetadata {
@@ -400,7 +401,7 @@ fn update_foreign_asset_should_not_work() {
 
 		assert_noop!(
 			AssetRegistry::update_foreign_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				0,
 				Box::new(v4_location.clone()),
 				Box::new(AssetMetadata {
@@ -414,7 +415,7 @@ fn update_foreign_asset_should_not_work() {
 		);
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			Box::new(v4_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
@@ -425,7 +426,7 @@ fn update_foreign_asset_should_not_work() {
 		));
 
 		assert_ok!(AssetRegistry::update_foreign_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			0,
 			Box::new(v4_location),
 			Box::new(AssetMetadata {
@@ -439,7 +440,7 @@ fn update_foreign_asset_should_not_work() {
 		// existed location
 		let new_v4_location = VersionedLocation::V4(Location::new(0, [Parachain(2000)]));
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			Box::new(new_v4_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
@@ -450,7 +451,7 @@ fn update_foreign_asset_should_not_work() {
 		));
 		assert_noop!(
 			AssetRegistry::update_foreign_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				0,
 				Box::new(new_v4_location),
 				Box::new(AssetMetadata {
@@ -469,7 +470,7 @@ fn update_foreign_asset_should_not_work() {
 fn register_stable_asset_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(AssetRegistry::register_stable_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
@@ -504,7 +505,7 @@ fn register_stable_asset_work() {
 fn register_stable_asset_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(AssetRegistry::register_stable_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
@@ -516,7 +517,7 @@ fn register_stable_asset_should_not_work() {
 		NextStableAssetId::<Runtime>::set(0);
 		assert_noop!(
 			AssetRegistry::register_stable_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				Box::new(AssetMetadata {
 					name: b"Token Name".to_vec(),
 					symbol: b"TN".to_vec(),
@@ -530,7 +531,7 @@ fn register_stable_asset_should_not_work() {
 		NextStableAssetId::<Runtime>::set(u32::MAX);
 		assert_noop!(
 			AssetRegistry::register_stable_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				Box::new(AssetMetadata {
 					name: b"Token Name".to_vec(),
 					symbol: b"TN".to_vec(),
@@ -547,7 +548,7 @@ fn register_stable_asset_should_not_work() {
 fn update_stable_asset_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(AssetRegistry::register_stable_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
@@ -557,7 +558,7 @@ fn update_stable_asset_work() {
 		));
 
 		assert_ok!(AssetRegistry::update_stable_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			0,
 			Box::new(AssetMetadata {
 				name: b"New Token Name".to_vec(),
@@ -594,7 +595,7 @@ fn update_stable_asset_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			AssetRegistry::update_stable_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				0,
 				Box::new(AssetMetadata {
 					name: b"New Token Name".to_vec(),
@@ -616,7 +617,7 @@ fn register_erc20_asset_work() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_ok!(AssetRegistry::register_erc20_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				erc20_address(),
 				1
 			));
@@ -656,26 +657,18 @@ fn register_erc20_asset_should_not_work() {
 			deploy_contracts();
 			deploy_contracts_same_prefix();
 			assert_ok!(AssetRegistry::register_erc20_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				erc20_address(),
 				1
 			));
 
 			assert_noop!(
-				AssetRegistry::register_erc20_asset(
-					RuntimeOrigin::signed(CouncilAccount::get()),
-					erc20_address_same_prefix(),
-					1
-				),
+				AssetRegistry::register_erc20_asset(RawOrigin::Root.into(), erc20_address_same_prefix(), 1),
 				Error::<Runtime>::AssetIdExisted
 			);
 
 			assert_noop!(
-				AssetRegistry::register_erc20_asset(
-					RuntimeOrigin::signed(CouncilAccount::get()),
-					erc20_address_not_exists(),
-					1
-				),
+				AssetRegistry::register_erc20_asset(RawOrigin::Root.into(), erc20_address_not_exists(), 1),
 				module_evm_bridge::Error::<Runtime>::InvalidReturnValue,
 			);
 		});
@@ -689,13 +682,13 @@ fn update_erc20_asset_work() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_ok!(AssetRegistry::register_erc20_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				erc20_address(),
 				1
 			));
 
 			assert_ok!(AssetRegistry::update_erc20_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				erc20_address(),
 				Box::new(AssetMetadata {
 					name: b"New Token Name".to_vec(),
@@ -731,7 +724,7 @@ fn update_erc20_asset_work() {
 fn register_native_asset_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(AssetRegistry::register_native_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			CurrencyId::Token(TokenSymbol::DOT),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
@@ -762,7 +755,7 @@ fn register_native_asset_works() {
 		// Can't duplicate
 		assert_noop!(
 			AssetRegistry::register_native_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				CurrencyId::Token(TokenSymbol::DOT),
 				Box::new(AssetMetadata {
 					name: b"Token Name".to_vec(),
@@ -781,7 +774,7 @@ fn update_native_asset_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			AssetRegistry::update_native_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				CurrencyId::Token(TokenSymbol::DOT),
 				Box::new(AssetMetadata {
 					name: b"New Token Name".to_vec(),
@@ -794,7 +787,7 @@ fn update_native_asset_works() {
 		);
 
 		assert_ok!(AssetRegistry::register_native_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			CurrencyId::Token(TokenSymbol::DOT),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
@@ -805,7 +798,7 @@ fn update_native_asset_works() {
 		));
 
 		assert_ok!(AssetRegistry::update_native_asset(
-			RuntimeOrigin::signed(CouncilAccount::get()),
+			RawOrigin::Root.into(),
 			CurrencyId::Token(TokenSymbol::DOT),
 			Box::new(AssetMetadata {
 				name: b"New Token Name".to_vec(),
@@ -842,7 +835,7 @@ fn update_erc20_asset_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			AssetRegistry::update_stable_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				0,
 				Box::new(AssetMetadata {
 					name: b"New Token Name".to_vec(),
@@ -864,7 +857,7 @@ fn name_works() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_ok!(AssetRegistry::register_erc20_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				erc20_address(),
 				1
 			));
@@ -922,7 +915,7 @@ fn symbol_works() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_ok!(AssetRegistry::register_erc20_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				erc20_address(),
 				1
 			));
@@ -995,7 +988,7 @@ fn decimals_works() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_ok!(AssetRegistry::register_erc20_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				erc20_address(),
 				1
 			));
@@ -1060,7 +1053,7 @@ fn encode_evm_address_works() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_ok!(AssetRegistry::register_erc20_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				erc20_address(),
 				1
 			));
@@ -1174,7 +1167,7 @@ fn decode_evm_address_works() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_ok!(AssetRegistry::register_erc20_asset(
-				RuntimeOrigin::signed(CouncilAccount::get()),
+				RawOrigin::Root.into(),
 				erc20_address(),
 				1
 			));

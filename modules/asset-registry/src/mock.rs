@@ -25,7 +25,7 @@ use frame_support::{
 	assert_ok, construct_runtime, derive_impl, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64},
 };
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_support::{
 	mocks::{MockAddressMapping, TestRandomness},
 	AddressMapping,
@@ -73,7 +73,6 @@ parameter_types! {
 }
 
 ord_parameter_types! {
-	pub const CouncilAccount: AccountId = AccountId::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId = AccountId::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId = AccountId::from([0u8; 32]);
 	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
@@ -97,7 +96,7 @@ impl module_evm::Config for Runtime {
 	type DeveloperDeposit = ConstU128<1000>;
 	type PublicationFee = ConstU128<200>;
 	type TreasuryAccount = TreasuryAccount;
-	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+	type FreePublicationOrigin = EnsureRoot<AccountId>;
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
@@ -119,7 +118,7 @@ impl asset_registry::Config for Runtime {
 	type Currency = Balances;
 	type StakingCurrencyId = KSMCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
-	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+	type RegisterOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = ();
 }
 

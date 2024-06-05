@@ -17,21 +17,28 @@ primitives = { workspace = true }
 xcm = { workspace = true }
 
 module-support = { workspace = true }
+module-evm = { workspace = true }
+serde_json = { workspace = true }
+hex = { workspace = true }
+
+
+# Benchmarks
+frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-serde_json = { workspace = true, features = ["std"] }
-hex = { workspace = true, features = ["std"] }
 sp-core = { workspace = true, features = ["std"] }
 sp-io = { workspace = true, features = ["std"] }
 pallet-balances = { workspace = true, features = ["std"] }
 pallet-timestamp = { workspace = true, features = ["std"] }
+xcm-builder = { workspace = true, features = ["std"] }
 
-module-evm = { workspace = true, features = ["std"] }
 module-evm-bridge = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
 std = [
+	"hex/std",
+	"serde_json/std",
 	"log/std",
 	"parity-scale-codec/std",
 	"scale-info/std",
@@ -41,7 +48,14 @@ std = [
 	"frame-system/std",
 	"primitives/std",
 	"xcm/std",
+	"module-evm/std",
 	"module-support/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"xcm-builder/runtime-benchmarks",
 ]
 try-runtime = [
 	"frame-support/try-runtime",
