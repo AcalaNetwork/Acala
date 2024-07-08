@@ -29,9 +29,9 @@ use frame_support::pallet_prelude::*;
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub struct UnlockChunk<Moment> {
 	/// Amount of funds to be unlocked.
-	value: Balance,
+	pub value: Balance,
 	/// Era number at which point it'll be unlocked.
-	unlock_at: Moment,
+	pub unlock_at: Moment,
 }
 
 /// The ledger of a (bonded) account.
@@ -45,13 +45,13 @@ where
 	/// The total amount of the account's balance that we are currently
 	/// accounting for. It's just `active` plus all the `unlocking`
 	/// balances.
-	total: Balance,
+	pub total: Balance,
 	/// The total amount of the account's balance that will be at stake in
 	/// any forthcoming rounds.
-	active: Balance,
+	pub active: Balance,
 	/// Any balance that is becoming free, which may eventually be
 	/// transferred out of the account.
-	unlocking: BoundedVec<UnlockChunk<Moment>, MaxUnlockingChunks>,
+	pub unlocking: BoundedVec<UnlockChunk<Moment>, MaxUnlockingChunks>,
 
 	_phantom: PhantomData<MinBond>,
 }

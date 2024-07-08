@@ -31,6 +31,7 @@ use xcm::prelude::*;
 
 pub mod bounded;
 pub mod dex;
+pub mod earning;
 pub mod evm;
 pub mod homa;
 pub mod honzon;
@@ -42,6 +43,7 @@ pub mod stable_asset;
 
 pub use crate::bounded::*;
 pub use crate::dex::*;
+pub use crate::earning::*;
 pub use crate::evm::*;
 pub use crate::homa::*;
 pub use crate::honzon::*;
