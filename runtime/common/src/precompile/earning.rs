@@ -31,7 +31,10 @@ use module_earning::{BondingLedgerOf, WeightInfo};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::Balance;
 use sp_core::U256;
-use sp_runtime::{traits::Convert, Permill, RuntimeDebug};
+use sp_runtime::{
+	traits::{Convert, Zero},
+	Permill, RuntimeDebug,
+};
 use sp_std::{marker::PhantomData, prelude::*};
 
 /// The Earning precompile
@@ -102,16 +105,15 @@ where
 					&who, amount
 				);
 
-				<module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::bond(who, amount).map_err(|e| {
-					PrecompileFailure::Revert {
+				let bonded_amount = <module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::bond(who, amount)
+					.map_err(|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("Earning bond failed", e),
-					}
-				})?;
+					})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					output: vec![],
+					output: Output::encode_uint(bonded_amount),
 				})
 			}
 			Action::Unbond => {
@@ -124,16 +126,15 @@ where
 					&who, amount
 				);
 
-				<module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::unbond(who, amount).map_err(|e| {
-					PrecompileFailure::Revert {
+				let unbonded_amount = <module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::unbond(who, amount)
+					.map_err(|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("Earning unbond failed", e),
-					}
-				})?;
+					})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					output: vec![],
+					output: Output::encode_uint(unbonded_amount),
 				})
 			}
 			Action::UnbondInstant => {
@@ -146,16 +147,17 @@ where
 					&who, amount
 				);
 
-				<module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::unbond_instant(who, amount).map_err(
-					|e| PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: Output::encode_error_msg("Earning unbond instantly failed", e),
-					},
-				)?;
+				let unbonded_amount = <module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::unbond_instant(
+					who, amount,
+				)
+				.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Output::encode_error_msg("Earning unbond instantly failed", e),
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					output: vec![],
+					output: Output::encode_uint(unbonded_amount),
 				})
 			}
 			Action::Rebond => {
@@ -168,16 +170,15 @@ where
 					&who, amount
 				);
 
-				<module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::rebond(who, amount).map_err(|e| {
-					PrecompileFailure::Revert {
+				let rebonded_amount = <module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::rebond(who, amount)
+					.map_err(|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Output::encode_error_msg("Earning rebond failed", e),
-					}
-				})?;
+					})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					output: vec![],
+					output: Output::encode_uint(rebonded_amount),
 				})
 			}
 			Action::WithdrawUnbonded => {
@@ -189,35 +190,36 @@ where
 					&who
 				);
 
-				<module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::withdraw_unbonded(who).map_err(|e| {
-					PrecompileFailure::Revert {
-						exit_status: ExitRevert::Reverted,
-						output: Output::encode_error_msg("Earning withdraw unbonded failed", e),
-					}
-				})?;
+				let withdrawed_amount =
+					<module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::withdraw_unbonded(who).map_err(
+						|e| PrecompileFailure::Revert {
+							exit_status: ExitRevert::Reverted,
+							output: Output::encode_error_msg("Earning withdraw unbonded failed", e),
+						},
+					)?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					output: vec![],
+					output: Output::encode_uint(withdrawed_amount),
 				})
 			}
 			Action::GetBondingLedger => {
 				let who = input.account_id_at(1)?;
 				let ledger = <module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::get_bonding_ledger(who);
 				let unlocking_token: Vec<Token> = ledger
-					.unlocking
+					.unlocking()
 					.iter()
 					.cloned()
-					.map(|chunk| {
+					.map(|(value, unlock_at)| {
 						Token::Tuple(vec![
-							Token::Uint(Into::<U256>::into(chunk.value)),
-							Token::Uint(Into::<U256>::into(chunk.unlock_at)),
+							Token::Uint(Into::<U256>::into(value)),
+							Token::Uint(Into::<U256>::into(unlock_at)),
 						])
 					})
 					.collect();
 				let ledger_token: Token = Token::Tuple(vec![
-					Token::Uint(Into::<U256>::into(ledger.total)),
-					Token::Uint(Into::<U256>::into(ledger.active)),
+					Token::Uint(Into::<U256>::into(ledger.total())),
+					Token::Uint(Into::<U256>::into(ledger.active())),
 					Token::Array(unlocking_token),
 				]);
 
@@ -227,10 +229,17 @@ where
 				})
 			}
 			Action::GetInstantUnstakeFee => {
-				let rate = <module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::get_instant_unstake_fee();
+				let (ratio, accuracy) = if let Some(ratio) =
+					<module_earning::Pallet<Runtime> as EarningManager<_, _, _>>::get_instant_unstake_fee()
+				{
+					(ratio.deconstruct(), Permill::one().deconstruct())
+				} else {
+					(Zero::zero(), Zero::zero())
+				};
+
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					output: Output::encode_uint(rate.deconstruct()),
+					output: Output::encode_uint_tuple(vec![ratio, accuracy]),
 				})
 			}
 			Action::GetMinBond => {
@@ -372,7 +381,11 @@ mod tests {
 				EarningPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
-			assert_eq!(Earning::ledger(&alice()).unwrap().active, 20_000_000_000_000);
+			assert_eq!(Earning::ledger(&alice()).unwrap().active(), 20_000_000_000_000);
+
+			// encoded value of 20_000_000_000_000;
+			let expected_output = hex! {"00000000000000000000000000000000 0000000000000000000012309ce54000"}.to_vec();
+			assert_eq!(res.output, expected_output);
 		});
 	}
 
@@ -392,7 +405,7 @@ mod tests {
 				99_000_000_000_000
 			));
 			assert_ok!(Earning::bond(RuntimeOrigin::signed(alice()), 20_000_000_000_000));
-			assert_eq!(Earning::ledger(&alice()).unwrap().active, 20_000_000_000_000);
+			assert_eq!(Earning::ledger(&alice()).unwrap().active(), 20_000_000_000_000);
 
 			// unbond(address,uint256) -> 0xa5d059ca
 			// who 0x1000000000000000000000000000000000000001
@@ -407,7 +420,11 @@ mod tests {
 				EarningPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
-			assert_eq!(Earning::ledger(&alice()).unwrap().active, 0);
+			assert_eq!(Earning::ledger(&alice()).unwrap().active(), 0);
+
+			// encoded value of 20_000_000_000_000;
+			let expected_output = hex! {"00000000000000000000000000000000 0000000000000000000012309ce54000"}.to_vec();
+			assert_eq!(res.output, expected_output);
 		});
 	}
 
@@ -427,7 +444,7 @@ mod tests {
 				99_000_000_000_000
 			));
 			assert_ok!(Earning::bond(RuntimeOrigin::signed(alice()), 20_000_000_000_000));
-			assert_eq!(Earning::ledger(&alice()).unwrap().active, 20_000_000_000_000);
+			assert_eq!(Earning::ledger(&alice()).unwrap().active(), 20_000_000_000_000);
 
 			// unbondInstant(address,uint256) -> 0xd15a4d60
 			// who 0x1000000000000000000000000000000000000001
@@ -442,7 +459,11 @@ mod tests {
 				EarningPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
-			assert_eq!(Earning::ledger(&alice()).unwrap().active, 0);
+			assert_eq!(Earning::ledger(&alice()).unwrap().active(), 0);
+
+			// encoded value of 20_000_000_000_000;
+			let expected_output = hex! {"00000000000000000000000000000000 0000000000000000000012309ce54000"}.to_vec();
+			assert_eq!(res.output, expected_output);
 		});
 	}
 
@@ -463,8 +484,8 @@ mod tests {
 			));
 			assert_ok!(Earning::bond(RuntimeOrigin::signed(alice()), 20_000_000_000_000));
 			assert_ok!(Earning::unbond(RuntimeOrigin::signed(alice()), 20_000_000_000_000));
-			assert_eq!(Earning::ledger(&alice()).unwrap().total, 20_000_000_000_000);
-			assert_eq!(Earning::ledger(&alice()).unwrap().active, 0);
+			assert_eq!(Earning::ledger(&alice()).unwrap().total(), 20_000_000_000_000);
+			assert_eq!(Earning::ledger(&alice()).unwrap().active(), 0);
 
 			// rebond(address,uint256) -> 0x92d1b784
 			// who 0x1000000000000000000000000000000000000001
@@ -479,8 +500,12 @@ mod tests {
 				EarningPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
-			assert_eq!(Earning::ledger(&alice()).unwrap().total, 20_000_000_000_000);
-			assert_eq!(Earning::ledger(&alice()).unwrap().active, 20_000_000_000_000);
+			assert_eq!(Earning::ledger(&alice()).unwrap().total(), 20_000_000_000_000);
+			assert_eq!(Earning::ledger(&alice()).unwrap().active(), 20_000_000_000_000);
+
+			// encoded value of 20_000_000_000_000;
+			let expected_output = hex! {"00000000000000000000000000000000 0000000000000000000012309ce54000"}.to_vec();
+			assert_eq!(res.output, expected_output);
 		});
 	}
 
@@ -501,8 +526,8 @@ mod tests {
 			));
 			assert_ok!(Earning::bond(RuntimeOrigin::signed(alice()), 20_000_000_000_000));
 			assert_ok!(Earning::unbond(RuntimeOrigin::signed(alice()), 20_000_000_000_000));
-			assert_eq!(Earning::ledger(&alice()).unwrap().total, 20_000_000_000_000);
-			assert_eq!(Earning::ledger(&alice()).unwrap().active, 0);
+			assert_eq!(Earning::ledger(&alice()).unwrap().total(), 20_000_000_000_000);
+			assert_eq!(Earning::ledger(&alice()).unwrap().active(), 0);
 
 			System::set_block_number(1 + 2 * UnbondingPeriod::get());
 
@@ -516,6 +541,10 @@ mod tests {
 			let res =
 				EarningPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
+
+			// encoded value of 20_000_000_000_000;
+			let expected_output = hex! {"00000000000000000000000000000000 0000000000000000000012309ce54000"}.to_vec();
+			assert_eq!(res.output, expected_output);
 		});
 	}
 
@@ -558,7 +587,11 @@ mod tests {
 			};
 
 			// encoded value of Permill::from_percent(10);
-			let expected_output = hex! {"00000000000000000000000000000000 000000000000000000000000000186a0"}.to_vec();
+			let expected_output = hex! {"
+                00000000000000000000000000000000 000000000000000000000000000186a0
+                00000000000000000000000000000000 000000000000000000000000000f4240
+            "}
+			.to_vec();
 
 			let res =
 				EarningPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
@@ -588,9 +621,6 @@ mod tests {
 				EarningPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output);
-
-			// let hex_string: String = res.output.iter().map(|byte| format!("{:02x}",
-			// byte)).collect(); assert_eq!(hex_string, "");
 		});
 	}
 
@@ -615,9 +645,6 @@ mod tests {
 				EarningPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
 			assert_eq!(res.exit_status, ExitSucceed::Returned);
 			assert_eq!(res.output, expected_output);
-
-			// let hex_string: String = res.output.iter().map(|byte| format!("{:02x}",
-			// byte)).collect(); assert_eq!(hex_string, "");
 		});
 	}
 

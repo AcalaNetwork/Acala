@@ -16,19 +16,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use sp_runtime::DispatchResult;
+use sp_runtime::DispatchError;
 
 pub trait EarningManager<AccountId, Balance, BondingLedger> {
 	type Moment;
 	type FeeRatio;
-	fn bond(who: AccountId, amount: Balance) -> DispatchResult;
-	fn unbond(who: AccountId, amount: Balance) -> DispatchResult;
-	fn unbond_instant(who: AccountId, amount: Balance) -> DispatchResult;
-	fn rebond(who: AccountId, amount: Balance) -> DispatchResult;
-	fn withdraw_unbonded(who: AccountId) -> DispatchResult;
+	fn bond(who: AccountId, amount: Balance) -> Result<Balance, DispatchError>;
+	fn unbond(who: AccountId, amount: Balance) -> Result<Balance, DispatchError>;
+	fn unbond_instant(who: AccountId, amount: Balance) -> Result<Balance, DispatchError>;
+	fn rebond(who: AccountId, amount: Balance) -> Result<Balance, DispatchError>;
+	fn withdraw_unbonded(who: AccountId) -> Result<Balance, DispatchError>;
 	fn get_bonding_ledger(who: AccountId) -> BondingLedger;
 	fn get_min_bond() -> Balance;
 	fn get_unbonding_period() -> Self::Moment;
 	fn get_max_unbonding_chunks() -> u32;
-	fn get_instant_unstake_fee() -> Self::FeeRatio;
+	fn get_instant_unstake_fee() -> Option<Self::FeeRatio>;
 }

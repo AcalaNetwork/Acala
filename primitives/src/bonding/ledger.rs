@@ -29,9 +29,9 @@ use frame_support::pallet_prelude::*;
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub struct UnlockChunk<Moment> {
 	/// Amount of funds to be unlocked.
-	pub value: Balance,
+	value: Balance,
 	/// Era number at which point it'll be unlocked.
-	pub unlock_at: Moment,
+	unlock_at: Moment,
 }
 
 /// The ledger of a (bonded) account.
@@ -45,13 +45,13 @@ where
 	/// The total amount of the account's balance that we are currently
 	/// accounting for. It's just `active` plus all the `unlocking`
 	/// balances.
-	pub total: Balance,
+	total: Balance,
 	/// The total amount of the account's balance that will be at stake in
 	/// any forthcoming rounds.
-	pub active: Balance,
+	active: Balance,
 	/// Any balance that is becoming free, which may eventually be
 	/// transferred out of the account.
-	pub unlocking: BoundedVec<UnlockChunk<Moment>, MaxUnlockingChunks>,
+	unlocking: BoundedVec<UnlockChunk<Moment>, MaxUnlockingChunks>,
 
 	_phantom: PhantomData<MinBond>,
 }
@@ -72,6 +72,14 @@ where
 
 	pub fn total(&self) -> Balance {
 		self.total
+	}
+
+	pub fn unlocking(&self) -> sp_std::vec::Vec<(Balance, Moment)> {
+		self.unlocking
+			.iter()
+			.cloned()
+			.map(|chunk| (chunk.value, chunk.unlock_at))
+			.collect()
 	}
 
 	pub fn unlocking_len(&self) -> usize {
