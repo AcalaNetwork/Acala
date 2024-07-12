@@ -155,7 +155,7 @@ pub mod module {
 		pub fn unbond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let _ = Self::do_unbond(&who, amount);
+			let _ = Self::do_unbond(&who, amount)?;
 
 			Ok(())
 		}
@@ -168,7 +168,7 @@ pub mod module {
 		pub fn unbond_instant(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let _ = Self::do_unbond_instant(&who, amount);
+			let _ = Self::do_unbond_instant(&who, amount)?;
 
 			Ok(())
 		}
@@ -192,7 +192,7 @@ pub mod module {
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let _ = Self::do_withdraw_unbonded(&who);
+			let _ = Self::do_withdraw_unbonded(&who)?;
 
 			Ok(())
 		}
