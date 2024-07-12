@@ -42,9 +42,9 @@ use sp_std::{marker::PhantomData, prelude::*};
 /// `input` data starts with `action`.
 ///
 /// Actions:
-/// - Mint. `input` bytes: `who`.
+/// - Bond. `input` bytes: `who`.
 /// - Unbond. `input` bytes: `who`.
-/// - Unbond instantly. `input` bytes: `who`.
+/// - UnbondInstant. `input` bytes: `who`.
 /// - Rebond. `input` bytes: `who`.
 /// - Withdraw unbonded. `input` bytes: `who`.
 /// - Get bonding ledger. `input` bytes: `who`.
