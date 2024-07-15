@@ -74,6 +74,14 @@ where
 		self.total
 	}
 
+	pub fn unlocking(&self) -> sp_std::vec::Vec<(Balance, Moment)> {
+		self.unlocking
+			.iter()
+			.cloned()
+			.map(|chunk| (chunk.value, chunk.unlock_at))
+			.collect()
+	}
+
 	pub fn unlocking_len(&self) -> usize {
 		self.unlocking.len()
 	}

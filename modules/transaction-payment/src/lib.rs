@@ -961,7 +961,8 @@ where
 						// pre check before set OverrideChargeFeeMethod
 						ensure!(
 							fee_swap_path.len() <= T::TradingPathLimit::get() as usize
-								&& fee_swap_path.len() > 1 && fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
+								&& fee_swap_path.len() > 1
+								&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
 								&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
 							Error::<T>::InvalidSwapPath
 						);

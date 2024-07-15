@@ -58,6 +58,7 @@ module-prices = { workspace = true }
 module-transaction-payment = { workspace = true }
 module-nft = { workspace = true }
 module-dex = { workspace = true }
+module-earning = { workspace = true }
 module-evm-accounts = { workspace = true }
 module-homa = { workspace = true }
 module-asset-registry = { workspace = true, optional = true }
@@ -81,6 +82,7 @@ wasm-bencher = { workspace = true, optional = true }
 orml-nft = { workspace = true, optional = true }
 orml-currencies = { workspace = true, optional = true }
 orml-rewards = { workspace = true, optional = true }
+orml-parameters = { workspace = true }
 
 [dev-dependencies]
 orml-utilities = { workspace = true, features = ["std"] }
@@ -128,12 +130,14 @@ std = [
 	"orml-tokens/std",
 	"orml-traits/std",
 	"orml-xtokens/std",
+	"orml-parameters/std",
 
 	"module-asset-registry/std",
 	"module-cdp-engine/std",
 	"module-cdp-treasury/std",
 	"module-currencies/std",
 	"module-dex/std",
+	"module-earning/std",
 	"module-evm-accounts/std",
 	"module-evm-bridge/std",
 	"module-evm/std",

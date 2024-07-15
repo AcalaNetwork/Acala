@@ -22,8 +22,8 @@ use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, Weight};
 use frame_support::{
 	derive_impl, ord_parameter_types, parameter_types,
 	traits::{
-		ConstU128, ConstU32, ConstU64, EqualPrivilegeOnly, Everything, InstanceFilter, Nothing, OnFinalize,
-		OnInitialize, SortedMembers,
+		ConstU128, ConstU32, ConstU64, EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier, Nothing,
+		OnFinalize, OnInitialize, SortedMembers,
 	},
 	weights::{ConstantMultiplier, IdentityFee},
 	PalletId,
@@ -951,6 +951,47 @@ impl module_liquid_crowdloan::Config for Test {
 	type WeightInfo = ();
 }
 
+pub struct ParameterStoreImpl;
+impl orml_traits::parameters::ParameterStore<module_earning::Parameters> for ParameterStoreImpl {
+	fn get<K>(key: K) -> Option<K::Value>
+	where
+		K: orml_traits::parameters::Key
+			+ Into<<module_earning::Parameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedKey>,
+		<module_earning::Parameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedValue:
+			TryInto<K::WrappedValue>,
+	{
+		let key = key.into();
+		match key {
+			module_earning::ParametersKey::InstantUnstakeFee(_) => Some(
+				module_earning::ParametersValue::InstantUnstakeFee(sp_runtime::Permill::from_percent(10))
+					.try_into()
+					.ok()?
+					.into(),
+			),
+		}
+	}
+}
+
+parameter_types! {
+	pub const MinBond: Balance = 1_000_000_000;
+	pub const UnbondingPeriod: BlockNumber = 10_000;
+	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
+}
+
+impl module_earning::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type ParameterStore = ParameterStoreImpl;
+	type OnBonded = module_incentives::OnEarningBonded<Test>;
+	type OnUnbonded = module_incentives::OnEarningUnbonded<Test>;
+	type OnUnstakeFee = ();
+	type MinBond = MinBond;
+	type UnbondingPeriod = UnbondingPeriod;
+	type MaxUnbondingChunks = ConstU32<10>;
+	type LockIdentifier = EarningLockIdentifier;
+	type WeightInfo = ();
+}
+
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
 pub const EVA: AccountId = AccountId::new([5u8; 32]);
@@ -1026,6 +1067,7 @@ frame_support::construct_runtime!(
 		XTokens: orml_xtokens,
 		StableAsset: nutsfinance_stable_asset,
 		LiquidCrowdloan: module_liquid_crowdloan,
+		Earning: module_earning,
 	}
 );
 

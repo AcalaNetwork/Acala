@@ -400,11 +400,11 @@ fn testnet_genesis(
 			collaterals_params: vec![
 				(
 					DOT,
-					Some(FixedU128::zero()),                             // interest rate per sec for this collateral
+					Some(FixedU128::zero()), // interest rate per sec for this collateral
 					Some(FixedU128::saturating_from_rational(150, 100)), // liquidation ratio
-					Some(FixedU128::saturating_from_rational(10, 100)),  // liquidation penalty rate
+					Some(FixedU128::saturating_from_rational(10, 100)), // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(150, 100)), // required liquidation ratio
-					10_000_000 * dollar(AUSD),                           // maximum debit value in aUSD (cap)
+					10_000_000 * dollar(AUSD), // maximum debit value in aUSD (cap)
 				),
 				(
 					LDOT,
@@ -576,11 +576,11 @@ fn mandala_genesis(
 			collaterals_params: vec![
 				(
 					DOT,
-					Some(FixedU128::zero()),                             // interest rate per sec for this collateral
+					Some(FixedU128::zero()), // interest rate per sec for this collateral
 					Some(FixedU128::saturating_from_rational(105, 100)), // liquidation ratio
-					Some(FixedU128::saturating_from_rational(3, 100)),   // liquidation penalty rate
+					Some(FixedU128::saturating_from_rational(3, 100)), // liquidation penalty rate
 					Some(FixedU128::saturating_from_rational(110, 100)), // required liquidation ratio
-					10_000_000 * dollar(AUSD),                           // maximum debit value in aUSD (cap)
+					10_000_000 * dollar(AUSD), // maximum debit value in aUSD (cap)
 				),
 				(
 					LDOT,
