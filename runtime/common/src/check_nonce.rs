@@ -121,14 +121,17 @@ where
 				.map(|x| x.nonce)
 				.unwrap_or_default();
 
-			#[cfg(not(feature = "tracing"))]
-			if self.nonce != evm_nonce {
-				return Err(if self.nonce < evm_nonce {
-					InvalidTransaction::Stale
-				} else {
-					InvalidTransaction::Future
+			if cfg!(feature = "tracing") {
+				// skip check when enable tracing feature
+			} else {
+				if self.nonce != evm_nonce {
+					return Err(if self.nonce < evm_nonce {
+						InvalidTransaction::Stale
+					} else {
+						InvalidTransaction::Future
+					}
+					.into());
 				}
-				.into());
 			}
 		} else if self.nonce != account.nonce {
 			return Err(if self.nonce < account.nonce {
@@ -158,9 +161,12 @@ where
 				.map(|x| x.nonce)
 				.unwrap_or_default();
 
-			#[cfg(not(feature = "tracing"))]
-			if self.nonce < evm_nonce {
-				return InvalidTransaction::Stale.into();
+			if cfg!(feature = "tracing") {
+				// skip check when enable tracing feature
+			} else {
+				if self.nonce < evm_nonce {
+					return InvalidTransaction::Stale.into();
+				}
 			}
 
 			let provides = vec![Encode::encode(&(address, self.nonce))];
