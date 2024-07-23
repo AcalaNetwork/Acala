@@ -2534,6 +2534,7 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 				access_list,
 				valid_until,
 			}) => {
+				#[cfg(not(feature = "tracing"))]
 				if System::block_number() > valid_until {
 					return Err(InvalidTransaction::Stale);
 				}
@@ -2579,6 +2580,7 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 				let (tip, valid_until) =
 					decode_gas_price(gas_price, gas_limit, TxFeePerGasV2::get()).ok_or(InvalidTransaction::Stale)?;
 
+				#[cfg(not(feature = "tracing"))]
 				if System::block_number() > valid_until {
 					return Err(InvalidTransaction::Stale);
 				}
