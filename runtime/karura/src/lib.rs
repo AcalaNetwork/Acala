@@ -2615,7 +2615,6 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 					} else {
 						return Err(InvalidTransaction::Stale);
 					}
-					return Err(InvalidTransaction::Stale);
 				}
 
 				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
