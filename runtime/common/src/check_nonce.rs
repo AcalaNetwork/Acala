@@ -120,7 +120,10 @@ where
 			let evm_nonce = module_evm::Accounts::<T>::get(address)
 				.map(|x| x.nonce)
 				.unwrap_or_default();
-			if self.nonce != evm_nonce {
+
+			if cfg!(feature = "tracing") {
+				// skip check when enable tracing feature
+			} else if self.nonce != evm_nonce {
 				return Err(if self.nonce < evm_nonce {
 					InvalidTransaction::Stale
 				} else {
@@ -155,7 +158,10 @@ where
 			let evm_nonce = module_evm::Accounts::<T>::get(address)
 				.map(|x| x.nonce)
 				.unwrap_or_default();
-			if self.nonce < evm_nonce {
+
+			if cfg!(feature = "tracing") {
+				// skip check when enable tracing feature
+			} else if self.nonce < evm_nonce {
 				return InvalidTransaction::Stale.into();
 			}
 
