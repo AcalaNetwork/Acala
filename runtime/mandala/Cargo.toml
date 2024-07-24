@@ -330,6 +330,7 @@ runtime-benchmarks = [
 	"orml-vesting/runtime-benchmarks",
 	"orml-xtokens/runtime-benchmarks",
 
+	"module-asset-registry/runtime-benchmarks",
 	"module-collator-selection/runtime-benchmarks",
 	"module-evm-accounts/runtime-benchmarks",
 	"module-evm-bridge/runtime-benchmarks",

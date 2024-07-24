@@ -6339,6 +6339,7 @@ name = "module-asset-registry"
 version = "2.25.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex",
@@ -6356,6 +6357,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "staging-xcm",
+ "staging-xcm-builder",
 ]
 
 [[package]]

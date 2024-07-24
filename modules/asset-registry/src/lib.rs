@@ -49,6 +49,8 @@ use sp_std::{boxed::Box, vec::Vec};
 
 use xcm::{v3, v4::prelude::*, VersionedLocation};
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarks;
 mod mock;
 mod tests;
 mod weights;
