@@ -544,7 +544,7 @@ fn test_cdp_engine_module() {
 		});
 }
 
-// Honzon's surplus can be transfered and DebitExchangeRate updates accordingly
+// Honzon's surplus can be transferred and DebitExchangeRate updates accordingly
 #[test]
 fn cdp_treasury_handles_honzon_surplus_correctly() {
 	ExtBuilder::default()
@@ -612,10 +612,10 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 			assert_eq!(CdpTreasury::get_debit_pool(), 0);
 			run_to_block(2);
 
-			// Empty treasury recieves stablecoins into surplus pool from loan
+			// Empty treasury receives stablecoins into surplus pool from loan
 			assert_eq!(CdpTreasury::get_surplus_pool(), 270716741782);
 			assert_eq!(CdpTreasury::get_debit_pool(), 0);
-			// Honzon generated cdp treasury surplus can be transfered
+			// Honzon generated cdp treasury surplus can be transferred
 			assert_eq!(Currencies::free_balance(USD_CURRENCY, &AccountId::from(BOB)), 0);
 			assert_eq!(
 				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
