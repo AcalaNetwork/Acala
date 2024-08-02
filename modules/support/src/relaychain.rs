@@ -48,6 +48,8 @@ pub enum StakingCall {
 	Unbond(#[codec(compact)] Balance),
 	#[codec(index = 3)]
 	WithdrawUnbonded(u32),
+	#[codec(index = 5)]
+	Nominate(Vec<<RelayChainLookup as StaticLookup>::Source>),
 }
 
 /// `pallet-xcm` calls.
@@ -80,7 +82,7 @@ pub trait RelayChainCall: Sized {
 }
 
 pub trait CallBuilder {
-	type AccountId: FullCodec;
+	type RelayChainAccountId: FullCodec;
 	type Balance: FullCodec;
 	type RelayChainCall: FullCodec + RelayChainCall;
 
@@ -105,11 +107,16 @@ pub trait CallBuilder {
 	/// - num_slashing_spans: The number of slashing spans to withdraw from.
 	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelayChainCall;
 
+	/// Nominate the relay-chain.
+	///  params:
+	/// - targets: The target validator list.
+	fn staking_nominate(targets: Vec<Self::RelayChainAccountId>) -> Self::RelayChainCall;
+
 	/// Transfer Staking currency to another account, disallowing "death".
 	///  params:
 	/// - to: The destination for the transfer
 	/// - amount: The amount of staking currency to be transferred.
-	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall;
+	fn balances_transfer_keep_alive(to: Self::RelayChainAccountId, amount: Self::Balance) -> Self::RelayChainCall;
 
 	/// Reserve transfer assets.
 	/// params:
@@ -128,7 +135,7 @@ pub trait CallBuilder {
 	/// params:
 	/// - real: The real account.
 	/// - call: The call to be executed.
-	fn proxy_call(real: Self::AccountId, call: Self::RelayChainCall) -> Self::RelayChainCall;
+	fn proxy_call(real: Self::RelayChainAccountId, call: Self::RelayChainCall) -> Self::RelayChainCall;
 
 	/// Wrap the final call into the Xcm format.
 	///  params:

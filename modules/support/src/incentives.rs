@@ -34,6 +34,9 @@ pub enum PoolId {
 
 	/// Rewards and shares pool for earning module
 	Earning(CurrencyId),
+
+	/// Rewards and shares pool for Homa nominees election
+	NomineesElection,
 }
 
 pub trait IncentivesManager<AccountId, Balance, CurrencyId, PoolId> {

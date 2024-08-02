@@ -816,7 +816,8 @@ fn transaction_payment_module_works_with_evm_contract() {
 	let dollar = dollar(NATIVE_CURRENCY);
 	let alice_evm_account = MockAddressMapping::get_account_id(&alice_evm_addr());
 	let ed = NativeTokenExistentialDeposit::get(); // 100_000_000_000
-												// new account
+
+	// new account
 	let empty_account = AccountId::new([1u8; 32]);
 	let empty_address = H160::from_slice(&[1u8; 20]);
 	let empty_address_account = MockAddressMapping::get_account_id(&empty_address);

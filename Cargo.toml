@@ -204,6 +204,7 @@ module-evm-bridge = { path = "modules/evm-bridge", default-features = false }
 module-evm-rpc-runtime-api = { path = "modules/evm/rpc/runtime-api", default-features = false }
 module-evm-utility = { path = "modules/evm-utility", default-features = false }
 module-homa = { path = "modules/homa", default-features = false }
+module-homa-validator-list = { path = "modules/homa-validator-list", default-features = false }
 module-honzon = { path = "modules/honzon", default-features = false }
 module-honzon-bridge = { path = "modules/honzon-bridge", default-features = false }
 module-idle-scheduler = { path = "modules/idle-scheduler", default-features = false }
@@ -263,6 +264,7 @@ pallet-recovery = { version = "37.0.0", default-features = false }
 pallet-root-testing = { version = "13.0.0", default-features = false }
 pallet-scheduler = { version = "38.0.0", default-features = false }
 pallet-session = { version = "37.0.0", default-features = false }
+pallet-state-trie-migration = { version = "39.0.0", default-features = false }
 pallet-sudo = { version = "37.0.0", default-features = false }
 pallet-timestamp = { version = "36.0.0", default-features = false }
 pallet-tips = { version = "36.0.0", default-features = false }
@@ -271,6 +273,7 @@ pallet-transaction-payment-rpc-runtime-api = { version = "37.0.0", default-featu
 pallet-treasury = { version = "36.0.0", default-features = false }
 pallet-utility = { version = "37.0.0", default-features = false }
 pallet-xcm = { version = "16.0.0", default-features = false }
+pallet-xcm-benchmarks = { version = "16.0.0", default-features = false }
 parachain-info = { version = "0.16.0", package = "staging-parachain-info", default-features = false }
 parachains-common = { version = "17.0.0", default-features = false }
 polkadot-core-primitives = { version = "15.0.0", default-features = false }

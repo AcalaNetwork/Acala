@@ -49,7 +49,7 @@ use frame_support::{
 use frame_system::{EnsureRoot, EnsureSigned, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
 use module_cdp_engine::CollateralCurrencyIds;
-use module_currencies::{BasicCurrencyAdapter, Currency};
+use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
@@ -139,7 +139,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	#[cfg(feature = "disable-runtime-api")]
 	apis: sp_version::create_apis_vec![[]],
 	transaction_version: 3,
-	state_version: 0,
+	state_version: 1,
 };
 
 /// The version information used to identify this runtime when compiled
@@ -1375,6 +1375,9 @@ parameter_type_with_key! {
 					ExistentialDeposits::get(currency_id)
 				}
 			}
+			PoolId::NomineesElection => {
+				ExistentialDeposits::get(&GetLiquidCurrencyId::get())
+			}
 		}
 	};
 }
@@ -1427,6 +1430,7 @@ parameter_types! {
 	];
 	pub MintThreshold: Balance = dollar(DOT);
 	pub RedeemThreshold: Balance = 10 * dollar(LDOT);
+	pub const BondingDuration: EraIndex = 28;
 }
 
 impl module_homa::Config for Runtime {
@@ -1439,12 +1443,53 @@ impl module_homa::Config for Runtime {
 	type TreasuryAccount = HomaTreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
-	type BondingDuration = ConstU32<28>;
+	type BondingDuration = BondingDuration;
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelaychainDataProvider<Runtime>;
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
+	type NominationsProvider = NomineesElection;
+}
+
+parameter_types! {
+	pub MinBondAmount: Balance = 1_000 * dollar(LDOT);
+	pub ValidatorInsuranceThreshold: Balance = 10_000 * dollar(LDOT);
+}
+
+impl module_homa_validator_list::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RelayChainAccountId = AccountId;
+	type LiquidTokenCurrency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
+	type MinBondAmount = MinBondAmount;
+	type BondingDuration = BondingDuration;
+	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type LiquidStakingExchangeRateProvider = Homa;
+	type CurrentEra = Homa;
+	type WeightInfo = weights::module_homa_validator_list::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	pub MinNomineesElectionBondThreshold: Balance = 10 * dollar(LDOT);
+	pub const MaxNominateesCount: u32 = 16;
+}
+
+impl module_nominees_election::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
+	type NomineeId = AccountId;
+	type PalletId = NomineesElectionId;
+	type MinBond = MinNomineesElectionBondThreshold;
+	type BondingDuration = BondingDuration;
+	type MaxNominateesCount = MaxNominateesCount;
+	type MaxUnbondingChunks = ConstU32<7>;
+	type NomineeFilter = HomaValidatorList;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type OnBonded = module_incentives::OnNomineesElectionBonded<Runtime>;
+	type OnUnbonded = module_incentives::OnNomineesElectionUnbonded<Runtime>;
+	type CurrentEra = Homa;
+	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1469,23 +1514,6 @@ impl module_xcm_interface::Config for Runtime {
 	type XcmTransfer = XTokens;
 	type SelfLocation = xcm_config::SelfLocation;
 	type AccountIdToLocation = xcm_config::AccountIdToLocation;
-}
-
-parameter_types! {
-	pub MinCouncilBondThreshold: Balance = dollar(LDOT);
-}
-
-impl module_nominees_election::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
-	type NomineeId = AccountId;
-	type PalletId = NomineesElectionId;
-	type MinBond = MinCouncilBondThreshold;
-	type BondingDuration = ConstU32<28>;
-	type NominateesCount = ConstU32<7>;
-	type MaxUnbondingChunks = ConstU32<7>;
-	type NomineeFilter = runtime_common::DummyNomineeFilter;
-	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1891,7 +1919,11 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 				valid_until,
 			}) => {
 				if System::block_number() > valid_until {
-					return Err(InvalidTransaction::Stale);
+					if cfg!(feature = "tracing") {
+						// skip check when enable tracing feature
+					} else {
+						return Err(InvalidTransaction::Stale);
+					}
 				}
 
 				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
@@ -1936,7 +1968,11 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 					decode_gas_price(gas_price, gas_limit, TxFeePerGasV2::get()).ok_or(InvalidTransaction::Stale)?;
 
 				if System::block_number() > valid_until {
-					return Err(InvalidTransaction::Stale);
+					if cfg!(feature = "tracing") {
+						// skip check when enable tracing feature
+					} else {
+						return Err(InvalidTransaction::Stale);
+					}
 				}
 
 				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
@@ -2097,6 +2133,7 @@ construct_runtime!(
 		NomineesElection: module_nominees_election = 131,
 		Homa: module_homa = 136,
 		XcmInterface: module_xcm_interface = 137,
+		HomaValidatorList: module_homa_validator_list = 138,
 
 		// Acala Other
 		Incentives: module_incentives = 140,
@@ -2161,6 +2198,7 @@ mod benches {
 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
 		[module_evm, benchmarking::evm]
 		[module_homa, benchmarking::homa]
+		[module_homa_validator_list, benchmarking::homa_validator_list]
 		[module_honzon, benchmarking::honzon]
 		[module_cdp_treasury, benchmarking::cdp_treasury]
 		[module_collator_selection, benchmarking::collator_selection]
@@ -2182,6 +2220,10 @@ mod benches {
 		[module_idle_scheduler, benchmarking::idle_scheduler]
 		[module_aggregated_dex, benchmarking::aggregated_dex]
 	);
+	// frame_benchmarking::define_benchmarks!(
+	// 	// XCM
+	// 	[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>]
+	// );
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]
@@ -2517,6 +2559,7 @@ impl_runtime_apis! {
 			use frame_support::traits::StorageInfoTrait;
 
 			use module_nft::benchmarking::Pallet as NftBench;
+			// use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -2531,9 +2574,86 @@ impl_runtime_apis! {
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark as frame_add_benchmark};
+			use frame_benchmarking::{Benchmarking, BenchmarkBatch, BenchmarkError, add_benchmark as frame_add_benchmark};
 			use module_nft::benchmarking::Pallet as NftBench;
 			use frame_support::traits::{WhitelistedStorageKeys, TrackedStorageKey};
+
+			// const UNITS: Balance = 1_000_000_000_000;
+			// const CENTS: Balance = UNITS / 100;
+
+			// parameter_types! {
+			// 	pub FeeAssetId: AssetId = AssetId(Location::parent());
+			// 	pub const BaseDeliveryFee: u128 = CENTS.saturating_mul(3);
+			// }
+			// pub type PriceForParentDelivery = polkadot_runtime_common::xcm_sender::ExponentialPrice<
+			// 	FeeAssetId,
+			// 	BaseDeliveryFee,
+			// 	TransactionByteFee,
+			// 	ParachainSystem,
+			// >;
+
+			// use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
+			// impl pallet_xcm::benchmarking::Config for Runtime {
+			// 	type DeliveryHelper = cumulus_primitives_utility::ToParentDeliveryHelper<
+			// 		xcm_config::XcmConfig,
+			// 		ExistentialDepositAsset,
+			// 		PriceForParentDelivery,
+			// 	>;
+			// 	fn reachable_dest() -> Option<Location> {
+			// 		Some(Parent.into())
+			// 	}
+
+			// 	fn teleportable_asset_and_dest() -> Option<(Asset, Location)> {
+			// 		Some((
+			// 			Asset {
+			// 				fun: Fungible(NativeTokenExistentialDeposit::get()),
+			// 				id: AssetId(Parent.into())
+			// 			},
+			// 			Parent.into(),
+			// 		))
+			// 	}
+
+			// 	fn reserve_transferable_asset_and_dest() -> Option<(Asset, Location)> {
+			// 		None
+			// 	}
+
+			// 	fn get_asset() -> Asset {
+			// 		Asset {
+			// 			id: AssetId(Location::parent()),
+			// 			fun: Fungible(UNITS),
+			// 		}
+			// 	}
+			// }
+
+			// parameter_types! {
+			// 	pub ExistentialDepositAsset: Option<Asset> = Some((
+			// 		Location::parent(),
+			// 		NativeTokenExistentialDeposit::get()
+			// 	).into());
+			// }
+
+			// impl pallet_xcm_benchmarks::Config for Runtime {
+			// 	type XcmConfig = xcm_config::XcmConfig;
+			// 	type AccountIdConverter = xcm_config::LocationToAccountId;
+			// 	type DeliveryHelper = cumulus_primitives_utility::ToParentDeliveryHelper<
+			// 		xcm_config::XcmConfig,
+			// 		ExistentialDepositAsset,
+			// 		PriceForParentDelivery,
+			// 	>;
+			// 	fn valid_destination() -> Result<Location, BenchmarkError> {
+			// 		Ok(Location::parent())
+			// 	}
+			// 	fn worst_case_holding(_depositable_count: u32) -> Assets {
+			// 		// just concrete assets according to relay chain.
+			// 		let assets: Vec<Asset> = vec![
+			// 			Asset {
+			// 				id: AssetId(Location::parent()),
+			// 				fun: Fungible(1_000_000 * UNITS),
+			// 			}
+			// 		];
+			// 		assets.into()
+			// 	}
+			// }
 
 			let mut whitelist: Vec<TrackedStorageKey> = AllPalletsWithSystem::whitelisted_storage_keys();
 

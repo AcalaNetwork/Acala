@@ -84,7 +84,6 @@ fn guarantee_work() {
 #[test]
 fn freeze_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
 		assert_noop!(
 			HomaValidatorListModule::freeze(
 				RuntimeOrigin::signed(ALICE),
@@ -109,7 +108,7 @@ fn freeze_work() {
 				.is_frozen,
 		);
 		assert_ok!(HomaValidatorListModule::freeze(
-			RuntimeOrigin::signed(10),
+			RuntimeOrigin::root(),
 			vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_3]
 		));
 		assert!(
@@ -143,7 +142,6 @@ fn freeze_work() {
 #[test]
 fn thaw_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
 		assert_noop!(
 			HomaValidatorListModule::thaw(
 				RuntimeOrigin::signed(ALICE),
@@ -153,7 +151,7 @@ fn thaw_work() {
 		);
 
 		assert_ok!(HomaValidatorListModule::freeze(
-			RuntimeOrigin::signed(10),
+			RuntimeOrigin::root(),
 			vec![VALIDATOR_1, VALIDATOR_2]
 		));
 		assert!(
@@ -172,7 +170,7 @@ fn thaw_work() {
 				.is_frozen
 		);
 		assert_ok!(HomaValidatorListModule::thaw(
-			RuntimeOrigin::signed(10),
+			RuntimeOrigin::root(),
 			vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_3]
 		));
 		assert!(
@@ -202,8 +200,6 @@ fn thaw_work() {
 #[test]
 fn bond_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-
 		assert_noop!(
 			HomaValidatorListModule::bond(RuntimeOrigin::signed(ALICE), VALIDATOR_1, 99),
 			Error::<Runtime>::BelowMinBondAmount
@@ -227,7 +223,6 @@ fn bond_work() {
 				.total_insurance,
 			0
 		);
-		assert_eq!(SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)), 0);
 
 		assert_ok!(HomaValidatorListModule::bond(
 			RuntimeOrigin::signed(ALICE),
@@ -260,10 +255,6 @@ fn bond_work() {
 				.total_insurance,
 			100
 		);
-		assert_eq!(
-			SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)),
-			100
-		);
 
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, BOB).unwrap_or_default(),
@@ -284,7 +275,6 @@ fn bond_work() {
 				.total_insurance,
 			100
 		);
-		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_1)).unwrap_or(&0)), 0);
 
 		assert_ok!(HomaValidatorListModule::bond(
 			RuntimeOrigin::signed(BOB),
@@ -317,7 +307,6 @@ fn bond_work() {
 				.total_insurance,
 			400
 		);
-		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_1)).unwrap_or(&0)), 300);
 
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_2, BOB).unwrap_or_default(),
@@ -338,7 +327,6 @@ fn bond_work() {
 				.total_insurance,
 			0
 		);
-		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_2)).unwrap_or(&0)), 0);
 
 		assert_ok!(HomaValidatorListModule::bond(
 			RuntimeOrigin::signed(BOB),
@@ -371,15 +359,13 @@ fn bond_work() {
 				.total_insurance,
 			200
 		);
-		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_2)).unwrap_or(&0)), 200);
 	});
 }
 
 #[test]
 fn unbond_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		MockBlockNumberProvider::set(1);
+		MockCurrentEra::set(1);
 
 		assert_ok!(HomaValidatorListModule::bond(
 			RuntimeOrigin::signed(ALICE),
@@ -405,10 +391,6 @@ fn unbond_work() {
 				.total_insurance,
 			200
 		);
-		assert_eq!(
-			SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)),
-			200
-		);
 
 		assert_noop!(
 			HomaValidatorListModule::unbond(RuntimeOrigin::signed(ALICE), VALIDATOR_1, 199),
@@ -432,7 +414,7 @@ fn unbond_work() {
 			Guarantee {
 				total: 200,
 				bonded: 100,
-				unbonding: Some((100, 101))
+				unbonding: Some((100, 29))
 			}
 		);
 		assert_eq!(OrmlTokens::accounts(ALICE, LDOT).frozen, 200);
@@ -444,10 +426,6 @@ fn unbond_work() {
 			HomaValidatorListModule::validator_backings(VALIDATOR_1)
 				.unwrap_or_default()
 				.total_insurance,
-			200
-		);
-		assert_eq!(
-			SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)),
 			200
 		);
 
@@ -461,8 +439,7 @@ fn unbond_work() {
 #[test]
 fn rebond_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		MockBlockNumberProvider::set(1);
+		MockCurrentEra::set(1);
 
 		assert_ok!(HomaValidatorListModule::bond(
 			RuntimeOrigin::signed(ALICE),
@@ -480,7 +457,7 @@ fn rebond_work() {
 			Guarantee {
 				total: 200,
 				bonded: 100,
-				unbonding: Some((100, 101))
+				unbonding: Some((100, 29))
 			}
 		);
 		assert_eq!(OrmlTokens::accounts(ALICE, LDOT).frozen, 200);
@@ -492,10 +469,6 @@ fn rebond_work() {
 			HomaValidatorListModule::validator_backings(VALIDATOR_1)
 				.unwrap_or_default()
 				.total_insurance,
-			200
-		);
-		assert_eq!(
-			SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)),
 			200
 		);
 
@@ -509,7 +482,7 @@ fn rebond_work() {
 			Guarantee {
 				total: 200,
 				bonded: 150,
-				unbonding: Some((50, 101))
+				unbonding: Some((50, 29))
 			}
 		);
 		assert_eq!(OrmlTokens::accounts(ALICE, LDOT).frozen, 200);
@@ -523,18 +496,13 @@ fn rebond_work() {
 				.total_insurance,
 			200
 		);
-		assert_eq!(
-			SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)),
-			200
-		);
 	});
 }
 
 #[test]
 fn withdraw_unbonded_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		MockBlockNumberProvider::set(1);
+		MockCurrentEra::set(1);
 
 		assert_ok!(HomaValidatorListModule::bond(
 			RuntimeOrigin::signed(ALICE),
@@ -562,7 +530,7 @@ fn withdraw_unbonded_work() {
 			Guarantee {
 				total: 200,
 				bonded: 100,
-				unbonding: Some((100, 101))
+				unbonding: Some((100, 29))
 			}
 		);
 		assert_eq!(OrmlTokens::accounts(ALICE, LDOT).frozen, 200);
@@ -576,12 +544,8 @@ fn withdraw_unbonded_work() {
 				.total_insurance,
 			400
 		);
-		assert_eq!(
-			SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)),
-			200
-		);
 
-		MockBlockNumberProvider::set(100);
+		MockCurrentEra::set(28);
 		assert_ok!(HomaValidatorListModule::withdraw_unbonded(
 			RuntimeOrigin::signed(ALICE),
 			VALIDATOR_1
@@ -591,7 +555,7 @@ fn withdraw_unbonded_work() {
 			Guarantee {
 				total: 200,
 				bonded: 100,
-				unbonding: Some((100, 101))
+				unbonding: Some((100, 29))
 			}
 		);
 		assert_eq!(OrmlTokens::accounts(ALICE, LDOT).frozen, 200);
@@ -605,12 +569,8 @@ fn withdraw_unbonded_work() {
 				.total_insurance,
 			400
 		);
-		assert_eq!(
-			SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)),
-			200
-		);
 		System::reset_events();
-		MockBlockNumberProvider::set(101);
+		MockCurrentEra::set(29);
 		assert_ok!(HomaValidatorListModule::withdraw_unbonded(
 			RuntimeOrigin::signed(ALICE),
 			VALIDATOR_1
@@ -641,13 +601,9 @@ fn withdraw_unbonded_work() {
 				.total_insurance,
 			300
 		);
-		assert_eq!(
-			SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)),
-			100
-		);
 
 		assert_ok!(HomaValidatorListModule::freeze(
-			RuntimeOrigin::signed(10),
+			RuntimeOrigin::root(),
 			vec![VALIDATOR_1]
 		));
 		assert_noop!(
@@ -660,8 +616,6 @@ fn withdraw_unbonded_work() {
 #[test]
 fn slash_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-
 		assert_ok!(HomaValidatorListModule::bond(
 			RuntimeOrigin::signed(ALICE),
 			VALIDATOR_1,
@@ -700,10 +654,6 @@ fn slash_work() {
 				unbonding: None
 			}
 		);
-		assert_eq!(
-			SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)),
-			100
-		);
 		assert_eq!(OrmlTokens::accounts(ALICE, LDOT).frozen, 100);
 		assert_eq!(
 			HomaValidatorListModule::total_locked_by_guarantor(ALICE).unwrap_or_default(),
@@ -719,7 +669,6 @@ fn slash_work() {
 				unbonding: None
 			}
 		);
-		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_1)).unwrap_or(&0)), 200);
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_2, BOB).unwrap_or_default(),
 			Guarantee {
@@ -728,7 +677,6 @@ fn slash_work() {
 				unbonding: None
 			}
 		);
-		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_2)).unwrap_or(&0)), 300);
 		assert_eq!(OrmlTokens::accounts(BOB, LDOT).frozen, 500);
 		assert_eq!(
 			HomaValidatorListModule::total_locked_by_guarantor(BOB).unwrap_or_default(),
@@ -753,7 +701,7 @@ fn slash_work() {
 		);
 
 		assert_ok!(HomaValidatorListModule::slash(
-			RuntimeOrigin::signed(10),
+			RuntimeOrigin::root(),
 			vec![
 				SlashInfo {
 					validator: VALIDATOR_1,
@@ -808,10 +756,6 @@ fn slash_work() {
 				unbonding: None
 			}
 		);
-		assert_eq!(
-			SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)),
-			41
-		);
 		assert_eq!(OrmlTokens::accounts(ALICE, LDOT).frozen, 41);
 		assert_eq!(
 			HomaValidatorListModule::total_locked_by_guarantor(ALICE).unwrap_or_default(),
@@ -827,7 +771,6 @@ fn slash_work() {
 				unbonding: None
 			}
 		);
-		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_1)).unwrap_or(&0)), 81);
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_2, BOB).unwrap_or_default(),
 			Guarantee {
@@ -836,44 +779,10 @@ fn slash_work() {
 				unbonding: None
 			}
 		);
-		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_2)).unwrap_or(&0)), 200);
 		assert_eq!(OrmlTokens::accounts(BOB, LDOT).frozen, 281);
 		assert_eq!(
 			HomaValidatorListModule::total_locked_by_guarantor(BOB).unwrap_or_default(),
 			281
 		);
-	});
-}
-
-#[test]
-fn contains_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		MockBlockNumberProvider::set(1);
-
-		assert_ok!(HomaValidatorListModule::bond(
-			RuntimeOrigin::signed(ALICE),
-			VALIDATOR_1,
-			100
-		));
-		assert_eq!(
-			HomaValidatorListModule::validator_backings(VALIDATOR_1)
-				.unwrap_or_default()
-				.total_insurance,
-			100
-		);
-		assert!(!HomaValidatorListModule::contains(&VALIDATOR_1));
-
-		assert_ok!(HomaValidatorListModule::bond(
-			RuntimeOrigin::signed(ALICE),
-			VALIDATOR_1,
-			100
-		));
-		assert_eq!(
-			HomaValidatorListModule::validator_backings(VALIDATOR_1)
-				.unwrap_or_default()
-				.total_insurance,
-			200
-		);
-		assert!(HomaValidatorListModule::contains(&VALIDATOR_1));
 	});
 }
