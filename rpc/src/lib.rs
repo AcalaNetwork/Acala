@@ -69,18 +69,18 @@ where
 		command_sink,
 	} = deps;
 
-	module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
-	module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
+	// module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
+	// module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 
-	module.merge(Dev::new(client, deny_unsafe).into_rpc())?;
+	// module.merge(Dev::new(client, deny_unsafe).into_rpc())?;
 
-	if let Some(command_sink) = command_sink {
-		module.merge(
-			// We provide the rpc handler with the sending end of the channel to allow the rpc
-			// send EngineCommands to the background block authorship task.
-			ManualSeal::new(command_sink).into_rpc(),
-		)?;
-	}
+	// if let Some(command_sink) = command_sink {
+	// 	module.merge(
+	// 		// We provide the rpc handler with the sending end of the channel to allow the rpc
+	// 		// send EngineCommands to the background block authorship task.
+	// 		ManualSeal::new(command_sink).into_rpc(),
+	// 	)?;
+	// }
 
 	Ok(module)
 }

@@ -1815,6 +1815,7 @@ fn fungible_mutate_trait_should_work() {
 				NATIVE_CURRENCY_ID,
 				&alice(),
 				1000,
+				Preservation::Expendable,
 				Precision::Exact,
 				Fortitude::Force,
 			));
@@ -1843,6 +1844,7 @@ fn fungible_mutate_trait_should_work() {
 				X_TOKEN_ID,
 				&alice(),
 				1000,
+				Preservation::Expendable,
 				Precision::Exact,
 				Fortitude::Force,
 			));
@@ -1864,6 +1866,7 @@ fn fungible_mutate_trait_should_work() {
 				CurrencyId::Erc20(erc20_address()),
 				&alice(),
 				0,
+				Preservation::Expendable,
 				Precision::Exact,
 				Fortitude::Force,
 			));
@@ -1873,6 +1876,7 @@ fn fungible_mutate_trait_should_work() {
 					CurrencyId::Erc20(erc20_address()),
 					&alice(),
 					1,
+					Preservation::Expendable,
 					Precision::Exact,
 					Fortitude::Force,
 				),
@@ -1887,6 +1891,7 @@ fn fungible_mutate_trait_should_work() {
 			assert_ok!(<AdaptedBasicCurrency as fungible::Mutate<_>>::burn_from(
 				&alice(),
 				1000,
+				Preservation::Expendable,
 				Precision::Exact,
 				Fortitude::Force,
 			));
@@ -1902,6 +1907,7 @@ fn fungible_mutate_trait_should_work() {
 					NATIVE_CURRENCY_ID,
 					&alice(),
 					99_999,
+					Preservation::Expendable,
 					Precision::Exact,
 					Fortitude::Force,
 				),

@@ -143,6 +143,10 @@ impl xcm_executor::Config for XcmConfig {
 	type SafeCallFilter = Everything;
 	type Aliasers = Nothing;
 	type TransactionalProcessor = FrameTransactionalProcessor;
+	type HrmpNewChannelOpenRequestHandler = ();
+	type HrmpChannelAcceptedHandler = ();
+	type HrmpChannelClosingHandler = ();
+	type XcmRecorder = ();
 }
 
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
@@ -209,10 +213,15 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ControllerOriginConverter = XcmOriginToCallOrigin;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
 	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
+	type MaxActiveOutboundChannels = ConstU32<128>;
+	// Most on-chain HRMP channels are configured to use 102400 bytes of max message size, so we
+	// need to set the page size larger than that until we reduce the channel size on-chain.
+	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
 }
 
 parameter_types! {
 	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
+	pub MessageQueueIdleServiceWeight: Weight = Perbill::from_percent(40) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_message_queue::Config for Runtime {
@@ -229,6 +238,7 @@ impl pallet_message_queue::Config for Runtime {
 	type HeapSize = sp_core::ConstU32<{ 64 * 1024 }>;
 	type MaxStale = sp_core::ConstU32<8>;
 	type ServiceWeight = MessageQueueServiceWeight;
+	type IdleMaxServiceWeight = MessageQueueIdleServiceWeight;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
