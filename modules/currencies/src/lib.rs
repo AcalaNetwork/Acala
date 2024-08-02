@@ -940,15 +940,23 @@ impl<T: Config> fungibles::Mutate<T::AccountId> for Pallet<T> {
 		asset_id: Self::AssetId,
 		who: &T::AccountId,
 		amount: Self::Balance,
+		preservation: Preservation,
 		precision: Precision,
 		fortitude: Fortitude,
 	) -> Result<Self::Balance, DispatchError> {
 		match asset_id {
 			CurrencyId::Erc20(_) => <Self as MultiCurrency<_>>::withdraw(asset_id, who, amount).map(|_| amount),
 			id if id == T::GetNativeCurrencyId::get() => {
-				<T::NativeCurrency as fungible::Mutate<_>>::burn_from(who, amount, precision, fortitude)
+				<T::NativeCurrency as fungible::Mutate<_>>::burn_from(who, amount, preservation, precision, fortitude)
 			}
-			_ => <T::MultiCurrency as fungibles::Mutate<_>>::burn_from(asset_id, who, amount, precision, fortitude),
+			_ => <T::MultiCurrency as fungibles::Mutate<_>>::burn_from(
+				asset_id,
+				who,
+				amount,
+				preservation,
+				precision,
+				fortitude,
+			),
 		}
 	}
 
@@ -1353,10 +1361,18 @@ where
 	fn burn_from(
 		who: &T::AccountId,
 		amount: Self::Balance,
+		preservation: Preservation,
 		precision: Precision,
 		fortitude: Fortitude,
 	) -> Result<Self::Balance, DispatchError> {
-		<Pallet<T> as fungibles::Mutate<_>>::burn_from(GetCurrencyId::get(), who, amount, precision, fortitude)
+		<Pallet<T> as fungibles::Mutate<_>>::burn_from(
+			GetCurrencyId::get(),
+			who,
+			amount,
+			preservation,
+			precision,
+			fortitude,
+		)
 	}
 
 	fn transfer(
@@ -1676,10 +1692,11 @@ where
 	fn burn_from(
 		who: &T::AccountId,
 		amount: Self::Balance,
+		preservation: Preservation,
 		precision: Precision,
 		fortitude: Fortitude,
 	) -> Result<Self::Balance, DispatchError> {
-		<Currency as fungible::Mutate<_>>::burn_from(who, amount, precision, fortitude)
+		<Currency as fungible::Mutate<_>>::burn_from(who, amount, preservation, precision, fortitude)
 	}
 
 	fn transfer(
