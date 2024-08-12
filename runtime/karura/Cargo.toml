@@ -423,4 +423,9 @@ no-metadata-docs = ["frame-support/no-metadata-docs"]
 # more types in the metadata.
 full-metadata-docs = ["frame-support/full-metadata-docs"]
 
-tracing = ["module-evm/tracing", "module-evm-rpc-runtime-api/tracing", "runtime-common/tracing"]
+tracing = [
+	"module-evm/tracing",
+	"module-evm-bridge/tracing",
+	"module-evm-rpc-runtime-api/tracing",
+	"runtime-common/tracing"
+]
