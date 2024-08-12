@@ -317,7 +317,7 @@ impl pallet_session::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CollatorKickThreshold: Permill = Permill::from_percent(60);
+	pub const CollatorKickThreshold: Permill = Permill::from_percent(75);
 }
 
 impl module_collator_selection::Config for Runtime {
