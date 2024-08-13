@@ -183,3 +183,4 @@ wasm-bench = [
 runtime-benchmarks = [
 	"orml-oracle/runtime-benchmarks"
 ]
+tracing = []

@@ -324,7 +324,7 @@ impl pallet_session::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CollatorKickThreshold: Permill = Permill::from_percent(65);
+	pub const CollatorKickThreshold: Permill = Permill::from_percent(75);
 }
 
 impl module_collator_selection::Config for Runtime {
@@ -2561,7 +2561,11 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 				valid_until,
 			}) => {
 				if System::block_number() > valid_until {
-					return Err(InvalidTransaction::Stale);
+					if cfg!(feature = "tracing") {
+						// skip check when enable tracing feature
+					} else {
+						return Err(InvalidTransaction::Stale);
+					}
 				}
 
 				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
@@ -2606,7 +2610,11 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 					decode_gas_price(gas_price, gas_limit, TxFeePerGasV2::get()).ok_or(InvalidTransaction::Stale)?;
 
 				if System::block_number() > valid_until {
-					return Err(InvalidTransaction::Stale);
+					if cfg!(feature = "tracing") {
+						// skip check when enable tracing feature
+					} else {
+						return Err(InvalidTransaction::Stale);
+					}
 				}
 
 				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
