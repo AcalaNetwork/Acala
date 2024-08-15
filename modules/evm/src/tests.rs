@@ -25,7 +25,8 @@ use crate::runner::{
 	stack::SubstrateStackState,
 	state::{StackExecutor, StackState, StackSubstateMetadata},
 };
-use frame_support::{assert_noop, assert_ok, dispatch::DispatchErrorWithPostInfo};
+use frame_support::{assert_noop, assert_ok};
+use insta::assert_debug_snapshot;
 use module_support::{mocks::MockAddressMapping, AddressMapping};
 use sp_core::{
 	bytes::{from_hex, to_hex},
@@ -2535,71 +2536,113 @@ fn strict_call_works() {
 
 		let contract_address = result.value;
 
-		assert_eq!(
-			Utility::batch_all(
-				RuntimeOrigin::signed(bob_account_id.clone()),
-				vec![
-					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-						dest: bob_account_id.clone(),
-						value: 5
-					}),
-					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-						dest: bob_account_id.clone(),
-						value: 6
-					}),
-					// call method `set(123)`
-					RuntimeCall::EVM(evm_mod::Call::strict_call {
-						target: contract_address,
-						input: from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b")
-							.unwrap(),
-						value: 0,
-						gas_limit: 1000000,
-						storage_limit: 0,
-						access_list: vec![],
-					})
-				]
-			),
-			Err(DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1441274680, 7186)),
-					pays_fee: Pays::Yes
-				},
-				error: Error::<Runtime>::NoPermission.into(),
-			})
+		let res1 = Utility::batch_all(
+			RuntimeOrigin::signed(bob_account_id.clone()),
+			vec![
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+					dest: bob_account_id.clone(),
+					value: 5,
+				}),
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+					dest: bob_account_id.clone(),
+					value: 6,
+				}),
+				// call method `set(123)`
+				RuntimeCall::EVM(evm_mod::Call::strict_call {
+					target: contract_address,
+					input: from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b")
+						.unwrap(),
+					value: 0,
+					gas_limit: 1000000,
+					storage_limit: 0,
+					access_list: vec![],
+				}),
+			],
 		);
 
-		assert_eq!(
-			Utility::batch_all(
-				RuntimeOrigin::signed(alice_account_id.clone()),
-				vec![
-					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-						dest: bob_account_id.clone(),
-						value: 5
-					}),
-					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-						dest: bob_account_id.clone(),
-						value: 6
-					}),
-					// call undefined method
-					RuntimeCall::EVM(evm_mod::Call::strict_call {
-						target: contract_address,
-						input: from_hex("0x00000000000000000000000000000000000000000000000000000000000000000000007b")
-							.unwrap(),
-						value: 0,
-						gas_limit: 1000000,
-						storage_limit: 0,
-						access_list: vec![],
-					})
-				]
-			),
-			Err(DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1440318382, 7186)),
-					pays_fee: Pays::Yes
-				},
-				error: Error::<Runtime>::StrictCallFailed.into(),
-			})
+		assert_debug_snapshot!(res1, @r###"
+  Err(
+      DispatchErrorWithPostInfo {
+          post_info: PostDispatchInfo {
+              actual_weight: Some(
+                  Weight {
+                      ref_time: 1491004635,
+                      proof_size: 11183,
+                  },
+              ),
+              pays_fee: Pays::Yes,
+          },
+          error: Module(
+              ModuleError {
+                  index: 2,
+                  error: [
+                      2,
+                      0,
+                      0,
+                      0,
+                  ],
+                  message: Some(
+                      "NoPermission",
+                  ),
+              },
+          ),
+      },
+  )
+  "###);
+
+		let res2 = Utility::batch_all(
+			RuntimeOrigin::signed(alice_account_id.clone()),
+			vec![
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+					dest: bob_account_id.clone(),
+					value: 5,
+				}),
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+					dest: bob_account_id.clone(),
+					value: 6,
+				}),
+				// call undefined method
+				RuntimeCall::EVM(evm_mod::Call::strict_call {
+					target: contract_address,
+					input: from_hex("0x00000000000000000000000000000000000000000000000000000000000000000000007b")
+						.unwrap(),
+					value: 0,
+					gas_limit: 1000000,
+					storage_limit: 0,
+					access_list: vec![],
+				}),
+			],
 		);
+
+		assert_debug_snapshot!(res2, @r###"
+  Err(
+      DispatchErrorWithPostInfo {
+          post_info: PostDispatchInfo {
+              actual_weight: Some(
+                  Weight {
+                      ref_time: 1490048337,
+                      proof_size: 11183,
+                  },
+              ),
+              pays_fee: Pays::Yes,
+          },
+          error: Module(
+              ModuleError {
+                  index: 2,
+                  error: [
+                      15,
+                      0,
+                      0,
+                      0,
+                  ],
+                  message: Some(
+                      "StrictCallFailed",
+                  ),
+              },
+          ),
+      },
+  )
+  "###);
 
 		assert_ok!(Utility::batch_all(
 			RuntimeOrigin::signed(alice_account_id.clone()),

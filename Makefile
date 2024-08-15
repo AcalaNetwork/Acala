@@ -103,6 +103,10 @@ try-runtime-acala:
 test: githooks
 	SKIP_WASM_BUILD= ${cargo_test} --features with-mandala-runtime --all
 
+.PHONY: insta-test
+insta-test: githooks
+	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-mandala-runtime --all --accept --lib --tests
+
 .PHONY: test-eth
 test-eth: githooks test-evm
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
@@ -244,3 +248,9 @@ clippy-fix:
 bench-evm:
 	cargo bench -p runtime-common --features wasm-bench -- json | weight-gen --template ./templates/precompile-weight-template.hbs --output runtime/common/src/precompile/weights.rs
 	cargo bench -p module-evm --features wasm-bench -- json | evm-bench/analyze_benches.js runtime/common/src/gas_to_weight_ratio.rs
+
+.PHONY: tools
+tools:
+	cargo install staging-chain-spec-builder
+	cargo install frame-omni-bencher
+	cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.7.0

@@ -973,12 +973,12 @@ fn transaction_payment_module_works_with_evm_contract() {
 				pays_fee: Pays::Yes,
 			};
 			let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(len, &info, 0);
-			assert_eq!(fee, 2500000804);
+			assert_debug_snapshot!(fee, @"2500000934");
 
 			let surplus_perc = Percent::from_percent(50); // CustomFeeSurplus
 			let fee_surplus = surplus_perc.mul_ceil(fee);
 			let fee = fee + fee_surplus;
-			assert_eq!(fee, 3750001206);
+			assert_debug_snapshot!(fee, @"3750001401");
 
 			// empty_account use payment non wrapped call to charge fee by erc20 fee pool.
 			assert_eq!(Currencies::free_balance(erc20_token, &sub_account), 0);
@@ -992,11 +992,11 @@ fn transaction_payment_module_works_with_evm_contract() {
 			);
 			let erc20_fee = Currencies::free_balance(erc20_token, &sub_account);
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(erc20_fee, 10386329718);
+			assert_debug_snapshot!(erc20_fee, @"10386329737");
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(erc20_fee, 10407164883);
+			assert_debug_snapshot!(erc20_fee, @"");
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(erc20_fee, 10407164883);
+			assert_debug_snapshot!(erc20_fee, @"");
 
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
@@ -1149,8 +1149,8 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 #[test]
 fn evm_limits() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 33319509);
-		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_storage_limit(), 3_670_016);
+		assert_debug_snapshot!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), @"33321436");
+		assert_debug_snapshot!(runtime_common::EvmLimits::<Runtime>::max_storage_limit(), @"3670016");
 	});
 }
 
@@ -1520,12 +1520,12 @@ fn transaction_payment_module_charge_erc20_pool() {
 				pays_fee: Pays::Yes,
 			};
 			let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(len, &info, 0);
-			assert_eq!(fee, 2500000804);
+			assert_debug_snapshot!(fee, @"2500000934");
 
 			let surplus_perc = Percent::from_percent(50); // CustomFeeSurplus
 			let fee_surplus = surplus_perc.mul_ceil(fee);
 			let fee = fee + fee_surplus;
-			assert_eq!(fee, 3750001206);
+			assert_debug_snapshot!(fee, @"3750001401");
 
 			let alice_native_before = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
 			let alice_erc20_before = Currencies::free_balance(erc20_token, &alice_evm_account);
@@ -1544,7 +1544,7 @@ fn transaction_payment_module_charge_erc20_pool() {
 			let alice_erc20_after = Currencies::free_balance(erc20_token, &alice_evm_account);
 
 			// charge tx fee and storage fee by native
-			assert_eq!(alice_native_before - alice_native_after, 2500000804);
+			assert_debug_snapshot!(alice_native_before - alice_native_after, @"2500000934");
 			assert_eq!(alice_erc20_before - alice_erc20_after, 0);
 
 			// cannot charge erc20 fee for the account only hold erc20

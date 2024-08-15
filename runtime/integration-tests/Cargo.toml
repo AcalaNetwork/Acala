@@ -115,6 +115,7 @@ karura-runtime = { workspace = true, features = ["std"], optional = true }
 acala-runtime = { workspace = true, features = ["std"], optional = true }
 
 [dev-dependencies]
+insta = { version = "1.31.0" }
 env_logger = { workspace = true }
 log = { workspace = true }
 sp-io = { workspace = true, features = ["std"] }

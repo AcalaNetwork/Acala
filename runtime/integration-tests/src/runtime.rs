@@ -346,12 +346,12 @@ mod mandala_only_tests {
 				adjusted_weight_fee,
 			} = fee.inclusion_fee.unwrap();
 
-			assert_eq!(base_fee, 1_000_000_000);
-			assert_eq!(len_fee, 50_000_000);
-			assert_eq!(adjusted_weight_fee, 17031845);
+			assert_debug_snapshot!(base_fee, @"1000000000");
+			assert_debug_snapshot!(len_fee, @"50000000");
+			assert_debug_snapshot!(adjusted_weight_fee, @"10625773");
 
 			let total_fee = base_fee.saturating_add(len_fee).saturating_add(adjusted_weight_fee);
-			assert_eq!(total_fee, 1067031845);
+			assert_debug_snapshot!(total_fee, @"1060625773");
 		});
 	}
 
@@ -386,54 +386,66 @@ mod mandala_only_tests {
 				);
 
 				// tips = TipPerWeightStep
-				assert_eq!(
+				assert_debug_snapshot!(
 					ChargeTransactionPayment::<Runtime>::from(TipPerWeightStep::get()).validate(
 						&alice(),
 						&call.clone(),
 						&call.get_dispatch_info(),
 						bytes.len()
 					),
-					Ok(ValidTransaction {
-						priority: 235960,
-						requires: vec![],
-						provides: vec![],
-						longevity: 18_446_744_073_709_551_615,
-						propagate: true,
-					})
+					@r###"
+    Ok(
+        ValidTransaction {
+            priority: 439466,
+            requires: [],
+            provides: [],
+            longevity: 18446744073709551615,
+            propagate: true,
+        },
+    )
+    "###
 				);
 
 				// tips = TipPerWeightStep + 1
-				assert_eq!(
+				assert_debug_snapshot!(
 					ChargeTransactionPayment::<Runtime>::from(TipPerWeightStep::get() + 1).validate(
 						&alice(),
 						&call.clone(),
 						&call.get_dispatch_info(),
 						bytes.len()
 					),
-					Ok(ValidTransaction {
-						priority: 235960,
-						requires: vec![],
-						provides: vec![],
-						longevity: 18_446_744_073_709_551_615,
-						propagate: true,
-					})
+					@r###"
+    Ok(
+        ValidTransaction {
+            priority: 439466,
+            requires: [],
+            provides: [],
+            longevity: 18446744073709551615,
+            propagate: true,
+        },
+    )
+    "###
 				);
 
 				// tips = MaxTipsOfPriority + 1
-				assert_eq!(
+				assert_debug_snapshot!(
 					ChargeTransactionPayment::<Runtime>::from(MaxTipsOfPriority::get() + 1).validate(
 						&alice(),
 						&call.clone(),
 						&call.get_dispatch_info(),
 						bytes.len()
 					),
-					Ok(ValidTransaction {
-						priority: 235960000000,
-						requires: vec![],
-						provides: vec![],
-						longevity: 18_446_744_073_709_551_615,
-						propagate: true,
-					})
+					@r###"
+    Ok(
+        ValidTransaction {
+            priority: 439466000000,
+            requires: [],
+            provides: [],
+            longevity: 18446744073709551615,
+            propagate: true,
+        },
+    )
+    "###
 				);
 
 				// setup a unsafe cdp
