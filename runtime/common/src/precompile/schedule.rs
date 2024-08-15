@@ -18,6 +18,7 @@
 
 // Disable the following lints
 #![allow(clippy::type_complexity)]
+#![allow(deprecated)] // schedule::v3 is deprecated but schedule precompile is expiermental anyway
 
 use super::input::{Input, InputT, Output};
 use frame_support::{

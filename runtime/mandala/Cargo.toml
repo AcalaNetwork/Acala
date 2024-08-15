@@ -153,8 +153,6 @@ sp-keyring = { workspace = true }
 
 cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 
-acala-service = { workspace = true, features = ["std", "with-mandala-runtime"] }
-
 [features]
 default = ["std"]
 no_std = []
@@ -320,8 +318,6 @@ runtime-benchmarks = [
 	"polkadot-parachain-primitives/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
-
-	"acala-service/runtime-benchmarks",
 
 	"orml-authority/runtime-benchmarks",
 	"orml-oracle/runtime-benchmarks",
