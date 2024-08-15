@@ -55,7 +55,6 @@ pub mod transaction_payment;
 // orml benchmarking
 pub mod auction;
 pub mod authority;
-pub mod oracle;
 pub mod tokens;
 pub mod vesting;
 

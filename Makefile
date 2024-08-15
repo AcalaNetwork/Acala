@@ -46,49 +46,13 @@ build-benches:
 	cargo bench --locked --no-run --features wasm-bench --package module-evm
 	cargo bench --locked --no-run --features wasm-bench --package runtime-common
 
-.PHONY: build-release
-build-release:
-	cargo build --locked --features with-all-runtime --profile production --bin acala
-
-.PHONY: build-mandala-release
-build-mandala-release:
-	cargo build --locked --features with-mandala-runtime --profile production --bin acala
-
-.PHONY: build-karura-release
-build-karura-release:
-	cargo build --locked --features with-karura-runtime --profile production --bin acala
-
-.PHONY: build-acala-release
-build-acala-release:
-	cargo build --locked --features with-acala-runtime --profile production --bin acala
-
-.PHONY: build-mandala-internal-release
-build-mandala-internal-release:
-	cargo build --locked --features with-mandala-runtime --release --bin acala
-
-.PHONY: build-karura-internal-release
-build-karura-internal-release:
-	cargo build --locked --features with-karura-runtime --release --bin acala
-
-.PHONY: build-acala-internal-release
-build-acala-internal-release:
-	cargo build --locked --features with-acala-runtime --release --bin acala
-
 .PHONY: check
 check: githooks
-	SKIP_WASM_BUILD= cargo check --features with-mandala-runtime
-
-.PHONY: check
-check-karura: githooks
-	SKIP_WASM_BUILD= cargo check --features with-karura-runtime
-
-.PHONY: check
-check-acala: githooks
-	SKIP_WASM_BUILD= cargo check --features with-acala-runtime
+	SKIP_WASM_BUILD= cargo check
 
 .PHONY: check-tests
 check-tests: githooks
-	SKIP_WASM_BUILD= cargo check --features with-all-runtime --tests --all
+	SKIP_WASM_BUILD= cargo check --tests --all
 
 .PHONY: check-all
 check-all: check-runtimes check-benchmarks check-tests check-integration-tests

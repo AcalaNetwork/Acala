@@ -2057,7 +2057,6 @@ mod benches {
 		[orml_vesting, benchmarking::vesting]
 		[orml_auction, benchmarking::auction]
 		[orml_authority, benchmarking::authority]
-		[orml_oracle, benchmarking::oracle]
 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 		[module_idle_scheduler, benchmarking::idle_scheduler]
 		[module_aggregated_dex, benchmarking::aggregated_dex]
@@ -2066,6 +2065,7 @@ mod benches {
 	// frame_benchmarking::define_benchmarks!(
 	// 	// XCM
 	// 	[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>]
+	// // TODO: add oracle
 	// );
 }
 
