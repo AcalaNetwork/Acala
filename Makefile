@@ -39,7 +39,7 @@ build-full: githooks
 
 .PHONY: build-all
 build-all:
-	cargo build --locked --features with-all-runtime
+	cargo build --locked
 
 .PHONY: build-benches
 build-benches:
@@ -55,7 +55,7 @@ check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --tests --all
 
 .PHONY: check-all
-check-all: check-runtimes check-benchmarks check-tests check-integration-tests
+check-all: check-runtimes check-benchmarks check-tests check-integration-tests check-try-runtime
 
 .PHONY: check-runtimes
 check-runtimes:
@@ -82,7 +82,7 @@ check-debug:
 
 .PHONY: check-try-runtime
 check-try-runtime:
-	SKIP_WASM_BUILD= cargo check --features try-runtime --features with-all-runtime
+	SKIP_WASM_BUILD= cargo check --features try-runtime
 
 .PHONY: try-runtime-karura
 try-runtime-karura:
@@ -116,7 +116,7 @@ test-evm: githooks
 
 .PHONY: test-runtimes
 test-runtimes:
-	SKIP_WASM_BUILD= ${cargo_test} --all --features with-all-runtime --lib
+	SKIP_WASM_BUILD= ${cargo_test} --all --lib
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-mandala-runtime --lib
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-karura-runtime --lib
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-acala-runtime --lib
@@ -128,7 +128,7 @@ test-ts: build-mandala-internal-release
 .PHONY: test-benchmarking
 test-benchmarking:
 	SKIP_WASM_BUILD= ${cargo_test} --features wasm-bench --package module-evm --package runtime-common
-	SKIP_WASM_BUILD= ${cargo_test} --features runtime-benchmarks --features with-all-runtime --all benchmarking
+	SKIP_WASM_BUILD= ${cargo_test} --features runtime-benchmarks --all benchmarking
 
 .PHONY: test-all
 test-all: test-runtimes test-eth test-benchmarking
