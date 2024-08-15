@@ -143,6 +143,9 @@ nutsfinance-stable-asset = { workspace = true }
 libsecp256k1 = { workspace = true, optional = true }
 frame-benchmarking = { workspace = true, optional = true }
 
+# genesis builder
+sp-genesis-builder = { workspace = true, optional = true }
+
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, optional = true }
 
@@ -439,4 +442,8 @@ tracing = [
 	"module-evm-bridge/tracing",
 	"module-evm-rpc-runtime-api/tracing",
 	"runtime-common/tracing"
+]
+
+genesis-builder = [
+	"sp-genesis-builder",
 ]

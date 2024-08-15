@@ -219,6 +219,7 @@ sp-consensus-slots = { version = "0.40.0", default-features = false }
 sp-core = { version = "34.0.0", default-features = false }
 sp-debug-derive = { version = "14.0.0", default-features = false }
 sp-externalities = { version = "0.29.0", default-features = false }
+sp-genesis-builder = { version = "0.15.0", default-features = false }
 sp-inherents = { version = "34.0.0", default-features = false }
 sp-io = { version = "38.0.0", default-features = false }
 sp-keyring = { version = "39.0.0", default-features = false }
