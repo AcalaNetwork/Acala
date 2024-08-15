@@ -337,12 +337,6 @@ runtime-benchmarks = [
 
 	"sp-api/disable-logging",
 ]
-# When enabled, the runtime api will not be build.
-#
-# This is required by Cumulus to access certain types of the
-# runtime without clashing with the runtime api exported functions
-# in WASM.
-disable-runtime-api = []
 
 # A feature that should be enabled when the runtime should be build for on-chain
 # deployment. This will disable stuff that shouldn't be part of the on-chain wasm
@@ -439,9 +433,6 @@ try-runtime = [
 # By default some types have documentation, `no-metadata-docs` allows to reduce the documentation
 # in the metadata.
 no-metadata-docs = ["frame-support/no-metadata-docs"]
-# By default some types have documentation, `full-metadata-docs` allows to add documentation to
-# more types in the metadata.
-full-metadata-docs = ["frame-support/full-metadata-docs"]
 
 tracing = [
 	"module-evm/tracing",
