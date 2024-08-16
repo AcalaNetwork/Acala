@@ -80,7 +80,7 @@ fn can_process_tasks_up_to_weight_limit() {
 			Weight::from_parts(100_002_000_000, 0) + <()>::on_idle_base() + (<()>::clear_tasks() * 2),
 		);
 
-		// Due to hashing, excution is not guaranteed to be in order.
+		// Due to hashing, execution is not guaranteed to be in order.
 		assert_eq!(
 			Tasks::<Runtime>::get(0),
 			Some(ScheduledTasks::BalancesTask(BalancesTask::OnIdle))
