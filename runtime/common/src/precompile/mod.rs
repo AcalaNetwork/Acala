@@ -39,6 +39,7 @@ use sp_runtime::traits::Zero;
 use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
 pub mod dex;
+pub mod earning;
 pub mod evm;
 pub mod evm_accounts;
 pub mod homa;
@@ -55,6 +56,7 @@ pub mod xtokens;
 
 use crate::SystemContractsFilter;
 pub use dex::DEXPrecompile;
+pub use earning::EarningPrecompile;
 pub use evm::EVMPrecompile;
 pub use evm_accounts::EVMAccountsPrecompile;
 pub use homa::HomaPrecompile;
@@ -97,6 +99,7 @@ pub const HONZON: H160 = H160(hex!("0000000000000000000000000000000000000409"));
 pub const INCENTIVES: H160 = H160(hex!("000000000000000000000000000000000000040a"));
 pub const XTOKENS: H160 = H160(hex!("000000000000000000000000000000000000040b"));
 pub const LIQUID_CROWDLOAN: H160 = H160(hex!("000000000000000000000000000000000000040c"));
+pub const EARNING: H160 = H160(hex!("000000000000000000000000000000000000040d"));
 
 pub struct AllPrecompiles<R, F, E> {
 	set: BTreeSet<H160>,
@@ -138,6 +141,7 @@ where
 				INCENTIVES,
 				XTOKENS,
 				LIQUID_CROWDLOAN,
+				EARNING,
 			]),
 			_marker: Default::default(),
 		}
@@ -173,6 +177,7 @@ where
 				INCENTIVES,
 				XTOKENS,
 				// LIQUID_CROWDLOAN,
+				EARNING,
 			]),
 			_marker: Default::default(),
 		}
@@ -208,6 +213,7 @@ where
 				INCENTIVES,
 				XTOKENS,
 				// LIQUID_CROWDLOAN,
+				EARNING,
 			]),
 			_marker: Default::default(),
 		}
@@ -231,6 +237,7 @@ where
 	HonzonPrecompile<R>: Precompile,
 	IncentivesPrecompile<R>: Precompile,
 	XtokensPrecompile<R>: Precompile,
+	EarningPrecompile<R>: Precompile,
 {
 	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
 		let context = handle.context();
@@ -336,6 +343,8 @@ where
 				Some(IncentivesPrecompile::<R>::execute(handle))
 			} else if address == XTOKENS {
 				Some(XtokensPrecompile::<R>::execute(handle))
+			} else if address == EARNING {
+				Some(EarningPrecompile::<R>::execute(handle))
 			} else {
 				E::execute(&Default::default(), handle)
 			}
