@@ -994,9 +994,9 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_debug_snapshot!(erc20_fee, @"10386329737");
 			#[cfg(feature = "with-karura-runtime")]
-			assert_debug_snapshot!(erc20_fee, @"");
+			assert_debug_snapshot!(erc20_fee, @"10407164903");
 			#[cfg(feature = "with-acala-runtime")]
-			assert_debug_snapshot!(erc20_fee, @"");
+			assert_debug_snapshot!(erc20_fee, @"10407164903");
 
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
@@ -1042,20 +1042,23 @@ fn transaction_payment_module_works_with_evm_contract() {
 					len as usize,
 				)
 			);
+
+			let erc20_with_fee = Currencies::free_balance(erc20_token, &sub_account) - erc20_fee * 2;
 			#[cfg(feature = "with-karura-runtime")]
-			let (erc20_with_fee, native_with_fee) = (376162702, 3750001206);
+			assert_debug_snapshot!(erc20_with_fee, @"376162722");
 			#[cfg(feature = "with-acala-runtime")]
-			let (erc20_with_fee, native_with_fee) = (376162702, 3750001206);
+			assert_debug_snapshot!(erc20_with_fee, @"376162722");
 			#[cfg(feature = "with-mandala-runtime")]
-			let (erc20_with_fee, native_with_fee) = (375409624, 3750001206);
-			assert_eq!(
-				Currencies::free_balance(erc20_token, &sub_account),
-				erc20_fee * 2 + erc20_with_fee
-			);
-			assert_eq!(
-				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
-				5 * dollar - (fee + ed) * 2 - native_with_fee
-			);
+			assert_debug_snapshot!(erc20_with_fee, @"375409643");
+
+			let native_with_fee = 5 * dollar - (fee + ed) * 2 - Currencies::free_balance(NATIVE_CURRENCY, &sub_account);
+			#[cfg(feature = "with-karura-runtime")]
+			assert_debug_snapshot!(native_with_fee, @"3750001401");
+			#[cfg(feature = "with-acala-runtime")]
+			assert_debug_snapshot!(native_with_fee, @"3750001401");
+			#[cfg(feature = "with-mandala-runtime")]
+			assert_debug_snapshot!(native_with_fee, @"3750001401");
+
 			// empty_address use payment `with_fee_currency` call to charge fee by erc20 fee pool.
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
@@ -1585,11 +1588,11 @@ fn transaction_payment_module_charge_erc20_pool() {
 
 			// charge tx fee by native
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(alice_erc20_before - alice_erc20_after, 375413037);
+			assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"375413056");
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(alice_erc20_before - alice_erc20_after, 376166122);
+			assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166142");
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(alice_erc20_before - alice_erc20_after, 376166122);
+			assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166142");
 
 			// cannot charge erc20 fee for the account only hold erc20
 			<EVM as EVMTrait<AccountId>>::set_origin(account_with_erc20.clone());

@@ -106,6 +106,8 @@ test: githooks
 .PHONY: insta-test
 insta-test: githooks
 	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-mandala-runtime --all --accept --lib --tests
+	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-karura-runtime --all --accept --lib --tests
+	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-acala-runtime --all --accept --lib --tests
 
 .PHONY: test-eth
 test-eth: githooks test-evm

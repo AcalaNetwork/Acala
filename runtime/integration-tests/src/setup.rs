@@ -61,16 +61,16 @@ mod mandala_imports {
 	use mandala_runtime::AlternativeFeeSurplus;
 	pub use mandala_runtime::{
 		create_x2_parachain_location, get_all_module_accounts, AcalaOracle, AcalaSwap, AccountId, AggregatedDex,
-		AssetRegistry, AuctionManager, Aura, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber,
-		CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CollatorSelection, CreateClassDeposit,
-		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DealWithFees, DefaultDebitExchangeRate,
-		DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil,
-		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MinRewardDistributeAmount, MinimumDebitValue,
-		NativeTokenExistentialDeposit, NftPalletId, OneDay, OriginCaller, ParachainInfo, ParachainSystem, Proxy,
-		Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Scheduler, Session, SessionKeys, SessionManager, SevenDays,
-		StableAsset, StableAssetPalletId, System, Timestamp, TokenSymbol, Tokens, TransactionPayment,
-		TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic, Utility, Vesting,
-		XcmInterface, EVM, NFT,
+		AssetRegistry, AuctionManager, Aura, AuraExt, Authority, AuthoritysOriginId, Authorship, Balance, Balances,
+		BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CollatorSelection,
+		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DealWithFees,
+		DefaultDebitExchangeRate, DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits,
+		FinancialCouncil, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MinRewardDistributeAmount,
+		MinimumDebitValue, NativeTokenExistentialDeposit, NftPalletId, OneDay, OriginCaller, ParachainInfo,
+		ParachainSystem, Proxy, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Scheduler, Session, SessionKeys,
+		SessionManager, SevenDays, StableAsset, StableAssetPalletId, System, Timestamp, TokenSymbol, Tokens,
+		TransactionPayment, TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic, Utility,
+		Vesting, XcmInterface, EVM, NFT,
 	};
 	use primitives::TradingPair;
 	use runtime_common::{ACA, AUSD, DOT, LDOT};
@@ -107,7 +107,7 @@ mod karura_imports {
 	use karura_runtime::AlternativeFeeSurplus;
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_location, get_all_module_accounts, AcalaOracle, AcalaSwap,
-		AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, Authority, AuthoritysOriginId, Balance,
+		AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, AuraExt, Authority, AuthoritysOriginId, Balance,
 		Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DefaultDebitExchangeRate, DefaultExchangeRate,
 		Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil, GetNativeCurrencyId, Homa, Honzon,
@@ -151,7 +151,7 @@ mod acala_imports {
 	use acala_runtime::AlternativeFeeSurplus;
 	pub use acala_runtime::{
 		constants::parachains, create_x2_parachain_location, get_all_module_accounts, AcalaFoundationAccounts,
-		AcalaOracle, AcalaSwap, AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, Authority,
+		AcalaOracle, AcalaSwap, AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, AuraExt, Authority,
 		AuthoritysOriginId, Balance, Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine,
 		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte,
 		DefaultDebitExchangeRate, DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits,
@@ -230,6 +230,7 @@ pub fn run_to_block(n: u32) {
 }
 
 pub fn set_relaychain_block_number(number: BlockNumber) {
+	AuraExt::on_initialize(number);
 	ParachainSystem::on_initialize(number);
 
 	let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();

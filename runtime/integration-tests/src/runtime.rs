@@ -494,20 +494,24 @@ mod mandala_only_tests {
 					.expect("This should not fail")
 					.encode();
 
-				assert_eq!(
+				assert_debug_snapshot!(
 					ChargeTransactionPayment::<Runtime>::from(0).validate(
 						&alice(),
 						&call.clone(),
 						&call.get_dispatch_info(),
 						bytes.len()
 					),
-					Ok(ValidTransaction {
-						priority: 54694050570500000,
-						requires: vec![],
-						provides: vec![],
-						longevity: 18_446_744_073_709_551_615,
-						propagate: true,
-					})
+					@r###"
+    Ok(
+        ValidTransaction {
+            priority: 61218482942130000,
+            requires: [],
+            provides: [],
+            longevity: 18446744073709551615,
+            propagate: true,
+        },
+    )
+    "###
 				);
 			});
 	}

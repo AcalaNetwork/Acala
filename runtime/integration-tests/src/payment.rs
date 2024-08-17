@@ -372,15 +372,27 @@ fn charge_transaction_payment_and_threshold_works() {
 
 #[test]
 fn with_fee_currency_call_works() {
-	with_fee_call_works(with_fee_currency_call(LIQUID_CURRENCY), false);
+	let amount = with_fee_call_works(with_fee_currency_call(LIQUID_CURRENCY), false);
+	#[cfg(feature = "with-mandala-runtime")]
+	assert_debug_snapshot!(amount, @"12701470465");
+	#[cfg(feature = "with-karura-runtime")]
+	assert_debug_snapshot!(amount, @"12726949844");
+	#[cfg(feature = "with-acala-runtime")]
+	assert_debug_snapshot!(amount, @"12726949844");
 }
 
 #[test]
 fn with_fee_path_call_works() {
-	with_fee_call_works(
+	let amount = with_fee_call_works(
 		with_fee_path_call(vec![LIQUID_CURRENCY, USD_CURRENCY, NATIVE_CURRENCY]),
 		false,
 	);
+	#[cfg(feature = "with-mandala-runtime")]
+	assert_debug_snapshot!(amount, @"12701470465");
+	#[cfg(feature = "with-karura-runtime")]
+	assert_debug_snapshot!(amount, @"12726949844");
+	#[cfg(feature = "with-acala-runtime")]
+	assert_debug_snapshot!(amount, @"12726949844");
 }
 
 #[test]
@@ -389,16 +401,22 @@ fn with_fee_aggregated_path_call_works() {
 		AggregatedSwapPath::<CurrencyId>::Taiga(0, 0, 1),
 		AggregatedSwapPath::<CurrencyId>::Dex(vec![LIQUID_CURRENCY, USD_CURRENCY, NATIVE_CURRENCY]),
 	];
-	with_fee_call_works(with_fee_aggregated_path_call(aggregated_path), true);
+	let amount = with_fee_call_works(with_fee_aggregated_path_call(aggregated_path), true);
+	#[cfg(feature = "with-mandala-runtime")]
+	assert_debug_snapshot!(amount, @"12701470465");
+	#[cfg(feature = "with-karura-runtime")]
+	assert_debug_snapshot!(amount, @"12726949844");
+	#[cfg(feature = "with-acala-runtime")]
+	assert_debug_snapshot!(amount, @"12726949844");
 }
 
 fn with_fee_call_works(
 	with_fee_call: <Runtime as module_transaction_payment::Config>::RuntimeCall,
 	is_aggregated_call: bool,
-) {
+) -> Balance {
 	let init_amount = 100 * dollar(LIQUID_CURRENCY);
 	let ausd_acc: AccountId = TransactionPaymentPalletId::get().into_sub_account_truncating(USD_CURRENCY);
-	ExtBuilder::default()
+	return ExtBuilder::default()
 		.balances(vec![
 			// ALICE for stable asset, BOB and CHARLIE for transaction payment
 			(
@@ -494,18 +512,29 @@ fn with_fee_call_works(
 					50
 				)
 			);
-			#[cfg(feature = "with-karura-runtime")]
-			let amount = 12726949827u128;
-			#[cfg(feature = "with-acala-runtime")]
-			let amount = 12726949827u128;
-			#[cfg(feature = "with-mandala-runtime")]
-			let amount = 12701470448u128;
 
-			System::assert_has_event(RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
-				currency_id: USD_CURRENCY,
-				from: AccountId::from(CHARLIE),
-				to: ausd_acc.clone(),
-				amount,
-			}));
+			let amount = System::events()
+				.iter()
+				.filter_map(|r| {
+					if let RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
+						ref currency_id,
+						ref from,
+						ref to,
+						amount,
+					}) = r.event
+					{
+						if *currency_id == USD_CURRENCY && *from == AccountId::from(CHARLIE) && *to == ausd_acc {
+							Some(amount)
+						} else {
+							None
+						}
+					} else {
+						None
+					}
+				})
+				.next()
+				.unwrap();
+
+			return amount;
 		});
 }

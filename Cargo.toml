@@ -96,7 +96,6 @@ parking_lot = { opt-level = 3 }
 parking_lot_core = { opt-level = 3 }
 percent-encoding = { opt-level = 3 }
 primitive-types = { opt-level = 3 }
-ring = { opt-level = 3 }
 sha2 = { opt-level = 3 }
 sha3 = { opt-level = 3 }
 similar = { opt-level = 3 }
