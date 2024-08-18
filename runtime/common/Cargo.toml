@@ -166,6 +166,7 @@ wasm-bench = [
 	"pallet-utility/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
+	"cumulus-pallet-parachain-system/runtime-benchmarks",
 
 	"module-asset-registry",
 	"module-cdp-treasury",
