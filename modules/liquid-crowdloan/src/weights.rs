@@ -47,7 +47,6 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for module_liquid_crowdloan.
 pub trait WeightInfo {
 	fn redeem() -> Weight;
-	fn transfer_from_crowdloan_vault() -> Weight;
 	fn set_redeem_currency_id() -> Weight;
 }
 
@@ -72,23 +71,6 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 		Weight::from_parts(125_978_000, 8856)
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().writes(5))
-	}
-	// Storage: `XcmInterface::XcmDestWeightAndFee` (r:1 w:0)
-	// Proof: `XcmInterface::XcmDestWeightAndFee` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `ParachainInfo::ParachainId` (r:1 w:0)
-	// Proof: `ParachainInfo::ParachainId` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
-	// Storage: `ParachainSystem::HostConfiguration` (r:1 w:0)
-	// Proof: `ParachainSystem::HostConfiguration` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	// Storage: `ParachainSystem::PendingUpwardMessages` (r:1 w:1)
-	// Proof: `ParachainSystem::PendingUpwardMessages` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn transfer_from_crowdloan_vault() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1255`
-		//  Estimated: `4720`
-		// Minimum execution time: 46_686 nanoseconds.
-		Weight::from_parts(47_365_000, 4720)
-			.saturating_add(T::DbWeight::get().reads(4))
-			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	// Storage: `LiquidCrowdloan::RedeemCurrencyId` (r:0 w:1)
 	// Proof: `LiquidCrowdloan::RedeemCurrencyId` (`max_values`: Some(1), `max_size`: Some(43), added: 538, mode: `MaxEncodedLen`)
@@ -122,23 +104,6 @@ impl WeightInfo for () {
 		Weight::from_parts(125_978_000, 8856)
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().writes(5))
-	}
-	// Storage: `XcmInterface::XcmDestWeightAndFee` (r:1 w:0)
-	// Proof: `XcmInterface::XcmDestWeightAndFee` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `ParachainInfo::ParachainId` (r:1 w:0)
-	// Proof: `ParachainInfo::ParachainId` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
-	// Storage: `ParachainSystem::HostConfiguration` (r:1 w:0)
-	// Proof: `ParachainSystem::HostConfiguration` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	// Storage: `ParachainSystem::PendingUpwardMessages` (r:1 w:1)
-	// Proof: `ParachainSystem::PendingUpwardMessages` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn transfer_from_crowdloan_vault() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1255`
-		//  Estimated: `4720`
-		// Minimum execution time: 46_686 nanoseconds.
-		Weight::from_parts(47_365_000, 4720)
-			.saturating_add(RocksDbWeight::get().reads(4))
-			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 	// Storage: `LiquidCrowdloan::RedeemCurrencyId` (r:0 w:1)
 	// Proof: `LiquidCrowdloan::RedeemCurrencyId` (`max_values`: Some(1), `max_size`: Some(43), added: 538, mode: `MaxEncodedLen`)

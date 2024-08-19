@@ -35,7 +35,6 @@ pub mod evm;
 pub mod homa;
 pub mod honzon;
 pub mod incentives;
-pub mod liquid_crowdloan;
 pub mod mocks;
 pub mod relaychain;
 pub mod stable_asset;
@@ -46,7 +45,6 @@ pub use crate::evm::*;
 pub use crate::homa::*;
 pub use crate::honzon::*;
 pub use crate::incentives::*;
-pub use crate::liquid_crowdloan::*;
 pub use crate::stable_asset::*;
 
 pub type Price = FixedU128;

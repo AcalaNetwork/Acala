@@ -34,9 +34,9 @@ use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
 	mocks::{MockStableAsset, TestRandomness},
-	AddressMapping as AddressMappingT, AuctionManager, CrowdloanVaultXcm, DEXIncentives, DispatchableTask,
-	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId, PriceProvider,
-	Rate, SpecificJointsSwap,
+	AddressMapping as AddressMappingT, AuctionManager, DEXIncentives, DispatchableTask, EmergencyShutdown,
+	ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId, PriceProvider, Rate,
+	SpecificJointsSwap,
 };
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -923,21 +923,9 @@ impl orml_xtokens::Config for Test {
 }
 
 parameter_types!(
-	pub CrowdloanVault: AccountId = AccountId::new([0u8; 32]);
 	pub const LiquidCrowdloanCurrencyId: CurrencyId = LCDOT;
 	pub LiquidCrowdloanPalletId: PalletId = PalletId(*b"aca/lqcl");
 );
-
-pub struct MockXcmTransfer;
-impl CrowdloanVaultXcm<AccountId, Balance> for MockXcmTransfer {
-	fn transfer_to_liquid_crowdloan_module_account(
-		_vault: AccountId,
-		_recipient: AccountId,
-		_amount: Balance,
-	) -> DispatchResult {
-		Ok(())
-	}
-}
 
 impl module_liquid_crowdloan::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
@@ -946,8 +934,6 @@ impl module_liquid_crowdloan::Config for Test {
 	type RelayChainCurrencyId = GetStakingCurrencyId;
 	type PalletId = LiquidCrowdloanPalletId;
 	type GovernanceOrigin = EnsureRoot<AccountId>;
-	type CrowdloanVault = CrowdloanVault;
-	type XcmTransfer = MockXcmTransfer;
 	type WeightInfo = ();
 }
 

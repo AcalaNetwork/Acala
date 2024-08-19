@@ -1866,8 +1866,6 @@ impl module_idle_scheduler::Config for Runtime {
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 parameter_types!(
-	// Crowdloan vault address: `132zsjMwGjNaUXF5XjUCDs2cDEq9Qao51TsL9RSUTGZbinVK`
-	pub CrowdloanVault: AccountId = AccountId::from(hex_literal::hex!("59fe89295c2e57d7b4d4d8be9e00a3802e513703ab4b5b424ed0a646e899d3c9"));
 	pub const LiquidCrowdloanCurrencyId: CurrencyId = LCDOT;
 );
 
@@ -1878,8 +1876,6 @@ impl module_liquid_crowdloan::Config for Runtime {
 	type RelayChainCurrencyId = GetStakingCurrencyId;
 	type PalletId = LiquidCrowdloanPalletId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
-	type CrowdloanVault = CrowdloanVault;
-	type XcmTransfer = XcmInterface;
 	type WeightInfo = weights::module_liquid_crowdloan::WeightInfo<Runtime>;
 }
 
