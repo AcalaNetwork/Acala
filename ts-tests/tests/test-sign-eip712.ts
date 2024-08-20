@@ -1,5 +1,4 @@
-import { expect } from "chai";
-
+import { expect, beforeAll, it } from "vitest";
 import { describeWithAcala, getEvmNonce, transfer } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
@@ -15,8 +14,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 	let factory: ContractFactory;
 	let contract: string;
 
-	before("init", async function () {
-		this.timeout(15000);
+	beforeAll(async function () {
 		[alice] = context.wallets;
 
 		signer = new Wallet(
@@ -39,8 +37,6 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 	});
 
 	it("create should sign and verify", async function () {
-		this.timeout(150000);
-
 		const domain = {
 			name: "Acala EVM",
 			version: "1",
@@ -97,7 +93,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 
 		const tx = context.provider.api.tx.evm.ethCall(
 			{ Create: null },
-			value.data,
+			value.data as any,
 			value.value,
 			value.gasLimit,
 			value.storageLimit,
@@ -173,8 +169,6 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 	});
 
 	it("call should sign and verify", async function () {
-		this.timeout(150000);
-
 		const domain = {
 			name: "Acala EVM",
 			version: "1",
@@ -222,7 +216,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 
 		const tx = context.provider.api.tx.evm.ethCall(
 			{ Call: value.to },
-			value.data,
+			value.data as any,
 			value.value,
 			value.gasLimit,
 			value.storageLimit,

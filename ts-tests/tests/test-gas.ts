@@ -1,5 +1,4 @@
-import { expect } from "chai";
-
+import { expect, beforeAll, it } from "vitest";
 import Block from "../build/Block.json"
 import { describeWithAcala } from "./util";
 import { deployContract } from "ethereum-waffle";
@@ -8,8 +7,7 @@ import { BodhiSigner } from "@acala-network/bodhi";
 describeWithAcala("Acala RPC (Gas)", (context) => {
 	let alice: BodhiSigner;
 
-	before("create the contract", async function () {
-		this.timeout(15000);
+	beforeAll(async function () {
 		[alice] = context.wallets;
 	});
 
@@ -47,6 +45,6 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 
 		expect(data.usedGas.toNumber()).to.be.eq(22111);
 		expect(data.gasLimit.toNumber()).to.closeTo(26445, 1000);
-		expect(data.usedStorage.toNumber()).to.be.eq(0);
+		expect(data.safeStorage.toNumber()).to.be.eq(0);
 	});
 });

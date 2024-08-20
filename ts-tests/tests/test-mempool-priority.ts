@@ -1,5 +1,4 @@
-import { expect } from "chai";
-import { step } from "mocha-steps";
+import { expect, beforeAll, it } from "vitest";
 import { describeWithAcala } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
 import { submitExtrinsic } from "./util";
@@ -11,11 +10,11 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
 
     const FixedU128 = BigNumber.from('1000000000000000000');
 
-    before("init wallets", async function () {
+	beforeAll(async function () {
         [alice, alice_stash] = context.wallets;
     });
 
-    step("transaction pool priority order is correct", async function () {
+    it("transaction pool priority order is correct", async function () {
         const interestRatePerSec = BigNumber.from('10').mul(FixedU128).div(BigNumber.from('100000')).toBigInt();
         const liquidationRatio = BigNumber.from('3').mul(FixedU128).div(BigNumber.from('2')).toBigInt();
         const liquidationPenalty = BigNumber.from('2').mul(FixedU128).div(BigNumber.from('10')).toBigInt();
@@ -32,7 +31,7 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
                 )
             ),
             context.provider.api.tx.sudo.sudo(context.provider.api.tx.cdpEngine.setCollateralParams(
-                { Token: 'ACA' }, 
+                { Token: 'ACA' },
                 { NewValue: interestRatePerSec },
                 { NewValue: liquidationRatio },
                 { NewValue: liquidationPenalty },

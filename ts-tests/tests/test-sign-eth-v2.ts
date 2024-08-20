@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { expect, beforeAll, it } from "vitest";
 
 import { describeWithAcala, getEvmNonce, transfer } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
@@ -20,8 +20,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	let factory: ContractFactory;
 	let contract: string;
 
-	before("init", async function () {
-		this.timeout(15000);
+	beforeAll(async function () {
 		[alice] = context.wallets;
 
 		signer = new Wallet(
@@ -44,8 +43,6 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	});
 
 	it("create should sign and verify", async function () {
-		this.timeout(150000);
-
 		const chainId = +context.provider.api.consts.evmAccounts.chainId.toString()
 		const nonce = await getEvmNonce(context.provider, signer.address);
 
@@ -97,7 +94,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Create: null },
-			value.data,
+			value.data as any,
 			value.value,
 			txGasPrice.toNumber(),
 			txGasLimit.toNumber(),
@@ -170,8 +167,6 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	});
 
 	it("call should sign and verify", async function () {
-		this.timeout(150000);
-
 		const chainId = +context.provider.api.consts.evmAccounts.chainId.toString();
 		const nonce = await getEvmNonce(context.provider, signer.address);
 
@@ -223,7 +218,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Call: value.to },
-			value.data,
+			value.data as any,
 			value.value,
 			txGasPrice.toNumber(),
 			txGasLimit.toNumber(),
@@ -303,8 +298,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 	let factory: ContractFactory;
 	let contract: string;
 
-	before("init", async function () {
-		this.timeout(15000);
+	beforeAll(async function () {
 		[alice] = context.wallets;
 
 		signer = new Wallet(
@@ -327,8 +321,6 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 	});
 
 	it("create should sign and verify", async function () {
-		this.timeout(150000);
-
 		const chainId = +context.provider.api.consts.evmAccounts.chainId.toString()
 		const nonce = await getEvmNonce(context.provider, signer.address);
 
@@ -383,7 +375,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Create: null },
-			value.data,
+			value.data as any,
 			value.value,
 			txGasPrice.toNumber(),
 			txGasLimit.toNumber(),
@@ -456,8 +448,6 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 	});
 
 	it("call should sign and verify", async function () {
-		this.timeout(150000);
-
 		const chainId = +context.provider.api.consts.evmAccounts.chainId.toString();
 		const nonce = await getEvmNonce(context.provider, signer.address);
 
@@ -513,7 +503,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Call: value.to },
-			value.data,
+			value.data as any,
 			value.value,
 			txGasPrice.toNumber(),
 			txGasLimit.toNumber(),

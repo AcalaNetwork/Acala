@@ -1,5 +1,4 @@
-import { expect } from "chai";
-import { step } from "mocha-steps";
+import { expect, beforeAll, it } from "vitest";
 import { describeWithAcala } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
 import EmptyContract from "../build/EmptyContract.json"
@@ -7,11 +6,11 @@ import EmptyContract from "../build/EmptyContract.json"
 describeWithAcala("Acala RPC (EVM create fill block)", (context) => {
     let alice: BodhiSigner;
 
-    before("init wallets", async function () {
+    beforeAll(async function () {
         [alice] = context.wallets;
     });
 
-    step("evm create fill block", async function () {
+    it("evm create fill block", async function () {
         const bytecode = '0x' + EmptyContract.bytecode;
         const creates = Array(300).fill(context.provider.api.tx.evm.create(
             bytecode,

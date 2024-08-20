@@ -128,8 +128,8 @@ test-runtimes:
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-acala-runtime --lib
 
 .PHONY: test-ts
-test-ts: build-mandala-internal-release
-	cd ts-tests && yarn && yarn run build && ACALA_BUILD=release yarn run test
+test-ts: chainspec-dev
+	cd ts-tests && yarn && yarn run build && yarn run test
 
 .PHONY: test-benchmarking
 test-benchmarking:
@@ -192,6 +192,14 @@ build-wasm-karura:
 build-wasm-acala:
 	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=on-chain-release-build
 
+.PHONY: build-wasm-mandala-dev
+build-wasm-mandala-dev:
+	cargo build --profile release -p mandala-runtime --features=genesis-builder
+
+.PHONY: build-wasm-acala-dev
+build-wasm-acala-dev:
+	cargo build --profile release -p acala-runtime --features=genesis-builder
+
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:
 	PACKAGE=mandala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build,no-metadata-docs" ./scripts/srtool-build.sh
@@ -215,6 +223,20 @@ build-wasm-acala-tracing:
 .PHONY: generate-tokens
 generate-tokens:
 	./scripts/generate-tokens-and-predeploy-contracts.sh
+
+.PHONY: chainspec-dev
+chainspec-dev: build-wasm-mandala-dev
+	chain-spec-builder -c chainspecs/dev-base.json create -r ./target/release/wbuild/mandala-runtime/mandala_runtime.compact.compressed.wasm default
+	jq -s '.[0] * .[1]' chainspecs/dev-base.json chainspecs/dev.genesis.template.json > chainspecs/dev.json
+	chain-spec-builder -c chainspecs/dev-raw-base.json convert-to-raw chainspecs/dev.json
+	jq -s '.[0] * .[1]' chainspecs/dev-raw-base.json chainspecs/dev.properties.template.json > chainspecs/dev.json
+
+.PHONY: chainspec-acala-dev
+chainspec-acala-dev: build-wasm-acala-dev
+	chain-spec-builder -c chainspecs/acala-dev-base.json create -r ./target/release/wbuild/acala-runtime/acala_runtime.compact.compressed.wasm default
+	jq -s '.[0] * .[1]' chainspecs/acala-dev-base.json chainspecs/acala-dev.genesis.template.json > chainspecs/acala-dev.json
+	chain-spec-builder -c chainspecs/acala-dev-raw-base.json convert-to-raw chainspecs/acala-dev.json
+	jq -s '.[0] * .[1]' chainspecs/acala-dev-raw-base.json chainspecs/acala-dev.properties.template.json > chainspecs/acala-dev.json
 
 .PHONY: benchmark-module
 benchmark-module:

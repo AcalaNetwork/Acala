@@ -1,5 +1,4 @@
-import { expect } from "chai";
-
+import { expect, beforeAll, it } from "vitest";
 import Factory from "../build/Factory.json"
 import { describeWithAcala } from "./util";
 import { deployContract } from "ethereum-waffle";
@@ -11,7 +10,7 @@ import { BodhiSigner } from "@acala-network/bodhi";
 describeWithAcala("Acala RPC (GasLimit)", (context) => {
 	let alice: BodhiSigner;
 
-    before(async () => {
+    beforeAll(async () => {
         [alice] = context.wallets;
     });
 
