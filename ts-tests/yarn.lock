@@ -6623,7 +6623,6 @@ __metadata:
     "@acala-network/chopsticks": "npm:^0.13.3"
     "@openzeppelin/contracts": "npm:5.0.2"
     "@polkadot/api": "npm:12.4.1"
-    chai: "npm:^5.1.1"
     ethereum-waffle: "npm:4.0.10"
     ethers: "npm:5.7.2"
     vitest: "npm:^2.0.5"
