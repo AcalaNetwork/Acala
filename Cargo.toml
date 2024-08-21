@@ -135,6 +135,7 @@ enumflags2 = { version = "0.7.7" }
 paste = { version = "1.0" }
 static_assertions = { version = "1.1.0" }
 ethabi = { version = "18.0.0", default-features = false }
+insta = { version = "1.31.0", features = ["json"] }
 
 # Dependencies are split into 2 groups: wasm and client.
 # - "wasm" dependencies requires to be no_std compatible, which often requires

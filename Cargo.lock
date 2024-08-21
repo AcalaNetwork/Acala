@@ -2709,6 +2709,7 @@ dependencies = [
  "console",
  "lazy_static",
  "linked-hash-map",
+ "serde",
  "similar",
 ]
 
@@ -3787,6 +3788,7 @@ dependencies = [
  "frame-system",
  "hex",
  "impl-trait-for-tuples",
+ "insta",
  "module-evm",
  "module-evm-utility-macro",
  "module-support",
