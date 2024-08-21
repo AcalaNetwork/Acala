@@ -1,7 +1,6 @@
 import { expect, beforeAll, it } from "vitest";
-import { describeWithAcala } from "./util";
+import { describeWithAcala, submitExtrinsic } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
-import { submitExtrinsic } from "./util";
 import { BigNumber } from "ethers";
 
 describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {

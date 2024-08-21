@@ -77,12 +77,12 @@ export async function getEvmNonce(provider: BodhiProvider, address: string): Pro
 	return nonce;
 }
 
-export async function submitExtrinsic(extrinsic: SubmittableExtrinsic<'promise'>, sender: AddressOrPair) {
-	return new Promise(async (resolve) => {
-		extrinsic.signAndSend(sender, (result) => {
+export async function submitExtrinsic(extrinsic: SubmittableExtrinsic<'promise'>, sender: AddressOrPair, nonce?: number) {
+	return new Promise(async (resolve, reject) => {
+		extrinsic.signAndSend(sender, { nonce }, (result) => {
 			if (result.status.isFinalized || result.status.isInBlock) {
 				resolve(undefined);
 			}
-		});
+		}).catch(reject);
 	});
 }

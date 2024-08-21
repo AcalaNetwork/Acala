@@ -12,6 +12,6 @@ describeWithAcala("Acala RPC (Transaction cost)", (context) => {
 		const contract = await deployContract(alice, Erc20DemoContract, [1000000000]);
 		const to = await ethers.Wallet.createRandom().getAddress();
 
-		await expect(contract.transfer(to, 1000, { gasLimit: 0 })).to.be.revertedWith('execution error: outOfGas');
+		await expect(contract.transfer(to, 1000, { gasLimit: 0 })).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: execution error: outOfGas]`);
 	});
 });

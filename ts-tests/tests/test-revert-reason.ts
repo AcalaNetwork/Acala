@@ -15,6 +15,6 @@ describeWithAcala("Acala RPC (Revert Reason)", (context) => {
 	});
 
 	it("should fail with revert reason", async function () {
-		await expect(contract.max10(30)).to.be.revertedWith('-32603: VM Exception while processing transaction: execution revert: Value must not be greater than 10.');
+		await expect(contract.max10(30)).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: execution reverted: Value must not be greater than 10.]`);
 	});
 });
