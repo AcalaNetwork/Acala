@@ -247,8 +247,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1215220,
-		used_storage: 4996,
+		used_gas: 1013342,
+		used_storage: 4028,
 	}));
 }
 

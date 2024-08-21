@@ -111,8 +111,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1215220,
-		used_storage: 14995,
+		used_gas: 1013342,
+		used_storage: 14027,
 	}));
 
 	assert_ok!(AssetRegistry::register_erc20_asset(
@@ -146,8 +146,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1215220,
-		used_storage: 14995,
+		used_gas: 1013342,
+		used_storage: 14027,
 	}));
 
 	assert_ok!(AssetRegistry::register_erc20_asset(

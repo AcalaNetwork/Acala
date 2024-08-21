@@ -1299,11 +1299,11 @@ fn fungible_inspect_trait_should_work() {
 			// Test for Inspect::balance and Inspect::total_balance
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(NATIVE_CURRENCY_ID, &alice()),
-				150040
+				159720
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::total_balance(NATIVE_CURRENCY_ID, &alice()),
-				150040
+				159720
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(X_TOKEN_ID, &alice()),
@@ -1313,10 +1313,10 @@ fn fungible_inspect_trait_should_work() {
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE
 			);
-			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 150040);
+			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 159720);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&alice()),
-				150040
+				159720
 			);
 
 			// Test for Inspect::reducible_balance. No locks or reserves
@@ -1328,7 +1328,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				150038
+				159718
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1336,7 +1336,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				150038
+				159718
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1344,7 +1344,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				150038
+				159718
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1374,7 +1374,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				150040
+				159720
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1400,7 +1400,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				150040
+				159720
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1408,7 +1408,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				150040
+				159720
 			);
 
 			// Set some locks
@@ -1423,7 +1423,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1449,7 +1449,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1457,7 +1457,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 
 			assert_eq!(
@@ -1467,7 +1467,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1493,7 +1493,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1501,7 +1501,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 
 			// Test for Inspect::can_deposit
@@ -1626,11 +1626,11 @@ fn fungible_inspect_trait_should_work() {
 			);
 
 			assert_eq!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 149040 + 1),
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 158720 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 149040 + 1),
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 158720 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(
