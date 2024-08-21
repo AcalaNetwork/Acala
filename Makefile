@@ -1,29 +1,14 @@
 # use `cargo nextest run` if cargo-nextest is installed
 cargo_test = $(shell which cargo-nextest >/dev/null && echo "cargo nextest run" || echo "cargo test")
+bunx_or_npx = $(shell which bunx >/dev/null && echo "bunx" || echo "npx")
 
 .PHONY: run
-run:
-	cargo run --features with-mandala-runtime -- --dev -lruntime=debug --instant-sealing
-
-.PHONY: run-eth
-run-eth:
-	cargo run --features with-mandala-runtime --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
-
-.PHONY: run-karura-dev
-run-karura-dev:
-	cargo run --features with-karura-runtime -- --chain=karura-dev --alice --instant-sealing --tmp -lruntime=debug
+run: chainspec-dev
+	bunx @acala-network/chopsticks --chain-spec chainspecs/dev.json
 
 .PHONY: run-acala-dev
-run-acala-dev:
-	cargo run --features with-acala-runtime -- --chain=acala-dev --alice --instant-sealing --tmp -lruntime=debug
-
-.PHONY: run-karura
-run-karura:
-	cargo run --features with-karura-runtime -- --chain=karura
-
-.PHONY: run-acala
-run-acala:
-	cargo run --features with-acala-runtime -- --chain=acala
+run-acala-dev: chainspec-acala-dev
+	bunx @acala-network/chopsticks --chain-spec chainspecs/acala-dev.json
 
 .PHONY: toolchain
 toolchain:
