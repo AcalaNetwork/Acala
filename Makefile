@@ -105,9 +105,9 @@ test: githooks
 
 .PHONY: insta-test
 insta-test: githooks
-	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-mandala-runtime --all --accept --lib --tests
-	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-karura-runtime --all --accept --lib --tests
-	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-acala-runtime --all --accept --lib --tests
+	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-mandala-runtime --all --lib --tests
+	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-karura-runtime --all --lib --tests
+	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-acala-runtime --all --lib --tests
 
 .PHONY: test-eth
 test-eth: githooks test-evm
@@ -117,7 +117,7 @@ test-eth: githooks test-evm
 
 .PHONY: test-evm
 test-evm: githooks
-	SKIP_WASM_BUILD= cargo insta test -p module-evm-bridge --features tracing --accept
+	SKIP_WASM_BUILD= cargo insta test -p module-evm-bridge --features tracing
 	SKIP_WASM_BUILD= ${cargo_test} -p module-evm --features tracing
 	SKIP_WASM_BUILD= ${cargo_test} --release -p evm-jsontests --features evm-tests
 

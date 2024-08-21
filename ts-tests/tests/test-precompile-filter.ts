@@ -25,7 +25,7 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 	it('call non-standard precompile should not work with DELEGATECALL', async function () {
 		expect(await contract.test_static_call(ecrecoverPublic, input)).to.be.eq(expect_pk);
 		await contract.test_call(ecrecoverPublic, input, expect_pk);
-		await expect(contract.test_delegate_call(ecrecoverPublic, input, expect_pk)).to.be.revertedWith("cannot be called with DELEGATECALL or CALLCODE");
+		await expect(contract.test_delegate_call(ecrecoverPublic, input, expect_pk)).rejects.toThrowErrorMatchingInlineSnapshot("cannot be called with DELEGATECALL or CALLCODE");
 	});
 
 	it('call non-standard precompile should work with CALL and STATICCALL', async function () {
@@ -53,13 +53,13 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 			to: '0x0000000000000000000000000000000000000400',
 			from: await alice.getAddress(),
 			data: input,
-		})).to.be.revertedWith("NoPermission");
+		})).rejects.toThrowErrorMatchingInlineSnapshot("NoPermission");
 
 		await expect(context.provider.call({
 			to: '0x0000000000000000000000000000000000000400',
 			from: '0x0000000000000000000111111111111111111111',
 			data: input,
-		})).to.be.revertedWith("Caller is not a system contract");
+		})).rejects.toThrowErrorMatchingInlineSnapshot("Caller is not a system contract");
 
 		// 41555344 -> AUSD
 		expect(await context.provider.call({
@@ -91,11 +91,11 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 		await expect(context.provider.call({
 			to: identity,
 			data: '0xff',
-		})).to.be.revertedWith('precompile is paused');
+		})).rejects.toThrowErrorMatchingInlineSnapshot('precompile is paused');
 
 		// contracts calling paused precompile will revert
-		await expect(contract.test_static_call(identity, '0xff')).to.be.revertedWith('precompile is paused');
-		await expect(contract.test_call(identity, '0xff', '0xff')).to.be.revertedWith('precompile is paused');
+		await expect(contract.test_static_call(identity, '0xff')).rejects.toThrowErrorMatchingInlineSnapshot('precompile is paused');
+		await expect(contract.test_call(identity, '0xff', '0xff')).rejects.toThrowErrorMatchingInlineSnapshot('precompile is paused');
 
 		// unpause precompile
 		await new Promise(async (resolve) => {

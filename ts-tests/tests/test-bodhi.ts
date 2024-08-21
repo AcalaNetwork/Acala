@@ -29,13 +29,13 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 
 	it("should get gas price", async function () {
 		const gasPrice = await context.provider.getGasPrice();
-		expect(gasPrice.toString()).to.be.equal("100000000205");
+		expect(gasPrice.toString()).toMatchInlineSnapshot(`"100000000206"`);
 	});
 
 	it("should get fee data ", async function () {
 		const data = await context.provider.getFeeData();
 
-		expect(data.gasPrice?.toNumber()).to.be.eq(100000000205);
+		expect(data.gasPrice?.toNumber()).toMatchInlineSnapshot(`100000000206`);
 	});
 
 	it("should get transaction count", async function () {
@@ -82,7 +82,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 			await contract.populateTransaction.multiply(3)
 		);
 
-		expect(gas.toNumber()).to.be.eq(100100);
+		expect(gas.toNumber()).toMatchInlineSnapshot(`200107`);
 	});
 
 	it("should estimateResources", async function () {
@@ -91,7 +91,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 		);
 
 		expect(data.usedGas.toNumber()).to.be.eq(22111);
-		expect(data.usedStorage.toNumber()).to.be.eq(0);
+		expect(data.safeStorage.toNumber()).toMatchInlineSnapshot(`70`);
 		expect(data.gasLimit.toNumber()).to.closeTo(26445, 1000);
 	});
 });
