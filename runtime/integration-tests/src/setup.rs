@@ -48,7 +48,7 @@ use sp_consensus_aura::AURA_ENGINE_ID;
 pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Zero},
+	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Header, Zero},
 	BuildStorage, Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress,
 	Perbill, Permill,
 };
@@ -233,7 +233,23 @@ pub fn set_relaychain_block_number(number: BlockNumber) {
 	AuraExt::on_initialize(number);
 	ParachainSystem::on_initialize(number);
 
-	let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();
+	let mut sproof_builder = RelayStateSproofBuilder::default();
+
+	let parent_head_data = {
+		let header = cumulus_primitives_core::relay_chain::Header::new(
+			number,
+			sp_core::H256::from_low_u64_be(0),
+			sp_core::H256::from_low_u64_be(0),
+			Default::default(),
+			Default::default(),
+		);
+		cumulus_primitives_core::relay_chain::HeadData(header.encode())
+	};
+
+	sproof_builder.para_id = ParachainInfo::get().into();
+	sproof_builder.included_para_head = Some(parent_head_data.clone());
+
+	let (relay_storage_root, proof) = sproof_builder.into_state_root_and_proof();
 
 	assert_ok!(ParachainSystem::set_validation_data(
 		RuntimeOrigin::none(),
