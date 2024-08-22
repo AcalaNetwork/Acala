@@ -70,7 +70,7 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 		})).to.be.eq("0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000044155534400000000000000000000000000000000000000000000000000000000");
 	});
 
-	it.only('pause precompile', async function () {
+	it('pause precompile', async function () {
 		expect(await context.provider.call({
 			to: identity,
 			data: '0xff',
