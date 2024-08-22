@@ -1,4 +1,4 @@
-import { Block, Blockchain, BuildBlockMode, setupWithServer } from "@acala-network/chopsticks";
+import { Blockchain, BuildBlockMode, setupWithServer } from "@acala-network/chopsticks";
 import { BodhiProvider, BodhiSigner, getTestUtils } from "@acala-network/bodhi";
 import { Option } from '@polkadot/types/codec';
 import { EvmAccountInfo } from '@acala-network/types/interfaces';

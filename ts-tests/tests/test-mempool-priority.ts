@@ -2,6 +2,7 @@ import { expect, beforeAll, it } from "vitest";
 import { describeWithAcala, submitExtrinsic } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
 import { BigNumber } from "ethers";
+import { BuildBlockMode } from "@acala-network/chopsticks";
 
 describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
     let alice: BodhiSigner;
@@ -19,6 +20,8 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
         const liquidationPenalty = BigNumber.from('2').mul(FixedU128).div(BigNumber.from('10')).toBigInt();
         const requiredCollateralRatio = BigNumber.from('9').mul(FixedU128).div(BigNumber.from('5')).toBigInt();
         const maximumTotalDebitValue = BigNumber.from("10000000000000000").toBigInt();
+
+		const nonce = (await context.provider.api.query.system.account(alice.substrateAddress)).nonce.toNumber();
 
         // setup an unsafe cdp
         const tx1 = context.provider.api.tx.utility.batchAll([
@@ -43,7 +46,7 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
                 500000000000000 // debit_adjustment
             )
         ]);
-        await submitExtrinsic(tx1, alice.substrateAddress);
+        await submitExtrinsic(tx1, alice.substrateAddress, nonce);
 
         // change the ACA price
         const tx2 = context.provider.api.tx.sudo.sudo(
@@ -53,16 +56,17 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
                 ]
             )
         );
-        await submitExtrinsic(tx2, alice.substrateAddress);
+        await submitExtrinsic(tx2, alice.substrateAddress, nonce + 1);
 
-        const nonce = (await context.provider.api.rpc.system.accountNextIndex(alice.substrateAddress)).toNumber() + 1;
+		context.chain.txPool.mode = BuildBlockMode.Manual;
+
         const parentHash = await context.provider.api.rpc.chain.getBlockHash();
 
         // send operational extrinsic
         const tx3 = context.provider.api.tx.sudo.sudo(
             context.provider.api.tx.emergencyShutdown.emergencyShutdown()
         );
-        await tx3.signAndSend(alice.substrateAddress, { nonce });
+        await tx3.signAsync(alice.substrateAddress, { nonce: nonce + 2 });
 
         const operationalTransactionvalidity = await context.provider.api.call.taggedTransactionQueue.validateTransaction(
             "Local",
@@ -70,55 +74,44 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
             parentHash
         );
 
-        const expected = {
-            "Ok": {
-                "longevity": "31",
-                "priority": "65,695,101,118,020,000",
-                "propagate": true,
-                "provides": [
-                    "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d04000000"
-                ],
-                "requires": [
-                    "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d03000000"
-                ]
-            }
-        };
-        const priorityRegex = /^72,811,2\d\d,\d{3},\d{3},\d{3}$/;
-
-        expect(operationalTransactionvalidity.toHuman()).to.satisfy((x: any) => {
-            return x === expected || (
-                expect(x.Ok.priority).match(priorityRegex) &&
-                x.Ok.longevity === expected.Ok.longevity &&
-                x.Ok.propagate === expected.Ok.propagate &&
-                x.Ok.provides[0] === expected.Ok.provides[0] &&
-                x.Ok.requires[0] === expected.Ok.requires[0]
-            );
-        });
+		expect(operationalTransactionvalidity).toMatchInlineSnapshot(`
+			{
+			  "ok": {
+			    "longevity": 31,
+			    "priority": "0x0119dfa51d01f600",
+			    "propagate": true,
+			    "provides": [
+			      "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d03000000",
+			    ],
+			    "requires": [],
+			  },
+			}
+		`);
 
         // send normal extrinsic
         const tx4 = context.provider.api.tx.balances.transferAllowDeath(
             alice_stash.substrateAddress,
             80_000
         );
-        await tx4.signAndSend(alice.substrateAddress, { nonce });
+        await tx4.signAsync(alice.substrateAddress, { nonce: nonce + 2 });
         const normalTransactionvalidity = await context.provider.api.call.taggedTransactionQueue.validateTransaction(
             "Local",
             tx4.toHex(),
             parentHash
         );
-        expect(normalTransactionvalidity.toHuman()).to.deep.eq({
+        expect(normalTransactionvalidity.toHuman()).toMatchInlineSnapshot(`
+          {
             "Ok": {
-                "longevity": "31",
-                "priority": "0",
-                "propagate": true,
-                "provides": [
-                    "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d04000000"
-                ],
-                "requires": [
-                    "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d03000000"
-                ]
-            }
-        });
+              "longevity": "31",
+              "priority": "0",
+              "propagate": true,
+              "provides": [
+                "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d03000000",
+              ],
+              "requires": [],
+            },
+          }
+        `);
 
         // send unsigned extrinsic
         const tx5 = context.provider.api.tx.cdpEngine.liquidate(
@@ -130,17 +123,20 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
             tx5.toHex(),
             parentHash
         );
-        expect(unsignedTransactionvalidity.toHuman()).to.deep.eq({
-            "Ok": {
-                "longevity": "64",
-                "priority": "14,999,999,999,000",
-                "propagate": true,
-                "provides": [
-                    "0x5c434450456e67696e654f6666636861696e576f726b657207000000000000d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
-                ],
-                "requires": []
-            }
-        });
+
+		expect(unsignedTransactionvalidity).toMatchInlineSnapshot(`
+			{
+			  "ok": {
+			    "longevity": 64,
+			    "priority": 14999999999000,
+			    "propagate": true,
+			    "provides": [
+			      "0x5c434450456e67696e654f6666636861696e576f726b657208000000000000d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+			    ],
+			    "requires": [],
+			  },
+			}
+		`);
 
         // Ensure tx priority order:
 	    // Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
