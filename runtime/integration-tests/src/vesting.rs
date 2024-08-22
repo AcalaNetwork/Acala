@@ -20,7 +20,6 @@ use crate::setup::*;
 use orml_vesting::VestingSchedule;
 
 #[test]
-#[ignore] // TODO: fix the relaychain block number proof
 fn test_vesting_use_relaychain_block_number() {
 	ExtBuilder::default().build().execute_with(|| {
 		#[cfg(feature = "with-mandala-runtime")]
