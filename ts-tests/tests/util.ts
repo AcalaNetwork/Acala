@@ -1,4 +1,4 @@
-import { Blockchain, BuildBlockMode, setupWithServer } from "@acala-network/chopsticks";
+import { Block, Blockchain, BuildBlockMode, setupWithServer } from "@acala-network/chopsticks";
 import { BodhiProvider, BodhiSigner, getTestUtils } from "@acala-network/bodhi";
 import { Option } from '@polkadot/types/codec';
 import { EvmAccountInfo } from '@acala-network/types/interfaces';
@@ -17,11 +17,15 @@ export async function startAcalaNode(sealing = true, autoClaim = true): Promise<
 	const server = await setupWithServer({
 		port: 0,
 		'chain-spec': __dirname + '/../../chainspecs/dev.json',
-		'build-block-mode': sealing ? BuildBlockMode.Instant : BuildBlockMode.Manual,
+		'build-block-mode': sealing ? BuildBlockMode.Instant : BuildBlockMode.Batch,
 		'runtime-log-level': 0,
 	});
 
 	const { provider, wallets } = await getTestUtils(`ws://127.0.0.1:${server.listenPort}`, autoClaim);
+
+	if (!sealing) {
+		server.chain.txPool.mode = BuildBlockMode.Manual;
+	}
 
 	return { provider, wallets, chain: server.chain, close: server.close };
 }
