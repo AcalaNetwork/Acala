@@ -55,7 +55,7 @@ const STORAGE_MASK: u64 = 100u64;
 // GAS LIMIT CHUNK
 const GAS_LIMIT_CHUNK: u64 = 30_000u64;
 // MAX GAS_LIMIT CC, log2(BLOCK_STORAGE_LIMIT)
-pub const MAX_GAS_LIMIT_CC: u32 = 21u32;
+pub const MAX_GAS_LIMIT_CC: u32 = 22u32;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

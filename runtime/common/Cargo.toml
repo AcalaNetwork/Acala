@@ -35,6 +35,7 @@ sp-std = { workspace = true }
 sp-io = { workspace = true }
 
 # cumulus
+cumulus-pallet-aura-ext = { workspace = true }
 cumulus-pallet-parachain-system = { workspace = true }
 cumulus-pallet-xcm = { workspace = true }
 
@@ -111,6 +112,7 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 
+	"cumulus-pallet-aura-ext/std",
 	"cumulus-pallet-parachain-system/std",
 
 	"pallet-xcm/std",
@@ -168,6 +170,7 @@ wasm-bench = [
 	"pallet-utility/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
+	"cumulus-pallet-parachain-system/runtime-benchmarks",
 
 	"module-asset-registry",
 	"module-cdp-treasury",

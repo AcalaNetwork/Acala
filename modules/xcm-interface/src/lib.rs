@@ -29,7 +29,7 @@
 
 use frame_support::{pallet_prelude::*, traits::Get};
 use frame_system::pallet_prelude::*;
-use module_support::{relaychain::CallBuilder, CrowdloanVaultXcm, HomaSubAccountXcm};
+use module_support::{relaychain::CallBuilder, HomaSubAccountXcm};
 use orml_traits::XcmTransfer;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
@@ -38,7 +38,6 @@ use sp_std::{convert::From, prelude::*, vec, vec::Vec};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 
 mod mocks;
-mod tests;
 
 pub use module::*;
 
@@ -169,39 +168,6 @@ pub mod module {
 			}
 
 			Ok(())
-		}
-	}
-
-	impl<T: Config> Pallet<T> {
-		pub fn build_transfer_to_liquid_crowdloan_module_account(
-			vault: T::AccountId,
-			recipient: T::AccountId,
-			amount: Balance,
-		) -> Result<Xcm<()>, DispatchError> {
-			let (xcm_dest_weight, xcm_fee) =
-				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ProxyReserveTransferAssets);
-
-			// self location is relative to self
-			let loc = T::SelfLocation::get();
-			// we need to reanchor it to the parent because the call is dispatched on parent
-			let loc = loc
-				.reanchored(&Location::new(1, Here), &Here)
-				.map_err(|_| Error::<T>::XcmFailed)?;
-
-			let proxy_call = T::RelayChainCallBuilder::proxy_call(
-				vault,
-				T::RelayChainCallBuilder::xcm_pallet_reserve_transfer_assets(
-					loc,
-					T::AccountIdToLocation::convert(recipient),
-					// Note this message is executed in the relay chain context.
-					vec![(Here, amount).into()].into(),
-					0,
-				),
-			);
-			let xcm_message =
-				T::RelayChainCallBuilder::finalize_call_into_xcm_message(proxy_call, xcm_fee, xcm_dest_weight);
-
-			Ok(xcm_message)
 		}
 	}
 
@@ -338,28 +304,6 @@ pub mod module {
 		/// The fee of parachain transfer.
 		fn get_parachain_fee(location: Location) -> Balance {
 			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ParachainFee(Box::new(location))).1
-		}
-	}
-
-	impl<T: Config> CrowdloanVaultXcm<T::AccountId, Balance> for Pallet<T> {
-		fn transfer_to_liquid_crowdloan_module_account(
-			vault: T::AccountId,
-			recipient: T::AccountId,
-			amount: Balance,
-		) -> DispatchResult {
-			let xcm_message =
-				Self::build_transfer_to_liquid_crowdloan_module_account(vault.clone(), recipient.clone(), amount)?;
-
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
-			log::debug!(
-				target: "xcm-interface",
-				"Send {:?} planck DOT from crowdloan vault {:?} to {:?}, result: {:?}",
-				amount, vault, recipient, result,
-			);
-
-			ensure!(result.is_ok(), Error::<T>::XcmFailed);
-
-			Ok(())
 		}
 	}
 }

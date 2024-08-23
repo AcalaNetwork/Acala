@@ -1,14 +1,11 @@
-import { expect } from "chai";
-import { step } from "mocha-steps";
-
+import { expect, it } from "vitest";
 import { describeWithAcala, transfer } from "./util";
 import { deployContract } from "ethereum-waffle";
 import { ethers } from "ethers";
 import Erc20DemoContract from "../build/Erc20DemoContract.json"
 
 describeWithAcala("Acala RPC (Nonce)", (context) => {
-	step("get nonce", async function () {
-		this.timeout(20000);
+	it("get nonce", async function () {
 		const [alice, alice_stash] = context.wallets;
 
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'earliest')).to.eq(0);

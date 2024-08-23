@@ -1,29 +1,14 @@
 # use `cargo nextest run` if cargo-nextest is installed
 cargo_test = $(shell which cargo-nextest >/dev/null && echo "cargo nextest run" || echo "cargo test")
+bunx_or_npx = $(shell which bunx >/dev/null && echo "bunx" || echo "npx")
 
 .PHONY: run
-run:
-	cargo run --features with-mandala-runtime -- --dev -lruntime=debug --instant-sealing
-
-.PHONY: run-eth
-run-eth:
-	cargo run --features with-mandala-runtime --features with-ethereum-compatibility -- --dev -lruntime=debug -levm=debug --instant-sealing
-
-.PHONY: run-karura-dev
-run-karura-dev:
-	cargo run --features with-karura-runtime -- --chain=karura-dev --alice --instant-sealing --tmp -lruntime=debug
+run: chainspec-dev
+	bunx @acala-network/chopsticks --chain-spec chainspecs/dev.json
 
 .PHONY: run-acala-dev
-run-acala-dev:
-	cargo run --features with-acala-runtime -- --chain=acala-dev --alice --instant-sealing --tmp -lruntime=debug
-
-.PHONY: run-karura
-run-karura:
-	cargo run --features with-karura-runtime -- --chain=karura
-
-.PHONY: run-acala
-run-acala:
-	cargo run --features with-acala-runtime -- --chain=acala
+run-acala-dev: chainspec-acala-dev
+	bunx @acala-network/chopsticks --chain-spec chainspecs/acala-dev.json
 
 .PHONY: toolchain
 toolchain:
@@ -39,68 +24,29 @@ build-full: githooks
 
 .PHONY: build-all
 build-all:
-	cargo build --locked --features with-all-runtime
+	cargo build --locked
 
 .PHONY: build-benches
 build-benches:
 	cargo bench --locked --no-run --features wasm-bench --package module-evm
 	cargo bench --locked --no-run --features wasm-bench --package runtime-common
 
-.PHONY: build-release
-build-release:
-	cargo build --locked --features with-all-runtime --profile production --bin acala
-
-.PHONY: build-mandala-release
-build-mandala-release:
-	cargo build --locked --features with-mandala-runtime --profile production --bin acala
-
-.PHONY: build-karura-release
-build-karura-release:
-	cargo build --locked --features with-karura-runtime --profile production --bin acala
-
-.PHONY: build-acala-release
-build-acala-release:
-	cargo build --locked --features with-acala-runtime --profile production --bin acala
-
-.PHONY: build-mandala-internal-release
-build-mandala-internal-release:
-	cargo build --locked --features with-mandala-runtime --release --bin acala
-
-.PHONY: build-karura-internal-release
-build-karura-internal-release:
-	cargo build --locked --features with-karura-runtime --release --bin acala
-
-.PHONY: build-acala-internal-release
-build-acala-internal-release:
-	cargo build --locked --features with-acala-runtime --release --bin acala
-
 .PHONY: check
 check: githooks
-	SKIP_WASM_BUILD= cargo check --features with-mandala-runtime
-
-.PHONY: check
-check-karura: githooks
-	SKIP_WASM_BUILD= cargo check --features with-karura-runtime
-
-.PHONY: check
-check-acala: githooks
-	SKIP_WASM_BUILD= cargo check --features with-acala-runtime
+	SKIP_WASM_BUILD= cargo check
 
 .PHONY: check-tests
 check-tests: githooks
-	SKIP_WASM_BUILD= cargo check --features with-all-runtime --tests --all
+	SKIP_WASM_BUILD= cargo check --tests --all
 
 .PHONY: check-all
-check-all: check-runtimes check-benchmarks check-tests check-integration-tests
+check-all: check-runtimes check-benchmarks check-tests check-integration-tests check-try-runtime
 
 .PHONY: check-runtimes
 check-runtimes:
 	SKIP_WASM_BUILD= cargo check -p mandala-runtime --features "runtime-benchmarks try-runtime with-ethereum-compatibility on-chain-release-build" --tests
-	SKIP_WASM_BUILD= cargo check -p mandala-runtime --features disable-runtime-api
 	SKIP_WASM_BUILD= cargo check -p karura-runtime --features "runtime-benchmarks try-runtime on-chain-release-build" --tests
-	SKIP_WASM_BUILD= cargo check -p karura-runtime --features disable-runtime-api
 	SKIP_WASM_BUILD= cargo check -p acala-runtime --features "runtime-benchmarks try-runtime on-chain-release-build" --tests
-	SKIP_WASM_BUILD= cargo check -p acala-runtime --features disable-runtime-api
 
 .PHONY: check-benchmarks
 check-benchmarks:
@@ -121,7 +67,7 @@ check-debug:
 
 .PHONY: check-try-runtime
 check-try-runtime:
-	SKIP_WASM_BUILD= cargo check --features try-runtime --features with-all-runtime
+	SKIP_WASM_BUILD= cargo check --features try-runtime
 
 .PHONY: try-runtime-karura
 try-runtime-karura:
@@ -142,6 +88,12 @@ try-runtime-acala:
 test: githooks
 	SKIP_WASM_BUILD= ${cargo_test} --features with-mandala-runtime --all
 
+.PHONY: insta-test
+insta-test: githooks
+	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-mandala-runtime --all --lib --tests
+	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-karura-runtime --all --lib --tests
+	INSTA_TEST_RUNNER=nextest SKIP_WASM_BUILD= cargo insta test --features with-acala-runtime --all --lib --tests
+
 .PHONY: test-eth
 test-eth: githooks test-evm
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
@@ -155,19 +107,19 @@ test-evm: githooks
 
 .PHONY: test-runtimes
 test-runtimes:
-	SKIP_WASM_BUILD= ${cargo_test} --all --features with-all-runtime --lib
+	SKIP_WASM_BUILD= ${cargo_test} --all --lib
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-mandala-runtime --lib
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-karura-runtime --lib
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features=with-acala-runtime --lib
 
 .PHONY: test-ts
-test-ts: build-mandala-internal-release
-	cd ts-tests && yarn && yarn run build && ACALA_BUILD=release yarn run test
+test-ts: chainspec-dev
+	cd ts-tests && yarn && yarn run build && yarn run test
 
 .PHONY: test-benchmarking
 test-benchmarking:
 	SKIP_WASM_BUILD= ${cargo_test} --features wasm-bench --package module-evm --package runtime-common
-	SKIP_WASM_BUILD= ${cargo_test} --features runtime-benchmarks --features with-all-runtime --all benchmarking
+	SKIP_WASM_BUILD= ${cargo_test} --features runtime-benchmarks --all benchmarking
 
 .PHONY: test-all
 test-all: test-runtimes test-eth test-benchmarking
@@ -225,6 +177,14 @@ build-wasm-karura:
 build-wasm-acala:
 	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=on-chain-release-build
 
+.PHONY: build-wasm-mandala-dev
+build-wasm-mandala-dev:
+	cargo build --profile release -p mandala-runtime --features=genesis-builder
+
+.PHONY: build-wasm-acala-dev
+build-wasm-acala-dev:
+	cargo build --profile release -p acala-runtime --features=genesis-builder
+
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:
 	PACKAGE=mandala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build,no-metadata-docs" ./scripts/srtool-build.sh
@@ -248,6 +208,20 @@ build-wasm-acala-tracing:
 .PHONY: generate-tokens
 generate-tokens:
 	./scripts/generate-tokens-and-predeploy-contracts.sh
+
+.PHONY: chainspec-dev
+chainspec-dev: build-wasm-mandala-dev
+	chain-spec-builder -c chainspecs/dev-base.json create -r ./target/release/wbuild/mandala-runtime/mandala_runtime.compact.compressed.wasm default
+	jq -s '.[0] * .[1]' chainspecs/dev-base.json chainspecs/dev.genesis.template.json > chainspecs/dev.json
+	chain-spec-builder -c chainspecs/dev-raw-base.json convert-to-raw chainspecs/dev.json
+	jq -s '.[0] * .[1]' chainspecs/dev-raw-base.json chainspecs/dev.properties.template.json > chainspecs/dev.json
+
+.PHONY: chainspec-acala-dev
+chainspec-acala-dev: build-wasm-acala-dev
+	chain-spec-builder -c chainspecs/acala-dev-base.json create -r ./target/release/wbuild/acala-runtime/acala_runtime.compact.compressed.wasm default
+	jq -s '.[0] * .[1]' chainspecs/acala-dev-base.json chainspecs/acala-dev.genesis.template.json > chainspecs/acala-dev.json
+	chain-spec-builder -c chainspecs/acala-dev-raw-base.json convert-to-raw chainspecs/acala-dev.json
+	jq -s '.[0] * .[1]' chainspecs/acala-dev-raw-base.json chainspecs/acala-dev.properties.template.json > chainspecs/acala-dev.json
 
 .PHONY: benchmark-module
 benchmark-module:
@@ -283,3 +257,9 @@ clippy-fix:
 bench-evm:
 	cargo bench -p runtime-common --features wasm-bench -- json | weight-gen --template ./templates/precompile-weight-template.hbs --output runtime/common/src/precompile/weights.rs
 	cargo bench -p module-evm --features wasm-bench -- json | evm-bench/analyze_benches.js runtime/common/src/gas_to_weight_ratio.rs
+
+.PHONY: tools
+tools:
+	cargo install staging-chain-spec-builder
+	cargo install frame-omni-bencher
+	cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.7.0

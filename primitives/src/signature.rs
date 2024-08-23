@@ -98,7 +98,7 @@ impl TryFrom<AcalaMultiSignature> for ecdsa::Signature {
 
 impl Default for AcalaMultiSignature {
 	fn default() -> Self {
-		Self::Ed25519(ed25519::Signature([0u8; 64]))
+		Self::Ed25519([0u8; 64].into())
 	}
 }
 

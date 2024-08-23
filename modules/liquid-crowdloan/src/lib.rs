@@ -29,8 +29,6 @@ use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::AccountIdConversion, ArithmeticError};
 
-use module_support::CrowdloanVaultXcm;
-
 mod mock;
 mod tests;
 pub mod weights;
@@ -64,13 +62,6 @@ pub mod module {
 		/// transfer DOT from relay chain crowdloan vault to liquid crowdloan module account.
 		type GovernanceOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-		/// The crowdloan vault account on relay chain.
-		#[pallet::constant]
-		type CrowdloanVault: Get<Self::AccountId>;
-
-		/// XCM transfer impl.
-		type XcmTransfer: CrowdloanVaultXcm<Self::AccountId, Balance>;
-
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -80,8 +71,6 @@ pub mod module {
 	pub enum Event<T: Config> {
 		/// Liquid Crowdloan asset was redeemed.
 		Redeemed { currency_id: CurrencyId, amount: Balance },
-		/// The transfer from relay chain crowdloan vault was requested.
-		TransferFromCrowdloanVaultRequested { amount: Balance },
 		/// The redeem currency id was updated.
 		RedeemCurrencyIdUpdated { currency_id: CurrencyId },
 	}
@@ -105,28 +94,9 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Send an XCM message to cross-chain transfer DOT from relay chain crowdloan vault to
-		/// liquid crowdloan module account.
-		///
-		/// This call requires `GovernanceOrigin`.
-		#[pallet::call_index(1)]
-		#[pallet::weight(<T as Config>::WeightInfo::transfer_from_crowdloan_vault())]
-		pub fn transfer_from_crowdloan_vault(
-			origin: OriginFor<T>,
-			#[pallet::compact] amount: Balance,
-		) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
-
-			T::XcmTransfer::transfer_to_liquid_crowdloan_module_account(
-				T::CrowdloanVault::get(),
-				Self::account_id(),
-				amount,
-			)?;
-
-			Self::deposit_event(Event::TransferFromCrowdloanVaultRequested { amount });
-
-			Ok(())
-		}
+		// removed because it is no longer needed
+		// #[pallet::call_index(1)]
+		// pub fn transfer_from_crowdloan_vault
 
 		/// Set the redeem currency id.
 		///

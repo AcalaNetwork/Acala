@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { expect, beforeAll, it } from "vitest";
 
 import { describeWithAcala, getEvmNonce, transfer } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
@@ -15,8 +15,7 @@ describeWithAcala("Acala RPC (Sign eip2930)", (context) => {
 	let factory: ContractFactory;
 	let contract: string;
 
-	before("init", async function () {
-		this.timeout(15000);
+	beforeAll(async function () {
 		[alice] = context.wallets;
 
 		signer = new Wallet(
@@ -46,8 +45,6 @@ describeWithAcala("Acala RPC (Sign eip2930)", (context) => {
 	}
 
 	it("create should sign and verify", async function () {
-		this.timeout(150000);
-
 		const chain_id = +context.provider.api.consts.evmAccounts.chainId.toString()
 		const nonce = await getEvmNonce(context.provider, signer.address);
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
@@ -109,7 +106,7 @@ describeWithAcala("Acala RPC (Sign eip2930)", (context) => {
 
 		const tx = context.provider.api.tx.evm.ethCall(
 			{ Create: null },
-			value.data,
+			value.data as any,
 			value.value,
 			input_gas_limit.toNumber(),
 			input_storage_limit.toNumber(),
@@ -184,8 +181,6 @@ describeWithAcala("Acala RPC (Sign eip2930)", (context) => {
 	});
 
 	it("call should sign and verify", async function () {
-		this.timeout(150000);
-
 		const chain_id = +context.provider.api.consts.evmAccounts.chainId.toString();
 		const nonce = await getEvmNonce(context.provider, signer.address);
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100;
@@ -248,7 +243,7 @@ describeWithAcala("Acala RPC (Sign eip2930)", (context) => {
 
 		const tx = context.provider.api.tx.evm.ethCall(
 			{ Call: value.to },
-			value.data,
+			value.data as any,
 			value.value,
 			input_gas_limit.toNumber(),
 			input_storage_limit.toNumber(),

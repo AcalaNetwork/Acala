@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { expect, it } from "vitest";
 
 import { describeWithAcala } from "./util";
 import { deployContract } from "ethereum-waffle";
@@ -6,8 +6,6 @@ import Storage from "../build/Storage.json"
 
 describeWithAcala("Acala RPC (Contract)", (context) => {
 	it("eth_getStorageAt", async function () {
-		this.timeout(15000);
-
 		const [alice] = context.wallets;
 		const contract = await deployContract(alice, Storage);
 

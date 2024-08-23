@@ -37,21 +37,18 @@ pub use module_support::{
 	mocks::MockAddressMapping, AddressMapping, CDPTreasury, DEXManager, Price, Rate, RiskManager,
 };
 
-pub use cumulus_pallet_parachain_system::RelaychainDataProvider;
 pub use orml_traits::{location::RelativeLocations, Change, GetByKey, MultiCurrency};
 
+pub use insta::assert_debug_snapshot;
 pub use primitives::{
 	currency::*,
-	evm::{
-		CHAIN_ID_ACALA_MAINNET, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_MAINNET, CHAIN_ID_KARURA_TESTNET,
-		CHAIN_ID_MANDALA,
-	},
+	evm::{CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},
 };
 use sp_consensus_aura::AURA_ENGINE_ID;
 pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Zero},
+	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Header, Zero},
 	BuildStorage, Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress,
 	Perbill, Permill,
 };
@@ -64,16 +61,16 @@ mod mandala_imports {
 	use mandala_runtime::AlternativeFeeSurplus;
 	pub use mandala_runtime::{
 		create_x2_parachain_location, get_all_module_accounts, AcalaOracle, AcalaSwap, AccountId, AggregatedDex,
-		AssetRegistry, AuctionManager, Aura, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber,
-		CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CollatorSelection, CreateClassDeposit,
-		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DealWithFees, DefaultDebitExchangeRate,
-		DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil,
-		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MinRewardDistributeAmount, MinimumDebitValue,
-		NativeTokenExistentialDeposit, NftPalletId, OneDay, OriginCaller, ParachainInfo, ParachainSystem, Proxy,
-		Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Scheduler, Session, SessionKeys, SessionManager, SevenDays,
-		StableAsset, StableAssetPalletId, System, Timestamp, TokenSymbol, Tokens, TransactionPayment,
-		TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic, Utility, Vesting,
-		XcmInterface, EVM, NFT,
+		AssetRegistry, AuctionManager, Aura, AuraExt, Authority, AuthoritysOriginId, Authorship, Balance, Balances,
+		BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CollatorSelection,
+		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DealWithFees,
+		DefaultDebitExchangeRate, DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits,
+		FinancialCouncil, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MinRewardDistributeAmount,
+		MinimumDebitValue, NativeTokenExistentialDeposit, NftPalletId, OneDay, OriginCaller, ParachainInfo,
+		ParachainSystem, Proxy, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Scheduler, Session, SessionKeys,
+		SessionManager, SevenDays, StableAsset, StableAssetPalletId, System, Timestamp, TokenSymbol, Tokens,
+		TransactionPayment, TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic, Utility,
+		Vesting, XcmInterface, EVM, NFT,
 	};
 	use primitives::TradingPair;
 	use runtime_common::{ACA, AUSD, DOT, LDOT};
@@ -110,7 +107,7 @@ mod karura_imports {
 	use karura_runtime::AlternativeFeeSurplus;
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_location, get_all_module_accounts, AcalaOracle, AcalaSwap,
-		AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, Authority, AuthoritysOriginId, Balance,
+		AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, AuraExt, Authority, AuthoritysOriginId, Balance,
 		Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DefaultDebitExchangeRate, DefaultExchangeRate,
 		Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil, GetNativeCurrencyId, Homa, Honzon,
@@ -154,7 +151,7 @@ mod acala_imports {
 	use acala_runtime::AlternativeFeeSurplus;
 	pub use acala_runtime::{
 		constants::parachains, create_x2_parachain_location, get_all_module_accounts, AcalaFoundationAccounts,
-		AcalaOracle, AcalaSwap, AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, Authority,
+		AcalaOracle, AcalaSwap, AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, AuraExt, Authority,
 		AuthoritysOriginId, Balance, Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine,
 		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte,
 		DefaultDebitExchangeRate, DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits,
@@ -233,9 +230,26 @@ pub fn run_to_block(n: u32) {
 }
 
 pub fn set_relaychain_block_number(number: BlockNumber) {
+	AuraExt::on_initialize(number);
 	ParachainSystem::on_initialize(number);
 
-	let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();
+	let mut sproof_builder = RelayStateSproofBuilder::default();
+
+	let parent_head_data = {
+		let header = cumulus_primitives_core::relay_chain::Header::new(
+			number,
+			sp_core::H256::from_low_u64_be(0),
+			sp_core::H256::from_low_u64_be(0),
+			Default::default(),
+			Default::default(),
+		);
+		cumulus_primitives_core::relay_chain::HeadData(header.encode())
+	};
+
+	sproof_builder.para_id = ParachainInfo::get().into();
+	sproof_builder.included_para_head = Some(parent_head_data.clone());
+
+	let (relay_storage_root, proof) = sproof_builder.into_state_root_and_proof();
 
 	assert_ok!(ParachainSystem::set_validation_data(
 		RuntimeOrigin::none(),

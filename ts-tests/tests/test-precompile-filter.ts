@@ -1,12 +1,12 @@
-import { expect } from "chai";
-
+import { expect, beforeAll, it } from "vitest";
 import TestCalls from "../build/TestCalls.json"
-import { describeWithAcala } from "./util";
+import { describeWithAcala, submitExtrinsic } from "./util";
 import { deployContract } from "ethereum-waffle";
-import { Contract, Signer } from "ethers";
+import { Contract } from "ethers";
+import { BodhiSigner } from "@acala-network/bodhi";
 
 describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
-	let alice: Signer;
+	let alice: BodhiSigner;
 	let contract: Contract;
 
 	const ecrecover = '0x0000000000000000000000000000000000000001';
@@ -18,8 +18,7 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 	const expect_addr = '0x000000000000000000000000a94f5374fce5edbc8e2a8697c15331677e6ebf0b';
 	const expect_pk = '0x3a514176466fa815ed481ffad09110a2d344f6c9b78c1d14afc351c3a51be33d8072e77939dc03ba44790779b7a1025baf3003f6732430e20cd9b76d953391b3';
 
-	before("create the contract", async function () {
-		this.timeout(15000);
+	beforeAll(async function () {
 		[alice] = context.wallets;
 		contract = await deployContract(alice, TestCalls);
 	});
@@ -27,7 +26,7 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 	it('call non-standard precompile should not work with DELEGATECALL', async function () {
 		expect(await contract.test_static_call(ecrecoverPublic, input)).to.be.eq(expect_pk);
 		await contract.test_call(ecrecoverPublic, input, expect_pk);
-		await expect(contract.test_delegate_call(ecrecoverPublic, input, expect_pk)).to.be.rejectedWith("cannot be called with DELEGATECALL or CALLCODE");
+		await expect(contract.test_delegate_call(ecrecoverPublic, input, expect_pk)).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: execution reverted: cannot be called with DELEGATECALL or CALLCODE]`);
 	});
 
 	it('call non-standard precompile should work with CALL and STATICCALL', async function () {
@@ -55,13 +54,13 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 			to: '0x0000000000000000000000000000000000000400',
 			from: await alice.getAddress(),
 			data: input,
-		})).to.be.rejectedWith("NoPermission");
+		})).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: execution reverted: NoPermission]`);
 
 		await expect(context.provider.call({
 			to: '0x0000000000000000000000000000000000000400',
 			from: '0x0000000000000000000111111111111111111111',
 			data: input,
-		})).to.be.rejectedWith("Caller is not a system contract");
+		})).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: execution reverted: Caller is not a system contract]`);
 
 		// 41555344 -> AUSD
 		expect(await context.provider.call({
@@ -80,33 +79,23 @@ describeWithAcala("Acala RPC (Precompile Filter Calls)", (context) => {
 		expect(await contract.test_static_call(identity, '0xff')).to.be.eq('0xff');
 		await contract.test_call(identity, '0xff', '0xff');
 
+		let nonce = (await context.provider.api.query.system.account(alice.substrateAddress)).nonce.toNumber();
+
 		// pause precompile
-		await new Promise(async (resolve) => {
-			context.provider.api.tx.sudo.sudo(context.provider.api.tx.transactionPause.pauseEvmPrecompile(identity)).signAndSend(alice.substrateAddress, ((result) => {
-				if (result.status.isFinalized || result.status.isInBlock) {
-					resolve(undefined);
-				}
-			}));
-		});
+		await submitExtrinsic(context.provider.api.tx.sudo.sudo(context.provider.api.tx.transactionPause.pauseEvmPrecompile(identity)), alice.substrateAddress, nonce);
 
 		// calling precompile will error
 		await expect(context.provider.call({
 			to: identity,
 			data: '0xff',
-		})).to.be.rejectedWith('precompile is paused');
+		})).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: execution reverted: precompile is paused]`);
 
 		// contracts calling paused precompile will revert
-		await expect(contract.test_static_call(identity, '0xff')).to.be.rejectedWith('precompile is paused');
-		await expect(contract.test_call(identity, '0xff', '0xff')).to.be.rejectedWith('precompile is paused');
+		await expect(contract.test_static_call(identity, '0xff')).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: execution reverted: precompile is paused]`);
+		await expect(contract.test_call(identity, '0xff', '0xff')).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: execution reverted: precompile is paused]`);
 
 		// unpause precompile
-		await new Promise(async (resolve) => {
-			context.provider.api.tx.sudo.sudo(context.provider.api.tx.transactionPause.unpauseEvmPrecompile(identity)).signAndSend(alice.substrateAddress, ((result) => {
-				if (result.status.isFinalized || result.status.isInBlock) {
-					resolve(undefined);
-				}
-			}));
-		});
+		await submitExtrinsic(context.provider.api.tx.sudo.sudo(context.provider.api.tx.transactionPause.unpauseEvmPrecompile(identity)), alice.substrateAddress, nonce + 1);
 
 		expect(await context.provider.call({
 			to: identity,

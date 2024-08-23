@@ -24,7 +24,6 @@ use super::*;
 use crate::mock::*;
 use frame_support::{assert_err, assert_ok};
 use orml_traits::MultiCurrency;
-use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn redeem_works() {
@@ -70,39 +69,6 @@ fn redeem_fails_if_not_enough_relay_chain_token() {
 				orml_tokens::Error::<Runtime>::BalanceTooLow
 			);
 		});
-}
-
-#[test]
-fn transfer_from_crowdloan_vault_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(LiquidCrowdloan::transfer_from_crowdloan_vault(
-			RuntimeOrigin::signed(ALICE),
-			100,
-		));
-		System::assert_last_event(RuntimeEvent::LiquidCrowdloan(
-			crate::Event::TransferFromCrowdloanVaultRequested { amount: 100 },
-		));
-	});
-}
-
-#[test]
-fn transfer_from_crowdloan_vault_fails_if_not_gov_origin() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_err!(
-			LiquidCrowdloan::transfer_from_crowdloan_vault(RuntimeOrigin::signed(BOB), 100,),
-			BadOrigin
-		);
-	});
-}
-
-#[test]
-fn transfer_from_crowdloan_vault_fails_if_sending_xcm_failed() {
-	ExtBuilder::default().transfer_ok(false).build().execute_with(|| {
-		assert_err!(
-			LiquidCrowdloan::transfer_from_crowdloan_vault(RuntimeOrigin::signed(ALICE), 100,),
-			DispatchError::Other("transfer failed")
-		);
-	})
 }
 
 #[test]

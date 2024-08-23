@@ -1,0 +1,120 @@
+{
+	"genesis": {
+	  "runtimeGenesis": {
+		"config": {
+		  "system": {},
+		  "balances": {
+			"balances": [
+			  [
+				"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+				1000000000000000
+			  ],
+			  [
+				"5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+				1000000000000000
+			  ],
+			  [
+				"5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y",
+				1000000000000000
+			  ]
+			]
+		  },
+		  "tokens": {
+			"balances": []
+		  },
+		  "vesting": {
+			"vesting": []
+		  },
+		  "treasury": {},
+		  "parachainInfo": {
+			"parachainId": 2000
+		  },
+		  "collatorSelection": {
+			"invulnerables": [
+			  "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+			],
+			"candidacyBond": 0,
+			"desiredCandidates": 0
+		  },
+		  "session": {
+			"keys": [
+			  [
+				"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+				"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+				{
+				  "aura": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+				}
+			  ]
+			]
+		  },
+		  "aura": {
+			"authorities": []
+		  },
+		  "auraExt": {},
+		  "sessionManager": {
+			"sessionDuration": 600
+		  },
+		  "polkadotXcm": {
+			"safeXcmVersion": 2
+		  },
+		  "generalCouncil": {
+			"members": []
+		  },
+		  "generalCouncilMembership": {
+			"members": [
+			  "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+			]
+		  },
+		  "financialCouncil": {
+			"members": []
+		  },
+		  "financialCouncilMembership": {
+			"members": []
+		  },
+		  "homaCouncil": {
+			"members": []
+		  },
+		  "homaCouncilMembership": {
+			"members": []
+		  },
+		  "technicalCommittee": {
+			"members": []
+		  },
+		  "technicalCommitteeMembership": {
+			"members": []
+		  },
+		  "democracy": {},
+		  "operatorMembershipAcala": {
+			"members": []
+		  },
+		  "ormlNft": {
+			"tokens": []
+		  },
+		  "dex": {
+			"initialListingTradingPairs": [],
+			"initialEnabledTradingPairs": [],
+			"initialAddedLiquidityPools": []
+		  },
+		  "cdpTreasury": {
+			"expectedCollateralAuctionSize": [],
+			"phantom": null
+		  },
+		  "cdpEngine": {
+			"collateralsParams": [],
+			"phantom": null
+		  },
+		  "assetRegistry": {
+			"assets": []
+		  },
+		  "evm": {
+			"chainId": 597,
+			"accounts": {}
+		  },
+		  "parachainSystem": {},
+		  "sudo": {
+			"key": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+		  }
+		}
+	  }
+	}
+  }

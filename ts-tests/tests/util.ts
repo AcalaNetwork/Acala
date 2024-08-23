@@ -1,113 +1,44 @@
+import { Blockchain, BuildBlockMode, setupWithServer } from "@acala-network/chopsticks";
 import { BodhiProvider, BodhiSigner, getTestUtils } from "@acala-network/bodhi";
 import { Option } from '@polkadot/types/codec';
 import { EvmAccountInfo } from '@acala-network/types/interfaces';
-import { spawn, ChildProcess } from "child_process";
-import chaiAsPromised from "chai-as-promised";
-import chai from "chai";
-import getPort from 'get-port';
 import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/types";
+import { afterAll, beforeAll, describe } from "vitest";
+import "chai";
 
 export interface TestContext {
 	provider: BodhiProvider;
 	wallets: BodhiSigner[];
+	chain: Blockchain
+	close: () => Promise<void>;
 };
 
-chai.use(chaiAsPromised);
+export async function startAcalaNode(sealing = true, autoClaim = true): Promise<TestContext> {
+	const server = await setupWithServer({
+		port: 0,
+		'chain-spec': __dirname + '/../../chainspecs/dev.json',
+		'build-block-mode': sealing ? BuildBlockMode.Instant : BuildBlockMode.Batch,
+		'runtime-log-level': 0,
+	});
 
-export const DISPLAY_LOG = process.env.ACALA_LOG || false;
-export const ACALA_LOG = process.env.ACALA_LOG || "info";
-export const ACALA_BUILD = process.env.ACALA_BUILD || "debug";
+	const { provider, wallets } = await getTestUtils(`ws://127.0.0.1:${server.listenPort}`, autoClaim);
 
-export const BINARY_PATH = `../target/${ACALA_BUILD}/acala`;
-export const SPAWNING_TIME = 120000;
-
-export async function startAcalaNode(sealing = true, autoClaim = true): Promise<{ binary: ChildProcess; } & TestContext> {
-	const RPC_PORT = await getPort({ port: getPort.makeRange(9944, 9999) });
-	const P2P_PORT = await getPort({ port: getPort.makeRange(30333, 30433) });
-
-	const cmd = BINARY_PATH;
-	const args = [
-		`--dev`,
-		`-lruntime=debug`,
-		`-levm=debug`,
-		`--no-telemetry`,
-		`--no-prometheus`,
-		`--port=${P2P_PORT}`,
-		`--rpc-port=${RPC_PORT}`,
-		`--rpc-external`,
-		`--rpc-cors=all`,
-		`--rpc-methods=unsafe`,
-		`--pruning=archive`,
-		`--keep-blocks=archive`,
-		`--tmp`,
-	];
-
-	if (sealing) {
-		args.push(`--instant-sealing`);
+	if (!sealing) {
+		server.chain.txPool.mode = BuildBlockMode.Manual;
 	}
 
-	const binary = spawn(cmd, args);
-
-	binary.on("error", (err) => {
-		if ((err as any).errno == "ENOENT") {
-			console.error(
-				`\x1b[31mMissing Acala binary (${BINARY_PATH}).\nPlease compile the Acala project:\nmake test-ts\x1b[0m`
-			);
-		} else {
-			console.error(err);
-		}
-		process.exit(1);
-	});
-
-	const binaryLogs = [] as any;
-	const { provider, wallets } = await new Promise<TestContext>((resolve, reject) => {
-		const timer = setTimeout(() => {
-			console.error(`\x1b[31m Failed to start Acala Node.\x1b[0m`);
-			console.error(`Command: ${cmd} ${args.join(" ")}`);
-			console.error(`Logs:`);
-			console.error(binaryLogs.map((chunk: any) => chunk.toString()).join("\n"));
-			process.exit(1);
-		}, SPAWNING_TIME - 2000);
-
-		const onData = async (chunk: any) => {
-			if (DISPLAY_LOG) {
-				console.log(chunk.toString());
-			}
-			binaryLogs.push(chunk);
-			if (chunk.toString().match(/Running JSON-RPC server/)) {
-				try {
-					const { provider, wallets } = await getTestUtils(`ws://127.0.0.1:${RPC_PORT}`, autoClaim);
-
-					clearTimeout(timer);
-					if (!DISPLAY_LOG) {
-						binary.stderr.off("data", onData);
-						binary.stdout.off("data", onData);
-					}
-					resolve({ provider, wallets });
-				} catch(e) {
-					binary.kill();
-					reject(e);
-				}
-			}
-		};
-		binary.stderr.on("data", onData);
-		binary.stdout.on("data", onData);
-	});
-
-	return { provider, wallets, binary };
+	return { provider, wallets, chain: server.chain, close: server.close };
 }
 
 export function describeWithAcala(title: string, cb: (context: TestContext) => void) {
 	let context = {} as TestContext;
 
-	describe(title, () => {
-		let binary: ChildProcess;
+	describe.sequential(title, () => {
 		// Making sure the Acala node has started
-		before("Starting Acala Test Node", async function () {
+		beforeAll(async function () {
 			console.log('starting acala node ...')
-			this.timeout(SPAWNING_TIME);
 
-			const sealing = 
+			const sealing =
 				title !== 'Acala RPC (EVM create fill block)' &&
 				title !== 'Acala RPC (EVM call fill block)';
 
@@ -115,18 +46,15 @@ export function describeWithAcala(title: string, cb: (context: TestContext) => v
 				title !== 'Acala RPC (Claim Account Eip712)' &&
 				title !== 'Acala RPC (Block)';
 			const init = await startAcalaNode(sealing, autoClaim);
-
-			context.provider = init.provider,
-			context.wallets = init.wallets,
-			binary = init.binary;
+			Object.assign(context, init);
 
 			console.log('acala node started!')
 		});
 
-		after(async function () {
-			//console.log(`\x1b[31m Killing RPC\x1b[0m`);
-			context.provider.api.disconnect()
-			binary.kill();
+		afterAll(async function () {
+			// console.log(`\x1b[31m Killing RPC\x1b[0m`);
+			await context.provider.api.disconnect()
+			await context.close();
 		});
 
 		cb(context);
@@ -134,15 +62,7 @@ export function describeWithAcala(title: string, cb: (context: TestContext) => v
 }
 
 export async function nextBlock(context: TestContext) {
-	return new Promise(async (resolve) => {
-		let [alice] = context.wallets;
-		let block_number = await context.provider.api.query.system.number();
-		context.provider.api.tx.system.remark(block_number.toString(16)).signAndSend(alice.substrateAddress, (result) => {
-			if (result.status.isFinalized || result.status.isInBlock) {
-				resolve(undefined);
-			}
-		});
-	});
+	await context.chain.newBlock();
 }
 
 export async function transfer(context: TestContext, from: string, to: string, amount: number) {
@@ -161,12 +81,12 @@ export async function getEvmNonce(provider: BodhiProvider, address: string): Pro
 	return nonce;
 }
 
-export async function submitExtrinsic(extrinsic: SubmittableExtrinsic<'promise'>, sender: AddressOrPair) {
-	return new Promise(async (resolve) => {
-		extrinsic.signAndSend(sender, (result) => {
+export async function submitExtrinsic(extrinsic: SubmittableExtrinsic<'promise'>, sender: AddressOrPair, nonce?: number) {
+	return new Promise(async (resolve, reject) => {
+		extrinsic.signAndSend(sender, { nonce }, (result) => {
 			if (result.status.isFinalized || result.status.isInBlock) {
 				resolve(undefined);
 			}
-		});
+		}).catch(reject);
 	});
 }

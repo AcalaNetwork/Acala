@@ -27,6 +27,7 @@ module-support = { workspace = true }
 primitives = { workspace = true }
 
 [dev-dependencies]
+insta = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }
 hex = { workspace = true, features = ["std"] }
 pallet-balances = { workspace = true, features = ["std"] }

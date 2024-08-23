@@ -97,6 +97,7 @@ impl pallet_aura::Config for Test {
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<32>;
 	type AllowMultipleBlocksPerSlot = ConstBool<false>;
+	type SlotDuration = ConstU64<12000>;
 }
 
 sp_runtime::impl_opaque_keys! {

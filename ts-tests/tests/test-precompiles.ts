@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { expect, beforeAll, it } from "vitest";
 import ECRecoverTests from "../build/ECRecoverTests.json"
 import { describeWithAcala } from "./util";
 import { deployContract } from "ethereum-waffle";
@@ -9,7 +9,7 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 	let signer: Wallet;
 	let contract: Contract;
 
-	before(async () => {
+	beforeAll(async () => {
 		[alice] = context.wallets;
 		contract = await deployContract(alice, ECRecoverTests);
 		signer = new Wallet(
@@ -40,7 +40,7 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 			// value: BigNumber.from(0),
 			chainId: 595,
 		});
-		expect(res.gasLimit.toNumber()).to.eq(100200)
+		expect(res.gasLimit.toNumber()).toMatchInlineSnapshot(`200207`)
 		expect(res.gasPrice.toNumber()).to.eq(1)
 		expect(res.value.toNumber()).to.eq(0)
 
@@ -48,7 +48,7 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 			to: '0x0000000000000000000000000000000000000001',
 			from: await alice.getAddress(),
 			data: `0x${hash.toString()}${sigPart}`,
-		})).to.equal("0x" + (await signer.getAddress()).toLowerCase().slice(2).padStart(64, 0));
+		})).to.equal("0x" + (await signer.getAddress()).toLowerCase().slice(2).padStart(64, '0'));
 	});
 
 	it('should perform identity directly', async () => {
@@ -65,11 +65,11 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 		// currencies_len is MAX_UINT32
 		const input = '0xcfea5c46000000000000000000000000100000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000001a000000000000000000000000000000000000000000000000000000000ffffffff0000000000000000000000001000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000100000000000000000000000010000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000002503000101000202020202020202020202020202020202020202020202020202020202020202000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000901821a0600020004000000000000000000000000000000000000000000000000';
 
-		await expect(context.provider.call({
+		await expect(async () => await context.provider.call({
 			to: '0x000000000000000000000000000000000000040b',
 			// Passes system contract filter
 			from: '0x0000000000000000000100000000000000000001',
 			data: input,
-		})).to.be.rejectedWith('execution reverted: invalid currencies size');
+		})).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: execution reverted: invalid currencies size]`);
 	});
 });
