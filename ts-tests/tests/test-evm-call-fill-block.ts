@@ -29,7 +29,7 @@ describeWithAcala("Acala RPC (EVM call fill block)", (context) => {
             await tx.signAndSend(alice.substrateAddress, { nonce: nonce++ });
         }
 
-		await nextBlock(context);
+        await nextBlock(context);
 
         let currentBlockHash = await context.provider.api.rpc.chain.getBlockHash(beforeHeight + 1);
 
