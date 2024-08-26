@@ -1075,7 +1075,7 @@ where
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			runtime_common::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
-			frame_metadata_hash_extension::new(true),
+			frame_metadata_hash_extension::CheckMetadataHash::<Runtime>::new(true),
 			module_evm::SetEvmOrigin::<Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
@@ -2606,7 +2606,7 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 					}
 				}
 
-				let (_, _, _, _, mortality, check_nonce, _, _, charge) = extra.clone();
+				let (_, _, _, _, mortality, check_nonce, _, _, _, charge) = extra.clone();
 
 				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
 					// require immortal
