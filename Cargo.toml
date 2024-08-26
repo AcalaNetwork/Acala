@@ -217,13 +217,14 @@ cumulus-pallet-xcm = { version = "0.16.0", default-features = false }
 cumulus-pallet-xcmp-queue = { version = "0.16.0", default-features = false }
 cumulus-primitives-core = { version = "0.15.0", default-features = false }
 cumulus-primitives-parachain-inherent = { version = "0.15.0", default-features = false }
-cumulus-primitives-timestamp = { version = "0.15.0", default-features = false }
+cumulus-primitives-timestamp = { version = "0.15.1", default-features = false }
 cumulus-primitives-utility = { version = "0.16.0", default-features = false }
 cumulus-test-relay-sproof-builder = { version = "0.15.0", default-features = false }
 frame-benchmarking = { version = "37.0.0", default-features = false }
 frame-executive = { version = "37.0.0", default-features = false }
+frame-metadata-hash-extension = { version = "0.5.0", default-features = false }
 frame-support = { version = "37.0.0", default-features = false }
-frame-system = { version = "37.0.0", default-features = false }
+frame-system = { version = "37.1.0", default-features = false }
 frame-system-rpc-runtime-api = { version = "34.0.0", default-features = false }
 frame-try-runtime = { version = "0.43.0", default-features = false }
 pallet-aura = { version = "36.0.0", default-features = false }
@@ -260,12 +261,12 @@ polkadot-core-primitives = { version = "15.0.0", default-features = false }
 polkadot-parachain-primitives = { version = "14.0.0", default-features = false }
 polkadot-primitives = { version = "15.0.0", default-features = false }
 polkadot-runtime-common = { version = "16.0.0", default-features = false }
-polkadot-runtime-parachains = { version = "16.0.0", default-features = false }
+polkadot-runtime-parachains = { version = "16.0.1", default-features = false }
 sp-api = { version = "34.0.0", default-features = false }
 sp-application-crypto = { version = "38.0.0", default-features = false }
 sp-arithmetic = { version = "26.0.0", default-features = false }
 sp-block-builder = { version = "34.0.0", default-features = false }
-sp-blockchain = { version = "37.0.0", default-features = false }
+sp-blockchain = { version = "37.0.1", default-features = false }
 sp-consensus = { version = "0.40.0", default-features = false }
 sp-consensus-aura = { version = "0.40.0", default-features = false }
 sp-consensus-slots = { version = "0.40.0", default-features = false }
@@ -297,5 +298,5 @@ xcm-builder = { version = "16.0.0", package = "staging-xcm-builder", default-fea
 xcm-executor = { version = "16.0.0", package = "staging-xcm-executor", default-features = false }
 
 # polkadot-sdk (client)
-substrate-wasm-builder = { version = "24.0.0" }
+substrate-wasm-builder = { version = "24.0.0", features = ["metadata-hash"] }
 xcm-simulator = { version = "16.0.0" }

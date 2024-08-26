@@ -16,6 +16,7 @@ hex-literal = { workspace = true }
 
 # substrate
 frame-executive = { workspace = true }
+frame-metadata-hash-extension = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 frame-system-rpc-runtime-api = { workspace = true }
@@ -156,6 +157,7 @@ std = [
 	"serde_json/std",
 
 	"frame-benchmarking/std",
+	"frame-metadata-hash-extension/std",
 	"frame-executive/std",
 	"frame-support/std",
 	"frame-system-rpc-runtime-api/std",
