@@ -298,5 +298,5 @@ xcm-builder = { version = "16.0.0", package = "staging-xcm-builder", default-fea
 xcm-executor = { version = "16.0.0", package = "staging-xcm-executor", default-features = false }
 
 # polkadot-sdk (client)
-substrate-wasm-builder = { version = "24.0.0" }
+substrate-wasm-builder = { version = "24.0.0", features = ["metadata-hash"] }
 xcm-simulator = { version = "16.0.0" }
