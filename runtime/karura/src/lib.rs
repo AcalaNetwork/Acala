@@ -2015,13 +2015,8 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
-parameter_types! {
-	pub const DmpQueuePalletName: &'static str = "DmpQueue";
-}
-
 #[allow(unused_parens)]
-type Migrations =
-	(frame_support::migrations::RemovePallet<DmpQueuePalletName, <Runtime as frame_system::Config>::DbWeight>,);
+type Migrations = ();
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
