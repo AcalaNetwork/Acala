@@ -107,9 +107,6 @@ pub mod auction {
 pub mod authority {
 	include!("../../../mandala/src/benchmarking/authority.rs");
 }
-pub mod oracle {
-	include!("../../../mandala/src/benchmarking/oracle.rs");
-}
 pub mod tokens {
 	include!("../../../mandala/src/benchmarking/tokens.rs");
 }

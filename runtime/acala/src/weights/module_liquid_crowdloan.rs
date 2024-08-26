@@ -66,25 +66,6 @@ impl<T: frame_system::Config> module_liquid_crowdloan::WeightInfo for WeightInfo
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
-	// Storage: `XcmInterface::XcmDestWeightAndFee` (r:1 w:0)
-	// Proof: `XcmInterface::XcmDestWeightAndFee` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `ParachainInfo::ParachainId` (r:1 w:0)
-	// Proof: `ParachainInfo::ParachainId` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
-	// Storage: `PolkadotXcm::SupportedVersion` (r:1 w:0)
-	// Proof: `PolkadotXcm::SupportedVersion` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `ParachainSystem::HostConfiguration` (r:1 w:0)
-	// Proof: `ParachainSystem::HostConfiguration` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	// Storage: `ParachainSystem::PendingUpwardMessages` (r:1 w:1)
-	// Proof: `ParachainSystem::PendingUpwardMessages` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn transfer_from_crowdloan_vault() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1392`
-		//  Estimated: `4857`
-		// Minimum execution time: 52_266 nanoseconds.
-		Weight::from_parts(53_694_000, 4857)
-			.saturating_add(T::DbWeight::get().reads(5))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
 	// Storage: `LiquidCrowdloan::RedeemCurrencyId` (r:0 w:1)
 	// Proof: `LiquidCrowdloan::RedeemCurrencyId` (`max_values`: Some(1), `max_size`: Some(43), added: 538, mode: `MaxEncodedLen`)
 	fn set_redeem_currency_id() -> Weight {

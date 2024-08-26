@@ -597,15 +597,45 @@ fn three_usd_pool_works() {
 					50
 				)
 			);
+
+			let liquidity_changes = System::events()
+				.iter()
+				.filter_map(|r| {
+					if let RuntimeEvent::Dex(module_dex::Event::Swap {
+						ref trader,
+						ref path,
+						ref liquidity_changes,
+					}) = r.event
+					{
+						if *trader == AccountId::from(BOB)
+							&& *path == vec![USD_CURRENCY, NATIVE_CURRENCY]
+							&& liquidity_changes.len() == 2
+						{
+							Some(liquidity_changes.clone())
+						} else {
+							None
+						}
+					} else {
+						None
+					}
+				})
+				.next()
+				.unwrap();
+
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
-			let (amount1, amount2) = (189191360, 1875001005);
+			assert_debug_snapshot!(liquidity_changes, @r###"
+   [
+       227029656,
+       2250002378,
+   ]
+   "###);
 			#[cfg(feature = "with-mandala-runtime")]
-			let (amount1, amount2) = (188813728, 1875001005);
-			System::assert_has_event(RuntimeEvent::Dex(module_dex::Event::Swap {
-				trader: AccountId::from(BOB),
-				path: vec![USD_CURRENCY, NATIVE_CURRENCY],
-				liquidity_changes: vec![amount1, amount2],
-			}));
+			assert_debug_snapshot!(liquidity_changes, @r###"
+   [
+       226576496,
+       2250002368,
+   ]
+   "###);
 
 			// with_fee_path_call failed
 			let invalid_swap_path = vec![

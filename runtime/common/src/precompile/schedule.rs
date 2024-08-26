@@ -18,6 +18,7 @@
 
 // Disable the following lints
 #![allow(clippy::type_complexity)]
+#![allow(deprecated)] // schedule::v3 is deprecated but schedule precompile is expiermental anyway
 
 use super::input::{Input, InputT, Output};
 use frame_support::{
@@ -554,7 +555,7 @@ mod tests {
 			run_to_block(4);
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			{
-				assert_eq!(Balances::free_balance(from_account.clone()), 999999978576);
+				assert_eq!(Balances::free_balance(from_account.clone()), 999999978554);
 				assert_eq!(Balances::reserved_balance(from_account), 0);
 				assert_eq!(Balances::free_balance(to_account), 1000000000000);
 			}

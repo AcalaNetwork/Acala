@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { expect, beforeAll, it } from "vitest";
 
 import { describeWithAcala, getEvmNonce, transfer } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
@@ -20,8 +20,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	let factory: ContractFactory;
 	let contract: string;
 
-	before("init", async function () {
-		this.timeout(15000);
+	beforeAll(async function () {
 		[alice] = context.wallets;
 
 		signer = new Wallet(
@@ -44,8 +43,6 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	});
 
 	it("create should sign and verify", async function () {
-		this.timeout(150000);
-
 		const chainId = +context.provider.api.consts.evmAccounts.chainId.toString()
 		const nonce = await getEvmNonce(context.provider, signer.address);
 
@@ -91,13 +88,13 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 			// hash: '0x456d37c868520b362bbf5baf1b19752818eba49cc92c1a512e2e80d1ccfbc18b',
 			type: null
 		});
-		expect(rawtx.gasPrice?.toNumber()).to.eq(100000000105);
-		expect(rawtx.gasLimit?.toNumber()).to.eq(7115);
+		expect(rawtx.gasPrice?.toNumber()).toMatchInlineSnapshot(`100000000106`)
+		expect(rawtx.gasLimit?.toNumber()).toMatchInlineSnapshot(`7115`)
 		expect(rawtx.value?.toNumber()).to.eq(0);
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Create: null },
-			value.data,
+			value.data as any,
 			value.value,
 			txGasPrice.toNumber(),
 			txGasLimit.toNumber(),
@@ -140,8 +137,8 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					},
 					"input": "${deploy.data}",
 					"value": 0,
-					"gas_price": 100000000105,
-					"gas_limit": 7115,
+					"gas_price": ${rawtx.gasPrice},
+					"gas_limit": ${rawtx.gasLimit},
 					"access_list": []
 				  }
 				}
@@ -170,8 +167,6 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	});
 
 	it("call should sign and verify", async function () {
-		this.timeout(150000);
-
 		const chainId = +context.provider.api.consts.evmAccounts.chainId.toString();
 		const nonce = await getEvmNonce(context.provider, signer.address);
 
@@ -217,13 +212,13 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 			// hash: '0x67274cd0347795d0e2986021a19b1347948a0a93e1fb31a315048320fbfcae8a',
 			type: null
 		});
-		expect(rawtx.gasPrice?.toNumber()).to.eq(100000000106);
-		expect(rawtx.gasLimit?.toNumber()).to.eq(810);
+		expect(rawtx.gasPrice?.toNumber()).toMatchInlineSnapshot(`100000000107`)
+		expect(rawtx.gasLimit?.toNumber()).toMatchInlineSnapshot(`810`)
 		expect(rawtx.value?.toNumber()).to.eq(0);
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Call: value.to },
-			value.data,
+			value.data as any,
 			value.value,
 			txGasPrice.toNumber(),
 			txGasLimit.toNumber(),
@@ -266,8 +261,8 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					},
 					"input": "${input.data}",
 					"value": 0,
-					"gas_price": 100000000106,
-					"gas_limit": 810,
+					"gas_price": ${rawtx.gasPrice},
+					"gas_limit": ${rawtx.gasLimit},
 					"access_list": []
 				  }
 				}
@@ -303,8 +298,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 	let factory: ContractFactory;
 	let contract: string;
 
-	before("init", async function () {
-		this.timeout(15000);
+	beforeAll(async function () {
 		[alice] = context.wallets;
 
 		signer = new Wallet(
@@ -327,8 +321,6 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 	});
 
 	it("create should sign and verify", async function () {
-		this.timeout(150000);
-
 		const chainId = +context.provider.api.consts.evmAccounts.chainId.toString()
 		const nonce = await getEvmNonce(context.provider, signer.address);
 
@@ -377,13 +369,13 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 			// hash: '0x456d37c868520b362bbf5baf1b19752818eba49cc92c1a512e2e80d1ccfbc18b',
 			type: null
 		});
-		expect(rawtx.gasPrice?.toNumber()).to.eq(110000000105);
-		expect(rawtx.gasLimit?.toNumber()).to.eq(10007115);
+		expect(rawtx.gasPrice?.toNumber()).toMatchInlineSnapshot(`110000000106`)
+		expect(rawtx.gasLimit?.toNumber()).toMatchInlineSnapshot(`10007115`)
 		expect(rawtx.value?.toNumber()).to.eq(0);
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Create: null },
-			value.data,
+			value.data as any,
 			value.value,
 			txGasPrice.toNumber(),
 			txGasLimit.toNumber(),
@@ -416,7 +408,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 					"immortalEra": "0x00"
 				  },
 				  "nonce": 0,
-				  "tip": 100071150105
+				  "tip": ${tip}
 				},
 				"method": {
 				  "callIndex": "0xb40f",
@@ -426,8 +418,8 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 					},
 					"input": "${deploy.data}",
 					"value": 0,
-					"gas_price": 110000000105,
-					"gas_limit": 10007115,
+					"gas_price": ${rawtx.gasPrice},
+					"gas_limit": ${rawtx.gasLimit},
 					"access_list": []
 				  }
 				}
@@ -456,8 +448,6 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 	});
 
 	it("call should sign and verify", async function () {
-		this.timeout(150000);
-
 		const chainId = +context.provider.api.consts.evmAccounts.chainId.toString();
 		const nonce = await getEvmNonce(context.provider, signer.address);
 
@@ -507,13 +497,13 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 			// hash: '0x67274cd0347795d0e2986021a19b1347948a0a93e1fb31a315048320fbfcae8a',
 			type: null
 		});
-		expect(rawtx.gasPrice?.toNumber()).to.eq(110000000106);
-		expect(rawtx.gasLimit?.toNumber()).to.eq(10000810);
+		expect(rawtx.gasPrice?.toNumber()).toMatchInlineSnapshot(`110000000107`)
+		expect(rawtx.gasLimit?.toNumber()).toMatchInlineSnapshot(`10000810`)
 		expect(rawtx.value?.toNumber()).to.eq(0);
 
 		const tx = context.provider.api.tx.evm.ethCallV2(
 			{ Call: value.to },
-			value.data,
+			value.data as any,
 			value.value,
 			txGasPrice.toNumber(),
 			txGasLimit.toNumber(),
@@ -546,7 +536,7 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 					"immortalEra": "0x00"
 				  },
 				  "nonce": 1,
-				  "tip": 100008100106
+				  "tip": ${tip}
 				},
 				"method": {
 				  "callIndex": "0xb40f",
@@ -556,8 +546,8 @@ describeWithAcala("Acala RPC (Sign eth with tip)", (context) => {
 					},
 					"input": "${input.data}",
 					"value": 0,
-					"gas_price": 110000000106,
-					"gas_limit": 10000810,
+					"gas_price": ${rawtx.gasPrice},
+					"gas_limit": ${rawtx.gasLimit},
 					"access_list": []
 				  }
 				}

@@ -171,7 +171,7 @@ pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
 	WEIGHT_REF_TIME_PER_SECOND.saturating_div(2),
 	// TODO: drop `* 10` after https://github.com/paritytech/substrate/issues/13501
 	// and the benchmarked size is not 10x of the measured size
-	polkadot_primitives::v6::MAX_POV_SIZE as u64 * 10,
+	polkadot_primitives::v7::MAX_POV_SIZE as u64 * 10,
 );
 
 const_assert!(NORMAL_DISPATCH_RATIO.deconstruct() >= AVERAGE_ON_INITIALIZE_RATIO.deconstruct());
@@ -427,10 +427,10 @@ where
 		// ValidationData is removed at on_initialize and set at the inherent, this means it could be empty
 		// in the on_initialize hook for some pallets and some other inherents so this could fail when
 		// invoked by scheduler or some other pallet's on_initialize hook
-		if let Some(validation_data) = cumulus_pallet_parachain_system::Pallet::<T>::validation_data() {
+		if let Some(validation_data) = cumulus_pallet_parachain_system::ValidationData::<T>::get() {
 			let relay_storage_root = validation_data.relay_parent_storage_root;
 
-			if let Some(relay_state_proof) = cumulus_pallet_parachain_system::Pallet::<T>::relay_state_proof() {
+			if let Some(relay_state_proof) = cumulus_pallet_parachain_system::RelayStateProof::<T>::get() {
 				if let Ok(relay_chain_state_proof) = RelayChainStateProof::new(
 					parachain_info::Pallet::<T>::get(),
 					relay_storage_root,
@@ -496,6 +496,22 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 
 	accounts
 }
+
+/// Maximum number of blocks simultaneously accepted by the Runtime, not yet included
+/// into the relay chain.
+pub const UNINCLUDED_SEGMENT_CAPACITY: u32 = 1;
+/// How many parachain blocks are processed by the relay chain per parent. Limits the
+/// number of blocks authored per slot.
+pub const BLOCK_PROCESSING_VELOCITY: u32 = 1;
+/// Relay chain slot duration, in milliseconds.
+pub const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = 6000;
+
+pub type ConsensusHook<Runtime> = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
+	Runtime,
+	RELAY_CHAIN_SLOT_DURATION_MILLIS,
+	BLOCK_PROCESSING_VELOCITY,
+	UNINCLUDED_SEGMENT_CAPACITY,
+>;
 
 #[cfg(test)]
 mod tests {

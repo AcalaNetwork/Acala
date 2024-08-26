@@ -22,12 +22,6 @@ use crate::setup::*;
 fn treasury_should_take_xcm_execution_revenue() {
 	ExtBuilder::default().build().execute_with(|| {
 		let dot_amount = 1000 * dollar(RELAY_CHAIN_CURRENCY);
-		#[cfg(feature = "with-mandala-runtime")] // Mandala uses DOT, which has 10 d.p. accuracy.
-		let actual_amount = 9999999758890;
-		#[cfg(feature = "with-karura-runtime")] // Karura uses KSM, which has 12 d.p. accuracy.
-		let actual_amount = 999999903556000;
-		#[cfg(feature = "with-acala-runtime")] // Acala uses DOT, which has 10 d.p. accuracy.
-		let actual_amount = 9999999035560;
 
 		#[cfg(feature = "with-mandala-runtime")]
 		let shallow_weight = 3_000_000;
@@ -70,7 +64,14 @@ fn treasury_should_take_xcm_execution_revenue() {
 			}
 		);
 
-		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), actual_amount);
+		let actual_amount = Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into());
+		#[cfg(feature = "with-mandala-runtime")]
+		assert_debug_snapshot!(actual_amount, @"9999999719830");
+		#[cfg(feature = "with-karura-runtime")]
+		assert_debug_snapshot!(actual_amount, @"999999887932000");
+		#[cfg(feature = "with-acala-runtime")]
+		assert_debug_snapshot!(actual_amount, @"9999998879320");
+
 		assert_eq!(
 			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
 			dot_amount - actual_amount

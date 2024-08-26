@@ -44,7 +44,6 @@ pub const LCDOT: CurrencyId = CurrencyId::LiquidCrowdloan(13);
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
-pub const VAULT: AccountId = AccountId32::new([3u8; 32]);
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
@@ -95,7 +94,6 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
-	pub CrowdloanVault: AccountId = VAULT;
 	pub LiquidCrowdloanPalletId: PalletId = PalletId(*b"aca/lqcl");
 	pub const GetLDOT: CurrencyId = LDOT;
 	pub const GetDOT: CurrencyId = DOT;
@@ -121,22 +119,6 @@ parameter_types! {
 	pub static TransferOk: bool = true;
 }
 
-pub struct MockXcmTransfer;
-impl CrowdloanVaultXcm<AccountId, Balance> for MockXcmTransfer {
-	fn transfer_to_liquid_crowdloan_module_account(
-		vault: AccountId,
-		recipient: AccountId,
-		amount: Balance,
-	) -> DispatchResult {
-		if TransferOk::get() {
-			TransferRecord::mutate(|v| *v = Some((vault, recipient, amount)));
-			Ok(())
-		} else {
-			Err(DispatchError::Other("transfer failed"))
-		}
-	}
-}
-
 ord_parameter_types! {
 	pub const Alice: AccountId = ALICE;
 }
@@ -148,8 +130,6 @@ impl liquid_crowdloan::Config for Runtime {
 	type RelayChainCurrencyId = GetDOT;
 	type PalletId = LiquidCrowdloanPalletId;
 	type GovernanceOrigin = EnsureSignedBy<Alice, AccountId>;
-	type CrowdloanVault = CrowdloanVault;
-	type XcmTransfer = MockXcmTransfer;
 	type WeightInfo = ();
 }
 

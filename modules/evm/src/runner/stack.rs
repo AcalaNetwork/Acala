@@ -135,7 +135,11 @@ impl<T: Config> Runner<T> {
 		let refunded_storage = state.metadata().storage_meter().total_refunded();
 		log::debug!(
 			target: "evm",
-			"Storage logs: {:?}",
+			"Storage limit: {:?}, actual storage: {:?}, used storage: {:?}, refunded storage: {:?}, storage logs: {:?}",
+			state.metadata().storage_meter().storage_limit(),
+			actual_storage,
+			used_storage,
+			refunded_storage,
 			state.substate.storage_logs
 		);
 		let mut sum_storage: i32 = 0;
