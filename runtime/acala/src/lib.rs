@@ -1068,8 +1068,8 @@ where
 			frame_system::CheckGenesis::<Runtime>::new(),
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			runtime_common::CheckNonce::<Runtime>::from(nonce),
-			frame_metadata_hash_extension::CheckMetadataHash::new(true),
 			frame_system::CheckWeight::<Runtime>::new(),
+			frame_metadata_hash_extension::CheckMetadataHash::new(true),
 			module_evm::SetEvmOrigin::<Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
