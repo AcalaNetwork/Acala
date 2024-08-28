@@ -1832,8 +1832,8 @@ impl orml_parameters::Config for Runtime {
 
 parameter_types! {
 	// The deposit configuration for the singed migration. Specially if you want to allow any signed account to do the migration (see `SignedFilter`, these deposits should be high)
-	pub MigrationSignedDepositPerItem: Balance = dollar(KAR);
-	pub MigrationSignedDepositBase: Balance = dollar(KAR);
+	pub MigrationSignedDepositPerItem: Balance = dollar(ACA);
+	pub MigrationSignedDepositBase: Balance = dollar(ACA);
 	pub const MigrationMaxKeyLen: u32 = 512;
 }
 
