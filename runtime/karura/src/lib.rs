@@ -1837,28 +1837,6 @@ impl orml_parameters::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	// The deposit configuration for the singed migration. Specially if you want to allow any signed account to do the migration (see `SignedFilter`, these deposits should be high)
-	pub MigrationSignedDepositPerItem: Balance = dollar(KAR);
-	pub MigrationSignedDepositBase: Balance = dollar(KAR);
-	pub const MigrationMaxKeyLen: u32 = 512;
-}
-
-impl pallet_state_trie_migration::Config for Runtime {
-	// An origin that can control the whole pallet: should be Root, or a part of your council.
-	type ControlOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
-	// specific account for the migration, can trigger the signed migrations.
-	type SignedFilter = frame_support::traits::NeverEnsureOrigin<AccountId>;
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Balances;
-	type RuntimeHoldReason = RuntimeHoldReason;
-	type MaxKeyLen = MigrationMaxKeyLen;
-	type SignedDepositPerItem = MigrationSignedDepositPerItem;
-	type SignedDepositBase = MigrationSignedDepositBase;
-	// Replace this with weight based on your runtime.
-	type WeightInfo = pallet_state_trie_migration::weights::SubstrateWeight<Runtime>;
-}
-
 construct_runtime!(
 	pub enum Runtime {
 		// Core & Utility
@@ -1969,8 +1947,6 @@ construct_runtime!(
 		// Parachain System, always put it at the end
 		ParachainSystem: cumulus_pallet_parachain_system = 30,
 
-		StateTrieMigration: pallet_state_trie_migration = 254,
-
 		// Temporary
 		Sudo: pallet_sudo = 255,
 	}
@@ -2017,8 +1993,12 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
+parameter_types! {
+	pub const StateTrieMigrationName: &'static str = "StateTrieMigration";
+}
+
 #[allow(unused_parens)]
-type Migrations = ();
+type Migrations = (frame_support::migrations::RemovePallet<StateTrieMigrationName, RocksDbWeight>);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
