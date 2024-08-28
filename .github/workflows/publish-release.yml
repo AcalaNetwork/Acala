@@ -20,28 +20,16 @@ on:
         default: karura
         type: choice
         options:
-          - mandala
           - karura
           - acala
-      # Get the scope of release note
-      scope:
-        description: Release scope (default = full)
-        required: true
-        default: full
-        type: choice
-        options:
-          - client
-          - runtime
-          - full
       # Get the SR Tool image used to build
       srtool_image:
         description: Default to use the latest. You can use an alternate image, use with caution!
         required: false
 
 env:
-  SUBWASM_VERSION: 0.20.0
+  SUBWASM_VERSION: 0.21.3
   CHAIN: ${{ github.event.inputs.chain }}
-  SCOPE: ${{ github.event.inputs.scope }}
 
 jobs:
   build-release:
@@ -57,14 +45,15 @@ jobs:
           fetch-depth: 0
           submodules: true
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
       - name: Setup ENV
-        if: ${{ env.CHAIN == '' || env.SCOPE == '' }}
-        run: python .github/scripts/publish_release_setup_env.py
+        if: ${{ env.CHAIN == '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const regex = /release-(karura|acala)-(\d+\.\d+\.\d+)/
+            const branch = context.ref
+            const [chain] = branch.match(regex).slice(1)
+            core.exportVariable("CHAIN", chain)
 
       # Build WASM with Substrate Runtime Tool
       - name: Srtool build
@@ -112,7 +101,6 @@ jobs:
         id: generate-note
         uses: AcalaNetwork/acala-release-note-action@master
         with:
-          scope: ${{ env.SCOPE }}
           chain: ${{ env.CHAIN }}
           subwasm_info: ${{ env.CHAIN }}-subwam-info.txt
           srtool_details: ${{ env.CHAIN }}-srtool-digest.json
