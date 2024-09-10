@@ -77,7 +77,7 @@ runtime_benchmarks! {
 		// need to process redeem request
 		for i in 0 .. n {
 			let redeemer = account("redeemer", i, SEED);
-			Homa::request_redeem(RawOrigin::Signed(redeemer.clone()).into(), 100_000_000_000_000, false)?;
+			Homa::request_redeem(RawOrigin::Signed(redeemer).into(), 100_000_000_000_000, false)?;
 		}
 	}: {
 		Homa::on_initialize(1)
