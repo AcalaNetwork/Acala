@@ -48,7 +48,7 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for module_homa.
 pub trait WeightInfo {
 	fn on_initialize() -> Weight;
-	fn on_initialize_with_bump_era() -> Weight;
+	fn on_initialize_with_bump_era(n: u32,) -> Weight;
 	fn mint() -> Weight;
 	fn request_redeem() -> Weight;
 	fn fast_match_redeems(n: u32, ) -> Weight;
@@ -92,7 +92,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Homa RedeemRequests (r:2 w:1)
 	// Storage: Homa Unbondings (r:1 w:1)
 	// Storage: Homa TotalVoidLiquid (r:0 w:1)
-	fn on_initialize_with_bump_era() -> Weight {
+	fn on_initialize_with_bump_era(n: u32,) -> Weight {
 		Weight::from_parts(253_506_000, 0)
 			.saturating_add(T::DbWeight::get().reads(31 as u64))
 			.saturating_add(T::DbWeight::get().writes(18 as u64))
@@ -195,7 +195,7 @@ impl WeightInfo for () {
 		Weight::from_parts(5_281_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 	}
-	fn on_initialize_with_bump_era() -> Weight {
+	fn on_initialize_with_bump_era(n: u32,) -> Weight {
 		Weight::from_parts(253_506_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(31 as u64))
 			.saturating_add(RocksDbWeight::get().writes(18 as u64))

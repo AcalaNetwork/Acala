@@ -156,6 +156,10 @@ pub mod module {
 		/// The XcmInterface to manage the staking of sub-account on relaychain.
 		type XcmInterface: HomaSubAccountXcm<Self::AccountId, Balance>;
 
+		/// The limit for process redeem requests when bump era.
+		#[pallet::constant]
+		type ProcessRedeemRequestsLimit: Get<u32>;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
@@ -383,14 +387,14 @@ pub mod module {
 		fn on_initialize(_: BlockNumberFor<T>) -> Weight {
 			let bump_era_number = Self::era_amount_should_to_bump(T::RelayChainBlockNumber::current_block_number());
 			if !bump_era_number.is_zero() {
-				let _ = Self::bump_current_era(bump_era_number);
+				let res = Self::bump_current_era(bump_era_number);
 				debug_assert_eq!(
 					TotalStakingBonded::<T>::get(),
 					StakingLedgers::<T>::iter().fold(Zero::zero(), |total_bonded: Balance, (_, ledger)| {
 						total_bonded.saturating_add(ledger.bonded)
 					})
 				);
-				<T as Config>::WeightInfo::on_initialize_with_bump_era()
+				<T as Config>::WeightInfo::on_initialize_with_bump_era(res.unwrap_or_default())
 			} else {
 				<T as Config>::WeightInfo::on_initialize()
 			}
@@ -659,10 +663,12 @@ pub mod module {
 		}
 
 		#[pallet::call_index(8)]
-		#[pallet::weight(< T as Config >::WeightInfo::on_initialize_with_bump_era())]
-		pub fn force_bump_current_era(origin: OriginFor<T>, bump_amount: EraIndex) -> DispatchResult {
+		#[pallet::weight(< T as Config >::WeightInfo::on_initialize_with_bump_era(T::ProcessRedeemRequestsLimit::get()))]
+		pub fn force_bump_current_era(origin: OriginFor<T>, bump_amount: EraIndex) -> DispatchResultWithPostInfo {
 			T::GovernanceOrigin::ensure_origin(origin)?;
-			Self::bump_current_era(bump_amount)
+
+			let res = Self::bump_current_era(bump_amount);
+			Ok(Some(T::WeightInfo::on_initialize_with_bump_era(res.unwrap_or_default())).into())
 		}
 
 		/// Execute fast match for specific redeem requests, require completely matched.
@@ -1067,17 +1073,18 @@ pub mod module {
 
 		/// Process redeem requests and subaccounts do unbond on relaychain by XCM message.
 		#[transactional]
-		pub fn process_redeem_requests(new_era: EraIndex) -> DispatchResult {
+		pub fn process_redeem_requests(new_era: EraIndex) -> Result<u32, DispatchError> {
 			let era_index_to_expire = new_era + T::BondingDuration::get();
 			let total_bonded = TotalStakingBonded::<T>::get();
 			let mut total_redeem_amount: Balance = Zero::zero();
 			let mut remain_total_bonded = total_bonded;
+			let mut handled_requests: u32 = 0;
 
 			// iter RedeemRequests and insert to Unbondings if remain_total_bonded is enough.
 			for (redeemer, (redeem_amount, _)) in RedeemRequests::<T>::iter() {
 				let redemption_amount = Self::convert_liquid_to_staking(redeem_amount)?;
 
-				if remain_total_bonded >= redemption_amount {
+				if remain_total_bonded >= redemption_amount && handled_requests < T::ProcessRedeemRequestsLimit::get() {
 					total_redeem_amount = total_redeem_amount.saturating_add(redeem_amount);
 					remain_total_bonded = remain_total_bonded.saturating_sub(redemption_amount);
 					RedeemRequests::<T>::remove(&redeemer);
@@ -1090,6 +1097,8 @@ pub mod module {
 						liquid_amount: redeem_amount,
 						unbonding_staking_amount: redemption_amount,
 					});
+
+					handled_requests += 1;
 				} else {
 					break;
 				}
@@ -1126,7 +1135,9 @@ pub mod module {
 			}
 
 			// burn total_redeem_amount.
-			Self::burn_liquid_currency(&Self::account_id(), total_redeem_amount)
+			Self::burn_liquid_currency(&Self::account_id(), total_redeem_amount)?;
+
+			Ok(handled_requests)
 		}
 
 		/// Process nominate validators for subaccounts on relaychain.
@@ -1163,7 +1174,7 @@ pub mod module {
 		/// The rebalance will send XCM messages to relaychain. Once the XCM message is sent,
 		/// the execution result cannot be obtained and cannot be rolled back. So the process
 		/// of rebalance is not atomic.
-		pub fn bump_current_era(amount: EraIndex) -> DispatchResult {
+		pub fn bump_current_era(amount: EraIndex) -> Result<u32, DispatchError> {
 			let previous_era = Self::relay_chain_current_era();
 			let new_era = previous_era.saturating_add(amount);
 			RelayChainCurrentEra::<T>::put(new_era);
@@ -1171,14 +1182,14 @@ pub mod module {
 			Self::deposit_event(Event::<T>::CurrentEraBumped { new_era_index: new_era });
 
 			// Rebalance:
-			let res = || -> DispatchResult {
+			let res = || -> Result<u32, DispatchError> {
 				TotalVoidLiquid::<T>::put(0);
 				Self::process_staking_rewards(new_era, previous_era)?;
 				Self::process_scheduled_unbond(new_era)?;
 				Self::process_to_bond_pool()?;
-				Self::process_redeem_requests(new_era)?;
+				let count = Self::process_redeem_requests(new_era)?;
 				Self::process_nominate(new_era)?;
-				Ok(())
+				Ok(count)
 			}();
 
 			log::debug!(

@@ -111,7 +111,7 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Proof: `Homa::Unbondings` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	// Storage: `Homa::TotalVoidLiquid` (r:0 w:1)
 	// Proof: `Homa::TotalVoidLiquid` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn on_initialize_with_bump_era() -> Weight {
+	fn on_initialize_with_bump_era(n: u32,) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2961`
 		//  Estimated: `13851`
