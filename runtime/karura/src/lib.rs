@@ -1619,6 +1619,7 @@ impl module_homa::Config for Runtime {
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 	type NominationsProvider = NomineesElection;
+	type ProcessRedeemRequestsLimit = ConstU32<2_000>;
 }
 
 parameter_types! {
