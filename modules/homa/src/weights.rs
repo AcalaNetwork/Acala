@@ -95,7 +95,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn on_initialize_with_bump_era(n: u32,) -> Weight {
 		Weight::from_parts(253_506_000, 0)
 			.saturating_add(T::DbWeight::get().reads(31 as u64))
+			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(n as u64)))
 			.saturating_add(T::DbWeight::get().writes(18 as u64))
+			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(n as u64)))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Homa TotalStakingBonded (r:1 w:0)
@@ -198,7 +200,9 @@ impl WeightInfo for () {
 	fn on_initialize_with_bump_era(n: u32,) -> Weight {
 		Weight::from_parts(253_506_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(31 as u64))
+			.saturating_add(RocksDbWeight::get().reads((2 as u64).saturating_mul(n as u64)))
 			.saturating_add(RocksDbWeight::get().writes(18 as u64))
+			.saturating_add(RocksDbWeight::get().writes((2 as u64).saturating_mul(n as u64)))
 	}
 	fn mint() -> Weight {
 		Weight::from_parts(88_950_000, 0)

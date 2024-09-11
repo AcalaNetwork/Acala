@@ -118,7 +118,9 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 314_492 nanoseconds.
 		Weight::from_parts(320_994_000, 13852)
 			.saturating_add(T::DbWeight::get().reads(34))
+			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(19))
+			.saturating_add(T::DbWeight::get().writes((2_u64).saturating_mul(n.into())))
 	}
 	// Storage: `Homa::TotalStakingBonded` (r:1 w:0)
 	// Proof: `Homa::TotalStakingBonded` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
