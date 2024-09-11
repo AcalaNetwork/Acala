@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{
 	derive_impl, ord_parameter_types, parameter_types,
-	traits::{ConstU128, Nothing},
+	traits::{ConstU128, ConstU32, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_support::mocks::MockAddressMapping;
@@ -216,6 +216,7 @@ impl Config for Runtime {
 	type XcmInterface = MockHomaSubAccountXcm;
 	type WeightInfo = ();
 	type NominationsProvider = MockNominationsProvider;
+	type ProcessRedeemRequestsLimit = ConstU32<3>;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;
