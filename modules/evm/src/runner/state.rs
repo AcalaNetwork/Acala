@@ -1142,14 +1142,16 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 				match self.state.metadata_mut().gasometer.record_deposit(out.len()) {
 					Ok(()) => {
-						let code_len = out.len();
-						self.state.set_code(address, out);
-						let exit_result = self.exit_substate(StackExitKind::Succeeded);
 						if let Err(e) =
-							self.record_external_operation(crate::ExternalOperation::Write(U256::from(code_len)))
+							self.record_external_operation(crate::ExternalOperation::Write(U256::from(out.len())))
 						{
+							self.state.metadata_mut().gasometer.fail();
+							let _ = self.exit_substate(StackExitKind::Failed);
 							return (e.into(), None, Vec::new());
 						}
+						// Success requires storage to be collected successfully
+						self.state.set_code(address, out);
+						let exit_result = self.exit_substate(StackExitKind::Succeeded);
 						if let Err(e) = exit_result {
 							return (e.into(), None, Vec::new());
 						}
