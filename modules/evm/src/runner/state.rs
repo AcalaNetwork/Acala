@@ -473,8 +473,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 					(reason, maybe_address, return_data)
 				}
 				RuntimeKind::Call(code_address) => {
-					let return_data =
-						self.cleanup_for_call(code_address, &reason, runtime.inner.machine().return_value());
+					let (reason, return_data) =
+						self.cleanup_for_call(code_address, reason, runtime.inner.machine().return_value());
 					(reason, None, return_data)
 				}
 				RuntimeKind::Execute => (reason, None, runtime.inner.machine().return_value()),
@@ -1070,9 +1070,9 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		}) {
 			return match result {
 				Ok(PrecompileOutput { exit_status, output }) => {
-					// let _ = self.exit_substate(StackExitKind::Succeeded);
-					let e = self.exit_substate(StackExitKind::Succeeded);
-					try_or_fail!(e);
+					if let Err(e) = self.exit_substate(StackExitKind::Succeeded) {
+						return Capture::Exit((e.into(), Vec::new()));
+					}
 					Capture::Exit((ExitReason::Succeed(exit_status), output))
 				}
 				Err(PrecompileFailure::Error { exit_status }) => {
@@ -1142,14 +1142,16 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 				match self.state.metadata_mut().gasometer.record_deposit(out.len()) {
 					Ok(()) => {
-						let code_len = out.len();
-						self.state.set_code(address, out);
-						let exit_result = self.exit_substate(StackExitKind::Succeeded);
 						if let Err(e) =
-							self.record_external_operation(crate::ExternalOperation::Write(U256::from(code_len)))
+							self.record_external_operation(crate::ExternalOperation::Write(U256::from(out.len())))
 						{
+							self.state.metadata_mut().gasometer.fail();
+							let _ = self.exit_substate(StackExitKind::Failed);
 							return (e.into(), None, Vec::new());
 						}
+						// Success requires storage to be collected successfully
+						self.state.set_code(address, out);
+						let exit_result = self.exit_substate(StackExitKind::Succeeded);
 						if let Err(e) = exit_result {
 							return (e.into(), None, Vec::new());
 						}
@@ -1178,25 +1180,32 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		}
 	}
 
-	fn cleanup_for_call(&mut self, code_address: H160, reason: &ExitReason, return_data: Vec<u8>) -> Vec<u8> {
+	fn cleanup_for_call(
+		&mut self,
+		code_address: H160,
+		reason: ExitReason,
+		return_data: Vec<u8>,
+	) -> (ExitReason, Vec<u8>) {
 		log::debug!(target: "evm", "Call execution using address {}: {:?}", code_address, reason);
 		match reason {
 			ExitReason::Succeed(_) => {
-				let _ = self.exit_substate(StackExitKind::Succeeded);
-				return_data
+				if let Err(e) = self.exit_substate(StackExitKind::Succeeded) {
+					return (e.into(), Vec::new());
+				}
+				(reason, return_data)
 			}
 			ExitReason::Error(_) => {
 				let _ = self.exit_substate(StackExitKind::Failed);
-				Vec::new()
+				(reason, Vec::new())
 			}
 			ExitReason::Revert(_) => {
 				let _ = self.exit_substate(StackExitKind::Reverted);
-				return_data
+				(reason, return_data)
 			}
 			ExitReason::Fatal(_) => {
 				self.state.metadata_mut().gasometer.fail();
 				let _ = self.exit_substate(StackExitKind::Failed);
-				Vec::new()
+				(reason, Vec::new())
 			}
 		}
 	}
