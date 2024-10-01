@@ -811,7 +811,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 				let mut stream = rlp::RlpStream::new_list(2);
 				stream.append(&caller);
 				stream.append(&nonce);
-				H256::from_slice(Keccak256::digest(&stream.out()).as_slice()).into()
+				H256::from_slice(Keccak256::digest(stream.out()).as_slice()).into()
 			}
 			CreateScheme::Fixed(naddress) => naddress,
 		};

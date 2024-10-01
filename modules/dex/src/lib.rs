@@ -818,12 +818,10 @@ impl<T: Config> Pallet<T> {
 		LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> sp_std::result::Result<R, E> {
 			let old_pool_0 = *pool_0;
 			let old_pool_1 = *pool_1;
-			f((pool_0, pool_1)).map(move |result| {
+			f((pool_0, pool_1)).inspect(move |_result| {
 				if *pool_0 != old_pool_0 || *pool_1 != old_pool_1 {
 					T::OnLiquidityPoolUpdated::happened(&(*trading_pair, *pool_0, *pool_1));
 				}
-
-				result
 			})
 		})
 	}

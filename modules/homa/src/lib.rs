@@ -714,7 +714,7 @@ pub mod module {
 				let mut ledger = maybe_ledger.take().unwrap_or_default();
 				let old_bonded_amount = ledger.bonded;
 
-				f(&mut ledger).map(move |result| {
+				f(&mut ledger).inspect(move |_result| {
 					*maybe_ledger = if ledger == Default::default() {
 						TotalStakingBonded::<T>::mutate(|staking_balance| {
 							*staking_balance = staking_balance.saturating_sub(old_bonded_amount)
@@ -728,7 +728,6 @@ pub mod module {
 						});
 						Some(ledger)
 					};
-					result
 				})
 			})
 		}
