@@ -169,7 +169,7 @@ pub mod module {
 		UnacceptableShareIncrement,
 		/// The liquidity withdrawn is unacceptable
 		UnacceptableLiquidityWithdrawn,
-		/// The swap dosen't meet the invariant check
+		/// The swap doesn't meet the invariant check
 		InvariantCheckFailed,
 		/// The Provision is unqualified to be converted to `Enabled`
 		UnqualifiedProvision,
