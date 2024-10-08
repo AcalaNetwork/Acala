@@ -282,10 +282,8 @@ impl<T: Config> Pallet<T> {
 					match path {
 						SwapPath::Dex(dex_path) => {
 							// calculate the supply amount
-							let (supply_amount, _) = T::DEX::get_swap_amount(
-								dex_path,
-								SwapLimit::ExactTarget(Balance::max_value(), input_amount),
-							)?;
+							let (supply_amount, _) =
+								T::DEX::get_swap_amount(dex_path, SwapLimit::ExactTarget(Balance::MAX, input_amount))?;
 
 							input_amount = supply_amount;
 						}

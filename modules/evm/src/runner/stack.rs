@@ -469,9 +469,8 @@ impl<'config> SubstrateStackSubstate<'config> {
 		let target = self.metadata().target().expect("Storage target is none");
 		let storage = exited.metadata().storage_meter().used_storage();
 
-		self.metadata.swallow_commit(exited.metadata).map_err(|e| {
+		self.metadata.swallow_commit(exited.metadata).inspect_err(|_e| {
 			sp_io::storage::rollback_transaction();
-			e
 		})?;
 		self.logs.append(&mut exited.logs);
 		self.deletes.append(&mut exited.deletes);
@@ -486,9 +485,8 @@ impl<'config> SubstrateStackSubstate<'config> {
 	pub fn exit_revert(&mut self) -> Result<(), ExitError> {
 		let mut exited = *self.parent.take().expect("Cannot discard on root substate");
 		mem::swap(&mut exited, self);
-		self.metadata.swallow_revert(exited.metadata).map_err(|e| {
+		self.metadata.swallow_revert(exited.metadata).inspect_err(|_e| {
 			sp_io::storage::rollback_transaction();
-			e
 		})?;
 
 		sp_io::storage::rollback_transaction();
@@ -498,9 +496,8 @@ impl<'config> SubstrateStackSubstate<'config> {
 	pub fn exit_discard(&mut self) -> Result<(), ExitError> {
 		let mut exited = *self.parent.take().expect("Cannot discard on root substate");
 		mem::swap(&mut exited, self);
-		self.metadata.swallow_discard(exited.metadata).map_err(|e| {
+		self.metadata.swallow_discard(exited.metadata).inspect_err(|_e| {
 			sp_io::storage::rollback_transaction();
-			e
 		})?;
 
 		sp_io::storage::rollback_transaction();

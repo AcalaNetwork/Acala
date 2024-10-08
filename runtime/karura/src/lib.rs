@@ -775,7 +775,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = OperatorMembershipAcala;
 	type MaxHasDispatchedSize = ConstU32<20>;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 	type MaxFeedValues = MaxFeedValues;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = BenchmarkHelper;
@@ -814,7 +814,7 @@ parameter_type_with_key! {
 				TokenSymbol::DOT |
 				TokenSymbol::LDOT |
 				TokenSymbol::KAR |
-				TokenSymbol::TAP => Balance::max_value() // unsupported
+				TokenSymbol::TAP => Balance::MAX // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
 				let currency_id_0: CurrencyId = (*dex_share_0).into();
@@ -826,20 +826,20 @@ parameter_type_with_key! {
 				} else if let CurrencyId::Erc20(address) = currency_id_0 {
 					// LP token with erc20
 					AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(address)).
-						map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+						map_or(Balance::MAX, |metatata| metatata.minimal_balance)
 				} else {
 					Self::get(&currency_id_0)
 				}
 			},
-			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::max_value(), |metatata| metatata.minimal_balance),
+			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::MAX, |metatata| metatata.minimal_balance),
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetId(*stable_asset_id)).
-					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+					map_or(Balance::MAX, |metatata| metatata.minimal_balance)
 			},
 			CurrencyId::LiquidCrowdloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::KSM)), // the same as KSM
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::ForeignAssetId(*foreign_asset_id)).
-					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+					map_or(Balance::MAX, |metatata| metatata.minimal_balance)
 			},
 		}
 	};

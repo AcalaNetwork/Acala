@@ -117,8 +117,8 @@ where
 
 /// Simple fee calculator that requires payment in a single fungible at a fixed rate.
 ///
-/// - The `FixedRate` constant should be the concrete fungible ID and the amount of it
-/// required for one second of weight.
+/// - The `FixedRate` constant should be the concrete fungible ID and the amount of it required for
+///   one second of weight.
 /// - The `TakeRevenue` trait is used to collecting xcm execution fee.
 /// - The `BuyWeightRate` trait is used to calculate ratio by location.
 pub struct FixedRateOfAsset<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> {

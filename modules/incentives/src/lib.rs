@@ -32,8 +32,8 @@
 //!
 //! Rewards accumulation:
 //! 1. Incentives: periodicly(AccumulatePeriod), accumulate fixed amount according to Incentive.
-//! Rewards come from RewardsSource, please transfer enough tokens to RewardsSource before
-//! start incentive plan.
+//!    Rewards come from RewardsSource, please transfer enough tokens to RewardsSource before start
+//!    incentive plan.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
