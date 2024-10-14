@@ -1619,7 +1619,7 @@ impl module_homa::Config for Runtime {
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 	type NominationsProvider = NomineesElection;
-	type ProcessRedeemRequestsLimit = ConstU32<2_000>;
+	type ProcessRedeemRequestsLimit = ConstU32<1_000>;
 }
 
 parameter_types! {
@@ -2751,5 +2751,15 @@ mod tests {
 			reduce the size of RuntimeCall.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
+	}
+
+	#[test]
+	fn check_on_initialize_with_bump_era_weight() {
+		use module_homa::WeightInfo;
+		let weight = weights::module_homa::WeightInfo::<Runtime>::on_initialize_with_bump_era(
+			<Runtime as module_homa::Config>::ProcessRedeemRequestsLimit::get(),
+		);
+		let block_weight = RuntimeBlockWeights::get().max_block.div(3).mul(2);
+		assert!(weight.all_lt(block_weight));
 	}
 }
