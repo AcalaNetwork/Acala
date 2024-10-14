@@ -140,7 +140,7 @@ jobs:
             ${{ env.CHAIN }}-diff.txt
 
       - name: Upload wasm to pinata
-        uses: aquiladev/ipfs-action@v0.1.6
+        uses: aquiladev/ipfs-action@v0.3.1
         with:
           path: ${{ steps.srtool_build.outputs.wasm_compressed }}
           service: pinata
