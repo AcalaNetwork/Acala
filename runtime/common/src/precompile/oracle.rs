@@ -76,7 +76,7 @@ where
 					}
 				};
 
-				let maybe_adjustment_multiplier = 10u128.checked_pow((18 - decimals).into());
+				let maybe_adjustment_multiplier = 10u128.checked_pow((18u8.saturating_sub(decimals)).into());
 				let adjustment_multiplier = match maybe_adjustment_multiplier {
 					Some(adjustment_multiplier) => adjustment_multiplier,
 					None => {
