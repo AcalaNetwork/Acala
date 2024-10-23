@@ -379,7 +379,7 @@ parameter_types! {
 	pub const GeneralCouncilMotionDuration: BlockNumber = 7 * DAYS;
 	pub const CouncilDefaultMaxProposals: u32 = 100;
 	pub const CouncilDefaultMaxMembers: u32 = 100;
-	pub MaxProposalWeight: Weight = Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block;
+	pub MaxProposalWeight: Weight = Perbill::from_percent(60) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
