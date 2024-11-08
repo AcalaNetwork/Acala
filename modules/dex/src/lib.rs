@@ -35,7 +35,7 @@
 
 use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
-use module_support::{DEXIncentives, DEXManager, Erc20InfoMapping, ExchangeRate, Ratio, SwapLimit};
+use module_support::{DEXBootstrap, DEXIncentives, DEXManager, Erc20InfoMapping, ExchangeRate, Ratio, SwapLimit};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use parity_scale_codec::MaxEncodedLen;
 use primitives::{Balance, CurrencyId, TradingPair};
@@ -757,40 +757,9 @@ pub mod module {
 			currency_id_b: CurrencyId,
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
-			let trading_pair =
-				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
-			ensure!(
-				matches!(
-					Self::trading_pair_statuses(trading_pair),
-					TradingPairStatus::<_, _>::Disabled
-				),
-				Error::<T>::MustBeDisabled
-			);
 
-			// Make sure the trading pair has not been successfully ended provisioning.
-			ensure!(
-				InitialShareExchangeRates::<T>::get(trading_pair) == Default::default(),
-				Error::<T>::NotAllowedRefund
-			);
-
-			ProvisioningPool::<T>::try_mutate_exists(trading_pair, &owner, |maybe_contribution| -> DispatchResult {
-				if let Some((contribution_0, contribution_1)) = maybe_contribution.take() {
-					T::Currency::transfer(trading_pair.first(), &Self::account_id(), &owner, contribution_0)?;
-					T::Currency::transfer(trading_pair.second(), &Self::account_id(), &owner, contribution_1)?;
-
-					// decrease ref count
-					frame_system::Pallet::<T>::dec_consumers(&owner);
-
-					Self::deposit_event(Event::RefundProvision {
-						who: owner.clone(),
-						currency_0: trading_pair.first(),
-						contribution_0,
-						currency_1: trading_pair.second(),
-						contribution_1,
-					});
-				}
-				Ok(())
-			})
+			Self::do_refund_provision(&owner, currency_id_a, currency_id_b)?;
+			Ok(())
 		}
 
 		/// Abort provision when it's don't meet the target and expired.
@@ -849,17 +818,19 @@ impl<T: Config> Pallet<T> {
 		LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> sp_std::result::Result<R, E> {
 			let old_pool_0 = *pool_0;
 			let old_pool_1 = *pool_1;
-			f((pool_0, pool_1)).map(move |result| {
+			f((pool_0, pool_1)).inspect(move |_result| {
 				if *pool_0 != old_pool_0 || *pool_1 != old_pool_1 {
 					T::OnLiquidityPoolUpdated::happened(&(*trading_pair, *pool_0, *pool_1));
 				}
-
-				result
 			})
 		})
 	}
 
-	fn do_claim_dex_share(who: &T::AccountId, currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> DispatchResult {
+	fn do_claim_dex_share(
+		who: &T::AccountId,
+		currency_id_a: CurrencyId,
+		currency_id_b: CurrencyId,
+	) -> Result<Balance, DispatchError> {
 		let trading_pair =
 			TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 		ensure!(
@@ -870,38 +841,82 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::StillProvisioning
 		);
 
-		ProvisioningPool::<T>::try_mutate_exists(trading_pair, who, |maybe_contribution| -> DispatchResult {
-			if let Some((contribution_0, contribution_1)) = maybe_contribution.take() {
-				let (exchange_rate_0, exchange_rate_1) = Self::initial_share_exchange_rates(trading_pair);
-				let shares_from_provision_0 = exchange_rate_0
-					.checked_mul_int(contribution_0)
-					.ok_or(ArithmeticError::Overflow)?;
-				let shares_from_provision_1 = exchange_rate_1
-					.checked_mul_int(contribution_1)
-					.ok_or(ArithmeticError::Overflow)?;
-				let shares_to_claim = shares_from_provision_0
-					.checked_add(shares_from_provision_1)
-					.ok_or(ArithmeticError::Overflow)?;
+		let claimed_share = ProvisioningPool::<T>::try_mutate_exists(
+			trading_pair,
+			who,
+			|maybe_contribution| -> Result<Balance, DispatchError> {
+				if let Some((contribution_0, contribution_1)) = maybe_contribution.take() {
+					let (exchange_rate_0, exchange_rate_1) = Self::initial_share_exchange_rates(trading_pair);
+					let shares_from_provision_0 = exchange_rate_0
+						.checked_mul_int(contribution_0)
+						.ok_or(ArithmeticError::Overflow)?;
+					let shares_from_provision_1 = exchange_rate_1
+						.checked_mul_int(contribution_1)
+						.ok_or(ArithmeticError::Overflow)?;
+					let shares_to_claim = shares_from_provision_0
+						.checked_add(shares_from_provision_1)
+						.ok_or(ArithmeticError::Overflow)?;
 
-				T::Currency::transfer(
-					trading_pair.dex_share_currency_id(),
-					&Self::account_id(),
-					who,
-					shares_to_claim,
-				)?;
+					T::Currency::transfer(
+						trading_pair.dex_share_currency_id(),
+						&Self::account_id(),
+						who,
+						shares_to_claim,
+					)?;
 
-				// decrease ref count
-				frame_system::Pallet::<T>::dec_consumers(who);
-			}
-			Ok(())
-		})?;
+					// decrease ref count
+					frame_system::Pallet::<T>::dec_consumers(who);
+
+					Ok(shares_to_claim)
+				} else {
+					Ok(Default::default())
+				}
+			},
+		)?;
 
 		// clear InitialShareExchangeRates once it is all claimed
 		if ProvisioningPool::<T>::iter_prefix(trading_pair).next().is_none() {
 			InitialShareExchangeRates::<T>::remove(trading_pair);
 		}
 
-		Ok(())
+		Ok(claimed_share)
+	}
+
+	fn do_refund_provision(who: &T::AccountId, currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> DispatchResult {
+		let trading_pair =
+			TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+		ensure!(
+			matches!(
+				Self::trading_pair_statuses(trading_pair),
+				TradingPairStatus::<_, _>::Disabled
+			),
+			Error::<T>::MustBeDisabled
+		);
+
+		// Make sure the trading pair has not been successfully ended provisioning.
+		ensure!(
+			InitialShareExchangeRates::<T>::get(trading_pair) == Default::default(),
+			Error::<T>::NotAllowedRefund
+		);
+
+		ProvisioningPool::<T>::try_mutate_exists(trading_pair, who, |maybe_contribution| -> DispatchResult {
+			if let Some((contribution_0, contribution_1)) = maybe_contribution.take() {
+				T::Currency::transfer(trading_pair.first(), &Self::account_id(), who, contribution_0)?;
+				T::Currency::transfer(trading_pair.second(), &Self::account_id(), who, contribution_1)?;
+
+				// decrease ref count
+				frame_system::Pallet::<T>::dec_consumers(who);
+
+				Self::deposit_event(Event::RefundProvision {
+					who: who.clone(),
+					currency_0: trading_pair.first(),
+					contribution_0,
+					currency_1: trading_pair.second(),
+					contribution_1,
+				});
+			}
+			Ok(())
+		})
 	}
 
 	fn do_add_provision(
@@ -1542,5 +1557,76 @@ impl<T: Config> DEXManager<T::AccountId, Balance, CurrencyId> for Pallet<T> {
 			min_withdrawn_b,
 			by_unstake,
 		)
+	}
+}
+
+impl<T: Config> DEXBootstrap<T::AccountId, Balance, CurrencyId> for Pallet<T> {
+	fn get_provision_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
+		if let Some(trading_pair) = TradingPair::from_currency_ids(currency_id_a, currency_id_b) {
+			if let TradingPairStatus::<_, _>::Provisioning(provision_parameters) =
+				Self::trading_pair_statuses(trading_pair)
+			{
+				let (total_provision_0, total_provision_1) = provision_parameters.accumulated_provision;
+				if currency_id_a == trading_pair.first() {
+					return (total_provision_0, total_provision_1);
+				} else {
+					return (total_provision_1, total_provision_0);
+				}
+			}
+		}
+
+		(Zero::zero(), Zero::zero())
+	}
+
+	fn get_provision_pool_of(
+		who: &T::AccountId,
+		currency_id_a: CurrencyId,
+		currency_id_b: CurrencyId,
+	) -> (Balance, Balance) {
+		if let Some(trading_pair) = TradingPair::from_currency_ids(currency_id_a, currency_id_b) {
+			let (provision_0, provision_1) = Self::provisioning_pool(trading_pair, who);
+			if currency_id_a == trading_pair.first() {
+				(provision_0, provision_1)
+			} else {
+				(provision_1, provision_0)
+			}
+		} else {
+			(Zero::zero(), Zero::zero())
+		}
+	}
+
+	fn get_initial_share_exchange_rate(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
+		if let Some(trading_pair) = TradingPair::from_currency_ids(currency_id_a, currency_id_b) {
+			let (exchange_rate_0, exchange_rate_1) = Self::initial_share_exchange_rates(trading_pair);
+			if currency_id_a == trading_pair.first() {
+				(exchange_rate_0.into_inner(), exchange_rate_1.into_inner())
+			} else {
+				(exchange_rate_1.into_inner(), exchange_rate_0.into_inner())
+			}
+		} else {
+			(Zero::zero(), Zero::zero())
+		}
+	}
+
+	fn add_provision(
+		who: &T::AccountId,
+		currency_id_a: CurrencyId,
+		currency_id_b: CurrencyId,
+		contribution_a: Balance,
+		contribution_b: Balance,
+	) -> DispatchResult {
+		Self::do_add_provision(who, currency_id_a, currency_id_b, contribution_a, contribution_b)
+	}
+
+	fn claim_dex_share(
+		who: &T::AccountId,
+		currency_id_a: CurrencyId,
+		currency_id_b: CurrencyId,
+	) -> Result<Balance, DispatchError> {
+		Self::do_claim_dex_share(who, currency_id_a, currency_id_b)
+	}
+
+	fn refund_provision(who: &T::AccountId, currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> DispatchResult {
+		Self::do_refund_provision(who, currency_id_a, currency_id_b)
 	}
 }

@@ -132,7 +132,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2260,
+	spec_version: 2270,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 3,
@@ -379,7 +379,7 @@ parameter_types! {
 	pub const GeneralCouncilMotionDuration: BlockNumber = 7 * DAYS;
 	pub const CouncilDefaultMaxProposals: u32 = 100;
 	pub const CouncilDefaultMaxMembers: u32 = 100;
-	pub MaxProposalWeight: Weight = Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block;
+	pub MaxProposalWeight: Weight = Perbill::from_percent(60) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
@@ -861,7 +861,7 @@ parameter_type_with_key! {
 				TokenSymbol::TAI => 10 * millicent(*currency_id),
 				TokenSymbol::TAP => 10 * millicent(*currency_id),
 				TokenSymbol::ACA |
-				TokenSymbol::KAR => Balance::max_value() // unsupported
+				TokenSymbol::KAR => Balance::MAX // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
 				let currency_id_0: CurrencyId = (*dex_share_0).into();
@@ -873,20 +873,20 @@ parameter_type_with_key! {
 				} else if let CurrencyId::Erc20(address) = currency_id_0 {
 					// LP token with erc20
 					AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(address)).
-						map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+						map_or(Balance::MAX, |metatata| metatata.minimal_balance)
 				} else {
 					Self::get(&currency_id_0)
 				}
 			},
-			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::max_value(), |metatata| metatata.minimal_balance),
+			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::MAX, |metatata| metatata.minimal_balance),
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetId(*stable_asset_id)).
-					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+					map_or(Balance::MAX, |metatata| metatata.minimal_balance)
 			},
 			CurrencyId::LiquidCrowdloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::ForeignAssetId(*foreign_asset_id)).
-					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+					map_or(Balance::MAX, |metatata| metatata.minimal_balance)
 			},
 		}
 	};
@@ -1447,6 +1447,7 @@ impl module_homa::Config for Runtime {
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 	type NominationsProvider = NomineesElection;
+	type ProcessRedeemRequestsLimit = ConstU32<1_000>;
 }
 
 parameter_types! {
@@ -2681,7 +2682,6 @@ impl_runtime_apis! {
 	}
 }
 
-#[cfg(not(feature = "standalone"))]
 cumulus_pallet_parachain_system::register_validate_block!(
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
@@ -2864,5 +2864,15 @@ mod tests {
 				})
 			);
 		});
+	}
+
+	#[test]
+	fn check_on_initialize_with_bump_era_weight() {
+		use module_homa::WeightInfo;
+		let weight = weights::module_homa::WeightInfo::<Runtime>::on_initialize_with_bump_era(
+			<Runtime as module_homa::Config>::ProcessRedeemRequestsLimit::get(),
+		);
+		let block_weight = RuntimeBlockWeights::get().max_block.div(3).mul(2);
+		assert!(weight.all_lt(block_weight));
 	}
 }

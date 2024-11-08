@@ -743,6 +743,7 @@ impl module_homa::Config for Test {
 	type XcmInterface = MockHomaSubAccountXcm;
 	type WeightInfo = ();
 	type NominationsProvider = ();
+	type ProcessRedeemRequestsLimit = ConstU32<2_000>;
 }
 
 parameter_type_with_key! {

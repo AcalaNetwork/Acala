@@ -128,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2260,
+	spec_version: 2270,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 3,
@@ -412,7 +412,7 @@ parameter_types! {
 	pub const GeneralCouncilMotionDuration: BlockNumber = 3 * DAYS;
 	pub const CouncilDefaultMaxProposals: u32 = 20;
 	pub const CouncilDefaultMaxMembers: u32 = 30;
-	pub MaxProposalWeight: Weight = Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block;
+	pub MaxProposalWeight: Weight = Perbill::from_percent(60) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
@@ -766,7 +766,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = OperatorMembershipAcala;
 	type MaxHasDispatchedSize = ConstU32<20>;
-	type WeightInfo = ();
+	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 	type MaxFeedValues = MaxFeedValues;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = BenchmarkHelper;
@@ -805,7 +805,7 @@ parameter_type_with_key! {
 				TokenSymbol::ACA |
 				TokenSymbol::KBTC |
 				TokenSymbol::KINT |
-				TokenSymbol::TAI => Balance::max_value() // unsupported
+				TokenSymbol::TAI => Balance::MAX // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
 				let currency_id_0: CurrencyId = (*dex_share_0).into();
@@ -817,20 +817,20 @@ parameter_type_with_key! {
 				} else if let CurrencyId::Erc20(address) = currency_id_0 {
 					// LP token with erc20
 					AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(address)).
-						map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+						map_or(Balance::MAX, |metatata| metatata.minimal_balance)
 				} else {
 					Self::get(&currency_id_0)
 				}
 			},
-			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::max_value(), |metatata| metatata.minimal_balance),
+			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::MAX, |metatata| metatata.minimal_balance),
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetId(*stable_asset_id)).
-					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+					map_or(Balance::MAX, |metatata| metatata.minimal_balance)
 			},
 			CurrencyId::LiquidCrowdloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::ForeignAssetId(*foreign_asset_id)).
-					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+					map_or(Balance::MAX, |metatata| metatata.minimal_balance)
 			},
 		}
 	};
@@ -1594,6 +1594,7 @@ impl module_homa::Config for Runtime {
 	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 	type NominationsProvider = NomineesElection;
+	type ProcessRedeemRequestsLimit = ConstU32<1_000>;
 }
 
 parameter_types! {
@@ -1830,6 +1831,10 @@ impl orml_parameters::Config for Runtime {
 	type WeightInfo = ();
 }
 
+frame_support::ord_parameter_types! {
+	pub const MigController: AccountId = AccountId::from(hex_literal::hex!("ec68c9ec1f6233f3d8169e06e2c94df703c45c05eef923169bf2703b08797315"));
+}
+
 parameter_types! {
 	// The deposit configuration for the singed migration. Specially if you want to allow any signed account to do the migration (see `SignedFilter`, these deposits should be high)
 	pub MigrationSignedDepositPerItem: Balance = dollar(ACA);
@@ -1841,7 +1846,7 @@ impl pallet_state_trie_migration::Config for Runtime {
 	// An origin that can control the whole pallet: should be Root, or a part of your council.
 	type ControlOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	// specific account for the migration, can trigger the signed migrations.
-	type SignedFilter = frame_support::traits::NeverEnsureOrigin<AccountId>;
+	type SignedFilter = frame_system::EnsureSignedBy<MigController, AccountId>;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type RuntimeHoldReason = RuntimeHoldReason;
@@ -2741,5 +2746,15 @@ mod tests {
 			reduce the size of RuntimeCall.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
+	}
+
+	#[test]
+	fn check_on_initialize_with_bump_era_weight() {
+		use module_homa::WeightInfo;
+		let weight = weights::module_homa::WeightInfo::<Runtime>::on_initialize_with_bump_era(
+			<Runtime as module_homa::Config>::ProcessRedeemRequestsLimit::get(),
+		);
+		let block_weight = RuntimeBlockWeights::get().max_block.div(3).mul(2);
+		assert!(weight.all_lt(block_weight));
 	}
 }
