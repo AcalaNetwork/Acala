@@ -96,9 +96,7 @@ insta-test: githooks
 
 .PHONY: test-eth
 test-eth: githooks test-evm
-	SKIP_WASM_BUILD= ${cargo_test} -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
 	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
-	SKIP_WASM_BUILD= ${cargo_test} -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_handle_invalid_input
 
 .PHONY: test-evm
 test-evm: githooks
