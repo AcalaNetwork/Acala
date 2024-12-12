@@ -300,6 +300,8 @@ fn init_pool_id(pool_id_number: u32, pool_currency_id: CurrencyId) -> Result<Poo
 	match pool_id_number {
 		0 => Ok(PoolId::Loans(pool_currency_id)),
 		1 => Ok(PoolId::Dex(pool_currency_id)),
+		2 => Ok(PoolId::Earning(pool_currency_id)),
+		3 => Ok(PoolId::NomineesElection),
 		// Shouldn't happen as solidity compiler should not allow nonexistent enum value
 		_ => Err(PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
@@ -336,10 +338,14 @@ mod tests {
 
 			assert_ok!(Incentives::update_incentive_rewards(
 				RuntimeOrigin::signed(ALICE),
-				vec![(PoolId::Loans(DOT), vec![(DOT, 100)])]
+				vec![
+					(PoolId::Loans(DOT), vec![(DOT, 100)]),
+					(PoolId::Earning(ACA), vec![(ACA, 101)]),
+					(PoolId::NomineesElection, vec![(ACA, 102)]),
+				]
 			));
 
-			// getIncetiveRewardAmount(PoolId,address,address) => 0x7469000d
+			// getIncentiveRewardAmount(PoolId,address,address) => 0x7469000d
 			// pool
 			// pool_currency_id
 			// reward_currency_id
@@ -353,6 +359,48 @@ mod tests {
 			// value of 100
 			let expected_output = hex! {"
 				00000000000000000000000000000000 00000000000000000000000000000064
+			"};
+
+			let res =
+				IncentivesPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+			assert_eq!(res.output, expected_output.to_vec());
+
+			// getIncentiveRewardAmount(PoolId,address,address) => 0x7469000d
+			// pool
+			// pool_currency_id
+			// reward_currency_id
+			let input = hex! {"
+				7469000d
+				00000000000000000000000000000000 00000000000000000000000000000002
+				000000000000000000000000 0000000000000000000100000000000000000000
+				000000000000000000000000 0000000000000000000100000000000000000000
+			"};
+
+			// value of 101
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000065
+			"};
+
+			let res =
+				IncentivesPrecompile::execute(&mut MockPrecompileHandle::new(&input, None, &context, false)).unwrap();
+			assert_eq!(res.exit_status, ExitSucceed::Returned);
+			assert_eq!(res.output, expected_output.to_vec());
+
+			// getIncentiveRewardAmount(PoolId,address,address) => 0x7469000d
+			// pool
+			// pool_currency_id
+			// reward_currency_id
+			let input = hex! {"
+				7469000d
+				00000000000000000000000000000000 00000000000000000000000000000003
+				000000000000000000000000 0000000000000000000100000000000000000003
+				000000000000000000000000 0000000000000000000100000000000000000000
+			"};
+
+			// value of 102
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000066
 			"};
 
 			let res =
