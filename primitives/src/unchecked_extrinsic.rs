@@ -132,7 +132,7 @@ where
 					target: "evm", "tx msg: {:?}", msg
 				);
 
-				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
+				let msg_hash = msg.hash(); // TODO: consider rewrite this to use `keccak_256` for hashing because it could be faster
 
 				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
 
@@ -176,7 +176,7 @@ where
 					target: "evm", "tx msg: {:?}", msg
 				);
 
-				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
+				let msg_hash = msg.hash(); // TODO: consider rewrite this to use `keccak_256` for hashing because it could be faster
 
 				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
 
@@ -224,7 +224,7 @@ where
 					target: "evm", "tx msg: {:?}", msg
 				);
 
-				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
+				let msg_hash = msg.hash(); // TODO: consider rewrite this to use `keccak_256` for hashing because it could be faster
 
 				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
 
@@ -318,12 +318,12 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	let access_list_type_hash = keccak256!("AccessList(address address,uint256[] storageKeys)");
 	let tx_type_hash = keccak256!("Transaction(string action,address to,uint256 nonce,uint256 tip,bytes data,uint256 value,uint256 gasLimit,uint256 storageLimit,AccessList[] accessList,uint256 validUntil)AccessList(address address,uint256[] storageKeys)");
 
-	let mut domain_seperator_msg = domain_hash.to_vec();
-	domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM")); // name
-	domain_seperator_msg.extend_from_slice(keccak256!("1")); // version
-	domain_seperator_msg.extend_from_slice(&to_bytes(eth_msg.chain_id)); // chain id
-	domain_seperator_msg.extend_from_slice(eth_msg.genesis.as_bytes()); // salt
-	let domain_separator = keccak_256(domain_seperator_msg.as_slice());
+	let mut domain_separator_msg = domain_hash.to_vec();
+	domain_separator_msg.extend_from_slice(keccak256!("Acala EVM")); // name
+	domain_separator_msg.extend_from_slice(keccak256!("1")); // version
+	domain_separator_msg.extend_from_slice(&to_bytes(eth_msg.chain_id)); // chain id
+	domain_separator_msg.extend_from_slice(eth_msg.genesis.as_bytes()); // salt
+	let domain_separator = keccak_256(domain_separator_msg.as_slice());
 
 	let mut tx_msg = tx_type_hash.to_vec();
 	match eth_msg.action {

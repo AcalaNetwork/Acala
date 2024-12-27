@@ -719,14 +719,14 @@ pub mod module {
 			ensure_root(origin)?;
 
 			let _from_account = T::AddressMapping::get_account_id(&from);
-			let _payed: NegativeImbalanceOf<T>;
+			let _paid: NegativeImbalanceOf<T>;
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			{
 				// unreserve the transaction fee for gas_limit
 				let weight = T::GasToWeight::convert(gas_limit);
 				let (_, imbalance) = T::ChargeTransactionPayment::unreserve_and_charge_fee(&_from_account, weight)
 					.map_err(|_| Error::<T>::ChargeFeeFailed)?;
-				_payed = imbalance;
+				_paid = imbalance;
 			}
 
 			match T::Runner::call(
@@ -786,7 +786,7 @@ pub mod module {
 							let res = T::ChargeTransactionPayment::refund_fee(
 								&_from_account,
 								T::GasToWeight::convert(refund_gas),
-								_payed,
+								_paid,
 							);
 							debug_assert!(res.is_ok());
 						}

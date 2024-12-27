@@ -120,7 +120,7 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 		who: &AccountId,
 		weight: Weight,
 	) -> Result<(Balance, NegativeImbalance), TransactionValidityError>;
-	fn refund_fee(who: &AccountId, weight: Weight, payed: NegativeImbalance) -> Result<(), TransactionValidityError>;
+	fn refund_fee(who: &AccountId, weight: Weight, paid: NegativeImbalance) -> Result<(), TransactionValidityError>;
 	fn charge_fee(
 		who: &AccountId,
 		len: u32,

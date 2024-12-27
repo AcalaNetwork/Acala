@@ -195,8 +195,8 @@ pub mod module {
 		fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaWithdrawUnbonded);
 
-			// TODO: config xcm_dest_weight and fee for withdraw_unbonded and transfer seperately.
-			// Temperarily use double fee.
+			// TODO: config xcm_dest_weight and fee for withdraw_unbonded and transfer separately.
+			// Temporarily use double fee.
 			let xcm_message = T::RelayChainCallBuilder::finalize_multiple_calls_into_xcm_message(
 				vec![
 					(
