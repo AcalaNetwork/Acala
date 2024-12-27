@@ -240,13 +240,13 @@ impl<T: Config> Pallet<T> {
 
 	fn evm_account_domain_separator() -> [u8; 32] {
 		let domain_hash = keccak256!("EIP712Domain(string name,string version,uint256 chainId,bytes32 salt)");
-		let mut domain_seperator_msg = domain_hash.to_vec();
-		domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM claim")); // name
-		domain_seperator_msg.extend_from_slice(keccak256!("1")); // version
-		domain_seperator_msg.extend_from_slice(&to_bytes(T::ChainId::get())); // chain id
-		domain_seperator_msg
+		let mut domain_separator_msg = domain_hash.to_vec();
+		domain_separator_msg.extend_from_slice(keccak256!("Acala EVM claim")); // name
+		domain_separator_msg.extend_from_slice(keccak256!("1")); // version
+		domain_separator_msg.extend_from_slice(&to_bytes(T::ChainId::get())); // chain id
+		domain_separator_msg
 			.extend_from_slice(frame_system::Pallet::<T>::block_hash(BlockNumberFor::<T>::zero()).as_ref()); // genesis block hash
-		keccak_256(domain_seperator_msg.as_slice())
+		keccak_256(domain_separator_msg.as_slice())
 	}
 
 	fn do_claim_default_evm_address(who: T::AccountId) -> Result<EvmAddress, DispatchError> {
