@@ -2081,7 +2081,7 @@ fn charge_fee_pool_operation_works() {
 			RuntimeOrigin::root(),
 			ALICE,
 			ACA,
-			20000.unique_saturated_into(),
+			10000.unique_saturated_into(),
 		));
 
 		assert_ok!(DEXModule::add_liquidity(

@@ -1049,8 +1049,18 @@ where
 
 			// default fee tokens, swap from tx fee pool: O(1)
 			for supply_currency_id in T::DefaultFeeTokens::get() {
-				if Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id).is_ok() {
+				let res = Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id);
+				if res.is_ok() {
 					return Ok(fee_surplus);
+				} else {
+					log::debug!(
+						target: LOG_TARGET,
+						"native_then_alternative_or_default swap_from_pool_or_dex : who: {:?}, fee_amount: {:?}, supply_currency_id: {:?}, error: {:?}",
+						who,
+						fee_amount,
+						supply_currency_id,
+						res
+					);
 				}
 			}
 
@@ -1059,8 +1069,18 @@ where
 				.filter(|v| !T::DefaultFeeTokens::get().contains(v))
 				.collect::<Vec<_>>();
 			for supply_currency_id in tokens_non_default {
-				if Self::swap_from_pool_or_dex(who, custom_fee_amount, supply_currency_id).is_ok() {
+				let res = Self::swap_from_pool_or_dex(who, custom_fee_amount, supply_currency_id);
+				if res.is_ok() {
 					return Ok(custom_fee_surplus);
+				} else {
+					log::debug!(
+						target: LOG_TARGET,
+						"native_then_alternative_or_default swap_from_pool_or_dex : who: {:?}, custom_fee_amount: {:?}, supply_currency_id: {:?}, error: {:?}",
+						who,
+						custom_fee_amount,
+						supply_currency_id,
+						res
+					);
 				}
 			}
 
@@ -1113,10 +1133,18 @@ where
 			}
 		}
 
+		// if the remaining balance is less than ed, swap all to avoid dust
+		let mut supply_amount = amount;
+		let supply_free_balance = T::MultiCurrency::free_balance(supply_currency_id, who);
+		if supply_free_balance > amount
+			&& supply_free_balance.saturating_sub(supply_amount) < T::MultiCurrency::minimum_balance(supply_currency_id)
+		{
+			supply_amount = supply_free_balance;
+		}
 		// use fix rate to calculate the amount of supply asset that equal to native asset.
-		let supply_account = rate.saturating_mul_int(amount);
+		let supply_account = rate.saturating_mul_int(supply_amount);
 		// transfer native token first to ensure it stays alive during swap
-		T::Currency::transfer(&sub_account, who, amount, ExistenceRequirement::KeepAlive)?;
+		T::Currency::transfer(&sub_account, who, supply_amount, ExistenceRequirement::KeepAlive)?;
 		T::MultiCurrency::transfer(
 			supply_currency_id,
 			who,

@@ -1543,6 +1543,7 @@ fn transaction_payment_module_charge_erc20_pool() {
 					len as usize,
 				)
 			);
+
 			let alice_native_after = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
 			let alice_erc20_after = Currencies::free_balance(erc20_token, &alice_evm_account);
 
@@ -1550,17 +1551,46 @@ fn transaction_payment_module_charge_erc20_pool() {
 			assert_debug_snapshot!(alice_native_before - alice_native_after, @"2500000934");
 			assert_eq!(alice_erc20_before - alice_erc20_after, 0);
 
-			// cannot charge erc20 fee for the account only hold erc20
+			let alice_native_before = Currencies::free_balance(NATIVE_CURRENCY, &account_with_erc20);
+			let alice_erc20_before = Currencies::free_balance(erc20_token, &account_with_erc20);
+
+			// charge erc20 fee for the account only hold erc20
 			<EVM as EVMTrait<AccountId>>::set_origin(account_with_erc20.clone());
-			assert_noop!(
+			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
 					&account_with_erc20,
 					call,
 					&info,
 					len as usize,
-				),
-				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+				)
 			);
+			let alice_native_after = Currencies::free_balance(NATIVE_CURRENCY, &account_with_erc20);
+			let alice_erc20_after = Currencies::free_balance(erc20_token, &account_with_erc20);
+
+			#[cfg(feature = "with-mandala-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"0");
+				assert_debug_snapshot!(alice_native_after, @"237600000000");
+				assert_debug_snapshot!(alice_erc20_before, @"1000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"975197719831");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"24802280169");
+			}
+			#[cfg(feature = "with-karura-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"0");
+				assert_debug_snapshot!(alice_native_after, @"237600000000");
+				assert_debug_snapshot!(alice_erc20_before, @"1000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"975147966009");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"24852033991");
+			}
+			#[cfg(feature = "with-acala-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"0");
+				assert_debug_snapshot!(alice_native_after, @"512800000000");
+				assert_debug_snapshot!(alice_erc20_before, @"1000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"946258417072");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"53741582928");
+			}
 
 			let alice_native_before = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
 			let alice_erc20_before = Currencies::free_balance(erc20_token, &alice_evm_account);
@@ -1578,32 +1608,74 @@ fn transaction_payment_module_charge_erc20_pool() {
 			let alice_native_after = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
 			let alice_erc20_after = Currencies::free_balance(erc20_token, &alice_evm_account);
 
-			// charge storage by native
+			// charge storage and tx fee by erc20
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(alice_native_before - alice_native_after, 6400000000);
+			{
+				assert_debug_snapshot!(alice_native_before, @"999998999984699999066");
+				assert_debug_snapshot!(alice_native_after, @"999998999984699999066");
+				assert_eq!(alice_native_before - alice_native_after, 0);
+				assert_debug_snapshot!(alice_erc20_before, @"99999999899000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"99999999898999624586944");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"375413056");
+			}
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(alice_native_before - alice_native_after, 6400000000);
+			{
+				assert_debug_snapshot!(alice_native_before, @"999998999984699999066");
+				assert_debug_snapshot!(alice_native_after, @"999998999984699999066");
+				assert_eq!(alice_native_before - alice_native_after, 0);
+				assert_debug_snapshot!(alice_erc20_before, @"99999999899000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"99999999898999623833858");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166142");
+			}
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(alice_native_before - alice_native_after, 19200000000);
+			{
+				assert_debug_snapshot!(alice_native_before, @"999998999959099999066");
+				assert_debug_snapshot!(alice_native_after, @"999998999959099999066");
+				assert_eq!(alice_native_before - alice_native_after, 0);
+				assert_debug_snapshot!(alice_erc20_before, @"99999999899000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"99999999898999623833858");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166142");
+			}
 
-			// charge tx fee by native
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"375413056");
-			#[cfg(feature = "with-karura-runtime")]
-			assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166142");
-			#[cfg(feature = "with-acala-runtime")]
-			assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166142");
+			let alice_native_before = Currencies::free_balance(NATIVE_CURRENCY, &account_with_erc20);
+			let alice_erc20_before = Currencies::free_balance(erc20_token, &account_with_erc20);
 
-			// cannot charge erc20 fee for the account only hold erc20
+			// charge erc20 fee for the account only hold erc20
 			<EVM as EVMTrait<AccountId>>::set_origin(account_with_erc20.clone());
-			assert_noop!(
+			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
 					&account_with_erc20,
 					&with_fee_call,
 					&info,
 					len as usize,
-				),
-				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+				)
 			);
+			let alice_native_after = Currencies::free_balance(NATIVE_CURRENCY, &account_with_erc20);
+			let alice_erc20_after = Currencies::free_balance(erc20_token, &account_with_erc20);
+
+			#[cfg(feature = "with-mandala-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"237600000000");
+				assert_debug_snapshot!(alice_native_after, @"237600000000");
+				assert_debug_snapshot!(alice_erc20_before, @"975197719831");
+				assert_debug_snapshot!(alice_erc20_after, @"974822306775");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"375413056");
+			}
+			#[cfg(feature = "with-karura-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"237600000000");
+				assert_debug_snapshot!(alice_native_after, @"237600000000");
+				assert_debug_snapshot!(alice_erc20_before, @"975147966009");
+				assert_debug_snapshot!(alice_erc20_after, @"974771799867");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166142");
+			}
+			#[cfg(feature = "with-acala-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"512800000000");
+				assert_debug_snapshot!(alice_native_after, @"512800000000");
+				assert_debug_snapshot!(alice_erc20_before, @"946258417072");
+				assert_debug_snapshot!(alice_erc20_after, @"945882250930");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166142");
+			}
 		});
 }

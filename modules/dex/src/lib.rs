@@ -114,6 +114,10 @@ pub mod module {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
+		/// The native currency id
+		#[pallet::constant]
+		type GetNativeCurrencyId: Get<CurrencyId>;
+
 		/// Mapping between CurrencyId and ERC20 address so user can use Erc20
 		/// address as LP token.
 		type Erc20InfoMapping: Erc20InfoMapping;
@@ -1434,12 +1438,18 @@ impl<T: Config> Pallet<T> {
 		let module_account_id = Self::account_id();
 		let actual_target_amount = amounts[amounts.len() - 1];
 
+		let path_0_existence_requirement = if path[0] == T::GetNativeCurrencyId::get() {
+			ExistenceRequirement::KeepAlive
+		} else {
+			ExistenceRequirement::AllowDeath
+		};
+
 		T::Currency::transfer(
 			path[0],
 			who,
 			&module_account_id,
 			supply_amount,
-			ExistenceRequirement::AllowDeath,
+			path_0_existence_requirement,
 		)?;
 		Self::_swap_by_path(path, &amounts)?;
 		T::Currency::transfer(
@@ -1470,12 +1480,18 @@ impl<T: Config> Pallet<T> {
 		let module_account_id = Self::account_id();
 		let actual_supply_amount = amounts[0];
 
+		let path_0_existence_requirement = if path[0] == T::GetNativeCurrencyId::get() {
+			ExistenceRequirement::KeepAlive
+		} else {
+			ExistenceRequirement::AllowDeath
+		};
+
 		T::Currency::transfer(
 			path[0],
 			who,
 			&module_account_id,
 			actual_supply_amount,
-			ExistenceRequirement::AllowDeath,
+			path_0_existence_requirement,
 		)?;
 		Self::_swap_by_path(path, &amounts)?;
 		T::Currency::transfer(
