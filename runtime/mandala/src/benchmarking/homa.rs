@@ -23,7 +23,7 @@ use crate::{
 
 use super::utils::{set_balance, LIQUID, STAKING};
 use frame_benchmarking::{account, whitelisted_caller};
-use frame_support::traits::OnInitialize;
+use frame_support::traits::{ExistenceRequirement, OnInitialize};
 use frame_system::RawOrigin;
 use module_homa::UnlockChunk;
 use orml_benchmarking::runtime_benchmarks;
@@ -126,7 +126,7 @@ runtime_benchmarks! {
 		let redeem_amount = 10_000_000_000_000;
 		for i in 0 .. n {
 			let redeemer = account("redeemer", i, SEED);
-			<Currencies as MultiCurrency<_>>::transfer(LIQUID, &minter, &redeemer, redeem_amount * 2)?;
+			<Currencies as MultiCurrency<_>>::transfer(LIQUID, &minter, &redeemer, redeem_amount * 2, ExistenceRequirement::AllowDeath)?;
 			Homa::request_redeem(RawOrigin::Signed(redeemer.clone()).into(), redeem_amount, true)?;
 			redeem_request_list.push(redeemer);
 		}

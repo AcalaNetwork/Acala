@@ -2005,7 +2005,7 @@ fn do_swap_should_keep_alive_work() {
 			assert_ok!(DexModule::add_liquidity(
 				RuntimeOrigin::signed(ALICE),
 				ACA,
-				AUSD,
+				BTC,
 				1_000_000_000_000_000,
 				2_000_000_000_000_000,
 				0,
@@ -2022,20 +2022,20 @@ fn do_swap_should_keep_alive_work() {
 			assert_eq!(Tokens::free_balance(ACA, &CAROL), 100_000_000_000_000);
 
 			assert_noop!(
-				DexModule::do_swap_with_exact_supply(&CAROL, &[ACA, AUSD], 100_000_000_000_000, 1,),
+				DexModule::do_swap_with_exact_supply(&CAROL, &[ACA, BTC], 100_000_000_000_000, 1,),
 				orml_tokens::Error::<Runtime>::KeepAlive
 			);
 
 			assert_ok!(DexModule::do_swap_with_exact_supply(
 				&CAROL,
-				&[ACA, AUSD],
+				&[ACA, BTC],
 				10_000_000_000_000,
 				1
 			));
 
 			assert_ok!(DexModule::do_swap_with_exact_target(
 				&CAROL,
-				&[ACA, AUSD],
+				&[ACA, BTC],
 				10_000_000_000_000,
 				20_000_000_000_000
 			));

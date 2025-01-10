@@ -46,7 +46,7 @@ parameter_types! {
 	pub static AUSDBTCPair: TradingPair = TradingPair::from_currency_ids(AUSD, BTC).unwrap();
 	pub static AUSDDOTPair: TradingPair = TradingPair::from_currency_ids(AUSD, DOT).unwrap();
 	pub static DOTBTCPair: TradingPair = TradingPair::from_currency_ids(DOT, BTC).unwrap();
-	pub static ACAAUSDPair: TradingPair = TradingPair::from_currency_ids(ACA, AUSD).unwrap();
+	pub static ACABTCPair: TradingPair = TradingPair::from_currency_ids(ACA, BTC).unwrap();
 }
 
 mod dex {
@@ -189,7 +189,7 @@ impl ExtBuilder {
 			AUSDDOTPair::get(),
 			AUSDBTCPair::get(),
 			DOTBTCPair::get(),
-			ACAAUSDPair::get(),
+			ACABTCPair::get(),
 		];
 		self
 	}
@@ -201,7 +201,7 @@ impl ExtBuilder {
 				(AUSDDOTPair::get(), (1_000_000u128, 2_000_000u128)),
 				(AUSDBTCPair::get(), (1_000_000u128, 2_000_000u128)),
 				(DOTBTCPair::get(), (1_000_000u128, 2_000_000u128)),
-				(ACAAUSDPair::get(), (1_000_000u128, 2_000_000u128)),
+				(ACABTCPair::get(), (1_000_000u128, 2_000_000u128)),
 			],
 		)];
 		self
