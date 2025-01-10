@@ -894,7 +894,13 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 
 		// transfer token to Bob, and use Bob as tx sender to test
 		// Bob do not have enough native asset(ACA), but he has AUSD
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 4000));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			AUSD,
+			&ALICE,
+			&BOB,
+			4000,
+			ExistenceRequirement::AllowDeath
+		));
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 		assert_eq!(Currencies::total_balance(ACA, &BOB), 0);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
@@ -986,7 +992,13 @@ fn payment_reserve_fee() {
 		assert_eq!(reserve_data, *reserves.get(0).unwrap());
 
 		// Bob has not enough native token, but have enough none native token
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 4000));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			AUSD,
+			&ALICE,
+			&BOB,
+			4000,
+			ExistenceRequirement::AllowDeath
+		));
 		let fee = <ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::reserve_fee(
 			&BOB, 100, None,
 		);
@@ -997,7 +1009,13 @@ fn payment_reserve_fee() {
 
 		// reserve fee not consider multiplier
 		NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &DAVE, 4000));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			AUSD,
+			&ALICE,
+			&DAVE,
+			4000,
+			ExistenceRequirement::AllowDeath
+		));
 		let fee = <ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::reserve_fee(
 			&DAVE, 100, None,
 		);
@@ -1020,7 +1038,13 @@ fn payment_reserve_fee() {
 #[test]
 fn charges_fee_failed_by_slippage_limit() {
 	builder_with_dex_and_fee_pool(true).execute_with(|| {
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 1000));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			AUSD,
+			&ALICE,
+			&BOB,
+			1000,
+			ExistenceRequirement::AllowDeath
+		));
 
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 		assert_eq!(Currencies::total_balance(ACA, &BOB), 0);
@@ -1129,7 +1153,13 @@ fn charge_fee_by_alternative_swap_first_priority() {
 		);
 
 		// charge fee token use `DefaultFeeTokens` as `AlternativeFeeSwapPath` condition is failed.
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 300));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			DOT,
+			&ALICE,
+			&BOB,
+			300,
+			ExistenceRequirement::AllowDeath
+		));
 		assert_eq!(
 			<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB),
 			PalletBalances::minimum_balance()
@@ -1199,7 +1229,13 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 		);
 
 		// charge fee token use `AlternativeFeeSwapPath`, although the swap path is invalid.
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 300));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			DOT,
+			&ALICE,
+			&BOB,
+			300,
+			ExistenceRequirement::AllowDeath
+		));
 		assert_eq!(
 			<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB),
 			PalletBalances::minimum_balance()
@@ -2045,7 +2081,7 @@ fn charge_fee_pool_operation_works() {
 			RuntimeOrigin::root(),
 			ALICE,
 			ACA,
-			10000.unique_saturated_into(),
+			20000.unique_saturated_into(),
 		));
 
 		assert_ok!(DEXModule::add_liquidity(

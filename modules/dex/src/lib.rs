@@ -33,7 +33,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use module_support::{DEXBootstrap, DEXIncentives, DEXManager, Erc20InfoMapping, ExchangeRate, Ratio, SwapLimit};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
@@ -862,6 +862,7 @@ impl<T: Config> Pallet<T> {
 						&Self::account_id(),
 						who,
 						shares_to_claim,
+						ExistenceRequirement::AllowDeath,
 					)?;
 
 					// decrease ref count
@@ -901,8 +902,20 @@ impl<T: Config> Pallet<T> {
 
 		ProvisioningPool::<T>::try_mutate_exists(trading_pair, who, |maybe_contribution| -> DispatchResult {
 			if let Some((contribution_0, contribution_1)) = maybe_contribution.take() {
-				T::Currency::transfer(trading_pair.first(), &Self::account_id(), who, contribution_0)?;
-				T::Currency::transfer(trading_pair.second(), &Self::account_id(), who, contribution_1)?;
+				T::Currency::transfer(
+					trading_pair.first(),
+					&Self::account_id(),
+					who,
+					contribution_0,
+					ExistenceRequirement::AllowDeath,
+				)?;
+				T::Currency::transfer(
+					trading_pair.second(),
+					&Self::account_id(),
+					who,
+					contribution_1,
+					ExistenceRequirement::AllowDeath,
+				)?;
 
 				// decrease ref count
 				frame_system::Pallet::<T>::dec_consumers(who);
@@ -951,8 +964,20 @@ impl<T: Config> Pallet<T> {
 			pool.1 = pool.1.checked_add(contribution_1).ok_or(ArithmeticError::Overflow)?;
 
 			let module_account_id = Self::account_id();
-			T::Currency::transfer(trading_pair.first(), who, &module_account_id, contribution_0)?;
-			T::Currency::transfer(trading_pair.second(), who, &module_account_id, contribution_1)?;
+			T::Currency::transfer(
+				trading_pair.first(),
+				who,
+				&module_account_id,
+				contribution_0,
+				ExistenceRequirement::AllowDeath,
+			)?;
+			T::Currency::transfer(
+				trading_pair.second(),
+				who,
+				&module_account_id,
+				contribution_1,
+				ExistenceRequirement::AllowDeath,
+			)?;
 
 			*maybe_pool = Some(pool);
 
@@ -1088,8 +1113,20 @@ impl<T: Config> Pallet<T> {
 				);
 
 				let module_account_id = Self::account_id();
-				T::Currency::transfer(trading_pair.first(), who, &module_account_id, pool_0_increment)?;
-				T::Currency::transfer(trading_pair.second(), who, &module_account_id, pool_1_increment)?;
+				T::Currency::transfer(
+					trading_pair.first(),
+					who,
+					&module_account_id,
+					pool_0_increment,
+					ExistenceRequirement::AllowDeath,
+				)?;
+				T::Currency::transfer(
+					trading_pair.second(),
+					who,
+					&module_account_id,
+					pool_1_increment,
+					ExistenceRequirement::AllowDeath,
+				)?;
 				T::Currency::deposit(dex_share_currency_id, who, share_increment)?;
 
 				*pool_0 = pool_0.checked_add(pool_0_increment).ok_or(ArithmeticError::Overflow)?;
@@ -1157,9 +1194,26 @@ impl<T: Config> Pallet<T> {
 				if by_unstake {
 					T::DEXIncentives::do_withdraw_dex_share(who, dex_share_currency_id, remove_share)?;
 				}
-				T::Currency::withdraw(dex_share_currency_id, who, remove_share)?;
-				T::Currency::transfer(trading_pair.first(), &module_account_id, who, pool_0_decrement)?;
-				T::Currency::transfer(trading_pair.second(), &module_account_id, who, pool_1_decrement)?;
+				T::Currency::withdraw(
+					dex_share_currency_id,
+					who,
+					remove_share,
+					ExistenceRequirement::AllowDeath,
+				)?;
+				T::Currency::transfer(
+					trading_pair.first(),
+					&module_account_id,
+					who,
+					pool_0_decrement,
+					ExistenceRequirement::AllowDeath,
+				)?;
+				T::Currency::transfer(
+					trading_pair.second(),
+					&module_account_id,
+					who,
+					pool_1_decrement,
+					ExistenceRequirement::AllowDeath,
+				)?;
 
 				*pool_0 = pool_0.checked_sub(pool_0_decrement).ok_or(ArithmeticError::Underflow)?;
 				*pool_1 = pool_1.checked_sub(pool_1_decrement).ok_or(ArithmeticError::Underflow)?;
@@ -1380,9 +1434,21 @@ impl<T: Config> Pallet<T> {
 		let module_account_id = Self::account_id();
 		let actual_target_amount = amounts[amounts.len() - 1];
 
-		T::Currency::transfer(path[0], who, &module_account_id, supply_amount)?;
+		T::Currency::transfer(
+			path[0],
+			who,
+			&module_account_id,
+			supply_amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 		Self::_swap_by_path(path, &amounts)?;
-		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, actual_target_amount)?;
+		T::Currency::transfer(
+			path[path.len() - 1],
+			&module_account_id,
+			who,
+			actual_target_amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 
 		Self::deposit_event(Event::Swap {
 			trader: who.clone(),
@@ -1404,9 +1470,21 @@ impl<T: Config> Pallet<T> {
 		let module_account_id = Self::account_id();
 		let actual_supply_amount = amounts[0];
 
-		T::Currency::transfer(path[0], who, &module_account_id, actual_supply_amount)?;
+		T::Currency::transfer(
+			path[0],
+			who,
+			&module_account_id,
+			actual_supply_amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 		Self::_swap_by_path(path, &amounts)?;
-		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, target_amount)?;
+		T::Currency::transfer(
+			path[path.len() - 1],
+			&module_account_id,
+			who,
+			target_amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 
 		Self::deposit_event(Event::Swap {
 			trader: who.clone(),

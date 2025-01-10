@@ -29,7 +29,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::needless_range_loop)]
 
-use frame_support::{pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use module_support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio, Swap, SwapLimit};
 use nutsfinance_stable_asset::traits::StableAsset;
@@ -194,6 +194,7 @@ pub mod module {
 				&Self::account_id(),
 				&T::TreasuryAccount::get(),
 				amount,
+				ExistenceRequirement::AllowDeath,
 			)?;
 			Ok(())
 		}
@@ -391,23 +392,52 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 
 	/// This should be the only function in the system that burns stable coin
 	fn burn_debit(who: &T::AccountId, debit: Self::Balance) -> DispatchResult {
-		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, debit)
+		T::Currency::withdraw(
+			T::GetStableCurrencyId::get(),
+			who,
+			debit,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn deposit_surplus(from: &T::AccountId, surplus: Self::Balance) -> DispatchResult {
-		T::Currency::transfer(T::GetStableCurrencyId::get(), from, &Self::account_id(), surplus)
+		T::Currency::transfer(
+			T::GetStableCurrencyId::get(),
+			from,
+			&Self::account_id(),
+			surplus,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn withdraw_surplus(to: &T::AccountId, surplus: Self::Balance) -> DispatchResult {
-		T::Currency::transfer(T::GetStableCurrencyId::get(), &Self::account_id(), to, surplus)
+		T::Currency::transfer(
+			T::GetStableCurrencyId::get(),
+			&Self::account_id(),
+			to,
+			surplus,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn deposit_collateral(from: &T::AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
-		T::Currency::transfer(currency_id, from, &Self::account_id(), amount)
+		T::Currency::transfer(
+			currency_id,
+			from,
+			&Self::account_id(),
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn withdraw_collateral(to: &T::AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
-		T::Currency::transfer(currency_id, &Self::account_id(), to, amount)
+		T::Currency::transfer(
+			currency_id,
+			&Self::account_id(),
+			to,
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 }
 

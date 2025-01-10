@@ -39,7 +39,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use module_support::{DEXIncentives, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate};
 use orml_traits::{Handler, MultiCurrency, RewardHandler};
@@ -408,6 +408,7 @@ impl<T: Config> Pallet<T> {
 			&T::RewardsSource::get(),
 			&Self::account_id(),
 			reward_amount,
+			ExistenceRequirement::AllowDeath,
 		)?;
 		<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, reward_currency_id, reward_amount)?;
 		Ok(())
@@ -502,7 +503,13 @@ impl<T: Config> Pallet<T> {
 		if !reaccumulate_amount.is_zero() {
 			<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, reward_currency_id, reaccumulate_amount)?;
 		}
-		T::Currency::transfer(reward_currency_id, &Self::account_id(), who, payout_amount)?;
+		T::Currency::transfer(
+			reward_currency_id,
+			&Self::account_id(),
+			who,
+			payout_amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 		Ok(())
 	}
 }
@@ -511,7 +518,13 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	fn do_deposit_dex_share(who: &T::AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
 		ensure!(lp_currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 
-		T::Currency::transfer(lp_currency_id, who, &Self::account_id(), amount)?;
+		T::Currency::transfer(
+			lp_currency_id,
+			who,
+			&Self::account_id(),
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into())?;
 
 		Self::deposit_event(Event::DepositDexShare {
@@ -529,7 +542,13 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 			Error::<T>::NotEnough,
 		);
 
-		T::Currency::transfer(lp_currency_id, &Self::account_id(), who, amount)?;
+		T::Currency::transfer(
+			lp_currency_id,
+			&Self::account_id(),
+			who,
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into())?;
 
 		Self::deposit_event(Event::WithdrawDexShare {

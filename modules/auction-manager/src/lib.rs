@@ -30,7 +30,7 @@
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::unnecessary_unwrap)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
@@ -554,7 +554,13 @@ impl<T: Config> Pallet<T> {
 				// if there's bid before, return stablecoin from new bidder to last bidder
 				if let Some(last_bidder) = last_bidder {
 					let refund = collateral_auction.payment_amount(last_bid_price);
-					T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, last_bidder, refund)?;
+					T::Currency::transfer(
+						T::GetStableCurrencyId::get(),
+						&new_bidder,
+						last_bidder,
+						refund,
+						ExistenceRequirement::AllowDeath,
+					)?;
 
 					payment = payment
 						.checked_sub(refund)

@@ -28,7 +28,9 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{pallet_prelude::*, traits::UnixTime, transactional, BoundedVec, PalletId};
+use frame_support::{
+	pallet_prelude::*, traits::ExistenceRequirement, traits::UnixTime, transactional, BoundedVec, PalletId,
+};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
@@ -1014,10 +1016,22 @@ impl<T: Config> Pallet<T> {
 
 				// refund unused lp component tokens
 				if let Some(remainer) = available_0.checked_sub(consumption_0) {
-					<T as Config>::Currency::transfer(token_0, &loans_module_account, who, remainer)?;
+					<T as Config>::Currency::transfer(
+						token_0,
+						&loans_module_account,
+						who,
+						remainer,
+						ExistenceRequirement::AllowDeath,
+					)?;
 				}
 				if let Some(remainer) = available_1.checked_sub(consumption_1) {
-					<T as Config>::Currency::transfer(token_1, &loans_module_account, who, remainer)?;
+					<T as Config>::Currency::transfer(
+						token_1,
+						&loans_module_account,
+						who,
+						remainer,
+						ExistenceRequirement::AllowDeath,
+					)?;
 				}
 
 				actual_increase_lp
@@ -1119,6 +1133,7 @@ impl<T: Config> Pallet<T> {
 				&loans_module_account,
 				who,
 				actual_stable_amount.saturating_sub(previous_debit_value),
+				ExistenceRequirement::AllowDeath,
 			)?;
 
 			(previous_debit_value, debit)
@@ -1484,7 +1499,13 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 					return Ok(());
 				} else if repayment > 0 {
 					// insufficient repayment, refund
-					CurrencyOf::<T>::transfer(stable_coin, &repay_dest_account_id, &contract_account_id, repayment)?;
+					CurrencyOf::<T>::transfer(
+						stable_coin,
+						&repay_dest_account_id,
+						&contract_account_id,
+						repayment,
+						ExistenceRequirement::AllowDeath,
+					)?;
 					// notify liquidation failed
 					T::LiquidationEvmBridge::on_repayment_refund(
 						InvokeContext {

@@ -20,7 +20,7 @@ use super::input::{Input, InputPricer, InputT, Output};
 use crate::WeightToGas;
 use frame_support::{
 	pallet_prelude::IsType,
-	traits::{Currency, Get},
+	traits::{Currency, ExistenceRequirement, Get},
 };
 use module_currencies::WeightInfo;
 use module_evm::{
@@ -162,6 +162,7 @@ where
 					&from,
 					&to,
 					amount,
+					ExistenceRequirement::AllowDeath,
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
@@ -188,6 +189,7 @@ where
 					&from,
 					&to,
 					amount,
+					ExistenceRequirement::AllowDeath,
 				)
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,

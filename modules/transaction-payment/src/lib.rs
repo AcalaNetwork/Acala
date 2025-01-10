@@ -59,6 +59,8 @@ use sp_runtime::{
 use sp_std::prelude::*;
 use xcm::v4::prelude::Location;
 
+const LOG_TARGET: &str = "transaction-payment";
+
 mod mock;
 mod tests;
 pub mod weights;
@@ -860,7 +862,7 @@ where
 		fee_aggregated_path: &[AggregatedSwapPath<CurrencyId>],
 	) -> Result<(T::AccountId, Balance), DispatchError> {
 		log::debug!(
-			target: "runtime::transaction-payment",
+			target: LOG_TARGET,
 			"charge_fee_aggregated_path: who: {:?}, fee: {:?}, fee_aggregated_path: {:?}",
 			who,
 			fee,
@@ -882,7 +884,7 @@ where
 		fee_currency_id: CurrencyId,
 	) -> Result<(T::AccountId, Balance), DispatchError> {
 		log::debug!(
-			target: "runtime::transaction-payment",
+			target: LOG_TARGET,
 			"charge_fee_currency: who: {:?}, fee: {:?}, fee_currency_id: {:?}",
 			who,
 			fee,
@@ -925,7 +927,7 @@ where
 		reason: WithdrawReasons,
 	) -> Result<(T::AccountId, Balance), DispatchError> {
 		log::debug!(
-			target: "runtime::transaction-payment",
+			target: LOG_TARGET,
 			"ensure_can_charge_fee_with_call: who: {:?}, fee: {:?}, call: {:?}",
 			who,
 			fee,
@@ -1010,7 +1012,7 @@ where
 		reason: WithdrawReasons,
 	) -> Result<Balance, DispatchError> {
 		log::debug!(
-			target: "runtime::transaction-payment",
+			target: LOG_TARGET,
 			"native_then_alternative_or_default: who: {:?}, fee: {:?}",
 			who,
 			fee
@@ -1113,8 +1115,15 @@ where
 
 		// use fix rate to calculate the amount of supply asset that equal to native asset.
 		let supply_account = rate.saturating_mul_int(amount);
-		T::MultiCurrency::transfer(supply_currency_id, who, &sub_account, supply_account)?;
+		// transfer native token first to ensure it stays alive during swap
 		T::Currency::transfer(&sub_account, who, amount, ExistenceRequirement::KeepAlive)?;
+		T::MultiCurrency::transfer(
+			supply_currency_id,
+			who,
+			&sub_account,
+			supply_account,
+			ExistenceRequirement::AllowDeath,
+		)?;
 		Ok(())
 	}
 
@@ -1169,6 +1178,7 @@ where
 			&treasury_account,
 			&sub_account,
 			T::MultiCurrency::minimum_balance(currency_id),
+			ExistenceRequirement::AllowDeath,
 		)?;
 		T::Currency::transfer(
 			&treasury_account,
@@ -1203,7 +1213,13 @@ where
 		let foreign_amount: Balance = T::MultiCurrency::free_balance(currency_id, &sub_account);
 		let native_amount: Balance = T::Currency::free_balance(&sub_account);
 
-		T::MultiCurrency::transfer(currency_id, &sub_account, &treasury_account, foreign_amount)?;
+		T::MultiCurrency::transfer(
+			currency_id,
+			&sub_account,
+			&treasury_account,
+			foreign_amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 		T::Currency::transfer(
 			&sub_account,
 			&treasury_account,
@@ -1315,8 +1331,18 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		let (payer, fee_surplus) = Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call, reason)
-			.map_err(|_| TransactionValidityError::from(InvalidTransaction::Payment))?;
+		let (payer, fee_surplus) =
+			Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call, reason).map_err(|e| {
+				log::debug!(
+					target: LOG_TARGET,
+					"ensure_can_charge_fee_with_call who: {:?} fee: {:?} call: {:?} error: {:?}",
+					who,
+					fee,
+					call,
+					e
+				);
+				TransactionValidityError::from(InvalidTransaction::Payment)
+			})?;
 
 		// withdraw native currency as fee, also consider surplus when swap from dex or pool.
 		match <T as Config>::Currency::withdraw(&payer, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
@@ -1530,7 +1556,7 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> Result<PalletBalanceOf<T>, DispatchError> {
-		log::debug!(target: "transaction-payment", "reserve_fee: who: {:?}, fee: {:?}, named: {:?}", who, fee, named);
+		log::debug!(target: LOG_TARGET, "reserve_fee: who: {:?}, fee: {:?}, named: {:?}", who, fee, named);
 
 		Pallet::<T>::native_then_alternative_or_default(who, fee, WithdrawReasons::TRANSACTION_PAYMENT)?;
 		T::Currency::reserve_named(&named.unwrap_or(RESERVE_ID), who, fee)?;
@@ -1542,7 +1568,7 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> PalletBalanceOf<T> {
-		log::debug!(target: "transaction-payment", "unreserve_fee: who: {:?}, fee: {:?}, named: {:?}", who, fee, named);
+		log::debug!(target: LOG_TARGET, "unreserve_fee: who: {:?}, fee: {:?}, named: {:?}", who, fee, named);
 
 		<T as Config>::Currency::unreserve_named(&named.unwrap_or(RESERVE_ID), who, fee)
 	}
@@ -1551,7 +1577,7 @@ where
 		who: &T::AccountId,
 		weight: Weight,
 	) -> Result<(PalletBalanceOf<T>, NegativeImbalanceOf<T>), TransactionValidityError> {
-		log::debug!(target: "transaction-payment", "unreserve_and_charge_fee: who: {:?}, weight: {:?}", who, weight);
+		log::debug!(target: LOG_TARGET, "unreserve_and_charge_fee: who: {:?}, weight: {:?}", who, weight);
 
 		let fee = Pallet::<T>::weight_to_fee(weight);
 		<T as Config>::Currency::unreserve_named(&RESERVE_ID, who, fee);
@@ -1572,7 +1598,7 @@ where
 		refund_weight: Weight,
 		payed: NegativeImbalanceOf<T>,
 	) -> Result<(), TransactionValidityError> {
-		log::debug!(target: "transaction-payment", "refund_fee: who: {:?}, refund_weight: {:?}, payed: {:?}", who, refund_weight, payed.peek());
+		log::debug!(target: LOG_TARGET, "refund_fee: who: {:?}, refund_weight: {:?}, payed: {:?}", who, refund_weight, payed.peek());
 
 		let refund = Pallet::<T>::weight_to_fee(refund_weight);
 		let actual_payment = match <T as Config>::Currency::deposit_into_existing(who, refund) {
@@ -1603,7 +1629,7 @@ where
 		pays_fee: Pays,
 		class: DispatchClass,
 	) -> Result<(), TransactionValidityError> {
-		log::debug!(target: "transaction-payment", "charge_fee: who: {:?}, len: {:?}, weight: {:?}, tip: {:?}, pays_fee: {:?}, class: {:?}", who, len, weight, tip, pays_fee, class);
+		log::debug!(target: LOG_TARGET, "charge_fee: who: {:?}, len: {:?}, weight: {:?}, tip: {:?}, pays_fee: {:?}, class: {:?}", who, len, weight, tip, pays_fee, class);
 
 		let fee = Pallet::<T>::compute_fee_raw(len, weight, tip, pays_fee, class).final_fee();
 
@@ -1614,7 +1640,16 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT,
 			ExistenceRequirement::KeepAlive,
 		)
-		.map_err(|_| InvalidTransaction::Payment)?;
+		.map_err(|e| {
+			log::debug!(
+				target: LOG_TARGET,
+				"charge_fee withdraw who: {:?} fee: {:?} error: {:?}",
+				who,
+				fee,
+				e
+			);
+			InvalidTransaction::Payment
+		})?;
 
 		// distribute fee
 		<T as Config>::OnTransactionPayment::on_unbalanced(actual_payment);

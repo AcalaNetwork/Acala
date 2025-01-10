@@ -27,7 +27,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional, PalletId};
 use module_support::{CDPTreasury, RiskManager};
 use orml_traits::{Handler, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId, Position};
@@ -189,9 +189,21 @@ impl<T: Config> Pallet<T> {
 		let module_account = Self::account_id();
 
 		if collateral_adjustment.is_positive() {
-			T::Currency::transfer(currency_id, who, &module_account, collateral_balance_adjustment)?;
+			T::Currency::transfer(
+				currency_id,
+				who,
+				&module_account,
+				collateral_balance_adjustment,
+				ExistenceRequirement::AllowDeath,
+			)?;
 		} else if collateral_adjustment.is_negative() {
-			T::Currency::transfer(currency_id, &module_account, who, collateral_balance_adjustment)?;
+			T::Currency::transfer(
+				currency_id,
+				&module_account,
+				who,
+				collateral_balance_adjustment,
+				ExistenceRequirement::AllowDeath,
+			)?;
 		}
 
 		if debit_adjustment.is_positive() {
