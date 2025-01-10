@@ -46,6 +46,7 @@ parameter_types! {
 	pub static AUSDBTCPair: TradingPair = TradingPair::from_currency_ids(AUSD, BTC).unwrap();
 	pub static AUSDDOTPair: TradingPair = TradingPair::from_currency_ids(AUSD, DOT).unwrap();
 	pub static DOTBTCPair: TradingPair = TradingPair::from_currency_ids(DOT, BTC).unwrap();
+	pub static ACAAUSDPair: TradingPair = TradingPair::from_currency_ids(ACA, AUSD).unwrap();
 }
 
 mod dex {
@@ -61,8 +62,11 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Default::default()
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match *currency_id {
+			ACA => 1,
+			_ => Default::default(),
+		}
 	};
 }
 
@@ -181,7 +185,12 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn initialize_enabled_trading_pairs(mut self) -> Self {
-		self.initial_enabled_trading_pairs = vec![AUSDDOTPair::get(), AUSDBTCPair::get(), DOTBTCPair::get()];
+		self.initial_enabled_trading_pairs = vec![
+			AUSDDOTPair::get(),
+			AUSDBTCPair::get(),
+			DOTBTCPair::get(),
+			ACAAUSDPair::get(),
+		];
 		self
 	}
 
@@ -192,6 +201,7 @@ impl ExtBuilder {
 				(AUSDDOTPair::get(), (1_000_000u128, 2_000_000u128)),
 				(AUSDBTCPair::get(), (1_000_000u128, 2_000_000u128)),
 				(DOTBTCPair::get(), (1_000_000u128, 2_000_000u128)),
+				(ACAAUSDPair::get(), (1_000_000u128, 2_000_000u128)),
 			],
 		)];
 		self
