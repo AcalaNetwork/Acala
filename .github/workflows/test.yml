@@ -134,7 +134,7 @@ jobs:
         with:
           node-version: 18.x
       - name: Install deps
-        run: cargo install staging-chain-spec-builder
+        run: cargo install staging-chain-spec-builder --force
       - name: Run ts tests
         run: |
           npm install -g yarn
