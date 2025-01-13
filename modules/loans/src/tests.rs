@@ -27,10 +27,12 @@ use mock::{RuntimeEvent, *};
 #[test]
 fn debits_key() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
 		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 200, 200));
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 200);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 800);
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 200);
 		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, -100, -100));
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 100);

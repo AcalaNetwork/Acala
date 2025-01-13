@@ -279,6 +279,7 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Erc20InfoMapping = MockErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;

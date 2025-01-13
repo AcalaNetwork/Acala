@@ -2484,6 +2484,7 @@ fn reserve_deposit_makes_user_developer() {
 			&<Runtime as Config>::AddressMapping::get_account_id(&alice()),
 			&who,
 			DEVELOPER_DEPOSIT,
+			ExistenceRequirement::AllowDeath
 		));
 
 		assert_ok!(<Runtime as Config>::Currency::ensure_reserved_named(

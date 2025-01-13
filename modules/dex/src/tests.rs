@@ -1993,3 +1993,51 @@ fn specific_joint_swap_work() {
 			);
 		});
 }
+
+#[test]
+fn do_swap_should_keep_alive_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+
+			assert_ok!(DexModule::add_liquidity(
+				RuntimeOrigin::signed(ALICE),
+				ACA,
+				BTC,
+				1_000_000_000_000_000,
+				2_000_000_000_000_000,
+				0,
+				false,
+			));
+
+			assert_ok!(Tokens::transfer(
+				RuntimeOrigin::signed(ALICE),
+				CAROL,
+				ACA,
+				100_000_000_000_000
+			));
+
+			assert_eq!(Tokens::free_balance(ACA, &CAROL), 100_000_000_000_000);
+
+			assert_noop!(
+				DexModule::do_swap_with_exact_supply(&CAROL, &[ACA, BTC], 100_000_000_000_000, 1,),
+				orml_tokens::Error::<Runtime>::KeepAlive
+			);
+
+			assert_ok!(DexModule::do_swap_with_exact_supply(
+				&CAROL,
+				&[ACA, BTC],
+				10_000_000_000_000,
+				1
+			));
+
+			assert_ok!(DexModule::do_swap_with_exact_target(
+				&CAROL,
+				&[ACA, BTC],
+				10_000_000_000_000,
+				20_000_000_000_000
+			));
+		});
+}

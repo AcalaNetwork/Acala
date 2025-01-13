@@ -22,8 +22,8 @@ use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, Weight};
 use frame_support::{
 	derive_impl, ord_parameter_types, parameter_types,
 	traits::{
-		ConstU128, ConstU32, ConstU64, EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier, Nothing,
-		OnFinalize, OnInitialize, SortedMembers,
+		ConstU128, ConstU32, ConstU64, EqualPrivilegeOnly, Everything, ExistenceRequirement, InstanceFilter,
+		LockIdentifier, Nothing, OnFinalize, OnInitialize, SortedMembers,
 	},
 	weights::{ConstantMultiplier, IdentityFee},
 	PalletId,
@@ -72,7 +72,7 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const ExistenceRequirement: u128 = 1;
+	pub const ExistentialDeposit: u128 = 1;
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: u32 = 600;
 	pub const RootOperatorAccountId: AccountId = ALICE;
@@ -147,7 +147,7 @@ impl pallet_balances::Config for Test {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
-	type ExistentialDeposit = ExistenceRequirement;
+	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = module_support::SystemAccountStore<Test>;
 	type WeightInfo = ();
 	type MaxLocks = ();
@@ -274,7 +274,7 @@ impl module_transaction_payment::Config for Test {
 	type OperationalFeeMultiplier = ConstU64<5>;
 	type TipPerWeightStep = ConstU128<1>;
 	type MaxTipsOfPriority = ConstU128<1000>;
-	type AlternativeFeeSwapDeposit = ExistenceRequirement;
+	type AlternativeFeeSwapDeposit = ExistentialDeposit;
 	type WeightToFee = IdentityFee<Balance>;
 	type LengthToFee = ConstantMultiplier<Balance, ConstU128<10>>;
 	type FeeMultiplierUpdate = ();
@@ -385,6 +385,7 @@ impl module_dex::Config for Test {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Erc20InfoMapping = EvmErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
@@ -682,7 +683,12 @@ pub struct MockHomaSubAccountXcm;
 impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 	type RelayChainAccountId = AccountId;
 	fn transfer_staking_to_sub_account(sender: &AccountId, _: u16, amount: Balance) -> DispatchResult {
-		Currencies::withdraw(StakingCurrencyId::get(), sender, amount)
+		Currencies::withdraw(
+			StakingCurrencyId::get(),
+			sender,
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn withdraw_unbonded_from_sub_account(_: u16, _: Balance) -> DispatchResult {
@@ -1107,7 +1113,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut storage)
 	.unwrap();
 	module_asset_registry::GenesisConfig::<Test> {
-		assets: vec![(ACA, ExistenceRequirement::get()), (DOT, 0)],
+		assets: vec![(ACA, ExistentialDeposit::get()), (DOT, 0)],
 	}
 	.assimilate_storage(&mut storage)
 	.unwrap();

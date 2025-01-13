@@ -585,7 +585,12 @@ fn transfer_failed_when_claim_rewards() {
 		);
 
 		// mock the Vault is enough for some reasons
-		assert_ok!(TokensModule::withdraw(AUSD, &VAULT::get(), 3));
+		assert_ok!(TokensModule::withdraw(
+			AUSD,
+			&VAULT::get(),
+			3,
+			ExistenceRequirement::AllowDeath
+		));
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 1);
 
 		assert_eq!(TokensModule::free_balance(AUSD, &BOB::get()), 18);

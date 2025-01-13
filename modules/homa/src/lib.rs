@@ -21,7 +21,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::{
 	ExchangeRate, ExchangeRateProvider, FractionalRate, HomaManager, HomaSubAccountXcm, NomineesProvider, Rate, Ratio,
@@ -485,6 +485,7 @@ pub mod module {
 					&Self::account_id(),
 					&redeemer,
 					available_staking,
+					ExistenceRequirement::AllowDeath,
 				)?;
 
 				Self::deposit_event(Event::<T>::WithdrawRedemption {
@@ -742,7 +743,13 @@ pub mod module {
 				Error::<T>::ExceededStakingCurrencySoftCap
 			);
 
-			T::Currency::transfer(T::StakingCurrencyId::get(), &minter, &Self::account_id(), amount)?;
+			T::Currency::transfer(
+				T::StakingCurrencyId::get(),
+				&minter,
+				&Self::account_id(),
+				amount,
+				ExistenceRequirement::AllowDeath,
+			)?;
 
 			// calculate the liquid amount by the current exchange rate.
 			let liquid_amount = Self::convert_staking_to_liquid(amount)?;
@@ -789,6 +796,7 @@ pub mod module {
 							&redeemer,
 							&Self::account_id(),
 							amount.saturating_sub(previous_request_amount),
+							ExistenceRequirement::AllowDeath,
 						)
 					}
 					Ordering::Less => {
@@ -798,6 +806,7 @@ pub mod module {
 							&Self::account_id(),
 							&redeemer,
 							previous_request_amount.saturating_sub(amount),
+							ExistenceRequirement::AllowDeath,
 						)
 					}
 					_ => Ok(()),
@@ -912,6 +921,7 @@ pub mod module {
 							&module_account,
 							redeemer,
 							redeemed_staking,
+							ExistenceRequirement::AllowDeath,
 						)?;
 						ToBondPool::<T>::mutate(|pool| *pool = pool.saturating_sub(redeemed_staking));
 
@@ -1207,7 +1217,12 @@ pub mod module {
 
 		/// This should be the only function in the system that burn liquid currency
 		fn burn_liquid_currency(who: &T::AccountId, amount: Balance) -> DispatchResult {
-			T::Currency::withdraw(T::LiquidCurrencyId::get(), who, amount)
+			T::Currency::withdraw(
+				T::LiquidCurrencyId::get(),
+				who,
+				amount,
+				ExistenceRequirement::AllowDeath,
+			)
 		}
 
 		/// Issue staking currency based on the subaccounts transfer the unbonded staking currency

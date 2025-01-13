@@ -23,7 +23,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, traits::EnsureOrigin, PalletId};
+use frame_support::{pallet_prelude::*, traits::EnsureOrigin, traits::ExistenceRequirement, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId};
@@ -141,8 +141,19 @@ impl<T: Config> Pallet<T> {
 			(currency_id, amount)
 		};
 
-		T::Currency::withdraw(T::LiquidCrowdloanCurrencyId::get(), who, amount)?;
-		T::Currency::transfer(currency_id, &Self::account_id(), who, redeem_amount)?;
+		T::Currency::withdraw(
+			T::LiquidCrowdloanCurrencyId::get(),
+			who,
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
+		T::Currency::transfer(
+			currency_id,
+			&Self::account_id(),
+			who,
+			redeem_amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 
 		Self::deposit_event(Event::Redeemed {
 			currency_id,

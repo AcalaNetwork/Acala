@@ -59,7 +59,12 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 	type RelayChainAccountId = AccountId;
 
 	fn transfer_staking_to_sub_account(sender: &AccountId, _: u16, amount: Balance) -> DispatchResult {
-		Currencies::withdraw(StakingCurrencyId::get(), sender, amount)
+		Currencies::withdraw(
+			StakingCurrencyId::get(),
+			sender,
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn withdraw_unbonded_from_sub_account(_: u16, _: Balance) -> DispatchResult {
