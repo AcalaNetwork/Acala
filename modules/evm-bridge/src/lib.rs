@@ -368,10 +368,10 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::InvalidReturnValue
 		);
 
-		let offset = U256::from_big_endian(&output.get(0..32).unwrap_or_default());
+		let offset = U256::from_big_endian(output.get(0..32).unwrap_or_default());
 		let offset: usize = offset.try_into().map_err(|_| Error::<T>::InvalidReturnValue)?;
 		let offset_end = offset.checked_add(32).ok_or(Error::<T>::InvalidReturnValue)?;
-		let length = U256::from_big_endian(&output.get(offset..offset_end).unwrap_or_default());
+		let length = U256::from_big_endian(output.get(offset..offset_end).unwrap_or_default());
 		let length: usize = length.try_into().map_err(|_| Error::<T>::InvalidReturnValue)?;
 		let length_end = offset_end.checked_add(length).ok_or(Error::<T>::InvalidReturnValue)?;
 		ensure!(
@@ -381,7 +381,7 @@ impl<T: Config> Pallet<T> {
 		);
 
 		let mut data = Vec::new();
-		data.extend_from_slice(&output.get(offset_end..length_end).unwrap_or_default());
+		data.extend_from_slice(output.get(offset_end..length_end).unwrap_or_default());
 
 		Ok(data.to_vec())
 	}
