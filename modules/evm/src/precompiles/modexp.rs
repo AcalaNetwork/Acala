@@ -279,8 +279,12 @@ impl Precompile for IstanbulModexp {
 			});
 		}
 		let cost = ModexpPricer::cost(Self::DIVISOR, input);
+		let cost = TryInto::<u64>::try_into(cost).map_err(|_| PrecompileFailure::Error {
+			exit_status: ExitError::OutOfGas,
+		})?;
+
 		if let Some(target_gas) = target_gas {
-			if cost > U256::from(u64::MAX) || target_gas < cost.as_u64() {
+			if target_gas < cost {
 				return Err(PrecompileFailure::Error {
 					exit_status: ExitError::OutOfGas,
 				});
@@ -288,7 +292,7 @@ impl Precompile for IstanbulModexp {
 		}
 
 		let output = Self::execute_modexp(input);
-		handle.record_cost(cost.as_u64())?;
+		handle.record_cost(cost)?;
 
 		Ok(PrecompileOutput {
 			exit_status: ExitSucceed::Returned,
