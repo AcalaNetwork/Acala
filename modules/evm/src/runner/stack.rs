@@ -633,11 +633,11 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_hash(&self, number: U256) -> H256 {
-		if number > U256::from(u32::MAX) {
-			H256::default()
-		} else {
-			let number = BlockNumberFor::<T>::from(number.as_u32());
+		if let Ok(number) = TryInto::<u32>::try_into(number) {
+			let number = BlockNumberFor::<T>::from(number);
 			H256::from_slice(frame_system::Pallet::<T>::block_hash(number).as_ref())
+		} else {
+			H256::default()
 		}
 	}
 
