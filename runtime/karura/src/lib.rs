@@ -1995,12 +1995,8 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
-parameter_types! {
-	pub const StateTrieMigrationName: &'static str = "StateTrieMigration";
-}
-
 #[allow(unused_parens)]
-type Migrations = (frame_support::migrations::RemovePallet<StateTrieMigrationName, RocksDbWeight>);
+type Migrations = ();
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
