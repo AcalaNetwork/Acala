@@ -2946,7 +2946,7 @@ fn sweep_dust_native_currency_works() {
 			},
 		));
 
-		// TODO: seems the insert directly does not work now, it's probably because of the new machanism of
+		// TODO: seems the insert directly does not work now, it's probably because of the new mechanism of
 		// provider and consumer: https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/system/src/lib.rs#L1692
 		// consider deposit_creating alive account, then decrease the ED to fix this test!
 		assert_eq!(
