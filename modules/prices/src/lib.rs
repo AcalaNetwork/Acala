@@ -23,7 +23,7 @@
 //! The data from Oracle cannot be used in business, prices module will do some
 //! process and feed prices for Acala. Process include:
 //!   - specify a fixed price for stable currency
-//!   - feed price in USD or related price bewteen two currencies
+//!   - feed price in USD or related price between two currencies
 //!   - lock/unlock the price data get from oracle
 
 #![cfg_attr(not(feature = "std"), no_std)]
