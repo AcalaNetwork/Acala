@@ -873,20 +873,20 @@ parameter_type_with_key! {
 				} else if let CurrencyId::Erc20(address) = currency_id_0 {
 					// LP token with erc20
 					AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(address)).
-						map_or(Balance::MAX, |metatata| metatata.minimal_balance)
+						map_or(Balance::MAX, |metadata| metadata.minimal_balance)
 				} else {
 					Self::get(&currency_id_0)
 				}
 			},
-			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::MAX, |metatata| metatata.minimal_balance),
+			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::MAX, |metadata| metadata.minimal_balance),
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetId(*stable_asset_id)).
-					map_or(Balance::MAX, |metatata| metatata.minimal_balance)
+					map_or(Balance::MAX, |metadata| metadata.minimal_balance)
 			},
 			CurrencyId::LiquidCrowdloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::ForeignAssetId(*foreign_asset_id)).
-					map_or(Balance::MAX, |metatata| metatata.minimal_balance)
+					map_or(Balance::MAX, |metadata| metadata.minimal_balance)
 			},
 		}
 	};
