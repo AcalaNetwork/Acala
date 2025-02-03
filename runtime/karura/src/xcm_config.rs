@@ -138,12 +138,12 @@ parameter_types! {
 
 	pub BaseRate: u128 = kar_per_second();
 
-		/// Location of Asset Hub
-		pub AssetHubLocation: Location = Location::new(1, [Parachain(1000)]);
-		pub RelayChainNativeAssetFromAssetHub: (AssetFilter, Location) = (
-			RelayLocationFilter::get(),
-			AssetHubLocation::get()
-		);
+	/// Location of Asset Hub
+	pub AssetHubLocation: Location = Location::new(1, [Parachain(1000)]);
+	pub RelayChainNativeAssetFromAssetHub: (AssetFilter, Location) = (
+		RelayLocationFilter::get(),
+		AssetHubLocation::get()
+	);
 }
 
 type Reserves = (
