@@ -226,13 +226,13 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. }
-				| pallet_xcm::Call::transfer_assets { .. }
-				| pallet_xcm::Call::transfer_assets_using_type_and_then { .. } => {
+				| pallet_xcm::Call::limited_teleport_assets { .. } => {
 					return false;
 				}
 				// user xcm calls
-				pallet_xcm::Call::claim_assets { .. } => {
+				pallet_xcm::Call::claim_assets { .. }
+				| pallet_xcm::Call::transfer_assets { .. }
+				| pallet_xcm::Call::transfer_assets_using_type_and_then { .. } => {
 					return true;
 				}
 				// xcm operations call
