@@ -127,6 +127,10 @@ impl Convert<AccountId, Location> for AccountIdToLocation {
 
 parameter_types! {
 	pub const RelayLocation: Location = Location::parent();
+	pub RelayLocationFilter: AssetFilter = Wild(AllOf {
+		fun: WildFungible,
+		id: xcm::prelude::AssetId(RelayLocation::get()),
+	});
 }
 
 // define assets that can be trusted to teleport by remotes
