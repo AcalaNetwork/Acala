@@ -60,7 +60,7 @@ use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
-	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
+	create_median_value_data_provider, define_aggregated_parameters, parameter_type_with_key,
 	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey, MultiCurrency,
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
@@ -1881,7 +1881,7 @@ impl module_liquid_crowdloan::Config for Runtime {
 	type WeightInfo = weights::module_liquid_crowdloan::WeightInfo<Runtime>;
 }
 
-define_aggregrated_parameters! {
+define_aggregated_parameters! {
 	pub RuntimeParameters = {
 		Earning: module_earning::Parameters = 0,
 	}
@@ -1889,7 +1889,7 @@ define_aggregrated_parameters! {
 
 impl orml_parameters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type AggregratedKeyValue = RuntimeParameters;
+	type AggregatedKeyValue = RuntimeParameters;
 	type AdminOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type WeightInfo = ();
 }
