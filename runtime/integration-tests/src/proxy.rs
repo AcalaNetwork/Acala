@@ -206,7 +206,7 @@ fn proxy_permissions_correct() {
 				gov_call.clone()
 			));
 			let hash = BlakeTwo256::hash_of(&(BlakeTwo256::hash(b"bob is awesome"), AccountId::from(BOB)));
-			// last event was sucessful tip call
+			// last event was successful tip call
 			assert_eq!(
 				System::events()
 					.into_iter()

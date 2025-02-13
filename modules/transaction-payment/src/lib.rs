@@ -308,10 +308,10 @@ pub mod module {
 		/// transaction fee paid, the second is the tip paid, if any.
 		type OnTransactionPayment: OnUnbalanced<NegativeImbalanceOf<Self>>;
 
-		/// A fee mulitplier for `Operational` extrinsics to compute "virtual tip" to boost their
+		/// A fee multiplier for `Operational` extrinsics to compute "virtual tip" to boost their
 		/// `priority`
 		///
-		/// This value is multipled by the `final_fee` to obtain a "virtual tip" that is later
+		/// This value is multiplied by the `final_fee` to obtain a "virtual tip" that is later
 		/// added to a tip component in regular `priority` calculations.
 		/// It means that a `Normal` transaction can front-run a similarly-sized `Operational`
 		/// extrinsic (with no tip), by including a tip value greater than the virtual tip.
@@ -373,7 +373,7 @@ pub mod module {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
-		/// PalletId used to derivate sub account.
+		/// PalletId used to derivative sub account.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
@@ -381,11 +381,11 @@ pub mod module {
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
-		/// Custom fee surplus if not payed with native asset.
+		/// Custom fee surplus if not paid with native asset.
 		#[pallet::constant]
 		type CustomFeeSurplus: Get<Percent>;
 
-		/// Alternative fee surplus if not payed with native asset.
+		/// Alternative fee surplus if not paid with native asset.
 		#[pallet::constant]
 		type AlternativeFeeSurplus: Get<Percent>;
 
@@ -1155,7 +1155,7 @@ where
 		Ok(())
 	}
 
-	/// The sub account derivated by `PalletId`.
+	/// The sub account derivatived by `PalletId`.
 	fn sub_account_id(id: CurrencyId) -> T::AccountId {
 		T::PalletId::get().into_sub_account_truncating(id)
 	}
@@ -1516,7 +1516,7 @@ where
 		len: usize,
 		_result: &DispatchResult,
 	) -> Result<(), TransactionValidityError> {
-		if let Some((tip, who, Some(payed), fee, surplus)) = pre {
+		if let Some((tip, who, Some(paid), fee, surplus)) = pre {
 			let actual_fee = Pallet::<T>::compute_actual_fee(len as u32, info, post_info, tip);
 			let refund_fee = fee.saturating_sub(actual_fee);
 			let mut refund = refund_fee;
@@ -1543,9 +1543,9 @@ where
 
 			let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
 				Ok(refund_imbalance) => {
-					// The refund cannot be larger than the up front payed max weight.
+					// The refund cannot be larger than the up front paid max weight.
 					// `PostDispatchInfo::calc_unspent` guards against such a case.
-					match payed.offset(refund_imbalance) {
+					match paid.offset(refund_imbalance) {
 						SameOrOther::Same(actual_payment) => actual_payment,
 						SameOrOther::None => Default::default(),
 						_ => return Err(InvalidTransaction::Payment.into()),
@@ -1553,7 +1553,7 @@ where
 				}
 				// We do not recreate the account using the refund. The up front payment
 				// is gone in that case.
-				Err(_) => payed,
+				Err(_) => paid,
 			};
 			let (tip, fee) = actual_payment.split(actual_tip);
 
@@ -1624,15 +1624,15 @@ where
 	fn refund_fee(
 		who: &T::AccountId,
 		refund_weight: Weight,
-		payed: NegativeImbalanceOf<T>,
+		paid: NegativeImbalanceOf<T>,
 	) -> Result<(), TransactionValidityError> {
-		log::debug!(target: LOG_TARGET, "refund_fee: who: {:?}, refund_weight: {:?}, payed: {:?}", who, refund_weight, payed.peek());
+		log::debug!(target: LOG_TARGET, "refund_fee: who: {:?}, refund_weight: {:?}, paid: {:?}", who, refund_weight, paid.peek());
 
 		let refund = Pallet::<T>::weight_to_fee(refund_weight);
 		let actual_payment = match <T as Config>::Currency::deposit_into_existing(who, refund) {
 			Ok(refund_imbalance) => {
-				// The refund cannot be larger than the up front payed max weight.
-				match payed.offset(refund_imbalance) {
+				// The refund cannot be larger than the up front paid max weight.
+				match paid.offset(refund_imbalance) {
 					SameOrOther::Same(actual_payment) => actual_payment,
 					SameOrOther::None => Default::default(),
 					_ => return Err(InvalidTransaction::Payment.into()),
@@ -1640,7 +1640,7 @@ where
 			}
 			// We do not recreate the account using the refund. The up front payment
 			// is gone in that case.
-			Err(_) => payed,
+			Err(_) => paid,
 		};
 
 		// distribute fee
