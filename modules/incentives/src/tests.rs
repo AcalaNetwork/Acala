@@ -1168,7 +1168,7 @@ fn transfer_reward_and_update_rewards_storage_atomically_when_accumulate_incenti
 			vec![(PoolId::Loans(LDOT), vec![(ACA, 30), (AUSD, 90)]),],
 		));
 
-		// accumulate ACA and AUSD failed, because pool dosen't exist
+		// accumulate ACA and AUSD failed, because pool doesn't exist
 		IncentivesModule::accumulate_incentives(PoolId::Loans(LDOT));
 		assert_eq!(
 			orml_rewards::PoolInfos::<Runtime>::contains_key(PoolId::Dex(LDOT)),

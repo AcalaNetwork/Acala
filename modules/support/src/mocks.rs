@@ -126,11 +126,7 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 		Ok((Default::default(), Imbalance::zero()))
 	}
 
-	fn refund_fee(
-		_who: &AccountId,
-		_weight: Weight,
-		_payed: NegativeImbalance,
-	) -> Result<(), TransactionValidityError> {
+	fn refund_fee(_who: &AccountId, _weight: Weight, _paid: NegativeImbalance) -> Result<(), TransactionValidityError> {
 		Ok(())
 	}
 
@@ -185,11 +181,7 @@ impl<
 		Ok((Default::default(), Imbalance::zero()))
 	}
 
-	fn refund_fee(
-		_who: &AccountId,
-		_weight: Weight,
-		_payed: NegativeImbalance,
-	) -> Result<(), TransactionValidityError> {
+	fn refund_fee(_who: &AccountId, _weight: Weight, _paid: NegativeImbalance) -> Result<(), TransactionValidityError> {
 		Ok(())
 	}
 

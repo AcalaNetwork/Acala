@@ -46,7 +46,7 @@ runtime_benchmarks! {
 	dispatch_as {
 	}: _(RawOrigin::Root, AuthoritysOriginId::Root, runtime_call())
 
-	// schdule a dispatchable to be dispatched at later block.
+	// schedule a dispatchable to be dispatched at later block.
 	schedule_dispatch_without_delay {
 		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 			as_origin: AuthoritysOriginId::Root,
@@ -54,7 +54,7 @@ runtime_benchmarks! {
 		});
 	}: schedule_dispatch(RawOrigin::Root, DispatchTime::At(2), 0, false, bounded_call(call))
 
-	// schdule a dispatchable to be dispatched at later block.
+	// schedule a dispatchable to be dispatched at later block.
 	// ensure that the delay is reached when scheduling
 	schedule_dispatch_with_delay {
 		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
