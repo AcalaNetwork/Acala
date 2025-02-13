@@ -39,7 +39,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, AccountIdLookup, BadOrigin, BlakeTwo256, Block as BlockT, Bounded, Convert,
-		IdentityLookup, SaturatedConversion, StaticLookup, Zero,
+		IdentityLookup, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, ArithmeticError, DispatchResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
@@ -2548,11 +2548,6 @@ impl Convert<(RuntimeCall, SignedExtra), Result<(EthereumTransactionMessage, Sig
 
 				let nonce = check_nonce.nonce;
 				let tip = charge.0;
-
-				// ensure tip is zero to prevent miner attack
-				if !tip.is_zero() {
-					return Err(InvalidTransaction::BadProof);
-				}
 
 				extra.5.mark_as_ethereum_tx(valid_until);
 
