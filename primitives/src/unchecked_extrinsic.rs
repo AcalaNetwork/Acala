@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{evm::EthereumTransactionMessage, signature::AcalaMultiSignature, to_bytes, Address, Balance};
+use frame_support::ensure;
 use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo},
 	traits::{ExtrinsicCall, Get},
@@ -106,6 +107,12 @@ where
 					target: "evm", "Ethereum eth_msg: {:?}", eth_msg
 				);
 
+				// module_evm::Call::eth_call, ensure tip is zero to prevent miner attacks
+				// module_evm::Call::eth_call_v2, tip encoded in gas_price
+				if eth_msg.gas_price.is_zero() {
+					ensure!(eth_msg.tip.is_zero(), InvalidTransaction::BadProof);
+				}
+
 				if !eth_msg.access_list.len().is_zero() {
 					// Not yet supported, require empty
 					return Err(InvalidTransaction::BadProof.into());
@@ -153,6 +160,12 @@ where
 				log::trace!(
 					target: "evm", "Eip2930 eth_msg: {:?}", eth_msg
 				);
+
+				// module_evm::Call::eth_call, ensure tip is zero to prevent miner attacks
+				// module_evm::Call::eth_call_v2, tip encoded in gas_price
+				if eth_msg.gas_price.is_zero() {
+					ensure!(eth_msg.tip.is_zero(), InvalidTransaction::BadProof);
+				}
 
 				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero() {
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
