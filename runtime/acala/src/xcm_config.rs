@@ -40,13 +40,14 @@ use parity_scale_codec::{Decode, Encode};
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use primitives::evm::is_system_contract;
 use runtime_common::{
-	local_currency_location, native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
+	local_currency_location, native_currency_location, xcm_config::RelayLocationFilter,
+	xcm_impl::IsBridgedConcreteAssetFrom, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
 	EnsureRootOrThreeFourthsGeneralCouncil, FixedRateOfAsset, RuntimeBlockWeights,
 };
 use sp_runtime::Perbill;
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::{
-	EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FrameTransactionalProcessor, SignedToAccountId32,
+	Case, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FrameTransactionalProcessor, SignedToAccountId32,
 };
 
 parameter_types! {
@@ -94,7 +95,23 @@ parameter_types! {
 		0
 	);
 	pub BaseRate: u128 = aca_per_second();
+
+	/// Location of Asset Hub
+	 pub AssetHubLocation: Location = Location::new(1, [Parachain(1000)]);
+	 pub RelayChainNativeAssetFromAssetHub: (AssetFilter, Location) = (
+		 RelayLocationFilter::get(),
+		 AssetHubLocation::get()
+	 );
 }
+
+type Reserves = (
+	// Assets bridged from different consensus systems held in reserve on Asset Hub.
+	IsBridgedConcreteAssetFrom<AssetHubLocation>,
+	// Relaychain (DOT) from Asset Hub
+	Case<RelayChainNativeAssetFromAssetHub>,
+	// Assets which the reserve is the same as the origin.
+	MultiNativeAsset<AbsoluteReserveProvider>,
+);
 
 pub type Trader = (
 	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>,
@@ -115,7 +132,7 @@ impl xcm_executor::Config for XcmConfig {
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = LocalAssetTransactor;
 	type OriginConverter = XcmOriginToCallOrigin;
-	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
+	type IsReserve = Reserves;
 	type IsTeleporter = runtime_common::xcm_config::TrustedTeleporters;
 	type UniversalLocation = UniversalLocation;
 	type Barrier = Barrier;

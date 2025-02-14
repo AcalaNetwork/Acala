@@ -233,13 +233,13 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. }
-				| pallet_xcm::Call::transfer_assets { .. }
-				| pallet_xcm::Call::transfer_assets_using_type_and_then { .. } => {
+				| pallet_xcm::Call::limited_teleport_assets { .. } => {
 					return false;
 				}
 				// user xcm calls
-				pallet_xcm::Call::claim_assets { .. } => {
+				pallet_xcm::Call::claim_assets { .. }
+				| pallet_xcm::Call::transfer_assets { .. }
+				| pallet_xcm::Call::transfer_assets_using_type_and_then { .. } => {
 					return true;
 				}
 				// xcm operations call
@@ -826,20 +826,20 @@ parameter_type_with_key! {
 				} else if let CurrencyId::Erc20(address) = currency_id_0 {
 					// LP token with erc20
 					AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(address)).
-						map_or(Balance::MAX, |metatata| metatata.minimal_balance)
+						map_or(Balance::MAX, |metadata| metadata.minimal_balance)
 				} else {
 					Self::get(&currency_id_0)
 				}
 			},
-			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::MAX, |metatata| metatata.minimal_balance),
+			CurrencyId::Erc20(address) => AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::Erc20(*address)).map_or(Balance::MAX, |metadata| metadata.minimal_balance),
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::StableAssetId(*stable_asset_id)).
-					map_or(Balance::MAX, |metatata| metatata.minimal_balance)
+					map_or(Balance::MAX, |metadata| metadata.minimal_balance)
 			},
 			CurrencyId::LiquidCrowdloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::KSM)), // the same as KSM
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				AssetIdMaps::<Runtime>::get_asset_metadata(AssetIds::ForeignAssetId(*foreign_asset_id)).
-					map_or(Balance::MAX, |metatata| metatata.minimal_balance)
+					map_or(Balance::MAX, |metadata| metadata.minimal_balance)
 			},
 		}
 	};
@@ -1995,12 +1995,8 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
-parameter_types! {
-	pub const StateTrieMigrationName: &'static str = "StateTrieMigration";
-}
-
 #[allow(unused_parens)]
-type Migrations = (frame_support::migrations::RemovePallet<StateTrieMigrationName, RocksDbWeight>);
+type Migrations = ();
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

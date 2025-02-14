@@ -18,7 +18,10 @@
 
 //! Common xcm implementation
 
-use frame_support::{traits::Get, weights::constants::WEIGHT_REF_TIME_PER_SECOND};
+use frame_support::{
+	traits::{ContainsPair, Get},
+	weights::constants::WEIGHT_REF_TIME_PER_SECOND,
+};
 use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
 use parity_scale_codec::Encode;
@@ -292,6 +295,26 @@ where
 		};
 
 		Some(AddressMapping::get_account_id(&EvmAddress::from(key)))
+	}
+}
+
+/// Matches foreign assets from a given origin.
+/// Foreign assets are assets bridged from other consensus systems. i.e parents > 1.
+pub struct IsBridgedConcreteAssetFrom<Origin>(PhantomData<Origin>);
+impl<Origin> ContainsPair<Asset, Location> for IsBridgedConcreteAssetFrom<Origin>
+where
+	Origin: Get<Location>,
+{
+	fn contains(asset: &Asset, origin: &Location) -> bool {
+		let loc = Origin::get();
+		&loc == origin
+			&& matches!(
+				asset,
+				Asset {
+					id: AssetId(Location { parents: 2, .. }),
+					fun: Fungibility::Fungible(_)
+				},
+			)
 	}
 }
 

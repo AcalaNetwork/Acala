@@ -120,7 +120,7 @@ fn treasury_handles_dust_correctly() {
 			let liquid_ed = ExistentialDeposits::get(&LIQUID_CURRENCY);
 			let usd_ed = ExistentialDeposits::get(&USD_CURRENCY);
 
-			// Test empty treasury recieves dust tokens of relay
+			// Test empty treasury receives dust tokens of relay
 			assert_eq!(
 				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
 				0
@@ -136,7 +136,7 @@ fn treasury_handles_dust_correctly() {
 				relay_ed + 1
 			);
 
-			// ALICE account is reaped and treasury recieves dust tokens
+			// ALICE account is reaped and treasury receives dust tokens
 			assert_eq!(
 				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(ALICE)),
 				0
@@ -201,7 +201,7 @@ fn treasury_handles_dust_correctly() {
 				relay_ed - 1
 			);
 
-			// Test empty treasury recieves dust tokens of Liquid Currency
+			// Test empty treasury receives dust tokens of Liquid Currency
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &TreasuryAccount::get()), 0);
 			assert_ok!(Currencies::transfer(
 				RuntimeOrigin::signed(AccountId::from(ALICE)),
@@ -219,7 +219,7 @@ fn treasury_handles_dust_correctly() {
 				liquid_ed - 1
 			);
 
-			// Test empty treasury recieves dust tokens of USD Currency using Tokens pallet
+			// Test empty treasury receives dust tokens of USD Currency using Tokens pallet
 			assert_eq!(Tokens::free_balance(USD_CURRENCY, &TreasuryAccount::get()), 0);
 			assert_ok!(Tokens::transfer(
 				RuntimeOrigin::signed(AccountId::from(ALICE)),
