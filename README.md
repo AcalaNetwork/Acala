@@ -159,7 +159,7 @@ try-runtime on acala
 make try-runtime-acala
 
 # Create a state snapshot to run the migration test.
-# Add `-palet module_name` can specify the module.
+# Add `-pallet module_name` can specify the module.
 cargo run --features with-acala-runtime --features try-runtime -- try-runtime --runtime existing create-snapshot --uri wss://acala.api.onfinality.io:443/public-ws acala-latest.snap
 
 # Use a state snapshot to run the migration test.
