@@ -1,0 +1,5 @@
+[codespell]
+skip = .git,node_modules,yarn.lock,Cargo.lock,evm-tests,audit,ecosystem-modules,target,ts-tests,orml
+count =
+quiet-level = 3
+ignore-words = ./.codespell/ignore.txt
