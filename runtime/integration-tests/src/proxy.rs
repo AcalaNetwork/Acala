@@ -178,7 +178,7 @@ fn proxy_permissions_correct() {
 				stake_increment_share: false,
 			}));
 
-			// Proxy calls do not bypass root permision
+			// Proxy calls do not bypass root permission
 			assert_ok!(Proxy::proxy(
 				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				MultiAddress::Id(AccountId::from(BOB)),
@@ -299,7 +299,7 @@ fn proxy_permissions_correct() {
 				.into(),
 			);
 
-			// Tests that adding more ProxyType permssions does not effect others
+			// Tests that adding more ProxyType permissions does not effect others
 			assert_ok!(Proxy::proxy(
 				RuntimeOrigin::signed(AccountId::from(BOB)),
 				MultiAddress::Id(AccountId::from(ALICE)),

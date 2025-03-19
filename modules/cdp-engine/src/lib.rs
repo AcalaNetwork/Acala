@@ -973,7 +973,7 @@ impl<T: Config> Pallet<T> {
 	/// and the collateral ratio will be reduced but CDP must still be at valid risk.
 	/// For single token collateral, try to swap collateral by DEX. For lp token collateral,
 	/// try to swap lp components by DEX first, then add liquidity to obtain lp token,
-	/// CDP owner may receive some remainer assets.
+	/// CDP owner may receive some remainder assets.
 	#[transactional]
 	pub fn expand_position_collateral(
 		who: &T::AccountId,
@@ -1015,21 +1015,21 @@ impl<T: Config> Pallet<T> {
 				)?;
 
 				// refund unused lp component tokens
-				if let Some(remainer) = available_0.checked_sub(consumption_0) {
+				if let Some(remainder) = available_0.checked_sub(consumption_0) {
 					<T as Config>::Currency::transfer(
 						token_0,
 						&loans_module_account,
 						who,
-						remainer,
+						remainder,
 						ExistenceRequirement::AllowDeath,
 					)?;
 				}
-				if let Some(remainer) = available_1.checked_sub(consumption_1) {
+				if let Some(remainder) = available_1.checked_sub(consumption_1) {
 					<T as Config>::Currency::transfer(
 						token_1,
 						&loans_module_account,
 						who,
-						remainer,
+						remainder,
 						ExistenceRequirement::AllowDeath,
 					)?;
 				}
