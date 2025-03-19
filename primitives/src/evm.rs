@@ -173,7 +173,6 @@ pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
 ///                                   ^^^^^^^^ CurrencyId Type is 3-StableAsset, StableAssetPoolId
 ///                                   ^^^^^^^^ CurrencyId Type is 4-LiquidCrowdloan, Lease
 ///                                       ^^^^ CurrencyId Type is 5-ForeignAsset, ForeignAssetId
-
 /// Check if the given `address` is a system contract.
 ///
 /// It's system contract if the address starts with SYSTEM_CONTRACT_ADDRESS_PREFIX.
