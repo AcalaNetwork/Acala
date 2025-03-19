@@ -107,10 +107,10 @@ impl Verify for AcalaMultiSignature {
 	fn verify<L: Lazy<[u8]>>(&self, mut msg: L, signer: &AccountId32) -> bool {
 		match (self, signer) {
 			(Self::Ed25519(ref sig), who) => {
-				ed25519::Public::from_slice(who.as_ref()).map_or(false, |signer| sig.verify(msg, &signer))
+				ed25519::Public::from_slice(who.as_ref()).is_ok_and(|signer| sig.verify(msg, &signer))
 			}
 			(Self::Sr25519(ref sig), who) => {
-				sr25519::Public::from_slice(who.as_ref()).map_or(false, |signer| sig.verify(msg, &signer))
+				sr25519::Public::from_slice(who.as_ref()).is_ok_and(|signer| sig.verify(msg, &signer))
 			}
 			(Self::Ecdsa(ref sig), who) => {
 				let m = sp_io::hashing::blake2_256(msg.get());

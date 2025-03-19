@@ -51,7 +51,6 @@ use sp_std::{marker::PhantomData, prelude::*};
 /// - Get minimum bond amount.
 /// - Get unbonding period.
 /// - Get maximum unbonding chunks amount.
-
 pub struct EarningPrecompile<R>(PhantomData<R>);
 
 #[module_evm_utility_macro::generate_function_selector]

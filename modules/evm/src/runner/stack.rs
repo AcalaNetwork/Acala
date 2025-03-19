@@ -614,7 +614,7 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 	}
 }
 
-impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 'config, T> {
+impl<T: Config> BackendT for SubstrateStackState<'_, '_, T> {
 	fn gas_price(&self) -> U256 {
 		self.vicinity.gas_price
 	}
@@ -707,7 +707,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 }
 
-impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState<'vicinity, 'config, T> {
+impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'config, T> {
 	fn metadata(&self) -> &StackSubstateMetadata<'config> {
 		self.substate.metadata()
 	}
@@ -841,8 +841,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			},
 			|addr| {
 				// inherent the published status from origin code address
-				Pallet::<T>::accounts(addr)
-					.map_or(false, |account| account.contract_info.map_or(false, |v| v.published))
+				Pallet::<T>::accounts(addr).is_some_and(|account| account.contract_info.is_some_and(|v| v.published))
 			},
 		);
 
