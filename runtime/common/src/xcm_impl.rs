@@ -73,7 +73,7 @@ where
 	}
 }
 
-/// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.
+/// `DropAssets` implementation support asset amount lower that ED handled by `TakeRevenue`.
 ///
 /// parameters type:
 /// - `NC`: native currency_id type.

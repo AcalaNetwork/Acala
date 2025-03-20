@@ -266,7 +266,7 @@ fn transfer_debit_works() {
 			HonzonModule::transfer_debit(RuntimeOrigin::signed(BOB), BTC, DOT, 1000),
 			ArithmeticError::Underflow
 		);
-		// Won't work when transfering more debit than is present
+		// Won't work when transferring more debit than is present
 		assert_noop!(
 			HonzonModule::transfer_debit(RuntimeOrigin::signed(ALICE), BTC, DOT, 10_000),
 			ArithmeticError::Underflow

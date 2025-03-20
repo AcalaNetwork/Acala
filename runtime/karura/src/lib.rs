@@ -752,7 +752,7 @@ parameter_types! {
 	pub const MinimumCount: u32 = 5;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 1 hours
 	pub RootOperatorAccountId: AccountId = AccountId::from([0xffu8; 32]);
-	pub const MaxFeedValues: u32 = 10; // max 10 values allowd to feed in one call.
+	pub const MaxFeedValues: u32 = 10; // max 10 values allowed to feed in one call.
 }
 
 #[cfg(feature = "runtime-benchmarks")]

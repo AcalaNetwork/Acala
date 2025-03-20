@@ -88,7 +88,7 @@ impl SortedMembers<AccountId> for Members {
 }
 
 parameter_types! {
-	pub const MaxFeedValues: u32 = 10; // max 10 values allowd to feed in one call.
+	pub const MaxFeedValues: u32 = 10; // max 10 values allowed to feed in one call.
 }
 
 #[cfg(feature = "runtime-benchmarks")]

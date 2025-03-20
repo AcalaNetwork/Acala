@@ -104,7 +104,7 @@ pub mod pallet {
 
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as SystemConfig>::AccountId>>::Balance;
 
-	/// A convertor from collators id. Since this pallet does not have stash/controller, this is
+	/// A converter from collators id. Since this pallet does not have stash/controller, this is
 	/// just identity.
 	pub struct IdentityCollator;
 	impl<T> sp_runtime::traits::Convert<T, Option<T>> for IdentityCollator {

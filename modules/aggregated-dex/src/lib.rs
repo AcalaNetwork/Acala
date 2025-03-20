@@ -434,7 +434,7 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for DexSwap<T> {
 /// Swap by Taiga pool.
 pub struct TaigaSwap<T>(PhantomData<T>);
 impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
-	// !!! Note: if ths limit is `ExactTarget` and the `max_supply_amount` will cause overflow in
+	// !!! Note: if the limit is `ExactTarget` and the `max_supply_amount` will cause overflow in
 	// StableAsset, will return `None`. Because the `get_best_route` of StableAsset treats it as the
 	// actual input amount. However, it will fail so will not cause loss. Maybe need to modiry
 	// StableAsset impl to avoid this risk.
