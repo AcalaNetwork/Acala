@@ -140,7 +140,7 @@ pub mod tests {
 		}
 	}
 
-	impl<'inner> PrecompileHandle for MockPrecompileHandle<'inner> {
+	impl PrecompileHandle for MockPrecompileHandle<'_> {
 		fn call(
 			&mut self,
 			_: H160,

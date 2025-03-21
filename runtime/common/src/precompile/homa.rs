@@ -42,7 +42,6 @@ use sp_std::{marker::PhantomData, prelude::*};
 /// - Get estimated reward rate.
 /// - Get commission rate.
 /// - Get fast match fee.
-
 pub struct HomaPrecompile<R>(PhantomData<R>);
 
 #[module_evm_utility_macro::generate_function_selector]

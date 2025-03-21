@@ -563,9 +563,8 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 	}
 
 	fn can_transfer(class: &Self::CollectionId, _: &Self::ItemId) -> bool {
-		orml_nft::Pallet::<T>::classes(class).map_or(false, |class_info| {
-			class_info.data.properties.0.contains(ClassProperty::Transferable)
-		})
+		orml_nft::Pallet::<T>::classes(class)
+			.is_some_and(|class_info| class_info.data.properties.0.contains(ClassProperty::Transferable))
 	}
 }
 
