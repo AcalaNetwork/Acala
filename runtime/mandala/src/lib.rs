@@ -2552,7 +2552,7 @@ impl_runtime_apis! {
 			use frame_support::traits::StorageInfoTrait;
 
 			use module_nft::benchmarking::Pallet as NftBench;
-			// use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
+			use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
