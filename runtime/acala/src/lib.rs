@@ -1992,7 +1992,10 @@ parameter_types! {
 }
 
 #[allow(unused_parens)]
-type Migrations = (frame_support::migrations::RemovePallet<StateTrieMigrationName, RocksDbWeight>);
+type Migrations = (
+	frame_support::migrations::RemovePallet<StateTrieMigrationName, RocksDbWeight>,
+	pallet_xcm::migration::MigrateToLatestXcmVersion<Runtime>,
+);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
