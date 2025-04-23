@@ -187,6 +187,8 @@ pub mod module {
 		NotAllowedRefund,
 		/// Cannot swap
 		CannotSwap,
+		/// The claim is invalid
+		InvalidClaim,
 	}
 
 	#[pallet::event]
@@ -845,12 +847,19 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::StillProvisioning
 		);
 
+		let (exchange_rate_0, exchange_rate_1) = Self::initial_share_exchange_rates(trading_pair);
+
+		// Make sure the trading pair has been successfully ended provisioning.
+		ensure!(
+			!exchange_rate_0.is_zero() && !exchange_rate_1.is_zero(),
+			Error::<T>::InvalidClaim
+		);
+
 		let claimed_share = ProvisioningPool::<T>::try_mutate_exists(
 			trading_pair,
 			who,
 			|maybe_contribution| -> Result<Balance, DispatchError> {
 				if let Some((contribution_0, contribution_1)) = maybe_contribution.take() {
-					let (exchange_rate_0, exchange_rate_1) = Self::initial_share_exchange_rates(trading_pair);
 					let shares_from_provision_0 = exchange_rate_0
 						.checked_mul_int(contribution_0)
 						.ok_or(ArithmeticError::Overflow)?;
@@ -900,7 +909,7 @@ impl<T: Config> Pallet<T> {
 
 		// Make sure the trading pair has not been successfully ended provisioning.
 		ensure!(
-			InitialShareExchangeRates::<T>::get(trading_pair) == Default::default(),
+			Self::initial_share_exchange_rates(trading_pair) == Default::default(),
 			Error::<T>::NotAllowedRefund
 		);
 
