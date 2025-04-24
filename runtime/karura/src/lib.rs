@@ -1996,7 +1996,7 @@ pub type Executive = frame_executive::Executive<
 >;
 
 #[allow(unused_parens)]
-type Migrations = (pallet_xcm::migration::MigrateToLatestXcmVersion<Runtime>);
+type Migrations = ();
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
