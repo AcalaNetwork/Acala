@@ -1,7 +1,7 @@
 [package]
 name = "module-evm-bridge"
-version = "2.30.0"
-authors = ["Acala Developers"]
+version = { workspace = true }
+authors = { workspace = true }
 edition = "2021"
 
 [package.metadata.docs.rs]
