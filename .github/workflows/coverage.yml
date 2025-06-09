@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TARPAULIN_VERSION: 0.32.3
+  TARPAULIN_VERSION: 0.32.7
   CARGO_INCREMENTAL: 0
 jobs:
   test:
