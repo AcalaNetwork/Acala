@@ -2,7 +2,7 @@
 name = "module-homa-validator-list"
 version = { workspace = true }
 authors = { workspace = true }
-edition = "2021"
+edition = { workspace = true }
 
 [dependencies]
 serde = { workspace = true, features = ["std"], optional = true }

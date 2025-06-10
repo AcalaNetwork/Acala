@@ -2,7 +2,7 @@
 name = "runtime-integration-tests"
 version = { workspace = true }
 authors = { workspace = true }
-edition = "2021"
+edition = { workspace = true }
 
 [dependencies]
 smallvec = { workspace = true }

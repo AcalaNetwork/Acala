@@ -2,7 +2,7 @@
 name = "module-loans"
 version = { workspace = true }
 authors = { workspace = true }
-edition = "2021"
+edition = { workspace = true }
 
 [dependencies]
 log = { workspace = true }

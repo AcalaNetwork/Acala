@@ -2,7 +2,7 @@
 name = "module-dex-oracle"
 version = { workspace = true }
 authors = { workspace = true }
-edition = "2021"
+edition = { workspace = true }
 
 [dependencies]
 parity-scale-codec = { workspace = true, features = ["max-encoded-len"] }

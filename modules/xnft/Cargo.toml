@@ -3,7 +3,7 @@ name = "module-xnft"
 description = "XCM NFT PoC"
 version = { workspace = true }
 authors = ["Unique Network Developers"]
-edition = "2021"
+edition = { workspace = true }
 
 [dependencies]
 parity-scale-codec = { workspace = true }

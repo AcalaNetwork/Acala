@@ -2,7 +2,7 @@
 name = "module-evm-utility-macro"
 version = { workspace = true }
 authors = { workspace = true }
-edition = "2021"
+edition = { workspace = true }
 
 [lib]
 proc-macro = true

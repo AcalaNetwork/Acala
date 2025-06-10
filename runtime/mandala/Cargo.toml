@@ -2,7 +2,7 @@
 name = "mandala-runtime"
 version = { workspace = true }
 authors = { workspace = true }
-edition = "2021"
+edition = { workspace = true }
 build = "build.rs"
 
 [dependencies]
