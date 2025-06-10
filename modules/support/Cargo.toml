@@ -2,7 +2,7 @@
 name = "module-support"
 version = { workspace = true }
 authors = { workspace = true }
-edition = "2021"
+edition = { workspace = true }
 
 [dependencies]
 impl-trait-for-tuples = { workspace = true }

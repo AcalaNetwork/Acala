@@ -2,7 +2,7 @@
 name = "module-currencies-runtime-api"
 version = { workspace = true }
 authors = { workspace = true }
-edition = "2021"
+edition = { workspace = true }
 
 [dependencies]
 sp-runtime = { workspace = true }

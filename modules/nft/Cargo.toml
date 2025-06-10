@@ -2,7 +2,7 @@
 name = "module-nft"
 version = { workspace = true }
 authors = { workspace = true }
-edition = "2021"
+edition = { workspace = true }
 
 [dependencies]
 serde = { workspace = true, features = ["alloc", "derive"] }
