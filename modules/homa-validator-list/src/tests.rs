@@ -449,15 +449,15 @@ fn rebond_work() {
 		assert_ok!(HomaValidatorListModule::unbond(
 			RuntimeOrigin::signed(ALICE),
 			VALIDATOR_1,
-			100
+			200
 		));
 
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
 				total: 200,
-				bonded: 100,
-				unbonding: Some((100, 29))
+				bonded: 0,
+				unbonding: Some((200, 29))
 			}
 		);
 		assert_eq!(OrmlTokens::accounts(ALICE, LDOT).frozen, 200);
@@ -472,17 +472,29 @@ fn rebond_work() {
 			200
 		);
 
+		assert_noop!(
+			HomaValidatorListModule::rebond(RuntimeOrigin::signed(ALICE), VALIDATOR_1, 99),
+			Error::<Runtime>::BelowMinBondAmount
+		);
+
 		assert_ok!(HomaValidatorListModule::rebond(
 			RuntimeOrigin::signed(ALICE),
 			VALIDATOR_1,
-			50
+			100
+		));
+		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::RebondGuarantee {
+				who: ALICE,
+				validator: VALIDATOR_1,
+				bond: 100,
+			},
 		));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
 				total: 200,
-				bonded: 150,
-				unbonding: Some((50, 29))
+				bonded: 100,
+				unbonding: Some((100, 29))
 			}
 		);
 		assert_eq!(OrmlTokens::accounts(ALICE, LDOT).frozen, 200);
