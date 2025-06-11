@@ -210,6 +210,11 @@ pub mod module {
 			validator: T::RelayChainAccountId,
 			bond: Balance,
 		},
+		RebondGuarantee {
+			who: T::AccountId,
+			validator: T::RelayChainAccountId,
+			bond: Balance,
+		},
 	}
 
 	/// The slash guarantee deposits for relaychain validators.
@@ -342,8 +347,17 @@ pub mod module {
 			if !amount.is_zero() {
 				Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 					*guarantee = guarantee.rebond(amount);
+					ensure!(
+						guarantee.bonded >= T::MinBondAmount::get(),
+						Error::<T>::BelowMinBondAmount
+					);
 					Ok(())
 				})?;
+				Self::deposit_event(Event::RebondGuarantee {
+					who: guarantor,
+					validator: validator.clone(),
+					bond: amount,
+				});
 			}
 			Ok(())
 		}
