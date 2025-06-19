@@ -97,7 +97,7 @@ parameter_types! {
 	pub BaseRate: u128 = aca_per_second();
 
 	/// Location of Asset Hub
-	 pub AssetHubLocation: Location = Location::new(1, [Parachain(1000)]);
+	 pub AssetHubLocation: Location = Location::new(1, [Parachain(parachains::asset_hub_polkadot::ID)]);
 	 pub RelayChainNativeAssetFromAssetHub: (AssetFilter, Location) = (
 		 RelayLocationFilter::get(),
 		 AssetHubLocation::get()

@@ -290,30 +290,45 @@ fn currency_id_convert() {
 #[test]
 fn parachain_subaccounts_are_unique() {
 	ExtBuilder::default().build().execute_with(|| {
-		let parachain: AccountId = ParachainInfo::parachain_id().into_account_truncating();
+		let parachain: AccountId = ParachainInfo::get().into_account_truncating();
 		assert_eq!(
 			parachain,
 			hex_literal::hex!["70617261d0070000000000000000000000000000000000000000000000000000"].into()
+		);
+
+		let sibling: AccountId =
+			polkadot_parachain_primitives::primitives::Sibling::from(ParachainInfo::get()).into_account_truncating();
+		assert_eq!(
+			sibling,
+			hex_literal::hex!["7369626cd0070000000000000000000000000000000000000000000000000000"].into()
 		);
 
 		assert_eq!(
 			create_x2_parachain_location(0),
 			Location::new(
 				1,
-				[Junction::AccountId32 {
-					network: None,
-					id: hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into(),
-				}]
+				[
+					Parachain(1000),
+					Junction::AccountId32 {
+						network: None,
+						id: hex_literal::hex!["50ca9b6bf6c83ca2a918b9861788d6facd26e5fd78a07f9848070697683745b3"]
+							.into(),
+					}
+				]
 			),
 		);
 		assert_eq!(
 			create_x2_parachain_location(1),
 			Location::new(
 				1,
-				[Junction::AccountId32 {
-					network: None,
-					id: hex_literal::hex!["74d37d762e06c6841a5dad64463a9afe0684f7e45245f6a7296ca613cca74669"].into(),
-				}]
+				[
+					Parachain(1000),
+					Junction::AccountId32 {
+						network: None,
+						id: hex_literal::hex!["025f1ca0b76b0d646f33b799a040df9fc14e06b7486770656766e8e8381f6c6f"]
+							.into(),
+					}
+				]
 			),
 		);
 	});

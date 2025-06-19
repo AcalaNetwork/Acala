@@ -31,6 +31,7 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use parity_scale_codec::{Decode, DecodeLimit, Encode};
+use polkadot_parachain_primitives::primitives::Sibling;
 use scale_info::TypeInfo;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
@@ -86,7 +87,7 @@ pub use pallet_collective::MemberCount;
 pub use sp_runtime::BuildStorage;
 
 pub use authority::AuthorityConfigImpl;
-pub use constants::{fee::*, time::*};
+pub use constants::{fee::*, parachains, time::*};
 use module_support::{ExchangeRateProvider, FractionalRate};
 use primitives::currency::AssetIds;
 pub use primitives::{
@@ -1571,7 +1572,7 @@ parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account_truncating();
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
-		0,  // 15sr8Dvq3AT3Z2Z1y8FnQ4VipekAHhmQnrkgzegUr1tNgbcn
+		0,  // 12pw22Qyy3o28BLshjce9yrSMs3fhSiLsAjqLPAzGktbXYV7
 	];
 	pub MintThreshold: Balance = dollar(DOT);
 	pub RedeemThreshold: Balance = 5 * dollar(LDOT);
@@ -1641,10 +1642,17 @@ impl module_nominees_election::Config for Runtime {
 pub fn create_x2_parachain_location(index: u16) -> Location {
 	Location::new(
 		1,
-		AccountId32 {
-			network: None,
-			id: Utility::derivative_account_id(ParachainInfo::get().into_account_truncating(), index).into(),
-		},
+		[
+			Parachain(parachains::asset_hub_polkadot::ID),
+			AccountId32 {
+				network: None,
+				id: Utility::derivative_account_id(
+					Sibling::from(ParachainInfo::get()).into_account_truncating(),
+					index,
+				)
+				.into(),
+			},
+		],
 	)
 }
 
@@ -1656,7 +1664,7 @@ impl Convert<u16, Location> for SubAccountIndexLocationConvertor {
 }
 
 parameter_types! {
-	pub ParachainAccount: AccountId = ParachainInfo::get().into_account_truncating();
+	pub ParachainAccount: AccountId = Sibling::from(ParachainInfo::get()).into_account_truncating();
 }
 
 impl module_xcm_interface::Config for Runtime {

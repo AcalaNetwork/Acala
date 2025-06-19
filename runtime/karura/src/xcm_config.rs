@@ -139,7 +139,7 @@ parameter_types! {
 	pub BaseRate: u128 = kar_per_second();
 
 	/// Location of Asset Hub
-	pub AssetHubLocation: Location = Location::new(1, [Parachain(1000)]);
+	pub AssetHubLocation: Location = Location::new(1, [Parachain(parachains::asset_hub_kusama::ID)]);
 	pub RelayChainNativeAssetFromAssetHub: (AssetFilter, Location) = (
 		RelayLocationFilter::get(),
 		AssetHubLocation::get()
@@ -149,7 +149,7 @@ parameter_types! {
 type Reserves = (
 	// Assets bridged from different consensus systems held in reserve on Asset Hub.
 	IsBridgedConcreteAssetFrom<AssetHubLocation>,
-	// Relaychain (DOT) from Asset Hub
+	// Relaychain (KSM) from Asset Hub
 	Case<RelayChainNativeAssetFromAssetHub>,
 	// Assets which the reserve is the same as the origin.
 	MultiNativeAsset<AbsoluteReserveProvider>,

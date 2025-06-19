@@ -6554,6 +6554,7 @@ dependencies = [
  "pallet-utility",
  "pallet-xcm",
  "parity-scale-codec",
+ "polkadot-parachain-primitives",
  "runtime-common",
  "serde_json",
  "smallvec",

@@ -56,6 +56,7 @@ use module_relaychain::RelayChainCallBuilder;
 use module_support::{AddressMapping, AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 use parity_scale_codec::{Decode, DecodeLimit, Encode};
+use polkadot_parachain_primitives::primitives::Sibling;
 use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
@@ -1414,10 +1415,17 @@ parameter_types! {
 pub fn create_x2_parachain_location(index: u16) -> Location {
 	Location::new(
 		1,
-		AccountId32 {
-			network: None,
-			id: Utility::derivative_account_id(ParachainInfo::get().into_account_truncating(), index).into(),
-		},
+		[
+			Parachain(1000),
+			AccountId32 {
+				network: None,
+				id: Utility::derivative_account_id(
+					Sibling::from(ParachainInfo::get()).into_account_truncating(),
+					index,
+				)
+				.into(),
+			},
+		],
 	)
 }
 
@@ -1492,7 +1500,7 @@ impl module_nominees_election::Config for Runtime {
 }
 
 parameter_types! {
-	pub ParachainAccount: AccountId = ParachainInfo::get().into_account_truncating();
+	pub ParachainAccount: AccountId = Sibling::from(ParachainInfo::get()).into_account_truncating();
 }
 
 pub struct SubAccountIndexLocationConvertor;

@@ -31,6 +31,7 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use parity_scale_codec::{Decode, DecodeLimit, Encode};
+use polkadot_parachain_primitives::primitives::Sibling;
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -1594,9 +1595,9 @@ parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account_truncating();
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
-		0,  // HTAeD1dokCVs9MwnC1q9s2a7d2kQ52TAjrxE1y5mj5MFLLA
-		1,  // FDVu3RdH5WsE2yTdXN3QMq6v1XVDK8GKjhq5oFjXe8wZYpL
-		2,  // EMrKvFy7xLgzzdgruXT9oXERt553igEScqgSjoDm3GewPSA
+		0,  // EQFY1VnjdYUSJ9oWoNgunPHeqLFooyPF3r6ZkTbCU5a6Eez
+		1,  // CdRsH6LC4yVvSH4XC2qmtPhuAoQEqedBdmnfaYPSVh5TDZ7
+		2,  // HZyWwhbi8yWGK6HJGjgYWQtszPvggLUrQDX9PR6StbmPwHP
 	];
 	pub MintThreshold: Balance = 10 * cent(KSM);
 	pub RedeemThreshold: Balance = 50 * cent(LKSM);
@@ -1666,10 +1667,17 @@ impl module_nominees_election::Config for Runtime {
 pub fn create_x2_parachain_location(index: u16) -> Location {
 	Location::new(
 		1,
-		AccountId32 {
-			network: None,
-			id: Utility::derivative_account_id(ParachainInfo::get().into_account_truncating(), index).into(),
-		},
+		[
+			Parachain(parachains::asset_hub_kusama::ID),
+			AccountId32 {
+				network: None,
+				id: Utility::derivative_account_id(
+					Sibling::from(ParachainInfo::get()).into_account_truncating(),
+					index,
+				)
+				.into(),
+			},
+		],
 	)
 }
 
@@ -1681,7 +1689,7 @@ impl Convert<u16, Location> for SubAccountIndexLocationConvertor {
 }
 
 parameter_types! {
-	pub ParachainAccount: AccountId = ParachainInfo::get().into_account_truncating();
+	pub ParachainAccount: AccountId = Sibling::from(ParachainInfo::get()).into_account_truncating();
 }
 
 impl module_xcm_interface::Config for Runtime {
