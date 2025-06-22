@@ -136,7 +136,7 @@ runtime_benchmarks! {
 			)?;
 			slashes.push(SlashInfo{
 				validator,
-				relaychain_token_amount: ValidatorInsuranceThreshold::get() * 9
+				token_amount: ValidatorInsuranceThreshold::get() * 9
 			});
 		}
 	}: _(RawOrigin::Root, slashes)
