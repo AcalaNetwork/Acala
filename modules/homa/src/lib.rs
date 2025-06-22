@@ -49,10 +49,8 @@ pub mod weights;
 pub mod module {
 	use super::*;
 
-	pub type AssetHubAccountIdOf<T> = <<T as Config>::XcmInterface as HomaSubAccountXcm<
-		<T as frame_system::Config>::AccountId,
-		Balance,
-	>>::AssetHubAccountId;
+	pub type NomineeIdOf<T> =
+		<<T as Config>::XcmInterface as HomaSubAccountXcm<<T as frame_system::Config>::AccountId, Balance>>::NomineeId;
 
 	/// The subaccount's staking ledger which kept by Homa protocol
 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
@@ -163,7 +161,7 @@ pub mod module {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
-		type NominationsProvider: NomineesProvider<AssetHubAccountIdOf<Self>>;
+		type NominationsProvider: NomineesProvider<NomineeIdOf<Self>>;
 	}
 
 	#[pallet::error]
@@ -265,7 +263,7 @@ pub mod module {
 		/// Nominate validators on assethub
 		HomaNominate {
 			sub_account_index: u16,
-			nominations: Vec<AssetHubAccountIdOf<T>>,
+			nominations: Vec<NomineeIdOf<T>>,
 		},
 	}
 

@@ -172,7 +172,7 @@ pub mod module {
 	}
 
 	impl<T: Config> HomaSubAccountXcm<T::AccountId, Balance> for Pallet<T> {
-		type AssetHubAccountId = T::AccountId;
+		type NomineeId = T::AccountId;
 
 		/// Cross-chain transfer staking currency to sub account on assethub.
 		fn transfer_staking_to_sub_account(
@@ -273,7 +273,7 @@ pub mod module {
 		}
 
 		/// Send XCM message to the assethub for sub account to nominate.
-		fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<Self::AssetHubAccountId>) -> DispatchResult {
+		fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<Self::NomineeId>) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaNominate);
 			let xcm_message = T::AssetHubCallBuilder::finalize_call_into_xcm_message(
 				T::AssetHubCallBuilder::utility_as_derivative_call(
