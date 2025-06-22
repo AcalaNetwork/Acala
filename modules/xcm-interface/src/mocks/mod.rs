@@ -60,7 +60,7 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const ParachainAccount: AccountId = AccountId32::new([0u8; 32]);
-	pub const ParachainId: module_relaychain::ParaId = module_relaychain::ParaId::new(2000);
+	pub const ParachainId: module_assethub::ParaId = module_assethub::ParaId::new(2000);
 	pub SelfLocation: Location = Location::new(1, Parachain(ParachainId::get().into()));
 }
 
@@ -212,7 +212,7 @@ impl XcmAssetTransfers for MockExec {
 
 #[macro_export]
 macro_rules! impl_mock {
-	($relaychain:ty) => {
+	($assethub:ty) => {
 		pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
 		pub type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -271,9 +271,9 @@ macro_rules! impl_mock {
 			type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 			type StakingCurrencyId = GetStakingCurrencyId;
 			type ParachainAccount = ParachainAccount;
-			type RelayChainUnbondingSlashingSpans = ConstU32<28>;
+			type AssetHubUnbondingSlashingSpans = ConstU32<28>;
 			type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
-			type RelayChainCallBuilder = module_relaychain::RelayChainCallBuilder<ParachainId, $relaychain>;
+			type AssetHubCallBuilder = module_assethub::AssetHubCallBuilder<ParachainId, $assethub>;
 			type XcmTransfer = MockXcmTransfer;
 			type SelfLocation = SelfLocation;
 			type AccountIdToLocation = AccountIdToLocation;

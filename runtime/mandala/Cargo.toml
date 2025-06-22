@@ -128,7 +128,7 @@ module-homa-validator-list = { workspace = true }
 module-xcm-interface = { workspace = true }
 module-nominees-election = { workspace = true }
 module-session-manager = { workspace = true }
-module-relaychain = { workspace = true }
+module-assethub = { workspace = true }
 module-idle-scheduler = { workspace = true }
 module-aggregated-dex = { workspace = true }
 module-liquid-crowdloan = { workspace = true }
@@ -274,7 +274,7 @@ std = [
 	"module-nft/std",
 	"module-nominees-election/std",
 	"module-prices/std",
-	"module-relaychain/std",
+	"module-assethub/std",
 	"module-session-manager/std",
 	"module-support/std",
 	"module-transaction-pause/std",

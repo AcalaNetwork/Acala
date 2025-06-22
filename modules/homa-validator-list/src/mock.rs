@@ -121,7 +121,7 @@ parameter_types! {
 
 impl Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type RelayChainAccountId = AccountId;
+	type ValidatorId = AccountId;
 	type LiquidTokenCurrency = LDOTCurrency;
 	type MinBondAmount = ConstU128<100>;
 	type BondingDuration = BondingDuration;

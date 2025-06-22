@@ -49,18 +49,18 @@ pub mod weights;
 pub mod module {
 	use super::*;
 
-	pub type RelayChainAccountIdOf<T> = <<T as Config>::XcmInterface as HomaSubAccountXcm<
+	pub type AssetHubAccountIdOf<T> = <<T as Config>::XcmInterface as HomaSubAccountXcm<
 		<T as frame_system::Config>::AccountId,
 		Balance,
-	>>::RelayChainAccountId;
+	>>::AssetHubAccountId;
 
 	/// The subaccount's staking ledger which kept by Homa protocol
 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
 	pub struct StakingLedger {
-		/// Corresponding to the active of the subaccount's staking ledger on relaychain
+		/// Corresponding to the active of the subaccount's staking ledger on assethub
 		#[codec(compact)]
 		pub bonded: Balance,
-		/// Corresponding to the unlocking of the subaccount's staking ledger on relaychain
+		/// Corresponding to the unlocking of the subaccount's staking ledger on assethub
 		pub unlocking: Vec<UnlockChunk>,
 	}
 
@@ -153,7 +153,7 @@ pub mod module {
 		/// Block number provider for the relaychain.
 		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = BlockNumberFor<Self>>;
 
-		/// The XcmInterface to manage the staking of sub-account on relaychain.
+		/// The XcmInterface to manage the staking of sub-account on assethub.
 		type XcmInterface: HomaSubAccountXcm<Self::AccountId, Balance>;
 
 		/// The limit for process redeem requests when bump era.
@@ -163,7 +163,7 @@ pub mod module {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
-		type NominationsProvider: NomineesProvider<RelayChainAccountIdOf<Self>>;
+		type NominationsProvider: NomineesProvider<AssetHubAccountIdOf<Self>>;
 	}
 
 	#[pallet::error]
@@ -216,7 +216,7 @@ pub mod module {
 			fee_in_liquid: Balance,
 			redeemed_staking_amount: Balance,
 		},
-		/// Redeem request is redeemed by unbond on relaychain.
+		/// Redeem request is redeemed by unbond on assethub.
 		RedeemedByUnbond {
 			redeemer: T::AccountId,
 			era_index_when_unbond: EraIndex,
@@ -244,7 +244,7 @@ pub mod module {
 		},
 		/// The soft bonded cap of per sub account has been updated.
 		SoftBondedCapPerSubAccountUpdated { cap_amount: Balance },
-		/// The estimated reward rate per era of relaychain staking has been updated.
+		/// The estimated reward rate per era of assethub staking has been updated.
 		EstimatedRewardRatePerEraUpdated { reward_rate: Rate },
 		/// The commission rate has been updated.
 		CommissionRateUpdated { commission_rate: Rate },
@@ -256,16 +256,16 @@ pub mod module {
 		BumpEraFrequencyUpdated { frequency: BlockNumberFor<T> },
 		/// The interval eras to nominate.
 		NominateIntervalEraUpdated { eras: EraIndex },
-		/// Withdraw unbonded from RelayChain
+		/// Withdraw unbonded from assethub
 		HomaWithdrawUnbonded { sub_account_index: u16, amount: Balance },
-		/// Unbond staking currency of sub account on RelayChain
+		/// Unbond staking currency of sub account on assethub
 		HomaUnbond { sub_account_index: u16, amount: Balance },
-		/// Transfer staking currency to sub account and bond on RelayChain
+		/// Transfer staking currency to sub account and bond on assethub
 		HomaBondExtra { sub_account_index: u16, amount: Balance },
-		/// Nominate validators on RelayChain
+		/// Nominate validators on assethub
 		HomaNominate {
 			sub_account_index: u16,
-			nominations: Vec<RelayChainAccountIdOf<T>>,
+			nominations: Vec<AssetHubAccountIdOf<T>>,
 		},
 	}
 
@@ -290,7 +290,7 @@ pub mod module {
 	#[pallet::getter(fn get_total_bonded)]
 	pub type TotalStakingBonded<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
-	/// The total staking currency to bond on relaychain when new era,
+	/// The total staking currency to bond on assethub when new era,
 	/// and that is available to be match fast redeem request.
 	/// ToBondPool value: StakingCurrencyAmount
 	#[pallet::storage]
@@ -298,7 +298,7 @@ pub mod module {
 	pub type ToBondPool<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The total amount of void liquid currency. It's will not be issued,
-	/// used to avoid newly issued LDOT to obtain the incoming staking income from relaychain.
+	/// used to avoid newly issued LDOT to obtain the incoming staking income from assethub.
 	/// And it is guaranteed that the current exchange rate between liquid currency and staking
 	/// currency will not change. It will be reset to 0 at the beginning of the `rebalance` when new
 	/// era starts.
@@ -336,7 +336,7 @@ pub mod module {
 	#[pallet::storage]
 	pub type EstimatedRewardRatePerEra<T: Config> = StorageValue<_, FractionalRate, ValueQuery>;
 
-	/// The maximum amount of bonded staking currency for a single sub on relaychain to obtain the
+	/// The maximum amount of bonded staking currency for a single sub on assethub to obtain the
 	/// best staking rewards.
 	///
 	/// SoftBondedCapPerSubAccount: value: Balance
@@ -418,8 +418,8 @@ pub mod module {
 		/// The redeem request will be executed in two ways:
 		/// 1. Redeem by fast match: Homa use staking currency in ToBondPool to match redeem request
 		/// in the current era, setting a higher fee_rate can increase the possibility of being fast
-		/// matched. 2. Redeem by unbond on relaychain: if redeem request has not been fast matched
-		/// in current era, Homa will unbond staking currency on relaychain when the next era
+		/// matched. 2. Redeem by unbond on assethub: if redeem request has not been fast matched
+		/// in current era, Homa will unbond staking currency on assethub when the next era
 		/// bumped. So redeemer at least wait for the unbonding period + extra 1 era to get the
 		/// redemption.
 		///
@@ -502,9 +502,9 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `soft_bonded_cap_per_sub_account`:  soft cap of staking amount for a single nominator
-		///   on relaychain to obtain the best staking rewards.
+		///   on assethub to obtain the best staking rewards.
 		/// - `estimated_reward_rate_per_era`: the estimated staking yield of each era on the
-		///   current relay chain.
+		///   current relaychain.
 		/// - `commission_rate`: the rate to draw from estimated staking rewards as commission to
 		///   HomaTreasury
 		/// - `fast_match_fee_rate`: the fixed fee rate when redeem request is been fast matched.
@@ -575,7 +575,7 @@ pub mod module {
 			if let Some(change) = last_era_bumped_block {
 				// config last_era_bumped_block should not cause bump era to occur immediately, because
 				// the last_era_bumped_block after the bump era will not be same with the actual relaychain
-				// era bumped block  again, especially if it leads to multiple bump era.
+				// era bumped block again, especially if it leads to multiple bump era.
 				// and it should be config after config no-zero bump_era_frequency.
 				let bump_era_frequency = Self::bump_era_frequency();
 				let current_relay_chain_block = T::RelayChainBlockNumber::current_block_number();
@@ -599,7 +599,7 @@ pub mod module {
 		}
 
 		/// Reset the bonded and unbonding to local subaccounts ledger according to the ledger on
-		/// relaychain. Requires `GovernanceOrigin`
+		/// assethub. Requires `GovernanceOrigin`
 		///
 		/// Parameters:
 		/// - `updates`: update list of subaccount.
@@ -994,7 +994,7 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Get back unbonded of all subaccounts on relaychain by XCM.
+		/// Get back unbonded of all subaccounts on assethub by XCM.
 		/// The staking currency withdrew becomes available to be redeemed.
 		#[transactional]
 		pub fn process_scheduled_unbond(new_era: EraIndex) -> DispatchResult {
@@ -1029,12 +1029,12 @@ pub mod module {
 		}
 
 		/// Distribute PoolToBond to ActiveSubAccountsIndexList, then cross-transfer the
-		/// distribution amount to the subaccounts on relaychain and bond it by XCM.
+		/// distribution amount to the subaccounts on assethub and bond it by XCM.
 		#[transactional]
 		pub fn process_to_bond_pool() -> DispatchResult {
 			let to_bond_pool = Self::to_bond_pool();
 
-			// if to_bond is gte than MintThreshold, try to bond_extra on relaychain
+			// if to_bond is gte than MintThreshold, try to bond_extra on assethub
 			if to_bond_pool >= T::MintThreshold::get() {
 				let xcm_transfer_fee = T::XcmInterface::get_xcm_transfer_fee();
 				let bonded_list: Vec<(u16, Balance)> = T::ActiveSubAccountsIndexList::get()
@@ -1080,7 +1080,7 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Process redeem requests and subaccounts do unbond on relaychain by XCM message.
+		/// Process redeem requests and subaccounts do unbond on assethub by XCM message.
 		#[transactional]
 		pub fn process_redeem_requests(new_era: EraIndex) -> Result<u32, DispatchError> {
 			let era_index_to_expire = new_era + T::BondingDuration::get();
@@ -1149,7 +1149,7 @@ pub mod module {
 			Ok(handled_requests)
 		}
 
-		/// Process nominate validators for subaccounts on relaychain.
+		/// Process nominate validators for subaccounts on assethub.
 		pub fn process_nominate(new_era: EraIndex) -> DispatchResult {
 			// check whether need to nominate
 			let nominate_interval_era = NominateIntervalEra::<T>::get();
@@ -1180,7 +1180,7 @@ pub mod module {
 		}
 
 		/// Bump current era.
-		/// The rebalance will send XCM messages to relaychain. Once the XCM message is sent,
+		/// The rebalance will send XCM messages to assethub. Once the XCM message is sent,
 		/// the execution result cannot be obtained and cannot be rolled back. So the process
 		/// of rebalance is not atomic.
 		pub fn bump_current_era(amount: EraIndex) -> Result<u32, DispatchError> {

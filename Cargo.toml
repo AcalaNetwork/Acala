@@ -201,7 +201,7 @@ module-nft = { path = "modules/nft", default-features = false }
 module-xnft = { path = "modules/xnft", default-features = false }
 module-nominees-election = { path = "modules/nominees-election", default-features = false }
 module-prices = { path = "modules/prices", default-features = false }
-module-relaychain = { path = "modules/relaychain", default-features = false }
+module-assethub = { path = "modules/assethub", default-features = false }
 module-session-manager = { path = "modules/session-manager", default-features = false }
 module-support = { path = "modules/support", default-features = false }
 module-transaction-pause = { path = "modules/transaction-pause", default-features = false }

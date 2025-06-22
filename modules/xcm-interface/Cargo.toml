@@ -29,7 +29,7 @@ xcm-builder = { workspace = true, features = ["std"] }
 xcm-executor = { workspace = true, features = ["std"] }
 orml-tokens = { workspace = true, features = ["std"] }
 module-currencies = { workspace = true, features = ["std"] }
-module-relaychain = { workspace = true, features = ["std"] }
+module-assethub = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]

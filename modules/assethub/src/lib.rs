@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! # Module RelayChain
+//! # Module AssetHub
 //!
-//! This module is in charge of handling relaychain related utilities and business logic.
+//! This module is in charge of handling assethub related utilities and business logic.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
@@ -28,17 +28,17 @@ use parity_scale_codec::{Decode, Encode, FullCodec};
 use sp_runtime::{traits::StaticLookup, RuntimeDebug};
 
 use frame_support::traits::Get;
-use module_support::relaychain::*;
+use module_support::assethub::*;
 use primitives::{AccountId, Balance};
 use sp_std::{boxed::Box, marker::PhantomData, prelude::*};
 
 pub use cumulus_primitives_core::ParaId;
 use xcm::v4::{prelude::*, Weight as XcmWeight};
 
-/// The encoded index corresponds to Kusama's Runtime module configuration.
+/// The encoded index corresponds to AssetHub's Runtime module configuration.
 /// https://github.com/paritytech/polkadot/blob/444e96ae34bcec8362f0f947a07bd912b32ca48f/runtime/kusama/src/lib.rs#L1379
 #[derive(Encode, Decode, RuntimeDebug)]
-pub enum KusamaRelayChainCall {
+pub enum KusamaAssetHubCall {
 	#[codec(index = 4)]
 	Balances(BalancesCall),
 	#[codec(index = 6)]
@@ -51,32 +51,32 @@ pub enum KusamaRelayChainCall {
 	XcmPallet(XcmCall),
 }
 
-impl RelayChainCall for KusamaRelayChainCall {
+impl AssetHubCall for KusamaAssetHubCall {
 	fn balances(call: BalancesCall) -> Self {
-		KusamaRelayChainCall::Balances(call)
+		KusamaAssetHubCall::Balances(call)
 	}
 
 	fn staking(call: StakingCall) -> Self {
-		KusamaRelayChainCall::Staking(call)
+		KusamaAssetHubCall::Staking(call)
 	}
 
 	fn utility(call: UtilityCall<Self>) -> Self {
-		KusamaRelayChainCall::Utility(Box::new(call))
+		KusamaAssetHubCall::Utility(Box::new(call))
 	}
 
 	fn proxy(call: ProxyCall<Self>) -> Self {
-		KusamaRelayChainCall::Proxy(Box::new(call))
+		KusamaAssetHubCall::Proxy(Box::new(call))
 	}
 
 	fn xcm_pallet(call: XcmCall) -> Self {
-		KusamaRelayChainCall::XcmPallet(call)
+		KusamaAssetHubCall::XcmPallet(call)
 	}
 }
 
-/// The encoded index corresponds to Polkadot's Runtime module configuration.
+/// The encoded index corresponds to AssetHub's Runtime module configuration.
 /// https://github.com/paritytech/polkadot/blob/84a3962e76151ac5ed3afa4ef1e0af829531ab42/runtime/polkadot/src/lib.rs#L1040
 #[derive(Encode, Decode, RuntimeDebug)]
-pub enum PolkadotRelayChainCall {
+pub enum PolkadotAssetHubCall {
 	#[codec(index = 5)]
 	Balances(BalancesCall),
 	#[codec(index = 7)]
@@ -89,63 +89,63 @@ pub enum PolkadotRelayChainCall {
 	XcmPallet(XcmCall),
 }
 
-impl RelayChainCall for PolkadotRelayChainCall {
+impl AssetHubCall for PolkadotAssetHubCall {
 	fn balances(call: BalancesCall) -> Self {
-		PolkadotRelayChainCall::Balances(call)
+		PolkadotAssetHubCall::Balances(call)
 	}
 
 	fn staking(call: StakingCall) -> Self {
-		PolkadotRelayChainCall::Staking(call)
+		PolkadotAssetHubCall::Staking(call)
 	}
 
 	fn utility(call: UtilityCall<Self>) -> Self {
-		PolkadotRelayChainCall::Utility(Box::new(call))
+		PolkadotAssetHubCall::Utility(Box::new(call))
 	}
 
 	fn proxy(call: ProxyCall<Self>) -> Self {
-		PolkadotRelayChainCall::Proxy(Box::new(call))
+		PolkadotAssetHubCall::Proxy(Box::new(call))
 	}
 
 	fn xcm_pallet(call: XcmCall) -> Self {
-		PolkadotRelayChainCall::XcmPallet(call)
+		PolkadotAssetHubCall::XcmPallet(call)
 	}
 }
 
-pub struct RelayChainCallBuilder<ParachainId, RCC>(PhantomData<(ParachainId, RCC)>);
+pub struct AssetHubCallBuilder<ParachainId, AHC>(PhantomData<(ParachainId, AHC)>);
 
-impl<ParachainId, RCC> CallBuilder for RelayChainCallBuilder<ParachainId, RCC>
+impl<ParachainId, AHC> CallBuilder for AssetHubCallBuilder<ParachainId, AHC>
 where
 	ParachainId: Get<ParaId>,
-	RCC: RelayChainCall + FullCodec,
+	AHC: AssetHubCall + FullCodec,
 {
-	type RelayChainAccountId = AccountId;
+	type AssetHubAccountId = AccountId;
 	type Balance = Balance;
-	type RelayChainCall = RCC;
+	type AssetHubCall = AHC;
 
-	fn utility_as_derivative_call(call: RCC, index: u16) -> RCC {
-		RCC::utility(UtilityCall::AsDerivative(index, call))
+	fn utility_as_derivative_call(call: AHC, index: u16) -> AHC {
+		AHC::utility(UtilityCall::AsDerivative(index, call))
 	}
 
-	fn staking_bond_extra(amount: Self::Balance) -> RCC {
-		RCC::staking(StakingCall::BondExtra(amount))
+	fn staking_bond_extra(amount: Self::Balance) -> AHC {
+		AHC::staking(StakingCall::BondExtra(amount))
 	}
 
-	fn staking_unbond(amount: Self::Balance) -> RCC {
-		RCC::staking(StakingCall::Unbond(amount))
+	fn staking_unbond(amount: Self::Balance) -> AHC {
+		AHC::staking(StakingCall::Unbond(amount))
 	}
 
-	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> RCC {
-		RCC::staking(StakingCall::WithdrawUnbonded(num_slashing_spans))
+	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> AHC {
+		AHC::staking(StakingCall::WithdrawUnbonded(num_slashing_spans))
 	}
 
-	fn staking_nominate(targets: Vec<Self::RelayChainAccountId>) -> RCC {
-		RCC::staking(StakingCall::Nominate(
-			targets.iter().map(|a| RelayChainLookup::unlookup(a.clone())).collect(),
+	fn staking_nominate(targets: Vec<Self::AssetHubAccountId>) -> AHC {
+		AHC::staking(StakingCall::Nominate(
+			targets.iter().map(|a| AssetHubLookup::unlookup(a.clone())).collect(),
 		))
 	}
 
-	fn balances_transfer_keep_alive(to: Self::RelayChainAccountId, amount: Self::Balance) -> RCC {
-		RCC::balances(BalancesCall::TransferKeepAlive(RelayChainLookup::unlookup(to), amount))
+	fn balances_transfer_keep_alive(to: Self::AssetHubAccountId, amount: Self::Balance) -> AHC {
+		AHC::balances(BalancesCall::TransferKeepAlive(AssetHubLookup::unlookup(to), amount))
 	}
 
 	fn xcm_pallet_reserve_transfer_assets(
@@ -153,8 +153,8 @@ where
 		beneficiary: Location,
 		assets: Assets,
 		fee_assets_item: u32,
-	) -> RCC {
-		RCC::xcm_pallet(XcmCall::LimitedReserveTransferAssets(
+	) -> AHC {
+		AHC::xcm_pallet(XcmCall::LimitedReserveTransferAssets(
 			dest.into_versioned(),
 			beneficiary.into_versioned(),
 			assets.into(),
@@ -163,11 +163,11 @@ where
 		))
 	}
 
-	fn proxy_call(real: Self::RelayChainAccountId, call: RCC) -> RCC {
-		RCC::proxy(ProxyCall::Proxy(RelayChainLookup::unlookup(real), None, call))
+	fn proxy_call(real: Self::AssetHubAccountId, call: AHC) -> AHC {
+		AHC::proxy(ProxyCall::Proxy(AssetHubLookup::unlookup(real), None, call))
 	}
 
-	fn finalize_call_into_xcm_message(call: RCC, extra_fee: Self::Balance, weight: XcmWeight) -> Xcm<()> {
+	fn finalize_call_into_xcm_message(call: AHC, extra_fee: Self::Balance, weight: XcmWeight) -> Xcm<()> {
 		let asset = Asset {
 			id: AssetId(Location::here()),
 			fun: Fungibility::Fungible(extra_fee),
@@ -185,7 +185,7 @@ where
 			},
 			RefundSurplus,
 			DepositAsset {
-				assets: AllCounted(1).into(), // there is only 1 asset on relaychain
+				assets: AllCounted(1).into(), // there is only 1 asset on assethub
 				beneficiary: Location {
 					parents: 0,
 					interior: Parachain(ParachainId::get().into()).into(),
@@ -194,7 +194,7 @@ where
 		])
 	}
 
-	fn finalize_multiple_calls_into_xcm_message(calls: Vec<(RCC, XcmWeight)>, extra_fee: Self::Balance) -> Xcm<()> {
+	fn finalize_multiple_calls_into_xcm_message(calls: Vec<(AHC, XcmWeight)>, extra_fee: Self::Balance) -> Xcm<()> {
 		let asset = Asset {
 			id: AssetId(Location::here()),
 			fun: Fungibility::Fungible(extra_fee),
@@ -221,7 +221,7 @@ where
 			vec![
 				RefundSurplus,
 				DepositAsset {
-					assets: AllCounted(1).into(), // there is only 1 asset on relaychain
+					assets: AllCounted(1).into(), // there is only 1 asset on assethub
 					beneficiary: Location {
 						parents: 0,
 						interior: Parachain(ParachainId::get().into()).into(),

@@ -701,11 +701,11 @@ fn slash_work() {
 				vec![
 					SlashInfo {
 						validator: VALIDATOR_1,
-						relaychain_token_amount: 90
+						token_amount: 90
 					},
 					SlashInfo {
 						validator: VALIDATOR_2,
-						relaychain_token_amount: 50
+						token_amount: 50
 					},
 				]
 			),
@@ -717,11 +717,11 @@ fn slash_work() {
 			vec![
 				SlashInfo {
 					validator: VALIDATOR_1,
-					relaychain_token_amount: 90
+					token_amount: 90
 				},
 				SlashInfo {
 					validator: VALIDATOR_2,
-					relaychain_token_amount: 50
+					token_amount: 50
 				},
 			]
 		));

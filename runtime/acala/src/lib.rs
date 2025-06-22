@@ -52,11 +52,11 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, EnsureSigned, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
+use module_assethub::AssetHubCallBuilder;
 use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
-use module_relaychain::RelayChainCallBuilder;
 use module_support::{AddressMapping, AssetIdMapping, DispatchableTask, PoolId};
 use module_transaction_payment::TargetedFeeAdjustment;
 
@@ -1606,7 +1606,7 @@ parameter_types! {
 
 impl module_homa_validator_list::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type RelayChainAccountId = AccountId;
+	type ValidatorId = AccountId;
 	type LiquidTokenCurrency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 	type MinBondAmount = MinBondAmount;
 	type BondingDuration = BondingDuration;
@@ -1672,9 +1672,9 @@ impl module_xcm_interface::Config for Runtime {
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type ParachainAccount = ParachainAccount;
-	type RelayChainUnbondingSlashingSpans = ConstU32<5>;
+	type AssetHubUnbondingSlashingSpans = ConstU32<5>;
 	type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
-	type RelayChainCallBuilder = RelayChainCallBuilder<ParachainInfo, module_relaychain::PolkadotRelayChainCall>;
+	type AssetHubCallBuilder = AssetHubCallBuilder<ParachainInfo, module_assethub::PolkadotAssetHubCall>;
 	type XcmTransfer = XTokens;
 	type SelfLocation = xcm_config::SelfLocation;
 	type AccountIdToLocation = runtime_common::xcm_config::AccountIdToLocation;

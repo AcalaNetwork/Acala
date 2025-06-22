@@ -18,7 +18,7 @@
 
 //! Xcm Interface module.
 //!
-//! This module interfaces Acala native modules with the Relaychain / parachains via the use of XCM.
+//! This module interfaces Acala native modules with the AssetHub / parachains via the use of XCM.
 //! Functions in this module will create XCM messages that performs the requested functions and
 //! send the messages out to the intended destination.
 //!
@@ -29,7 +29,7 @@
 
 use frame_support::{pallet_prelude::*, traits::Get};
 use frame_system::pallet_prelude::*;
-use module_support::{relaychain::CallBuilder, HomaSubAccountXcm};
+use module_support::{assethub::CallBuilder, HomaSubAccountXcm};
 use orml_traits::XcmTransfer;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
@@ -71,20 +71,20 @@ pub mod module {
 		#[pallet::constant]
 		type StakingCurrencyId: Get<CurrencyId>;
 
-		/// The account of parachain on the relaychain.
+		/// The account of parachain on the assethub.
 		#[pallet::constant]
 		type ParachainAccount: Get<Self::AccountId>;
 
-		/// Unbonding slashing spans for unbonding on the relaychain.
+		/// Unbonding slashing spans for unbonding on the assethub.
 		#[pallet::constant]
-		type RelayChainUnbondingSlashingSpans: Get<EraIndex>;
+		type AssetHubUnbondingSlashingSpans: Get<EraIndex>;
 
 		/// The convert for convert sovereign subacocunt index to the Location where the
 		/// staking currencies are sent to.
 		type SovereignSubAccountLocationConvert: Convert<u16, Location>;
 
-		/// The Call builder for communicating with RelayChain via XCM messaging.
-		type RelayChainCallBuilder: CallBuilder<RelayChainAccountId = Self::AccountId, Balance = Balance>;
+		/// The Call builder for communicating with AssetHub via XCM messaging.
+		type AssetHubCallBuilder: CallBuilder<AssetHubAccountId = Self::AccountId, Balance = Balance>;
 
 		/// The interface to Cross-chain transfer.
 		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
@@ -119,7 +119,7 @@ pub mod module {
 	}
 
 	/// The dest weight limit and fee for execution XCM msg sended by XcmInterface. Must be
-	/// sufficient, otherwise the execution of XCM msg on relaychain will fail.
+	/// sufficient, otherwise the execution of XCM msg on assethub will fail.
 	///
 	/// XcmDestWeightAndFee: map: XcmInterfaceOperation => (Weight, Balance)
 	#[pallet::storage]
@@ -172,9 +172,9 @@ pub mod module {
 	}
 
 	impl<T: Config> HomaSubAccountXcm<T::AccountId, Balance> for Pallet<T> {
-		type RelayChainAccountId = T::AccountId;
+		type AssetHubAccountId = T::AccountId;
 
-		/// Cross-chain transfer staking currency to sub account on relaychain.
+		/// Cross-chain transfer staking currency to sub account on assethub.
 		fn transfer_staking_to_sub_account(
 			sender: &T::AccountId,
 			sub_account_index: u16,
@@ -190,27 +190,25 @@ pub mod module {
 			.map(|_| ())
 		}
 
-		/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency
+		/// Send XCM message to the assethub for sub account to withdraw_unbonded staking currency
 		/// and send it back.
 		fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaWithdrawUnbonded);
 
 			// TODO: config xcm_dest_weight and fee for withdraw_unbonded and transfer separately.
 			// Temporarily use double fee.
-			let xcm_message = T::RelayChainCallBuilder::finalize_multiple_calls_into_xcm_message(
+			let xcm_message = T::AssetHubCallBuilder::finalize_multiple_calls_into_xcm_message(
 				vec![
 					(
-						T::RelayChainCallBuilder::utility_as_derivative_call(
-							T::RelayChainCallBuilder::staking_withdraw_unbonded(
-								T::RelayChainUnbondingSlashingSpans::get(),
-							),
+						T::AssetHubCallBuilder::utility_as_derivative_call(
+							T::AssetHubCallBuilder::staking_withdraw_unbonded(T::AssetHubUnbondingSlashingSpans::get()),
 							sub_account_index,
 						),
 						xcm_dest_weight,
 					),
 					(
-						T::RelayChainCallBuilder::utility_as_derivative_call(
-							T::RelayChainCallBuilder::balances_transfer_keep_alive(T::ParachainAccount::get(), amount),
+						T::AssetHubCallBuilder::utility_as_derivative_call(
+							T::AssetHubCallBuilder::balances_transfer_keep_alive(T::ParachainAccount::get(), amount),
 							sub_account_index,
 						),
 						xcm_dest_weight,
@@ -230,12 +228,12 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Send XCM message to the relaychain for sub account to bond extra.
+		/// Send XCM message to the assethub for sub account to bond extra.
 		fn bond_extra_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaBondExtra);
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
-				T::RelayChainCallBuilder::utility_as_derivative_call(
-					T::RelayChainCallBuilder::staking_bond_extra(amount),
+			let xcm_message = T::AssetHubCallBuilder::finalize_call_into_xcm_message(
+				T::AssetHubCallBuilder::utility_as_derivative_call(
+					T::AssetHubCallBuilder::staking_bond_extra(amount),
 					sub_account_index,
 				),
 				xcm_fee,
@@ -252,12 +250,12 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Send XCM message to the relaychain for sub account to unbond.
+		/// Send XCM message to the assethub for sub account to unbond.
 		fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaUnbond);
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
-				T::RelayChainCallBuilder::utility_as_derivative_call(
-					T::RelayChainCallBuilder::staking_unbond(amount),
+			let xcm_message = T::AssetHubCallBuilder::finalize_call_into_xcm_message(
+				T::AssetHubCallBuilder::utility_as_derivative_call(
+					T::AssetHubCallBuilder::staking_unbond(amount),
 					sub_account_index,
 				),
 				xcm_fee,
@@ -274,12 +272,12 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Send XCM message to the relaychain for sub account to nominate.
-		fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<Self::RelayChainAccountId>) -> DispatchResult {
+		/// Send XCM message to the assethub for sub account to nominate.
+		fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<Self::AssetHubAccountId>) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaNominate);
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
-				T::RelayChainCallBuilder::utility_as_derivative_call(
-					T::RelayChainCallBuilder::staking_nominate(targets.clone()),
+			let xcm_message = T::AssetHubCallBuilder::finalize_call_into_xcm_message(
+				T::AssetHubCallBuilder::utility_as_derivative_call(
+					T::AssetHubCallBuilder::staking_nominate(targets.clone()),
 					sub_account_index,
 				),
 				xcm_fee,
