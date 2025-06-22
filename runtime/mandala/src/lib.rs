@@ -94,7 +94,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
-pub use constants::{fee::*, time::*};
+pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	currency::AssetIds,
 	evm::{BlockLimits, EstimateResourcesRequest},
@@ -1416,7 +1416,7 @@ pub fn create_x2_parachain_location(index: u16) -> Location {
 	Location::new(
 		1,
 		[
-			Parachain(1000),
+			Parachain(parachains::asset_hub_polkadot::ID),
 			AccountId32 {
 				network: None,
 				id: Utility::derivative_account_id(
