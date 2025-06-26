@@ -31,7 +31,7 @@ members = [
 	"orml/xcm-support",
 	"orml/xcm",
 	"orml/xtokens",
- 	"orml/oracle/runtime-api",
+	"orml/oracle/runtime-api",
 
 	"ecosystem-modules/stable-asset/lib/stable-asset",
 	"evm-tests/jsontests",
@@ -109,7 +109,9 @@ zeroize = { opt-level = 3 }
 
 [workspace.dependencies]
 log = { version = "0.4.20", default-features = false }
-scale-info = { version = "2.10.0", default-features = false, features = ["derive"] }
+scale-info = { version = "2.10.0", default-features = false, features = [
+	"derive",
+] }
 serde = { version = "1.0.145", default-features = false }
 parity-scale-codec = { version = "3.6.5", default-features = false }
 serde_json = { version = "1.0.81", default-features = false }
@@ -206,7 +208,7 @@ module-support = { path = "modules/support", default-features = false }
 module-transaction-pause = { path = "modules/transaction-pause", default-features = false }
 module-transaction-payment = { path = "modules/transaction-payment", default-features = false }
 module-xcm-interface = { path = "modules/xcm-interface", default-features = false }
-nutsfinance-stable-asset = { version = "0.1.0", path = "ecosystem-modules/stable-asset/lib/stable-asset", default-features = false}
+nutsfinance-stable-asset = { version = "0.1.0", path = "ecosystem-modules/stable-asset/lib/stable-asset", default-features = false }
 
 # ORML & Acala (client)
 module-evm-utility-macro = { path = "modules/evm-utility/macro" }
@@ -302,3 +304,8 @@ xcm-executor = { version = "16.0.0", package = "staging-xcm-executor", default-f
 # polkadot-sdk (client)
 substrate-wasm-builder = { version = "24.0.0", features = ["metadata-hash"] }
 xcm-simulator = { version = "16.0.0" }
+
+pvq-extension = { git = "https://github.com/open-web3-stack/PVQ", branch = "deps-stable2407", default-features = false }
+pvq-primitives = { git = "https://github.com/open-web3-stack/PVQ", branch = "deps-stable2407", default-features = false }
+pvq-runtime-api = { git = "https://github.com/open-web3-stack/PVQ", branch = "deps-stable2407", default-features = false }
+pvq-extension-swap = { git = "https://github.com/open-web3-stack/PVQ", branch = "deps-stable2407", default-features = false }

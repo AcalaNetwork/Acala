@@ -6,11 +6,18 @@ edition = "2021"
 
 [dependencies]
 smallvec = { workspace = true }
-parity-scale-codec = { workspace = true, features = ["derive", "max-encoded-len"] }
+parity-scale-codec = { workspace = true, features = [
+	"derive",
+	"max-encoded-len",
+] }
 serde_json = { workspace = true, features = ["std"] }
 hex = { workspace = true, features = ["std"] }
 hex-literal = { workspace = true }
-libsecp256k1 = { workspace = true, features = ["std", "hmac", "static-context"] }
+libsecp256k1 = { workspace = true, features = [
+	"std",
+	"hmac",
+	"static-context",
+] }
 
 # substrate
 frame-support = { workspace = true, features = ["std"] }
@@ -31,7 +38,9 @@ pallet-sudo = { workspace = true, features = ["std"] }
 pallet-timestamp = { workspace = true, features = ["std"] }
 pallet-tips = { workspace = true, features = ["std"] }
 pallet-transaction-payment = { workspace = true, features = ["std"] }
-pallet-transaction-payment-rpc-runtime-api = { workspace = true, features = ["std"] }
+pallet-transaction-payment-rpc-runtime-api = { workspace = true, features = [
+	"std",
+] }
 pallet-treasury = { workspace = true, features = ["std"] }
 pallet-utility = { workspace = true, features = ["std"] }
 sp-api = { workspace = true, features = ["std"] }
@@ -114,6 +123,12 @@ mandala-runtime = { workspace = true, features = ["std"], optional = true }
 karura-runtime = { workspace = true, features = ["std"], optional = true }
 acala-runtime = { workspace = true, features = ["std"], optional = true }
 
+# pvq
+pvq-runtime-api = { workspace = true, features = ["std"] }
+pvq-primitives = { workspace = true, features = ["std"] }
+pvq-extension = { workspace = true, features = ["std"] }
+pvq-extension-swap = { workspace = true, features = ["std"] }
+
 [dev-dependencies]
 insta = { workspace = true }
 env_logger = { workspace = true }
@@ -130,15 +145,9 @@ nutsfinance-stable-asset = { workspace = true, features = ["std"] }
 [features]
 default = ["std"]
 no_std = []
-with-mandala-runtime = [
-	"mandala-runtime",
-]
-with-karura-runtime = [
-	"karura-runtime",
-]
-with-acala-runtime = [
-	"acala-runtime",
-]
+with-mandala-runtime = ["mandala-runtime"]
+with-karura-runtime = ["karura-runtime"]
+with-acala-runtime = ["acala-runtime"]
 with-ethereum-compatibility = [
 	"mandala-runtime",
 	"mandala-runtime/with-ethereum-compatibility",

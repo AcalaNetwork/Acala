@@ -122,3 +122,6 @@ mod weights;
 	feature = "with-acala-runtime"
 ))]
 mod payment;
+
+#[cfg(any(feature = "with-mandala-runtime"))]
+mod pvq;

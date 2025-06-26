@@ -122,6 +122,7 @@ pub use nutsfinance_stable_asset;
 mod authority;
 mod benchmarking;
 pub mod constants;
+pub mod pvq;
 /// Weights for pallets used in the runtime.
 mod weights;
 pub mod xcm_config;
@@ -2493,6 +2494,15 @@ impl_runtime_apis! {
 			let from = EvmAddressMapping::<Runtime>::get_or_create_evm_address(&from);
 
 			Self::create(from, data, value, gas_limit, storage_limit, access_list, estimate)
+		}
+	}
+
+	impl pvq_runtime_api::PvqApi<Block> for Runtime {
+		fn execute_query(program: Vec<u8>, args: Vec<u8>, gas_limit: Option<i64>) -> pvq_primitives::PvqResult {
+			pvq::execute_query(&program, &args, gas_limit.unwrap_or(1000_000_000 * 2))
+		}
+		fn metadata() -> Vec<u8> {
+			pvq::metadata().encode()
 		}
 	}
 

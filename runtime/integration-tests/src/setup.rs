@@ -57,6 +57,7 @@ pub use sp_runtime::{
 pub use mandala_imports::*;
 #[cfg(feature = "with-mandala-runtime")]
 mod mandala_imports {
+	pub use mandala_runtime::pvq::*;
 	pub use mandala_runtime::xcm_config::*;
 	use mandala_runtime::AlternativeFeeSurplus;
 	pub use mandala_runtime::{

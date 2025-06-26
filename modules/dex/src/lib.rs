@@ -1249,7 +1249,7 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 
-	fn get_liquidity(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
+	pub fn get_liquidity(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
 		if let Some(trading_pair) = TradingPair::from_currency_ids(currency_id_a, currency_id_b) {
 			let (pool_0, pool_1) = Self::liquidity_pool(trading_pair);
 			if currency_id_a == trading_pair.first() {
@@ -1263,7 +1263,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Get how much target amount will be got for specific supply amount.
-	fn get_target_amount(supply_pool: Balance, target_pool: Balance, supply_amount: Balance) -> Balance {
+	pub fn get_target_amount(supply_pool: Balance, target_pool: Balance, supply_amount: Balance) -> Balance {
 		if supply_amount.is_zero() || supply_pool.is_zero() || target_pool.is_zero() {
 			Zero::zero()
 		} else {
@@ -1283,7 +1283,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Get how much supply amount will be paid for specific target amount.
-	fn get_supply_amount(supply_pool: Balance, target_pool: Balance, target_amount: Balance) -> Balance {
+	pub fn get_supply_amount(supply_pool: Balance, target_pool: Balance, target_amount: Balance) -> Balance {
 		if target_amount.is_zero() || supply_pool.is_zero() || target_pool.is_zero() {
 			Zero::zero()
 		} else {
