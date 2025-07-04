@@ -17,11 +17,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{
-	constants::{fee::*, parachains},
-	AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert, Currencies, CurrencyId,
-	EvmAddressMapping, ExistentialDeposits, GetNativeCurrencyId, MessageQueue, NativeTokenExistentialDeposit,
-	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, TreasuryAccount,
-	UnknownTokens, XcmpQueue, ACA,
+	constants::fee::*, AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert,
+	Currencies, CurrencyId, EvmAddressMapping, ExistentialDeposits, GetNativeCurrencyId, MessageQueue,
+	NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeOrigin, TreasuryAccount, UnknownTokens, XcmpQueue, ACA,
 };
 pub use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 pub use frame_support::{
