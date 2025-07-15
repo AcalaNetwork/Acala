@@ -61,7 +61,8 @@ parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const ParachainAccount: AccountId = AccountId32::new([0u8; 32]);
 	pub const ParachainId: module_assethub::ParaId = module_assethub::ParaId::new(2000);
-	pub SelfLocation: Location = Location::new(1, Parachain(ParachainId::get().into()));
+	pub const AssetHubId: module_assethub::ParaId = module_assethub::ParaId::new(1000);
+	pub AssetHubLocation: Location = Location::new(1, Parachain(AssetHubId::get().into()));
 }
 
 pub struct SubAccountIndexLocationConvertor;
@@ -275,7 +276,7 @@ macro_rules! impl_mock {
 			type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
 			type AssetHubCallBuilder = module_assethub::AssetHubCallBuilder<ParachainId, $assethub>;
 			type XcmTransfer = MockXcmTransfer;
-			type SelfLocation = SelfLocation;
+			type AssetHubLocation = AssetHubLocation;
 			type AccountIdToLocation = AccountIdToLocation;
 		}
 

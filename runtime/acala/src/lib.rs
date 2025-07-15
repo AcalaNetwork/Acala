@@ -1676,7 +1676,7 @@ impl module_xcm_interface::Config for Runtime {
 	type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
 	type AssetHubCallBuilder = AssetHubCallBuilder<ParachainInfo, module_assethub::PolkadotAssetHubCall>;
 	type XcmTransfer = XTokens;
-	type SelfLocation = xcm_config::SelfLocation;
+	type AssetHubLocation = xcm_config::AssetHubLocation;
 	type AccountIdToLocation = runtime_common::xcm_config::AccountIdToLocation;
 }
 

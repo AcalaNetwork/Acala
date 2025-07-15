@@ -36,18 +36,18 @@ pub use cumulus_primitives_core::ParaId;
 use xcm::v4::{prelude::*, Weight as XcmWeight};
 
 /// The encoded index corresponds to AssetHub's Runtime module configuration.
-/// https://github.com/paritytech/polkadot/blob/444e96ae34bcec8362f0f947a07bd912b32ca48f/runtime/kusama/src/lib.rs#L1379
+/// https://github.com/polkadot-fellows/runtimes/blob/2fb47566718a974c261b68fffaae500be5581820/system-parachains/asset-hubs/asset-hub-kusama/src/lib.rs#L1065
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum KusamaAssetHubCall {
-	#[codec(index = 4)]
+	#[codec(index = 10)]
 	Balances(BalancesCall),
-	#[codec(index = 6)]
+	#[codec(index = 89)] // TODO: update
 	Staking(StakingCall),
-	#[codec(index = 24)]
+	#[codec(index = 40)]
 	Utility(Box<UtilityCall<Self>>),
-	#[codec(index = 30)]
+	#[codec(index = 42)]
 	Proxy(Box<ProxyCall<Self>>),
-	#[codec(index = 99)]
+	#[codec(index = 31)]
 	XcmPallet(XcmCall),
 }
 
@@ -74,18 +74,18 @@ impl AssetHubCall for KusamaAssetHubCall {
 }
 
 /// The encoded index corresponds to AssetHub's Runtime module configuration.
-/// https://github.com/paritytech/polkadot/blob/84a3962e76151ac5ed3afa4ef1e0af829531ab42/runtime/polkadot/src/lib.rs#L1040
+/// https://github.com/polkadot-fellows/runtimes/blob/2fb47566718a974c261b68fffaae500be5581820/system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs#L983
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum PolkadotAssetHubCall {
-	#[codec(index = 5)]
+	#[codec(index = 10)]
 	Balances(BalancesCall),
-	#[codec(index = 7)]
+	#[codec(index = 89)] // TODO: check https://github.com/polkadot-fellows/runtimes/pull/812
 	Staking(StakingCall),
-	#[codec(index = 26)]
+	#[codec(index = 40)]
 	Utility(Box<UtilityCall<Self>>),
-	#[codec(index = 29)]
+	#[codec(index = 42)]
 	Proxy(Box<ProxyCall<Self>>),
-	#[codec(index = 99)]
+	#[codec(index = 31)]
 	XcmPallet(XcmCall),
 }
 
@@ -169,7 +169,7 @@ where
 
 	fn finalize_call_into_xcm_message(call: AHC, extra_fee: Self::Balance, weight: XcmWeight) -> Xcm<()> {
 		let asset = Asset {
-			id: AssetId(Location::here()),
+			id: AssetId(Location::parent()),
 			fun: Fungibility::Fungible(extra_fee),
 		};
 		Xcm(vec![
@@ -196,7 +196,7 @@ where
 
 	fn finalize_multiple_calls_into_xcm_message(calls: Vec<(AHC, XcmWeight)>, extra_fee: Self::Balance) -> Xcm<()> {
 		let asset = Asset {
-			id: AssetId(Location::here()),
+			id: AssetId(Location::parent()),
 			fun: Fungibility::Fungible(extra_fee),
 		};
 

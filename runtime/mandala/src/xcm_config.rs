@@ -17,10 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{
-	constants::fee::*, AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert,
-	Currencies, CurrencyId, EvmAddressMapping, ExistentialDeposits, GetNativeCurrencyId, MessageQueue,
-	NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeOrigin, TreasuryAccount, UnknownTokens, XcmpQueue, ACA,
+	AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert, Currencies, CurrencyId,
+	EvmAddressMapping, ExistentialDeposits, GetNativeCurrencyId, MessageQueue, NativeTokenExistentialDeposit,
+	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, TreasuryAccount,
+	UnknownTokens, XcmpQueue, ACA,
+	{constants::fee::*, parachains},
 };
 pub use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 pub use frame_support::{
@@ -330,6 +331,7 @@ impl Convert<AccountId, Location> for AccountIdToLocation {
 
 parameter_types! {
 	pub SelfLocation: Location = Location::new(1, Parachain(ParachainInfo::get().into()));
+	pub AssetHubLocation: Location = Location::new(1, [Parachain(parachains::asset_hub_polkadot::ID)]);
 	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_parts(100_000_000, 0);
 	pub const MaxAssetsForTransfer: usize = 2;
 }

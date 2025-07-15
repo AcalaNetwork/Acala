@@ -1432,7 +1432,7 @@ pub fn create_x2_parachain_location(index: u16) -> Location {
 parameter_types! {
 	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account_truncating();
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
-		0,  // 15sr8Dvq3AT3Z2Z1y8FnQ4VipekAHhmQnrkgzegUr1tNgbcn
+		0,  // 12pw22Qyy3o28BLshjce9yrSMs3fhSiLsAjqLPAzGktbXYV7
 	];
 	pub MintThreshold: Balance = dollar(DOT);
 	pub RedeemThreshold: Balance = 10 * dollar(LDOT);
@@ -1519,7 +1519,7 @@ impl module_xcm_interface::Config for Runtime {
 	type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
 	type AssetHubCallBuilder = AssetHubCallBuilder<ParachainInfo, module_assethub::PolkadotAssetHubCall>;
 	type XcmTransfer = XTokens;
-	type SelfLocation = xcm_config::SelfLocation;
+	type AssetHubLocation = xcm_config::AssetHubLocation;
 	type AccountIdToLocation = xcm_config::AccountIdToLocation;
 }
 

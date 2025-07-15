@@ -663,10 +663,10 @@ pub mod module {
 
 		#[pallet::call_index(8)]
 		#[pallet::weight(< T as Config >::WeightInfo::on_initialize_with_bump_era(T::ProcessRedeemRequestsLimit::get()))]
-		pub fn force_bump_current_era(origin: OriginFor<T>, bump_amount: EraIndex) -> DispatchResultWithPostInfo {
+		pub fn force_bump_current_era(origin: OriginFor<T>, bump_era: EraIndex) -> DispatchResultWithPostInfo {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			let res = Self::bump_current_era(bump_amount);
+			let res = Self::bump_current_era(bump_era);
 			Ok(Some(T::WeightInfo::on_initialize_with_bump_era(res.unwrap_or_default())).into())
 		}
 
@@ -1181,9 +1181,9 @@ pub mod module {
 		/// The rebalance will send XCM messages to assethub. Once the XCM message is sent,
 		/// the execution result cannot be obtained and cannot be rolled back. So the process
 		/// of rebalance is not atomic.
-		pub fn bump_current_era(amount: EraIndex) -> Result<u32, DispatchError> {
+		pub fn bump_current_era(bump_era: EraIndex) -> Result<u32, DispatchError> {
 			let previous_era = Self::relay_chain_current_era();
-			let new_era = previous_era.saturating_add(amount);
+			let new_era = previous_era.saturating_add(bump_era);
 			RelayChainCurrentEra::<T>::put(new_era);
 			LastEraBumpedBlock::<T>::put(T::RelayChainBlockNumber::current_block_number());
 			Self::deposit_event(Event::<T>::CurrentEraBumped { new_era_index: new_era });

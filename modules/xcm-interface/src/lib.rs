@@ -89,9 +89,9 @@ pub mod module {
 		/// The interface to Cross-chain transfer.
 		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
 
-		/// Self parachain location.
+		/// AssetHub location.
 		#[pallet::constant]
-		type SelfLocation: Get<Location>;
+		type AssetHubLocation: Get<Location>;
 
 		/// Convert AccountId to Location to build XCM message.
 		type AccountIdToLocation: Convert<Self::AccountId, Location>;
@@ -180,14 +180,22 @@ pub mod module {
 			sub_account_index: u16,
 			amount: Balance,
 		) -> DispatchResult {
-			T::XcmTransfer::transfer(
+			let result = T::XcmTransfer::transfer(
 				sender.clone(),
 				T::StakingCurrencyId::get(),
 				amount,
 				T::SovereignSubAccountLocationConvert::convert(sub_account_index),
 				WeightLimit::Limited(Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0),
-			)
-			.map(|_| ())
+			);
+
+			log::debug!(
+				target: "xcm-interface",
+				"sender {:?} send XCM to transfer staking currency {:?} to sub account {:?}, result: {:?}",
+				sender, amount, sub_account_index, result
+			);
+
+			ensure!(result.is_ok(), Error::<T>::XcmFailed);
+			Ok(())
 		}
 
 		/// Send XCM message to the assethub for sub account to withdraw_unbonded staking currency
@@ -217,7 +225,7 @@ pub mod module {
 				xcm_fee.saturating_mul(2),
 			);
 
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
 				target: "xcm-interface",
 				"subaccount {:?} send XCM to withdraw unbonded {:?}, result: {:?}",
@@ -239,7 +247,7 @@ pub mod module {
 				xcm_fee,
 				xcm_dest_weight,
 			);
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
 				target: "xcm-interface",
 				"subaccount {:?} send XCM to bond {:?}, result: {:?}",
@@ -261,7 +269,7 @@ pub mod module {
 				xcm_fee,
 				xcm_dest_weight,
 			);
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
 				target: "xcm-interface",
 				"subaccount {:?} send XCM to unbond {:?}, result: {:?}",
@@ -283,7 +291,7 @@ pub mod module {
 				xcm_fee,
 				xcm_dest_weight,
 			);
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
 				target: "xcm-interface",
 				"subaccount {:?} send XCM to nominate {:?}, result: {:?}",
