@@ -185,7 +185,7 @@ where
 			},
 			RefundSurplus,
 			DepositAsset {
-				assets: AllCounted(1).into(), // there is only 1 asset on assethub
+				assets: AllCounted(1).into(),
 				beneficiary: Location {
 					parents: 0,
 					interior: Parachain(ParachainId::get().into()).into(),
