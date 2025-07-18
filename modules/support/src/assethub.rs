@@ -141,6 +141,7 @@ pub trait CallBuilder {
 	///  params:
 	/// - to: The destination account.
 	/// - amount: The amount of staking currency to be transferred.
+	/// - reserve: The reserve location.
 	/// - weight: the weight limit used for XCM.
 	fn finalize_transfer_asset_xcm_message(
 		to: Self::AssetHubAccountId,
