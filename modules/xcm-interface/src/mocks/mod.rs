@@ -25,8 +25,6 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, Everything, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use orml_traits::xcm_transfer::Transferred;
-use primitives::{CurrencyId, TokenSymbol};
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
 use xcm_builder::{EnsureXcmOrigin, FixedWeightBounds, SignedToAccountId32};
 use xcm_executor::traits::XcmAssetTransfers;
@@ -37,8 +35,6 @@ pub mod polkadot;
 pub type AccountId = AccountId32;
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
-pub const BOB: AccountId = AccountId32::new([2u8; 32]);
-pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
 parameter_types! {
 	pub const UnitWeightCost: XcmWeight = XcmWeight::from_parts(10, 10);
@@ -65,9 +61,9 @@ parameter_types! {
 }
 
 pub struct SubAccountIndexAccountIdConvertor;
-impl Convert<u16, Location> for SubAccountIndexAccountIdConvertor {
+impl Convert<u16, AccountId> for SubAccountIndexAccountIdConvertor {
 	fn convert(_sub_account_index: u16) -> AccountId {
-		AccountId32::new([1u8; 32])
+		AccountId::new([1u8; 32])
 	}
 }
 

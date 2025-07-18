@@ -304,32 +304,12 @@ fn parachain_subaccounts_are_unique() {
 		);
 
 		assert_eq!(
-			create_x2_parachain_location(0),
-			Location::new(
-				1,
-				[
-					Parachain(1000),
-					Junction::AccountId32 {
-						network: None,
-						id: hex_literal::hex!["50ca9b6bf6c83ca2a918b9861788d6facd26e5fd78a07f9848070697683745b3"]
-							.into(),
-					}
-				]
-			),
+			SubAccountIndexAccountIdConvertor::convert(0),
+			hex_literal::hex!["50ca9b6bf6c83ca2a918b9861788d6facd26e5fd78a07f9848070697683745b3"].into()
 		);
 		assert_eq!(
-			create_x2_parachain_location(1),
-			Location::new(
-				1,
-				[
-					Parachain(1000),
-					Junction::AccountId32 {
-						network: None,
-						id: hex_literal::hex!["025f1ca0b76b0d646f33b799a040df9fc14e06b7486770656766e8e8381f6c6f"]
-							.into(),
-					}
-				]
-			),
+			SubAccountIndexAccountIdConvertor::convert(1),
+			hex_literal::hex!["025f1ca0b76b0d646f33b799a040df9fc14e06b7486770656766e8e8381f6c6f"].into()
 		);
 	});
 }

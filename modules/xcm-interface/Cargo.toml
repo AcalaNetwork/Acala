@@ -18,7 +18,6 @@ pallet-xcm = { workspace = true }
 xcm = { workspace = true }
 xcm-executor = { workspace = true }
 primitives = { workspace = true }
-orml-traits = { workspace = true }
 module-support = { workspace = true }
 
 [dev-dependencies]
@@ -28,7 +27,6 @@ pallet-balances = { workspace = true, features = ["std"] }
 sp-io = { workspace = true, features = ["std"] }
 xcm-builder = { workspace = true, features = ["std"] }
 xcm-executor = { workspace = true, features = ["std"] }
-orml-tokens = { workspace = true, features = ["std"] }
 module-currencies = { workspace = true, features = ["std"] }
 module-assethub = { workspace = true, features = ["std"] }
 
@@ -40,7 +38,6 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"module-support/std",
-	"orml-traits/std",
 	"pallet-xcm/std",
 	"primitives/std",
 	"scale-info/std",

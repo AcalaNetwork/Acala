@@ -4190,8 +4190,6 @@ dependencies = [
  "module-assethub",
  "module-currencies",
  "module-support",
- "orml-tokens",
- "orml-traits",
  "pallet-balances",
  "pallet-xcm",
  "parity-scale-codec",
