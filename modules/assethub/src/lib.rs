@@ -167,6 +167,43 @@ where
 		AHC::proxy(ProxyCall::Proxy(AssetHubLookup::unlookup(real), None, call))
 	}
 
+	fn finalize_transfer_asset_xcm_message(
+		to: Self::AssetHubAccountId,
+		amount: Self::Balance,
+		reserve: Location,
+		weight: XcmWeight,
+	) -> Xcm<()> {
+		let asset = Asset {
+			id: AssetId(Location::parent()),
+			fun: Fungibility::Fungible(amount),
+		};
+		Xcm(vec![
+			WithdrawAsset(asset.clone().into()),
+			SetFeesMode { jit_withdraw: true },
+			InitiateReserveWithdraw {
+				assets: All.into(),
+				reserve: reserve,
+				xcm: Xcm(vec![
+					BuyExecution {
+						fees: asset,
+						weight_limit: Limited(weight),
+					},
+					DepositAsset {
+						assets: AllCounted(1).into(),
+						beneficiary: Location {
+							parents: 0,
+							interior: AccountId32 {
+								network: None,
+								id: to.into(),
+							}
+							.into(),
+						},
+					},
+				]),
+			},
+		])
+	}
+
 	fn finalize_call_into_xcm_message(call: AHC, extra_fee: Self::Balance, weight: XcmWeight) -> Xcm<()> {
 		let asset = Asset {
 			id: AssetId(Location::parent()),
@@ -221,7 +258,7 @@ where
 			vec![
 				RefundSurplus,
 				DepositAsset {
-					assets: AllCounted(1).into(), // there is only 1 asset on assethub
+					assets: AllCounted(1).into(),
 					beneficiary: Location {
 						parents: 0,
 						interior: Parachain(ParachainId::get().into()).into(),

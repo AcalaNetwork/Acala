@@ -30,16 +30,19 @@
 use frame_support::{pallet_prelude::*, traits::Get};
 use frame_system::pallet_prelude::*;
 use module_support::{assethub::CallBuilder, HomaSubAccountXcm};
-use orml_traits::XcmTransfer;
-use primitives::{Balance, CurrencyId, EraIndex};
+use primitives::{Balance, EraIndex};
 use scale_info::TypeInfo;
+use sp_core::hashing;
 use sp_runtime::traits::Convert;
 use sp_std::{convert::From, prelude::*, vec, vec::Vec};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
+use xcm_executor::traits::WeightBounds;
 
 mod mocks;
 
 pub use module::*;
+
+const LOG_TARGET: &str = "xcm-interface";
 
 #[frame_support::pallet]
 pub mod module {
@@ -47,8 +50,8 @@ pub mod module {
 
 	#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, TypeInfo)]
 	pub enum XcmInterfaceOperation {
-		// XTokens
-		XtokensTransfer,
+		// PalletXcm transfer
+		XcmTransfer,
 		// Homa
 		HomaWithdrawUnbonded,
 		HomaBondExtra,
@@ -67,10 +70,6 @@ pub mod module {
 		/// Origin represented Governance
 		type UpdateOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
-		/// The currency id of the Staking asset
-		#[pallet::constant]
-		type StakingCurrencyId: Get<CurrencyId>;
-
 		/// The account of parachain on the assethub.
 		#[pallet::constant]
 		type ParachainAccount: Get<Self::AccountId>;
@@ -79,15 +78,12 @@ pub mod module {
 		#[pallet::constant]
 		type AssetHubUnbondingSlashingSpans: Get<EraIndex>;
 
-		/// The convert for convert sovereign subacocunt index to the Location where the
+		/// The convert for convert sovereign subacocunt index to the account where the
 		/// staking currencies are sent to.
-		type SovereignSubAccountLocationConvert: Convert<u16, Location>;
+		type SovereignSubAccountIdConvert: Convert<u16, Self::AccountId>;
 
 		/// The Call builder for communicating with AssetHub via XCM messaging.
 		type AssetHubCallBuilder: CallBuilder<AssetHubAccountId = Self::AccountId, Balance = Balance>;
-
-		/// The interface to Cross-chain transfer.
-		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
 
 		/// AssetHub location.
 		#[pallet::constant]
@@ -180,21 +176,39 @@ pub mod module {
 			sub_account_index: u16,
 			amount: Balance,
 		) -> DispatchResult {
-			let result = T::XcmTransfer::transfer(
-				sender.clone(),
-				T::StakingCurrencyId::get(),
-				amount,
-				T::SovereignSubAccountLocationConvert::convert(sub_account_index),
-				WeightLimit::Limited(Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0),
-			);
+			let (xcm_dest_weight, _xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XcmTransfer);
+			let to = T::SovereignSubAccountIdConvert::convert(sub_account_index);
+			let reserve = T::AssetHubLocation::get();
+
+			let mut xcm_message =
+				T::AssetHubCallBuilder::finalize_transfer_asset_xcm_message(to, amount, reserve, xcm_dest_weight)
+					.into();
+
+			let origin_location = T::AccountIdToLocation::convert(sender.clone());
+			let mut hash = xcm_message.using_encoded(hashing::blake2_256);
+			let weight = T::Weigher::weight(&mut xcm_message).map_err(|e| {
+				log::error!(
+					target: LOG_TARGET,
+					"failed to weigh XCM message: {:?}", e
+				);
+				Error::<T>::XcmFailed
+			})?;
 
 			log::debug!(
-				target: "xcm-interface",
-				"sender {:?} send XCM to transfer staking currency {:?} to sub account {:?}, result: {:?}",
-				sender, amount, sub_account_index, result
+				target: LOG_TARGET,
+				"origin_location {:?} send XCM to transfer staking currency {:?} to subaccount {:?}, message: {:?}",
+				origin_location, amount, sub_account_index, xcm_message
 			);
+			T::XcmExecutor::prepare_and_execute(origin_location, xcm_message, &mut hash, weight, weight)
+				.ensure_complete()
+				.map_err(|e| {
+					log::error!(
+						target: LOG_TARGET,
+						"XcmExecutor failed to execute XCM message: {:?}", e
+					);
+					Error::<T>::XcmFailed
+				})?;
 
-			ensure!(result.is_ok(), Error::<T>::XcmFailed);
 			Ok(())
 		}
 
@@ -227,7 +241,7 @@ pub mod module {
 
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
-				target: "xcm-interface",
+				target: LOG_TARGET,
 				"subaccount {:?} send XCM to withdraw unbonded {:?}, result: {:?}",
 				sub_account_index, amount, result
 			);
@@ -249,7 +263,7 @@ pub mod module {
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
-				target: "xcm-interface",
+				target: LOG_TARGET,
 				"subaccount {:?} send XCM to bond {:?}, result: {:?}",
 				sub_account_index, amount, result,
 			);
@@ -271,7 +285,7 @@ pub mod module {
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
-				target: "xcm-interface",
+				target: LOG_TARGET,
 				"subaccount {:?} send XCM to unbond {:?}, result: {:?}",
 				sub_account_index, amount, result
 			);
@@ -293,7 +307,7 @@ pub mod module {
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
-				target: "xcm-interface",
+				target: LOG_TARGET,
 				"subaccount {:?} send XCM to nominate {:?}, result: {:?}",
 				sub_account_index, targets, result
 			);
@@ -304,7 +318,7 @@ pub mod module {
 
 		/// The fee of cross-chain transfer is deducted from the recipient.
 		fn get_xcm_transfer_fee() -> Balance {
-			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).1
+			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XcmTransfer).1
 		}
 
 		/// The fee of parachain transfer.

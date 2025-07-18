@@ -115,7 +115,6 @@ use runtime_common::{
 	Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, KAR, KSM, KUSD, LKSM, TAI,
 };
-use xcm::v4::prelude::*;
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
@@ -1664,27 +1663,13 @@ impl module_nominees_election::Config for Runtime {
 	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 }
 
-pub fn create_x2_parachain_location(index: u16) -> Location {
-	Location::new(
-		1,
-		[
-			Parachain(parachains::asset_hub_kusama::ID),
-			AccountId32 {
-				network: None,
-				id: Utility::derivative_account_id(
-					Sibling::from(ParachainInfo::get()).into_account_truncating(),
-					index,
-				)
-				.into(),
-			},
-		],
-	)
-}
-
-pub struct SubAccountIndexLocationConvertor;
-impl Convert<u16, Location> for SubAccountIndexLocationConvertor {
-	fn convert(sub_account_index: u16) -> Location {
-		create_x2_parachain_location(sub_account_index)
+pub struct SubAccountIndexAccountIdConvertor;
+impl Convert<u16, AccountId> for SubAccountIndexAccountIdConvertor {
+	fn convert(sub_account_index: u16) -> AccountId {
+		Utility::derivative_account_id(
+			Sibling::from(ParachainInfo::get()).into_account_truncating(),
+			sub_account_index,
+		)
 	}
 }
 
@@ -1695,12 +1680,10 @@ parameter_types! {
 impl module_xcm_interface::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
-	type StakingCurrencyId = GetStakingCurrencyId;
 	type ParachainAccount = ParachainAccount;
 	type AssetHubUnbondingSlashingSpans = ConstU32<5>;
-	type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
+	type SovereignSubAccountIdConvert = SubAccountIndexAccountIdConvertor;
 	type AssetHubCallBuilder = AssetHubCallBuilder<ParachainInfo, module_assethub::KusamaAssetHubCall>;
-	type XcmTransfer = XTokens;
 	type AssetHubLocation = xcm_config::AssetHubLocation;
 	type AccountIdToLocation = runtime_common::xcm_config::AccountIdToLocation;
 }

@@ -58,82 +58,16 @@ ord_parameter_types! {
 }
 
 parameter_types! {
-	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const ParachainAccount: AccountId = AccountId32::new([0u8; 32]);
 	pub const ParachainId: module_assethub::ParaId = module_assethub::ParaId::new(2000);
 	pub const AssetHubId: module_assethub::ParaId = module_assethub::ParaId::new(1000);
 	pub AssetHubLocation: Location = Location::new(1, Parachain(AssetHubId::get().into()));
 }
 
-pub struct SubAccountIndexLocationConvertor;
-impl Convert<u16, Location> for SubAccountIndexLocationConvertor {
-	fn convert(_sub_account_index: u16) -> Location {
-		(Parent, Parachain(2000)).into()
-	}
-}
-
-pub struct MockXcmTransfer;
-impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcmTransfer {
-	fn transfer(
-		_who: AccountId,
-		_currency_id: CurrencyId,
-		_amount: Balance,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	/// Transfer `Asset`
-	fn transfer_multiasset(
-		_who: AccountId,
-		_asset: Asset,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer_with_fee(
-		_who: AccountId,
-		_currency_id: CurrencyId,
-		_amount: Balance,
-		_fee: Balance,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId>, DispatchError> {
-		unimplemented!()
-	}
-
-	/// Transfer `AssetWithFee`
-	fn transfer_multiasset_with_fee(
-		_who: AccountId,
-		_asset: Asset,
-		_fee: Asset,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer_multicurrencies(
-		_who: AccountId,
-		_currencies: Vec<(CurrencyId, Balance)>,
-		_fee_item: u32,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer_multiassets(
-		_who: AccountId,
-		_assets: Assets,
-		_fee: Asset,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
+pub struct SubAccountIndexAccountIdConvertor;
+impl Convert<u16, Location> for SubAccountIndexAccountIdConvertor {
+	fn convert(_sub_account_index: u16) -> AccountId {
+		AccountId32::new([1u8; 32])
 	}
 }
 
@@ -270,12 +204,10 @@ macro_rules! impl_mock {
 		impl Config for Runtime {
 			type RuntimeEvent = RuntimeEvent;
 			type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-			type StakingCurrencyId = GetStakingCurrencyId;
 			type ParachainAccount = ParachainAccount;
 			type AssetHubUnbondingSlashingSpans = ConstU32<28>;
-			type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
+			type SovereignSubAccountIdConvert = SubAccountIndexAccountIdConvertor;
 			type AssetHubCallBuilder = module_assethub::AssetHubCallBuilder<ParachainId, $assethub>;
-			type XcmTransfer = MockXcmTransfer;
 			type AssetHubLocation = AssetHubLocation;
 			type AccountIdToLocation = AccountIdToLocation;
 		}

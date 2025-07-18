@@ -137,6 +137,18 @@ pub trait CallBuilder {
 	/// - call: The call to be executed.
 	fn proxy_call(real: Self::AssetHubAccountId, call: Self::AssetHubCall) -> Self::AssetHubCall;
 
+	/// Wrap the final transfer asset into the Xcm format.
+	///  params:
+	/// - to: The destination account.
+	/// - amount: The amount of staking currency to be transferred.
+	/// - weight: the weight limit used for XCM.
+	fn finalize_transfer_asset_xcm_message(
+		to: Self::AssetHubAccountId,
+		amount: Self::Balance,
+		reserve: Location,
+		weight: XcmWeight,
+	) -> Xcm<()>;
+
 	/// Wrap the final call into the Xcm format.
 	///  params:
 	/// - call: The call to be executed

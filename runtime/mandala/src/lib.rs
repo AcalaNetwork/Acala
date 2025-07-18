@@ -115,7 +115,6 @@ use runtime_common::{
 	Rate, Ratio, RuntimeBlockLength, RuntimeBlockWeights, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, KSM, LCDOT, LDOT,
 };
-use xcm::prelude::*;
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
@@ -1412,23 +1411,6 @@ parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
 }
 
-pub fn create_x2_parachain_location(index: u16) -> Location {
-	Location::new(
-		1,
-		[
-			Parachain(parachains::asset_hub_polkadot::ID),
-			AccountId32 {
-				network: None,
-				id: Utility::derivative_account_id(
-					Sibling::from(ParachainInfo::get()).into_account_truncating(),
-					index,
-				)
-				.into(),
-			},
-		],
-	)
-}
-
 parameter_types! {
 	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account_truncating();
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
@@ -1503,22 +1485,23 @@ parameter_types! {
 	pub ParachainAccount: AccountId = Sibling::from(ParachainInfo::get()).into_account_truncating();
 }
 
-pub struct SubAccountIndexLocationConvertor;
-impl Convert<u16, Location> for SubAccountIndexLocationConvertor {
-	fn convert(sub_account_index: u16) -> Location {
-		create_x2_parachain_location(sub_account_index)
+pub struct SubAccountIndexAccountIdConvertor;
+impl Convert<u16, AccountId> for SubAccountIndexAccountIdConvertor {
+	fn convert(sub_account_index: u16) -> AccountId {
+		Utility::derivative_account_id(
+			Sibling::from(ParachainInfo::get()).into_account_truncating(),
+			sub_account_index,
+		)
 	}
 }
 
 impl module_xcm_interface::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
-	type StakingCurrencyId = GetStakingCurrencyId;
 	type ParachainAccount = ParachainAccount;
 	type AssetHubUnbondingSlashingSpans = ConstU32<5>;
-	type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
+	type SovereignSubAccountIdConvert = SubAccountIndexAccountIdConvertor;
 	type AssetHubCallBuilder = AssetHubCallBuilder<ParachainInfo, module_assethub::PolkadotAssetHubCall>;
-	type XcmTransfer = XTokens;
 	type AssetHubLocation = xcm_config::AssetHubLocation;
 	type AccountIdToLocation = xcm_config::AccountIdToLocation;
 }
