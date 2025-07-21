@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// * Since XCM V3, relaychain configs 'SafeCallFilter' to filter the call in Transact:
+// * Since XCM V3, xcm executor configs 'SafeCallFilter' to filter the call in Transact:
 // * https://github.com/paritytech/polkadot/blob/master/runtime/polkadot/src/xcm_config.rs
 
 use parity_scale_codec::{Decode, Encode, FullCodec};
@@ -31,13 +31,13 @@ use xcm::{prelude::*, v3::Weight as XcmWeight};
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum BalancesCall {
 	#[codec(index = 3)]
-	TransferKeepAlive(<RelayChainLookup as StaticLookup>::Source, #[codec(compact)] Balance),
+	TransferKeepAlive(<AssetHubLookup as StaticLookup>::Source, #[codec(compact)] Balance),
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
-pub enum UtilityCall<RCC> {
+pub enum UtilityCall<AHC> {
 	#[codec(index = 1)]
-	AsDerivative(u16, RCC),
+	AsDerivative(u16, AHC),
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
@@ -49,7 +49,7 @@ pub enum StakingCall {
 	#[codec(index = 3)]
 	WithdrawUnbonded(u32),
 	#[codec(index = 5)]
-	Nominate(Vec<<RelayChainLookup as StaticLookup>::Source>),
+	Nominate(Vec<<AssetHubLookup as StaticLookup>::Source>),
 }
 
 /// `pallet-xcm` calls.
@@ -62,18 +62,18 @@ pub enum XcmCall {
 }
 
 // Same to `Polkadot` and `Kusama` runtime `Lookup` config.
-pub type RelayChainLookup = AccountIdLookup<AccountId, ()>;
+pub type AssetHubLookup = AccountIdLookup<AccountId, ()>;
 
 /// `pallet-proxy` calls.
 #[derive(Encode, Decode, RuntimeDebug)]
-pub enum ProxyCall<RCC> {
+pub enum ProxyCall<AHC> {
 	/// `proxy(real, force_proxy_type, call)` call. Force proxy type is not supported and
 	/// is always set to `None`.
 	#[codec(index = 0)]
-	Proxy(<RelayChainLookup as StaticLookup>::Source, Option<()>, RCC),
+	Proxy(<AssetHubLookup as StaticLookup>::Source, Option<()>, AHC),
 }
 
-pub trait RelayChainCall: Sized {
+pub trait AssetHubCall: Sized {
 	fn balances(call: BalancesCall) -> Self;
 	fn staking(call: StakingCall) -> Self;
 	fn utility(call: UtilityCall<Self>) -> Self;
@@ -82,41 +82,41 @@ pub trait RelayChainCall: Sized {
 }
 
 pub trait CallBuilder {
-	type RelayChainAccountId: FullCodec;
+	type AssetHubAccountId: FullCodec;
 	type Balance: FullCodec;
-	type RelayChainCall: FullCodec + RelayChainCall;
+	type AssetHubCall: FullCodec + AssetHubCall;
 
 	/// Execute a call, replacing the `Origin` with a sub-account.
 	///  params:
 	/// - call: The call to be executed.
 	/// - index: The index of sub-account to be used as the new origin.
-	fn utility_as_derivative_call(call: Self::RelayChainCall, index: u16) -> Self::RelayChainCall;
+	fn utility_as_derivative_call(call: Self::AssetHubCall, index: u16) -> Self::AssetHubCall;
 
-	/// Bond extra on relay-chain.
+	/// Bond extra on assethub.
 	///  params:
 	/// - amount: The amount of staking currency to bond.
-	fn staking_bond_extra(amount: Self::Balance) -> Self::RelayChainCall;
+	fn staking_bond_extra(amount: Self::Balance) -> Self::AssetHubCall;
 
-	/// Unbond on relay-chain.
+	/// Unbond on assethub.
 	///  params:
 	/// - amount: The amount of staking currency to unbond.
-	fn staking_unbond(amount: Self::Balance) -> Self::RelayChainCall;
+	fn staking_unbond(amount: Self::Balance) -> Self::AssetHubCall;
 
-	/// Withdraw unbonded staking on the relay-chain.
+	/// Withdraw unbonded staking on the assethub.
 	///  params:
 	/// - num_slashing_spans: The number of slashing spans to withdraw from.
-	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelayChainCall;
+	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::AssetHubCall;
 
-	/// Nominate the relay-chain.
+	/// Nominate the assethub.
 	///  params:
 	/// - targets: The target validator list.
-	fn staking_nominate(targets: Vec<Self::RelayChainAccountId>) -> Self::RelayChainCall;
+	fn staking_nominate(targets: Vec<Self::AssetHubAccountId>) -> Self::AssetHubCall;
 
 	/// Transfer Staking currency to another account, disallowing "death".
 	///  params:
 	/// - to: The destination for the transfer
 	/// - amount: The amount of staking currency to be transferred.
-	fn balances_transfer_keep_alive(to: Self::RelayChainAccountId, amount: Self::Balance) -> Self::RelayChainCall;
+	fn balances_transfer_keep_alive(to: Self::AssetHubAccountId, amount: Self::Balance) -> Self::AssetHubCall;
 
 	/// Reserve transfer assets.
 	/// params:
@@ -129,31 +129,41 @@ pub trait CallBuilder {
 		beneficiary: Location,
 		assets: Assets,
 		fee_assets_item: u32,
-	) -> Self::RelayChainCall;
+	) -> Self::AssetHubCall;
 
 	/// Proxy a call with a `real` account without a forced proxy type.
 	/// params:
 	/// - real: The real account.
 	/// - call: The call to be executed.
-	fn proxy_call(real: Self::RelayChainAccountId, call: Self::RelayChainCall) -> Self::RelayChainCall;
+	fn proxy_call(real: Self::AssetHubAccountId, call: Self::AssetHubCall) -> Self::AssetHubCall;
+
+	/// Wrap the final transfer asset into the Xcm format.
+	///  params:
+	/// - to: The destination account.
+	/// - amount: The amount of staking currency to be transferred.
+	/// - reserve: The reserve location.
+	/// - weight: the weight limit used for XCM.
+	fn finalize_transfer_asset_xcm_message(
+		to: Self::AssetHubAccountId,
+		amount: Self::Balance,
+		reserve: Location,
+		weight: XcmWeight,
+	) -> Xcm<()>;
 
 	/// Wrap the final call into the Xcm format.
 	///  params:
 	/// - call: The call to be executed
 	/// - extra_fee: Extra fee (in staking currency) used for buy the `weight`.
 	/// - weight: the weight limit used for XCM.
-	fn finalize_call_into_xcm_message(
-		call: Self::RelayChainCall,
-		extra_fee: Self::Balance,
-		weight: XcmWeight,
-	) -> Xcm<()>;
+	fn finalize_call_into_xcm_message(call: Self::AssetHubCall, extra_fee: Self::Balance, weight: XcmWeight)
+		-> Xcm<()>;
 
 	/// Wrap the final multiple calls into the Xcm format.
 	///  params:
 	/// - calls: the multiple calls and its weight limit to be executed
 	/// - extra_fee: Extra fee (in staking currency) used for buy the `weight`.
 	fn finalize_multiple_calls_into_xcm_message(
-		calls: Vec<(Self::RelayChainCall, XcmWeight)>,
+		calls: Vec<(Self::AssetHubCall, XcmWeight)>,
 		extra_fee: Self::Balance,
 	) -> Xcm<()>;
 }

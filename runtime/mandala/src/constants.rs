@@ -91,6 +91,12 @@ pub mod fee {
 	}
 }
 
+pub mod parachains {
+	pub mod asset_hub_polkadot {
+		pub const ID: u32 = 1000;
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use crate::{constants::fee::base_tx_in_aca, Balance};

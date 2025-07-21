@@ -18,4 +18,4 @@
 
 use super::*;
 
-impl_mock!(module_relaychain::PolkadotRelayChainCall);
+impl_mock!(module_assethub::PolkadotAssetHubCall);

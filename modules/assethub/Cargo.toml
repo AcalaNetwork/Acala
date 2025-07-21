@@ -1,5 +1,5 @@
 [package]
-name = "module-relaychain"
+name = "module-assethub"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }

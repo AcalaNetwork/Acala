@@ -25,8 +25,6 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, Everything, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use orml_traits::xcm_transfer::Transferred;
-use primitives::{CurrencyId, TokenSymbol};
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
 use xcm_builder::{EnsureXcmOrigin, FixedWeightBounds, SignedToAccountId32};
 use xcm_executor::traits::XcmAssetTransfers;
@@ -37,8 +35,6 @@ pub mod polkadot;
 pub type AccountId = AccountId32;
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
-pub const BOB: AccountId = AccountId32::new([2u8; 32]);
-pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
 parameter_types! {
 	pub const UnitWeightCost: XcmWeight = XcmWeight::from_parts(10, 10);
@@ -58,81 +54,16 @@ ord_parameter_types! {
 }
 
 parameter_types! {
-	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const ParachainAccount: AccountId = AccountId32::new([0u8; 32]);
-	pub const ParachainId: module_relaychain::ParaId = module_relaychain::ParaId::new(2000);
-	pub SelfLocation: Location = Location::new(1, Parachain(ParachainId::get().into()));
+	pub const ParachainId: module_assethub::ParaId = module_assethub::ParaId::new(2000);
+	pub const AssetHubId: module_assethub::ParaId = module_assethub::ParaId::new(1000);
+	pub AssetHubLocation: Location = Location::new(1, Parachain(AssetHubId::get().into()));
 }
 
-pub struct SubAccountIndexLocationConvertor;
-impl Convert<u16, Location> for SubAccountIndexLocationConvertor {
-	fn convert(_sub_account_index: u16) -> Location {
-		(Parent, Parachain(2000)).into()
-	}
-}
-
-pub struct MockXcmTransfer;
-impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcmTransfer {
-	fn transfer(
-		_who: AccountId,
-		_currency_id: CurrencyId,
-		_amount: Balance,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	/// Transfer `Asset`
-	fn transfer_multiasset(
-		_who: AccountId,
-		_asset: Asset,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer_with_fee(
-		_who: AccountId,
-		_currency_id: CurrencyId,
-		_amount: Balance,
-		_fee: Balance,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId>, DispatchError> {
-		unimplemented!()
-	}
-
-	/// Transfer `AssetWithFee`
-	fn transfer_multiasset_with_fee(
-		_who: AccountId,
-		_asset: Asset,
-		_fee: Asset,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer_multicurrencies(
-		_who: AccountId,
-		_currencies: Vec<(CurrencyId, Balance)>,
-		_fee_item: u32,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer_multiassets(
-		_who: AccountId,
-		_assets: Assets,
-		_fee: Asset,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
+pub struct SubAccountIndexAccountIdConvertor;
+impl Convert<u16, AccountId> for SubAccountIndexAccountIdConvertor {
+	fn convert(_sub_account_index: u16) -> AccountId {
+		AccountId::new([1u8; 32])
 	}
 }
 
@@ -212,7 +143,7 @@ impl XcmAssetTransfers for MockExec {
 
 #[macro_export]
 macro_rules! impl_mock {
-	($relaychain:ty) => {
+	($assethub:ty) => {
 		pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
 		pub type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -269,13 +200,11 @@ macro_rules! impl_mock {
 		impl Config for Runtime {
 			type RuntimeEvent = RuntimeEvent;
 			type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-			type StakingCurrencyId = GetStakingCurrencyId;
 			type ParachainAccount = ParachainAccount;
-			type RelayChainUnbondingSlashingSpans = ConstU32<28>;
-			type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
-			type RelayChainCallBuilder = module_relaychain::RelayChainCallBuilder<ParachainId, $relaychain>;
-			type XcmTransfer = MockXcmTransfer;
-			type SelfLocation = SelfLocation;
+			type AssetHubUnbondingSlashingSpans = ConstU32<28>;
+			type SovereignSubAccountIdConvert = SubAccountIndexAccountIdConvertor;
+			type AssetHubCallBuilder = module_assethub::AssetHubCallBuilder<ParachainId, $assethub>;
+			type AssetHubLocation = AssetHubLocation;
 			type AccountIdToLocation = AccountIdToLocation;
 		}
 

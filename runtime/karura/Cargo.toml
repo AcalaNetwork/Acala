@@ -120,7 +120,7 @@ module-incentives = { workspace = true }
 module-loans = { workspace = true }
 module-nft = { workspace = true }
 module-prices = { workspace = true }
-module-relaychain = { workspace = true }
+module-assethub = { workspace = true }
 module-session-manager = { workspace = true }
 module-support = { workspace = true }
 module-transaction-pause = { workspace = true }
@@ -261,7 +261,7 @@ std = [
 	"module-loans/std",
 	"module-nft/std",
 	"module-prices/std",
-	"module-relaychain/std",
+	"module-assethub/std",
 	"module-session-manager/std",
 	"module-support/std",
 	"module-transaction-pause/std",

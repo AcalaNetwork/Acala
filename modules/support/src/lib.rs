@@ -29,6 +29,7 @@ use sp_runtime::{
 use sp_std::{prelude::*, result::Result, vec};
 use xcm::prelude::*;
 
+pub mod assethub;
 pub mod bounded;
 pub mod dex;
 pub mod earning;
@@ -37,7 +38,6 @@ pub mod homa;
 pub mod honzon;
 pub mod incentives;
 pub mod mocks;
-pub mod relaychain;
 pub mod stable_asset;
 
 pub use crate::bounded::*;

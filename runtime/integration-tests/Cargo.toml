@@ -66,6 +66,7 @@ xcm = { workspace = true, features = ["std"] }
 xcm-executor = { workspace = true, features = ["std"] }
 xcm-builder = { workspace = true, features = ["std"] }
 pallet-xcm = { workspace = true, features = ["std"] }
+polkadot-parachain-primitives = { workspace = true, features = ["std"] }
 
 # orml
 orml-auction = { workspace = true, features = ["std"] }
@@ -106,7 +107,7 @@ module-support = { workspace = true, features = ["std"] }
 module-xcm-interface = { workspace = true, features = ["std"] }
 module-homa = { workspace = true, features = ["std"] }
 module-session-manager = { workspace = true, features = ["std"] }
-module-relaychain = { workspace = true, features = ["std"] }
+module-assethub = { workspace = true, features = ["std"] }
 
 primitives = { workspace = true, features = ["std"] }
 runtime-common = { workspace = true, features = ["std"] }

@@ -18,4 +18,4 @@
 
 use super::*;
 
-impl_mock!(module_relaychain::KusamaRelayChainCall);
+impl_mock!(module_assethub::KusamaAssetHubCall);

@@ -22,18 +22,18 @@ use sp_std::{fmt::Debug, vec::Vec};
 use xcm::v4::prelude::*;
 
 pub trait HomaSubAccountXcm<AccountId, Balance> {
-	type RelayChainAccountId: Debug + Clone + Ord;
-	/// Cross-chain transfer staking currency to sub account on relaychain.
+	type NomineeId: Debug + Clone + Ord;
+	/// Cross-chain transfer staking currency to sub account on assethub.
 	fn transfer_staking_to_sub_account(sender: &AccountId, sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency and
+	/// Send XCM message to the assethub for sub account to withdraw_unbonded staking currency and
 	/// send it back.
 	fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// Send XCM message to the relaychain for sub account to bond extra.
+	/// Send XCM message to the assethub for sub account to bond extra.
 	fn bond_extra_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// Send XCM message to the relaychain for sub account to unbond.
+	/// Send XCM message to the assethub for sub account to unbond.
 	fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
-	/// Send XCM message to the relaychain for sub account to nominate.
-	fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<Self::RelayChainAccountId>) -> DispatchResult;
+	/// Send XCM message to the assethub for sub account to nominate.
+	fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<Self::NomineeId>) -> DispatchResult;
 	/// The fee of cross-chain transfer is deducted from the recipient.
 	fn get_xcm_transfer_fee() -> Balance;
 	/// The fee of parachain

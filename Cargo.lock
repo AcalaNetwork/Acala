@@ -63,6 +63,7 @@ dependencies = [
  "log",
  "module-aggregated-dex",
  "module-asset-registry",
+ "module-assethub",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -87,7 +88,6 @@ dependencies = [
  "module-nft",
  "module-nominees-election",
  "module-prices",
- "module-relaychain",
  "module-session-manager",
  "module-support",
  "module-transaction-pause",
@@ -2804,6 +2804,7 @@ dependencies = [
  "log",
  "module-aggregated-dex",
  "module-asset-registry",
+ "module-assethub",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -2828,7 +2829,6 @@ dependencies = [
  "module-nft",
  "module-nominees-election",
  "module-prices",
- "module-relaychain",
  "module-session-manager",
  "module-support",
  "module-transaction-pause",
@@ -3216,6 +3216,7 @@ dependencies = [
  "log",
  "module-aggregated-dex",
  "module-asset-registry",
+ "module-assethub",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -3241,7 +3242,6 @@ dependencies = [
  "module-nft",
  "module-nominees-election",
  "module-prices",
- "module-relaychain",
  "module-session-manager",
  "module-support",
  "module-transaction-pause",
@@ -3481,6 +3481,23 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde_json",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "staging-xcm",
+]
+
+[[package]]
+name = "module-assethub"
+version = "2.30.0"
+dependencies = [
+ "acala-primitives",
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "parity-scale-codec",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -4074,23 +4091,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-relaychain"
-version = "2.30.0"
-dependencies = [
- "acala-primitives",
- "cumulus-primitives-core",
- "frame-support",
- "frame-system",
- "module-support",
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "staging-xcm",
-]
-
-[[package]]
 name = "module-session-manager"
 version = "2.30.0"
 dependencies = [
@@ -4187,11 +4187,9 @@ dependencies = [
  "frame-system",
  "insta",
  "log",
+ "module-assethub",
  "module-currencies",
- "module-relaychain",
  "module-support",
- "orml-tokens",
- "orml-traits",
  "pallet-balances",
  "pallet-xcm",
  "parity-scale-codec",
@@ -6496,6 +6494,7 @@ dependencies = [
  "mandala-runtime",
  "module-aggregated-dex",
  "module-asset-registry",
+ "module-assethub",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -6513,7 +6512,6 @@ dependencies = [
  "module-loans",
  "module-nft",
  "module-prices",
- "module-relaychain",
  "module-session-manager",
  "module-support",
  "module-transaction-payment",
@@ -6554,6 +6552,7 @@ dependencies = [
  "pallet-utility",
  "pallet-xcm",
  "parity-scale-codec",
+ "polkadot-parachain-primitives",
  "runtime-common",
  "serde_json",
  "smallvec",
