@@ -86,6 +86,7 @@ pub mod extensions {
 
 		fn asset_info(asset: Self::AssetId) -> Option<Self::AssetInfo> {
 			if let Ok(asset) = <CurrencyId as parity_scale_codec::Decode>::decode(&mut &asset[..]) {
+				if asset.name().is_some() && asset.symbol().is_some() && asset.decimals().is_some() {
 				return Some(Self::AssetInfo {
 					asset_id: asset.encode(),
 					name: asset.name().expect("name is not empty").encode(),
