@@ -658,6 +658,18 @@ pub enum AssetIds {
 	NativeAssetId(CurrencyId),
 }
 
+impl From<CurrencyId> for AssetIds {
+	fn from(currency_id: CurrencyId) -> Self {
+		match currency_id {
+			CurrencyId::Erc20(address) => AssetIds::Erc20(address),
+			CurrencyId::StableAssetPoolToken(stable_asset_pool_id) => AssetIds::StableAssetId(stable_asset_pool_id),
+			CurrencyId::ForeignAsset(foreign_asset_id) => AssetIds::ForeignAssetId(foreign_asset_id),
+			// Token, DexShare, and LiquidCrowdloan are considered native assets
+			_ => AssetIds::NativeAssetId(currency_id),
+		}
+	}
+}
+
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
 pub struct AssetMetadata<Balance> {
 	pub name: Vec<u8>,

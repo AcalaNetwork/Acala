@@ -1,8 +1,20 @@
+use parity_scale_codec::{Decode, Encode};
 use pvq_extension::{extensions_impl, metadata::Metadata, ExtensionsExecutor, InvokeSource};
+use scale_info::TypeInfo;
+use sp_std::prelude::*;
+
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, TypeInfo)]
+pub struct AssetInfo {
+	pub asset_id: Vec<u8>,
+	pub name: Vec<u8>,
+	pub symbol: Vec<u8>,
+	pub decimals: u8,
+}
 
 #[extensions_impl]
 pub mod extensions {
 	use parity_scale_codec::Encode;
+	use primitives::{currency::AssetIds, CurrencyId};
 	#[extensions_impl::impl_struct]
 	pub struct ExtensionImpl;
 
@@ -10,6 +22,7 @@ pub mod extensions {
 	impl pvq_extension_swap::extension::ExtensionSwap for ExtensionImpl {
 		type AssetId = crate::Vec<u8>;
 		type Balance = crate::Balance;
+		type AssetInfo = super::AssetInfo;
 		fn quote_price_tokens_for_exact_tokens(
 			asset1: Self::AssetId,
 			asset2: Self::AssetId,
@@ -64,18 +77,27 @@ pub mod extensions {
 			None
 		}
 
-		fn list_pools() -> scale_info::prelude::vec::Vec<(Self::AssetId, Self::AssetId, Self::Balance, Self::Balance)> {
+		fn list_pools() -> scale_info::prelude::vec::Vec<(Self::AssetId, Self::AssetId)> {
 			let pools = module_dex::LiquidityPool::<crate::Runtime>::iter()
-				.map(|(trading_pair, (balance1, balance2))| {
-					(
-						trading_pair.first().encode(),
-						trading_pair.second().encode(),
-						balance1,
-						balance2,
-					)
-				})
+				.map(|(trading_pair, _)| (trading_pair.first().encode(), trading_pair.second().encode()))
 				.collect();
 			pools
+		}
+
+		fn asset_info(asset: Self::AssetId) -> Option<Self::AssetInfo> {
+			if let Ok(asset) = <CurrencyId as parity_scale_codec::Decode>::decode(&mut &asset[..]) {
+				let asset_ids = AssetIds::from(asset.clone());
+				let asset_info = crate::AssetRegistry::asset_metadatas(asset_ids);
+				if let Some(asset_info) = asset_info {
+					return Some(Self::AssetInfo {
+						asset_id: asset.encode(),
+						name: asset_info.name,
+						symbol: asset_info.symbol,
+						decimals: asset_info.decimals,
+					});
+				}
+			}
+			None
 		}
 	}
 }
