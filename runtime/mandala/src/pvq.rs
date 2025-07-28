@@ -14,7 +14,7 @@ pub struct AssetInfo {
 #[extensions_impl]
 pub mod extensions {
 	use parity_scale_codec::Encode;
-	use primitives::{currency::TokenInfo, CurrencyId};
+	use primitives::currency::{AssetIds, CurrencyId, TokenInfo};
 	#[extensions_impl::impl_struct]
 	pub struct ExtensionImpl;
 
@@ -86,13 +86,26 @@ pub mod extensions {
 
 		fn asset_info(asset: Self::AssetId) -> Option<Self::AssetInfo> {
 			if let Ok(asset) = <CurrencyId as parity_scale_codec::Decode>::decode(&mut &asset[..]) {
-				if asset.name().is_some() && asset.symbol().is_some() && asset.decimals().is_some() {
-				return Some(Self::AssetInfo {
-					asset_id: asset.encode(),
-					name: asset.name().expect("name is not empty").encode(),
-					symbol: asset.symbol().expect("symbol is not empty").encode(),
-					decimals: asset.decimals().expect("decimal is not empty"),
-				});
+				if asset.is_token_currency_id() {
+					return Some(Self::AssetInfo {
+						asset_id: asset.encode(),
+						name: asset.name().expect("name is not empty").encode(),
+						symbol: asset.symbol().expect("symbol is not empty").encode(),
+						decimals: asset.decimals().expect("decimal is not empty"),
+					});
+				} else {
+					// Query AssetRegistry
+					let asset_id: AssetIds = asset.into();
+					let asset_info = crate::AssetRegistry::asset_metadatas(asset_id);
+					if let Some(asset_info) = asset_info {
+						return Some(Self::AssetInfo {
+							asset_id: asset.encode(),
+							name: asset_info.name,
+							symbol: asset_info.symbol,
+							decimals: asset_info.decimals,
+						});
+					}
+				}
 			}
 			None
 		}
