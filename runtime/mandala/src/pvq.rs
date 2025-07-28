@@ -89,8 +89,8 @@ pub mod extensions {
 				if asset.is_token_currency_id() {
 					return Some(Self::AssetInfo {
 						asset_id: asset.encode(),
-						name: asset.name().expect("name is not empty").encode(),
-						symbol: asset.symbol().expect("symbol is not empty").encode(),
+						name: asset.name().expect("name is not empty").as_bytes().to_vec(),
+						symbol: asset.symbol().expect("symbol is not empty").as_bytes().to_vec(),
 						decimals: asset.decimals().expect("decimal is not empty"),
 					});
 				} else {
