@@ -13,6 +13,7 @@ pub struct AssetInfo {
 
 #[extensions_impl]
 pub mod extensions {
+	use alloc::collections::BTreeMap;
 	use parity_scale_codec::Encode;
 	use primitives::currency::{AssetIds, CurrencyId, TokenInfo};
 	#[extensions_impl::impl_struct]
@@ -108,6 +109,22 @@ pub mod extensions {
 				}
 			}
 			None
+		}
+
+		fn assets_info() -> BTreeMap<Self::AssetId, Self::AssetInfo> {
+			let mut assets = BTreeMap::new();
+			for (asset_id, asset_info) in crate::AssetRegistry::<crate::Runtime>::iter() {
+				assets.insert(
+					asset_id.encode(),
+					Self::AssetInfo {
+						asset_id: asset_id.encode(),
+						name: asset_info.name,
+						symbol: asset_info.symbol,
+						decimals: asset_info.decimals,
+					},
+				);
+			}
+			assets
 		}
 	}
 }
