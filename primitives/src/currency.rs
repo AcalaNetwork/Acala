@@ -670,6 +670,17 @@ impl From<CurrencyId> for AssetIds {
 	}
 }
 
+impl From<AssetIds> for CurrencyId {
+	fn from(asset_ids: AssetIds) -> Self {
+		match asset_ids {
+			AssetIds::Erc20(address) => CurrencyId::Erc20(address),
+			AssetIds::StableAssetId(stable_asset_pool_id) => CurrencyId::StableAssetPoolToken(stable_asset_pool_id),
+			AssetIds::ForeignAssetId(foreign_asset_id) => CurrencyId::ForeignAsset(foreign_asset_id),
+			AssetIds::NativeAssetId(currency_id) => currency_id,
+		}
+	}
+}
+
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
 pub struct AssetMetadata<Balance> {
 	pub name: Vec<u8>,
