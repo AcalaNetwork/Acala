@@ -1685,7 +1685,7 @@ impl<'config, S: StackState<'config>, P: PrecompileSet> PrecompileHandle
 		self.context
 	}
 
-	/// Retreive the address of the EOA that originated the transaction.
+	/// Retrieve the address of the EOA that originated the transaction.
 	fn origin(&self) -> H160 {
 		self.executor.state.origin()
 	}
