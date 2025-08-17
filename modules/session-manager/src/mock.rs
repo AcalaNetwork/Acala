@@ -70,6 +70,7 @@ impl pallet_session::Config for Runtime {
 	type SessionHandler = TestSessionHandler;
 	type Keys = MockSessionKeys;
 	type WeightInfo = ();
+	type DisablingStrategy = ();
 }
 
 impl session_manager::Config for Runtime {

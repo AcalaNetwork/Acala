@@ -403,6 +403,7 @@ mod tests {
 				21_000_000,
 				21_000_000,
 				vec![],
+				vec![],
 				<Test as module_evm::Config>::config(),
 			)
 			.unwrap();

@@ -28,7 +28,7 @@ use primitives::{define_combined_task, task::TaskResult, Nonce};
 use sp_runtime::BuildStorage;
 
 use super::*;
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use scale_info::TypeInfo;
 
 pub const BASE_WEIGHT: Weight = Weight::from_parts(1_000_000, 0);
@@ -69,7 +69,7 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 // Mock dispatachable tasks
-#[derive(Clone, Debug, PartialEq, Encode, Decode, TypeInfo)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 pub enum BalancesTask {
 	#[codec(index = 0)]
 	OnIdle,
@@ -84,7 +84,7 @@ impl DispatchableTask for BalancesTask {
 	}
 }
 
-#[derive(Clone, Debug, PartialEq, Encode, Decode, TypeInfo)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 pub enum HomaLiteTask {
 	#[codec(index = 0)]
 	OnIdle,
@@ -100,7 +100,7 @@ impl DispatchableTask for HomaLiteTask {
 }
 
 define_combined_task! {
-	#[derive(Clone, Debug, PartialEq, Encode, Decode, TypeInfo)]
+	#[derive(Clone, Debug, PartialEq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 	pub enum ScheduledTasks {
 		BalancesTask(BalancesTask),
 		HomaLiteTask(HomaLiteTask),

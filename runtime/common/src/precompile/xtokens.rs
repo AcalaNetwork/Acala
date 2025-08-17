@@ -32,7 +32,7 @@ use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::{
 	prelude::*,
-	v4::{Asset, Assets, Location},
+	v5::{Asset, Assets, Location},
 };
 
 /// The `Xtokens` impl precompile.
@@ -586,7 +586,7 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedLocation = VersionedLocation::V4(Location::new(
+			let dest: VersionedLocation = VersionedLocation::V5(Location::new(
 				1,
 				[
 					Parachain(2002),
@@ -598,7 +598,7 @@ mod tests {
 			));
 			assert_eq!(
 				dest.encode(),
-				hex!("04010200491f01000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05010200491f01000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Unlimited;
@@ -653,9 +653,9 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let asset: VersionedAsset = (Here, 1_000_000_000_000u128).into();
-			assert_eq!(asset.encode(), hex!("04000000070010a5d4e8"));
+			assert_eq!(asset.encode(), hex!("05000000070010a5d4e8"));
 
-			let dest: VersionedLocation = VersionedLocation::V4(
+			let dest: VersionedLocation = VersionedLocation::V5(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -664,7 +664,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -717,7 +717,7 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedLocation = VersionedLocation::V4(
+			let dest: VersionedLocation = VersionedLocation::V5(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -726,7 +726,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -780,12 +780,12 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let asset: VersionedAsset = (Here, 1_000_000_000_000u128).into();
-			assert_eq!(asset.encode(), hex!("04000000070010a5d4e8"));
+			assert_eq!(asset.encode(), hex!("05000000070010a5d4e8"));
 
 			let fee: VersionedAsset = (Here, 1_000_000).into();
-			assert_eq!(fee.encode(), hex!("0400000002093d00"));
+			assert_eq!(fee.encode(), hex!("0500000002093d00"));
 
-			let dest: VersionedLocation = VersionedLocation::V4(
+			let dest: VersionedLocation = VersionedLocation::V5(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -794,7 +794,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -853,7 +853,7 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedLocation = VersionedLocation::V4(
+			let dest: VersionedLocation = VersionedLocation::V5(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -862,7 +862,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -927,9 +927,9 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let assets: VersionedAssets = VersionedAssets::from(Assets::from((Here, 1_000_000_000_000u128)));
-			assert_eq!(assets.encode(), hex!("0404000000070010a5d4e8"));
+			assert_eq!(assets.encode(), hex!("0504000000070010a5d4e8"));
 
-			let dest: VersionedLocation = VersionedLocation::V4(
+			let dest: VersionedLocation = VersionedLocation::V5(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -938,7 +938,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));

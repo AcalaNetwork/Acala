@@ -48,7 +48,7 @@ const LOG_TARGET: &str = "xcm-interface";
 pub mod module {
 	use super::*;
 
-	#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, TypeInfo)]
+	#[derive(Encode, Decode, DecodeWithMemTracking, Eq, PartialEq, Clone, RuntimeDebug, TypeInfo)]
 	pub enum XcmInterfaceOperation {
 		// PalletXcm transfer
 		XcmTransfer,

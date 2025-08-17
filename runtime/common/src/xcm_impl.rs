@@ -29,10 +29,10 @@ use primitives::{evm::EvmAddress, Balance, CurrencyId};
 use sp_core::bounded::BoundedVec;
 use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
 use sp_std::{marker::PhantomData, prelude::*};
-use xcm::v4::{prelude::*, Assets, Weight as XcmWeight};
+use xcm::v5::{prelude::*, Assets, Weight as XcmWeight};
 use xcm_builder::TakeRevenue;
 use xcm_executor::{
-	traits::{DropAssets, WeightTrader, XcmAssetTransfers},
+	traits::{DropAssets, FeeManager, FeeReason, WeightTrader, XcmAssetTransfers},
 	AssetsInHolding,
 };
 
@@ -276,6 +276,18 @@ impl<Config: xcm_executor::Config, AccountId, Balance, AccountIdConvert, EVMBrid
 	type IsReserve = Config::IsReserve;
 	type IsTeleporter = Config::IsTeleporter;
 	type AssetTransactor = Config::AssetTransactor;
+}
+
+// https://github.com/paritytech/polkadot-sdk/pull/5363
+// We have not configured `xcm_executor::Config::FeeManager`, there is no logic here.
+impl<Config: xcm_executor::Config, AccountId, Balance, AccountIdConvert, EVMBridge> FeeManager
+	for XcmExecutor<Config, AccountId, Balance, AccountIdConvert, EVMBridge>
+{
+	fn is_waived(_origin: Option<&Location>, _: FeeReason) -> bool {
+		false
+	}
+
+	fn handle_fee(_assets: Assets, _: Option<&XcmContext>, _: FeeReason) {}
 }
 
 /// Convert `AccountKey20` to `AccountId`

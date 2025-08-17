@@ -150,7 +150,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
 		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
-		let value: u8 = U256::from(info.value.as_slice())
+		let value: u8 = U256::from_big_endian(info.value.as_slice())
 			.try_into()
 			.map_err(|_| ArithmeticError::Overflow)?;
 		Ok(value)
@@ -174,7 +174,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
 		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
-		let value: u128 = U256::from(info.value.as_slice())
+		let value: u128 = U256::from_big_endian(info.value.as_slice())
 			.try_into()
 			.map_err(|_| ArithmeticError::Overflow)?;
 		let supply = value.try_into().map_err(|_| ArithmeticError::Overflow)?;
@@ -200,7 +200,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
-		let value: u128 = U256::from(info.value.as_slice())
+		let value: u128 = U256::from_big_endian(info.value.as_slice())
 			.try_into()
 			.map_err(|_| ArithmeticError::Overflow)?;
 		let balance = value.try_into().map_err(|_| ArithmeticError::Overflow)?;
@@ -235,7 +235,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 
 		// return value is true.
 		let mut bytes = [0u8; 32];
-		U256::from(1).to_big_endian(&mut bytes);
+		U256::from(1).write_as_big_endian(&mut bytes);
 
 		// Check return value to make sure not calling on empty contracts.
 		ensure!(

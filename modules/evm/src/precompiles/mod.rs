@@ -196,6 +196,10 @@ pub mod tests {
 			self.input
 		}
 
+		fn origin(&self) -> H160 {
+			unimplemented!()
+		}
+
 		fn context(&self) -> &Context {
 			self.context
 		}
@@ -206,6 +210,10 @@ pub mod tests {
 
 		fn gas_limit(&self) -> Option<u64> {
 			self.gas_limit
+		}
+
+		fn is_contract_being_constructed(&self, _address: H160) -> bool {
+			unimplemented!()
 		}
 	}
 }

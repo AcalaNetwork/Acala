@@ -47,7 +47,7 @@ use scale_info::prelude::format;
 use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedU128};
 use sp_std::{boxed::Box, vec::Vec};
 
-use xcm::{v3, v4::prelude::*, VersionedLocation};
+use xcm::{v3, v4, v5::prelude::*, VersionedLocation};
 
 mod mock;
 mod tests;
@@ -369,7 +369,8 @@ impl<T: Config> Pallet<T> {
 		metadata: &AssetMetadata<BalanceOf<T>>,
 	) -> Result<ForeignAssetId, DispatchError> {
 		let foreign_asset_id = Self::get_next_foreign_asset_id()?;
-		let v3_location = v3::Location::try_from(location.clone()).map_err(|()| Error::<T>::BadLocation)?;
+		let v4_location = v4::Location::try_from(location.clone()).map_err(|()| Error::<T>::BadLocation)?;
+		let v3_location = v3::Location::try_from(v4_location).map_err(|()| Error::<T>::BadLocation)?;
 		LocationToCurrencyIds::<T>::try_mutate(v3_location, |maybe_currency_ids| -> DispatchResult {
 			ensure!(maybe_currency_ids.is_none(), Error::<T>::LocationExisted);
 			*maybe_currency_ids = Some(CurrencyId::ForeignAsset(foreign_asset_id));
@@ -398,7 +399,8 @@ impl<T: Config> Pallet<T> {
 		location: &Location,
 		metadata: &AssetMetadata<BalanceOf<T>>,
 	) -> DispatchResult {
-		let v3_location = v3::Location::try_from(location.clone()).map_err(|()| Error::<T>::BadLocation)?;
+		let v4_location = v4::Location::try_from(location.clone()).map_err(|()| Error::<T>::BadLocation)?;
+		let v3_location = v3::Location::try_from(v4_location).map_err(|()| Error::<T>::BadLocation)?;
 		ForeignAssetLocations::<T>::try_mutate(foreign_asset_id, |maybe_locations| -> DispatchResult {
 			let old_locations = maybe_locations.as_mut().ok_or(Error::<T>::AssetIdNotExists)?;
 
@@ -534,11 +536,15 @@ impl<T: Config> AssetIdMapping<ForeignAssetId, Location, AssetMetadata<BalanceOf
 	}
 
 	fn get_location(foreign_asset_id: ForeignAssetId) -> Option<Location> {
-		Pallet::<T>::foreign_asset_locations(foreign_asset_id).map(|l| l.try_into().ok())?
+		Pallet::<T>::foreign_asset_locations(foreign_asset_id).map(|l| {
+			let v4_location = v4::Location::try_from(l).ok()?;
+			Location::try_from(v4_location).ok()
+		})?
 	}
 
 	fn get_currency_id(location: Location) -> Option<CurrencyId> {
-		let v3_location = v3::Location::try_from(location).ok()?;
+		let v4_location = v4::Location::try_from(location).ok()?;
+		let v3_location = v3::Location::try_from(v4_location).ok()?;
 		Pallet::<T>::location_to_currency_ids(v3_location)
 	}
 }
@@ -560,7 +566,8 @@ where
 	BalanceOf<T>: Into<u128>,
 {
 	fn calculate_rate(location: Location) -> Option<Ratio> {
-		let v3_location = v3::Location::try_from(location).ok()?;
+		let v4_location = v4::Location::try_from(location).ok()?;
+		let v3_location = v3::Location::try_from(v4_location).ok()?;
 		if let Some(CurrencyId::ForeignAsset(foreign_asset_id)) = Pallet::<T>::location_to_currency_ids(v3_location) {
 			if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::ForeignAssetId(foreign_asset_id)) {
 				let minimum_balance = asset_metadata.minimal_balance.into();

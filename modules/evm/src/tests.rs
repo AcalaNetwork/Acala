@@ -160,6 +160,7 @@ fn should_create_and_call_contract() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
@@ -185,10 +186,11 @@ fn should_create_and_call_contract() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 		assert_eq!(
-			U256::from(result.value.as_slice()),
+			U256::from_big_endian(result.value.as_slice()),
 			6.into(),
 		);
 
@@ -235,6 +237,7 @@ fn create_reverts_with_message() {
 			12_000_000,
 			12_000_000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -269,6 +272,7 @@ fn call_reverts_with_message() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 
@@ -290,6 +294,7 @@ fn call_reverts_with_message() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
@@ -340,6 +345,7 @@ fn should_publish_payable_contract() {
 			1000000,
 			100000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -361,6 +367,7 @@ fn should_publish_payable_contract() {
 			convert_decimals_to_evm(amount),
 			100000,
 			100000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -429,6 +436,7 @@ fn should_transfer_from_contract() {
 			10000000,
 			10000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.expect("create shouldn't fail");
@@ -456,6 +464,7 @@ fn should_transfer_from_contract() {
 			convert_decimals_to_evm(amount),
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -486,6 +495,7 @@ fn should_transfer_from_contract() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -514,6 +524,7 @@ fn should_transfer_from_contract() {
 			convert_decimals_to_evm(amount),
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -545,6 +556,7 @@ fn should_transfer_from_contract() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -574,12 +586,13 @@ fn should_transfer_from_contract() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(
-			U256::from(result.value.as_slice()),
+			U256::from_big_endian(result.value.as_slice()),
 			U256::from(convert_decimals_to_evm(balance(charlie())))
 		);
 	})
@@ -610,6 +623,7 @@ fn contract_should_publish_contracts() {
 			1000000000,
 			1000000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -638,6 +652,7 @@ fn contract_should_publish_contracts() {
 			convert_decimals_to_evm(amount),
 			1000000000,
 			1000000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -688,6 +703,7 @@ fn contract_should_publish_contracts_without_payable() {
 			1000000000,
 			1000000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -710,6 +726,7 @@ fn contract_should_publish_contracts_without_payable() {
 			0,
 			1000000000,
 			1000000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -755,6 +772,7 @@ fn publish_factory() {
 			0,
 			2_000_000,
 			5000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -946,6 +964,7 @@ fn should_transfer_maintainer() {
 			12_000_000,
 			12_000_000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1017,13 +1036,14 @@ fn should_publish() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 		assert_eq!(result.used_storage, 0);
 
 		// create contract
-		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![],<Runtime as Config>::config()).unwrap();
+		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![], vec![], <Runtime as Config>::config()).unwrap();
 		let contract_address = result.value;
 
 		assert_eq!(result.used_storage, 284);
@@ -1045,6 +1065,7 @@ fn should_publish() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		));
@@ -1080,6 +1101,7 @@ fn should_publish() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		));
 
@@ -1104,6 +1126,7 @@ fn should_publish() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		));
@@ -1135,7 +1158,7 @@ fn should_publish_free() {
 		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
 
 		// create contract
-		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![], <Runtime as Config>::config()).unwrap();
+		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![], vec![], <Runtime as Config>::config()).unwrap();
 		let contract_address = result.value;
 
 		// multiply(2, 3)
@@ -1175,6 +1198,7 @@ fn should_publish_free() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		));
@@ -1265,6 +1289,7 @@ fn should_set_code() {
 			0,
 			21_000_000,
 			21_000_000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -1418,6 +1443,7 @@ fn should_selfdestruct_without_schedule_task() {
 			1000000,
 			100000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1517,6 +1543,7 @@ fn should_selfdestruct_with_schedule_task() {
 			1000000,
 			100000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1558,7 +1585,7 @@ fn should_selfdestruct_with_schedule_task() {
 			let mut input: Vec<u8> = from_hex("0x7b8d56e3").unwrap();
 
 			let mut buf = [0u8; 32];
-			U256::from(i).to_big_endian(&mut buf);
+			U256::from(i).write_as_big_endian(&mut buf);
 			input.append(&mut H256::from_slice(&buf).as_bytes().to_vec()); // key
 			input.append(&mut H256::from_slice(&buf).as_bytes().to_vec()); // value
 
@@ -1670,6 +1697,7 @@ fn storage_limit_should_work() {
 			200_000,
 			1000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1731,6 +1759,7 @@ fn storage_limit_should_work() {
 			1000000000,
 			1000000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1785,6 +1814,7 @@ fn storage_limit_should_work() {
 			1000000000,
 			452,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1827,6 +1857,7 @@ fn evm_execute_mode_should_work() {
 			0,
 			1000000000,
 			1000000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -2039,6 +2070,7 @@ fn should_update_storage() {
 			500000,
 			100000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -2092,6 +2124,7 @@ fn should_update_storage() {
 			1000000,
 			STORAGE_SIZE,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -2110,6 +2143,7 @@ fn should_update_storage() {
 			0,
 			1000000,
 			STORAGE_SIZE,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -2531,6 +2565,7 @@ fn strict_call_works() {
 			500000,
 			100000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -2567,7 +2602,7 @@ fn strict_call_works() {
           post_info: PostDispatchInfo {
               actual_weight: Some(
                   Weight {
-                      ref_time: 1491004635,
+                      ref_time: 1482966087,
                       proof_size: 11183,
                   },
               ),
@@ -2621,7 +2656,7 @@ fn strict_call_works() {
           post_info: PostDispatchInfo {
               actual_weight: Some(
                   Weight {
-                      ref_time: 1490048337,
+                      ref_time: 1482009789,
                       proof_size: 11183,
                   },
               ),
@@ -2721,7 +2756,8 @@ fn aggregated_storage_logs_works() {
 		let cost_per_byte = convert_decimals_from_evm(StorageDepositPerByte::get()).unwrap_or_default();
 
 		// create contract
-		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 500000, 100000, vec![], config).unwrap();
+		let result =
+			<Runtime as Config>::Runner::create(alice(), contract, 0, 500000, 100000, vec![], vec![], config).unwrap();
 
 		let contract_address = result.value;
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
@@ -2734,6 +2770,7 @@ fn aggregated_storage_logs_works() {
 			0,
 			30000,
 			0,
+			vec![],
 			vec![],
 			config,
 		)
