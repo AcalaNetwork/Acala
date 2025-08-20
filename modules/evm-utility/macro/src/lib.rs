@@ -47,10 +47,10 @@ pub fn generate_function_selector(_: TokenStream, input: TokenStream) -> TokenSt
 					attrs: Default::default(),
 				}));
 			} else {
-				panic!("Not method string: `{:?}`", lit);
+				panic!("Not method string: `{lit:?}`");
 			}
 		} else {
-			panic!("Not enum: `{:?}`", variant);
+			panic!("Not enum: `{variant:?}`");
 		}
 	}
 
