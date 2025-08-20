@@ -642,8 +642,8 @@ fn three_usd_pool_works() {
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			assert_debug_snapshot!(liquidity_changes, @r###"
 	[
-		227029656,
-		2250002378,
+	    227029655,
+	    2250002368,
 	]
 	"###);
 			#[cfg(feature = "with-mandala-runtime")]

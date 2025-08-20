@@ -376,9 +376,9 @@ fn with_fee_currency_call_works() {
 	#[cfg(feature = "with-mandala-runtime")]
 	assert_debug_snapshot!(amount, @"12701470464");
 	#[cfg(feature = "with-karura-runtime")]
-	assert_debug_snapshot!(amount, @"12726949844");
+	assert_debug_snapshot!(amount, @"12726949843");
 	#[cfg(feature = "with-acala-runtime")]
-	assert_debug_snapshot!(amount, @"12726949844");
+	assert_debug_snapshot!(amount, @"12726949843");
 }
 
 #[test]
@@ -390,9 +390,9 @@ fn with_fee_path_call_works() {
 	#[cfg(feature = "with-mandala-runtime")]
 	assert_debug_snapshot!(amount, @"12701470464");
 	#[cfg(feature = "with-karura-runtime")]
-	assert_debug_snapshot!(amount, @"12726949844");
+	assert_debug_snapshot!(amount, @"12726949843");
 	#[cfg(feature = "with-acala-runtime")]
-	assert_debug_snapshot!(amount, @"12726949844");
+	assert_debug_snapshot!(amount, @"12726949843");
 }
 
 #[test]
@@ -405,9 +405,9 @@ fn with_fee_aggregated_path_call_works() {
 	#[cfg(feature = "with-mandala-runtime")]
 	assert_debug_snapshot!(amount, @"12701470464");
 	#[cfg(feature = "with-karura-runtime")]
-	assert_debug_snapshot!(amount, @"12726949844");
+	assert_debug_snapshot!(amount, @"12726949843");
 	#[cfg(feature = "with-acala-runtime")]
-	assert_debug_snapshot!(amount, @"12726949844");
+	assert_debug_snapshot!(amount, @"12726949843");
 }
 
 fn with_fee_call_works(

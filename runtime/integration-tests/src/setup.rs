@@ -36,13 +36,12 @@ pub use module_support::{
 pub use orml_traits::{location::RelativeLocations, Change, GetByKey, MultiCurrency};
 
 pub use insta::assert_debug_snapshot;
-pub use primitives::{currency::*, evm::CHAIN_ID_MANDALA};
+pub use primitives::currency::*;
 use sp_consensus_aura::AURA_ENGINE_ID;
 pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Header, TransactionExtension, Zero},
-	transaction_validity::TransactionSource::External,
 	BuildStorage, Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
 
@@ -65,8 +64,10 @@ mod mandala_imports {
 		TransactionPayment, TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, TxFeePerGas, Vesting, EVM,
 		NFT,
 	};
+	pub use primitives::evm::CHAIN_ID_MANDALA;
 	use primitives::TradingPair;
 	use runtime_common::{ACA, AUSD, DOT, LDOT};
+	pub use sp_runtime::transaction_validity::TransactionSource::External;
 	use sp_runtime::Percent;
 
 	parameter_types! {
@@ -111,7 +112,7 @@ mod karura_imports {
 		Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, TxExtension, TxFeePerGas, Utility,
 		Vesting, XTokens, XcmInterface, EVM, NFT,
 	};
-	use primitives::evm::CHAIN_ID_KARURA_TESTNET;
+	pub use primitives::evm::CHAIN_ID_KARURA_TESTNET;
 	use primitives::TradingPair;
 	use runtime_common::{KAR, KSM, KUSD, LKSM};
 	use sp_runtime::{traits::AccountIdConversion, Percent};
@@ -158,7 +159,7 @@ mod acala_imports {
 		Vesting, XTokens, XcmInterface, EVM, NFT,
 	};
 	use frame_support::parameter_types;
-	use primitives::evm::CHAIN_ID_ACALA_TESTNET;
+	pub use primitives::evm::CHAIN_ID_ACALA_TESTNET;
 	use primitives::TradingPair;
 	use runtime_common::{ACA, AUSD, DOT, LCDOT, LDOT};
 	use sp_runtime::traits::AccountIdConversion;
