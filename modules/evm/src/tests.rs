@@ -3103,6 +3103,7 @@ fn tracer_works() {
 				500000,
 				100000,
 				vec![],
+				vec![],
 				<Runtime as Config>::config(),
 			).unwrap()
 		});

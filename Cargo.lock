@@ -2032,27 +2032,12 @@ name = "ethabi"
 version = "18.0.0"
 source = "git+https://github.com/AcalaNetwork/ethabi?branch=acala#6e6ef9b3712aec4ad53193281ca0d92dd217066c"
 dependencies = [
- "ethereum-types 0.15.1",
+ "ethereum-types",
  "hex",
  "serde",
  "sha3",
  "thiserror",
  "uint 0.10.0",
-]
-
-[[package]]
-name = "ethbloom"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c22d4b5885b6aa2fe5e8b9329fb8d232bf739e434e6b87347c63bdd00c120f60"
-dependencies = [
- "crunchy",
- "fixed-hash",
- "impl-codec 0.6.0",
- "impl-rlp 0.3.0",
- "impl-serde 0.4.0",
- "scale-info",
- "tiny-keccak",
 ]
 
 [[package]]
@@ -2064,28 +2049,10 @@ dependencies = [
  "crunchy",
  "fixed-hash",
  "impl-codec 0.7.1",
- "impl-rlp 0.4.0",
+ "impl-rlp",
  "impl-serde 0.5.0",
  "scale-info",
  "tiny-keccak",
-]
-
-[[package]]
-name = "ethereum"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e04d24d20b8ff2235cffbf242d5092de3aa45f77c5270ddbfadd2778ca13fea"
-dependencies = [
- "bytes",
- "ethereum-types 0.14.1",
- "hash-db",
- "hash256-std-hasher",
- "parity-scale-codec",
- "rlp 0.5.2",
- "scale-info",
- "serde",
- "sha3",
- "trie-root",
 ]
 
 [[package]]
@@ -2095,12 +2062,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ee371ebb7479ed3258617557ab0b3247e741075cb6b02b820d188f68da44441"
 dependencies = [
  "bytes",
- "ethereum-types 0.15.1",
+ "ethereum-types",
  "hash-db",
  "hash256-std-hasher",
  "k256",
  "parity-scale-codec",
- "rlp 0.6.1",
+ "rlp",
  "scale-info",
  "serde",
  "sha3",
@@ -2109,30 +2076,14 @@ dependencies = [
 
 [[package]]
 name = "ethereum-types"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02d215cbf040552efcbe99a38372fe80ab9d00268e20012b79fcd0f073edd8ee"
-dependencies = [
- "ethbloom 0.13.0",
- "fixed-hash",
- "impl-codec 0.6.0",
- "impl-rlp 0.3.0",
- "impl-serde 0.4.0",
- "primitive-types 0.12.2",
- "scale-info",
- "uint 0.9.5",
-]
-
-[[package]]
-name = "ethereum-types"
 version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ab15ed80916029f878e0267c3a9f92b67df55e79af370bf66199059ae2b4ee3"
 dependencies = [
- "ethbloom 0.14.1",
+ "ethbloom",
  "fixed-hash",
  "impl-codec 0.7.1",
- "impl-rlp 0.4.0",
+ "impl-rlp",
  "impl-serde 0.5.0",
  "primitive-types 0.13.1",
  "scale-info",
@@ -2143,7 +2094,7 @@ dependencies = [
 name = "ethjson"
 version = "0.1.0"
 dependencies = [
- "ethereum-types 0.14.1",
+ "ethereum-types",
  "maplit",
  "rustc-hex",
  "serde",
@@ -2164,14 +2115,14 @@ checksum = "b54f188e7563c1702ecefdef92c8b2c4be8941b84a50684907a747f87121aace"
 dependencies = [
  "auto_impl",
  "environmental",
- "ethereum 0.18.2",
+ "ethereum",
  "evm-core",
  "evm-gasometer",
  "evm-runtime",
  "log",
  "parity-scale-codec",
  "primitive-types 0.13.1",
- "rlp 0.6.1",
+ "rlp",
  "scale-info",
  "serde",
  "sha3",
@@ -2207,7 +2158,7 @@ version = "0.13.1"
 dependencies = [
  "acala-primitives",
  "env_logger",
- "ethereum 0.15.0",
+ "ethereum",
  "ethjson",
  "frame-support 40.1.0",
  "frame-system",
@@ -2227,7 +2178,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-bytes",
  "parity-scale-codec",
- "rlp 0.5.2",
+ "rlp",
  "scale-info",
  "serde",
  "serde_json",
@@ -3255,20 +3206,11 @@ dependencies = [
 
 [[package]]
 name = "impl-rlp"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f28220f89297a075ddc7245cd538076ee98b01f2a9c23a53a4f1105d5a322808"
-dependencies = [
- "rlp 0.5.2",
-]
-
-[[package]]
-name = "impl-rlp"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54ed8ad1f3877f7e775b8cbf30ed1bd3209a95401817f19a0eb4402d13f8cf90"
 dependencies = [
- "rlp 0.6.1",
+ "rlp",
 ]
 
 [[package]]
@@ -4443,7 +4385,7 @@ dependencies = [
  "pallet-utility",
  "parity-scale-codec",
  "ripemd",
- "rlp 0.6.1",
+ "rlp",
  "scale-info",
  "serde",
  "serde_json",
@@ -4485,7 +4427,7 @@ name = "module-evm-bridge"
 version = "2.30.0"
 dependencies = [
  "acala-primitives",
- "ethereum-types 0.15.1",
+ "ethereum-types",
  "frame-support 40.1.0",
  "frame-system",
  "hex",
@@ -4521,7 +4463,7 @@ dependencies = [
 name = "module-evm-utility"
 version = "2.30.0"
 dependencies = [
- "ethereum 0.18.2",
+ "ethereum",
  "evm",
  "evm-gasometer",
  "evm-runtime",
@@ -6884,7 +6826,6 @@ checksum = "0b34d9fd68ae0b74a41b21c03c2f62847aa0ffea044eee893b4c140b37e244e2"
 dependencies = [
  "fixed-hash",
  "impl-codec 0.6.0",
- "impl-rlp 0.3.0",
  "impl-serde 0.4.0",
  "scale-info",
  "uint 0.9.5",
@@ -6899,7 +6840,7 @@ dependencies = [
  "fixed-hash",
  "impl-codec 0.7.1",
  "impl-num-traits",
- "impl-rlp 0.4.0",
+ "impl-rlp",
  "impl-serde 0.5.0",
  "scale-info",
  "uint 0.10.0",
@@ -7252,35 +7193,13 @@ dependencies = [
 
 [[package]]
 name = "rlp"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb919243f34364b6bd2fc10ef797edbfa75f33c252e7998527479c6d6b47e1ec"
-dependencies = [
- "bytes",
- "rlp-derive 0.1.0",
- "rustc-hex",
-]
-
-[[package]]
-name = "rlp"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa24e92bb2a83198bb76d661a71df9f7076b8c420b8696e4d3d97d50d94479e3"
 dependencies = [
  "bytes",
- "rlp-derive 0.2.0",
+ "rlp-derive",
  "rustc-hex",
-]
-
-[[package]]
-name = "rlp-derive"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e33d7b2abe0c340d8797fe2907d3f20d3b5ea5908683618bfe80df7f621f672a"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]

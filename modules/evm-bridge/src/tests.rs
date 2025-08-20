@@ -357,6 +357,7 @@ fn liquidation_err_fails_as_expected() {
 #[cfg(feature = "tracing")]
 #[test]
 fn tracing_should_work() {
+	use insta::assert_json_snapshot;
 	use module_evm::runner::tracing;
 	use primitives::evm::tracing::TracerConfig;
 
