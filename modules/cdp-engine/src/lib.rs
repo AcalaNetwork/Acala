@@ -32,7 +32,7 @@ use frame_support::{
 	pallet_prelude::*, traits::ExistenceRequirement, traits::UnixTime, transactional, BoundedVec, PalletId,
 };
 use frame_system::{
-	offchain::{SendTransactionTypes, SubmitTransaction},
+	offchain::{CreateInherent, SubmitTransaction},
 	pallet_prelude::*,
 };
 use module_support::{
@@ -82,7 +82,9 @@ pub type LoansOf<T> = module_loans::Pallet<T>;
 pub type CurrencyOf<T> = <T as Config>::Currency;
 
 /// Risk management params
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Encode, Decode, DecodeWithMemTracking, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo, MaxEncodedLen,
+)]
 pub struct RiskManagementParams {
 	/// Maximum total debit value generated from it, when reach the hard
 	/// cap, CDP's owner cannot issue more stablecoin under the collateral
@@ -115,7 +117,7 @@ type ChangeOptionRatio = Change<Option<Ratio>>;
 type ChangeBalance = Change<Balance>;
 
 /// Status of CDP
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum CDPStatus {
 	Safe,
 	Unsafe,
@@ -127,7 +129,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + module_loans::Config + SendTransactionTypes<Call<Self>> {
+	pub trait Config: frame_system::Config + module_loans::Config + CreateInherent<Call<Self>> {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The origin which may update risk management parameters. Root can
@@ -672,7 +674,8 @@ impl<T: Config> Pallet<T> {
 			currency_id,
 			who: who.clone(),
 		};
-		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
+		let xt = T::create_inherent(call.into());
+		if SubmitTransaction::<T, Call<T>>::submit_transaction(xt).is_err() {
 			log::info!(
 				target: "cdp-engine offchain worker",
 				"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
@@ -687,7 +690,8 @@ impl<T: Config> Pallet<T> {
 			currency_id,
 			who: who.clone(),
 		};
-		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
+		let xt = T::create_inherent(call.into());
+		if SubmitTransaction::<T, Call<T>>::submit_transaction(xt).is_err() {
 			log::info!(
 				target: "cdp-engine offchain worker",
 				"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",

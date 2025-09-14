@@ -33,55 +33,63 @@ use std::str::{from_utf8, FromStr};
 #[test]
 fn key_to_currency_work() {
 	let erc20 = CurrencyId::Erc20(EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba644").unwrap());
-	let v2_location = xcm::v2::MultiLocation::new(
+	let mut data = [0u8; 32];
+	data[..erc20.encode().len()].copy_from_slice(&erc20.encode()[..]);
+	let v3_location = xcm::v3::MultiLocation::new(
 		0,
-		xcm::v2::Junctions::X1(xcm::v2::Junction::GeneralKey(erc20.encode().try_into().unwrap())),
+		xcm::v3::Junctions::X1(xcm::v3::Junction::GeneralKey {
+			length: erc20.encode().len() as u8,
+			data: data,
+		}),
 	);
-	let v3_location_from_v2 = v3::Location::try_from(v2_location.clone()).unwrap();
-	let v3_location = v3::Location::new(
+	let v4_location_from_v3 = v4::Location::try_from(v3_location.clone()).unwrap();
+	let v4_location = v4::Location::new(
 		0,
-		v3::Junctions::X1(v3::Junction::from(BoundedVec::try_from(erc20.encode()).unwrap())),
+		v4::Junctions::X1([v4::Junction::from(BoundedVec::try_from(erc20.encode()).unwrap())].into()),
 	);
-	assert_eq!(v3_location_from_v2, v3_location);
-
-	let v4_location_from_v3 = Location::try_from(v3_location.clone()).unwrap();
-	let v4_location = Location::new(0, Junction::from(BoundedVec::try_from(erc20.encode()).unwrap()));
 	assert_eq!(v4_location_from_v3, v4_location);
-	assert_eq!(crate::key_to_currency(v4_location), Some(erc20));
+
+	let v5_location_from_v4 = Location::try_from(v4_location.clone()).unwrap();
+	let v5_location = Location::new(0, Junction::from(BoundedVec::try_from(erc20.encode()).unwrap()));
+	assert_eq!(v5_location_from_v4, v5_location);
+	assert_eq!(crate::key_to_currency(v5_location), Some(erc20));
 }
 
 #[test]
-fn test_v2_to_v3_incompatible_location() {
-	let v2_location = xcm::v2::MultiLocation::new(
+fn test_v3_to_v4_incompatible_location() {
+	let v3_location = xcm::v3::MultiLocation::new(
 		0,
-		xcm::v2::Junctions::X1(xcm::v2::Junction::GeneralKey(vec![0].try_into().unwrap())),
+		xcm::v3::Junctions::X1(xcm::v3::Junction::GeneralKey {
+			length: 32,
+			data: [0u8; 32],
+		}),
 	);
 
-	let v3_location = v3::Location::new(0, v3::Junction::from(BoundedVec::try_from(vec![0]).unwrap()));
-
-	// Assert that V2 and V3 Location both are encoded differently
-	assert!(v2_location.encode() != v3_location.encode());
-}
-
-#[test]
-fn test_v3_to_v4_compatible_location() {
-	let v3_location = v3::Location::new(0, v3::Junction::from(BoundedVec::try_from(vec![0]).unwrap()));
-
-	let v4_location = Location::new(0, Junction::from(BoundedVec::try_from(vec![0]).unwrap()));
+	let v4_location = v4::Location::new(0, v4::Junction::from(BoundedVec::try_from(vec![]).unwrap()));
 
 	// Assert that V3 and V4 Location both are encoded differently
-	assert!(v3_location.encode() == v4_location.encode());
+	assert!(v3_location.encode() != v4_location.encode());
+}
+
+#[test]
+fn test_v4_to_v5_compatible_location() {
+	let v4_location = v4::Location::new(0, v4::Junction::from(BoundedVec::try_from(vec![0]).unwrap()));
+
+	let v5_location = Location::new(0, Junction::from(BoundedVec::try_from(vec![0]).unwrap()));
+
+	// Assert that V4 and V5 Location both are encoded the same way
+	assert!(v4_location.encode() == v5_location.encode());
 }
 
 #[test]
 fn versioned_location_convert_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		// v2
-		let v2_location = VersionedLocation::V2(xcm::v2::MultiLocation {
+		// v3
+		let v3_location = VersionedLocation::V3(xcm::v3::MultiLocation {
 			parents: 0,
-			interior: xcm::v2::Junctions::X1(xcm::v2::Junction::Parachain(1000)),
+			interior: xcm::v3::Junctions::X1(xcm::v3::Junction::Parachain(1000)),
 		});
-		let v4_location: Location = v2_location.try_into().unwrap();
+		let v4_location: Location = v3_location.try_into().unwrap();
 		assert_eq!(
 			v4_location,
 			Location {
@@ -90,14 +98,14 @@ fn versioned_location_convert_work() {
 			}
 		);
 
-		// v3
-		let v3_location = VersionedLocation::V3(v3::Location {
+		// v4
+		let v4_location = VersionedLocation::V4(v4::Location {
 			parents: 0,
-			interior: xcm::v3::Junctions::X1(xcm::v3::Junction::Parachain(1000)),
+			interior: xcm::v4::Junctions::X1([xcm::v4::Junction::Parachain(1000)].into()),
 		});
-		let v4_location: Location = v3_location.clone().try_into().unwrap();
+		let v5_location: Location = v4_location.clone().try_into().unwrap();
 		assert_eq!(
-			v4_location,
+			v5_location,
 			Location {
 				parents: 0,
 				interior: Junction::Parachain(1000).into()
@@ -105,8 +113,8 @@ fn versioned_location_convert_work() {
 		);
 
 		// handle all of VersionedLocation
-		assert!(match v4_location.into() {
-			VersionedLocation::V2 { .. } | VersionedLocation::V3 { .. } | VersionedLocation::V4 { .. } => true,
+		assert!(match v5_location.into() {
+			VersionedLocation::V3 { .. } | VersionedLocation::V4 { .. } | VersionedLocation::V5 { .. } => true,
 		});
 	});
 }
@@ -114,15 +122,15 @@ fn versioned_location_convert_work() {
 #[test]
 fn register_foreign_asset_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		// v2
-		let v2_versioned_location = VersionedLocation::V3(v3::MultiLocation {
+		// v3
+		let v3_versioned_location = VersionedLocation::V3(v3::MultiLocation {
 			parents: 0,
 			interior: v3::Junctions::X1(v3::Junction::Parachain(1000)),
 		});
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			RuntimeOrigin::signed(CouncilAccount::get()),
-			Box::new(v2_versioned_location.clone()),
+			Box::new(v3_versioned_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
@@ -131,11 +139,12 @@ fn register_foreign_asset_work() {
 			})
 		));
 
-		let v3_location: v3::Location = v2_versioned_location.try_into().unwrap();
-		let v4_location: Location = v3_location.try_into().unwrap();
+		let v3_location: v3::Location = v3_versioned_location.clone().try_into().unwrap();
+		let v4_location: v4::Location = v3_versioned_location.try_into().unwrap();
+		let v5_location: Location = v4_location.try_into().unwrap();
 		System::assert_last_event(RuntimeEvent::AssetRegistry(crate::Event::ForeignAssetRegistered {
 			asset_id: 0,
-			asset_address: v4_location.clone(),
+			asset_address: v5_location.clone(),
 			metadata: AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
@@ -159,18 +168,22 @@ fn register_foreign_asset_work() {
 			Some(CurrencyId::ForeignAsset(0))
 		);
 
-		// v3
-		let v3_versioned_location = VersionedLocation::V3(v3::Location {
+		// v4
+		let v4_versioned_location = VersionedLocation::V4(v4::Location {
 			parents: 0,
-			interior: v3::Junctions::X1(v3::Junction::GeneralKey {
-				length: 32,
-				data: [0u8; 32],
-			}),
+			interior: v4::Junctions::X1(
+				[v4::Junction::GeneralKey {
+					length: 32,
+					data: [0u8; 32],
+				}]
+				.into(),
+			),
 		});
+		let v3_location: v3::Location = v4_versioned_location.clone().try_into().unwrap();
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			RuntimeOrigin::signed(CouncilAccount::get()),
-			Box::new(v3_versioned_location.clone()),
+			Box::new(v4_versioned_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Another Token Name".to_vec(),
 				symbol: b"ATN".to_vec(),
@@ -179,11 +192,11 @@ fn register_foreign_asset_work() {
 			})
 		));
 
-		let v3_location: v3::Location = v3_versioned_location.try_into().unwrap();
-		let v4_location: Location = v3_location.clone().try_into().unwrap();
+		let v4_location: v4::Location = v4_versioned_location.try_into().unwrap();
+		let v5_location: Location = v4_location.clone().try_into().unwrap();
 		System::assert_last_event(RuntimeEvent::AssetRegistry(crate::Event::ForeignAssetRegistered {
 			asset_id: 1,
-			asset_address: v4_location.clone(),
+			asset_address: v5_location.clone(),
 			metadata: AssetMetadata {
 				name: b"Another Token Name".to_vec(),
 				symbol: b"ATN".to_vec(),
@@ -207,8 +220,8 @@ fn register_foreign_asset_work() {
 			Some(CurrencyId::ForeignAsset(1))
 		);
 
-		// v4
-		let v4_versioned_location = VersionedLocation::V4(Location::new(
+		// v5
+		let v5_versioned_location = VersionedLocation::V5(Location::new(
 			0,
 			[GeneralKey {
 				length: 32,
@@ -218,7 +231,7 @@ fn register_foreign_asset_work() {
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			RuntimeOrigin::signed(CouncilAccount::get()),
-			Box::new(v4_versioned_location.clone()),
+			Box::new(v5_versioned_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Another Token Name2".to_vec(),
 				symbol: b"ATN2".to_vec(),
@@ -227,11 +240,12 @@ fn register_foreign_asset_work() {
 			})
 		));
 
-		let v3_location: v3::Location = v4_versioned_location.clone().try_into().unwrap();
-		let v4_location: Location = v4_versioned_location.try_into().unwrap();
+		let v3_location: v3::Location = v5_versioned_location.clone().try_into().unwrap();
+		let _v4_location: v4::Location = v5_versioned_location.clone().try_into().unwrap();
+		let v5_location: Location = v5_versioned_location.try_into().unwrap();
 		System::assert_last_event(RuntimeEvent::AssetRegistry(crate::Event::ForeignAssetRegistered {
 			asset_id: 2,
-			asset_address: v4_location.clone(),
+			asset_address: v5_location.clone(),
 			metadata: AssetMetadata {
 				name: b"Another Token Name2".to_vec(),
 				symbol: b"ATN2".to_vec(),
@@ -260,11 +274,11 @@ fn register_foreign_asset_work() {
 #[test]
 fn register_foreign_asset_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		let v4_location = VersionedLocation::V4(Location::new(0, [Parachain(1000)]));
+		let v5_location = VersionedLocation::V5(Location::new(0, [Parachain(1000)]));
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			RuntimeOrigin::signed(CouncilAccount::get()),
-			Box::new(v4_location.clone()),
+			Box::new(v5_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
@@ -276,7 +290,7 @@ fn register_foreign_asset_should_not_work() {
 		assert_noop!(
 			AssetRegistry::register_foreign_asset(
 				RuntimeOrigin::signed(CouncilAccount::get()),
-				Box::new(v4_location.clone()),
+				Box::new(v5_location.clone()),
 				Box::new(AssetMetadata {
 					name: b"Token Name".to_vec(),
 					symbol: b"TN".to_vec(),
@@ -291,7 +305,7 @@ fn register_foreign_asset_should_not_work() {
 		assert_noop!(
 			AssetRegistry::register_foreign_asset(
 				RuntimeOrigin::signed(CouncilAccount::get()),
-				Box::new(v4_location),
+				Box::new(v5_location),
 				Box::new(AssetMetadata {
 					name: b"Token Name".to_vec(),
 					symbol: b"TN".to_vec(),
@@ -307,11 +321,11 @@ fn register_foreign_asset_should_not_work() {
 #[test]
 fn update_foreign_asset_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		let v4_versioned_location = VersionedLocation::V4(Location::new(0, [Parachain(1000)]));
+		let v5_versioned_location = VersionedLocation::V5(Location::new(0, [Parachain(1000)]));
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			RuntimeOrigin::signed(CouncilAccount::get()),
-			Box::new(v4_versioned_location.clone()),
+			Box::new(v5_versioned_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
@@ -323,7 +337,7 @@ fn update_foreign_asset_work() {
 		assert_ok!(AssetRegistry::update_foreign_asset(
 			RuntimeOrigin::signed(CouncilAccount::get()),
 			0,
-			Box::new(v4_versioned_location.clone()),
+			Box::new(v5_versioned_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"New Token Name".to_vec(),
 				symbol: b"NTN".to_vec(),
@@ -332,11 +346,12 @@ fn update_foreign_asset_work() {
 			})
 		));
 
-		let v3_location: v3::Location = v4_versioned_location.clone().try_into().unwrap();
-		let v4_location: Location = v4_versioned_location.try_into().unwrap();
+		let v3_location: v3::Location = v5_versioned_location.clone().try_into().unwrap();
+		let _v4_location: v4::Location = v5_versioned_location.clone().try_into().unwrap();
+		let v5_location: Location = v5_versioned_location.try_into().unwrap();
 		System::assert_last_event(RuntimeEvent::AssetRegistry(crate::Event::ForeignAssetUpdated {
 			asset_id: 0,
-			asset_address: v4_location.clone(),
+			asset_address: v5_location.clone(),
 			metadata: AssetMetadata {
 				name: b"New Token Name".to_vec(),
 				symbol: b"NTN".to_vec(),
@@ -361,12 +376,12 @@ fn update_foreign_asset_work() {
 		);
 
 		// modify location
-		let new_v4_versioned_location = VersionedLocation::V4(Location::new(0, [Parachain(2000)]));
+		let new_v5_versioned_location = VersionedLocation::V5(Location::new(0, [Parachain(2000)]));
 
 		assert_ok!(AssetRegistry::update_foreign_asset(
 			RuntimeOrigin::signed(CouncilAccount::get()),
 			0,
-			Box::new(new_v4_versioned_location.clone()),
+			Box::new(new_v5_versioned_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"New Token Name".to_vec(),
 				symbol: b"NTN".to_vec(),
@@ -383,7 +398,7 @@ fn update_foreign_asset_work() {
 				minimal_balance: 2,
 			})
 		);
-		let new_v3_location: v3::Location = v3::Location::try_from(new_v4_versioned_location).unwrap();
+		let new_v3_location: v3::Location = v3::Location::try_from(new_v5_versioned_location).unwrap();
 		assert_eq!(ForeignAssetLocations::<Runtime>::get(0), Some(new_v3_location.clone()));
 		assert_eq!(LocationToCurrencyIds::<Runtime>::get(v3_location), None);
 		assert_eq!(
@@ -396,13 +411,13 @@ fn update_foreign_asset_work() {
 #[test]
 fn update_foreign_asset_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		let v4_location = VersionedLocation::V4(Location::new(0, [Parachain(1000)]));
+		let v5_location = VersionedLocation::V5(Location::new(0, [Parachain(1000)]));
 
 		assert_noop!(
 			AssetRegistry::update_foreign_asset(
 				RuntimeOrigin::signed(CouncilAccount::get()),
 				0,
-				Box::new(v4_location.clone()),
+				Box::new(v5_location.clone()),
 				Box::new(AssetMetadata {
 					name: b"New Token Name".to_vec(),
 					symbol: b"NTN".to_vec(),
@@ -415,7 +430,7 @@ fn update_foreign_asset_should_not_work() {
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			RuntimeOrigin::signed(CouncilAccount::get()),
-			Box::new(v4_location.clone()),
+			Box::new(v5_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
@@ -427,7 +442,7 @@ fn update_foreign_asset_should_not_work() {
 		assert_ok!(AssetRegistry::update_foreign_asset(
 			RuntimeOrigin::signed(CouncilAccount::get()),
 			0,
-			Box::new(v4_location),
+			Box::new(v5_location),
 			Box::new(AssetMetadata {
 				name: b"New Token Name".to_vec(),
 				symbol: b"NTN".to_vec(),
@@ -437,10 +452,10 @@ fn update_foreign_asset_should_not_work() {
 		));
 
 		// existed location
-		let new_v4_location = VersionedLocation::V4(Location::new(0, [Parachain(2000)]));
+		let new_v5_location = VersionedLocation::V5(Location::new(0, [Parachain(2000)]));
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			RuntimeOrigin::signed(CouncilAccount::get()),
-			Box::new(new_v4_location.clone()),
+			Box::new(new_v5_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
@@ -452,7 +467,7 @@ fn update_foreign_asset_should_not_work() {
 			AssetRegistry::update_foreign_asset(
 				RuntimeOrigin::signed(CouncilAccount::get()),
 				0,
-				Box::new(new_v4_location),
+				Box::new(new_v5_location),
 				Box::new(AssetMetadata {
 					name: b"New Token Name".to_vec(),
 					symbol: b"NTN".to_vec(),

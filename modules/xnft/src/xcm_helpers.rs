@@ -33,7 +33,8 @@ where
 	ClassIdOf<T>: TryFrom<u128>,
 {
 	pub fn asset_to_collection(asset: &AssetId) -> Result<ClassLocality<T>, MatchError> {
-		let v3_asset = v3::AssetId::try_from(asset.clone()).map_err(|_| MatchError::AssetIdConversionFailed)?;
+		let v4_asset = v4::AssetId::try_from(asset.clone()).map_err(|_| MatchError::AssetIdConversionFailed)?;
+		let v3_asset = v3::AssetId::try_from(v4_asset).map_err(|_| MatchError::AssetIdConversionFailed)?;
 		Self::foreign_asset_to_class(v3_asset)
 			.map(ClassLocality::Foreign)
 			.or_else(|| Self::local_asset_to_class(asset).map(ClassLocality::Local))
@@ -63,8 +64,10 @@ where
 	}
 
 	pub fn deposit_foreign_asset(to: &T::AccountId, asset: ClassIdOf<T>, asset_instance: &AssetInstance) -> XcmResult {
+		let v4_asset_instance =
+			v4::AssetInstance::try_from(*asset_instance).map_err(|_| MatchError::InstanceConversionFailed)?;
 		let v3_asset_instance =
-			v3::AssetInstance::try_from(*asset_instance).map_err(|_| MatchError::InstanceConversionFailed)?;
+			v3::AssetInstance::try_from(v4_asset_instance).map_err(|_| MatchError::InstanceConversionFailed)?;
 		match Self::asset_instance_to_item(asset, v3_asset_instance) {
 			Some(token_id) => <ModuleNftPallet<T>>::do_transfer(&Self::account_id(), to, (asset, token_id))
 				.map_err(|_| XcmError::FailedToTransactAsset("non-fungible foreign item deposit failed")),
@@ -98,7 +101,8 @@ where
 		class_locality: ClassLocality<T>,
 		asset_instance: &AssetInstance,
 	) -> Option<(ClassIdOf<T>, TokenIdOf<T>)> {
-		let v3_asset_instance = v3::AssetInstance::try_from(*asset_instance).ok()?;
+		let v4_asset_instance = v4::AssetInstance::try_from(*asset_instance).ok()?;
+		let v3_asset_instance = v3::AssetInstance::try_from(v4_asset_instance).ok()?;
 		match class_locality {
 			ClassLocality::Foreign(class_id) => {
 				Self::asset_instance_to_item(class_id, v3_asset_instance).map(|token_id| (class_id, token_id))

@@ -26,7 +26,7 @@ use super::{
 pub use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 pub use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Everything, Get, Nothing, TransformOrigin},
+	traits::{ConstU32, Disabled, Equals, Everything, Get, Nothing, TransformOrigin},
 	weights::Weight,
 };
 use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfStableAsset};
@@ -137,6 +137,7 @@ impl xcm_executor::Config for XcmConfig {
 	type HrmpChannelAcceptedHandler = ();
 	type HrmpChannelClosingHandler = ();
 	type XcmRecorder = ();
+	type XcmEventEmitter = ();
 }
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
@@ -183,6 +184,7 @@ impl pallet_xcm::Config for Runtime {
 	type AdminOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type MaxRemoteLockConsumers = ConstU32<0>;
 	type RemoteLockConsumerIdentifier = ();
+	type AuthorizedAliasConsideration = Disabled;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {

@@ -28,7 +28,7 @@ use frame_support::{
 	weights::{ConstantMultiplier, IdentityFee},
 	PalletId,
 };
-use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
@@ -39,7 +39,7 @@ use module_support::{
 	SpecificJointsSwap,
 };
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 pub use primitives::{
 	define_combined_task,
 	evm::{convert_decimals_to_evm, EvmAddress},
@@ -54,7 +54,7 @@ use sp_runtime::{
 	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, RuntimeDebug,
 };
 use sp_std::prelude::*;
-use xcm::{prelude::*, v4::Xcm};
+use xcm::{prelude::*, v5::Xcm};
 use xcm_builder::FixedWeightBounds;
 
 pub type AccountId = AccountId32;
@@ -157,6 +157,7 @@ impl pallet_balances::Config for Test {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -200,7 +201,7 @@ impl module_asset_registry::Config for Test {
 }
 
 define_combined_task! {
-	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[derive(Clone, Encode, Decode, DecodeWithMemTracking, PartialEq, RuntimeDebug, TypeInfo)]
 	pub enum ScheduledTasks {
 		EvmTask(EvmTask<Test>),
 	}
@@ -291,7 +292,20 @@ impl module_transaction_payment::Config for Test {
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+#[derive(
+	Copy,
+	Clone,
+	Eq,
+	PartialEq,
+	Ord,
+	PartialOrd,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	MaxEncodedLen,
+	TypeInfo,
+)]
 pub enum ProxyType {
 	Any,
 	JustTransfer,
@@ -331,6 +345,7 @@ impl pallet_proxy::Config for Test {
 	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = ConstU128<1>;
 	type AnnouncementDepositFactor = ConstU128<1>;
+	type BlockNumberProvider = System;
 }
 
 impl pallet_utility::Config for Test {
@@ -355,6 +370,7 @@ impl pallet_scheduler::Config for Test {
 	type MaxScheduledPerBlock = ConstU32<50>;
 	type WeightInfo = ();
 	type Preimages = ();
+	type BlockNumberProvider = System;
 }
 
 pub struct MockDEXIncentives;
@@ -875,16 +891,17 @@ impl ExecuteXcm<RuntimeCall> for MockExec {
 			(
 				1,
 				Some(Transact {
-					require_weight_at_most, ..
+					fallback_max_weight: Some(fallback_max_weight),
+					..
 				}),
 			) => {
-				if require_weight_at_most.all_lte(weight_limit) {
+				if fallback_max_weight.all_lte(weight_limit) {
 					Outcome::Complete {
-						used: *require_weight_at_most,
+						used: *fallback_max_weight,
 					}
 				} else {
 					Outcome::Error {
-						error: XcmError::WeightLimitReached(*require_weight_at_most),
+						error: XcmError::WeightLimitReached(*fallback_max_weight),
 					}
 				}
 			}
@@ -1064,12 +1081,21 @@ frame_support::construct_runtime!(
 	}
 );
 
-impl<LocalCall> SendTransactionTypes<LocalCall> for Test
+impl<C> frame_system::offchain::CreateTransactionBase<C> for Test
 where
-	RuntimeCall: From<LocalCall>,
+	RuntimeCall: From<C>,
 {
-	type OverarchingCall = RuntimeCall;
 	type Extrinsic = UncheckedExtrinsic;
+	type RuntimeCall = RuntimeCall;
+}
+
+impl<C> frame_system::offchain::CreateInherent<C> for Test
+where
+	RuntimeCall: From<C>,
+{
+	fn create_inherent(call: Self::RuntimeCall) -> Self::Extrinsic {
+		UncheckedExtrinsic::new_bare(call)
+	}
 }
 
 #[cfg(test)]

@@ -51,9 +51,9 @@ check-runtimes:
 .PHONY: check-benchmarks
 check-benchmarks:
 	SKIP_WASM_BUILD= cargo check --features wasm-bench --package module-evm
-	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p mandala-runtime
-	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p karura-runtime
-	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p acala-runtime
+	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32v1-none -p mandala-runtime
+	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32v1-none -p karura-runtime
+	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32v1-none -p acala-runtime
 
 .PHONY: check-integration-tests
 check-integration-tests:

@@ -109,7 +109,20 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
 }
 
-#[derive(Encode, Decode, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, MaxEncodedLen, TypeInfo, RuntimeDebug)]
+#[derive(
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Copy,
+	Clone,
+	Eq,
+	PartialEq,
+	Ord,
+	PartialOrd,
+	MaxEncodedLen,
+	TypeInfo,
+	RuntimeDebug,
+)]
 pub enum TestId {
 	Foo,
 }
@@ -132,6 +145,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 pub type PalletBalances = pallet_balances::Pallet<Runtime>;
@@ -294,7 +308,7 @@ pub fn deploy_contracts() {
 			],
 			data: {
 				let mut buf = [0u8; 32];
-				U256::from(ALICE_BALANCE).to_big_endian(&mut buf);
+				U256::from(ALICE_BALANCE).write_as_big_endian(&mut buf);
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
@@ -341,6 +355,7 @@ impl ExtBuilder {
 				.filter(|(_, currency_id, _)| *currency_id == NATIVE_CURRENCY_ID)
 				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
 				.collect::<Vec<_>>(),
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

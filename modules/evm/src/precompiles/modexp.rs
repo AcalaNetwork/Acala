@@ -531,7 +531,7 @@ mod tests {
 		// 59999 ^ 21 % 14452 = 10055
 
 		let mut output = [0u8; 32];
-		U256::from(10055u64).to_big_endian(&mut output);
+		U256::from(10055u64).write_as_big_endian(&mut output);
 
 		assert_eq!(
 			IstanbulModexp::execute(&mut MockPrecompileHandle::new(
@@ -572,7 +572,7 @@ mod tests {
 		"};
 
 		let mut output = [0u8; 32];
-		U256::from(1u64).to_big_endian(&mut output);
+		U256::from(1u64).write_as_big_endian(&mut output);
 
 		assert_eq!(
 			IstanbulModexp::execute(&mut MockPrecompileHandle::new(

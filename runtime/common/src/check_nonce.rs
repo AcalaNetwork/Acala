@@ -16,17 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use frame_support::dispatch::DispatchInfo;
+use frame_support::{dispatch::DispatchInfo, pallet_prelude::DispatchResult, RuntimeDebugNoBound};
 use frame_system::pallet_prelude::*;
 use module_support::AddressMapping;
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{DispatchInfoOf, Dispatchable, One, SignedExtension, Zero},
+	traits::{DispatchInfoOf, DispatchOriginOf, Dispatchable, One, PostDispatchInfoOf, TransactionExtension, Zero},
 	transaction_validity::{
-		InvalidTransaction, TransactionLongevity, TransactionValidity, TransactionValidityError, ValidTransaction,
+		InvalidTransaction, TransactionLongevity, TransactionSource, TransactionValidityError, ValidTransaction,
 	},
-	SaturatedConversion,
+	SaturatedConversion, Saturating, Weight,
 };
 use sp_std::vec;
 
@@ -37,7 +37,7 @@ use sp_std::vec;
 /// This extension affects `requires` and `provides` tags of validity, but DOES NOT
 /// set the `priority` field. Make sure that AT LEAST one of the signed extension sets
 /// some kind of priority upon validating transactions.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, Eq, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct CheckNonce<T: frame_system::Config + module_evm::Config> {
 	#[codec(compact)]
@@ -90,71 +90,96 @@ impl<T: frame_system::Config + module_evm::Config> sp_std::fmt::Debug for CheckN
 	}
 }
 
-impl<T: frame_system::Config + module_evm::Config> SignedExtension for CheckNonce<T>
+/// Operation to perform from `validate` to `prepare` in [`CheckNonce`] transaction extension.
+#[derive(RuntimeDebugNoBound)]
+pub enum Val<T: frame_system::Config> {
+	/// Account and its nonce to check for.
+	CheckNonce((T::AccountId, T::Nonce)),
+	/// Weight to refund.
+	Refund(Weight),
+}
+
+/// Operation to perform from `prepare` to `post_dispatch_details` in [`CheckNonce`] transaction
+/// extension.
+#[derive(RuntimeDebugNoBound)]
+pub enum Pre {
+	/// The transaction extension weight should not be refunded.
+	NonceChecked,
+	/// The transaction extension weight should be refunded.
+	Refund(Weight),
+}
+
+impl<T: frame_system::Config + module_evm::Config> TransactionExtension<T::RuntimeCall> for CheckNonce<T>
 where
 	T::RuntimeCall: Dispatchable<Info = DispatchInfo>,
 	T::AddressMapping: AddressMapping<T::AccountId>,
 {
-	type AccountId = T::AccountId;
-	type Call = T::RuntimeCall;
-	type AdditionalSigned = ();
-	type Pre = ();
 	const IDENTIFIER: &'static str = "CheckNonce";
+	type Implicit = ();
+	type Val = Val<T>;
+	type Pre = Pre;
 
-	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
-		Ok(())
+	fn weight(&self, _: &T::RuntimeCall) -> Weight {
+		// TODO: implement
+		Weight::zero()
 	}
 
-	fn pre_dispatch(
+	fn prepare(
 		self,
-		who: &Self::AccountId,
-		_call: &Self::Call,
-		_info: &DispatchInfoOf<Self::Call>,
+		val: Self::Val,
+		_origin: &DispatchOriginOf<T::RuntimeCall>,
+		_call: &T::RuntimeCall,
+		_info: &DispatchInfoOf<T::RuntimeCall>,
 		_len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let mut account = frame_system::Account::<T>::get(who);
-		if self.is_eth_tx {
-			// should check evm nonce
-			let address = <T as module_evm::Config>::AddressMapping::get_evm_address(who)
-				.unwrap_or_else(|| <T as module_evm::Config>::AddressMapping::get_default_evm_address(who));
-			let evm_nonce = module_evm::Accounts::<T>::get(address)
-				.map(|x| x.nonce)
-				.unwrap_or_default();
+		let (who, nonce) = match val {
+			Val::CheckNonce((who, nonce)) => (who, nonce),
+			Val::Refund(weight) => return Ok(Pre::Refund(weight)),
+		};
 
+		if self.is_eth_tx {
 			if cfg!(feature = "tracing") {
 				// skip check when enable tracing feature
-			} else if self.nonce != evm_nonce {
-				return Err(if self.nonce < evm_nonce {
+			} else if self.nonce != nonce {
+				return Err(if self.nonce < nonce {
 					InvalidTransaction::Stale
 				} else {
 					InvalidTransaction::Future
 				}
 				.into());
 			}
-		} else if self.nonce != account.nonce {
-			return Err(if self.nonce < account.nonce {
+		} else if self.nonce != nonce {
+			return Err(if self.nonce < nonce {
 				InvalidTransaction::Stale
 			} else {
 				InvalidTransaction::Future
 			}
 			.into());
 		}
+		let mut account = frame_system::Account::<T>::get(&who);
 		account.nonce += T::Nonce::one();
 		frame_system::Account::<T>::insert(who, account);
-		Ok(())
+		Ok(Pre::NonceChecked)
 	}
 
 	fn validate(
 		&self,
-		who: &Self::AccountId,
-		_call: &Self::Call,
-		_info: &DispatchInfoOf<Self::Call>,
+		origin: DispatchOriginOf<T::RuntimeCall>,
+		call: &T::RuntimeCall,
+		_info: &DispatchInfoOf<T::RuntimeCall>,
 		_len: usize,
-	) -> TransactionValidity {
+		_self_implicit: Self::Implicit,
+		_inherited_implication: &impl Encode,
+		_source: TransactionSource,
+	) -> Result<(ValidTransaction, Self::Val, DispatchOriginOf<T::RuntimeCall>), TransactionValidityError> {
+		let Ok(who) = frame_system::ensure_signed(origin.clone()) else {
+			return Ok((ValidTransaction::default(), Val::Refund(self.weight(call)), origin));
+		};
+
 		if self.is_eth_tx {
 			// should check evm nonce
-			let address = <T as module_evm::Config>::AddressMapping::get_evm_address(who)
-				.unwrap_or_else(|| <T as module_evm::Config>::AddressMapping::get_default_evm_address(who));
+			let address = <T as module_evm::Config>::AddressMapping::get_evm_address(&who)
+				.unwrap_or_else(|| <T as module_evm::Config>::AddressMapping::get_default_evm_address(&who));
 			let evm_nonce = module_evm::Accounts::<T>::get(address)
 				.map(|x| x.nonce)
 				.unwrap_or_default();
@@ -162,46 +187,63 @@ where
 			if cfg!(feature = "tracing") {
 				// skip check when enable tracing feature
 			} else if self.nonce < evm_nonce {
-				return InvalidTransaction::Stale.into();
+				return Err(InvalidTransaction::Stale.into());
 			}
 
 			let provides = vec![Encode::encode(&(address, self.nonce))];
 			let requires = if evm_nonce < self.nonce {
-				vec![Encode::encode(&(address, self.nonce - One::one()))]
+				vec![Encode::encode(&(address, self.nonce.saturating_sub(One::one())))]
 			} else {
 				vec![]
 			};
 
 			let longevity: TransactionLongevity = self.eth_tx_valid_until.saturated_into();
 
-			Ok(ValidTransaction {
+			let validity = ValidTransaction {
 				priority: 0,
 				requires,
 				provides,
 				longevity,
 				propagate: true,
-			})
+			};
+
+			Ok((validity, Val::CheckNonce((who.clone(), evm_nonce)), origin))
 		} else {
 			// check index
-			let account = frame_system::Account::<T>::get(who);
+			let account = frame_system::Account::<T>::get(&who);
 			if self.nonce < account.nonce {
-				return InvalidTransaction::Stale.into();
+				return Err(InvalidTransaction::Stale.into());
 			}
 
-			let provides = vec![Encode::encode(&(who, self.nonce))];
+			let provides = vec![Encode::encode(&(&who, self.nonce))];
 			let requires = if account.nonce < self.nonce {
-				vec![Encode::encode(&(who, self.nonce - One::one()))]
+				vec![Encode::encode(&(&who, self.nonce.saturating_sub(One::one())))]
 			} else {
 				vec![]
 			};
 
-			Ok(ValidTransaction {
+			let validity = ValidTransaction {
 				priority: 0,
 				requires,
 				provides,
 				longevity: TransactionLongevity::MAX,
 				propagate: true,
-			})
+			};
+
+			Ok((validity, Val::CheckNonce((who.clone(), account.nonce)), origin))
+		}
+	}
+
+	fn post_dispatch_details(
+		pre: Self::Pre,
+		_info: &DispatchInfo,
+		_post_info: &PostDispatchInfoOf<T::RuntimeCall>,
+		_len: usize,
+		_result: &DispatchResult,
+	) -> Result<Weight, TransactionValidityError> {
+		match pre {
+			Pre::NonceChecked => Ok(Weight::zero()),
+			Pre::Refund(weight) => Ok(weight),
 		}
 	}
 }
@@ -210,7 +252,8 @@ where
 mod tests {
 	use super::*;
 	use crate::mock::{new_test_ext, AccountId32, RuntimeCall, TestRuntime};
-	use frame_support::{assert_noop, assert_ok};
+	use frame_support::assert_ok;
+	use sp_runtime::{traits::DispatchTransaction, transaction_validity::TransactionSource::External};
 
 	/// A simple call, which one doesn't matter.
 	pub const CALL: &<TestRuntime as frame_system::Config>::RuntimeCall =
@@ -231,23 +274,50 @@ mod tests {
 				},
 			);
 			let info = DispatchInfo::default();
+			let len = 0_usize;
 			// stale
-			assert_noop!(
-				CheckNonce::<TestRuntime>::from(0).validate(&alice, CALL, &info, 0),
-				InvalidTransaction::Stale
+			assert_eq!(
+				CheckNonce::<TestRuntime>::from(0)
+					.validate_only(Some(alice.clone()).into(), CALL, &info, len, External, 0)
+					.unwrap_err(),
+				TransactionValidityError::Invalid(InvalidTransaction::Stale)
 			);
-			assert_noop!(
-				CheckNonce::<TestRuntime>::from(0).pre_dispatch(&alice, CALL, &info, 0),
-				InvalidTransaction::Stale
+			assert_eq!(
+				CheckNonce::<TestRuntime>::from(0)
+					.validate_and_prepare(Some(alice.clone()).into(), CALL, &info, len, 0)
+					.unwrap_err(),
+				TransactionValidityError::Invalid(InvalidTransaction::Stale)
 			);
 			// correct
-			assert_ok!(CheckNonce::<TestRuntime>::from(1).validate(&alice, CALL, &info, 0));
-			assert_ok!(CheckNonce::<TestRuntime>::from(1).pre_dispatch(&alice, CALL, &info, 0));
+			assert_ok!(CheckNonce::<TestRuntime>::from(1).validate_only(
+				Some(alice.clone()).into(),
+				CALL,
+				&info,
+				len,
+				External,
+				0
+			));
+			assert_ok!(CheckNonce::<TestRuntime>::from(1).validate_and_prepare(
+				Some(alice.clone()).into(),
+				CALL,
+				&info,
+				len,
+				0
+			));
 			// future
-			assert_ok!(CheckNonce::<TestRuntime>::from(5).validate(&alice, CALL, &info, 0));
-			assert_noop!(
-				CheckNonce::<TestRuntime>::from(5).pre_dispatch(&alice, CALL, &info, 0),
-				InvalidTransaction::Future
+			assert_ok!(CheckNonce::<TestRuntime>::from(5).validate_only(
+				Some(alice.clone()).into(),
+				CALL,
+				&info,
+				len,
+				External,
+				0
+			));
+			assert_eq!(
+				CheckNonce::<TestRuntime>::from(5)
+					.validate_and_prepare(Some(alice).into(), CALL, &info, len, 0)
+					.unwrap_err(),
+				TransactionValidityError::Invalid(InvalidTransaction::Future)
 			);
 		})
 	}
@@ -281,24 +351,27 @@ mod tests {
 			);
 
 			let info = DispatchInfo::default();
+			let len = 0_usize;
 			// stale
-			assert_noop!(
+			assert_eq!(
 				CheckNonce::<TestRuntime> {
 					nonce: 0u32,
 					is_eth_tx: true,
 					eth_tx_valid_until: 10
 				}
-				.validate(&alice, CALL, &info, 0),
-				InvalidTransaction::Stale
+				.validate_and_prepare(Some(alice.clone()).into(), CALL, &info, len, 0)
+				.unwrap_err(),
+				TransactionValidityError::Invalid(InvalidTransaction::Stale)
 			);
-			assert_noop!(
+			assert_eq!(
 				CheckNonce::<TestRuntime> {
 					nonce: 0u32,
 					is_eth_tx: true,
 					eth_tx_valid_until: 10
 				}
-				.pre_dispatch(&alice, CALL, &info, 0),
-				InvalidTransaction::Stale
+				.validate_and_prepare(Some(alice.clone()).into(), CALL, &info, len, 0)
+				.unwrap_err(),
+				TransactionValidityError::Invalid(InvalidTransaction::Stale)
 			);
 
 			assert_eq!(
@@ -307,21 +380,23 @@ mod tests {
 					is_eth_tx: true,
 					eth_tx_valid_until: 10
 				}
-				.validate(&alice, CALL, &info, 0),
-				Ok(ValidTransaction {
+				.validate_only(Some(alice.clone()).into(), CALL, &info, len, External, 0)
+				.unwrap()
+				.0,
+				ValidTransaction {
 					priority: 0,
 					requires: vec![],
 					provides: vec![Encode::encode(&(address, 1u32))],
 					longevity: 10,
 					propagate: true,
-				})
+				}
 			);
 			assert_ok!(CheckNonce::<TestRuntime> {
 				nonce: 1u32,
 				is_eth_tx: true,
 				eth_tx_valid_until: 10
 			}
-			.pre_dispatch(&alice, CALL, &info, 0),);
+			.validate_and_prepare(Some(alice.clone()).into(), CALL, &info, len, 0),);
 
 			assert_eq!(
 				CheckNonce::<TestRuntime> {
@@ -329,23 +404,26 @@ mod tests {
 					is_eth_tx: true,
 					eth_tx_valid_until: 10
 				}
-				.validate(&alice, CALL, &info, 0),
-				Ok(ValidTransaction {
+				.validate_only(Some(alice.clone()).into(), CALL, &info, len, External, 0)
+				.unwrap()
+				.0,
+				ValidTransaction {
 					priority: 0,
 					requires: vec![Encode::encode(&(address, 2u32))],
 					provides: vec![Encode::encode(&(address, 3u32))],
 					longevity: 10,
 					propagate: true,
-				})
+				}
 			);
-			assert_noop!(
+			assert_eq!(
 				CheckNonce::<TestRuntime> {
 					nonce: 3u32,
 					is_eth_tx: true,
 					eth_tx_valid_until: 10
 				}
-				.pre_dispatch(&alice, CALL, &info, 0),
-				InvalidTransaction::Future
+				.validate_and_prepare(Some(alice).into(), CALL, &info, len, 0)
+				.unwrap_err(),
+				TransactionValidityError::Invalid(InvalidTransaction::Future)
 			);
 		})
 	}

@@ -22,12 +22,12 @@ use super::*;
 use crate as xcm_interface;
 use frame_support::{
 	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, Everything, Nothing},
+	traits::{ConstU128, ConstU32, Disabled, Everything, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
+use sp_runtime::{traits::IdentityLookup, AccountId32};
 use xcm_builder::{EnsureXcmOrigin, FixedWeightBounds, SignedToAccountId32};
-use xcm_executor::traits::XcmAssetTransfers;
+use xcm_executor::traits::{FeeManager, FeeReason, XcmAssetTransfers};
 
 pub mod kusama;
 pub mod polkadot;
@@ -108,16 +108,17 @@ impl<T> ExecuteXcm<T> for MockExec {
 			(
 				1,
 				Some(Transact {
-					require_weight_at_most, ..
+					fallback_max_weight: Some(fallback_max_weight),
+					..
 				}),
 			) => {
-				if require_weight_at_most.all_lte(weight_limit) {
+				if fallback_max_weight.all_lte(weight_limit) {
 					Outcome::Complete {
-						used: *require_weight_at_most,
+						used: *fallback_max_weight,
 					}
 				} else {
 					Outcome::Error {
-						error: XcmError::WeightLimitReached(*require_weight_at_most),
+						error: XcmError::WeightLimitReached(*fallback_max_weight),
 					}
 				}
 			}
@@ -139,6 +140,13 @@ impl XcmAssetTransfers for MockExec {
 	type IsReserve = ();
 	type IsTeleporter = ();
 	type AssetTransactor = ();
+}
+
+impl FeeManager for MockExec {
+	fn is_waived(_origin: Option<&Location>, _r: FeeReason) -> bool {
+		false
+	}
+	fn handle_fee(_fee: Assets, _context: Option<&XcmContext>, _r: FeeReason) {}
 }
 
 #[macro_export]
@@ -169,6 +177,7 @@ macro_rules! impl_mock {
 			type RuntimeFreezeReason = RuntimeFreezeReason;
 			type FreezeIdentifier = ();
 			type MaxFreezes = ();
+			type DoneSlashHandler = ();
 		}
 
 		impl pallet_xcm::Config for Runtime {
@@ -195,6 +204,7 @@ macro_rules! impl_mock {
 			type AdminOrigin = EnsureRoot<AccountId>;
 			type MaxRemoteLockConsumers = ConstU32<0>;
 			type RemoteLockConsumerIdentifier = ();
+			type AuthorizedAliasConsideration = Disabled;
 		}
 
 		impl Config for Runtime {
@@ -224,17 +234,5 @@ pub struct ExtBuilder;
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		ExtBuilder
-	}
-}
-
-impl ExtBuilder {
-	pub fn build<Runtime: frame_system::Config>(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::<Runtime>::default()
-			.build_storage()
-			.unwrap();
-
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| frame_system::Pallet::<Runtime>::set_block_number(1u32.into()));
-		ext
 	}
 }

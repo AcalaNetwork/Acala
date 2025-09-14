@@ -63,7 +63,7 @@ pub mod module {
 	}
 
 	/// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
-	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[derive(PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
 	pub struct UnlockChunk {
 		/// Amount of funds to be unlocked.
 		#[codec(compact)]

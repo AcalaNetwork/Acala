@@ -315,7 +315,7 @@ where
 
 fn decode_i128(bytes: &[u8]) -> Option<i128> {
 	if bytes[0..HALF_PARAM_BYTES] == [0xff; HALF_PARAM_BYTES] {
-		if let Ok(v) = i128::try_from(!U256::from(bytes)) {
+		if let Ok(v) = i128::try_from(!U256::from_big_endian(bytes)) {
 			if let Some(v) = v.checked_neg() {
 				return v.checked_sub(1);
 			}

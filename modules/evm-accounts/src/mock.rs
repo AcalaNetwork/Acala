@@ -63,6 +63,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 parameter_type_with_key! {
@@ -134,6 +135,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: vec![(bob_account_id(), 100000)],
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

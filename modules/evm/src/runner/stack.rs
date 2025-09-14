@@ -33,7 +33,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 use module_evm_utility::{
-	ethereum::Log,
+	ethereum::{AuthorizationList, Log},
 	evm::{self, backend::Backend as BackendT, ExitError, ExitReason, Transfer},
 };
 use module_support::{AddressMapping, EVMManager, EVM};
@@ -236,6 +236,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
 		// if the contract not published, the caller must be developer or contract or maintainer.
@@ -244,6 +245,11 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			Pallet::<T>::can_call_contract(&target, &source),
 			Error::<T>::NoPermission
 		);
+
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
 
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
@@ -256,7 +262,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			config,
 			false,
 			&precompiles,
-			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list),
+			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list, authorization_list),
 		)
 	}
 
@@ -269,8 +275,14 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
+
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(
@@ -286,7 +298,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 				let address = executor
 					.create_address(evm::CreateScheme::Legacy { caller: source })
 					.unwrap_or_default(); // transact_create will check the address
-				let (reason, _) = executor.transact_create(source, value, init, gas_limit, access_list);
+				let (reason, _) =
+					executor.transact_create(source, value, init, gas_limit, access_list, authorization_list);
 				(reason, address)
 			},
 		)
@@ -302,8 +315,14 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
+
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let code_hash = H256::from(sp_io::hashing::keccak_256(&init));
@@ -324,7 +343,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 						salt,
 					})
 					.unwrap_or_default(); // transact_create2 will check the address
-				let (reason, _) = executor.transact_create2(source, value, init, salt, gas_limit, access_list);
+				let (reason, _) =
+					executor.transact_create2(source, value, init, salt, gas_limit, access_list, authorization_list);
 				(reason, address)
 			},
 		)
@@ -340,8 +360,14 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
+
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(
@@ -354,8 +380,15 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			false,
 			&precompiles,
 			|executor| {
-				let (reason, _) =
-					executor.transact_create_at_address(source, address, value, init, gas_limit, access_list);
+				let (reason, _) = executor.transact_create_at_address(
+					source,
+					address,
+					value,
+					init,
+					gas_limit,
+					access_list,
+					authorization_list,
+				);
 				(reason, address)
 			},
 		)
@@ -374,11 +407,17 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
 		// Ensure eth_call has evm origin, otherwise xcm charge rent fee will fail.
 		Pallet::<T>::set_origin(T::AddressMapping::get_account_id(&origin));
 		defer!(Pallet::<T>::kill_origin());
+
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
 
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
@@ -391,7 +430,7 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 			config,
 			true,
 			&precompiles,
-			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list),
+			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list, authorization_list),
 		)
 	}
 
@@ -404,8 +443,14 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
+
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(
@@ -421,7 +466,8 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 				let address = executor
 					.create_address(evm::CreateScheme::Legacy { caller: source })
 					.unwrap_or_default(); // transact_create will check the address
-				let (reason, _) = executor.transact_create(source, value, init, gas_limit, access_list);
+				let (reason, _) =
+					executor.transact_create(source, value, init, gas_limit, access_list, authorization_list);
 				(reason, address)
 			},
 		)
@@ -431,6 +477,7 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 struct SubstrateStackSubstate<'config> {
 	metadata: StackSubstateMetadata<'config>,
 	deletes: BTreeSet<H160>,
+	creates: BTreeSet<H160>,
 	logs: Vec<Log>,
 	storage_logs: Vec<(H160, i32)>,
 	parent: Option<Box<SubstrateStackSubstate<'config>>>,
@@ -451,6 +498,7 @@ impl<'config> SubstrateStackSubstate<'config> {
 			metadata: self.metadata.spit_child(gas_limit, is_static),
 			parent: None,
 			deletes: BTreeSet::new(),
+			creates: BTreeSet::new(),
 			logs: Vec::new(),
 			storage_logs: Vec::new(),
 			known_original_storage: BTreeMap::new(),
@@ -516,8 +564,24 @@ impl<'config> SubstrateStackSubstate<'config> {
 		false
 	}
 
+	pub fn created(&self, address: H160) -> bool {
+		if self.creates.contains(&address) {
+			return true;
+		}
+
+		if let Some(parent) = self.parent.as_ref() {
+			return parent.created(address);
+		}
+
+		false
+	}
+
 	pub fn set_deleted(&mut self, address: H160) {
 		self.deletes.insert(address);
+	}
+
+	pub fn set_created(&mut self, address: H160) {
+		self.creates.insert(address);
 	}
 
 	pub fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) {
@@ -572,10 +636,17 @@ impl<'config> SubstrateStackSubstate<'config> {
 	}
 }
 
+#[derive(Default, Clone, Eq, PartialEq)]
+pub struct Recorded {
+	account_codes: Vec<H160>,
+	account_storages: BTreeMap<(H160, H256), bool>,
+}
+
 /// Substrate backend for EVM.
 pub struct SubstrateStackState<'vicinity, 'config, T> {
 	vicinity: &'vicinity Vicinity,
 	substate: SubstrateStackSubstate<'config>,
+	transient_storage: BTreeMap<(H160, H256), H256>,
 	_marker: PhantomData<T>,
 }
 
@@ -587,11 +658,13 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 			substate: SubstrateStackSubstate {
 				metadata,
 				deletes: BTreeSet::new(),
+				creates: BTreeSet::new(),
 				logs: Vec::new(),
 				storage_logs: Vec::new(),
 				parent: None,
 				known_original_storage: BTreeMap::new(),
 			},
+			transient_storage: BTreeMap::new(),
 			_marker: PhantomData,
 		}
 	}
@@ -694,6 +767,13 @@ impl<T: Config> BackendT for SubstrateStackState<'_, '_, T> {
 		AccountStorages::<T>::get(address, index)
 	}
 
+	fn transient_storage(&self, address: H160, index: H256) -> H256 {
+		self.transient_storage
+			.get(&(address, index))
+			.copied()
+			.unwrap_or_default()
+	}
+
 	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
 		if let Some(value) = self.substate.known_original_storage(address, index) {
 			Some(value)
@@ -738,6 +818,10 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 
 	fn deleted(&self, address: H160) -> bool {
 		self.substate.deleted(address)
+	}
+
+	fn created(&self, address: H160) -> bool {
+		self.substate.created(address)
 	}
 
 	fn inc_nonce(&mut self, address: H160) -> Result<(), ExitError> {
@@ -785,6 +869,10 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 		}
 	}
 
+	fn set_transient_storage(&mut self, address: H160, key: H256, value: H256) {
+		self.transient_storage.insert((address, key), value);
+	}
+
 	fn reset_storage(&mut self, address: H160) {
 		// use drain_prefix to avoid wasm-bencher counting limit as write operation
 		<AccountStorages<T>>::drain_prefix(address).for_each(drop);
@@ -798,7 +886,11 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 		self.substate.set_deleted(address)
 	}
 
-	fn set_code(&mut self, address: H160, code: Vec<u8>) {
+	fn set_created(&mut self, address: H160) {
+		self.substate.set_created(address);
+	}
+
+	fn set_code(&mut self, address: H160, code: Vec<u8>, _caller: Option<H160>) -> Result<(), ExitError> {
 		log::debug!(
 			target: "evm",
 			"Inserting code ({} bytes) at {:?}",
@@ -816,7 +908,7 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 					address
 				);
 				debug_assert!(false);
-				return;
+				return Ok(());
 			}
 		};
 
@@ -829,7 +921,7 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 					address
 				);
 				debug_assert!(false);
-				return;
+				return Ok(());
 			}
 		};
 
@@ -859,6 +951,7 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 		let used_storage = code_size.saturating_add(T::NewContractExtraBytes::get());
 		Pallet::<T>::update_contract_storage_size(&address, used_storage as i32);
 		self.substate.metadata.storage_meter_mut().charge(used_storage);
+		Ok(())
 	}
 
 	fn transfer(&mut self, transfer: Transfer) -> Result<(), ExitError> {

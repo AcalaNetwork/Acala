@@ -87,6 +87,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
@@ -116,7 +117,6 @@ impl module_currencies::Config for Runtime {
 
 parameter_types! {
 	pub static TransferRecord: Option<(AccountId, AccountId, Balance)> = None;
-	pub static TransferOk: bool = true;
 }
 
 ord_parameter_types! {
@@ -147,15 +147,11 @@ construct_runtime!(
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
-	transfer_ok: bool,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			balances: vec![],
-			transfer_ok: true,
-		}
+		Self { balances: vec![] }
 	}
 }
 
@@ -165,14 +161,8 @@ impl ExtBuilder {
 		self
 	}
 
-	pub fn transfer_ok(mut self, transfer_ok: bool) -> Self {
-		self.transfer_ok = transfer_ok;
-		self
-	}
-
 	pub fn build(self) -> sp_io::TestExternalities {
 		TransferRecord::mutate(|v| *v = None);
-		TransferOk::mutate(|v| *v = self.transfer_ok);
 
 		let mut t = frame_system::GenesisConfig::<Runtime>::default()
 			.build_storage()
@@ -186,6 +176,7 @@ impl ExtBuilder {
 				.filter(|(_, currency_id, _)| *currency_id == ACA)
 				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
 				.collect::<Vec<_>>(),
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

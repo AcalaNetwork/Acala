@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +31,7 @@ pub type Attributes = BTreeMap<Vec<u8>, Vec<u8>>;
 
 #[bitflags]
 #[repr(u8)]
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, PartialEq, Eq, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, Copy, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum ClassProperty {
 	/// Is token transferable
 	Transferable = 0b00000001,
@@ -60,6 +60,8 @@ impl Decode for Properties {
 		))
 	}
 }
+
+impl DecodeWithMemTracking for Properties {}
 
 impl TypeInfo for Properties {
 	type Identity = Self;

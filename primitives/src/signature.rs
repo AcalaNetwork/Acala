@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{Lazy, Verify},
@@ -27,7 +27,7 @@ use sp_core::{crypto::ByteArray, ecdsa, ed25519, sr25519};
 
 use sp_std::prelude::*;
 
-#[derive(Eq, PartialEq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(Eq, PartialEq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
 pub enum AcalaMultiSignature {
 	/// An Ed25519 signature.
 	Ed25519(ed25519::Signature),

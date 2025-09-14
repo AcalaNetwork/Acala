@@ -134,7 +134,7 @@ jobs:
         with:
           node-version: 18.x
       - name: Install deps
-        run: cargo +1.85.0 install staging-chain-spec-builder --force # base64ct 1.8.0 requires the Cargo feature called `edition2024`
+        run: cargo +1.88.0 install staging-chain-spec-builder --force # base64ct 1.8.0 requires the Cargo feature called `edition2024`
       - name: Run ts tests
         run: |
           npm install -g yarn

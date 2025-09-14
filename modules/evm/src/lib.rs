@@ -58,7 +58,7 @@ pub use module_support::{
 	EVM as EVMTrait,
 };
 pub use orml_traits::{currency::TransferAll, MultiCurrency};
-use parity_scale_codec::{Decode, Encode, FullCodec, MaxEncodedLen};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, FullCodec, MaxEncodedLen};
 pub use primitives::{
 	evm::{
 		convert_decimals_from_evm, convert_decimals_to_evm, decode_gas_limit, is_system_contract, CallInfo, CreateInfo,
@@ -72,7 +72,10 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::{
-	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto, Zero},
+	traits::{
+		Convert, DispatchInfoOf, DispatchOriginOf, One, PostDispatchInfoOf, TransactionExtension, UniqueSaturatedInto,
+		Zero,
+	},
 	transaction_validity::TransactionValidityError,
 	DispatchError, Either, RuntimeDebug, SaturatedConversion, Saturating, TransactionOutcome,
 };
@@ -254,14 +257,14 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 	}
 
-	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
+	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 	pub struct ContractInfo {
 		pub code_hash: H256,
 		pub maintainer: EvmAddress,
 		pub published: bool,
 	}
 
-	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
+	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 	pub struct AccountInfo<Nonce> {
 		pub nonce: Nonce,
 		pub contract_info: Option<ContractInfo>,
@@ -273,13 +276,27 @@ pub mod module {
 		}
 	}
 
-	#[derive(Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+	#[derive(
+		Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, MaxEncodedLen, TypeInfo,
+	)]
 	pub struct CodeInfo {
 		pub code_size: u32,
 		pub ref_count: u32,
 	}
 
-	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Serialize, Deserialize)]
+	#[derive(
+		Clone,
+		Eq,
+		PartialEq,
+		Encode,
+		Decode,
+		DecodeWithMemTracking,
+		RuntimeDebug,
+		TypeInfo,
+		Default,
+		Serialize,
+		Deserialize,
+	)]
 	/// Account definition used for genesis block construction.
 	pub struct GenesisAccount<Balance, Nonce> {
 		/// Account nonce.
@@ -643,6 +660,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			);
 
@@ -738,6 +756,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			) {
 				Err(e) => {
@@ -829,6 +848,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			);
 
@@ -910,6 +930,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			);
 
@@ -1001,6 +1022,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			) {
 				Err(e) => {
@@ -1091,6 +1113,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			) {
 				Err(e) => {
@@ -1274,6 +1297,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			) {
 				Err(e) => Err(DispatchErrorWithPostInfo {
@@ -1939,6 +1963,7 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 				gas_limit,
 				storage_limit,
 				vec![],
+				vec![], // TODO
 				&config,
 			);
 
@@ -2096,12 +2121,12 @@ fn encode_revert_message(msg: &[u8]) -> Vec<u8> {
 	// (32) should contain a utf-8 encoded revert reason.
 	let mut data = Vec::with_capacity(68 + msg.len());
 	data.extend_from_slice(&[0u8; 68]);
-	U256::from(msg.len()).to_big_endian(&mut data[36..68]);
+	U256::from(msg.len()).write_as_big_endian(&mut data[36..68]);
 	data.extend_from_slice(msg);
 	data
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, Eq, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct SetEvmOrigin<T: Config + Send + Sync>(PhantomData<T>);
 
@@ -2129,53 +2154,70 @@ impl<T: Config + Send + Sync> Default for SetEvmOrigin<T> {
 	}
 }
 
-impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
+/// The info passed between the validate and prepare steps for the `ChargeAssetTxPayment` extension.
+#[derive(RuntimeDebugNoBound)]
+pub enum Val<T: Config> {
+	Sender { sender: T::AccountId },
+	NoSender,
+}
+
+impl<T: Config + Send + Sync> TransactionExtension<T::RuntimeCall> for SetEvmOrigin<T> {
 	const IDENTIFIER: &'static str = "SetEvmOrigin";
-	type AccountId = T::AccountId;
-	type Call = T::RuntimeCall;
-	type AdditionalSigned = ();
+	type Implicit = ();
+	type Val = Val<T>;
 	type Pre = ();
 
-	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
-		Ok(())
+	fn weight(&self, _: &T::RuntimeCall) -> Weight {
+		Weight::zero()
 	}
 
 	fn validate(
 		&self,
-		who: &Self::AccountId,
-		_call: &Self::Call,
-		_info: &DispatchInfoOf<Self::Call>,
+		origin: DispatchOriginOf<T::RuntimeCall>,
+		_call: &T::RuntimeCall,
+		_info: &DispatchInfoOf<T::RuntimeCall>,
 		_len: usize,
-	) -> TransactionValidity {
-		ExtrinsicOrigin::<T>::set(Some(who.clone()));
-		Ok(ValidTransaction::default())
+		_self_implicit: Self::Implicit,
+		_inherited_implication: &impl Encode,
+		_source: TransactionSource,
+	) -> Result<(ValidTransaction, Self::Val, DispatchOriginOf<T::RuntimeCall>), TransactionValidityError> {
+		let who = frame_system::ensure_signed(origin.clone())
+			.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::BadSigner))?;
+
+		Ok((ValidTransaction::default(), Val::Sender { sender: who }, origin))
 	}
 
-	fn pre_dispatch(
+	fn prepare(
 		self,
-		who: &Self::AccountId,
-		_call: &Self::Call,
-		_info: &DispatchInfoOf<Self::Call>,
+		val: Self::Val,
+		_origin: &DispatchOriginOf<T::RuntimeCall>,
+		_call: &T::RuntimeCall,
+		_info: &DispatchInfoOf<T::RuntimeCall>,
 		_len: usize,
-	) -> Result<(), TransactionValidityError> {
-		ExtrinsicOrigin::<T>::set(Some(who.clone()));
-		Ok(())
+	) -> Result<Self::Pre, TransactionValidityError> {
+		match val {
+			Val::Sender { sender } => {
+				ExtrinsicOrigin::<T>::set(Some(sender.clone()));
+				Ok(())
+			}
+			Val::NoSender => Ok(()),
+		}
 	}
 
-	fn post_dispatch(
-		_pre: Option<Self::Pre>,
-		_info: &DispatchInfoOf<Self::Call>,
-		_post_info: &PostDispatchInfoOf<Self::Call>,
+	fn post_dispatch_details(
+		_pre: Self::Pre,
+		_info: &DispatchInfoOf<T::RuntimeCall>,
+		_post_info: &PostDispatchInfoOf<T::RuntimeCall>,
 		_len: usize,
 		_result: &DispatchResult,
-	) -> Result<(), TransactionValidityError> {
+	) -> Result<Weight, TransactionValidityError> {
 		ExtrinsicOrigin::<T>::kill();
 		XcmOrigin::<T>::kill();
-		Ok(())
+		Ok(Weight::zero())
 	}
 }
 
-#[derive(Clone, RuntimeDebug, PartialEq, Encode, Decode, TypeInfo)]
+#[derive(Clone, RuntimeDebug, PartialEq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 pub enum EvmTask<T: Config> {
 	// TODO: update
 	Schedule {

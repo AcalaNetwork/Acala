@@ -22,7 +22,6 @@
 
 use super::*;
 use frame_support::{assert_err, assert_noop, assert_ok};
-use insta::assert_json_snapshot;
 use mock::*;
 
 #[test]
@@ -236,7 +235,7 @@ fn liquidation_works() {
 						buf[12..32].copy_from_slice(collateral.as_bytes());
 						buf[44..64].copy_from_slice(repay_dest.as_bytes());
 						let mut amount_data = [0u8; 32];
-						U256::from(100).to_big_endian(&mut amount_data);
+						U256::from(100).write_as_big_endian(&mut amount_data);
 						buf[64..96].copy_from_slice(&amount_data);
 						buf[96..128].copy_from_slice(&amount_data);
 						buf.to_vec()
@@ -277,7 +276,7 @@ fn on_collateral_transfer_works() {
 						let mut buf = [0u8; 64];
 						buf[12..32].copy_from_slice(collateral.as_bytes());
 						let mut amount_data = [0u8; 32];
-						U256::from(100).to_big_endian(&mut amount_data);
+						U256::from(100).write_as_big_endian(&mut amount_data);
 						buf[32..64].copy_from_slice(&amount_data);
 						buf.to_vec()
 					},
@@ -317,7 +316,7 @@ fn on_repayment_refund_works() {
 						let mut buf = [0u8; 64];
 						buf[12..32].copy_from_slice(collateral.as_bytes());
 						let mut amount_data = [0u8; 32];
-						U256::from(100).to_big_endian(&mut amount_data);
+						U256::from(100).write_as_big_endian(&mut amount_data);
 						buf[32..64].copy_from_slice(&amount_data);
 						buf.to_vec()
 					},
@@ -358,6 +357,7 @@ fn liquidation_err_fails_as_expected() {
 #[cfg(feature = "tracing")]
 #[test]
 fn tracing_should_work() {
+	use insta::assert_json_snapshot;
 	use module_evm::runner::tracing;
 	use primitives::evm::tracing::TracerConfig;
 

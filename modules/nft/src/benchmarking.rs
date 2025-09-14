@@ -160,7 +160,7 @@ mod mock {
 		traits::{ConstU128, ConstU32, Contains, InstanceFilter},
 		PalletId,
 	};
-	use parity_scale_codec::{Decode, Encode};
+	use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::{
 		traits::{BlakeTwo256, IdentityLookup},
@@ -190,6 +190,7 @@ mod mock {
 		type RuntimeFreezeReason = RuntimeFreezeReason;
 		type FreezeIdentifier = ();
 		type MaxFreezes = ();
+		type DoneSlashHandler = ();
 	}
 	impl pallet_utility::Config for Runtime {
 		type RuntimeEvent = RuntimeEvent;
@@ -197,7 +198,20 @@ mod mock {
 		type PalletsOrigin = OriginCaller;
 		type WeightInfo = ();
 	}
-	#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+	#[derive(
+		Copy,
+		Clone,
+		Eq,
+		PartialEq,
+		Ord,
+		PartialOrd,
+		Encode,
+		Decode,
+		DecodeWithMemTracking,
+		RuntimeDebug,
+		MaxEncodedLen,
+		TypeInfo,
+	)]
 	pub enum ProxyType {
 		Any,
 		JustTransfer,
@@ -247,6 +261,7 @@ mod mock {
 		type MaxPending = ConstU32<2>;
 		type AnnouncementDepositBase = ConstU128<1>;
 		type AnnouncementDepositFactor = ConstU128<1>;
+		type BlockNumberProvider = System;
 	}
 
 	parameter_types! {

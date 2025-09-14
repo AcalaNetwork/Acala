@@ -26,7 +26,7 @@ use module_support::AddressMapping;
 use orml_benchmarking::runtime_benchmarks;
 use primitives::currency::AssetMetadata;
 use sp_std::{boxed::Box, str::FromStr, vec};
-use xcm::{prelude::*, v4::Location};
+use xcm::{prelude::*, v5::Location};
 
 pub fn alice() -> AccountId {
 	<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr())
@@ -61,7 +61,7 @@ runtime_benchmarks! {
 	{ Runtime, module_asset_registry }
 
 	register_foreign_asset {
-		let location = VersionedLocation::V4(Location::new(
+		let location = VersionedLocation::V5(Location::new(
 			0,
 			[Parachain(1000)],
 		));
@@ -74,7 +74,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, Box::new(location), Box::new(asset_metadata))
 
 	update_foreign_asset {
-		let location = VersionedLocation::V4(Location::new(
+		let location = VersionedLocation::V5(Location::new(
 			0,
 			[Parachain(1000)],
 		));

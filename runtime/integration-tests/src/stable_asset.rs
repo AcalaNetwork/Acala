@@ -24,7 +24,7 @@ use module_support::{AggregatedSwapPath, ExchangeRate, Swap, SwapLimit, EVM as E
 use primitives::{currency::AssetMetadata, evm::EvmAddress};
 use sp_core::bounded::BoundedVec;
 use sp_runtime::{
-	traits::{SignedExtension, UniqueSaturatedInto},
+	traits::{DispatchTransaction, UniqueSaturatedInto},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	Percent,
 };
@@ -542,8 +542,15 @@ fn three_usd_pool_works() {
 			let set_evm_origin = module_evm::SetEvmOrigin::<Runtime>::new();
 			let pre = set_evm_origin
 				.clone()
-				.pre_dispatch(&AccountId::from(BOB), &with_fee_currency_call(usdc), &INFO, 50)
-				.unwrap();
+				.validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
+					&with_fee_currency_call(usdc),
+					&INFO,
+					50,
+					0,
+				)
+				.unwrap()
+				.0;
 
 			let origin = <module_evm_bridge::EVMBridge<Runtime> as module_support::evm::EVMBridge<
 				AccountId,
@@ -551,8 +558,8 @@ fn three_usd_pool_works() {
 			>>::get_origin();
 			assert_eq!(origin, Some(AccountId::from(BOB)));
 
-			assert_ok!(module_evm::SetEvmOrigin::<Runtime>::post_dispatch(
-				Some(pre),
+			assert_ok!(module_evm::SetEvmOrigin::<Runtime>::post_dispatch_details(
+				pre,
 				&INFO,
 				&POST_INFO,
 				50,
@@ -565,18 +572,27 @@ fn three_usd_pool_works() {
 			assert_eq!(origin, None);
 
 			// Origin is None, transfer erc20 failed.
-			assert_noop!(
-				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
-					&with_fee_currency_call(usdc),
-					&INFO,
-					50
-				),
+			assert_eq!(
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0)
+					.validate_and_prepare(
+						Some(AccountId::from(BOB)).into(),
+						&with_fee_currency_call(usdc),
+						&INFO,
+						50,
+						0
+					)
+					.unwrap_err(),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 
 			// set origin in SetEvmOrigin::validate() then transfer erc20 will success.
-			assert_ok!(set_evm_origin.validate(&AccountId::from(BOB), &with_fee_currency_call(usdc), &INFO, 50));
+			assert_ok!(set_evm_origin.validate_and_prepare(
+				Some(AccountId::from(BOB)).into(),
+				&with_fee_currency_call(usdc),
+				&INFO,
+				50,
+				0
+			));
 			let origin = <module_evm_bridge::EVMBridge<Runtime> as module_support::evm::EVMBridge<
 				AccountId,
 				Balance,
@@ -590,11 +606,12 @@ fn three_usd_pool_works() {
 
 			// AUSD as fee token, only dex swap event produced.
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&with_fee_currency_call(USD_CURRENCY),
 					&INFO,
-					50
+					50,
+					0
 				)
 			);
 
@@ -624,18 +641,18 @@ fn three_usd_pool_works() {
 
 			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			assert_debug_snapshot!(liquidity_changes, @r###"
-   [
-       227029656,
-       2250002378,
-   ]
-   "###);
+	[
+	    227029655,
+	    2250002368,
+	]
+	"###);
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_debug_snapshot!(liquidity_changes, @r###"
-   [
-       226576496,
-       2250002368,
-   ]
-   "###);
+    [
+        226576495,
+        2250002358,
+    ]
+	"###);
 
 			// with_fee_path_call failed
 			let invalid_swap_path = vec![
@@ -647,23 +664,27 @@ fn three_usd_pool_works() {
 				vec![usdc, NATIVE_CURRENCY],
 			];
 			for path in invalid_swap_path {
-				assert_noop!(
-					<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-						&AccountId::from(BOB),
-						&with_fee_path_call(path),
-						&INFO,
-						50
-					),
+				assert_eq!(
+					<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0)
+						.validate_and_prepare(
+							Some(AccountId::from(BOB)).into(),
+							&with_fee_path_call(path),
+							&INFO,
+							50,
+							0
+						)
+						.unwrap_err(),
 					TransactionValidityError::Invalid(InvalidTransaction::Payment)
 				);
 			}
 			// USD_CURRENCY to NATIVE_CURRENCY is valid, because it exist in dex swap.
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&with_fee_path_call(vec![USD_CURRENCY, NATIVE_CURRENCY]),
 					&INFO,
-					50
+					50,
+					0
 				)
 			);
 
@@ -680,13 +701,16 @@ fn three_usd_pool_works() {
 				AggregatedSwapPath::<CurrencyId>::Taiga(0, 0, 1), // USDT, USDC
 				AggregatedSwapPath::<CurrencyId>::Dex(vec![USD_CURRENCY, NATIVE_CURRENCY]),
 			];
-			assert_noop!(
-				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
-					&with_fee_aggregated_path_call(invalid_aggregated_path),
-					&INFO,
-					50
-				),
+			assert_eq!(
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0)
+					.validate_and_prepare(
+						Some(AccountId::from(BOB)).into(),
+						&with_fee_aggregated_path_call(invalid_aggregated_path),
+						&INFO,
+						50,
+						0
+					)
+					.unwrap_err(),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 			assert_aggregated_dex_event(usdc, with_fee_aggregated_path_call(usdc_aggregated_path), None);
@@ -730,19 +754,21 @@ fn three_usd_pool_works() {
 			let usdt_amount = Currencies::free_balance(usdt, &AccountId::from(BOB));
 			let usdc_amount = Currencies::free_balance(usdc, &AccountId::from(BOB));
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&with_fee_currency_call(usdt),
 					&INFO,
 					len as usize,
+					0
 				)
 			);
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&with_fee_currency_call(usdc),
 					&INFO,
 					len as usize,
+					0
 				)
 			);
 			assert_eq!(
@@ -763,19 +789,21 @@ fn three_usd_pool_works() {
 			);
 
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&with_fee_currency_call(usdt),
 					&INFO,
 					len as usize,
+					0
 				)
 			);
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&with_fee_currency_call(usdc),
 					&INFO,
 					len as usize,
+					0
 				)
 			);
 
@@ -792,11 +820,12 @@ fn assert_aggregated_dex_event(
 ) {
 	System::reset_events();
 	assert_ok!(
-		<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-			&AccountId::from(BOB),
+		<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate_and_prepare(
+			Some(AccountId::from(BOB)).into(),
 			&with_fee_call,
 			&INFO,
-			len.unwrap_or(50)
+			len.unwrap_or(50),
+			0
 		)
 	);
 	assert!(System::events().iter().any(|r| matches!(

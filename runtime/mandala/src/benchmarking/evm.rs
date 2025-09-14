@@ -278,6 +278,7 @@ mod tests {
 				1_000_000,
 				100_000,
 				vec![],
+				vec![],
 				config,
 			)
 			.unwrap();
@@ -304,6 +305,7 @@ mod tests {
 				1_000_000,
 				100_000,
 				vec![],
+				vec![],
 				config,
 			)
 			.unwrap();
@@ -321,6 +323,7 @@ mod tests {
 				0,
 				1_000_000,
 				100_000,
+				vec![],
 				vec![],
 				config,
 			)
