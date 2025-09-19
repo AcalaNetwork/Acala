@@ -26,8 +26,8 @@ use frame_support::{
 	traits::{Currency, ExistenceRequirement, LockIdentifier, LockableCurrency, OnUnbalanced, WithdrawReasons},
 };
 use frame_system::pallet_prelude::*;
-use module_support::EarningManager;
-use orml_traits::{define_parameters, parameters::ParameterStore, Handler};
+use module_support::{EarningManager, EarningParameters, InstantUnstakeFee};
+use orml_traits::{parameters::ParameterStore, Handler};
 use primitives::{
 	bonding::{self, BondingController},
 	Balance,
@@ -45,12 +45,6 @@ pub mod weights;
 
 pub use weights::WeightInfo;
 
-define_parameters! {
-	pub Parameters = {
-		InstantUnstakeFee: Permill = 0,
-	}
-}
-
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
@@ -61,7 +55,7 @@ pub mod module {
 
 		type Currency: LockableCurrency<Self::AccountId, Balance = Balance>;
 
-		type ParameterStore: ParameterStore<Parameters>;
+		type ParameterStore: ParameterStore<EarningParameters>;
 
 		type OnBonded: Handler<(Self::AccountId, Balance)>;
 		type OnUnbonded: Handler<(Self::AccountId, Balance)>;

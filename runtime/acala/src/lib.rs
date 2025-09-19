@@ -57,7 +57,10 @@ use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
-use module_support::{AddressMapping, AssetIdMapping, DispatchableTask, PoolId};
+use module_support::{
+	AddressMapping, AssetIdMapping, DispatchableTask, EarningParameters, PoolId, ReserveLocation, RuntimeParameters,
+	XtokensParameters,
+};
 use module_transaction_payment::TargetedFeeAdjustment;
 
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
@@ -77,8 +80,8 @@ use frame_support::{
 	PalletId,
 };
 use orml_traits::{
-	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
-	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, MultiCurrency,
+	create_median_value_data_provider, parameter_type_with_key, parameters::ParameterStoreAdapter, DataFeeder,
+	DataProviderExtended, MultiCurrency,
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
@@ -1799,7 +1802,7 @@ parameter_types! {
 impl module_earning::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
-	type ParameterStore = ParameterStoreAdapter<Parameters, module_earning::Parameters>;
+	type ParameterStore = ParameterStoreAdapter<Parameters, EarningParameters>;
 	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
 	type OnUnbonded = module_incentives::OnEarningUnbonded<Runtime>;
 	type OnUnstakeFee = Treasury; // fee goes to treasury
@@ -1808,12 +1811,6 @@ impl module_earning::Config for Runtime {
 	type MaxUnbondingChunks = ConstU32<10>;
 	type LockIdentifier = EarningLockIdentifier;
 	type WeightInfo = ();
-}
-
-define_aggregrated_parameters! {
-	pub RuntimeParameters = {
-		Earning: module_earning::Parameters = 0,
-	}
 }
 
 impl orml_parameters::Config for Runtime {

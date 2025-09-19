@@ -53,7 +53,10 @@ use module_cdp_engine::CollateralCurrencyIds;
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{runner::RunnerExtended, CallInfo, CreateInfo, EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
-use module_support::{AddressMapping, AssetIdMapping, DispatchableTask, ExchangeRateProvider, FractionalRate, PoolId};
+use module_support::{
+	AddressMapping, AssetIdMapping, DispatchableTask, EarningParameters, ExchangeRateProvider, FractionalRate, PoolId,
+	ReserveLocation, RuntimeParameters, XtokensParameters,
+};
 use module_transaction_payment::TargetedFeeAdjustment;
 use parity_scale_codec::{Decode, DecodeLimit, Encode};
 use polkadot_parachain_primitives::primitives::Sibling;
@@ -61,8 +64,8 @@ use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
-	create_median_value_data_provider, define_aggregrated_parameters, parameter_type_with_key,
-	parameters::ParameterStoreAdapter, DataFeeder, DataProviderExtended, GetByKey, MultiCurrency,
+	create_median_value_data_provider, parameter_type_with_key, parameters::ParameterStoreAdapter, DataFeeder,
+	DataProviderExtended, GetByKey, MultiCurrency,
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
@@ -1334,7 +1337,7 @@ impl module_transaction_payment::Config for Runtime {
 impl module_earning::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
-	type ParameterStore = ParameterStoreAdapter<Parameters, module_earning::Parameters>;
+	type ParameterStore = ParameterStoreAdapter<Parameters, EarningParameters>;
 	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
 	type OnUnbonded = module_incentives::OnEarningUnbonded<Runtime>;
 	type OnUnstakeFee = Treasury; // fee goes to treasury
@@ -1870,12 +1873,6 @@ impl module_liquid_crowdloan::Config for Runtime {
 	type PalletId = LiquidCrowdloanPalletId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_liquid_crowdloan::WeightInfo<Runtime>;
-}
-
-define_aggregrated_parameters! {
-	pub RuntimeParameters = {
-		Earning: module_earning::Parameters = 0,
-	}
 }
 
 impl orml_parameters::Config for Runtime {

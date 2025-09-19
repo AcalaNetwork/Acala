@@ -38,6 +38,7 @@ pub mod homa;
 pub mod honzon;
 pub mod incentives;
 pub mod mocks;
+pub mod parameters;
 pub mod stable_asset;
 
 pub use crate::bounded::*;
@@ -47,6 +48,7 @@ pub use crate::evm::*;
 pub use crate::homa::*;
 pub use crate::honzon::*;
 pub use crate::incentives::*;
+pub use crate::parameters::*;
 pub use crate::stable_asset::*;
 
 pub type Price = FixedU128;

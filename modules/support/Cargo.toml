@@ -19,6 +19,7 @@ sp-io = { workspace = true }
 xcm = { workspace = true }
 
 orml-tokens = { workspace = true }
+orml-traits = { workspace = true }
 nutsfinance-stable-asset = { workspace = true }
 primitives = { workspace = true }
 
@@ -33,6 +34,7 @@ std = [
 	"frame-system/std",
 	"nutsfinance-stable-asset/std",
 	"orml-tokens/std",
+	"orml-traits/std",
 	"primitives/std",
 	"scale-info/std",
 	"serde",

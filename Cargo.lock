@@ -4116,6 +4116,7 @@ dependencies = [
  "impl-trait-for-tuples",
  "nutsfinance-stable-asset",
  "orml-tokens",
+ "orml-traits",
  "parity-scale-codec",
  "scale-info",
  "serde",

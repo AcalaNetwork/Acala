@@ -20,8 +20,9 @@ use super::{
 	constants::{fee::*, parachains},
 	AcalaTreasuryAccount, AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert,
 	Currencies, CurrencyId, EvmAddressMapping, ExistentialDeposits, GetNativeCurrencyId, MessageQueue,
-	NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeOrigin, UnknownTokens, XcmInterface, XcmpQueue, ACA, AUSD, TAP,
+	NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem, Parameters, PolkadotXcm, ReserveLocation, Runtime,
+	RuntimeCall, RuntimeEvent, RuntimeOrigin, UnknownTokens, XcmInterface, XcmpQueue, XtokensParameters, ACA, AUSD,
+	TAP,
 };
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_support::{
@@ -33,7 +34,11 @@ use module_asset_registry::{
 };
 use module_support::HomaSubAccountXcm;
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
+use orml_traits::{
+	location::{AbsoluteReserveProvider, Reserve},
+	parameter_type_with_key,
+	parameters::{ParameterStore, ParameterStoreAdapter},
+};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 use parity_scale_codec::{Decode, Encode};
@@ -363,6 +368,22 @@ parameter_type_with_key! {
 	};
 }
 
+pub struct ReserveProviderStore;
+impl Reserve for ReserveProviderStore {
+	fn reserve(asset: &Asset) -> Option<Location> {
+		let AssetId(location) = &asset.id;
+		match (location.parents, location.first_interior()) {
+			// sibling parachain
+			(1, Some(Parachain(id))) => Some(Location::new(1, [Parachain(*id)])),
+			// parent
+			(1, _) => ParameterStoreAdapter::<Parameters, XtokensParameters>::get(ReserveLocation),
+			// children parachain
+			(0, Some(Parachain(id))) => Some(Location::new(0, [Parachain(*id)])),
+			_ => None,
+		}
+	}
+}
+
 impl orml_xtokens::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
@@ -377,7 +398,7 @@ impl orml_xtokens::Config for Runtime {
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
 	type LocationsFilter = Everything;
-	type ReserveProvider = AbsoluteReserveProvider;
+	type ReserveProvider = ReserveProviderStore;
 	type RateLimiter = ();
 	type RateLimiterId = ();
 }
