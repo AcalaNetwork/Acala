@@ -125,6 +125,7 @@ pub use nutsfinance_stable_asset;
 mod authority;
 mod benchmarking;
 pub mod constants;
+mod migrations;
 /// Weights for pallets used in the runtime.
 mod weights;
 pub mod xcm_config;
@@ -1984,7 +1985,7 @@ pub type Executive = frame_executive::Executive<
 >;
 
 #[allow(unused_parens)]
-type Migrations = ();
+type Migrations = (crate::migrations::v1::ParametersMigrateToV1<Runtime>,);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
