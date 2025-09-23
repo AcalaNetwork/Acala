@@ -26,6 +26,7 @@ use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Imbalance},
 };
+use module_support::{EarningParameters, EarningParametersKey, EarningParametersValue};
 use pallet_balances::NegativeImbalance;
 use primitives::mock_handler;
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
@@ -73,17 +74,17 @@ impl OnUnbalanced<NegativeImbalance<Runtime>> for OnUnstakeFee {
 }
 
 pub struct ParameterStoreImpl;
-impl ParameterStore<Parameters> for ParameterStoreImpl {
+impl ParameterStore<EarningParameters> for ParameterStoreImpl {
 	fn get<K>(key: K) -> Option<K::Value>
 	where
 		K: orml_traits::parameters::Key
-			+ Into<<Parameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedKey>,
-		<Parameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedValue: TryInto<K::WrappedValue>,
+			+ Into<<EarningParameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedKey>,
+		<EarningParameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedValue: TryInto<K::WrappedValue>,
 	{
 		let key = key.into();
 		match key {
-			ParametersKey::InstantUnstakeFee(_) => Some(
-				ParametersValue::InstantUnstakeFee(Permill::from_percent(10))
+			EarningParametersKey::InstantUnstakeFee(_) => Some(
+				EarningParametersValue::InstantUnstakeFee(Permill::from_percent(10))
 					.try_into()
 					.ok()?
 					.into(),

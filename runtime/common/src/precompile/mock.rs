@@ -945,18 +945,18 @@ impl module_liquid_crowdloan::Config for Test {
 }
 
 pub struct ParameterStoreImpl;
-impl orml_traits::parameters::ParameterStore<module_earning::Parameters> for ParameterStoreImpl {
+impl orml_traits::parameters::ParameterStore<module_support::EarningParameters> for ParameterStoreImpl {
 	fn get<K>(key: K) -> Option<K::Value>
 	where
 		K: orml_traits::parameters::Key
-			+ Into<<module_earning::Parameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedKey>,
-		<module_earning::Parameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedValue:
+			+ Into<<module_support::EarningParameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedKey>,
+		<module_support::EarningParameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedValue:
 			TryInto<K::WrappedValue>,
 	{
 		let key = key.into();
 		match key {
-			module_earning::ParametersKey::InstantUnstakeFee(_) => Some(
-				module_earning::ParametersValue::InstantUnstakeFee(sp_runtime::Permill::from_percent(10))
+			module_support::EarningParametersKey::InstantUnstakeFee(_) => Some(
+				module_support::EarningParametersValue::InstantUnstakeFee(sp_runtime::Permill::from_percent(10))
 					.try_into()
 					.ok()?
 					.into(),
