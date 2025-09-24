@@ -268,14 +268,12 @@ pub mod module {
 				if let Err(e) = Self::_offchain_worker() {
 					log::info!(
 						target: "auction-manager",
-						"offchain worker: cannot run offchain worker at {:?}: {:?}",
-						now, e,
+						"offchain worker: cannot run offchain worker at {now:?}: {e:?}",
 					);
 				} else {
 					log::debug!(
 						target: "auction-manager",
-						"offchain worker: offchain worker start at block: {:?} already done!",
-						now,
+						"offchain worker: offchain worker start at block: {now:?} already done!",
 					);
 				}
 			}
@@ -342,8 +340,7 @@ impl<T: Config> Pallet<T> {
 		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(xt) {
 			log::info!(
 				target: "auction-manager",
-				"offchain worker: submit unsigned auction cancel tx for AuctionId {:?} failed: {:?}",
-				auction_id, err,
+				"offchain worker: submit unsigned auction cancel tx for AuctionId {auction_id:?} failed: {err:?}",
 			);
 		}
 	}
@@ -368,8 +365,7 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(
 			target: "auction-manager",
-			"offchain worker: max iterations is {:?}",
-			max_iterations
+			"offchain worker: max iterations is {max_iterations:?}",
 		);
 
 		// start iterations to cancel collateral auctions
@@ -696,9 +692,9 @@ impl<T: Config> Pallet<T> {
 			if let Err(e) = res {
 				log::warn!(
 					target: "auction-manager",
-					"issue_debit: failed to issue stable {:?} to {:?}: {:?}. \
+					"issue_debit: failed to issue stable {:?} to {bidder:?}: {e:?}. \
 					This is unexpected but should be safe",
-					collateral_auction.payment_amount(bid_price), bidder, e
+					collateral_auction.payment_amount(bid_price)
 				);
 				debug_assert!(false);
 			}
@@ -714,9 +710,8 @@ impl<T: Config> Pallet<T> {
 			if let Err(e) = res {
 				log::warn!(
 					target: "auction-manager",
-					"withdraw_collateral: failed to withdraw {:?} {:?} from CDP treasury to {:?}: {:?}. \
+					"withdraw_collateral: failed to withdraw {refund_collateral:?} {collateral_type:?} from CDP treasury to {refund_recipient:?}: {e:?}. \
 					This is unexpected but should be safe",
-					refund_collateral, collateral_type, refund_recipient, e
 				);
 				debug_assert!(false);
 			}

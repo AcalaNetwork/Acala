@@ -1135,7 +1135,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Ok(())
 		}
 
-		log::debug!(target: "evm", "Create execution using address {}: {:?}", created_address, reason);
+		log::debug!(target: "evm", "Create execution using address {created_address}: {reason:?}");
 
 		match reason {
 			ExitReason::Succeed(s) => {
@@ -1205,7 +1205,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		reason: ExitReason,
 		return_data: Vec<u8>,
 	) -> (ExitReason, Vec<u8>) {
-		log::debug!(target: "evm", "Call execution using address {}: {:?}", code_address, reason);
+		log::debug!(target: "evm", "Call execution using address {code_address}: {reason:?}");
 		match reason {
 			ExitReason::Succeed(_) => {
 				if let Err(e) = self.exit_substate(StackExitKind::Succeeded) {
@@ -1264,8 +1264,7 @@ impl<'config, S: StackState<'config>, P: PrecompileSet> Handler for StackExecuto
 			{
 				log::debug!(
 					target: "evm",
-					"contract does not exist, address: {:?}",
-					address
+					"contract does not exist, address: {address:?}",
 				);
 			}
 		}

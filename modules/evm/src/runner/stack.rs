@@ -100,10 +100,7 @@ impl<T: Config> Runner<T> {
 			Pallet::<T>::reserve_storage(&origin, storage_limit).map_err(|e| {
 				log::debug!(
 					target: "evm",
-					"ReserveStorageFailed {:?} [source: {:?}, storage_limit: {:?}]",
-					e,
-					origin,
-					storage_limit
+					"ReserveStorageFailed {e:?} [source: {origin:?}, storage_limit: {storage_limit:?}]",
 				);
 				Error::<T>::ReserveStorageFailed
 			})?;
@@ -115,12 +112,7 @@ impl<T: Config> Runner<T> {
 		let used_gas = U256::from(executor.used_gas());
 		log::debug!(
 			target: "evm",
-			"Execution {:?} [source: {:?}, value: {}, gas_limit: {}, used_gas: {}]",
-			reason,
-			source,
-			value,
-			gas_limit,
-			used_gas,
+			"Execution {reason:?} [source: {source:?}, value: {value}, gas_limit: {gas_limit}, used_gas: {used_gas}]",
 		);
 
 		let state = executor.into_state();
@@ -135,11 +127,8 @@ impl<T: Config> Runner<T> {
 		let refunded_storage = state.metadata().storage_meter().total_refunded();
 		log::debug!(
 			target: "evm",
-			"Storage limit: {:?}, actual storage: {:?}, used storage: {:?}, refunded storage: {:?}, storage logs: {:?}",
+			"Storage limit: {:?}, actual storage: {actual_storage:?}, used storage: {used_storage:?}, refunded storage: {refunded_storage:?}, storage logs: {:?}",
 			state.metadata().storage_meter().storage_limit(),
-			actual_storage,
-			used_storage,
-			refunded_storage,
 			state.substate.storage_logs
 		);
 		let mut sum_storage: i32 = 0;
@@ -156,11 +145,7 @@ impl<T: Config> Runner<T> {
 				Pallet::<T>::charge_storage(&origin, target, *storage).map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"ChargeStorageFailed {:?} [source: {:?}, target: {:?}, storage: {:?}]",
-						e,
-						origin,
-						target,
-						storage
+						"ChargeStorageFailed {e:?} [source: {origin:?}, target: {target:?}, storage: {storage:?}]",
 					);
 					Error::<T>::ChargeStorageFailed
 				})?;
@@ -170,8 +155,7 @@ impl<T: Config> Runner<T> {
 		if actual_storage != sum_storage {
 			log::debug!(
 				target: "evm",
-				"ChargeStorageFailed [actual_storage: {:?}, sum_storage: {:?}]",
-				actual_storage, sum_storage
+				"ChargeStorageFailed [actual_storage: {actual_storage:?}, sum_storage: {sum_storage:?}]",
 			);
 			return Err(Error::<T>::ChargeStorageFailed.into());
 		}
@@ -180,12 +164,7 @@ impl<T: Config> Runner<T> {
 			Pallet::<T>::unreserve_storage(&origin, storage_limit, used_storage, refunded_storage).map_err(|e| {
 				log::debug!(
 					target: "evm",
-					"UnreserveStorageFailed {:?} [source: {:?}, storage_limit: {:?}, used_storage: {:?}, refunded_storage: {:?}]",
-					e,
-					origin,
-					storage_limit,
-					used_storage,
-					refunded_storage
+					"UnreserveStorageFailed {e:?} [source: {origin:?}, storage_limit: {storage_limit:?}, used_storage: {used_storage:?}, refunded_storage: {refunded_storage:?}]",
 				);
 				Error::<T>::UnreserveStorageFailed
 			})?;
@@ -194,15 +173,12 @@ impl<T: Config> Runner<T> {
 		for address in state.substate.deletes {
 			log::debug!(
 				target: "evm",
-				"Deleting account at {:?}",
-				address
+				"Deleting account at {address:?}",
 			);
 			Pallet::<T>::remove_contract(&origin, &address).map_err(|e| {
 				log::debug!(
 					target: "evm",
-					"CannotKillContract address {:?}, reason: {:?}",
-					address,
-					e
+					"CannotKillContract address {address:?}, reason: {e:?}",
 				);
 				Error::<T>::CannotKillContract
 			})?;
@@ -840,9 +816,7 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 		if value == H256::default() {
 			log::debug!(
 				target: "evm",
-				"Removing storage for {:?} [index: {:?}]",
-				address,
-				index,
+				"Removing storage for {address:?} [index: {index:?}]",
 			);
 			<AccountStorages<T>>::remove(address, index);
 
@@ -854,10 +828,7 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 		} else {
 			log::debug!(
 				target: "evm",
-				"Updating storage for {:?} [index: {:?}, value: {:?}]",
-				address,
-				index,
-				value,
+				"Updating storage for {address:?} [index: {index:?}, value: {value:?}]",
 			);
 			<AccountStorages<T>>::insert(address, index, value);
 
@@ -893,9 +864,8 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 	fn set_code(&mut self, address: H160, code: Vec<u8>, _caller: Option<H160>) -> Result<(), ExitError> {
 		log::debug!(
 			target: "evm",
-			"Inserting code ({} bytes) at {:?}",
+			"Inserting code ({} bytes) at {address:?}",
 			code.len(),
-			address
 		);
 
 		// get maintainer from parent caller `enter_substate` will do `spit_child`
@@ -904,8 +874,7 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 			None => {
 				log::error!(
 					target: "evm",
-					"get parent's maintainer failed. address: {:?}",
-					address
+					"get parent's maintainer failed. address: {address:?}",
 				);
 				debug_assert!(false);
 				return Ok(());
@@ -917,8 +886,7 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 			None => {
 				log::error!(
 					target: "evm",
-					"get parent's caller failed. address: {:?}",
-					address
+					"get parent's caller failed. address: {address:?}",
 				);
 				debug_assert!(false);
 				return Ok(());
@@ -939,10 +907,7 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 
 		log::debug!(
 			target: "evm",
-			"set_code: address: {:?}, maintainer: {:?}, publish: {:?}",
-			address,
-			caller,
-			is_published
+			"set_code: address: {address:?}, maintainer: {caller:?}, publish: {is_published:?}",
 		);
 
 		let code_size = code.len() as u32;
@@ -968,10 +933,7 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 
 		log::debug!(
 			target: "evm",
-			"transfer [source: {:?}, target: {:?}, amount: {:?}]",
-			source,
-			target,
-			amount
+			"transfer [source: {source:?}, target: {target:?}, amount: {amount:?}]",
 		);
 
 		if T::Currency::free_balance(&source) < amount {
@@ -996,8 +958,7 @@ impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'confi
 			) {
 				debug_assert!(
 					false,
-					"Failed to transfer remaining balance to treasury with error: {:?}",
-					e
+					"Failed to transfer remaining balance to treasury with error: {e:?}",
 				);
 			}
 		}

@@ -86,8 +86,7 @@ where
 				let currency_id_b = input.currency_id_at(2)?;
 				log::debug!(
 					target: "evm",
-					"dex: get_liquidity_pool currency_id_a: {:?}, currency_id_b: {:?}",
-					currency_id_a, currency_id_b
+					"dex: get_liquidity_pool currency_id_a: {currency_id_a:?}, currency_id_b: {currency_id_b:?}",
 				);
 
 				let (balance_a, balance_b) = <module_dex::Pallet<Runtime> as DEXManager<
@@ -106,8 +105,7 @@ where
 				let currency_id_b = input.currency_id_at(2)?;
 				log::debug!(
 					target: "evm",
-					"dex: get_liquidity_token address currency_id_a: {:?}, currency_id_b: {:?}",
-					currency_id_a, currency_id_b
+					"dex: get_liquidity_token address currency_id_a: {currency_id_a:?}, currency_id_b: {currency_id_b:?}",
 				);
 
 				// If it does not exist, return address(0x0). Keep the behavior the same as mapping[key]
@@ -129,8 +127,7 @@ where
 				}
 				log::debug!(
 					target: "evm",
-					"dex: get_swap_target_amount path: {:?}, supply_amount: {:?}",
-					path, supply_amount
+					"dex: get_swap_target_amount path: {path:?}, supply_amount: {supply_amount:?}",
 				);
 
 				// If get_swap_amount fail, return 0.
@@ -153,8 +150,7 @@ where
 				}
 				log::debug!(
 					target: "evm",
-					"dex: get_swap_supply_amount path: {:?}, target_amount: {:?}",
-					path, target_amount
+					"dex: get_swap_supply_amount path: {path:?}, target_amount: {target_amount:?}",
 				);
 
 				// If get_swap_amount fail, return 0.
@@ -179,8 +175,7 @@ where
 				}
 				log::debug!(
 					target: "evm",
-					"dex: swap_with_exact_supply who: {:?}, path: {:?}, supply_amount: {:?}, min_target_amount: {:?}",
-					who, path, supply_amount, min_target_amount
+					"dex: swap_with_exact_supply who: {who:?}, path: {path:?}, supply_amount: {supply_amount:?}, min_target_amount: {min_target_amount:?}",
 				);
 
 				let (_, value) =
@@ -209,8 +204,7 @@ where
 				}
 				log::debug!(
 					target: "evm",
-					"dex: swap_with_exact_target who: {:?}, path: {:?}, target_amount: {:?}, max_supply_amount: {:?}",
-					who, path, target_amount, max_supply_amount
+					"dex: swap_with_exact_target who: {who:?}, path: {path:?}, target_amount: {target_amount:?}, max_supply_amount: {max_supply_amount:?}",
 				);
 
 				let (value, _) =
@@ -237,8 +231,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"dex: add_liquidity who: {:?}, currency_id_a: {:?}, currency_id_b: {:?}, max_amount_a: {:?}, max_amount_b: {:?}, min_share_increment: {:?}",
-					who, currency_id_a, currency_id_b, max_amount_a, max_amount_b, min_share_increment,
+					"dex: add_liquidity who: {who:?}, currency_id_a: {currency_id_a:?}, currency_id_b: {currency_id_b:?}, max_amount_a: {max_amount_a:?}, max_amount_b: {max_amount_b:?}, min_share_increment: {min_share_increment:?}",
 				);
 
 				<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::add_liquidity(
@@ -270,8 +263,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"dex: remove_liquidity who: {:?}, currency_id_a: {:?}, currency_id_b: {:?}, remove_share: {:?}, min_withdrawn_a: {:?}, min_withdrawn_b: {:?}",
-					who, currency_id_a, currency_id_b, remove_share, min_withdrawn_a, min_withdrawn_b,
+					"dex: remove_liquidity who: {who:?}, currency_id_a: {currency_id_a:?}, currency_id_b: {currency_id_b:?}, remove_share: {remove_share:?}, min_withdrawn_a: {min_withdrawn_a:?}, min_withdrawn_b: {min_withdrawn_b:?}",
 				);
 
 				<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, Balance, CurrencyId>>::remove_liquidity(
@@ -298,8 +290,7 @@ where
 				let currency_id_b = input.currency_id_at(2)?;
 				log::debug!(
 					target: "evm",
-					"dex: get_provision_pool currency_id_a: {:?}, currency_id_b: {:?}",
-					currency_id_a, currency_id_b
+					"dex: get_provision_pool currency_id_a: {currency_id_a:?}, currency_id_b: {currency_id_b:?}",
 				);
 
 				let (balance_a, balance_b) = <module_dex::Pallet<Runtime> as DEXBootstrap<
@@ -319,8 +310,7 @@ where
 				let currency_id_b = input.currency_id_at(3)?;
 				log::debug!(
 					target: "evm",
-					"dex: get_provision_pool_of who: {:?}, currency_id_a: {:?}, currency_id_b: {:?}",
-					who, currency_id_a, currency_id_b
+					"dex: get_provision_pool_of who: {who:?}, currency_id_a: {currency_id_a:?}, currency_id_b: {currency_id_b:?}",
 				);
 
 				let (balance_a, balance_b) = <module_dex::Pallet<Runtime> as DEXBootstrap<
@@ -339,8 +329,7 @@ where
 				let currency_id_b = input.currency_id_at(2)?;
 				log::debug!(
 					target: "evm",
-					"dex: get_provision_pool currency_id_a: {:?}, currency_id_b: {:?}",
-					currency_id_a, currency_id_b
+					"dex: get_provision_pool currency_id_a: {currency_id_a:?}, currency_id_b: {currency_id_b:?}",
 				);
 
 				let (exchange_rate_a, exchange_rate_b) = <module_dex::Pallet<Runtime> as DEXBootstrap<
@@ -365,8 +354,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"dex: add_provision who: {:?}, currency_id_a: {:?}, currency_id_b: {:?}, contribution_a: {:?}, contribution_b: {:?}",
-					who, currency_id_a, currency_id_b, contribution_a, contribution_b,
+					"dex: add_provision who: {who:?}, currency_id_a: {currency_id_a:?}, currency_id_b: {currency_id_b:?}, contribution_a: {contribution_a:?}, contribution_b: {contribution_b:?}",
 				);
 
 				<module_dex::Pallet<Runtime> as DEXBootstrap<Runtime::AccountId, Balance, CurrencyId>>::add_provision(
@@ -393,8 +381,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"dex: claim_dex_share who: {:?}, currency_id_a: {:?}, currency_id_b: {:?}",
-					who, currency_id_a, currency_id_b,
+					"dex: claim_dex_share who: {who:?}, currency_id_a: {currency_id_a:?}, currency_id_b: {currency_id_b:?}",
 				);
 
 				let claimed_share = <module_dex::Pallet<Runtime> as DEXBootstrap<
@@ -419,8 +406,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"dex: refund_provision who: {:?}, currency_id_a: {:?}, currency_id_b: {:?}",
-					who, currency_id_a, currency_id_b,
+					"dex: refund_provision who: {who:?}, currency_id_a: {currency_id_a:?}, currency_id_b: {currency_id_b:?}",
 				);
 
 				<module_dex::Pallet<Runtime> as DEXBootstrap<Runtime::AccountId, Balance, CurrencyId>>::refund_provision(

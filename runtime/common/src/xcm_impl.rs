@@ -149,7 +149,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		payment: AssetsInHolding,
 		_context: &XcmContext,
 	) -> Result<AssetsInHolding, XcmError> {
-		log::trace!(target: "xcm::weight", "buy_weight weight: {:?}, payment: {:?}", weight, payment);
+		log::trace!(target: "xcm::weight", "buy_weight weight: {weight:?}, payment: {payment:?}");
 
 		// only support first fungible assets now.
 		let asset_id = payment
@@ -159,7 +159,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 			.map_or(Err(XcmError::TooExpensive), |v| Ok(v.0))?;
 
 		let AssetId(ref location) = asset_id;
-		log::debug!(target: "xcm::weight", "buy_weight location: {:?}", location);
+		log::debug!(target: "xcm::weight", "buy_weight location: {location:?}");
 
 		if let Some(ratio) = M::calculate_rate(location.clone()) {
 			// The WEIGHT_REF_TIME_PER_SECOND is non-zero.
@@ -173,8 +173,8 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 			};
 
 			log::trace!(
-				target: "xcm::weight", "buy_weight payment: {:?}, required: {:?}, fixed_rate: {:?}, ratio: {:?}, weight_ratio: {:?}",
-				payment, required, FixedRate::get(), ratio, weight_ratio
+				target: "xcm::weight", "buy_weight payment: {payment:?}, required: {required:?}, fixed_rate: {:?}, ratio: {ratio:?}, weight_ratio: {weight_ratio:?}",
+				FixedRate::get(),
 			);
 			let unused = payment
 				.clone()
@@ -193,8 +193,8 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 
 	fn refund_weight(&mut self, weight: XcmWeight, _context: &XcmContext) -> Option<Asset> {
 		log::trace!(
-			target: "xcm::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, ratio: {:?}, location: {:?}",
-			weight, self.weight, self.amount, self.ratio, self.location
+			target: "xcm::weight", "refund_weight weight: {weight:?}, weight: {:?}, amount: {:?}, ratio: {:?}, location: {:?}",
+			self.weight, self.amount, self.ratio, self.location
 		);
 		let weight = weight.min(self.weight);
 		let weight_ratio =
@@ -206,7 +206,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		self.weight = self.weight.saturating_sub(weight);
 		self.amount = self.amount.saturating_sub(amount);
 
-		log::trace!(target: "xcm::weight", "refund_weight amount: {:?}", amount);
+		log::trace!(target: "xcm::weight", "refund_weight amount: {amount:?}");
 		if amount > 0 && self.location.is_some() {
 			Some((self.location.clone().expect("checked is non-empty; qed"), amount).into())
 		} else {

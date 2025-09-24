@@ -20,6 +20,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::useless_conversion)]
 
 use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
@@ -1201,8 +1202,7 @@ pub mod module {
 
 			log::debug!(
 				target: "homa",
-				"bump era to {:?}, rebalance result is {:?}",
-				new_era, res
+				"bump era to {new_era:?}, rebalance result is {res:?}",
 			);
 
 			res

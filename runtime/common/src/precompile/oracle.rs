@@ -89,7 +89,7 @@ where
 
 				let output = price.into_inner().wrapping_div(adjustment_multiplier);
 
-				log::debug!(target: "evm", "oracle: getPrice currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}, output: {:?}", currency_id, price, adjustment_multiplier, output);
+				log::debug!(target: "evm", "oracle: getPrice currency_id: {currency_id:?}, price: {price:?}, adjustment_multiplier: {adjustment_multiplier:?}, output: {output:?}");
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					output: Output::encode_uint(output),

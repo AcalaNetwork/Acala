@@ -21,6 +21,7 @@
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::useless_conversion)]
 
 pub use crate::runner::{
 	stack::SubstrateStackState,
@@ -445,8 +446,7 @@ pub mod module {
 
 					assert!(
 						reason.is_succeed(),
-						"Genesis contract failed to execute, error: {:?}",
-						reason
+						"Genesis contract failed to execute, error: {reason:?}",
 					);
 
 					let out = runtime.machine().return_value();
@@ -1323,8 +1323,8 @@ pub mod module {
 					} else {
 						log::debug!(
 							target: "evm",
-							"batch_call failed: [from: {:?}, contract: {:?}, exit_reason: {:?}, output: {:?}, logs: {:?}, used_gas: {:?}]",
-							source, target, info.exit_reason, info.value, info.logs, used_gas
+							"batch_call failed: [from: {source:?}, contract: {target:?}, exit_reason: {:?}, output: {:?}, logs: {:?}, used_gas: {used_gas:?}]",
+							info.exit_reason, info.value, info.logs
 						);
 						Err(DispatchErrorWithPostInfo {
 							post_info: PostDispatchInfo {
@@ -1370,9 +1370,8 @@ impl<T: Config> Pallet<T> {
 			return false;
 		}
 
-		Self::accounts(address).map_or(true, |account_info| {
-			account_info.contract_info.is_none() && account_info.nonce.is_zero()
-		})
+		Self::accounts(address)
+			.is_none_or(|account_info| account_info.contract_info.is_none() && account_info.nonce.is_zero())
 	}
 
 	/// Remove an account if its empty.
@@ -1460,8 +1459,7 @@ impl<T: Config> Pallet<T> {
 					// so this should never happen
 					log::warn!(
 						target: "evm",
-						"remove_account: removed account {:?} while is still linked to contract info",
-						address
+						"remove_account: removed account {address:?} while is still linked to contract info",
 					);
 					debug_assert!(false, "removed account while is still linked to contract info");
 				}
@@ -1812,8 +1810,7 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(
 			target: "evm",
-			"reserve_storage: [from: {:?}, account: {:?}, limit: {:?}, amount: {:?}]",
-			caller, user, limit, amount
+			"reserve_storage: [from: {caller:?}, account: {user:?}, limit: {limit:?}, amount: {amount:?}]",
 		);
 
 		T::ChargeTransactionPayment::reserve_fee(&user, amount, Some(RESERVE_ID_STORAGE_DEPOSIT))?;
@@ -1832,8 +1829,7 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(
 			target: "evm",
-			"unreserve_storage: [from: {:?}, account: {:?}, used: {:?}, refunded: {:?}, unused: {:?}, amount: {:?}]",
-			caller, user, used, refunded, unused, amount
+			"unreserve_storage: [from: {caller:?}, account: {user:?}, used: {used:?}, refunded: {refunded:?}, unused: {unused:?}, amount: {amount:?}]",
 		);
 
 		// should always be able to unreserve the amount
@@ -1854,8 +1850,7 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(
 			target: "evm",
-			"charge_storage: [from: {:?}, account: {:?}, contract: {:?}, contract_acc: {:?}, storage: {:?}, amount: {:?}]",
-			caller, user, contract, contract_acc, storage, amount
+			"charge_storage: [from: {caller:?}, account: {user:?}, contract: {contract:?}, contract_acc: {contract_acc:?}, storage: {storage:?}, amount: {amount:?}]",
 		);
 
 		if storage.is_positive() {
@@ -1893,8 +1888,7 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(
 			target: "evm",
-			"refund_storage: [from: {:?}, account: {:?}, contract: {:?}, contract_acc: {:?}, maintainer: {:?}, maintainer_acc: {:?}, amount: {:?}]",
-			caller, user, contract, contract_acc, maintainer, maintainer_acc, amount
+			"refund_storage: [from: {caller:?}, account: {user:?}, contract: {contract:?}, contract_acc: {contract_acc:?}, maintainer: {maintainer:?}, maintainer_acc: {maintainer_acc:?}, amount: {amount:?}]",
 		);
 
 		// user can't be a dead account
@@ -2272,8 +2266,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 				);
 				log::debug!(
 					target: "evm",
-					"EvmTask remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",
-					caller, contract, maintainer, count
+					"EvmTask remove: [from: {caller:?}, contract: {contract:?}, maintainer: {maintainer:?}, count: {count:?}]",
 				);
 				if r.maybe_cursor.is_none() {
 					// AllRemoved
@@ -2282,8 +2275,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 					debug_assert!(result.is_ok());
 					log::debug!(
 						target: "evm",
-						"EvmTask refund_storage: [from: {:?}, contract: {:?}, maintainer: {:?}, result: {:?}]",
-						caller, contract, maintainer, result
+						"EvmTask refund_storage: [from: {caller:?}, contract: {contract:?}, maintainer: {maintainer:?}, result: {result:?}]",
 					);
 
 					// Remove account after all of the storages are cleared.

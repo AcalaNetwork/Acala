@@ -198,8 +198,7 @@ pub mod module {
 							PoolId::Loans(_) if shutdown => {
 								log::debug!(
 									target: "incentives",
-									"on_initialize: skip accumulate incentives for pool {:?} after shutdown",
-									pool_id
+									"on_initialize: skip accumulate incentives for pool {pool_id:?} after shutdown",
 								);
 							}
 							_ => {
@@ -389,8 +388,7 @@ impl<T: Config> Pallet<T> {
 				Self::transfer_rewards_and_update_records(pool_id, reward_currency_id, reward_amount).map_err(|e| {
 					log::warn!(
 						target: "incentives",
-						"accumulate_incentives: failed to accumulate {:?} {:?} rewards for pool {:?} : {:?}",
-						reward_amount, reward_currency_id, pool_id, e
+						"accumulate_incentives: failed to accumulate {reward_amount:?} {reward_currency_id:?} rewards for pool {pool_id:?} : {e:?}",
 					);
 				});
 		}
@@ -471,8 +469,7 @@ impl<T: Config> Pallet<T> {
 						Err(e) => {
 							log::error!(
 								target: "incentives",
-								"payout_reward_and_reaccumulate_reward: failed to payout {:?} to {:?} and re-accumulate {:?} {:?} to pool {:?}: {:?}",
-								payout_amount, who, deduction_amount, currency_id, pool_id, e
+								"payout_reward_and_reaccumulate_reward: failed to payout {payout_amount:?} to {who:?} and re-accumulate {deduction_amount:?} {currency_id:?} to pool {pool_id:?}: {e:?}",
 							);
 						}
 					};

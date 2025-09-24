@@ -572,7 +572,7 @@ where
 			if let Some(asset_metadata) = Pallet::<T>::asset_metadatas(AssetIds::ForeignAssetId(foreign_asset_id)) {
 				let minimum_balance = asset_metadata.minimal_balance.into();
 				let rate = FixedU128::saturating_from_rational(minimum_balance, T::Currency::minimum_balance().into());
-				log::debug!(target: "asset-registry::weight", "ForeignAsset: {}, MinimumBalance: {}, rate:{:?}", foreign_asset_id, minimum_balance, rate);
+				log::debug!(target: "asset-registry::weight", "ForeignAsset: {foreign_asset_id}, MinimumBalance: {minimum_balance}, rate: {rate:?}");
 				return Some(rate);
 			}
 		}
@@ -596,7 +596,7 @@ where
 					let minimum_balance = asset_metadata.minimal_balance.into();
 					let rate =
 						FixedU128::saturating_from_rational(minimum_balance, T::Currency::minimum_balance().into());
-					log::debug!(target: "asset-registry::weight", "LiquidCrowdloan: {}, MinimumBalance: {}, rate:{:?}", lease, minimum_balance, rate);
+					log::debug!(target: "asset-registry::weight", "LiquidCrowdloan: {lease}, MinimumBalance: {minimum_balance}, rate: {rate:?}");
 					Some(rate)
 				} else {
 					None
@@ -621,7 +621,7 @@ where
 					let minimum_balance = asset_metadata.minimal_balance.into();
 					let rate =
 						FixedU128::saturating_from_rational(minimum_balance, T::Currency::minimum_balance().into());
-					log::debug!(target: "asset-registry::weight", "StableAsset: {}, MinimumBalance: {}, rate:{:?}", pool_id, minimum_balance, rate);
+					log::debug!(target: "asset-registry::weight", "StableAsset: {pool_id}, MinimumBalance: {minimum_balance}, rate: {rate:?}");
 					Some(rate)
 				} else {
 					None
@@ -646,7 +646,7 @@ where
 					let minimum_balance = asset_metadata.minimal_balance.into();
 					let rate =
 						FixedU128::saturating_from_rational(minimum_balance, T::Currency::minimum_balance().into());
-					log::debug!(target: "asset-registry::weight", "Erc20: {}, MinimumBalance: {}, rate:{:?}", address, minimum_balance, rate);
+					log::debug!(target: "asset-registry::weight", "Erc20: {address}, MinimumBalance: {minimum_balance}, rate: {rate:?}");
 					Some(rate)
 				} else {
 					None

@@ -99,8 +99,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: Transfer from: {:?}, currency_id: {:?}, amount: {:?}, dest: {:?}, weight: {:?}",
-					from, currency_id, amount, dest, weight
+					"xtokens: Transfer from: {from:?}, currency_id: {currency_id:?}, amount: {amount:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -111,8 +110,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: Transfer failed: {:?}",
-						e
+						"xtokens: Transfer failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -148,8 +146,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: TransferMultiAsset from: {:?}, asset: {:?}, dest: {:?}, weight: {:?}",
-					from, asset, dest, weight
+					"xtokens: TransferMultiAsset from: {from:?}, asset: {asset:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -160,8 +157,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: TransferMultiAsset failed: {:?}",
-						e
+						"xtokens: TransferMultiAsset failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -194,8 +190,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: Transfer from: {:?}, currency_id: {:?}, amount: {:?}, fee: {:?}, dest: {:?}, weight: {:?}",
-					from, currency_id, amount, fee, dest, weight
+					"xtokens: Transfer from: {from:?}, currency_id: {currency_id:?}, amount: {amount:?}, fee: {fee:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -206,8 +201,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: TransferWithFee failed: {:?}",
-						e
+						"xtokens: TransferWithFee failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -249,8 +243,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: TransferMultiAssetWithFee from: {:?}, asset: {:?}, fee: {:?}, dest: {:?}, weight: {:?}",
-					from, asset, fee, dest, weight
+					"xtokens: TransferMultiAssetWithFee from: {from:?}, asset: {asset:?}, fee: {fee:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -261,8 +254,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: TransferMultiAssetWithFee failed: {:?}",
-						e
+						"xtokens: TransferMultiAssetWithFee failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -315,8 +307,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: TransferMultiCurrencies from: {:?}, currencies: {:?}, fee_item: {:?}, dest: {:?}, weight: {:?}",
-					from, currencies, fee_item, dest, weight
+					"xtokens: TransferMultiCurrencies from: {from:?}, currencies: {currencies:?}, fee_item: {fee_item:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -327,8 +318,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: TransferMultiCurrencies failed: {:?}",
-						e
+						"xtokens: TransferMultiCurrencies failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -370,8 +360,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: TransferMultiAssets from: {:?}, assets: {:?}, fee: {:?}, dest: {:?}, weight: {:?}",
-					from, assets, fee, dest, weight
+					"xtokens: TransferMultiAssets from: {from:?}, assets: {assets:?}, fee: {fee:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -382,8 +371,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: TransferMultiAssets failed: {:?}",
-						e
+						"xtokens: TransferMultiAssets failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,

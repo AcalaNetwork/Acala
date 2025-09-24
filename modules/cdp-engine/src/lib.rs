@@ -27,6 +27,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::useless_conversion)]
 
 use frame_support::{
 	pallet_prelude::*, traits::ExistenceRequirement, traits::UnixTime, transactional, BoundedVec, PalletId,
@@ -420,15 +421,12 @@ pub mod module {
 			if let Err(e) = Self::_offchain_worker() {
 				log::info!(
 					target: "cdp-engine offchain worker",
-					"cannot run offchain worker at {:?}: {:?}",
-					now,
-					e,
+					"cannot run offchain worker at {now:?}: {e:?}",
 				);
 			} else {
 				log::debug!(
 					target: "cdp-engine offchain worker",
-					"offchain worker start at block: {:?} already done!",
-					now,
+					"offchain worker start at block: {now:?} already done!",
 				);
 			}
 		}
@@ -651,9 +649,8 @@ impl<T: Config> Pallet<T> {
 							Err(e) => {
 								log::warn!(
 									target: "cdp-engine",
-									"on_system_surplus: failed to on system surplus {:?}: {:?}. \
+									"on_system_surplus: failed to on system surplus {issued_stable_coin_balance:?}: {e:?}. \
 									This is unexpected but should be safe",
-									issued_stable_coin_balance, e
 								);
 							}
 						}
@@ -678,8 +675,7 @@ impl<T: Config> Pallet<T> {
 		if SubmitTransaction::<T, Call<T>>::submit_transaction(xt).is_err() {
 			log::info!(
 				target: "cdp-engine offchain worker",
-				"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
-				who, currency_id,
+				"submit unsigned liquidation tx for \nCDP - AccountId {who:?} CurrencyId {currency_id:?} \nfailed!",
 			);
 		}
 	}
@@ -694,8 +690,7 @@ impl<T: Config> Pallet<T> {
 		if SubmitTransaction::<T, Call<T>>::submit_transaction(xt).is_err() {
 			log::info!(
 				target: "cdp-engine offchain worker",
-				"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
-				who, currency_id,
+				"submit unsigned settlement tx for \nCDP - AccountId {who:?} CurrencyId {currency_id:?} \nfailed!",
 			);
 		}
 	}
@@ -739,9 +734,7 @@ impl<T: Config> Pallet<T> {
 			None => {
 				log::debug!(
 					target: "cdp-engine offchain worker",
-					"collateral_currency was removed, need to reset the offchain worker: collateral_position is {:?}, collateral_currency_ids: {:?}",
-					collateral_position,
-					collateral_currency_ids
+					"collateral_currency was removed, need to reset the offchain worker: collateral_position is {collateral_position:?}, collateral_currency_ids: {collateral_currency_ids:?}",
 				);
 				to_be_continue.set(&(0, Option::<Vec<u8>>::None));
 				return Ok(());
@@ -786,13 +779,7 @@ impl<T: Config> Pallet<T> {
 		let iteration_end_time = sp_io::offchain::timestamp();
 		log::debug!(
 			target: "cdp-engine offchain worker",
-			"iteration info:\n max iterations is {:?}\n currency id: {:?}, start key: {:?}, iterate count: {:?}\n iteration start at: {:?}, end at: {:?}, execution time: {:?}\n",
-			max_iterations,
-			currency_id,
-			start_key,
-			iteration_count,
-			iteration_start_time,
-			iteration_end_time,
+			"iteration info:\n max iterations is {max_iterations:?}\n currency id: {currency_id:?}, start key: {start_key:?}, iterate count: {iteration_count:?}\n iteration start at: {iteration_start_time:?}, end at: {iteration_end_time:?}, execution time: {:?}\n",
 			iteration_end_time.diff(&iteration_start_time)
 		);
 
@@ -1467,9 +1454,8 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 						log::error!(
 							target: "cdp-engine",
 							"LiquidateViaContracts: transfer collateral to contract failed. \
-							Collateral: {:?}, amount: {:?} contract: {:?}, error: {:?}. \
+							Collateral: {currency_id:?}, amount: {collateral_supply:?} contract: {contract:?}, error: {e:?}. \
 							This is unexpected, need extra action.",
-							currency_id, collateral_supply, contract, e,
 						);
 					} else {
 						// notify liquidation success
@@ -1494,9 +1480,8 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 							log::error!(
 								target: "cdp-engine",
 								"LiquidateViaContracts: refund rest collateral to CDP owner failed. \
-								Collateral: {:?}, amount: {:?} error: {:?}. \
+								Collateral: {currency_id:?}, amount: {refund_collateral_amount:?} error: {e:?}. \
 								This is unexpected, need extra action.",
-								currency_id, refund_collateral_amount, e,
 							);
 						}
 					}

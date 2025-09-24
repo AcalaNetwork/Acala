@@ -150,11 +150,7 @@ impl<EvmChainID: Get<u64>, RelayNumberStrictlyIncreases: CheckAssociatedRelayNum
 		match EvmChainID::get() {
 			CHAIN_ID_MANDALA | CHAIN_ID_KARURA_TESTNET | CHAIN_ID_ACALA_TESTNET => {
 				if current <= previous {
-					log::warn!(
-						"Relay chain block number was reset, current: {:?}, previous: {:?}",
-						current,
-						previous
-					);
+					log::warn!("Relay chain block number was reset, current: {current:?}, previous: {previous:?}",);
 				}
 			}
 			_ => RelayNumberStrictlyIncreases::check_associated_relay_number(current, previous),

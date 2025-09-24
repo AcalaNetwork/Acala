@@ -28,6 +28,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::needless_range_loop)]
+#![allow(clippy::useless_conversion)]
 
 use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional, PalletId};
 use frame_system::pallet_prelude::*;
@@ -338,8 +339,7 @@ impl<T: Config> Pallet<T> {
 				Err(e) => {
 					log::warn!(
 						target: "cdp-treasury",
-						"get_swap_supply_amount: Attempt to burn surplus {:?} failed: {:?}, this is unexpected but should be safe",
-						offset_amount, e
+						"get_swap_supply_amount: Attempt to burn surplus {offset_amount:?} failed: {e:?}, this is unexpected but should be safe",
 					);
 				}
 			}

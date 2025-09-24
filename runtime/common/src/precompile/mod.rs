@@ -252,7 +252,7 @@ where
 
 		// ensure precompile is not paused
 		if PausedPrecompile::is_paused(address) {
-			log::debug!(target: "evm", "Precompile {:?} is paused", address);
+			log::debug!(target: "evm", "Precompile {address:?} is paused");
 			return Some(Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "precompile is paused".into(),
@@ -267,7 +267,7 @@ where
 			}));
 		}
 
-		log::trace!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, context: {:?}", address, handle.input(), context);
+		log::trace!(target: "evm", "Precompile begin, address: {address:?}, input: {:?}, context: {context:?}", handle.input());
 
 		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
 		let result = if address == ECRECOVER {
@@ -350,7 +350,7 @@ where
 			}
 		};
 
-		log::trace!(target: "evm", "Precompile end, address: {:?}, input: {:?}, context: {:?}, result: {:?}", address, handle.input(), handle.context(), result);
+		log::trace!(target: "evm", "Precompile end, address: {address:?}, input: {:?}, context: {:?}, result: {result:?}", handle.input(), handle.context());
 		if let Some(Err(PrecompileFailure::Revert { ref output, .. })) = result {
 			log::debug!(target: "evm", "Precompile failed: {:?}", core::str::from_utf8(output));
 		};
