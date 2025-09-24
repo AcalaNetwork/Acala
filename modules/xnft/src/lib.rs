@@ -26,8 +26,8 @@ use module_nft::{ClassIdOf, TokenIdOf};
 use sp_runtime::{traits::AccountIdConversion, DispatchResult};
 use sp_std::boxed::Box;
 use xcm::{
-	v3,
-	v4::{
+	v3, v4,
+	v5::{
 		Asset, AssetId, AssetInstance, Error as XcmError, Fungibility, InteriorLocation, Junction::*, Location,
 		Result as XcmResult, XcmContext,
 	},

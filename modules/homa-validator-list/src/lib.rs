@@ -55,7 +55,9 @@ pub use weights::WeightInfo;
 pub const HOMA_VALIDATOR_LIST_ID: LockIdentifier = *b"aca/hmvl";
 
 /// Insurance for a validator from a single address
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, Eq, MaxEncodedLen, TypeInfo)]
+#[derive(
+	Encode, Decode, DecodeWithMemTracking, Clone, Copy, RuntimeDebug, Default, PartialEq, Eq, MaxEncodedLen, TypeInfo,
+)]
 pub struct Guarantee<EraIndex> {
 	/// The total tokens the validator has in insurance
 	total: Balance,
@@ -112,7 +114,7 @@ impl<EraIndex: PartialOrd> Guarantee<EraIndex> {
 }
 
 /// Information on a assethub validator's slash
-#[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SlashInfo<Balance, ValidatorId> {
 	/// Address of a validator on the assethub
@@ -122,7 +124,9 @@ pub struct SlashInfo<Balance, ValidatorId> {
 }
 
 /// Validator insurance and frozen status
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen, TypeInfo, PartialEq)]
+#[derive(
+	Encode, Decode, DecodeWithMemTracking, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen, TypeInfo, PartialEq,
+)]
 pub struct ValidatorBacking {
 	/// Total insurance from all guarantors
 	total_insurance: Balance,

@@ -32,7 +32,7 @@
 
 use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional};
 use frame_system::{
-	offchain::{SendTransactionTypes, SubmitTransaction},
+	offchain::{CreateInherent, SubmitTransaction},
 	pallet_prelude::*,
 };
 use module_support::{
@@ -133,7 +133,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + SendTransactionTypes<Call<Self>> {
+	pub trait Config: frame_system::Config + CreateInherent<Call<Self>> {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The minimum increment size of each bid compared to the previous one
@@ -338,7 +338,8 @@ impl<T: Config> Pallet<T> {
 
 	fn submit_cancel_auction_tx(auction_id: AuctionId) {
 		let call = Call::<T>::cancel { id: auction_id };
-		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
+		let xt = T::create_inherent(call.into());
+		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(xt) {
 			log::info!(
 				target: "auction-manager",
 				"offchain worker: submit unsigned auction cancel tx for AuctionId {:?} failed: {:?}",

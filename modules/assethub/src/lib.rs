@@ -33,7 +33,7 @@ use primitives::{AccountId, Balance};
 use sp_std::{boxed::Box, marker::PhantomData, prelude::*};
 
 pub use cumulus_primitives_core::ParaId;
-use xcm::v4::{prelude::*, Weight as XcmWeight};
+use xcm::v5::{prelude::*, Weight as XcmWeight};
 
 /// The encoded index corresponds to AssetHub's Runtime module configuration.
 /// https://github.com/polkadot-fellows/runtimes/blob/2fb47566718a974c261b68fffaae500be5581820/system-parachains/asset-hubs/asset-hub-kusama/src/lib.rs#L1065
@@ -217,7 +217,7 @@ where
 			},
 			Transact {
 				origin_kind: OriginKind::SovereignAccount,
-				require_weight_at_most: weight,
+				fallback_max_weight: Some(weight),
 				call: call.encode().into(),
 			},
 			RefundSurplus,
@@ -241,7 +241,7 @@ where
 			.iter()
 			.map(|(call, weight)| Transact {
 				origin_kind: OriginKind::SovereignAccount,
-				require_weight_at_most: *weight,
+				fallback_max_weight: Some(*weight),
 				call: call.encode().into(),
 			})
 			.collect();
