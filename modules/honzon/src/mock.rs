@@ -26,7 +26,7 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, ConstU64, Nothing},
 	PalletId,
 };
-use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
+use frame_system::EnsureSignedBy;
 use module_cdp_engine::CollateralCurrencyIds;
 use module_support::{
 	mocks::{MockStableAsset, TestRandomness},
@@ -39,7 +39,6 @@ use primitives::{
 };
 use sp_core::crypto::AccountId32;
 use sp_runtime::{
-	testing::TestXt,
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
 	BuildStorage, FixedPointNumber,
 };
@@ -103,6 +102,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
@@ -315,6 +315,7 @@ impl module_cdp_engine::Config for Runtime {
 	type WeightInfo = ();
 }
 
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 impl Config for Runtime {
@@ -342,15 +343,21 @@ construct_runtime!(
 	}
 );
 
-/// An extrinsic type used for tests.
-pub type Extrinsic = TestXt<RuntimeCall, ()>;
-
-impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
+impl<C> frame_system::offchain::CreateTransactionBase<C> for Runtime
 where
-	RuntimeCall: From<LocalCall>,
+	RuntimeCall: From<C>,
 {
-	type OverarchingCall = RuntimeCall;
-	type Extrinsic = Extrinsic;
+	type RuntimeCall = RuntimeCall;
+	type Extrinsic = UncheckedExtrinsic;
+}
+
+impl<C> frame_system::offchain::CreateInherent<C> for Runtime
+where
+	RuntimeCall: From<C>,
+{
+	fn create_inherent(call: Self::RuntimeCall) -> Self::Extrinsic {
+		UncheckedExtrinsic::new_bare(call)
+	}
 }
 
 pub struct ExtBuilder {
@@ -380,6 +387,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self.endowed_native,
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

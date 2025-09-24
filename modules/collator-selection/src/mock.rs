@@ -68,6 +68,7 @@ impl pallet_balances::Config for Test {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 pub struct Author4;
@@ -144,6 +145,7 @@ impl pallet_session::Config for Test {
 	type SessionHandler = TestSessionHandler;
 	type Keys = MockSessionKeys;
 	type WeightInfo = ();
+	type DisablingStrategy = ();
 }
 
 ord_parameter_types! {
@@ -189,13 +191,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	let balances = pallet_balances::GenesisConfig::<Test> {
 		balances: vec![(1, 100), (2, 100), (3, 100), (4, 100), (5, 100), (33, 5)],
+		..Default::default()
 	};
 	let collator_selection = collator_selection::GenesisConfig::<Test> {
 		desired_candidates: 2,
 		candidacy_bond: 10,
 		invulnerables,
 	};
-	let session = pallet_session::GenesisConfig::<Test> { keys };
+	let session = pallet_session::GenesisConfig::<Test> {
+		keys,
+		..Default::default()
+	};
 	balances.assimilate_storage(&mut t).unwrap();
 	// collator selection must be initialized before session.
 	collator_selection.assimilate_storage(&mut t).unwrap();

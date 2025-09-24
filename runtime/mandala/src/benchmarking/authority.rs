@@ -170,7 +170,7 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
-		let call_weight_bound = call.get_dispatch_info().weight;
+		let call_weight_bound = call.get_dispatch_info().call_weight;
 		System::set_block_number(1u32);
 		Authority::authorize_call(RuntimeOrigin::root(), Box::new(call.clone()), Some(caller.clone()))?;
 	}: _(RawOrigin::Signed(caller), hash, call_weight_bound)

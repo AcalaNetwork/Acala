@@ -66,11 +66,11 @@ fn treasury_should_take_xcm_execution_revenue() {
 
 		let actual_amount = Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into());
 		#[cfg(feature = "with-mandala-runtime")]
-		assert_debug_snapshot!(actual_amount, @"9999999719830");
+		assert_debug_snapshot!(actual_amount, @"9999999722650");
 		#[cfg(feature = "with-karura-runtime")]
-		assert_debug_snapshot!(actual_amount, @"999999887932000");
+		assert_debug_snapshot!(actual_amount, @"999999889060000");
 		#[cfg(feature = "with-acala-runtime")]
-		assert_debug_snapshot!(actual_amount, @"9999998879320");
+		assert_debug_snapshot!(actual_amount, @"9999998890600");
 
 		assert_eq!(
 			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),

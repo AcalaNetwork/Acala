@@ -17,14 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Rate;
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use primitives::CurrencyId;
 use scale_info::TypeInfo;
 use sp_runtime::{DispatchResult, RuntimeDebug};
 use sp_std::prelude::*;
 
 /// PoolId for various rewards pools
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub enum PoolId {
 	/// Rewards and shares pool for users who open CDP(CollateralCurrencyId)
 	Loans(CurrencyId),
