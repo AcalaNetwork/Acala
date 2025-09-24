@@ -21,10 +21,11 @@ use frame_support::{pallet_prelude::StorageVersion, traits::GetStorageVersion, w
 
 pub mod v1 {
 	use super::*;
-	use frame_support::traits::OnRuntimeUpgrade;
+	use frame_support::{ensure, traits::OnRuntimeUpgrade};
 	use module_support::{RuntimeParametersKey, RuntimeParametersValue};
 	use orml_traits::parameters::AggregratedKeyValue;
 	use parity_scale_codec::EncodeLike;
+	use sp_std::vec;
 	use xcm::prelude::Location;
 
 	const LOG_TARGET: &str = "parameters::v1";
@@ -63,20 +64,20 @@ pub mod v1 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<alloc::vec::Vec<u8>, sp_runtime::TryRuntimeError> {
+		fn pre_upgrade() -> Result<vec::Vec<u8>, sp_runtime::TryRuntimeError> {
 			log::info!(target: LOG_TARGET, "Running pre_upgrade()");
 
-			let version = Pallet::<T>::on_chain_storage_version();
+			let version = Parameters::on_chain_storage_version();
 			ensure!(version == 0, "parameters already migrated");
 
 			Ok(Vec::new())
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(state: alloc::vec::Vec<u8>) -> Result<(), sp_runtime::TryRuntimeError> {
+		fn post_upgrade(_state: vec::Vec<u8>) -> Result<(), sp_runtime::TryRuntimeError> {
 			log::info!(target: LOG_TARGET, "Running post_upgrade()");
 
-			let version = Pallet::<T>::on_chain_storage_version();
+			let version = Parameters::on_chain_storage_version();
 			ensure!(version == 1, "parameters migration failed");
 
 			Ok(())
