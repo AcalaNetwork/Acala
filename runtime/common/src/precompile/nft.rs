@@ -70,7 +70,7 @@ where
 			Action::QueryBalance => {
 				let who = input.account_id_at(1)?;
 
-				log::debug!(target: "evm", "nft: query_balance who: {:?}", who);
+				log::debug!(target: "evm", "nft: query_balance who: {who:?}");
 
 				let balance = module_nft::Pallet::<Runtime>::balance(&who);
 
@@ -83,7 +83,7 @@ where
 				let class_id = input.u32_at(1)?;
 				let token_id = input.u64_at(2)?;
 
-				log::debug!(target: "evm", "nft: query_owner class_id: {:?}, token_id: {:?}", class_id, token_id);
+				log::debug!(target: "evm", "nft: query_owner class_id: {class_id:?}, token_id: {token_id:?}");
 
 				let owner: H160 = if let Some(o) = module_nft::Pallet::<Runtime>::owner(&class_id, &token_id) {
 					Runtime::AddressMapping::get_evm_address(&o)
@@ -104,7 +104,7 @@ where
 				let class_id = input.u32_at(3)?;
 				let token_id = input.u64_at(4)?;
 
-				log::debug!(target: "evm", "nft: transfer from: {:?}, to: {:?}, class_id: {:?}, token_id: {:?}", from, to, class_id, token_id);
+				log::debug!(target: "evm", "nft: transfer from: {from:?}, to: {to:?}, class_id: {class_id:?}, token_id: {token_id:?}");
 
 				<module_nft::Pallet<Runtime> as Transfer<Runtime::AccountId>>::transfer(&class_id, &token_id, &to)
 					.map_err(|e| PrecompileFailure::Revert {

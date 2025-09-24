@@ -85,7 +85,7 @@ where
 
 		let action = input.action()?;
 
-		log::debug!(target: "evm", "multicurrency: currency id: {:?}", currency_id);
+		log::debug!(target: "evm", "multicurrency: currency id: {currency_id:?}");
 
 		match action {
 			Action::QueryName => {
@@ -93,7 +93,7 @@ where
 					exit_status: ExitRevert::Reverted,
 					output: "Get name failed".into(),
 				})?;
-				log::debug!(target: "evm", "multicurrency: name: {:?}", name);
+				log::debug!(target: "evm", "multicurrency: name: {name:?}");
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -106,7 +106,7 @@ where
 						exit_status: ExitRevert::Reverted,
 						output: "Get symbol failed".into(),
 					})?;
-				log::debug!(target: "evm", "multicurrency: symbol: {:?}", symbol);
+				log::debug!(target: "evm", "multicurrency: symbol: {symbol:?}");
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -119,7 +119,7 @@ where
 						exit_status: ExitRevert::Reverted,
 						output: "Get decimals failed".into(),
 					})?;
-				log::debug!(target: "evm", "multicurrency: decimals: {:?}", decimals);
+				log::debug!(target: "evm", "multicurrency: decimals: {decimals:?}");
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -129,7 +129,7 @@ where
 			Action::QueryTotalIssuance => {
 				let total_issuance =
 					<Runtime as module_transaction_payment::Config>::MultiCurrency::total_issuance(currency_id);
-				log::debug!(target: "evm", "multicurrency: total issuance: {:?}", total_issuance);
+				log::debug!(target: "evm", "multicurrency: total issuance: {total_issuance:?}");
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -144,7 +144,7 @@ where
 				} else {
 					<Runtime as module_transaction_payment::Config>::MultiCurrency::total_balance(currency_id, &who)
 				};
-				log::debug!(target: "evm", "multicurrency: who: {:?}, balance: {:?}", who, balance);
+				log::debug!(target: "evm", "multicurrency: who: {who:?}, balance: {balance:?}");
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -155,7 +155,7 @@ where
 				let from = input.account_id_at(1)?;
 				let to = input.account_id_at(2)?;
 				let amount = input.balance_at(3)?;
-				log::debug!(target: "evm", "multicurrency: transfer from: {:?}, to: {:?}, amount: {:?}", from, to, amount);
+				log::debug!(target: "evm", "multicurrency: transfer from: {from:?}, to: {to:?}, amount: {amount:?}");
 
 				<module_currencies::Pallet<Runtime> as MultiCurrencyT<Runtime::AccountId>>::transfer(
 					currency_id,
@@ -182,7 +182,7 @@ where
 				let to: Runtime::AccountId = AccountId32::from(buf).into();
 
 				let amount = input.balance_at(3)?;
-				log::debug!(target: "evm", "multicurrency: transferToAccountId from: {:?}, to: {:?}, amount: {:?}", from, to, amount);
+				log::debug!(target: "evm", "multicurrency: transferToAccountId from: {from:?}, to: {to:?}, amount: {amount:?}");
 
 				<module_currencies::Pallet<Runtime> as MultiCurrencyT<Runtime::AccountId>>::transfer(
 					currency_id,

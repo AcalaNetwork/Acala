@@ -126,8 +126,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"evm: from: {:?}, contract: {:?}, new_maintainer: {:?}",
-					from, contract, new_maintainer,
+					"evm: from: {from:?}, contract: {contract:?}, new_maintainer: {new_maintainer:?}",
 				);
 
 				<module_evm::Pallet<Runtime> as EVMManager<Runtime::AccountId, Balance>>::transfer_maintainer(

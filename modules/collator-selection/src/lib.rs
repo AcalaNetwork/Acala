@@ -61,6 +61,7 @@
 #![allow(clippy::into_iter_on_ref)]
 #![allow(clippy::try_err)]
 #![allow(clippy::let_and_return)]
+#![allow(clippy::useless_conversion)]
 
 pub use pallet::*;
 
@@ -551,8 +552,8 @@ pub mod pallet {
 					if let Err(why) = outcome {
 						log::warn!(
 							target: "collator-selection",
-							"Failed to remove candidate {:?}", why);
-						debug_assert!(false, "failed to remove candidate {:?}", why);
+							"Failed to remove candidate {why:?}");
+						debug_assert!(false, "failed to remove candidate {why:?}");
 					} else {
 						<NonCandidates<T>>::insert(
 							who,

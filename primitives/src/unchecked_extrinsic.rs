@@ -156,7 +156,7 @@ where
 			Preamble::Signed(addr, AcalaMultiSignature::Ethereum(sig), extra) => {
 				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
 				log::trace!(
-					target: "evm", "Ethereum eth_msg: {:?}", eth_msg
+					target: "evm", "Ethereum eth_msg: {eth_msg:?}"
 				);
 
 				// module_evm::Call::eth_call, ensure tip is zero to prevent miner attacks
@@ -188,7 +188,7 @@ where
 					chain_id: Some(eth_msg.chain_id),
 				};
 				log::trace!(
-					target: "evm", "tx msg: {:?}", msg
+					target: "evm", "tx msg: {msg:?}"
 				);
 
 				let msg_hash = msg.hash(); // TODO: consider rewrite this to use `keccak_256` for hashing because it could be faster
@@ -210,7 +210,7 @@ where
 			Preamble::Signed(addr, AcalaMultiSignature::Eip2930(sig), extra) => {
 				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
 				log::trace!(
-					target: "evm", "Eip2930 eth_msg: {:?}", eth_msg
+					target: "evm", "Eip2930 eth_msg: {eth_msg:?}"
 				);
 
 				// module_evm::Call::eth_call, ensure tip is zero to prevent miner attacks
@@ -238,7 +238,7 @@ where
 					access_list: eth_msg.access_list,
 				};
 				log::trace!(
-					target: "evm", "tx msg: {:?}", msg
+					target: "evm", "tx msg: {msg:?}"
 				);
 
 				let msg_hash = msg.hash(); // TODO: consider rewrite this to use `keccak_256` for hashing because it could be faster
@@ -260,7 +260,7 @@ where
 			Preamble::Signed(addr, AcalaMultiSignature::Eip1559(sig), extra) => {
 				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
 				log::trace!(
-					target: "evm", "Eip1559 eth_msg: {:?}", eth_msg
+					target: "evm", "Eip1559 eth_msg: {eth_msg:?}"
 				);
 
 				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero() {
@@ -286,7 +286,7 @@ where
 					access_list: eth_msg.access_list,
 				};
 				log::trace!(
-					target: "evm", "tx msg: {:?}", msg
+					target: "evm", "tx msg: {msg:?}"
 				);
 
 				let msg_hash = msg.hash(); // TODO: consider rewrite this to use `keccak_256` for hashing because it could be faster
@@ -308,7 +308,7 @@ where
 			Preamble::Signed(addr, AcalaMultiSignature::AcalaEip712(sig), extra) => {
 				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
 				log::trace!(
-					target: "evm", "AcalaEip712 eth_msg: {:?}", eth_msg
+					target: "evm", "AcalaEip712 eth_msg: {eth_msg:?}"
 				);
 
 				let signer = verify_eip712_signature(eth_msg, sig).ok_or(InvalidTransaction::BadProof)?;
@@ -369,7 +369,7 @@ impl<
 		D: serde::Deserializer<'a>,
 	{
 		let r = sp_core::bytes::deserialize(de)?;
-		Decode::decode(&mut &r[..]).map_err(|e| serde::de::Error::custom(format!("Decode error: {}", e)))
+		Decode::decode(&mut &r[..]).map_err(|e| serde::de::Error::custom(format!("Decode error: {e}")))
 	}
 }
 

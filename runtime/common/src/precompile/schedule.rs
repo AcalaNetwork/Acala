@@ -125,14 +125,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"schedule call: from: {:?}, target: {:?}, value: {:?}, gas_limit: {:?}, storage_limit: {:?}, min_delay: {:?}, input_data: {:?}",
-					from,
-					target,
-					value,
-					gas_limit,
-					storage_limit,
-					min_delay,
-					input_data,
+					"schedule call: from: {from:?}, target: {target:?}, value: {value:?}, gas_limit: {gas_limit:?}, storage_limit: {storage_limit:?}, min_delay: {min_delay:?}, input_data: {input_data:?}",
 				);
 
 				let mut _fee: PalletBalanceOf<Runtime> = Default::default();
@@ -186,8 +179,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"schedule call: task_id: {:?}",
-					task_id,
+					"schedule call: task_id: {task_id:?}",
 				);
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
@@ -222,9 +214,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"cancel call: from: {:?}, task_id: {:?}",
-					from,
-					task_id,
+					"cancel call: from: {from:?}, task_id: {task_id:?}",
 				);
 
 				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {
@@ -274,10 +264,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"reschedule call: from: {:?}, task_id: {:?}, min_delay: {:?}",
-					from,
-					task_id,
-					min_delay,
+					"reschedule call: from: {from:?}, task_id: {task_id:?}, min_delay: {min_delay:?}",
 				);
 
 				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {

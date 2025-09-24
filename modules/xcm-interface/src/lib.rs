@@ -189,22 +189,21 @@ pub mod module {
 			let weight = T::Weigher::weight(&mut xcm_message).map_err(|e| {
 				log::error!(
 					target: LOG_TARGET,
-					"failed to weigh XCM message: {:?}", e
+					"failed to weigh XCM message: {e:?}"
 				);
 				Error::<T>::XcmFailed
 			})?;
 
 			log::debug!(
 				target: LOG_TARGET,
-				"origin_location {:?} send XCM to transfer staking currency {:?} to subaccount {:?}, message: {:?}",
-				origin_location, amount, sub_account_index, xcm_message
+				"origin_location {origin_location:?} send XCM to transfer staking currency {amount:?} to subaccount {sub_account_index:?}, message: {xcm_message:?}",
 			);
 			T::XcmExecutor::prepare_and_execute(origin_location, xcm_message, &mut hash, weight, weight)
 				.ensure_complete()
 				.map_err(|e| {
 					log::error!(
 						target: LOG_TARGET,
-						"XcmExecutor failed to execute XCM message: {:?}", e
+						"XcmExecutor failed to execute XCM message: {e:?}"
 					);
 					Error::<T>::XcmFailed
 				})?;
@@ -242,8 +241,7 @@ pub mod module {
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
 				target: LOG_TARGET,
-				"subaccount {:?} send XCM to withdraw unbonded {:?}, result: {:?}",
-				sub_account_index, amount, result
+				"subaccount {sub_account_index:?} send XCM to withdraw unbonded {amount:?}, result: {result:?}",
 			);
 
 			ensure!(result.is_ok(), Error::<T>::XcmFailed);
@@ -264,8 +262,7 @@ pub mod module {
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
 				target: LOG_TARGET,
-				"subaccount {:?} send XCM to bond {:?}, result: {:?}",
-				sub_account_index, amount, result,
+				"subaccount {sub_account_index:?} send XCM to bond {amount:?}, result: {result:?}",
 			);
 
 			ensure!(result.is_ok(), Error::<T>::XcmFailed);
@@ -286,8 +283,7 @@ pub mod module {
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
 				target: LOG_TARGET,
-				"subaccount {:?} send XCM to unbond {:?}, result: {:?}",
-				sub_account_index, amount, result
+				"subaccount {sub_account_index:?} send XCM to unbond {amount:?}, result: {result:?}",
 			);
 
 			ensure!(result.is_ok(), Error::<T>::XcmFailed);
@@ -308,8 +304,7 @@ pub mod module {
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
 				target: LOG_TARGET,
-				"subaccount {:?} send XCM to nominate {:?}, result: {:?}",
-				sub_account_index, targets, result
+				"subaccount {sub_account_index:?} send XCM to nominate {targets:?}, result: {result:?}",
 			);
 
 			ensure!(result.is_ok(), Error::<T>::XcmFailed);

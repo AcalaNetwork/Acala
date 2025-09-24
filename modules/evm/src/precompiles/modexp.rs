@@ -246,7 +246,7 @@ pub trait ModexpImpl {
 		// output of length and value 1.
 		if bytes.len() as u64 <= mod_len {
 			let mut ret = Vec::with_capacity(mod_len as usize);
-			ret.extend(core::iter::repeat(0).take(mod_len as usize - bytes.len()));
+			ret.extend(core::iter::repeat_n(0, mod_len as usize - bytes.len()));
 			ret.extend_from_slice(&bytes[..]);
 			ret.to_vec()
 		} else {

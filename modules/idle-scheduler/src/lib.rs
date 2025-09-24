@@ -123,9 +123,7 @@ pub mod module {
 			{
 				log::debug!(
 					target: "idle-scheduler",
-					"Relaychain produced blocks without finalizing parachain blocks. Idle-scheduler will not execute.\ncurrent relay block number: {:?}\nprevious relay block number: {:?}",
-					current_relay_block_number,
-					previous_relay_block_number
+					"Relaychain produced blocks without finalizing parachain blocks. Idle-scheduler will not execute.\ncurrent relay block number: {current_relay_block_number:?}\nprevious relay block number: {previous_relay_block_number:?}",
 				);
 				// something is not correct so exhaust all remaining weight (note: any on_idle hooks after
 				// IdleScheduler won't execute)

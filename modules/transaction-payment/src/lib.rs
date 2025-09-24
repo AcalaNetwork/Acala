@@ -27,6 +27,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::boxed_local)]
 #![allow(clippy::type_complexity)]
+#![allow(clippy::useless_conversion)]
 
 use frame_support::{
 	dispatch::{DispatchInfo, DispatchResult, GetDispatchInfo, Pays, PostDispatchInfo},
@@ -878,10 +879,7 @@ where
 	) -> Result<(T::AccountId, Balance), DispatchError> {
 		log::debug!(
 			target: LOG_TARGET,
-			"charge_fee_aggregated_path: who: {:?}, fee: {:?}, fee_aggregated_path: {:?}",
-			who,
-			fee,
-			fee_aggregated_path
+			"charge_fee_aggregated_path: who: {who:?}, fee: {fee:?}, fee_aggregated_path: {fee_aggregated_path:?}",
 		);
 
 		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
@@ -900,10 +898,7 @@ where
 	) -> Result<(T::AccountId, Balance), DispatchError> {
 		log::debug!(
 			target: LOG_TARGET,
-			"charge_fee_currency: who: {:?}, fee: {:?}, fee_currency_id: {:?}",
-			who,
-			fee,
-			fee_currency_id
+			"charge_fee_currency: who: {who:?}, fee: {fee:?}, fee_currency_id: {fee_currency_id:?}",
 		);
 
 		let (fee_amount, fee_surplus) = if T::DefaultFeeTokens::get().contains(&fee_currency_id) {
@@ -943,10 +938,7 @@ where
 	) -> Result<(T::AccountId, Balance), DispatchError> {
 		log::debug!(
 			target: LOG_TARGET,
-			"ensure_can_charge_fee_with_call: who: {:?}, fee: {:?}, call: {:?}",
-			who,
-			fee,
-			call
+			"ensure_can_charge_fee_with_call: who: {who:?}, fee: {fee:?}, call: {call:?}",
 		);
 
 		match call.is_sub_type() {
@@ -1028,9 +1020,7 @@ where
 	) -> Result<Balance, DispatchError> {
 		log::debug!(
 			target: LOG_TARGET,
-			"native_then_alternative_or_default: who: {:?}, fee: {:?}",
-			who,
-			fee
+			"native_then_alternative_or_default: who: {who:?}, fee: {fee:?}",
 		);
 
 		if let Some(amount) = Self::check_native_is_not_enough(who, fee, reason) {
@@ -1070,11 +1060,7 @@ where
 				} else {
 					log::debug!(
 						target: LOG_TARGET,
-						"native_then_alternative_or_default swap_from_pool_or_dex : who: {:?}, fee_amount: {:?}, supply_currency_id: {:?}, error: {:?}",
-						who,
-						fee_amount,
-						supply_currency_id,
-						res
+						"native_then_alternative_or_default swap_from_pool_or_dex : who: {who:?}, fee_amount: {fee_amount:?}, supply_currency_id: {supply_currency_id:?}, error: {res:?}",
 					);
 				}
 			}
@@ -1090,11 +1076,7 @@ where
 				} else {
 					log::debug!(
 						target: LOG_TARGET,
-						"native_then_alternative_or_default swap_from_pool_or_dex : who: {:?}, custom_fee_amount: {:?}, supply_currency_id: {:?}, error: {:?}",
-						who,
-						custom_fee_amount,
-						supply_currency_id,
-						res
+						"native_then_alternative_or_default swap_from_pool_or_dex : who: {who:?}, custom_fee_amount: {custom_fee_amount:?}, supply_currency_id: {supply_currency_id:?}, error: {res:?}",
 					);
 				}
 			}
@@ -1385,7 +1367,7 @@ impl<T: Config> core::fmt::Debug for Pre<T> {
 					"Charge {{ {tip:?}, {who:?}, imbalance: <stripped> , {fee:?}, {surplus:?} }}"
 				)
 			}
-			Pre::NoCharge { refund } => write!(f, "NoCharge {{ refund: {:?} }}", refund),
+			Pre::NoCharge { refund } => write!(f, "NoCharge {{ refund: {refund:?} }}"),
 		}
 	}
 
@@ -1466,11 +1448,7 @@ where
 			Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call, reason).map_err(|e| {
 				log::debug!(
 					target: LOG_TARGET,
-					"ensure_can_charge_fee_with_call who: {:?} fee: {:?} call: {:?} error: {:?}",
-					who,
-					fee,
-					call,
-					e
+					"ensure_can_charge_fee_with_call who: {who:?} fee: {fee:?} call: {call:?} error: {e:?}",
 				);
 				TransactionValidityError::from(InvalidTransaction::Payment)
 			})?;
@@ -1745,7 +1723,7 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> Result<PalletBalanceOf<T>, DispatchError> {
-		log::debug!(target: LOG_TARGET, "reserve_fee: who: {:?}, fee: {:?}, named: {:?}", who, fee, named);
+		log::debug!(target: LOG_TARGET, "reserve_fee: who: {who:?}, fee: {fee:?}, named: {named:?}");
 
 		Pallet::<T>::native_then_alternative_or_default(who, fee, WithdrawReasons::TRANSACTION_PAYMENT)?;
 		T::Currency::reserve_named(&named.unwrap_or(RESERVE_ID), who, fee)?;
@@ -1757,7 +1735,7 @@ where
 		fee: PalletBalanceOf<T>,
 		named: Option<ReserveIdentifier>,
 	) -> PalletBalanceOf<T> {
-		log::debug!(target: LOG_TARGET, "unreserve_fee: who: {:?}, fee: {:?}, named: {:?}", who, fee, named);
+		log::debug!(target: LOG_TARGET, "unreserve_fee: who: {who:?}, fee: {fee:?}, named: {named:?}");
 
 		<T as Config>::Currency::unreserve_named(&named.unwrap_or(RESERVE_ID), who, fee)
 	}
@@ -1766,7 +1744,7 @@ where
 		who: &T::AccountId,
 		weight: Weight,
 	) -> Result<(PalletBalanceOf<T>, NegativeImbalanceOf<T>), TransactionValidityError> {
-		log::debug!(target: LOG_TARGET, "unreserve_and_charge_fee: who: {:?}, weight: {:?}", who, weight);
+		log::debug!(target: LOG_TARGET, "unreserve_and_charge_fee: who: {who:?}, weight: {weight:?}");
 
 		let fee = Pallet::<T>::weight_to_fee(weight);
 		<T as Config>::Currency::unreserve_named(&RESERVE_ID, who, fee);
@@ -1818,7 +1796,7 @@ where
 		pays_fee: Pays,
 		class: DispatchClass,
 	) -> Result<(), TransactionValidityError> {
-		log::debug!(target: LOG_TARGET, "charge_fee: who: {:?}, len: {:?}, weight: {:?}, tip: {:?}, pays_fee: {:?}, class: {:?}", who, len, weight, tip, pays_fee, class);
+		log::debug!(target: LOG_TARGET, "charge_fee: who: {who:?}, len: {len:?}, weight: {weight:?}, tip: {tip:?}, pays_fee: {pays_fee:?}, class: {class:?}");
 
 		let fee = Pallet::<T>::compute_fee_raw(len, weight, tip, pays_fee, class).final_fee();
 
@@ -1832,10 +1810,7 @@ where
 		.map_err(|e| {
 			log::debug!(
 				target: LOG_TARGET,
-				"charge_fee withdraw who: {:?} fee: {:?} error: {:?}",
-				who,
-				fee,
-				e
+				"charge_fee withdraw who: {who:?} fee: {fee:?} error: {e:?}",
 			);
 			InvalidTransaction::Payment
 		})?;

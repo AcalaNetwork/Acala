@@ -20,6 +20,7 @@
 #![allow(clippy::unnecessary_cast)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::useless_conversion)]
 
 use frame_support::{
 	pallet_prelude::*,
