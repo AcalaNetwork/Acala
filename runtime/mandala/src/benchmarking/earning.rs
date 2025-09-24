@@ -52,7 +52,7 @@ runtime_benchmarks! {
 		set_balance(NATIVE, &caller, dollar(NATIVE));
 		Parameters::set_parameter(
 			RawOrigin::Root.into(),
-			RuntimeParameters::Earning(module_earning::Parameters::InstantUnstakeFee(module_earning::InstantUnstakeFee, Some(Permill::from_percent(10))))
+			RuntimeParameters::Earning(module_support::EarningParameters::InstantUnstakeFee(module_support::InstantUnstakeFee, Some(Permill::from_percent(10))))
 		)?;
 		Earning::bond(RuntimeOrigin::signed(caller.clone()), 2 * NativeTokenExistentialDeposit::get())?;
 	}: _(RawOrigin::Signed(caller), NativeTokenExistentialDeposit::get())
