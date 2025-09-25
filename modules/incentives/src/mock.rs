@@ -73,7 +73,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -126,7 +125,6 @@ ord_parameter_types! {
 }
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = ConstU64<10>;
 	type NativeCurrencyId = GetNativeCurrencyId;

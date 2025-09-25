@@ -101,7 +101,6 @@ impl orml_oracle::BenchmarkHelper<Key, Price, MaxFeedValues> for BenchmarkHelper
 }
 
 impl orml_oracle::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type OnNewData = ();
 	type CombineData = orml_oracle::DefaultCombineData<Self, MinimumCount, ExpiresIn>;
 	type Time = Timestamp;
@@ -130,7 +129,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -174,7 +172,6 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -192,7 +189,6 @@ impl module_evm_bridge::Config for Test {
 }
 
 impl module_asset_registry::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
@@ -222,7 +218,6 @@ parameter_types! {
 }
 
 impl module_idle_scheduler::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Index = Nonce;
 	type Task = ScheduledTasks;
@@ -235,7 +230,6 @@ parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 }
 impl module_nft::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CreateClassDeposit = ConstU128<200>;
 	type CreateTokenDeposit = ConstU128<100>;
@@ -266,7 +260,6 @@ parameter_types! {
 }
 
 impl module_transaction_payment::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
@@ -396,7 +389,6 @@ parameter_types! {
 }
 
 impl module_dex::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
@@ -415,7 +407,6 @@ parameter_types! {
 }
 
 impl module_loans::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type RiskManager = CDPEngine;
 	type CDPTreasury = CDPTreasury;
@@ -450,7 +441,6 @@ parameter_types! {
 }
 
 impl module_cdp_engine::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type PriceSource = MockPriceSource;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
@@ -522,7 +512,6 @@ parameter_types! {
 }
 
 impl module_cdp_treasury::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
@@ -537,7 +526,6 @@ impl module_cdp_treasury::Config for Test {
 }
 
 impl module_honzon::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type DepositPerAuthorization = ConstU128<100>;
 	type CollateralCurrencyIds = CollateralCurrencyIds<Test>;
@@ -556,7 +544,6 @@ impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoo
 }
 
 impl nutsfinance_stable_asset::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type AssetId = CurrencyId;
 	type Balance = Balance;
 	type Assets = Tokens;
@@ -573,7 +560,6 @@ impl nutsfinance_stable_asset::Config for Test {
 }
 
 impl module_transaction_pause::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type WeightInfo = ();
 }
@@ -608,7 +594,6 @@ impl module_evm::Config for Test {
 	type NewContractExtraBytes = ConstU32<100>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<10>;
-	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>, ()>;
 	type PrecompilesValue = PrecompilesValue;
 	type GasToWeight = GasToWeight;
@@ -628,7 +613,6 @@ impl module_evm::Config for Test {
 }
 
 impl module_evm_accounts::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Test>;
 	type ChainId = EvmChainId<Test>;
@@ -676,7 +660,6 @@ ord_parameter_types! {
 }
 
 impl module_prices::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Source = Oracle;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
@@ -749,7 +732,6 @@ parameter_types! {
 }
 
 impl module_homa::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GovernanceOrigin = EnsureSignedBy<HomaAdmin, AccountId>;
 	type StakingCurrencyId = StakingCurrencyId;
@@ -792,7 +774,6 @@ ord_parameter_types! {
 }
 
 impl module_incentives::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = ConstU32<10>;
 	type NativeCurrencyId = GetNativeCurrencyId;
@@ -872,7 +853,7 @@ pub struct MockExec;
 impl ExecuteXcm<RuntimeCall> for MockExec {
 	type Prepared = Weightless;
 
-	fn prepare(_message: Xcm<RuntimeCall>) -> Result<Self::Prepared, Xcm<RuntimeCall>> {
+	fn prepare(_message: Xcm<RuntimeCall>, _weight_limit: Weight) -> Result<Self::Prepared, InstructionError> {
 		unreachable!()
 	}
 
@@ -900,15 +881,19 @@ impl ExecuteXcm<RuntimeCall> for MockExec {
 						used: *fallback_max_weight,
 					}
 				} else {
-					Outcome::Error {
+					Outcome::Error(InstructionError {
+						index: 0,
 						error: XcmError::WeightLimitReached(*fallback_max_weight),
-					}
+					})
 				}
 			}
 			// use 1000 to decide that it's not supported.
 			_ => Outcome::Incomplete {
 				used: Weight::from_parts(1000, 1000).min(weight_limit),
-				error: XcmError::Unimplemented,
+				error: InstructionError {
+					index: 0,
+					error: XcmError::Unimplemented,
+				},
 			},
 		};
 		o
@@ -928,7 +913,6 @@ parameter_types! {
 }
 
 impl orml_xtokens::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
@@ -952,7 +936,6 @@ parameter_types!(
 );
 
 impl module_liquid_crowdloan::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type LiquidCrowdloanCurrencyId = LiquidCrowdloanCurrencyId;
 	type RelayChainCurrencyId = GetStakingCurrencyId;
@@ -989,7 +972,6 @@ parameter_types! {
 }
 
 impl module_earning::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ParameterStore = ParameterStoreImpl;
 	type OnBonded = module_incentives::OnEarningBonded<Test>;
@@ -1089,11 +1071,11 @@ where
 	type RuntimeCall = RuntimeCall;
 }
 
-impl<C> frame_system::offchain::CreateInherent<C> for Test
+impl<C> frame_system::offchain::CreateBare<C> for Test
 where
 	RuntimeCall: From<C>,
 {
-	fn create_inherent(call: Self::RuntimeCall) -> Self::Extrinsic {
+	fn create_bare(call: Self::RuntimeCall) -> Self::Extrinsic {
 		UncheckedExtrinsic::new_bare(call)
 	}
 }

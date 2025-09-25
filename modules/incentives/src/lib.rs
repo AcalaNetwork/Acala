@@ -66,8 +66,6 @@ pub mod module {
 		frame_system::Config
 		+ orml_rewards::Config<Share = Balance, Balance = Balance, PoolId = PoolId, CurrencyId = CurrencyId>
 	{
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// The period to accumulate rewards
 		#[pallet::constant]
 		type AccumulatePeriod: Get<BlockNumberFor<Self>>;

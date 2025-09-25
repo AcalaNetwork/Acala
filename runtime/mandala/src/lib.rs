@@ -46,7 +46,7 @@ use frame_support::{
 	},
 	transactional,
 	weights::{constants::RocksDbWeight, ConstantMultiplier, Weight},
-	PalletId,
+	PalletId, MAX_EXTRINSIC_DEPTH,
 };
 use frame_system::{EnsureRoot, EnsureSigned, RawOrigin};
 use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping};
@@ -292,7 +292,6 @@ parameter_types! {
 }
 
 impl module_collator_selection::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -721,7 +720,6 @@ impl pallet_democracy::Config for Runtime {
 }
 
 impl orml_auction::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type AuctionId = AuctionId;
 	type Handler = AuctionManager;
@@ -729,7 +727,6 @@ impl orml_auction::Config for Runtime {
 }
 
 impl orml_authority::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type PalletsOrigin = OriginCaller;
 	type RuntimeCall = RuntimeCall;
@@ -770,7 +767,6 @@ parameter_types! {
 }
 
 impl orml_payments::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Asset = Currencies;
 	type DisputeResolver = PaymentsDisputeResolver;
 	type IncentivePercentage = IncentivePercentage;
@@ -827,7 +823,6 @@ impl orml_oracle::BenchmarkHelper<CurrencyId, Price, MaxFeedValues> for Benchmar
 
 type AcalaDataProvider = orml_oracle::Instance1;
 impl orml_oracle::Config<AcalaDataProvider> for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type OnNewData = ();
 	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn, AcalaDataProvider>;
 	type Time = Timestamp;
@@ -917,7 +912,6 @@ parameter_types! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -952,7 +946,6 @@ parameter_types! {
 }
 
 impl module_prices::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Source = AggregatedDataProvider;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
@@ -977,7 +970,6 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -1017,7 +1009,6 @@ impl EnsureOrigin<RuntimeOrigin> for EnsureRootOrTreasury {
 }
 
 impl orml_vesting::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = pallet_balances::Pallet<Runtime>;
 	type MinVestedTransfer = ConstU128<0>;
 	type VestedTransferOrigin = EnsureRootOrTreasury;
@@ -1070,7 +1061,6 @@ parameter_types! {
 }
 
 impl module_auction_manager::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type Auction = Auction;
 	type MinimumIncrementSize = MinimumIncrementSize;
@@ -1085,7 +1075,6 @@ impl module_auction_manager::Config for Runtime {
 }
 
 impl module_loans::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type RiskManager = CdpEngine;
 	type CDPTreasury = CdpTreasury;
@@ -1162,11 +1151,11 @@ where
 	}
 }
 
-impl<C> frame_system::offchain::CreateInherent<C> for Runtime
+impl<C> frame_system::offchain::CreateBare<C> for Runtime
 where
 	RuntimeCall: From<C>,
 {
-	fn create_inherent(call: Self::RuntimeCall) -> Self::Extrinsic {
+	fn create_bare(call: Self::RuntimeCall) -> Self::Extrinsic {
 		UncheckedExtrinsic::new_bare(call)
 	}
 }
@@ -1183,7 +1172,6 @@ parameter_types! {
 }
 
 impl module_cdp_engine::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
@@ -1217,7 +1205,6 @@ parameter_types! {
 }
 
 impl module_honzon::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type DepositPerAuthorization = DepositPerAuthorization;
 	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
@@ -1225,7 +1212,6 @@ impl module_honzon::Config for Runtime {
 }
 
 impl module_emergency_shutdown::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type PriceSource = Prices;
 	type CDPTreasury = CdpTreasury;
@@ -1252,7 +1238,6 @@ parameter_types! {
 }
 
 impl module_dex::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
@@ -1295,7 +1280,6 @@ parameter_types! {
 }
 
 impl module_cdp_treasury::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = AuctionManager;
@@ -1310,7 +1294,6 @@ impl module_cdp_treasury::Config for Runtime {
 }
 
 impl module_transaction_pause::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type WeightInfo = weights::module_transaction_pause::WeightInfo<Runtime>;
 }
@@ -1343,7 +1326,6 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 }
 
 impl module_transaction_payment::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
@@ -1371,7 +1353,6 @@ impl module_transaction_payment::Config for Runtime {
 }
 
 impl module_earning::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ParameterStore = ParameterStoreAdapter<Parameters, module_earning::Parameters>;
 	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
@@ -1385,7 +1366,6 @@ impl module_earning::Config for Runtime {
 }
 
 impl module_evm_accounts::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
@@ -1394,7 +1374,6 @@ impl module_evm_accounts::Config for Runtime {
 }
 
 impl module_asset_registry::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
@@ -1433,7 +1412,6 @@ parameter_types! {
 }
 
 impl module_incentives::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type AccumulatePeriod = AccumulatePeriod;
@@ -1461,7 +1439,6 @@ parameter_types! {
 }
 
 impl module_homa::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type StakingCurrencyId = GetStakingCurrencyId;
@@ -1486,7 +1463,6 @@ parameter_types! {
 }
 
 impl module_homa_validator_list::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type ValidatorId = AccountId;
 	type LiquidTokenCurrency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 	type MinBondAmount = MinBondAmount;
@@ -1504,7 +1480,6 @@ parameter_types! {
 }
 
 impl module_nominees_election::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = module_currencies::Currency<Runtime, GetLiquidCurrencyId>;
 	type NomineeId = AccountId;
 	type PalletId = NomineesElectionId;
@@ -1535,7 +1510,6 @@ impl Convert<u16, AccountId> for SubAccountIndexAccountIdConvertor {
 }
 
 impl module_xcm_interface::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ParachainAccount = ParachainAccount;
 	type AssetHubUnbondingSlashingSpans = ConstU32<5>;
@@ -1551,7 +1525,6 @@ parameter_types! {
 }
 
 impl module_nft::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
@@ -1740,7 +1713,6 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
-	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType =
 		AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>, AcalaPrecompiles<Runtime>>;
 	type PrecompilesValue = PrecompilesValue;
@@ -1770,7 +1742,6 @@ impl module_evm_bridge::Config for Runtime {
 }
 
 impl module_session_manager::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type ValidatorSet = Session;
 	type WeightInfo = weights::module_session_manager::WeightInfo<Runtime>;
 }
@@ -1794,16 +1765,14 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type WeightInfo = cumulus_pallet_parachain_system::weights::SubstrateWeight<Runtime>;
 	type ConsensusHook = ConsensusHook<Runtime>;
 	type SelectCore = cumulus_pallet_parachain_system::DefaultCoreSelector<Runtime>;
+	type RelayParentOffset = ConstU32<0>;
 }
 
 impl parachain_info::Config for Runtime {}
 
-impl orml_unknown_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-}
+impl orml_unknown_tokens::Config for Runtime {}
 
 impl orml_xcm::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type SovereignOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
@@ -1857,7 +1826,6 @@ parameter_types! {
 }
 
 impl nutsfinance_stable_asset::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type AssetId = CurrencyId;
 	type Balance = Balance;
 	type Assets = RebaseTokens;
@@ -1886,7 +1854,6 @@ parameter_types!(
 );
 
 impl module_idle_scheduler::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::module_idle_scheduler::WeightInfo<Runtime>;
 	type Index = Nonce;
 	type Task = ScheduledTasks;
@@ -1904,7 +1871,6 @@ parameter_types!(
 );
 
 impl module_liquid_crowdloan::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type LiquidCrowdloanCurrencyId = LiquidCrowdloanCurrencyId;
 	type RelayChainCurrencyId = GetStakingCurrencyId;
@@ -1920,7 +1886,6 @@ define_aggregrated_parameters! {
 }
 
 impl orml_parameters::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type AggregratedKeyValue = RuntimeParameters;
 	type AdminOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type WeightInfo = ();
@@ -2466,7 +2431,7 @@ impl_runtime_apis! {
 		}
 
 		fn get_estimate_resources_request(extrinsic: Vec<u8>) -> Result<EstimateResourcesRequest, sp_runtime::DispatchError> {
-			let utx = UncheckedExtrinsic::decode_all_with_depth_limit(sp_api::MAX_EXTRINSIC_DEPTH, &mut &*extrinsic)
+			let utx = UncheckedExtrinsic::decode_all_with_depth_limit(MAX_EXTRINSIC_DEPTH, &mut &*extrinsic)
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
 			let request = match utx.0.function {

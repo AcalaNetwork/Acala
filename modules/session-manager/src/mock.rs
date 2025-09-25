@@ -74,7 +74,6 @@ impl pallet_session::Config for Runtime {
 }
 
 impl session_manager::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type ValidatorSet = Session;
 	type WeightInfo = ();
 }

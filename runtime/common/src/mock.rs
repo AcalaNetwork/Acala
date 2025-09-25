@@ -90,7 +90,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for TestRuntime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -137,7 +136,6 @@ parameter_types! {
 }
 
 impl module_idle_scheduler::Config for TestRuntime {
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Index = Nonce;
 	type Task = ScheduledTasks;
@@ -176,7 +174,6 @@ ord_parameter_types! {
 }
 
 impl module_evm_accounts::Config for TestRuntime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<TestRuntime>;
 	type TransferAll = Currencies;
@@ -192,7 +189,6 @@ impl module_evm::Config for TestRuntime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<20_000_000>;
 
-	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = GasToWeight;

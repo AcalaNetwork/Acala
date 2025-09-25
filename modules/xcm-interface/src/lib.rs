@@ -65,8 +65,6 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_xcm::Config {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Origin represented Governance
 		type UpdateOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
@@ -186,7 +184,7 @@ pub mod module {
 
 			let origin_location = T::AccountIdToLocation::convert(sender.clone());
 			let mut hash = xcm_message.using_encoded(hashing::blake2_256);
-			let weight = T::Weigher::weight(&mut xcm_message).map_err(|e| {
+			let weight = T::Weigher::weight(&mut xcm_message, Weight::MAX).map_err(|e| {
 				log::error!(
 					target: LOG_TARGET,
 					"failed to weigh XCM message: {e:?}"

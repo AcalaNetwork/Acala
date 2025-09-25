@@ -32,7 +32,7 @@
 
 use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional};
 use frame_system::{
-	offchain::{CreateInherent, SubmitTransaction},
+	offchain::{CreateBare, SubmitTransaction},
 	pallet_prelude::*,
 };
 use module_support::{
@@ -133,9 +133,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + CreateInherent<Call<Self>> {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
+	pub trait Config: frame_system::Config + CreateBare<Call<Self>> {
 		/// The minimum increment size of each bid compared to the previous one
 		#[pallet::constant]
 		type MinimumIncrementSize: Get<Rate>;
@@ -336,7 +334,7 @@ impl<T: Config> Pallet<T> {
 
 	fn submit_cancel_auction_tx(auction_id: AuctionId) {
 		let call = Call::<T>::cancel { id: auction_id };
-		let xt = T::create_inherent(call.into());
+		let xt = T::create_bare(call.into());
 		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(xt) {
 			log::info!(
 				target: "auction-manager",
