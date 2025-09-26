@@ -89,7 +89,7 @@ pub struct MockExec;
 impl<T> ExecuteXcm<T> for MockExec {
 	type Prepared = Weightless;
 
-	fn prepare(_message: Xcm<T>) -> Result<Self::Prepared, Xcm<T>> {
+	fn prepare(_message: Xcm<T>, _weight_limit: Weight) -> Result<Self::Prepared, InstructionError> {
 		unreachable!()
 	}
 
@@ -117,15 +117,19 @@ impl<T> ExecuteXcm<T> for MockExec {
 						used: *fallback_max_weight,
 					}
 				} else {
-					Outcome::Error {
+					Outcome::Error(InstructionError {
+						index: 0,
 						error: XcmError::WeightLimitReached(*fallback_max_weight),
-					}
+					})
 				}
 			}
 			// use 1000 to decide that it's not supported.
 			_ => Outcome::Incomplete {
 				used: Weight::from_parts(1000, 1000).min(weight_limit),
-				error: XcmError::Unimplemented,
+				error: InstructionError {
+					index: 0,
+					error: XcmError::Unimplemented,
+				},
 			},
 		};
 		o
@@ -208,7 +212,6 @@ macro_rules! impl_mock {
 		}
 
 		impl Config for Runtime {
-			type RuntimeEvent = RuntimeEvent;
 			type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 			type ParachainAccount = ParachainAccount;
 			type AssetHubUnbondingSlashingSpans = ConstU32<28>;

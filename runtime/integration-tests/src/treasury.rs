@@ -49,7 +49,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 			},
 		]);
 		use xcm_executor::traits::WeightBounds;
-		let debt = <XcmConfig as xcm_executor::Config>::Weigher::weight(&mut msg).unwrap_or_default();
+		let debt = <XcmConfig as xcm_executor::Config>::Weigher::weight(&mut msg, Weight::MAX).unwrap_or_default();
 		assert_eq!(debt, Weight::from_parts(shallow_weight, 0));
 
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), 0);

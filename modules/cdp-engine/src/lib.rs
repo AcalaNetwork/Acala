@@ -33,7 +33,7 @@ use frame_support::{
 	pallet_prelude::*, traits::ExistenceRequirement, traits::UnixTime, transactional, BoundedVec, PalletId,
 };
 use frame_system::{
-	offchain::{CreateInherent, SubmitTransaction},
+	offchain::{CreateBare, SubmitTransaction},
 	pallet_prelude::*,
 };
 use module_support::{
@@ -130,9 +130,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + module_loans::Config + CreateInherent<Call<Self>> {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
+	pub trait Config: frame_system::Config + module_loans::Config + CreateBare<Call<Self>> {
 		/// The origin which may update risk management parameters. Root can
 		/// always do this.
 		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
@@ -671,7 +669,7 @@ impl<T: Config> Pallet<T> {
 			currency_id,
 			who: who.clone(),
 		};
-		let xt = T::create_inherent(call.into());
+		let xt = T::create_bare(call.into());
 		if SubmitTransaction::<T, Call<T>>::submit_transaction(xt).is_err() {
 			log::info!(
 				target: "cdp-engine offchain worker",
@@ -686,7 +684,7 @@ impl<T: Config> Pallet<T> {
 			currency_id,
 			who: who.clone(),
 		};
-		let xt = T::create_inherent(call.into());
+		let xt = T::create_bare(call.into());
 		if SubmitTransaction::<T, Call<T>>::submit_transaction(xt).is_err() {
 			log::info!(
 				target: "cdp-engine offchain worker",

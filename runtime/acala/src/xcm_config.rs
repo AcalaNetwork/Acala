@@ -33,8 +33,9 @@ use module_asset_registry::{
 };
 use module_support::HomaSubAccountXcm;
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
+use orml_traits::parameter_type_with_key;
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+use orml_xtokens::AbsoluteReserveProviderMigrationPhase;
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 use parity_scale_codec::{Decode, Encode};
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
@@ -110,7 +111,7 @@ type Reserves = (
 	// Relaychain (DOT) from Asset Hub
 	Case<RelayChainNativeAssetFromAssetHub>,
 	// Assets which the reserve is the same as the origin.
-	MultiNativeAsset<AbsoluteReserveProvider>,
+	MultiNativeAsset<AbsoluteReserveProviderMigrationPhase<Runtime>>,
 );
 
 pub type Trader = (
@@ -366,7 +367,6 @@ parameter_type_with_key! {
 }
 
 impl orml_xtokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
@@ -379,7 +379,8 @@ impl orml_xtokens::Config for Runtime {
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
 	type LocationsFilter = Everything;
-	type ReserveProvider = AbsoluteReserveProvider;
+	type ReserveProvider = AbsoluteReserveProviderMigrationPhase<Runtime>;
 	type RateLimiter = ();
 	type RateLimiterId = ();
+	type MigrationPhaseUpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 }

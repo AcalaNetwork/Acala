@@ -139,7 +139,6 @@ ord_parameter_types! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -160,7 +159,6 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -181,7 +179,6 @@ pub const CREATE_TOKEN_DEPOSIT: u128 = 100;
 pub const DATA_DEPOSIT_PER_BYTE: u128 = 10;
 pub const MAX_ATTRIBUTES_BYTES: u32 = 10;
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CreateClassDeposit = ConstU128<CREATE_CLASS_DEPOSIT>;
 	type CreateTokenDeposit = ConstU128<CREATE_TOKEN_DEPOSIT>;

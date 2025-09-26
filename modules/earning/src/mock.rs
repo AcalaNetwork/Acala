@@ -94,7 +94,6 @@ impl ParameterStore<Parameters> for ParameterStoreImpl {
 }
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ParameterStore = ParameterStoreImpl;
 	type OnBonded = OnBonded;

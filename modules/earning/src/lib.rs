@@ -57,8 +57,6 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		type Currency: LockableCurrency<Self::AccountId, Balance = Balance>;
 
 		type ParameterStore: ParameterStore<Parameters>;

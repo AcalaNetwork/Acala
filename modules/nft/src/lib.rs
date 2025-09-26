@@ -95,8 +95,6 @@ pub mod module {
 		+ orml_nft::Config<ClassData = ClassData<BalanceOf<Self>>, TokenData = TokenData<BalanceOf<Self>>>
 		+ pallet_proxy::Config
 	{
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Currency type for reserve balance.
 		type Currency: NamedReservableCurrency<
 			Self::AccountId,

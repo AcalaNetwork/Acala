@@ -31,8 +31,9 @@ pub use frame_support::{
 };
 use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfStableAsset};
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
+use orml_traits::parameter_type_with_key;
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+use orml_xtokens::AbsoluteReserveProviderMigrationPhase;
 
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 use parity_scale_codec::{Decode, Encode};
@@ -104,7 +105,7 @@ impl xcm_executor::Config for XcmConfig {
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = LocalAssetTransactor;
 	type OriginConverter = XcmOriginToCallOrigin;
-	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
+	type IsReserve = MultiNativeAsset<AbsoluteReserveProviderMigrationPhase<Runtime>>;
 	type IsTeleporter = runtime_common::xcm_config::TrustedTeleporters;
 	type UniversalLocation = UniversalLocation;
 	type Barrier = Barrier;
@@ -345,7 +346,6 @@ parameter_type_with_key! {
 }
 
 impl orml_xtokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
@@ -358,7 +358,8 @@ impl orml_xtokens::Config for Runtime {
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
 	type LocationsFilter = Everything;
-	type ReserveProvider = AbsoluteReserveProvider;
+	type ReserveProvider = AbsoluteReserveProviderMigrationPhase<Runtime>;
 	type RateLimiter = ();
 	type RateLimiterId = ();
+	type MigrationPhaseUpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 }

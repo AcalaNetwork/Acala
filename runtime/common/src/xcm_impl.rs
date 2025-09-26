@@ -238,8 +238,8 @@ impl<
 {
 	type Prepared = <xcm_executor::XcmExecutor<Config> as ExecuteXcm<Config::RuntimeCall>>::Prepared;
 
-	fn prepare(message: Xcm<Config::RuntimeCall>) -> Result<Self::Prepared, Xcm<Config::RuntimeCall>> {
-		xcm_executor::XcmExecutor::<Config>::prepare(message)
+	fn prepare(message: Xcm<Config::RuntimeCall>, weight_limit: Weight) -> Result<Self::Prepared, InstructionError> {
+		xcm_executor::XcmExecutor::<Config>::prepare(message, weight_limit)
 	}
 
 	fn execute(

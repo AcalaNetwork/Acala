@@ -18,7 +18,7 @@
 
 use crate::{evm::EthereumTransactionMessage, signature::AcalaMultiSignature, to_bytes, Address, Balance};
 use frame_support::ensure;
-use frame_support::traits::{ExtrinsicCall, Get, InherentBuilder, SignedTransactionBuilder};
+use frame_support::traits::{Get, InherentBuilder, SignedTransactionBuilder};
 use module_evm_utility::ethereum::{
 	EIP1559TransactionMessage, EIP2930TransactionMessage, LegacyTransactionMessage, TransactionAction,
 };
@@ -30,7 +30,8 @@ use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_runtime::{
 	generic::{CheckedExtrinsic, ExtrinsicFormat, Preamble, UncheckedExtrinsic},
 	traits::{
-		self, Checkable, Convert, Dispatchable, ExtrinsicLike, ExtrinsicMetadata, Member, TransactionExtension, Zero,
+		self, Checkable, Convert, Dispatchable, ExtrinsicCall, ExtrinsicLike, ExtrinsicMetadata, Member,
+		TransactionExtension, Zero,
 	},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	AccountId32, RuntimeDebug,
@@ -361,8 +362,9 @@ impl<
 		ConvertEthTx,
 		StorageDepositPerByte,
 		TxFeePerGas,
-	> serde::Deserialize<'a>
-	for AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+	> serde::Deserialize<'a> for AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+where
+	AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>: Decode,
 {
 	fn deserialize<D>(de: D) -> Result<Self, D::Error>
 	where

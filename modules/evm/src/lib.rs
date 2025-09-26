@@ -201,9 +201,6 @@ pub mod module {
 		#[pallet::constant]
 		type TxFeePerGas: Get<BalanceOf<Self>>;
 
-		/// The overarching event type.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Precompiles associated with this EVM engine.
 		type PrecompilesType: PrecompileSet;
 		type PrecompilesValue: Get<Self::PrecompilesType>;

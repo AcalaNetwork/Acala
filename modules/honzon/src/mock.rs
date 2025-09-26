@@ -75,7 +75,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -122,7 +121,6 @@ parameter_types! {
 }
 
 impl module_loans::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type RiskManager = CDPEngineModule;
 	type CDPTreasury = CDPTreasuryModule;
@@ -198,7 +196,6 @@ parameter_types! {
 }
 
 impl module_cdp_treasury::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
@@ -220,7 +217,6 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl module_evm_accounts::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = PalletBalances;
 	type ChainId = ();
 	type AddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
@@ -245,7 +241,6 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = ConstU32<1>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<10>;
-	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = ();
@@ -287,7 +282,6 @@ parameter_types! {
 }
 
 impl module_cdp_engine::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type PriceSource = MockPriceSource;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
@@ -319,7 +313,6 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = PalletBalances;
 	type DepositPerAuthorization = ConstU128<100>;
 	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
@@ -351,11 +344,11 @@ where
 	type Extrinsic = UncheckedExtrinsic;
 }
 
-impl<C> frame_system::offchain::CreateInherent<C> for Runtime
+impl<C> frame_system::offchain::CreateBare<C> for Runtime
 where
 	RuntimeCall: From<C>,
 {
-	fn create_inherent(call: Self::RuntimeCall) -> Self::Extrinsic {
+	fn create_bare(call: Self::RuntimeCall) -> Self::Extrinsic {
 		UncheckedExtrinsic::new_bare(call)
 	}
 }

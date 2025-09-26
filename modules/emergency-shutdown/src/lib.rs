@@ -52,8 +52,6 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + module_loans::Config {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// The list of valid collateral currency types
 		type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
 
