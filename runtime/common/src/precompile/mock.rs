@@ -38,7 +38,8 @@ use module_support::{
 	ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId, PriceProvider, Rate,
 	SpecificJointsSwap,
 };
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
+use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
+use orml_xtokens::AbsoluteReserveProviderMigrationPhase;
 use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 pub use primitives::{
 	define_combined_task,
@@ -925,9 +926,10 @@ impl orml_xtokens::Config for Test {
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
 	type LocationsFilter = Everything;
-	type ReserveProvider = AbsoluteReserveProvider;
+	type ReserveProvider = AbsoluteReserveProviderMigrationPhase<Test>;
 	type RateLimiter = ();
 	type RateLimiterId = ();
+	type MigrationPhaseUpdateOrigin = EnsureRoot<AccountId>;
 }
 
 parameter_types!(
