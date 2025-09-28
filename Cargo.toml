@@ -299,6 +299,7 @@ sp-weights = { version = "32.0.0", default-features = false }
 xcm = { version = "17.0.0", package = "staging-xcm", default-features = false }
 xcm-builder = { version = "21.0.0", package = "staging-xcm-builder", default-features = false }
 xcm-executor = { version = "20.0.0", package = "staging-xcm-executor", default-features = false }
+xcm-runtime-apis = { version = "0.8.0", default-features = false }
 
 # polkadot-sdk (client)
 substrate-wasm-builder = { version = "27.0.0", features = ["metadata-hash"] }
