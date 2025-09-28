@@ -71,6 +71,7 @@ polkadot-parachain-primitives = { workspace = true }
 xcm = { workspace = true }
 xcm-executor = { workspace = true }
 xcm-builder = { workspace = true }
+xcm-runtime-apis = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-benchmarks = { workspace = true, optional = true }
 polkadot-runtime-common = { workspace = true }
@@ -215,6 +216,7 @@ std = [
 	"polkadot-parachain-primitives/std",
 	"xcm-builder/std",
 	"xcm-executor/std",
+	"xcm-runtime-apis/std",
 	"xcm/std",
 	"polkadot-runtime-common/std",
 	"parachains-common/std",
