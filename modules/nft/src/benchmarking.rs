@@ -269,7 +269,6 @@ mod mock {
 	}
 
 	impl crate::Config for Runtime {
-		type RuntimeEvent = RuntimeEvent;
 		type Currency = Balances;
 		type CreateClassDeposit = ConstU128<200>;
 		type CreateTokenDeposit = ConstU128<100>;

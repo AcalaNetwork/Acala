@@ -75,7 +75,6 @@ ord_parameter_types! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -173,7 +172,6 @@ impl Contains<AccountId> for InvalidNominees {
 }
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = LDOTCurrency;
 	type NomineeId = AccountId;
 	type PalletId = PalletId;

@@ -2606,7 +2606,7 @@ fn strict_call_works() {
                       proof_size: 11183,
                   },
               ),
-              pays_fee: Pays::Yes,
+              pays_fee: Yes,
           },
           error: Module(
               ModuleError {
@@ -2660,7 +2660,7 @@ fn strict_call_works() {
                       proof_size: 11183,
                   },
               ),
-              pays_fee: Pays::Yes,
+              pays_fee: Yes,
           },
           error: Module(
               ModuleError {
