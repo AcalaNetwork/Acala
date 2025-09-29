@@ -2502,3 +2502,108 @@ fn with_fee_call_validation_works() {
 			);
 		});
 }
+
+#[test]
+fn query_info_and_fee_details_works() {
+	let call = RuntimeCall::PalletBalances(pallet_balances::Call::transfer_allow_death { dest: BOB, value: 69 });
+	let origin = ALICE;
+	let extra = ();
+	let xt = UncheckedExtrinsic::new_signed(call.clone(), origin, (), extra);
+	let info = xt.get_dispatch_info();
+	let ext = xt.encode();
+	let len = ext.len() as u32;
+
+	let unsigned_xt = UncheckedExtrinsic::<u64, _, (), ()>::new_bare(call);
+	let unsigned_xt_info = unsigned_xt.get_dispatch_info();
+
+	ExtBuilder::default()
+		.base_weight(Weight::from_parts(5, 0))
+		.weight_fee(2)
+		.build()
+		.execute_with(|| {
+			// all fees should be x1.5
+			NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
+
+			assert_eq!(
+				TransactionPayment::query_info(xt.clone(), len),
+				RuntimeDispatchInfo {
+					weight: info.total_weight(),
+					class: info.class,
+					partial_fee: 5 * 2 /* base * weight_fee */
+					+ len as u128 * 2 /* len * 2 */
+					+ info.total_weight().min(BlockWeights::get().max_block).ref_time() as u128 * 2 * 3 / 2 /* weight */
+				},
+			);
+
+			assert_eq!(
+				TransactionPayment::query_info(unsigned_xt.clone(), len),
+				RuntimeDispatchInfo {
+					weight: unsigned_xt_info.call_weight,
+					class: unsigned_xt_info.class,
+					partial_fee: 0,
+				},
+			);
+
+			assert_eq!(
+				TransactionPayment::query_fee_details(xt, len),
+				FeeDetails {
+					inclusion_fee: Some(InclusionFee {
+						base_fee: 5 * 2,
+						len_fee: len as u128 * 2,
+						adjusted_weight_fee: info.total_weight().min(BlockWeights::get().max_block).ref_time() as u128
+							* 2 * 3 / 2
+					}),
+					tip: 0,
+				},
+			);
+
+			assert_eq!(
+				TransactionPayment::query_fee_details(unsigned_xt, len),
+				FeeDetails {
+					inclusion_fee: None,
+					tip: 0
+				},
+			);
+		});
+}
+
+#[test]
+fn query_call_info_and_fee_details_works() {
+	let call = RuntimeCall::PalletBalances(pallet_balances::Call::transfer_allow_death { dest: BOB, value: 69 });
+	let info = call.get_dispatch_info();
+	let encoded_call = call.encode();
+	let len = encoded_call.len() as u32;
+
+	ExtBuilder::default()
+		.base_weight(Weight::from_parts(5, 0))
+		.weight_fee(2)
+		.build()
+		.execute_with(|| {
+			// all fees should be x1.5
+			NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
+
+			assert_eq!(
+				TransactionPayment::query_call_info(call.clone(), len),
+				RuntimeDispatchInfo {
+					weight: info.total_weight(),
+					class: info.class,
+					partial_fee: 5 * 2 /* base * weight_fee */
+					+ len as u128 * 2  /* len * 2 */
+					+ info.total_weight().min(BlockWeights::get().max_block).ref_time() as u128 * 2 * 3 / 2 /* weight */
+				},
+			);
+
+			assert_eq!(
+				TransactionPayment::query_call_fee_details(call, len),
+				FeeDetails {
+					inclusion_fee: Some(InclusionFee {
+						base_fee: 5 * 2,          /* base * weight_fee */
+						len_fee: len as u128 * 2, /* len * 2 */
+						adjusted_weight_fee: info.total_weight().min(BlockWeights::get().max_block).ref_time() as u128
+							* 2 * 3 / 2  /* weight * weight_fee * multipler */
+					}),
+					tip: 0,
+				},
+			);
+		});
+}
