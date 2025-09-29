@@ -735,6 +735,32 @@ where
 		}
 	}
 
+	/// Query information of a dispatch class, weight, and fee of a given encoded `Call`.
+	pub fn query_call_info(call: CallOf<T>, len: u32) -> RuntimeDispatchInfo<PalletBalanceOf<T>>
+	where
+		CallOf<T>: Dispatchable<Info = DispatchInfo> + GetDispatchInfo,
+	{
+		let dispatch_info = <CallOf<T> as GetDispatchInfo>::get_dispatch_info(&call);
+		let DispatchInfo { class, .. } = dispatch_info;
+
+		RuntimeDispatchInfo {
+			weight: dispatch_info.total_weight(),
+			class,
+			partial_fee: Self::compute_fee(len, &dispatch_info, 0u32.into()),
+		}
+	}
+
+	/// Query fee details of a given encoded `Call`.
+	pub fn query_call_fee_details(call: CallOf<T>, len: u32) -> FeeDetails<PalletBalanceOf<T>>
+	where
+		CallOf<T>: Dispatchable<Info = DispatchInfo> + GetDispatchInfo,
+	{
+		let dispatch_info = <CallOf<T> as GetDispatchInfo>::get_dispatch_info(&call);
+		let tip = 0u32.into();
+
+		Self::compute_fee_details(len, &dispatch_info, tip)
+	}
+
 	/// Compute the fee details for a particular transaction.
 	pub fn compute_fee_details(
 		len: u32,
@@ -818,6 +844,10 @@ where
 			let adjusted_weight_fee = multiplier.saturating_mul_int(unadjusted_weight_fee);
 
 			let base_fee = Self::weight_to_fee(T::BlockWeights::get().get(class).base_extrinsic);
+			log::debug!(
+				target: LOG_TARGET,
+				"len_fee: {len_fee:?}, adjusted_weight_fee: {adjusted_weight_fee:?}, multiplier: {multiplier:?}, adjusted_weight_fee: {adjusted_weight_fee:?}, base_fee: {base_fee:?}",
+			);
 			FeeDetails {
 				inclusion_fee: Some(InclusionFee {
 					base_fee,
