@@ -2600,7 +2600,7 @@ fn query_call_info_and_fee_details_works() {
 						base_fee: 5 * 2,          /* base * weight_fee */
 						len_fee: len as u128 * 2, /* len * 2 */
 						adjusted_weight_fee: info.total_weight().min(BlockWeights::get().max_block).ref_time() as u128
-							* 2 * 3 / 2  /* weight * weight_fee * multipler */
+							* 2 * 3 / 2  /* weight * weight_fee * multiplier */
 					}),
 					tip: 0,
 				},
