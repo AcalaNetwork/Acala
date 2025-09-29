@@ -36,12 +36,12 @@ pub use cumulus_primitives_core::ParaId;
 use xcm::v5::{prelude::*, Weight as XcmWeight};
 
 /// The encoded index corresponds to AssetHub's Runtime module configuration.
-/// https://github.com/polkadot-fellows/runtimes/blob/2fb47566718a974c261b68fffaae500be5581820/system-parachains/asset-hubs/asset-hub-kusama/src/lib.rs#L1065
+/// https://github.com/polkadot-fellows/runtimes/blob/9a5bb8761a501ba3f3adf0213c1e660558d98fd7/system-parachains/asset-hubs/asset-hub-kusama/src/lib.rs#L1579-L1633
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum KusamaAssetHubCall {
 	#[codec(index = 10)]
 	Balances(BalancesCall),
-	#[codec(index = 89)] // TODO: update
+	#[codec(index = 89)]
 	Staking(StakingCall),
 	#[codec(index = 40)]
 	Utility(Box<UtilityCall<Self>>),
@@ -74,12 +74,12 @@ impl AssetHubCall for KusamaAssetHubCall {
 }
 
 /// The encoded index corresponds to AssetHub's Runtime module configuration.
-/// https://github.com/polkadot-fellows/runtimes/blob/2fb47566718a974c261b68fffaae500be5581820/system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs#L983
+/// https://github.com/polkadot-fellows/runtimes/blob/9a5bb8761a501ba3f3adf0213c1e660558d98fd7/system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs#L1377-L1426
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum PolkadotAssetHubCall {
 	#[codec(index = 10)]
 	Balances(BalancesCall),
-	#[codec(index = 89)] // TODO: check https://github.com/polkadot-fellows/runtimes/pull/812
+	#[codec(index = 89)]
 	Staking(StakingCall),
 	#[codec(index = 40)]
 	Utility(Box<UtilityCall<Self>>),
