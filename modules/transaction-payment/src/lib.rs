@@ -1473,7 +1473,7 @@ where
 		let final_fee = fee.saturating_add(fee_surplus);
 
 		// withdraw native currency as fee, also consider surplus when swap from dex or pool.
-		match <T as Config>::Currency::withdraw(&who, final_fee, reason, ExistenceRequirement::KeepAlive) {
+		match <T as Config>::Currency::withdraw(who, final_fee, reason, ExistenceRequirement::KeepAlive) {
 			Ok(imbalance) => Ok((final_fee, imbalance, fee_surplus, who.clone())),
 			Err(_) => Err(InvalidTransaction::Payment.into()),
 		}
