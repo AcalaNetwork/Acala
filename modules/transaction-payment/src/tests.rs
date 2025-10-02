@@ -2607,3 +2607,27 @@ fn query_call_info_and_fee_details_works() {
 			);
 		});
 }
+
+#[test]
+fn balance_not_enough_should_return_invalid_transaction() {
+	let tip = 1000;
+	let len = 10;
+
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let normal = DispatchInfo {
+				call_weight: Weight::from_parts(100, 0),
+				extension_weight: Weight::zero(),
+				class: DispatchClass::Normal,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>(tip)
+					.validate_only(Some(BOB).into(), &CALL, &normal, len, External, 0)
+					.unwrap_err(),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+		});
+}

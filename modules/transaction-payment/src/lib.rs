@@ -1355,6 +1355,10 @@ pub enum Val<T: Config> {
 		who: T::AccountId,
 		// transaction fee
 		fee: PalletBalanceOf<T>,
+		// transaction fee surplus
+		fee_surplus: PalletBalanceOf<T>,
+		// withdraw reason
+		reason: WithdrawReasons,
 	},
 	NoCharge,
 }
@@ -1447,9 +1451,11 @@ where
 	fn withdraw_fee(
 		&self,
 		who: &T::AccountId,
-		call: &CallOf<T>,
+		_call: &CallOf<T>,
 		_info: &DispatchInfoOf<CallOf<T>>,
 		fee: PalletBalanceOf<T>,
+		fee_surplus: PalletBalanceOf<T>,
+		reason: WithdrawReasons,
 	) -> Result<
 		(
 			PalletBalanceOf<T>,
@@ -1459,12 +1465,29 @@ where
 		),
 		TransactionValidityError,
 	> {
-		let tip = self.0;
-
 		// Only mess with balances if fee is not zero.
 		if fee.is_zero() {
 			return Ok((fee, Default::default(), 0, who.clone()));
 		}
+
+		let final_fee = fee.saturating_add(fee_surplus);
+
+		// withdraw native currency as fee, also consider surplus when swap from dex or pool.
+		match <T as Config>::Currency::withdraw(who, final_fee, reason, ExistenceRequirement::KeepAlive) {
+			Ok(imbalance) => Ok((final_fee, imbalance, fee_surplus, who.clone())),
+			Err(_) => Err(InvalidTransaction::Payment.into()),
+		}
+	}
+
+	fn can_withdraw_fee(
+		&self,
+		who: &T::AccountId,
+		call: &CallOf<T>,
+		info: &DispatchInfoOf<CallOf<T>>,
+		len: usize,
+	) -> Result<(T::AccountId, PalletBalanceOf<T>, PalletBalanceOf<T>, WithdrawReasons), TransactionValidityError> {
+		let tip = self.0;
+		let fee = Pallet::<T>::compute_fee(len as u32, info, tip);
 
 		let reason = if tip.is_zero() {
 			WithdrawReasons::TRANSACTION_PAYMENT
@@ -1481,24 +1504,13 @@ where
 				TransactionValidityError::from(InvalidTransaction::Payment)
 			})?;
 
-		// withdraw native currency as fee, also consider surplus when swap from dex or pool.
-		match <T as Config>::Currency::withdraw(&payer, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
-			Ok(imbalance) => Ok((fee + fee_surplus, imbalance, fee_surplus, payer)),
-			Err(_) => Err(InvalidTransaction::Payment.into()),
-		}
-	}
+		let free_balance = T::Currency::free_balance(&payer);
+		let final_fee = fee.saturating_add(fee_surplus);
+		let new_free_balance = free_balance.saturating_sub(final_fee);
+		T::Currency::ensure_can_withdraw(&payer, final_fee, reason, new_free_balance)
+			.map_err(|_| InvalidTransaction::Payment)?;
 
-	fn can_withdraw_fee(
-		&self,
-		_who: &T::AccountId,
-		_call: &CallOf<T>,
-		info: &DispatchInfoOf<CallOf<T>>,
-		len: usize,
-	) -> Result<PalletBalanceOf<T>, TransactionValidityError> {
-		let tip = self.0;
-		let fee = Pallet::<T>::compute_fee(len as u32, info, tip);
-
-		Ok(fee)
+		Ok((payer, fee, fee_surplus, reason))
 	}
 
 	/// Get an appropriate priority for a transaction with the given `DispatchInfo`, encoded length
@@ -1620,7 +1632,8 @@ where
 			return Ok((ValidTransaction::default(), Val::NoCharge, origin));
 		};
 
-		let final_fee = self.can_withdraw_fee(&who, call, info, len)?;
+		let (who, fee, fee_surplus, reason) = self.can_withdraw_fee(&who, call, info, len)?;
+		let final_fee = fee.saturating_add(fee_surplus);
 		let tip = self.0;
 
 		Ok((
@@ -1631,7 +1644,9 @@ where
 			Val::Charge {
 				tip: self.0,
 				who,
-				fee: final_fee,
+				fee,
+				fee_surplus,
+				reason,
 			},
 			origin,
 		))
@@ -1646,9 +1661,15 @@ where
 		_len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
 		match val {
-			Val::Charge { tip, who, fee } => {
+			Val::Charge {
+				tip,
+				who,
+				fee,
+				fee_surplus,
+				reason,
+			} => {
 				// Mutating call to `withdraw_fee` to actually charge for the transaction.
-				let (fee, imbalance, surplus, payer) = self.withdraw_fee(&who, call, info, fee)?;
+				let (fee, imbalance, surplus, payer) = self.withdraw_fee(&who, call, info, fee, fee_surplus, reason)?;
 				Ok(Pre::Charge {
 					tip,
 					who: payer,
