@@ -21,7 +21,7 @@ export async function startAcalaNode(sealing = true, autoClaim = true): Promise<
 		'runtime-log-level': 0,
 	});
 
-	const { provider, wallets } = await getTestUtils(`ws://127.0.0.1:${server.listenPort}`, autoClaim);
+	const { provider, wallets } = await getTestUtils(`ws://${server.addr}`, autoClaim);
 
 	if (!sealing) {
 		server.chain.txPool.mode = BuildBlockMode.Manual;
