@@ -1,5 +1,6 @@
 import { Blockchain, BuildBlockMode, setupWithServer } from "@acala-network/chopsticks";
-import { BodhiProvider, BodhiSigner, getTestUtils } from "@acala-network/bodhi";
+import { BodhiProvider } from "@acala-network/eth-providers";
+import { BodhiSigner, getTestUtils } from "@acala-network/bodhi";
 import { Option } from '@polkadot/types/codec';
 import { EvmAccountInfo } from '@acala-network/types/interfaces';
 import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/types";
@@ -53,7 +54,7 @@ export function describeWithAcala(title: string, cb: (context: TestContext) => v
 
 		afterAll(async function () {
 			// console.log(`\x1b[31m Killing RPC\x1b[0m`);
-			await context.provider.api.disconnect()
+			await context.provider.api.disconnect();
 			await context.close();
 		});
 
