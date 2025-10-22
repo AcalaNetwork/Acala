@@ -3,8 +3,7 @@ process.on('unhandledRejection', (reason: any) => {
   
   if (
     message.includes('Normal Closure') ||
-    message.includes('disconnected from ws://') ||
-    message.includes('1000::')
+    message.includes('disconnected from ws://')
   ) {
     return;
   }
