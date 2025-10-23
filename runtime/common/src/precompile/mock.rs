@@ -39,7 +39,7 @@ use module_support::{
 	SpecificJointsSwap,
 };
 use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
-use orml_xtokens::AbsoluteReserveProviderMigrationPhase;
+use orml_xtokens::AbsoluteReserveProvider;
 use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 pub use primitives::{
 	define_combined_task,
@@ -926,10 +926,9 @@ impl orml_xtokens::Config for Test {
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
 	type LocationsFilter = Everything;
-	type ReserveProvider = AbsoluteReserveProviderMigrationPhase<Test>;
+	type ReserveProvider = AbsoluteReserveProvider;
 	type RateLimiter = ();
 	type RateLimiterId = ();
-	type MigrationPhaseUpdateOrigin = EnsureRoot<AccountId>;
 }
 
 parameter_types!(

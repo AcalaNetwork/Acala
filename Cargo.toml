@@ -80,6 +80,7 @@ crc32fast = { opt-level = 3 }
 crossbeam-deque = { opt-level = 3 }
 crypto-mac = { opt-level = 3 }
 curve25519-dalek = { opt-level = 3 }
+ed25519-dalek = { opt-level = 3 }
 ed25519-zebra = { opt-level = 3 }
 futures-channel = { opt-level = 3 }
 hash-db = { opt-level = 3 }
@@ -105,7 +106,6 @@ similar = { opt-level = 3 }
 smallvec = { opt-level = 3 }
 twox-hash = { opt-level = 3 }
 uint = { opt-level = 3 }
-x25519-dalek = { opt-level = 3 }
 zeroize = { opt-level = 3 }
 
 [workspace.dependencies]

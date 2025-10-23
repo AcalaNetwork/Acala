@@ -29,7 +29,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 		let shallow_weight = 600_000_000;
 		#[cfg(feature = "with-acala-runtime")]
 		let shallow_weight = 600_000_000;
-		let origin = Location::parent();
+		let origin = AssetHubLocation::get();
 
 		// receive relay chain token
 		let asset: Asset = (Location::parent(), dot_amount).into();
