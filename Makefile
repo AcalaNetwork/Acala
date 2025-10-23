@@ -229,23 +229,23 @@ endif
 ifeq ($(words $(pallet_folder)), 0)
 	$(error pallet_folder not defined)
 endif
-	cargo build $(options) --release --features=runtime-benchmarks -p mandala-runtime
+	cargo build $(options) --release --features=runtime-benchmarks,genesis-builder -p mandala-runtime
 	frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/mandala-runtime/mandala_runtime.compact.compressed.wasm --steps=50 --repeat=20 --pallet=$(pallet) --extrinsic="*" --heap-pages=4096 --output=./modules/$(pallet_folder)/src/weights.rs --template=./templates/module-weight-template.hbs
 
 .PHONY: benchmark-mandala
 benchmark-mandala:
-	cargo build $(options) --release --features=runtime-benchmarks -p mandala-runtime
-	frame-omni-bencher v1 pallet --runtime target/release/wbuild/mandala-runtime/mandala_runtime.compact.compressed.wasm --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/mandala/src/weights/
+	cargo build $(options) --release --features=runtime-benchmarks,genesis-builder -p mandala-runtime
+	frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/mandala-runtime/mandala_runtime.compact.compressed.wasm --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/mandala/src/weights/
 
 .PHONY: benchmark-karura
 benchmark-karura:
-	cargo build $(options) --release --features=runtime-benchmarks -p karura-runtime
-	frame-omni-bencher v1 pallet --runtime target/release/wbuild/karura-runtime/karura_runtime.compact.compressed.wasm --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
+	cargo build $(options) --release --features=runtime-benchmarks,genesis-builder -p karura-runtime
+	frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/karura-runtime/karura_runtime.compact.compressed.wasm --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
 
 .PHONY: benchmark-acala
 benchmark-acala:
-	cargo build $(options) --release --features=runtime-benchmarks -p acala-runtime
-	frame-omni-bencher v1 pallet --runtime target/release/wbuild/acala-runtime/acala_runtime.compact.compressed.wasm --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
+	cargo build $(options) --release --features=runtime-benchmarks,genesis-builder -p acala-runtime
+	frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/acala-runtime/acala_runtime.compact.compressed.wasm --steps=50 --repeat=20 '--pallet=$(or $(pallet),*)' '--extrinsic=*' --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
 
 .PHONY: clippy-fix
 clippy-fix:
