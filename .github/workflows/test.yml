@@ -138,5 +138,4 @@ jobs:
       - name: Run ts tests
         run: |
           npm install -g yarn
-          # TODO: update bodhi & enable this
-          # make test-ts
+          make test-ts

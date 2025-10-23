@@ -6,5 +6,6 @@ export default defineConfig({
 		pool: 'forks',
 		passWithNoTests: true,
 		include: ['tests/**/test-*.{js,ts}'],
+		setupFiles: ['./tests/setup.ts']
 	},
 })

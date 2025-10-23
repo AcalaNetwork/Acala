@@ -70,7 +70,7 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
 
         const operationalTransactionvalidity = await context.provider.api.call.taggedTransactionQueue.validateTransaction(
             "Local",
-            tx3.toHex(),
+            tx3.toU8a(),
             parentHash
         );
 
@@ -78,7 +78,7 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
           {
             "ok": {
               "longevity": 31,
-              "priority": "0x0119dfa51d01f600",
+              "priority": "0x010543655f7f0900",
               "propagate": true,
               "provides": [
                 "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d03000000",
@@ -96,7 +96,7 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
         await tx4.signAsync(alice.substrateAddress, { nonce: nonce + 2 });
         const normalTransactionvalidity = await context.provider.api.call.taggedTransactionQueue.validateTransaction(
             "Local",
-            tx4.toHex(),
+            tx4.toU8a(),
             parentHash
         );
         expect(normalTransactionvalidity.toHuman()).toMatchInlineSnapshot(`
@@ -120,7 +120,7 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
         );
         const unsignedTransactionvalidity = await context.provider.api.call.taggedTransactionQueue.validateTransaction(
             "Local",
-            tx5.toHex(),
+            tx5.toU8a(),
             parentHash
         );
 
