@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -29,24 +29,24 @@ use sp_runtime::{
 use sp_std::{prelude::*, result::Result, vec};
 use xcm::prelude::*;
 
+pub mod assethub;
 pub mod bounded;
 pub mod dex;
+pub mod earning;
 pub mod evm;
 pub mod homa;
 pub mod honzon;
 pub mod incentives;
-pub mod liquid_crowdloan;
 pub mod mocks;
-pub mod relaychain;
 pub mod stable_asset;
 
 pub use crate::bounded::*;
 pub use crate::dex::*;
+pub use crate::earning::*;
 pub use crate::evm::*;
 pub use crate::homa::*;
 pub use crate::honzon::*;
 pub use crate::incentives::*;
-pub use crate::liquid_crowdloan::*;
 pub use crate::stable_asset::*;
 
 pub type Price = FixedU128;
@@ -120,7 +120,7 @@ pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
 		who: &AccountId,
 		weight: Weight,
 	) -> Result<(Balance, NegativeImbalance), TransactionValidityError>;
-	fn refund_fee(who: &AccountId, weight: Weight, payed: NegativeImbalance) -> Result<(), TransactionValidityError>;
+	fn refund_fee(who: &AccountId, weight: Weight, paid: NegativeImbalance) -> Result<(), TransactionValidityError>;
 	fn charge_fee(
 		who: &AccountId,
 		len: u32,

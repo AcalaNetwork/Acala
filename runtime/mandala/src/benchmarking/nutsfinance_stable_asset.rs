@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -50,11 +50,11 @@ runtime_benchmarks! {
 		let mint_fee = 10000000u128;
 		let swap_fee = 20000000u128;
 		let redeem_fee = 50000000u128;
-		let intial_a = 10000u128;
+		let initial_a = 10000u128;
 		let fee_recipient: AccountId = account("fee", 0, SEED);
 		let yield_recipient: AccountId = account("yield", 1, SEED);
 		register_stable_asset()?;
-	}: _(RawOrigin::Root, pool_asset, assets, precisions, mint_fee, swap_fee, redeem_fee, intial_a, fee_recipient, yield_recipient, 1_000_000_000_000u128)
+	}: _(RawOrigin::Root, pool_asset, assets, precisions, mint_fee, swap_fee, redeem_fee, initial_a, fee_recipient, yield_recipient, 1_000_000_000_000u128)
 
 	modify_a {
 		let assets = vec![LIQUID, STAKING];

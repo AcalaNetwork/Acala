@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -137,14 +137,14 @@ impl orml_authority::AsOriginId<RuntimeOrigin, OriginCaller> for AuthoritysOrigi
 	}
 }
 
-/// Compares privilages
+/// Compares privileges
 fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
 	if left == right {
 		return Some(Ordering::Equal);
 	}
 
 	match (left, right) {
-		// Root always has privilage
+		// Root always has privilege
 		(OriginCaller::system(frame_system::RawOrigin::Root), _) => Some(Ordering::Greater),
 
 		// Checks which one has more yes votes.

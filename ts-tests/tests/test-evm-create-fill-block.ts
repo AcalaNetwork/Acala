@@ -1,19 +1,18 @@
-import { expect } from "chai";
-import { step } from "mocha-steps";
-import { describeWithAcala } from "./util";
+import { expect, beforeAll, it } from "vitest";
+import { describeWithAcala, nextBlock } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
 import EmptyContract from "../build/EmptyContract.json"
 
 describeWithAcala("Acala RPC (EVM create fill block)", (context) => {
     let alice: BodhiSigner;
 
-    before("init wallets", async function () {
+    beforeAll(async function () {
         [alice] = context.wallets;
     });
 
-    step("evm create fill block", async function () {
+    it("evm create fill block", async function () {
         const bytecode = '0x' + EmptyContract.bytecode;
-        const creates = Array(300).fill(context.provider.api.tx.evm.create(
+        const creates = Array(250).fill(context.provider.api.tx.evm.create(
             bytecode,
             0,
             2_000_000,
@@ -28,15 +27,7 @@ describeWithAcala("Acala RPC (EVM create fill block)", (context) => {
             await tx.signAndSend(alice.substrateAddress, { nonce: nonce++ });
         }
 
-        while (true) {
-            const currentHeight = await context.provider.api.query.system.number();
-
-            if (currentHeight.toNumber() > beforeHeight) {
-                break;
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+        await nextBlock(context);
 
         let currentBlockHash = await context.provider.api.rpc.chain.getBlockHash(beforeHeight + 1);
 
@@ -44,6 +35,6 @@ describeWithAcala("Acala RPC (EVM create fill block)", (context) => {
 
         const evmCreateEvents = events.events.filter((item) => context.provider.api.events.evm.Created.is(item.event));
 
-        expect(evmCreateEvents.length).to.equal(223);
+        expect(evmCreateEvents.length).to.equal(216);
     });
 });

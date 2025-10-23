@@ -26,8 +26,8 @@ use module_nft::{ClassIdOf, TokenIdOf};
 use sp_runtime::{traits::AccountIdConversion, DispatchResult};
 use sp_std::boxed::Box;
 use xcm::{
-	v3,
-	v4::{
+	v3, v4,
+	v5::{
 		Asset, AssetId, AssetInstance, Error as XcmError, Fungibility, InteriorLocation, Junction::*, Location,
 		Result as XcmResult, XcmContext,
 	},
@@ -56,8 +56,6 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + module_nft::Config {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		type PalletId: Get<PalletId>;
 
 		type LocationToAccountId: ConvertLocation<Self::AccountId>;

@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TARPAULIN_VERSION: 0.27.3
+  TARPAULIN_VERSION: 0.33.0
   CARGO_INCREMENTAL: 0
 jobs:
   test:
@@ -45,7 +45,7 @@ jobs:
         run: |
           wget https://github.com/xd009642/tarpaulin/releases/download/${{ env.TARPAULIN_VERSION }}/cargo-tarpaulin-x86_64-unknown-linux-musl.tar.gz
           tar -zxvf cargo-tarpaulin-x86_64-unknown-linux-musl.tar.gz -C $HOME/.cargo/bin
-          cargo tarpaulin -v --workspace \
+          cargo tarpaulin --engine llvm --workspace \
             -e \
             acala acala-cli acala-service \
             acala-primitives \
@@ -54,8 +54,9 @@ jobs:
             ethjson evm-jsontests \
             --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

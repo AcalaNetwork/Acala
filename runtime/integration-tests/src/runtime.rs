@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -290,31 +290,26 @@ fn currency_id_convert() {
 #[test]
 fn parachain_subaccounts_are_unique() {
 	ExtBuilder::default().build().execute_with(|| {
-		let parachain: AccountId = ParachainInfo::parachain_id().into_account_truncating();
+		let parachain: AccountId = ParachainInfo::get().into_account_truncating();
 		assert_eq!(
 			parachain,
 			hex_literal::hex!["70617261d0070000000000000000000000000000000000000000000000000000"].into()
 		);
 
+		let sibling: AccountId =
+			polkadot_parachain_primitives::primitives::Sibling::from(ParachainInfo::get()).into_account_truncating();
 		assert_eq!(
-			create_x2_parachain_location(0),
-			Location::new(
-				1,
-				[Junction::AccountId32 {
-					network: None,
-					id: hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into(),
-				}]
-			),
+			sibling,
+			hex_literal::hex!["7369626cd0070000000000000000000000000000000000000000000000000000"].into()
+		);
+
+		assert_eq!(
+			SubAccountIndexAccountIdConvertor::convert(0),
+			hex_literal::hex!["50ca9b6bf6c83ca2a918b9861788d6facd26e5fd78a07f9848070697683745b3"].into()
 		);
 		assert_eq!(
-			create_x2_parachain_location(1),
-			Location::new(
-				1,
-				[Junction::AccountId32 {
-					network: None,
-					id: hex_literal::hex!["74d37d762e06c6841a5dad64463a9afe0684f7e45245f6a7296ca613cca74669"].into(),
-				}]
-			),
+			SubAccountIndexAccountIdConvertor::convert(1),
+			hex_literal::hex!["025f1ca0b76b0d646f33b799a040df9fc14e06b7486770656766e8e8381f6c6f"].into()
 		);
 	});
 }
@@ -325,8 +320,9 @@ mod mandala_only_tests {
 	use frame_support::dispatch::GetDispatchInfo;
 	use module_transaction_payment::ChargeTransactionPayment;
 	use pallet_transaction_payment::InclusionFee;
+	use primitives::unchecked_extrinsic::AcalaUncheckedExtrinsic;
 	use sp_runtime::{
-		traits::{Extrinsic, SignedExtension, ValidateUnsigned},
+		traits::{DispatchTransaction, ValidateUnsigned},
 		transaction_validity::{TransactionSource, ValidTransaction},
 	};
 
@@ -334,11 +330,11 @@ mod mandala_only_tests {
 	fn check_transaction_fee_for_empty_remark() {
 		ExtBuilder::default().build().execute_with(|| {
 			let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
-			let ext = UncheckedExtrinsic::new(call.into(), None).expect("This should not fail");
-			let bytes = ext.encode();
+			let xt = AcalaUncheckedExtrinsic::<RuntimeCall, (), ConvertEthereumTx, StorageDepositPerByte, TxFeePerGas>::new_transaction(call.clone(), ());
+			let bytes = xt.encode();
 
 			// Get information on the fee for the call.
-			let fee = TransactionPayment::query_fee_details(ext, bytes.len() as u32);
+			let fee = TransactionPayment::query_fee_details(xt.0, bytes.len() as u32);
 
 			let InclusionFee {
 				base_fee,
@@ -346,12 +342,12 @@ mod mandala_only_tests {
 				adjusted_weight_fee,
 			} = fee.inclusion_fee.unwrap();
 
-			assert_eq!(base_fee, 1_000_000_000);
-			assert_eq!(len_fee, 50_000_000);
-			assert_eq!(adjusted_weight_fee, 17031845);
+			assert_debug_snapshot!(base_fee, @"1000000000");
+			assert_debug_snapshot!(len_fee, @"60000000");
+			assert_debug_snapshot!(adjusted_weight_fee, @"14663868");
 
 			let total_fee = base_fee.saturating_add(len_fee).saturating_add(adjusted_weight_fee);
-			assert_eq!(total_fee, 1067031845);
+			assert_debug_snapshot!(total_fee, @"1074663868");
 		});
 	}
 
@@ -364,76 +360,100 @@ mod mandala_only_tests {
 				// Ensure tx priority order:
 				// Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
 				let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
-				let bytes = UncheckedExtrinsic::new(call.clone().into(), None)
-					.expect("This should not fail")
-					.encode();
+				let xt = AcalaUncheckedExtrinsic::<
+					RuntimeCall,
+					(),
+					ConvertEthereumTx,
+					StorageDepositPerByte,
+					TxFeePerGas,
+				>::new_transaction(call.clone(), ());
+				let bytes = xt.encode();
 
 				// tips = 0
-				assert_eq!(
-					ChargeTransactionPayment::<Runtime>::from(0).validate(
-						&alice(),
-						&call.clone(),
-						&call.get_dispatch_info(),
-						bytes.len()
-					),
-					Ok(ValidTransaction {
-						priority: 0,
-						requires: vec![],
-						provides: vec![],
-						longevity: 18_446_744_073_709_551_615,
-						propagate: true,
-					})
+				assert_debug_snapshot!(
+					ChargeTransactionPayment::<Runtime>::from(0)
+						.validate_only(
+							Some(alice()).into(),
+							&call.clone(),
+							&call.get_dispatch_info(),
+							bytes.len(),
+							External,
+							0
+						)
+						.unwrap()
+						.0,
+						@r###"
+    ValidTransaction {
+        priority: 0,
+        requires: [],
+        provides: [],
+        longevity: 18446744073709551615,
+        propagate: true,
+    }
+	"###
 				);
 
 				// tips = TipPerWeightStep
-				assert_eq!(
-					ChargeTransactionPayment::<Runtime>::from(TipPerWeightStep::get()).validate(
-						&alice(),
+				assert_debug_snapshot!(
+					ChargeTransactionPayment::<Runtime>::from(TipPerWeightStep::get()).validate_only(
+						Some(alice()).into(),
 						&call.clone(),
 						&call.get_dispatch_info(),
-						bytes.len()
-					),
-					Ok(ValidTransaction {
-						priority: 235960,
-						requires: vec![],
-						provides: vec![],
-						longevity: 18_446_744_073_709_551_615,
-						propagate: true,
-					})
+						bytes.len(),
+						External,
+						0
+					).unwrap().0,
+					@r###"
+    ValidTransaction {
+        priority: 315258,
+        requires: [],
+        provides: [],
+        longevity: 18446744073709551615,
+        propagate: true,
+    }
+    "###
 				);
 
 				// tips = TipPerWeightStep + 1
-				assert_eq!(
-					ChargeTransactionPayment::<Runtime>::from(TipPerWeightStep::get() + 1).validate(
-						&alice(),
+				assert_debug_snapshot!(
+					ChargeTransactionPayment::<Runtime>::from(TipPerWeightStep::get() + 1).validate_only(
+						Some(alice()).into(),
 						&call.clone(),
 						&call.get_dispatch_info(),
-						bytes.len()
-					),
-					Ok(ValidTransaction {
-						priority: 235960,
-						requires: vec![],
-						provides: vec![],
-						longevity: 18_446_744_073_709_551_615,
-						propagate: true,
-					})
+						bytes.len(),
+						External,
+						0
+					).unwrap().0,
+					@r###"
+    ValidTransaction {
+        priority: 315258,
+        requires: [],
+        provides: [],
+        longevity: 18446744073709551615,
+        propagate: true,
+    }
+    "###
 				);
 
 				// tips = MaxTipsOfPriority + 1
-				assert_eq!(
-					ChargeTransactionPayment::<Runtime>::from(MaxTipsOfPriority::get() + 1).validate(
-						&alice(),
+				assert_debug_snapshot!(
+					ChargeTransactionPayment::<Runtime>::from(MaxTipsOfPriority::get() + 1).validate_only(
+						Some(alice()).into(),
 						&call.clone(),
 						&call.get_dispatch_info(),
-						bytes.len()
-					),
-					Ok(ValidTransaction {
-						priority: 235960000000,
-						requires: vec![],
-						provides: vec![],
-						longevity: 18_446_744_073_709_551_615,
-						propagate: true,
-					})
+						bytes.len(),
+						External,
+						0
+					).unwrap().0,
+					@r###"
+    ValidTransaction {
+        priority: 315258000000,
+        requires: [],
+        provides: [],
+        longevity: 18446744073709551615,
+        propagate: true,
+    }
+    "###
 				);
 
 				// setup a unsafe cdp
@@ -478,24 +498,33 @@ mod mandala_only_tests {
 				let call = RuntimeCall::Sudo(pallet_sudo::Call::sudo {
 					call: Box::new(module_emergency_shutdown::Call::open_collateral_refund {}.into()),
 				});
-				let bytes = UncheckedExtrinsic::new(call.clone().into(), None)
-					.expect("This should not fail")
-					.encode();
+				let xt = AcalaUncheckedExtrinsic::<
+					RuntimeCall,
+					(),
+					ConvertEthereumTx,
+					StorageDepositPerByte,
+					TxFeePerGas,
+				>::new_transaction(call.clone(), ());
+				let bytes = xt.encode();
 
-				assert_eq!(
-					ChargeTransactionPayment::<Runtime>::from(0).validate(
-						&alice(),
+				assert_debug_snapshot!(
+					ChargeTransactionPayment::<Runtime>::from(0).validate_only(
+						Some(alice()).into(),
 						&call.clone(),
 						&call.get_dispatch_info(),
-						bytes.len()
-					),
-					Ok(ValidTransaction {
-						priority: 54694050570500000,
-						requires: vec![],
-						provides: vec![],
-						longevity: 18_446_744_073_709_551_615,
-						propagate: true,
-					})
+						bytes.len(),
+						External,
+						0
+					).unwrap().0,
+					@r###"
+    ValidTransaction {
+        priority: 60975980945150000,
+        requires: [],
+        provides: [],
+        longevity: 18446744073709551615,
+        propagate: true,
+    }
+    "###
 				);
 			});
 	}

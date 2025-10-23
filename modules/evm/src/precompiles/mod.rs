@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -140,7 +140,7 @@ pub mod tests {
 		}
 	}
 
-	impl<'inner> PrecompileHandle for MockPrecompileHandle<'inner> {
+	impl PrecompileHandle for MockPrecompileHandle<'_> {
 		fn call(
 			&mut self,
 			_: H160,
@@ -196,6 +196,10 @@ pub mod tests {
 			self.input
 		}
 
+		fn origin(&self) -> H160 {
+			unimplemented!()
+		}
+
 		fn context(&self) -> &Context {
 			self.context
 		}
@@ -206,6 +210,10 @@ pub mod tests {
 
 		fn gas_limit(&self) -> Option<u64> {
 			self.gas_limit
+		}
+
+		fn is_contract_being_constructed(&self, _address: H160) -> bool {
+			unimplemented!()
 		}
 	}
 }

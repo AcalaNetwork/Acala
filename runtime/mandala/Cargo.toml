@@ -1,8 +1,8 @@
 [package]
 name = "mandala-runtime"
-version = "2.25.0"
-authors = ["Acala Developers"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 build = "build.rs"
 
 [dependencies]
@@ -74,6 +74,7 @@ polkadot-parachain-primitives = { workspace = true }
 xcm = { workspace = true }
 xcm-executor = { workspace = true }
 xcm-builder = { workspace = true }
+xcm-runtime-apis = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-benchmarks = { workspace = true, optional = true }
 polkadot-runtime-common = { workspace = true }
@@ -128,7 +129,7 @@ module-homa-validator-list = { workspace = true }
 module-xcm-interface = { workspace = true }
 module-nominees-election = { workspace = true }
 module-session-manager = { workspace = true }
-module-relaychain = { workspace = true }
+module-assethub = { workspace = true }
 module-idle-scheduler = { workspace = true }
 module-aggregated-dex = { workspace = true }
 module-liquid-crowdloan = { workspace = true }
@@ -143,6 +144,9 @@ nutsfinance-stable-asset = { workspace = true }
 libsecp256k1 = { workspace = true, optional = true }
 frame-benchmarking = { workspace = true, optional = true }
 
+# genesis builder
+sp-genesis-builder = { workspace = true, optional = true }
+
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, optional = true }
 
@@ -152,8 +156,6 @@ sp-trie = { workspace = true, features = ["std"] }
 sp-keyring = { workspace = true }
 
 cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
-
-acala-service = { workspace = true, features = ["std", "with-mandala-runtime"] }
 
 [features]
 default = ["std"]
@@ -225,6 +227,7 @@ std = [
 	"polkadot-parachain-primitives/std",
 	"xcm-builder/std",
 	"xcm-executor/std",
+	"xcm-runtime-apis/std",
 	"xcm/std",
 	"polkadot-runtime-common/std",
 	"parachains-common/std",
@@ -273,7 +276,7 @@ std = [
 	"module-nft/std",
 	"module-nominees-election/std",
 	"module-prices/std",
-	"module-relaychain/std",
+	"module-assethub/std",
 	"module-session-manager/std",
 	"module-support/std",
 	"module-transaction-pause/std",
@@ -321,8 +324,6 @@ runtime-benchmarks = [
 	"xcm-builder/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
 
-	"acala-service/runtime-benchmarks",
-
 	"orml-authority/runtime-benchmarks",
 	"orml-oracle/runtime-benchmarks",
 	"orml-parameters/runtime-benchmarks",
@@ -341,12 +342,6 @@ runtime-benchmarks = [
 
 	"sp-api/disable-logging",
 ]
-# When enabled, the runtime api will not be build.
-#
-# This is required by Cumulus to access certain types of the
-# runtime without clashing with the runtime api exported functions
-# in WASM.
-disable-runtime-api = []
 
 # A feature that should be enabled when the runtime should be build for on-chain
 # deployment. This will disable stuff that shouldn't be part of the on-chain wasm
@@ -443,13 +438,14 @@ try-runtime = [
 # By default some types have documentation, `no-metadata-docs` allows to reduce the documentation
 # in the metadata.
 no-metadata-docs = ["frame-support/no-metadata-docs"]
-# By default some types have documentation, `full-metadata-docs` allows to add documentation to
-# more types in the metadata.
-full-metadata-docs = ["frame-support/full-metadata-docs"]
 
 tracing = [
 	"module-evm/tracing",
 	"module-evm-bridge/tracing",
 	"module-evm-rpc-runtime-api/tracing",
 	"runtime-common/tracing"
+]
+
+genesis-builder = [
+	"sp-genesis-builder",
 ]

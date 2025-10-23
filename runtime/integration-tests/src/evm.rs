@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -31,11 +31,7 @@ use primitives::{
 	Position, TradingPair,
 };
 use sp_core::{H256, U256};
-use sp_runtime::{
-	traits::SignedExtension,
-	transaction_validity::{InvalidTransaction, TransactionValidityError},
-	Percent,
-};
+use sp_runtime::{traits::DispatchTransaction, Percent};
 use std::str::FromStr;
 
 pub fn erc20_address_0() -> EvmAddress {
@@ -107,12 +103,12 @@ pub fn deploy_erc20_contracts() {
 			],
 			data: {
 				let mut buf = [0u8; 32];
-				U256::from(100_000_000_000_000_000_000_000u128).to_big_endian(&mut buf);
+				U256::from(100_000_000_000_000_000_000_000u128).write_as_big_endian(&mut buf);
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1215220,
-		used_storage: 14995,
+		used_gas: 1013342,
+		used_storage: 14027,
 	}));
 
 	assert_ok!(AssetRegistry::register_erc20_asset(
@@ -142,12 +138,12 @@ pub fn deploy_erc20_contracts() {
 			],
 			data: {
 				let mut buf = [0u8; 32];
-				U256::from(100_000_000_000_000_000_000_000u128).to_big_endian(&mut buf);
+				U256::from(100_000_000_000_000_000_000_000u128).write_as_big_endian(&mut buf);
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1215220,
-		used_storage: 14995,
+		used_gas: 1013342,
+		used_storage: 14027,
 	}));
 
 	assert_ok!(AssetRegistry::register_erc20_asset(
@@ -968,35 +964,37 @@ fn transaction_payment_module_works_with_evm_contract() {
 					amount: 1,
 				});
 			let info: DispatchInfo = DispatchInfo {
-				weight: Weight::from_parts(100, 0),
+				call_weight: Weight::from_parts(100, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};
 			let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(len, &info, 0);
-			assert_eq!(fee, 2500000804);
+			assert_debug_snapshot!(fee, @"2500000925");
 
 			let surplus_perc = Percent::from_percent(50); // CustomFeeSurplus
 			let fee_surplus = surplus_perc.mul_ceil(fee);
 			let fee = fee + fee_surplus;
-			assert_eq!(fee, 3750001206);
+			assert_debug_snapshot!(fee, @"3750001388");
 
 			// empty_account use payment non wrapped call to charge fee by erc20 fee pool.
 			assert_eq!(Currencies::free_balance(erc20_token, &sub_account), 0);
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&empty_account,
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(empty_account.clone()).into(),
 					call,
 					&info,
 					len as usize,
+					0
 				)
 			);
 			let erc20_fee = Currencies::free_balance(erc20_token, &sub_account);
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(erc20_fee, 10386329718);
+			assert_debug_snapshot!(erc20_fee, @"10386329736");
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(erc20_fee, 10407164883);
+			assert_debug_snapshot!(erc20_fee, @"10407164902");
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(erc20_fee, 10407164883);
+			assert_debug_snapshot!(erc20_fee, @"10407164902");
 
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
@@ -1010,11 +1008,12 @@ fn transaction_payment_module_works_with_evm_contract() {
 
 			// empty_address use payment non wrapped call to charge fee by erc20 fee pool.
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&empty_address_account,
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(empty_address_account.clone()).into(),
 					call,
 					&info,
 					len as usize,
+					0
 				)
 			);
 			assert_eq!(Currencies::free_balance(erc20_token, &sub_account), erc20_fee * 2);
@@ -1035,34 +1034,39 @@ fn transaction_payment_module_works_with_evm_contract() {
 					call: Box::new(call.clone()),
 				});
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&empty_account,
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(empty_account).into(),
 					&with_fee_call,
 					&info,
 					len as usize,
+					0
 				)
 			);
+
+			let erc20_with_fee = Currencies::free_balance(erc20_token, &sub_account) - erc20_fee * 2;
 			#[cfg(feature = "with-karura-runtime")]
-			let (erc20_with_fee, native_with_fee) = (376162702, 3750001206);
+			assert_debug_snapshot!(erc20_with_fee, @"376162721");
 			#[cfg(feature = "with-acala-runtime")]
-			let (erc20_with_fee, native_with_fee) = (376162702, 3750001206);
+			assert_debug_snapshot!(erc20_with_fee, @"376162721");
 			#[cfg(feature = "with-mandala-runtime")]
-			let (erc20_with_fee, native_with_fee) = (375409624, 3750001206);
-			assert_eq!(
-				Currencies::free_balance(erc20_token, &sub_account),
-				erc20_fee * 2 + erc20_with_fee
-			);
-			assert_eq!(
-				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
-				5 * dollar - (fee + ed) * 2 - native_with_fee
-			);
+			assert_debug_snapshot!(erc20_with_fee, @"375409642");
+
+			let native_with_fee = 5 * dollar - (fee + ed) * 2 - Currencies::free_balance(NATIVE_CURRENCY, &sub_account);
+			#[cfg(feature = "with-karura-runtime")]
+			assert_debug_snapshot!(native_with_fee, @"3750001388");
+			#[cfg(feature = "with-acala-runtime")]
+			assert_debug_snapshot!(native_with_fee, @"3750001388");
+			#[cfg(feature = "with-mandala-runtime")]
+			assert_debug_snapshot!(native_with_fee, @"3750001388");
+
 			// empty_address use payment `with_fee_currency` call to charge fee by erc20 fee pool.
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&empty_address_account,
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(empty_address_account).into(),
 					&with_fee_call,
 					&info,
 					len as usize,
+					0
 				)
 			);
 			assert_eq!(
@@ -1149,8 +1153,8 @@ fn create_contract_use_none_native_token_to_charge_storage() {
 #[test]
 fn evm_limits() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), 33319509);
-		assert_eq!(runtime_common::EvmLimits::<Runtime>::max_storage_limit(), 3_670_016);
+		assert_debug_snapshot!(runtime_common::EvmLimits::<Runtime>::max_gas_limit(), @"33321315");
+		assert_debug_snapshot!(runtime_common::EvmLimits::<Runtime>::max_storage_limit(), @"3670016");
 	});
 }
 
@@ -1515,17 +1519,18 @@ fn transaction_payment_module_charge_erc20_pool() {
 					call: Box::new(call.clone()),
 				});
 			let info: DispatchInfo = DispatchInfo {
-				weight: Weight::from_parts(100, 0),
+				call_weight: Weight::from_parts(100, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};
 			let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(len, &info, 0);
-			assert_eq!(fee, 2500000804);
+			assert_debug_snapshot!(fee, @"2500000925");
 
 			let surplus_perc = Percent::from_percent(50); // CustomFeeSurplus
 			let fee_surplus = surplus_perc.mul_ceil(fee);
 			let fee = fee + fee_surplus;
-			assert_eq!(fee, 3750001206);
+			assert_debug_snapshot!(fee, @"3750001388");
 
 			let alice_native_before = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
 			let alice_erc20_before = Currencies::free_balance(erc20_token, &alice_evm_account);
@@ -1533,31 +1538,63 @@ fn transaction_payment_module_charge_erc20_pool() {
 			// charge fee by default ways
 			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&alice_evm_account.clone(),
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(alice_evm_account.clone()).into(),
 					call,
 					&info,
 					len as usize,
+					0
 				)
 			);
+
 			let alice_native_after = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
 			let alice_erc20_after = Currencies::free_balance(erc20_token, &alice_evm_account);
 
 			// charge tx fee and storage fee by native
-			assert_eq!(alice_native_before - alice_native_after, 2500000804);
+			assert_debug_snapshot!(alice_native_before - alice_native_after, @"2500000925");
 			assert_eq!(alice_erc20_before - alice_erc20_after, 0);
 
-			// cannot charge erc20 fee for the account only hold erc20
+			let alice_native_before = Currencies::free_balance(NATIVE_CURRENCY, &account_with_erc20);
+			let alice_erc20_before = Currencies::free_balance(erc20_token, &account_with_erc20);
+
+			// charge erc20 fee for the account only hold erc20
 			<EVM as EVMTrait<AccountId>>::set_origin(account_with_erc20.clone());
-			assert_noop!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&account_with_erc20,
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(account_with_erc20.clone()).into(),
 					call,
 					&info,
 					len as usize,
-				),
-				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+					0
+				)
 			);
+			let alice_native_after = Currencies::free_balance(NATIVE_CURRENCY, &account_with_erc20);
+			let alice_erc20_after = Currencies::free_balance(erc20_token, &account_with_erc20);
+
+			#[cfg(feature = "with-mandala-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"0");
+				assert_debug_snapshot!(alice_native_after, @"237600000000");
+				assert_debug_snapshot!(alice_erc20_before, @"1000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"975197719832");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"24802280168");
+			}
+			#[cfg(feature = "with-karura-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"0");
+				assert_debug_snapshot!(alice_native_after, @"237600000000");
+				assert_debug_snapshot!(alice_erc20_before, @"1000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"975147966010");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"24852033990");
+			}
+			#[cfg(feature = "with-acala-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"0");
+				assert_debug_snapshot!(alice_native_after, @"512800000000");
+				assert_debug_snapshot!(alice_erc20_before, @"1000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"946258417073");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"53741582927");
+			}
 
 			let alice_native_before = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
 			let alice_erc20_before = Currencies::free_balance(erc20_token, &alice_evm_account);
@@ -1565,42 +1602,86 @@ fn transaction_payment_module_charge_erc20_pool() {
 			// charge fee by fee pool
 			<EVM as EVMTrait<AccountId>>::set_origin(alice_evm_account.clone());
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&alice_evm_account.clone(),
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(alice_evm_account.clone()).into(),
 					&with_fee_call,
 					&info,
 					len as usize,
+					0
 				)
 			);
 			let alice_native_after = Currencies::free_balance(NATIVE_CURRENCY, &alice_evm_account);
 			let alice_erc20_after = Currencies::free_balance(erc20_token, &alice_evm_account);
 
-			// charge storage by native
+			// charge storage and tx fee by erc20
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(alice_native_before - alice_native_after, 6400000000);
+			{
+				assert_debug_snapshot!(alice_native_before, @"999998999984699999075");
+				assert_debug_snapshot!(alice_native_after, @"999998999984699999075");
+				assert_eq!(alice_native_before - alice_native_after, 0);
+				assert_debug_snapshot!(alice_erc20_before, @"99999999899000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"99999999898999624586945");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"375413055");
+			}
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(alice_native_before - alice_native_after, 6400000000);
+			{
+				assert_debug_snapshot!(alice_native_before, @"999998999984699999075");
+				assert_debug_snapshot!(alice_native_after, @"999998999984699999075");
+				assert_eq!(alice_native_before - alice_native_after, 0);
+				assert_debug_snapshot!(alice_erc20_before, @"99999999899000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"99999999898999623833859");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166141");
+			}
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(alice_native_before - alice_native_after, 19200000000);
+			{
+				assert_debug_snapshot!(alice_native_before, @"999998999959099999075");
+				assert_debug_snapshot!(alice_native_after, @"999998999959099999075");
+				assert_eq!(alice_native_before - alice_native_after, 0);
+				assert_debug_snapshot!(alice_erc20_before, @"99999999899000000000000");
+				assert_debug_snapshot!(alice_erc20_after, @"99999999898999623833859");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166141");
+			}
 
-			// charge tx fee by native
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(alice_erc20_before - alice_erc20_after, 375413037);
-			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(alice_erc20_before - alice_erc20_after, 376166122);
-			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(alice_erc20_before - alice_erc20_after, 376166122);
+			let alice_native_before = Currencies::free_balance(NATIVE_CURRENCY, &account_with_erc20);
+			let alice_erc20_before = Currencies::free_balance(erc20_token, &account_with_erc20);
 
-			// cannot charge erc20 fee for the account only hold erc20
+			// charge erc20 fee for the account only hold erc20
 			<EVM as EVMTrait<AccountId>>::set_origin(account_with_erc20.clone());
-			assert_noop!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&account_with_erc20,
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(account_with_erc20.clone()).into(),
 					&with_fee_call,
 					&info,
 					len as usize,
-				),
-				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+					0
+				)
 			);
+			let alice_native_after = Currencies::free_balance(NATIVE_CURRENCY, &account_with_erc20);
+			let alice_erc20_after = Currencies::free_balance(erc20_token, &account_with_erc20);
+
+			#[cfg(feature = "with-mandala-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"237600000000");
+				assert_debug_snapshot!(alice_native_after, @"237600000000");
+				assert_debug_snapshot!(alice_erc20_before, @"975197719832");
+				assert_debug_snapshot!(alice_erc20_after, @"974822306777");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"375413055");
+			}
+			#[cfg(feature = "with-karura-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"237600000000");
+				assert_debug_snapshot!(alice_native_after, @"237600000000");
+				assert_debug_snapshot!(alice_erc20_before, @"975147966010");
+				assert_debug_snapshot!(alice_erc20_after, @"974771799869");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166141");
+			}
+			#[cfg(feature = "with-acala-runtime")]
+			{
+				assert_debug_snapshot!(alice_native_before, @"512800000000");
+				assert_debug_snapshot!(alice_native_after, @"512800000000");
+				assert_debug_snapshot!(alice_erc20_before, @"946258417073");
+				assert_debug_snapshot!(alice_erc20_after, @"945882250932");
+				assert_debug_snapshot!(alice_erc20_before - alice_erc20_after, @"376166141");
+			}
 		});
 }

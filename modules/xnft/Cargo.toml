@@ -1,9 +1,9 @@
 [package]
 name = "module-xnft"
 description = "XCM NFT PoC"
-version = "2.25.0"
+version = { workspace = true }
 authors = ["Unique Network Developers"]
-edition = "2021"
+edition = { workspace = true }
 
 [dependencies]
 parity-scale-codec = { workspace = true }

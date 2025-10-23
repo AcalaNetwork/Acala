@@ -3,7 +3,7 @@
 # codec:
 #   acala/cdp-engine/max-iterations/ = 0x6163616c612f6364702d656e67696e652f6d61782d697465726174696f6e732f,
 #   acala/auction-manager/max-iterations/ = 0x6163616c612f61756374696f6e2d6d616e616765722f6d61782d697465726174696f6e732f,
-# Litter-endian u32:
+# Litte-endian u32:
 #   10 = 0x0a000000
 #   100 = 0x64000000
 #   1000 = 0xe803000000

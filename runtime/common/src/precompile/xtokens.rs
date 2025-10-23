@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -32,7 +32,7 @@ use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::{
 	prelude::*,
-	v4::{Asset, Assets, Location},
+	v5::{Asset, Assets, Location},
 };
 
 /// The `Xtokens` impl precompile.
@@ -99,8 +99,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: Transfer from: {:?}, currency_id: {:?}, amount: {:?}, dest: {:?}, weight: {:?}",
-					from, currency_id, amount, dest, weight
+					"xtokens: Transfer from: {from:?}, currency_id: {currency_id:?}, amount: {amount:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -111,8 +110,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: Transfer failed: {:?}",
-						e
+						"xtokens: Transfer failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -148,8 +146,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: TransferMultiAsset from: {:?}, asset: {:?}, dest: {:?}, weight: {:?}",
-					from, asset, dest, weight
+					"xtokens: TransferMultiAsset from: {from:?}, asset: {asset:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -160,8 +157,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: TransferMultiAsset failed: {:?}",
-						e
+						"xtokens: TransferMultiAsset failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -194,8 +190,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: Transfer from: {:?}, currency_id: {:?}, amount: {:?}, fee: {:?}, dest: {:?}, weight: {:?}",
-					from, currency_id, amount, fee, dest, weight
+					"xtokens: Transfer from: {from:?}, currency_id: {currency_id:?}, amount: {amount:?}, fee: {fee:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -206,8 +201,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: TransferWithFee failed: {:?}",
-						e
+						"xtokens: TransferWithFee failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -249,8 +243,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: TransferMultiAssetWithFee from: {:?}, asset: {:?}, fee: {:?}, dest: {:?}, weight: {:?}",
-					from, asset, fee, dest, weight
+					"xtokens: TransferMultiAssetWithFee from: {from:?}, asset: {asset:?}, fee: {fee:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -261,8 +254,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: TransferMultiAssetWithFee failed: {:?}",
-						e
+						"xtokens: TransferMultiAssetWithFee failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -315,8 +307,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: TransferMultiCurrencies from: {:?}, currencies: {:?}, fee_item: {:?}, dest: {:?}, weight: {:?}",
-					from, currencies, fee_item, dest, weight
+					"xtokens: TransferMultiCurrencies from: {from:?}, currencies: {currencies:?}, fee_item: {fee_item:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -327,8 +318,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: TransferMultiCurrencies failed: {:?}",
-						e
+						"xtokens: TransferMultiCurrencies failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -370,8 +360,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"xtokens: TransferMultiAssets from: {:?}, assets: {:?}, fee: {:?}, dest: {:?}, weight: {:?}",
-					from, assets, fee, dest, weight
+					"xtokens: TransferMultiAssets from: {from:?}, assets: {assets:?}, fee: {fee:?}, dest: {dest:?}, weight: {weight:?}",
 				);
 
 				let transferred = <orml_xtokens::Pallet<Runtime> as XcmTransfer<
@@ -382,8 +371,7 @@ where
 				.map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"xtokens: TransferMultiAssets failed: {:?}",
-						e
+						"xtokens: TransferMultiAssets failed: {e:?}",
 					);
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
@@ -586,7 +574,7 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedLocation = VersionedLocation::V4(Location::new(
+			let dest: VersionedLocation = VersionedLocation::V5(Location::new(
 				1,
 				[
 					Parachain(2002),
@@ -598,7 +586,7 @@ mod tests {
 			));
 			assert_eq!(
 				dest.encode(),
-				hex!("04010200491f01000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05010200491f01000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Unlimited;
@@ -653,9 +641,9 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let asset: VersionedAsset = (Here, 1_000_000_000_000u128).into();
-			assert_eq!(asset.encode(), hex!("04000000070010a5d4e8"));
+			assert_eq!(asset.encode(), hex!("05000000070010a5d4e8"));
 
-			let dest: VersionedLocation = VersionedLocation::V4(
+			let dest: VersionedLocation = VersionedLocation::V5(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -664,7 +652,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -717,7 +705,7 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedLocation = VersionedLocation::V4(
+			let dest: VersionedLocation = VersionedLocation::V5(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -726,7 +714,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -780,12 +768,12 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let asset: VersionedAsset = (Here, 1_000_000_000_000u128).into();
-			assert_eq!(asset.encode(), hex!("04000000070010a5d4e8"));
+			assert_eq!(asset.encode(), hex!("05000000070010a5d4e8"));
 
 			let fee: VersionedAsset = (Here, 1_000_000).into();
-			assert_eq!(fee.encode(), hex!("0400000002093d00"));
+			assert_eq!(fee.encode(), hex!("0500000002093d00"));
 
-			let dest: VersionedLocation = VersionedLocation::V4(
+			let dest: VersionedLocation = VersionedLocation::V5(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -794,7 +782,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -853,7 +841,7 @@ mod tests {
 				caller: alice_evm_addr(),
 				apparent_value: Default::default(),
 			};
-			let dest: VersionedLocation = VersionedLocation::V4(
+			let dest: VersionedLocation = VersionedLocation::V5(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -862,7 +850,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));
@@ -927,9 +915,9 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 			let assets: VersionedAssets = VersionedAssets::from(Assets::from((Here, 1_000_000_000_000u128)));
-			assert_eq!(assets.encode(), hex!("0404000000070010a5d4e8"));
+			assert_eq!(assets.encode(), hex!("0504000000070010a5d4e8"));
 
-			let dest: VersionedLocation = VersionedLocation::V4(
+			let dest: VersionedLocation = VersionedLocation::V5(
 				Junction::AccountId32 {
 					network: None,
 					id: BOB.into(),
@@ -938,7 +926,7 @@ mod tests {
 			);
 			assert_eq!(
 				dest.encode(),
-				hex!("04000101000202020202020202020202020202020202020202020202020202020202020202")
+				hex!("05000101000202020202020202020202020202020202020202020202020202020202020202")
 			);
 
 			let weight = WeightLimit::Limited(Weight::from_parts(100_000, 64 * 1024));

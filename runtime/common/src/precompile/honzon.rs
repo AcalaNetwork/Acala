@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -79,8 +79,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"honzon: adjust_loan who: {:?}, currency_id: {:?}, collateral_adjustment: {:?}, debit_adjustment: {:?}",
-					who, currency_id, collateral_adjustment, debit_adjustment
+					"honzon: adjust_loan who: {who:?}, currency_id: {currency_id:?}, collateral_adjustment: {collateral_adjustment:?}, debit_adjustment: {debit_adjustment:?}",
 				);
 
 				<module_honzon::Pallet<Runtime> as HonzonManager<
@@ -107,8 +106,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"honzon: close_loan_by_dex who: {:?}, currency_id: {:?}, max_collateral_adjustment: {:?}",
-					who, currency_id, max_collateral_amount
+					"honzon: close_loan_by_dex who: {who:?}, currency_id: {currency_id:?}, max_collateral_adjustment: {max_collateral_amount:?}",
 				);
 
 				<module_honzon::Pallet<Runtime> as HonzonManager<

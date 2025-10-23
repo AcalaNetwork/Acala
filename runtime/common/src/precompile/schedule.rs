@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,7 @@
 
 // Disable the following lints
 #![allow(clippy::type_complexity)]
+#![allow(deprecated)] // schedule::v3 is deprecated but schedule precompile is expiermental anyway
 
 use super::input::{Input, InputT, Output};
 use frame_support::{
@@ -124,14 +125,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"schedule call: from: {:?}, target: {:?}, value: {:?}, gas_limit: {:?}, storage_limit: {:?}, min_delay: {:?}, input_data: {:?}",
-					from,
-					target,
-					value,
-					gas_limit,
-					storage_limit,
-					min_delay,
-					input_data,
+					"schedule call: from: {from:?}, target: {target:?}, value: {value:?}, gas_limit: {gas_limit:?}, storage_limit: {storage_limit:?}, min_delay: {min_delay:?}, input_data: {input_data:?}",
 				);
 
 				let mut _fee: PalletBalanceOf<Runtime> = Default::default();
@@ -185,8 +179,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"schedule call: task_id: {:?}",
-					task_id,
+					"schedule call: task_id: {task_id:?}",
 				);
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
@@ -221,9 +214,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"cancel call: from: {:?}, task_id: {:?}",
-					from,
-					task_id,
+					"cancel call: from: {from:?}, task_id: {task_id:?}",
 				);
 
 				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {
@@ -273,10 +264,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"reschedule call: from: {:?}, task_id: {:?}, min_delay: {:?}",
-					from,
-					task_id,
-					min_delay,
+					"reschedule call: from: {from:?}, task_id: {task_id:?}, min_delay: {min_delay:?}",
 				);
 
 				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {
@@ -554,7 +542,7 @@ mod tests {
 			run_to_block(4);
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			{
-				assert_eq!(Balances::free_balance(from_account.clone()), 999999978576);
+				assert_eq!(Balances::free_balance(from_account.clone()), 999999978554);
 				assert_eq!(Balances::reserved_balance(from_account), 0);
 				assert_eq!(Balances::free_balance(to_account), 1000000000000);
 			}

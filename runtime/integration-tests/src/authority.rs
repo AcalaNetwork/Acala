@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,9 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
-use frame_support::traits::{schedule::DispatchTime, OriginTrait};
+use frame_support::traits::{schedule::DispatchTime, Bounded, OriginTrait};
 use orml_authority::DelayedOrigin;
 use sp_io::hashing::blake2_256;
+
+fn bounded_call(call: RuntimeCall) -> Box<Bounded<RuntimeCall, <Runtime as frame_system::Config>::Hashing>> {
+	let encoded_call = call.encode();
+	Box::new(Bounded::Inline(encoded_call.try_into().unwrap()))
+}
 
 #[test]
 fn test_authority_module() {
@@ -95,7 +100,7 @@ fn test_authority_module() {
 				DispatchTime::At(one_day_later),
 				0,
 				true,
-				Box::new(treasury_reserve_call.clone())
+				bounded_call(treasury_reserve_call)
 			));
 
 			assert_ok!(Authority::schedule_dispatch(
@@ -103,7 +108,7 @@ fn test_authority_module() {
 				DispatchTime::At(one_day_later),
 				0,
 				true,
-				Box::new(call.clone())
+				bounded_call(call.clone())
 			));
 			System::assert_last_event(RuntimeEvent::Authority(orml_authority::Event::Scheduled {
 				origin: OriginCaller::Authority(DelayedOrigin::new(
@@ -164,7 +169,7 @@ fn test_authority_module() {
 				DispatchTime::At(seven_days_later),
 				0,
 				true,
-				Box::new(call.clone())
+				bounded_call(call.clone())
 			));
 
 			run_to_block(seven_days_later);
@@ -208,7 +213,7 @@ fn test_authority_module() {
 				DispatchTime::At(seven_days_later + 1),
 				0,
 				false,
-				Box::new(call.clone())
+				bounded_call(call.clone())
 			));
 			System::assert_last_event(RuntimeEvent::Authority(orml_authority::Event::Scheduled {
 				origin: OriginCaller::system(RawOrigin::Root),
@@ -229,7 +234,7 @@ fn test_authority_module() {
 				DispatchTime::At(seven_days_later + 2),
 				0,
 				false,
-				Box::new(call.clone())
+				bounded_call(call.clone())
 			));
 
 			// fast_track_scheduled_dispatch
@@ -254,7 +259,7 @@ fn test_authority_module() {
 				DispatchTime::At(seven_days_later + 2),
 				0,
 				true,
-				Box::new(call.clone())
+				bounded_call(call.clone())
 			));
 			System::assert_last_event(RuntimeEvent::Authority(orml_authority::Event::Scheduled {
 				origin: OriginCaller::Authority(DelayedOrigin::new(1, Box::new(OriginCaller::system(RawOrigin::Root)))),
@@ -287,7 +292,7 @@ fn test_authority_module() {
 				DispatchTime::At(seven_days_later + 3),
 				0,
 				false,
-				Box::new(call.clone())
+				bounded_call(call)
 			));
 			System::assert_last_event(RuntimeEvent::Authority(orml_authority::Event::Scheduled {
 				origin: OriginCaller::system(RawOrigin::Root),
@@ -329,7 +334,7 @@ fn cancel_schedule_test() {
 			DispatchTime::At(2),
 			0,
 			false,
-			Box::new(council_call.clone()),
+			bounded_call(council_call.clone()),
 		));
 
 		// canceling will not work if yes vote is less than the scheduled call
@@ -357,7 +362,7 @@ fn cancel_schedule_test() {
 			DispatchTime::At(2),
 			0,
 			false,
-			Box::new(council_call.clone()),
+			bounded_call(council_call),
 		));
 		// canceling works when yes vote is equal to the scheduled call
 		assert_ok!(Authority::cancel_scheduled_dispatch(

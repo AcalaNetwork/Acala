@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -64,6 +64,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -91,7 +92,6 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = ConstU32<1>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<10>;
-	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = ();
@@ -184,12 +184,12 @@ pub fn deploy_contracts() {
 			],
 			data: {
 				let mut buf = [0u8; 32];
-				U256::from(ALICE_BALANCE).to_big_endian(&mut buf);
+				U256::from(ALICE_BALANCE).write_as_big_endian(&mut buf);
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1215220,
-		used_storage: 4996,
+		used_gas: 1013342,
+		used_storage: 4028,
 	}));
 }
 
@@ -250,6 +250,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self.balances.into_iter().collect::<Vec<_>>(),
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

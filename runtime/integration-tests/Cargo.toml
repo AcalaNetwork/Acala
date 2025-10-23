@@ -1,8 +1,8 @@
 [package]
 name = "runtime-integration-tests"
-version = "2.25.0"
-authors = ["Acala Developers"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 smallvec = { workspace = true }
@@ -66,6 +66,7 @@ xcm = { workspace = true, features = ["std"] }
 xcm-executor = { workspace = true, features = ["std"] }
 xcm-builder = { workspace = true, features = ["std"] }
 pallet-xcm = { workspace = true, features = ["std"] }
+polkadot-parachain-primitives = { workspace = true, features = ["std"] }
 
 # orml
 orml-auction = { workspace = true, features = ["std"] }
@@ -106,7 +107,7 @@ module-support = { workspace = true, features = ["std"] }
 module-xcm-interface = { workspace = true, features = ["std"] }
 module-homa = { workspace = true, features = ["std"] }
 module-session-manager = { workspace = true, features = ["std"] }
-module-relaychain = { workspace = true, features = ["std"] }
+module-assethub = { workspace = true, features = ["std"] }
 
 primitives = { workspace = true, features = ["std"] }
 runtime-common = { workspace = true, features = ["std"] }
@@ -115,6 +116,7 @@ karura-runtime = { workspace = true, features = ["std"], optional = true }
 acala-runtime = { workspace = true, features = ["std"], optional = true }
 
 [dev-dependencies]
+insta = { workspace = true }
 env_logger = { workspace = true }
 log = { workspace = true }
 sp-io = { workspace = true, features = ["std"] }
@@ -123,9 +125,6 @@ sp-trie = { workspace = true, features = ["std"] }
 cumulus-primitives-parachain-inherent = { workspace = true, features = ["std"] }
 cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 
-polkadot-cli = { workspace = true }
-
-acala-service = { workspace = true, features = ["std", "with-all-runtime"] }
 module-aggregated-dex = { workspace = true, features = ["std"] }
 nutsfinance-stable-asset = { workspace = true, features = ["std"] }
 
@@ -134,15 +133,12 @@ default = ["std"]
 no_std = []
 with-mandala-runtime = [
 	"mandala-runtime",
-	"acala-service/with-mandala-runtime",
 ]
 with-karura-runtime = [
 	"karura-runtime",
-	"acala-service/with-karura-runtime",
 ]
 with-acala-runtime = [
 	"acala-runtime",
-	"acala-service/with-acala-runtime",
 ]
 with-ethereum-compatibility = [
 	"mandala-runtime",

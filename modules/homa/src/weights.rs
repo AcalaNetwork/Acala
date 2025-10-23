@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -48,7 +48,7 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for module_homa.
 pub trait WeightInfo {
 	fn on_initialize() -> Weight;
-	fn on_initialize_with_bump_era() -> Weight;
+	fn on_initialize_with_bump_era(n: u32,) -> Weight;
 	fn mint() -> Weight;
 	fn request_redeem() -> Weight;
 	fn fast_match_redeems(n: u32, ) -> Weight;
@@ -92,10 +92,12 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Homa RedeemRequests (r:2 w:1)
 	// Storage: Homa Unbondings (r:1 w:1)
 	// Storage: Homa TotalVoidLiquid (r:0 w:1)
-	fn on_initialize_with_bump_era() -> Weight {
+	fn on_initialize_with_bump_era(n: u32,) -> Weight {
 		Weight::from_parts(253_506_000, 0)
 			.saturating_add(T::DbWeight::get().reads(31 as u64))
+			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(n as u64)))
 			.saturating_add(T::DbWeight::get().writes(18 as u64))
+			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(n as u64)))
 	}
 	// Storage: unknown [0x3a7472616e73616374696f6e5f6c6576656c3a] (r:1 w:1)
 	// Storage: Homa TotalStakingBonded (r:1 w:0)
@@ -195,10 +197,12 @@ impl WeightInfo for () {
 		Weight::from_parts(5_281_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 	}
-	fn on_initialize_with_bump_era() -> Weight {
+	fn on_initialize_with_bump_era(n: u32,) -> Weight {
 		Weight::from_parts(253_506_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(31 as u64))
+			.saturating_add(RocksDbWeight::get().reads((2 as u64).saturating_mul(n as u64)))
 			.saturating_add(RocksDbWeight::get().writes(18 as u64))
+			.saturating_add(RocksDbWeight::get().writes((2 as u64).saturating_mul(n as u64)))
 	}
 	fn mint() -> Weight {
 		Weight::from_parts(88_950_000, 0)

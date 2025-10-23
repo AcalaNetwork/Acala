@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, ConstU64, Nothing},
 	PalletId,
 };
-use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
+use frame_system::EnsureSignedBy;
 use module_cdp_engine::CollateralCurrencyIds;
 use module_support::{
 	mocks::{MockStableAsset, TestRandomness},
@@ -39,7 +39,6 @@ use primitives::{
 };
 use sp_core::crypto::AccountId32;
 use sp_runtime::{
-	testing::TestXt,
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
 	BuildStorage, FixedPointNumber,
 };
@@ -76,7 +75,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -103,6 +101,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
@@ -122,7 +121,6 @@ parameter_types! {
 }
 
 impl module_loans::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type RiskManager = CDPEngineModule;
 	type CDPTreasury = CDPTreasuryModule;
@@ -198,7 +196,6 @@ parameter_types! {
 }
 
 impl module_cdp_treasury::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
@@ -220,7 +217,6 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl module_evm_accounts::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = PalletBalances;
 	type ChainId = ();
 	type AddressMapping = module_evm_accounts::EvmAddressMapping<Runtime>;
@@ -245,7 +241,6 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = ConstU32<1>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<10>;
-	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = ();
@@ -287,7 +282,6 @@ parameter_types! {
 }
 
 impl module_cdp_engine::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type PriceSource = MockPriceSource;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
@@ -315,10 +309,10 @@ impl module_cdp_engine::Config for Runtime {
 	type WeightInfo = ();
 }
 
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = PalletBalances;
 	type DepositPerAuthorization = ConstU128<100>;
 	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
@@ -342,15 +336,21 @@ construct_runtime!(
 	}
 );
 
-/// An extrinsic type used for tests.
-pub type Extrinsic = TestXt<RuntimeCall, ()>;
-
-impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
+impl<C> frame_system::offchain::CreateTransactionBase<C> for Runtime
 where
-	RuntimeCall: From<LocalCall>,
+	RuntimeCall: From<C>,
 {
-	type OverarchingCall = RuntimeCall;
-	type Extrinsic = Extrinsic;
+	type RuntimeCall = RuntimeCall;
+	type Extrinsic = UncheckedExtrinsic;
+}
+
+impl<C> frame_system::offchain::CreateBare<C> for Runtime
+where
+	RuntimeCall: From<C>,
+{
+	fn create_bare(call: Self::RuntimeCall) -> Self::Extrinsic {
+		UncheckedExtrinsic::new_bare(call)
+	}
 }
 
 pub struct ExtBuilder {
@@ -380,6 +380,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self.endowed_native,
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

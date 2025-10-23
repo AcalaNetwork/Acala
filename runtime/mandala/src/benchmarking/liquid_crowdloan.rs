@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -38,14 +38,6 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), amount)
 	verify {
 		System::assert_last_event(module_liquid_crowdloan::Event::Redeemed { currency_id: GetStakingCurrencyId::get(), amount }.into());
-	}
-
-	transfer_from_crowdloan_vault {
-		PolkadotXcm::force_default_xcm_version(RuntimeOrigin::root(), Some(2)).unwrap();
-		let amount = 1_000;
-	}: _(RawOrigin::Root, amount)
-	verify {
-		System::assert_last_event(module_liquid_crowdloan::Event::TransferFromCrowdloanVaultRequested { amount }.into());
 	}
 
 	set_redeem_currency_id {

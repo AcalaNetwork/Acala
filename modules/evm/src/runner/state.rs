@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -308,15 +308,18 @@ pub trait StackState<'config>: Backend {
 
 	fn is_empty(&self, address: H160) -> bool;
 	fn deleted(&self, address: H160) -> bool;
+	fn created(&self, address: H160) -> bool;
 	fn is_cold(&self, address: H160) -> bool;
 	fn is_storage_cold(&self, address: H160, key: H256) -> bool;
 
 	fn inc_nonce(&mut self, address: H160) -> Result<(), ExitError>;
 	fn set_storage(&mut self, address: H160, key: H256, value: H256);
+	fn set_transient_storage(&mut self, address: H160, key: H256, value: H256);
 	fn reset_storage(&mut self, address: H160);
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>);
 	fn set_deleted(&mut self, address: H160);
-	fn set_code(&mut self, address: H160, code: Vec<u8>);
+	fn set_created(&mut self, address: H160);
+	fn set_code(&mut self, address: H160, code: Vec<u8>, caller: Option<H160>) -> Result<(), ExitError>;
 	fn transfer(&mut self, transfer: Transfer) -> Result<(), ExitError>;
 	fn reset_balance(&mut self, address: H160);
 	fn touch(&mut self, address: H160);
@@ -425,7 +428,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			kind: RuntimeKind::Execute,
 			inner: MaybeBorrowed::Borrowed(runtime),
 		});
-		let (reason, _, _) = self.execute_with_call_stack(&mut call_stack);
+		let (reason, _, _) = self.execute_with_call_stack(&mut call_stack, None);
 		reason
 	}
 
@@ -433,6 +436,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 	fn execute_with_call_stack(
 		&mut self,
 		call_stack: &mut Vec<TaggedRuntime<'_>>,
+		caller: Option<H160>,
 	) -> (ExitReason, Option<H160>, Vec<u8>) {
 		// This `interrupt_runtime` is used to pass the runtime obtained from the
 		// `Capture::Trap` branch in the match below back to the top of the call stack.
@@ -468,13 +472,17 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			let runtime_kind = runtime.kind;
 			let (reason, maybe_address, return_data) = match runtime_kind {
 				RuntimeKind::Create(created_address) => {
-					let (reason, maybe_address, return_data) =
-						self.cleanup_for_create(created_address, reason, runtime.inner.machine().return_value());
+					let (reason, maybe_address, return_data) = self.cleanup_for_create(
+						created_address,
+						reason,
+						runtime.inner.machine().return_value(),
+						caller,
+					);
 					(reason, maybe_address, return_data)
 				}
 				RuntimeKind::Call(code_address) => {
-					let return_data =
-						self.cleanup_for_call(code_address, &reason, runtime.inner.machine().return_value());
+					let (reason, return_data) =
+						self.cleanup_for_call(code_address, reason, runtime.inner.machine().return_value());
 					(reason, None, return_data)
 				}
 				RuntimeKind::Execute => (reason, None, runtime.inner.machine().return_value()),
@@ -509,8 +517,9 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		&mut self,
 		init_code: &[u8],
 		access_list: &[(H160, Vec<H256>)],
+		authorization_list: &[(U256, H160, U256, Option<H160>)],
 	) -> Result<(), ExitError> {
-		let transaction_cost = gasometer::create_transaction_cost(init_code, access_list);
+		let transaction_cost = gasometer::create_transaction_cost(init_code, access_list, authorization_list);
 		let gasometer = &mut self.state.metadata_mut().gasometer;
 		gasometer.record_transaction(transaction_cost)
 	}
@@ -538,7 +547,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		value: U256,
 		init_code: Vec<u8>,
 		gas_limit: u64,
-		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
+		access_list: Vec<(H160, Vec<H256>)>,                       // See EIP-2930
+		authorization_list: Vec<(U256, H160, U256, Option<H160>)>, // See EIP-7702
 	) -> (ExitReason, Vec<u8>) {
 		event!(TransactCreate {
 			caller,
@@ -555,7 +565,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			}
 		}
 
-		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
+		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list, &authorization_list) {
 			return emit_exit!(e.into(), Vec::new());
 		}
 		self.initialize_with_access_list(access_list);
@@ -572,7 +582,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Capture::Trap(rt) => {
 				let mut cs = Vec::with_capacity(DEFAULT_CALL_STACK_CAPACITY);
 				cs.push(rt.0);
-				let (s, _, v) = self.execute_with_call_stack(&mut cs);
+				let (s, _, v) = self.execute_with_call_stack(&mut cs, None);
 				emit_exit!(s, v)
 			}
 		}
@@ -586,7 +596,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		init_code: Vec<u8>,
 		salt: H256,
 		gas_limit: u64,
-		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
+		access_list: Vec<(H160, Vec<H256>)>,                       // See EIP-2930
+		authorization_list: Vec<(U256, H160, U256, Option<H160>)>, // See EIP-7702
 	) -> (ExitReason, Vec<u8>) {
 		event!(TransactCreate2 {
 			caller,
@@ -610,7 +621,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			}
 		}
 
-		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
+		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list, &authorization_list) {
 			return emit_exit!(e.into(), Vec::new());
 		}
 		self.initialize_with_access_list(access_list);
@@ -631,7 +642,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Capture::Trap(rt) => {
 				let mut cs = Vec::with_capacity(DEFAULT_CALL_STACK_CAPACITY);
 				cs.push(rt.0);
-				let (s, _, v) = self.execute_with_call_stack(&mut cs);
+				let (s, _, v) = self.execute_with_call_stack(&mut cs, None);
 				emit_exit!(s, v)
 			}
 		}
@@ -646,6 +657,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		init_code: Vec<u8>,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: Vec<(U256, H160, U256, Option<H160>)>, // See EIP-7702
 	) -> (ExitReason, Vec<u8>) {
 		event!(TransactCreate {
 			caller,
@@ -662,7 +674,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			}
 		}
 
-		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list) {
+		if let Err(e) = self.record_create_transaction_cost(&init_code, &access_list, &authorization_list) {
 			return emit_exit!(e.into(), Vec::new());
 		}
 		self.initialize_with_access_list(access_list);
@@ -679,7 +691,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Capture::Trap(rt) => {
 				let mut cs = Vec::with_capacity(DEFAULT_CALL_STACK_CAPACITY);
 				cs.push(rt.0);
-				let (s, _, v) = self.execute_with_call_stack(&mut cs);
+				let (s, _, v) = self.execute_with_call_stack(&mut cs, None);
 				emit_exit!(s, v)
 			}
 		}
@@ -699,6 +711,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		data: Vec<u8>,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: Vec<(U256, H160, U256, Option<H160>)>,
 	) -> (ExitReason, Vec<u8>) {
 		event!(TransactCall {
 			caller,
@@ -712,7 +725,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			return emit_exit!(e.into(), Vec::new());
 		}
 
-		let transaction_cost = gasometer::call_transaction_cost(&data, &access_list);
+		let transaction_cost = gasometer::call_transaction_cost(&data, &access_list, &authorization_list);
 		let gasometer = &mut self.state.metadata_mut().gasometer;
 		match gasometer.record_transaction(transaction_cost) {
 			Ok(()) => (),
@@ -765,7 +778,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Capture::Trap(rt) => {
 				let mut cs = Vec::with_capacity(DEFAULT_CALL_STACK_CAPACITY);
 				cs.push(rt.0);
-				let (s, _, v) = self.execute_with_call_stack(&mut cs);
+				let (s, _, v) = self.execute_with_call_stack(&mut cs, Some(caller));
 				emit_exit!(s, v)
 			}
 		}
@@ -811,7 +824,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 				let mut stream = rlp::RlpStream::new_list(2);
 				stream.append(&caller);
 				stream.append(&nonce);
-				H256::from_slice(Keccak256::digest(&stream.out()).as_slice()).into()
+				H256::from_slice(Keccak256::digest(stream.out()).as_slice()).into()
 			}
 			CreateScheme::Fixed(naddress) => naddress,
 		};
@@ -890,6 +903,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		if let Err(e) = self.state.inc_nonce(caller) {
 			return Capture::Exit((e.into(), None, Vec::new()));
 		}
+
+		self.state.set_created(address);
 
 		let after_gas = if take_l64 && self.config.call_l64_after_gas {
 			if self.config.estimate {
@@ -1070,9 +1085,9 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		}) {
 			return match result {
 				Ok(PrecompileOutput { exit_status, output }) => {
-					// let _ = self.exit_substate(StackExitKind::Succeeded);
-					let e = self.exit_substate(StackExitKind::Succeeded);
-					try_or_fail!(e);
+					if let Err(e) = self.exit_substate(StackExitKind::Succeeded) {
+						return Capture::Exit((e.into(), Vec::new()));
+					}
 					Capture::Exit((ExitReason::Succeed(exit_status), output))
 				}
 				Err(PrecompileFailure::Error { exit_status }) => {
@@ -1111,6 +1126,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		created_address: H160,
 		reason: ExitReason,
 		return_data: Vec<u8>,
+		caller: Option<H160>,
 	) -> (ExitReason, Option<H160>, Vec<u8>) {
 		fn check_first_byte(config: &Config, code: &[u8]) -> Result<(), ExitError> {
 			if config.disallow_executable_format && Some(&Opcode::EOFMAGIC.as_u8()) == code.first() {
@@ -1119,7 +1135,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Ok(())
 		}
 
-		log::debug!(target: "evm", "Create execution using address {}: {:?}", created_address, reason);
+		log::debug!(target: "evm", "Create execution using address {created_address}: {reason:?}");
 
 		match reason {
 			ExitReason::Succeed(s) => {
@@ -1142,14 +1158,19 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 				match self.state.metadata_mut().gasometer.record_deposit(out.len()) {
 					Ok(()) => {
-						let code_len = out.len();
-						self.state.set_code(address, out);
-						let exit_result = self.exit_substate(StackExitKind::Succeeded);
 						if let Err(e) =
-							self.record_external_operation(crate::ExternalOperation::Write(U256::from(code_len)))
+							self.record_external_operation(crate::ExternalOperation::Write(U256::from(out.len())))
 						{
+							self.state.metadata_mut().gasometer.fail();
+							let _ = self.exit_substate(StackExitKind::Failed);
 							return (e.into(), None, Vec::new());
 						}
+						// Success requires storage to be collected successfully
+						let set_code_result = self.state.set_code(address, out, caller);
+						if let Err(e) = set_code_result {
+							return (e.into(), None, Vec::new());
+						}
+						let exit_result = self.exit_substate(StackExitKind::Succeeded);
 						if let Err(e) = exit_result {
 							return (e.into(), None, Vec::new());
 						}
@@ -1178,25 +1199,32 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		}
 	}
 
-	fn cleanup_for_call(&mut self, code_address: H160, reason: &ExitReason, return_data: Vec<u8>) -> Vec<u8> {
-		log::debug!(target: "evm", "Call execution using address {}: {:?}", code_address, reason);
+	fn cleanup_for_call(
+		&mut self,
+		code_address: H160,
+		reason: ExitReason,
+		return_data: Vec<u8>,
+	) -> (ExitReason, Vec<u8>) {
+		log::debug!(target: "evm", "Call execution using address {code_address}: {reason:?}");
 		match reason {
 			ExitReason::Succeed(_) => {
-				let _ = self.exit_substate(StackExitKind::Succeeded);
-				return_data
+				if let Err(e) = self.exit_substate(StackExitKind::Succeeded) {
+					return (e.into(), Vec::new());
+				}
+				(reason, return_data)
 			}
 			ExitReason::Error(_) => {
 				let _ = self.exit_substate(StackExitKind::Failed);
-				Vec::new()
+				(reason, Vec::new())
 			}
 			ExitReason::Revert(_) => {
 				let _ = self.exit_substate(StackExitKind::Reverted);
-				return_data
+				(reason, return_data)
 			}
 			ExitReason::Fatal(_) => {
 				self.state.metadata_mut().gasometer.fail();
 				let _ = self.exit_substate(StackExitKind::Failed);
-				Vec::new()
+				(reason, Vec::new())
 			}
 		}
 	}
@@ -1205,9 +1233,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 pub struct StackExecutorCallInterrupt<'borrow>(TaggedRuntime<'borrow>);
 pub struct StackExecutorCreateInterrupt<'borrow>(TaggedRuntime<'borrow>);
 
-impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
-	for StackExecutor<'config, 'precompiles, S, P>
-{
+impl<'config, S: StackState<'config>, P: PrecompileSet> Handler for StackExecutor<'config, '_, S, P> {
 	type CreateInterrupt = StackExecutorCreateInterrupt<'static>;
 	type CreateFeedback = Infallible;
 	type CallInterrupt = StackExecutorCallInterrupt<'static>;
@@ -1238,8 +1264,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 			{
 				log::debug!(
 					target: "evm",
-					"contract does not exist, address: {:?}",
-					address
+					"contract does not exist, address: {address:?}",
 				);
 			}
 		}
@@ -1248,6 +1273,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
 		self.state.storage(address, index)
+	}
+
+	fn transient_storage(&self, address: H160, index: H256) -> H256 {
+		self.state.transient_storage(address, index)
 	}
 
 	fn original_storage(&self, address: H160, index: H256) -> H256 {
@@ -1332,6 +1361,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 		Ok(())
 	}
 
+	fn set_transient_storage(&mut self, address: H160, index: H256, value: H256) {
+		self.state.set_transient_storage(address, index, value);
+	}
+
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) -> Result<(), ExitError> {
 		event!(Log {
 			address,
@@ -1351,13 +1384,23 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 			balance,
 		});
 
-		self.state.transfer(Transfer {
-			source: address,
-			target,
-			value: balance,
-		})?;
-		self.state.reset_balance(address);
-		self.state.set_deleted(address);
+		if self.config.has_eip_6780 && !self.state.created(address) {
+			if address != target {
+				self.state.transfer(Transfer {
+					source: address,
+					target,
+					value: balance,
+				})?;
+			}
+		} else {
+			self.state.transfer(Transfer {
+				source: address,
+				target,
+				value: balance,
+			})?;
+			self.state.reset_balance(address);
+			self.state.set_deleted(address);
+		}
 
 		Ok(())
 	}
@@ -1512,8 +1555,8 @@ pub struct StackExecutorHandle<'inner, 'config, 'precompiles, S, P> {
 	is_static: bool,
 }
 
-impl<'inner, 'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> PrecompileHandle
-	for StackExecutorHandle<'inner, 'config, 'precompiles, S, P>
+impl<'config, S: StackState<'config>, P: PrecompileSet> PrecompileHandle
+	for StackExecutorHandle<'_, 'config, '_, S, P>
 {
 	// Perform subcall in provided context.
 	/// Precompile specifies in which context the subcall is executed.
@@ -1588,7 +1631,7 @@ impl<'inner, 'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Pr
 				// potentially cause a stack overflow if you're not careful.
 				let mut call_stack = Vec::with_capacity(DEFAULT_CALL_STACK_CAPACITY);
 				call_stack.push(rt.0);
-				let (reason, _, return_data) = self.executor.execute_with_call_stack(&mut call_stack);
+				let (reason, _, return_data) = self.executor.execute_with_call_stack(&mut call_stack, None);
 				emit_exit!(reason, return_data)
 			}
 		}
@@ -1616,7 +1659,7 @@ impl<'inner, 'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Pr
 		self.executor.state.refund_external_cost(ref_time, proof_size);
 	}
 
-	/// Retreive the remaining gas.
+	/// Retrieve the remaining gas.
 	fn remaining_gas(&self) -> u64 {
 		self.executor.state.metadata().gasometer.gas()
 	}
@@ -1626,19 +1669,24 @@ impl<'inner, 'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Pr
 		Handler::log(self.executor, address, topics, data)
 	}
 
-	/// Retreive the code address (what is the address of the precompile being called).
+	/// Retrieve the code address (what is the address of the precompile being called).
 	fn code_address(&self) -> H160 {
 		self.code_address
 	}
 
-	/// Retreive the input data the precompile is called with.
+	/// Retrieve the input data the precompile is called with.
 	fn input(&self) -> &[u8] {
 		self.input
 	}
 
-	/// Retreive the context in which the precompile is executed.
+	/// Retrieve the context in which the precompile is executed.
 	fn context(&self) -> &Context {
 		self.context
+	}
+
+	/// Retrieve the address of the EOA that originated the transaction.
+	fn origin(&self) -> H160 {
+		self.executor.state.origin()
 	}
 
 	/// Is the precompile call is done statically.
@@ -1646,8 +1694,13 @@ impl<'inner, 'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Pr
 		self.is_static
 	}
 
-	/// Retreive the gas limit of this call.
+	/// Retrieve the gas limit of this call.
 	fn gas_limit(&self) -> Option<u64> {
 		self.gas_limit
+	}
+
+	/// Check if a given address is a contract being constructed
+	fn is_contract_being_constructed(&self, address: H160) -> bool {
+		self.executor.state.created(address)
 	}
 }

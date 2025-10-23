@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -30,7 +30,7 @@ pub mod testing;
 pub mod unchecked_extrinsic;
 pub use testing::*;
 
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_core::U256;
@@ -110,7 +110,19 @@ pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 pub type Multiplier = FixedU128;
 
 #[derive(
-	Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, Serialize, Deserialize,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	Copy,
+	Clone,
+	RuntimeDebug,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	Serialize,
+	Deserialize,
 )]
 pub enum AuthoritysOriginId {
 	Root,
@@ -121,7 +133,19 @@ pub enum AuthoritysOriginId {
 }
 
 #[derive(
-	Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, Serialize, Deserialize,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	Copy,
+	Clone,
+	RuntimeDebug,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	Serialize,
+	Deserialize,
 )]
 pub enum DataProviderId {
 	Aggregated = 0,
@@ -171,7 +195,11 @@ impl Decode for TradingPair {
 	}
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default, MaxEncodedLen, TypeInfo)]
+impl DecodeWithMemTracking for TradingPair {}
+
+#[derive(
+	Encode, Decode, DecodeWithMemTracking, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default, MaxEncodedLen, TypeInfo,
+)]
 pub struct Position {
 	/// The amount of collateral.
 	pub collateral: Balance,
@@ -179,7 +207,20 @@ pub struct Position {
 	pub debit: Balance,
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, MaxEncodedLen, TypeInfo)]
+#[derive(
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	Copy,
+	Clone,
+	RuntimeDebug,
+	PartialOrd,
+	Ord,
+	MaxEncodedLen,
+	TypeInfo,
+)]
 #[repr(u8)]
 pub enum ReserveIdentifier {
 	CollatorSelection,
@@ -196,5 +237,7 @@ pub enum ReserveIdentifier {
 
 /// Convert any type that implements Into<U256> into byte representation ([u8, 32])
 pub fn to_bytes<T: Into<U256>>(value: T) -> [u8; 32] {
-	Into::<[u8; 32]>::into(value.into())
+	let mut bytes = [0u8; 32];
+	Into::<U256>::into(value).write_as_big_endian(&mut bytes);
+	bytes
 }

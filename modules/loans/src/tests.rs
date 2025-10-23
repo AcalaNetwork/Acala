@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -27,10 +27,12 @@ use mock::{RuntimeEvent, *};
 #[test]
 fn debits_key() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
 		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 200, 200));
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 200);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 800);
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 200);
 		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, -100, -100));
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 100);
@@ -57,7 +59,6 @@ fn check_update_loan_underflow_work() {
 #[test]
 fn adjust_position_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 
 		// balance too low
@@ -166,7 +167,6 @@ fn update_loan_should_work() {
 #[test]
 fn transfer_loan_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
 		assert_ok!(LoansModule::update_loan(&ALICE, BTC, 400, 500));
 		assert_ok!(LoansModule::update_loan(&BOB, BTC, 100, 600));
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 500);
@@ -190,7 +190,6 @@ fn transfer_loan_should_work() {
 #[test]
 fn confiscate_collateral_and_debit_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
 		assert_ok!(LoansModule::update_loan(&BOB, BTC, 5000, 1000));
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
 

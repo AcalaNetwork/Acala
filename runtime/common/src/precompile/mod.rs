@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -39,6 +39,7 @@ use sp_runtime::traits::Zero;
 use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
 pub mod dex;
+pub mod earning;
 pub mod evm;
 pub mod evm_accounts;
 pub mod homa;
@@ -55,6 +56,7 @@ pub mod xtokens;
 
 use crate::SystemContractsFilter;
 pub use dex::DEXPrecompile;
+pub use earning::EarningPrecompile;
 pub use evm::EVMPrecompile;
 pub use evm_accounts::EVMAccountsPrecompile;
 pub use homa::HomaPrecompile;
@@ -97,6 +99,7 @@ pub const HONZON: H160 = H160(hex!("0000000000000000000000000000000000000409"));
 pub const INCENTIVES: H160 = H160(hex!("000000000000000000000000000000000000040a"));
 pub const XTOKENS: H160 = H160(hex!("000000000000000000000000000000000000040b"));
 pub const LIQUID_CROWDLOAN: H160 = H160(hex!("000000000000000000000000000000000000040c"));
+pub const EARNING: H160 = H160(hex!("000000000000000000000000000000000000040d"));
 
 pub struct AllPrecompiles<R, F, E> {
 	set: BTreeSet<H160>,
@@ -138,6 +141,7 @@ where
 				INCENTIVES,
 				XTOKENS,
 				LIQUID_CROWDLOAN,
+				EARNING,
 			]),
 			_marker: Default::default(),
 		}
@@ -173,6 +177,7 @@ where
 				INCENTIVES,
 				XTOKENS,
 				// LIQUID_CROWDLOAN,
+				EARNING,
 			]),
 			_marker: Default::default(),
 		}
@@ -208,6 +213,7 @@ where
 				INCENTIVES,
 				XTOKENS,
 				// LIQUID_CROWDLOAN,
+				EARNING,
 			]),
 			_marker: Default::default(),
 		}
@@ -231,6 +237,7 @@ where
 	HonzonPrecompile<R>: Precompile,
 	IncentivesPrecompile<R>: Precompile,
 	XtokensPrecompile<R>: Precompile,
+	EarningPrecompile<R>: Precompile,
 {
 	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
 		let context = handle.context();
@@ -245,7 +252,7 @@ where
 
 		// ensure precompile is not paused
 		if PausedPrecompile::is_paused(address) {
-			log::debug!(target: "evm", "Precompile {:?} is paused", address);
+			log::debug!(target: "evm", "Precompile {address:?} is paused");
 			return Some(Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "precompile is paused".into(),
@@ -260,7 +267,7 @@ where
 			}));
 		}
 
-		log::trace!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, context: {:?}", address, handle.input(), context);
+		log::trace!(target: "evm", "Precompile begin, address: {address:?}, input: {:?}, context: {context:?}", handle.input());
 
 		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
 		let result = if address == ECRECOVER {
@@ -336,12 +343,14 @@ where
 				Some(IncentivesPrecompile::<R>::execute(handle))
 			} else if address == XTOKENS {
 				Some(XtokensPrecompile::<R>::execute(handle))
+			} else if address == EARNING {
+				Some(EarningPrecompile::<R>::execute(handle))
 			} else {
 				E::execute(&Default::default(), handle)
 			}
 		};
 
-		log::trace!(target: "evm", "Precompile end, address: {:?}, input: {:?}, context: {:?}, result: {:?}", address, handle.input(), handle.context(), result);
+		log::trace!(target: "evm", "Precompile end, address: {address:?}, input: {:?}, context: {:?}, result: {result:?}", handle.input(), handle.context());
 		if let Some(Err(PrecompileFailure::Revert { ref output, .. })) = result {
 			log::debug!(target: "evm", "Precompile failed: {:?}", core::str::from_utf8(output));
 		};

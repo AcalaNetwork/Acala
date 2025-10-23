@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,21 +17,22 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{evm::EthereumTransactionMessage, signature::AcalaMultiSignature, to_bytes, Address, Balance};
-use frame_support::{
-	dispatch::{DispatchInfo, GetDispatchInfo},
-	traits::{ExtrinsicCall, Get},
-};
+use frame_support::ensure;
+use frame_support::traits::{Get, InherentBuilder, SignedTransactionBuilder};
 use module_evm_utility::ethereum::{
 	EIP1559TransactionMessage, EIP2930TransactionMessage, LegacyTransactionMessage, TransactionAction,
 };
 use module_evm_utility_macro::keccak256;
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use scale_info::TypeInfo;
-use sp_core::{H160, H256};
+use sp_core::{H160, H256, U256};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_runtime::{
-	generic::{CheckedExtrinsic, UncheckedExtrinsic},
-	traits::{self, Checkable, Convert, Extrinsic, ExtrinsicMetadata, Member, SignedExtension, Zero},
+	generic::{CheckedExtrinsic, ExtrinsicFormat, Preamble, UncheckedExtrinsic},
+	traits::{
+		self, Checkable, Convert, Dispatchable, ExtrinsicCall, ExtrinsicLike, ExtrinsicMetadata, Member,
+		TransactionExtension, Zero,
+	},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	AccountId32, RuntimeDebug,
 };
@@ -39,72 +40,131 @@ use sp_runtime::{
 use sp_std::alloc::format;
 use sp_std::{marker::PhantomData, prelude::*};
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(ConvertEthTx))]
-pub struct AcalaUncheckedExtrinsic<Call, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>(
-	pub UncheckedExtrinsic<Address, Call, AcalaMultiSignature, Extra>,
+pub struct AcalaUncheckedExtrinsic<
+	Call: TypeInfo + Dispatchable,
+	Extension: TransactionExtension<Call>,
+	ConvertEthTx,
+	StorageDepositPerByte,
+	TxFeePerGas,
+>(
+	pub UncheckedExtrinsic<Address, Call, AcalaMultiSignature, Extension>,
 	PhantomData<(ConvertEthTx, StorageDepositPerByte, TxFeePerGas)>,
 );
 
-impl<Call: TypeInfo, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas> Extrinsic
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+impl<
+		Call: TypeInfo + Dispatchable,
+		Extension: TransactionExtension<Call>,
+		ConvertEthTx,
+		StorageDepositPerByte,
+		TxFeePerGas,
+	> AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+{
+	pub fn from_parts(function: Call, preamble: Preamble<Address, AcalaMultiSignature, Extension>) -> Self {
+		AcalaUncheckedExtrinsic(UncheckedExtrinsic::from_parts(function, preamble), PhantomData)
+	}
+
+	pub fn new_bare(function: Call) -> Self {
+		AcalaUncheckedExtrinsic(UncheckedExtrinsic::new_bare(function), PhantomData)
+	}
+
+	pub fn new_bare_legacy(function: Call) -> Self {
+		AcalaUncheckedExtrinsic(UncheckedExtrinsic::new_bare_legacy(function), PhantomData)
+	}
+
+	pub fn new_signed(function: Call, signed: Address, signature: AcalaMultiSignature, tx_ext: Extension) -> Self {
+		AcalaUncheckedExtrinsic(
+			UncheckedExtrinsic::new_signed(function, signed, signature, tx_ext),
+			PhantomData,
+		)
+	}
+
+	pub fn new_transaction(function: Call, tx_ext: Extension) -> Self {
+		AcalaUncheckedExtrinsic(UncheckedExtrinsic::new_transaction(function, tx_ext), PhantomData)
+	}
+}
+
+impl<
+		Call: TypeInfo + Dispatchable,
+		Extension: TransactionExtension<Call>,
+		ConvertEthTx,
+		StorageDepositPerByte,
+		TxFeePerGas,
+	> ExtrinsicLike for AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+{
+	fn is_bare(&self) -> bool {
+		self.0.is_bare()
+	}
+}
+
+impl<
+		Call: TypeInfo + Dispatchable,
+		Extension: TransactionExtension<Call>,
+		ConvertEthTx,
+		StorageDepositPerByte,
+		TxFeePerGas,
+	> InherentBuilder for AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+{
+	fn new_inherent(call: Self::Call) -> Self {
+		AcalaUncheckedExtrinsic(UncheckedExtrinsic::new_inherent(call), PhantomData)
+	}
+}
+
+impl<
+		Call: TypeInfo + Dispatchable,
+		Extension: TransactionExtension<Call>,
+		ConvertEthTx,
+		StorageDepositPerByte,
+		TxFeePerGas,
+	> ExtrinsicMetadata for AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+{
+	const VERSIONS: &'static [u8] = UncheckedExtrinsic::<Address, Call, AcalaMultiSignature, Extension>::VERSIONS;
+	type TransactionExtensions = Extension;
+}
+
+impl<
+		Call: TypeInfo + Dispatchable,
+		Extension: TransactionExtension<Call>,
+		ConvertEthTx,
+		StorageDepositPerByte,
+		TxFeePerGas,
+	> ExtrinsicCall for AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
 {
 	type Call = Call;
 
-	type SignaturePayload = (Address, AcalaMultiSignature, Extra);
-
-	fn is_signed(&self) -> Option<bool> {
-		self.0.is_signed()
-	}
-
-	fn new(function: Call, signed_data: Option<Self::SignaturePayload>) -> Option<Self> {
-		Some(if let Some((address, signature, extra)) = signed_data {
-			Self(
-				UncheckedExtrinsic::new_signed(function, address, signature, extra),
-				PhantomData,
-			)
-		} else {
-			Self(UncheckedExtrinsic::new_unsigned(function), PhantomData)
-		})
-	}
-}
-
-impl<Call, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas> ExtrinsicMetadata
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
-{
-	const VERSION: u8 = UncheckedExtrinsic::<Address, Call, AcalaMultiSignature, Extra>::VERSION;
-	type SignedExtensions = Extra;
-}
-
-impl<Call: TypeInfo, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas> ExtrinsicCall
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
-{
 	fn call(&self) -> &Self::Call {
 		self.0.call()
 	}
 }
 
-impl<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, Lookup> Checkable<Lookup>
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+impl<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas, Lookup> Checkable<Lookup>
+	for AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
 where
-	Call: Encode + Member,
-	Extra: SignedExtension<AccountId = AccountId32>,
-	ConvertEthTx: Convert<(Call, Extra), Result<(EthereumTransactionMessage, Extra), InvalidTransaction>>,
+	Call: TypeInfo + Encode + Member + Dispatchable,
+	Extension: Encode + TransactionExtension<Call>,
+	ConvertEthTx: Convert<(Call, Extension), Result<(EthereumTransactionMessage, Extension), InvalidTransaction>>,
 	StorageDepositPerByte: Get<Balance>,
 	TxFeePerGas: Get<Balance>,
 	Lookup: traits::Lookup<Source = Address, Target = AccountId32>,
 {
-	type Checked = CheckedExtrinsic<AccountId32, Call, Extra>;
+	type Checked = CheckedExtrinsic<AccountId32, Call, Extension>;
 
 	fn check(self, lookup: &Lookup) -> Result<Self::Checked, TransactionValidityError> {
 		let function = self.0.function.clone();
 
-		match self.0.signature {
-			Some((addr, AcalaMultiSignature::Ethereum(sig), extra)) => {
+		match self.0.preamble {
+			Preamble::Signed(addr, AcalaMultiSignature::Ethereum(sig), extra) => {
 				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
 				log::trace!(
-					target: "evm", "Ethereum eth_msg: {:?}", eth_msg
+					target: "evm", "Ethereum eth_msg: {eth_msg:?}"
 				);
+
+				// module_evm::Call::eth_call, ensure tip is zero to prevent miner attacks
+				// module_evm::Call::eth_call_v2, tip encoded in gas_price
+				if eth_msg.gas_price.is_zero() {
+					ensure!(eth_msg.tip.is_zero(), InvalidTransaction::BadProof);
+				}
 
 				if !eth_msg.access_list.len().is_zero() {
 					// Not yet supported, require empty
@@ -129,10 +189,10 @@ where
 					chain_id: Some(eth_msg.chain_id),
 				};
 				log::trace!(
-					target: "evm", "tx msg: {:?}", msg
+					target: "evm", "tx msg: {msg:?}"
 				);
 
-				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
+				let msg_hash = msg.hash(); // TODO: consider rewrite this to use `keccak_256` for hashing because it could be faster
 
 				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
 
@@ -144,15 +204,21 @@ where
 				}
 
 				Ok(CheckedExtrinsic {
-					signed: Some((account_id, eth_extra)),
+					format: ExtrinsicFormat::Signed(account_id, eth_extra),
 					function,
 				})
 			}
-			Some((addr, AcalaMultiSignature::Eip2930(sig), extra)) => {
+			Preamble::Signed(addr, AcalaMultiSignature::Eip2930(sig), extra) => {
 				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
 				log::trace!(
-					target: "evm", "Eip2930 eth_msg: {:?}", eth_msg
+					target: "evm", "Eip2930 eth_msg: {eth_msg:?}"
 				);
+
+				// module_evm::Call::eth_call, ensure tip is zero to prevent miner attacks
+				// module_evm::Call::eth_call_v2, tip encoded in gas_price
+				if eth_msg.gas_price.is_zero() {
+					ensure!(eth_msg.tip.is_zero(), InvalidTransaction::BadProof);
+				}
 
 				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero() {
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
@@ -173,10 +239,10 @@ where
 					access_list: eth_msg.access_list,
 				};
 				log::trace!(
-					target: "evm", "tx msg: {:?}", msg
+					target: "evm", "tx msg: {msg:?}"
 				);
 
-				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
+				let msg_hash = msg.hash(); // TODO: consider rewrite this to use `keccak_256` for hashing because it could be faster
 
 				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
 
@@ -188,14 +254,14 @@ where
 				}
 
 				Ok(CheckedExtrinsic {
-					signed: Some((account_id, eth_extra)),
+					format: ExtrinsicFormat::Signed(account_id, eth_extra),
 					function,
 				})
 			}
-			Some((addr, AcalaMultiSignature::Eip1559(sig), extra)) => {
+			Preamble::Signed(addr, AcalaMultiSignature::Eip1559(sig), extra) => {
 				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
 				log::trace!(
-					target: "evm", "Eip1559 eth_msg: {:?}", eth_msg
+					target: "evm", "Eip1559 eth_msg: {eth_msg:?}"
 				);
 
 				let (tx_gas_price, tx_gas_limit) = if eth_msg.gas_price.is_zero() {
@@ -221,10 +287,10 @@ where
 					access_list: eth_msg.access_list,
 				};
 				log::trace!(
-					target: "evm", "tx msg: {:?}", msg
+					target: "evm", "tx msg: {msg:?}"
 				);
 
-				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
+				let msg_hash = msg.hash(); // TODO: consider rewrite this to use `keccak_256` for hashing because it could be faster
 
 				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
 
@@ -236,14 +302,14 @@ where
 				}
 
 				Ok(CheckedExtrinsic {
-					signed: Some((account_id, eth_extra)),
+					format: ExtrinsicFormat::Signed(account_id, eth_extra),
 					function,
 				})
 			}
-			Some((addr, AcalaMultiSignature::AcalaEip712(sig), extra)) => {
+			Preamble::Signed(addr, AcalaMultiSignature::AcalaEip712(sig), extra) => {
 				let (eth_msg, eth_extra) = ConvertEthTx::convert((function.clone(), extra))?;
 				log::trace!(
-					target: "evm", "AcalaEip712 eth_msg: {:?}", eth_msg
+					target: "evm", "AcalaEip712 eth_msg: {eth_msg:?}"
 				);
 
 				let signer = verify_eip712_signature(eth_msg, sig).ok_or(InvalidTransaction::BadProof)?;
@@ -256,7 +322,7 @@ where
 				}
 
 				Ok(CheckedExtrinsic {
-					signed: Some((account_id, eth_extra)),
+					format: ExtrinsicFormat::Signed(account_id, eth_extra),
 					function,
 				})
 			}
@@ -273,19 +339,13 @@ where
 	}
 }
 
-impl<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas> GetDispatchInfo
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
-where
-	Call: GetDispatchInfo,
-	Extra: SignedExtension,
-{
-	fn get_dispatch_info(&self) -> DispatchInfo {
-		self.0.get_dispatch_info()
-	}
-}
-
-impl<Call: Encode, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas> serde::Serialize
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+impl<
+		Call: TypeInfo + Encode + Dispatchable,
+		Extension: TransactionExtension<Call>,
+		ConvertEthTx,
+		StorageDepositPerByte,
+		TxFeePerGas,
+	> serde::Serialize for AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
 {
 	fn serialize<S>(&self, seq: S) -> Result<S::Ok, S::Error>
 	where
@@ -295,15 +355,49 @@ impl<Call: Encode, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, 
 	}
 }
 
-impl<'a, Call: Decode, Extra: SignedExtension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas> serde::Deserialize<'a>
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+impl<
+		'a,
+		Call: TypeInfo + Decode + Dispatchable,
+		Extension: TransactionExtension<Call>,
+		ConvertEthTx,
+		StorageDepositPerByte,
+		TxFeePerGas,
+	> serde::Deserialize<'a> for AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+where
+	AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>: Decode,
 {
 	fn deserialize<D>(de: D) -> Result<Self, D::Error>
 	where
 		D: serde::Deserializer<'a>,
 	{
 		let r = sp_core::bytes::deserialize(de)?;
-		Decode::decode(&mut &r[..]).map_err(|e| serde::de::Error::custom(format!("Decode error: {}", e)))
+		Decode::decode(&mut &r[..]).map_err(|e| serde::de::Error::custom(format!("Decode error: {e}")))
+	}
+}
+
+impl<
+		Call: TypeInfo + Dispatchable,
+		Extension: TransactionExtension<Call>,
+		ConvertEthTx,
+		StorageDepositPerByte,
+		TxFeePerGas,
+	> SignedTransactionBuilder
+	for AcalaUncheckedExtrinsic<Call, Extension, ConvertEthTx, StorageDepositPerByte, TxFeePerGas>
+{
+	type Address = Address;
+	type Signature = AcalaMultiSignature;
+	type Extension = Extension;
+
+	fn new_signed_transaction(
+		call: Self::Call,
+		signed: Address,
+		signature: AcalaMultiSignature,
+		tx_ext: Extension,
+	) -> Self {
+		AcalaUncheckedExtrinsic(
+			UncheckedExtrinsic::new_signed(call, signed, signature, tx_ext),
+			PhantomData,
+		)
 	}
 }
 
@@ -318,12 +412,12 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	let access_list_type_hash = keccak256!("AccessList(address address,uint256[] storageKeys)");
 	let tx_type_hash = keccak256!("Transaction(string action,address to,uint256 nonce,uint256 tip,bytes data,uint256 value,uint256 gasLimit,uint256 storageLimit,AccessList[] accessList,uint256 validUntil)AccessList(address address,uint256[] storageKeys)");
 
-	let mut domain_seperator_msg = domain_hash.to_vec();
-	domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM")); // name
-	domain_seperator_msg.extend_from_slice(keccak256!("1")); // version
-	domain_seperator_msg.extend_from_slice(&to_bytes(eth_msg.chain_id)); // chain id
-	domain_seperator_msg.extend_from_slice(eth_msg.genesis.as_bytes()); // salt
-	let domain_separator = keccak_256(domain_seperator_msg.as_slice());
+	let mut domain_separator_msg = domain_hash.to_vec();
+	domain_separator_msg.extend_from_slice(keccak256!("Acala EVM")); // name
+	domain_separator_msg.extend_from_slice(keccak256!("1")); // version
+	domain_separator_msg.extend_from_slice(&to_bytes(eth_msg.chain_id)); // chain id
+	domain_separator_msg.extend_from_slice(eth_msg.genesis.as_bytes()); // salt
+	let domain_separator = keccak_256(domain_separator_msg.as_slice());
 
 	let mut tx_msg = tx_type_hash.to_vec();
 	match eth_msg.action {
@@ -346,7 +440,7 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	let mut access_list: Vec<[u8; 32]> = Vec::new();
 	eth_msg.access_list.iter().for_each(|v| {
 		let mut access_list_msg = access_list_type_hash.to_vec();
-		access_list_msg.extend_from_slice(&to_bytes(v.address.as_bytes()));
+		access_list_msg.extend_from_slice(&to_bytes(U256::from_big_endian(v.address.as_bytes())));
 		access_list_msg.extend_from_slice(&keccak_256(
 			&v.storage_keys.iter().map(|v| v.as_bytes()).collect::<Vec<_>>().concat(),
 		));
@@ -394,7 +488,6 @@ mod tests {
 	use super::*;
 	use hex_literal::hex;
 	use module_evm_utility::ethereum::AccessListItem;
-	use sp_core::U256;
 	use std::{ops::Add, str::FromStr};
 
 	#[test]

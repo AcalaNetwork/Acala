@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -135,7 +135,7 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 		amount: Self::Balance,
 		target: Self::Balance,
 		refund_receiver: AccountId,
-		splited: bool,
+		split: bool,
 	) -> sp_std::result::Result<u32, DispatchError>;
 
 	fn remove_liquidity_for_lp_collateral(

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional, PalletId};
 use module_support::{CDPTreasury, RiskManager};
 use orml_traits::{Handler, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId, Position};
@@ -47,8 +47,6 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Currency type for deposit/withdraw collateral assets to/from loans
 		/// module
 		type Currency: MultiCurrencyExtended<
@@ -189,9 +187,21 @@ impl<T: Config> Pallet<T> {
 		let module_account = Self::account_id();
 
 		if collateral_adjustment.is_positive() {
-			T::Currency::transfer(currency_id, who, &module_account, collateral_balance_adjustment)?;
+			T::Currency::transfer(
+				currency_id,
+				who,
+				&module_account,
+				collateral_balance_adjustment,
+				ExistenceRequirement::AllowDeath,
+			)?;
 		} else if collateral_adjustment.is_negative() {
-			T::Currency::transfer(currency_id, &module_account, who, collateral_balance_adjustment)?;
+			T::Currency::transfer(
+				currency_id,
+				&module_account,
+				who,
+				collateral_balance_adjustment,
+				ExistenceRequirement::AllowDeath,
+			)?;
 		}
 
 		if debit_adjustment.is_positive() {

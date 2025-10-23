@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -126,8 +126,7 @@ where
 
 				log::debug!(
 					target: "evm",
-					"evm: from: {:?}, contract: {:?}, new_maintainer: {:?}",
-					from, contract, new_maintainer,
+					"evm: from: {from:?}, contract: {contract:?}, new_maintainer: {new_maintainer:?}",
 				);
 
 				<module_evm::Pallet<Runtime> as EVMManager<Runtime::AccountId, Balance>>::transfer_maintainer(
@@ -402,6 +401,7 @@ mod tests {
 				0,
 				21_000_000,
 				21_000_000,
+				vec![],
 				vec![],
 				<Test as module_evm::Config>::config(),
 			)

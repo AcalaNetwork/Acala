@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,14 +22,12 @@ use super::*;
 use crate as xcm_interface;
 use frame_support::{
 	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, Everything, Nothing},
+	traits::{ConstU128, ConstU32, Disabled, Everything, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use orml_traits::xcm_transfer::Transferred;
-use primitives::{CurrencyId, TokenSymbol};
-use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
+use sp_runtime::{traits::IdentityLookup, AccountId32};
 use xcm_builder::{EnsureXcmOrigin, FixedWeightBounds, SignedToAccountId32};
-use xcm_executor::traits::XcmAssetTransfers;
+use xcm_executor::traits::{FeeManager, FeeReason, XcmAssetTransfers};
 
 pub mod kusama;
 pub mod polkadot;
@@ -37,8 +35,6 @@ pub mod polkadot;
 pub type AccountId = AccountId32;
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
-pub const BOB: AccountId = AccountId32::new([2u8; 32]);
-pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
 parameter_types! {
 	pub const UnitWeightCost: XcmWeight = XcmWeight::from_parts(10, 10);
@@ -58,81 +54,16 @@ ord_parameter_types! {
 }
 
 parameter_types! {
-	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const ParachainAccount: AccountId = AccountId32::new([0u8; 32]);
-	pub const ParachainId: module_relaychain::ParaId = module_relaychain::ParaId::new(2000);
-	pub SelfLocation: Location = Location::new(1, Parachain(ParachainId::get().into()));
+	pub const ParachainId: module_assethub::ParaId = module_assethub::ParaId::new(2000);
+	pub const AssetHubId: module_assethub::ParaId = module_assethub::ParaId::new(1000);
+	pub AssetHubLocation: Location = Location::new(1, Parachain(AssetHubId::get().into()));
 }
 
-pub struct SubAccountIndexLocationConvertor;
-impl Convert<u16, Location> for SubAccountIndexLocationConvertor {
-	fn convert(_sub_account_index: u16) -> Location {
-		(Parent, Parachain(2000)).into()
-	}
-}
-
-pub struct MockXcmTransfer;
-impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcmTransfer {
-	fn transfer(
-		_who: AccountId,
-		_currency_id: CurrencyId,
-		_amount: Balance,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	/// Transfer `Asset`
-	fn transfer_multiasset(
-		_who: AccountId,
-		_asset: Asset,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer_with_fee(
-		_who: AccountId,
-		_currency_id: CurrencyId,
-		_amount: Balance,
-		_fee: Balance,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId>, DispatchError> {
-		unimplemented!()
-	}
-
-	/// Transfer `AssetWithFee`
-	fn transfer_multiasset_with_fee(
-		_who: AccountId,
-		_asset: Asset,
-		_fee: Asset,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer_multicurrencies(
-		_who: AccountId,
-		_currencies: Vec<(CurrencyId, Balance)>,
-		_fee_item: u32,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn transfer_multiassets(
-		_who: AccountId,
-		_assets: Assets,
-		_fee: Asset,
-		_dest: Location,
-		_dest_weight_limit: WeightLimit,
-	) -> Result<Transferred<AccountId32>, DispatchError> {
-		unimplemented!()
+pub struct SubAccountIndexAccountIdConvertor;
+impl Convert<u16, AccountId> for SubAccountIndexAccountIdConvertor {
+	fn convert(_sub_account_index: u16) -> AccountId {
+		AccountId::new([1u8; 32])
 	}
 }
 
@@ -158,7 +89,7 @@ pub struct MockExec;
 impl<T> ExecuteXcm<T> for MockExec {
 	type Prepared = Weightless;
 
-	fn prepare(_message: Xcm<T>) -> Result<Self::Prepared, Xcm<T>> {
+	fn prepare(_message: Xcm<T>, _weight_limit: Weight) -> Result<Self::Prepared, InstructionError> {
 		unreachable!()
 	}
 
@@ -177,23 +108,28 @@ impl<T> ExecuteXcm<T> for MockExec {
 			(
 				1,
 				Some(Transact {
-					require_weight_at_most, ..
+					fallback_max_weight: Some(fallback_max_weight),
+					..
 				}),
 			) => {
-				if require_weight_at_most.all_lte(weight_limit) {
+				if fallback_max_weight.all_lte(weight_limit) {
 					Outcome::Complete {
-						used: *require_weight_at_most,
+						used: *fallback_max_weight,
 					}
 				} else {
-					Outcome::Error {
-						error: XcmError::WeightLimitReached(*require_weight_at_most),
-					}
+					Outcome::Error(InstructionError {
+						index: 0,
+						error: XcmError::WeightLimitReached(*fallback_max_weight),
+					})
 				}
 			}
 			// use 1000 to decide that it's not supported.
 			_ => Outcome::Incomplete {
 				used: Weight::from_parts(1000, 1000).min(weight_limit),
-				error: XcmError::Unimplemented,
+				error: InstructionError {
+					index: 0,
+					error: XcmError::Unimplemented,
+				},
 			},
 		};
 		o
@@ -210,9 +146,16 @@ impl XcmAssetTransfers for MockExec {
 	type AssetTransactor = ();
 }
 
+impl FeeManager for MockExec {
+	fn is_waived(_origin: Option<&Location>, _r: FeeReason) -> bool {
+		false
+	}
+	fn handle_fee(_fee: Assets, _context: Option<&XcmContext>, _r: FeeReason) {}
+}
+
 #[macro_export]
 macro_rules! impl_mock {
-	($relaychain:ty) => {
+	($assethub:ty) => {
 		pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
 		pub type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -238,6 +181,7 @@ macro_rules! impl_mock {
 			type RuntimeFreezeReason = RuntimeFreezeReason;
 			type FreezeIdentifier = ();
 			type MaxFreezes = ();
+			type DoneSlashHandler = ();
 		}
 
 		impl pallet_xcm::Config for Runtime {
@@ -264,18 +208,16 @@ macro_rules! impl_mock {
 			type AdminOrigin = EnsureRoot<AccountId>;
 			type MaxRemoteLockConsumers = ConstU32<0>;
 			type RemoteLockConsumerIdentifier = ();
+			type AuthorizedAliasConsideration = Disabled;
 		}
 
 		impl Config for Runtime {
-			type RuntimeEvent = RuntimeEvent;
 			type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-			type StakingCurrencyId = GetStakingCurrencyId;
 			type ParachainAccount = ParachainAccount;
-			type RelayChainUnbondingSlashingSpans = ConstU32<28>;
-			type SovereignSubAccountLocationConvert = SubAccountIndexLocationConvertor;
-			type RelayChainCallBuilder = module_relaychain::RelayChainCallBuilder<ParachainId, $relaychain>;
-			type XcmTransfer = MockXcmTransfer;
-			type SelfLocation = SelfLocation;
+			type AssetHubUnbondingSlashingSpans = ConstU32<28>;
+			type SovereignSubAccountIdConvert = SubAccountIndexAccountIdConvertor;
+			type AssetHubCallBuilder = module_assethub::AssetHubCallBuilder<ParachainId, $assethub>;
+			type AssetHubLocation = AssetHubLocation;
 			type AccountIdToLocation = AccountIdToLocation;
 		}
 
@@ -295,17 +237,5 @@ pub struct ExtBuilder;
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		ExtBuilder
-	}
-}
-
-impl ExtBuilder {
-	pub fn build<Runtime: frame_system::Config>(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::<Runtime>::default()
-			.build_storage()
-			.unwrap();
-
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| frame_system::Pallet::<Runtime>::set_block_number(1u32.into()));
-		ext
 	}
 }

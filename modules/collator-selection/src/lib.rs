@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -61,6 +61,7 @@
 #![allow(clippy::into_iter_on_ref)]
 #![allow(clippy::try_err)]
 #![allow(clippy::let_and_return)]
+#![allow(clippy::useless_conversion)]
 
 pub use pallet::*;
 
@@ -104,7 +105,7 @@ pub mod pallet {
 
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as SystemConfig>::AccountId>>::Balance;
 
-	/// A convertor from collators id. Since this pallet does not have stash/controller, this is
+	/// A converter from collators id. Since this pallet does not have stash/controller, this is
 	/// just identity.
 	pub struct IdentityCollator;
 	impl<T> sp_runtime::traits::Convert<T, Option<T>> for IdentityCollator {
@@ -116,9 +117,6 @@ pub mod pallet {
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// Overarching event type.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// The currency mechanism.
 		type Currency: NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
 
@@ -251,7 +249,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Invulnurable was updated.
+		/// Invulnerable was updated.
 		NewInvulnerables { new_invulnerables: Vec<T::AccountId> },
 		/// Desired candidates was updated.
 		NewDesiredCandidates { new_desired_candidates: u32 },
@@ -551,8 +549,8 @@ pub mod pallet {
 					if let Err(why) = outcome {
 						log::warn!(
 							target: "collator-selection",
-							"Failed to remove candidate {:?}", why);
-						debug_assert!(false, "failed to remove candidate {:?}", why);
+							"Failed to remove candidate {why:?}");
+						debug_assert!(false, "failed to remove candidate {why:?}");
 					} else {
 						<NonCandidates<T>>::insert(
 							who,

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -55,7 +55,9 @@ pub use weights::WeightInfo;
 pub const HOMA_VALIDATOR_LIST_ID: LockIdentifier = *b"aca/hmvl";
 
 /// Insurance for a validator from a single address
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, Eq, MaxEncodedLen, TypeInfo)]
+#[derive(
+	Encode, Decode, DecodeWithMemTracking, Clone, Copy, RuntimeDebug, Default, PartialEq, Eq, MaxEncodedLen, TypeInfo,
+)]
 pub struct Guarantee<EraIndex> {
 	/// The total tokens the validator has in insurance
 	total: Balance,
@@ -111,18 +113,20 @@ impl<EraIndex: PartialOrd> Guarantee<EraIndex> {
 	}
 }
 
-/// Information on a relay chain validator's slash
-#[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
+/// Information on a assethub validator's slash
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct SlashInfo<Balance, RelayChainAccountId> {
-	/// Address of a validator on the relay chain
-	pub validator: RelayChainAccountId,
-	/// The amount of tokens a validator has in backing on the relay chain
-	pub relaychain_token_amount: Balance,
+pub struct SlashInfo<Balance, ValidatorId> {
+	/// Address of a validator on the assethub
+	pub validator: ValidatorId,
+	/// The amount of tokens a validator has in backing on the assethub
+	pub token_amount: Balance,
 }
 
 /// Validator insurance and frozen status
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen, TypeInfo, PartialEq)]
+#[derive(
+	Encode, Decode, DecodeWithMemTracking, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen, TypeInfo, PartialEq,
+)]
 pub struct ValidatorBacking {
 	/// Total insurance from all guarantors
 	total_insurance: Balance,
@@ -135,19 +139,10 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// The overarching event type.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		/// The AccountId of a assethub account.
+		type ValidatorId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + MaxEncodedLen;
 
-		/// The AccountId of a relay chain account.
-		type RelayChainAccountId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ MaybeDisplay
-			+ Ord
-			+ MaxEncodedLen;
-
-		/// The liquid representation of the staking token on the relay chain.
+		/// The liquid representation of the staking token on the assethub.
 		type LiquidTokenCurrency: BasicLockableCurrency<Self::AccountId, Balance = Balance>;
 
 		/// The minimum amount of tokens that can be bonded to a validator.
@@ -185,42 +180,47 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		FreezeValidator {
-			validator: T::RelayChainAccountId,
+			validator: T::ValidatorId,
 		},
 		ThawValidator {
-			validator: T::RelayChainAccountId,
+			validator: T::ValidatorId,
 		},
 		BondGuarantee {
 			who: T::AccountId,
-			validator: T::RelayChainAccountId,
+			validator: T::ValidatorId,
 			bond: Balance,
 		},
 		UnbondGuarantee {
 			who: T::AccountId,
-			validator: T::RelayChainAccountId,
+			validator: T::ValidatorId,
 			bond: Balance,
 		},
 		WithdrawnGuarantee {
 			who: T::AccountId,
-			validator: T::RelayChainAccountId,
+			validator: T::ValidatorId,
 			bond: Balance,
 		},
 		SlashGuarantee {
 			who: T::AccountId,
-			validator: T::RelayChainAccountId,
+			validator: T::ValidatorId,
+			bond: Balance,
+		},
+		RebondGuarantee {
+			who: T::AccountId,
+			validator: T::ValidatorId,
 			bond: Balance,
 		},
 	}
 
-	/// The slash guarantee deposits for relaychain validators.
+	/// The slash guarantee deposits for assethub validators.
 	///
-	/// Guarantees: double_map RelayChainAccountId, AccountId => Option<Guarantee>
+	/// Guarantees: double_map ValidatorId, AccountId => Option<Guarantee>
 	#[pallet::storage]
 	#[pallet::getter(fn guarantees)]
 	pub type Guarantees<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::RelayChainAccountId,
+		T::ValidatorId,
 		Twox64Concat,
 		T::AccountId,
 		Guarantee<EraIndex>,
@@ -236,11 +236,11 @@ pub mod module {
 
 	/// Total deposit for validators.
 	///
-	/// ValidatorBackings: map RelayChainAccountId => Option<ValidatorBacking>
+	/// ValidatorBackings: map ValidatorId => Option<ValidatorBacking>
 	#[pallet::storage]
 	#[pallet::getter(fn validator_backings)]
 	pub type ValidatorBackings<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, ValidatorBacking, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::ValidatorId, ValidatorBacking, OptionQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -259,7 +259,7 @@ pub mod module {
 		#[pallet::weight(T::WeightInfo::bond())]
 		pub fn bond(
 			origin: OriginFor<T>,
-			validator: T::RelayChainAccountId,
+			validator: T::ValidatorId,
 			#[pallet::compact] amount: Balance,
 		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
@@ -298,7 +298,7 @@ pub mod module {
 		#[pallet::weight(T::WeightInfo::unbond())]
 		pub fn unbond(
 			origin: OriginFor<T>,
-			validator: T::RelayChainAccountId,
+			validator: T::ValidatorId,
 			#[pallet::compact] amount: Balance,
 		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
@@ -334,7 +334,7 @@ pub mod module {
 		#[pallet::weight(T::WeightInfo::rebond())]
 		pub fn rebond(
 			origin: OriginFor<T>,
-			validator: T::RelayChainAccountId,
+			validator: T::ValidatorId,
 			#[pallet::compact] amount: Balance,
 		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
@@ -342,8 +342,17 @@ pub mod module {
 			if !amount.is_zero() {
 				Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 					*guarantee = guarantee.rebond(amount);
+					ensure!(
+						guarantee.bonded >= T::MinBondAmount::get(),
+						Error::<T>::BelowMinBondAmount
+					);
 					Ok(())
 				})?;
+				Self::deposit_event(Event::RebondGuarantee {
+					who: guarantor,
+					validator: validator.clone(),
+					bond: amount,
+				});
 			}
 			Ok(())
 		}
@@ -354,7 +363,7 @@ pub mod module {
 		/// - `validator`: The AccountId of a validator on the relay chain to withdraw from
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
-		pub fn withdraw_unbonded(origin: OriginFor<T>, validator: T::RelayChainAccountId) -> DispatchResult {
+		pub fn withdraw_unbonded(origin: OriginFor<T>, validator: T::ValidatorId) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
 			ensure!(
 				!Self::validator_backings(&validator).unwrap_or_default().is_frozen,
@@ -385,7 +394,7 @@ pub mod module {
 		/// - `validators`: The AccountIds of the validators on the relay chain to freeze
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::freeze(validators.len() as u32))]
-		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::RelayChainAccountId>) -> DispatchResult {
+		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::ValidatorId>) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			validators.iter().for_each(|validator| {
 				ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
@@ -408,7 +417,7 @@ pub mod module {
 		/// - `validators`: The AccountIds of the validators on the relay chain to unfreeze
 		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::thaw(validators.len() as u32))]
-		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::RelayChainAccountId>) -> DispatchResult {
+		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::ValidatorId>) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			validators.iter().for_each(|validator| {
 				ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
@@ -431,7 +440,7 @@ pub mod module {
 		/// - `slashes`: The SlashInfos of the validators to be slashed
 		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::slash(slashes.len() as u32))]
-		pub fn slash(origin: OriginFor<T>, slashes: Vec<SlashInfo<Balance, T::RelayChainAccountId>>) -> DispatchResult {
+		pub fn slash(origin: OriginFor<T>, slashes: Vec<SlashInfo<Balance, T::ValidatorId>>) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			let liquid_staking_exchange_rate = T::LiquidStakingExchangeRateProvider::get_exchange_rate();
 			let staking_liquid_exchange_rate = liquid_staking_exchange_rate.reciprocal().unwrap_or_default();
@@ -439,12 +448,12 @@ pub mod module {
 
 			for SlashInfo {
 				validator,
-				relaychain_token_amount,
+				token_amount,
 			} in slashes
 			{
 				let ValidatorBacking { total_insurance, .. } = Self::validator_backings(&validator).unwrap_or_default();
 				let insurance_loss = staking_liquid_exchange_rate
-					.saturating_mul_int(relaychain_token_amount)
+					.saturating_mul_int(token_amount)
 					.min(total_insurance);
 
 				for (guarantor, _) in Guarantees::<T>::iter_prefix(&validator) {
@@ -476,7 +485,7 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	fn update_guarantee(
 		guarantor: &T::AccountId,
-		validator: &T::RelayChainAccountId,
+		validator: &T::ValidatorId,
 		f: impl FnOnce(&mut Guarantee<EraIndex>) -> DispatchResult,
 	) -> DispatchResult {
 		Guarantees::<T>::try_mutate_exists(validator, guarantor, |maybe_guarantee| -> DispatchResult {
@@ -535,8 +544,8 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> Contains<T::RelayChainAccountId> for Pallet<T> {
-	fn contains(account: &T::RelayChainAccountId) -> bool {
+impl<T: Config> Contains<T::ValidatorId> for Pallet<T> {
+	fn contains(account: &T::ValidatorId) -> bool {
 		ValidatorBackings::<T>::get(account)
 			.is_some_and(|vb| vb.total_insurance >= T::ValidatorInsuranceThreshold::get() && !vb.is_frozen)
 	}

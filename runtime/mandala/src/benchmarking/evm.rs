@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -278,6 +278,7 @@ mod tests {
 				1_000_000,
 				100_000,
 				vec![],
+				vec![],
 				config,
 			)
 			.unwrap();
@@ -304,6 +305,7 @@ mod tests {
 				1_000_000,
 				100_000,
 				vec![],
+				vec![],
 				config,
 			)
 			.unwrap();
@@ -321,6 +323,7 @@ mod tests {
 				0,
 				1_000_000,
 				100_000,
+				vec![],
 				vec![],
 				config,
 			)

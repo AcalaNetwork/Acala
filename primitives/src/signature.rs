@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{Lazy, Verify},
@@ -27,7 +27,7 @@ use sp_core::{crypto::ByteArray, ecdsa, ed25519, sr25519};
 
 use sp_std::prelude::*;
 
-#[derive(Eq, PartialEq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(Eq, PartialEq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
 pub enum AcalaMultiSignature {
 	/// An Ed25519 signature.
 	Ed25519(ed25519::Signature),
@@ -98,7 +98,7 @@ impl TryFrom<AcalaMultiSignature> for ecdsa::Signature {
 
 impl Default for AcalaMultiSignature {
 	fn default() -> Self {
-		Self::Ed25519(ed25519::Signature([0u8; 64]))
+		Self::Ed25519([0u8; 64].into())
 	}
 }
 
@@ -107,10 +107,10 @@ impl Verify for AcalaMultiSignature {
 	fn verify<L: Lazy<[u8]>>(&self, mut msg: L, signer: &AccountId32) -> bool {
 		match (self, signer) {
 			(Self::Ed25519(ref sig), who) => {
-				ed25519::Public::from_slice(who.as_ref()).map_or(false, |signer| sig.verify(msg, &signer))
+				ed25519::Public::from_slice(who.as_ref()).is_ok_and(|signer| sig.verify(msg, &signer))
 			}
 			(Self::Sr25519(ref sig), who) => {
-				sr25519::Public::from_slice(who.as_ref()).map_or(false, |signer| sig.verify(msg, &signer))
+				sr25519::Public::from_slice(who.as_ref()).is_ok_and(|signer| sig.verify(msg, &signer))
 			}
 			(Self::Ecdsa(ref sig), who) => {
 				let m = sp_io::hashing::blake2_256(msg.get());

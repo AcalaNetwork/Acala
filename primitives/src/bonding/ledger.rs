@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -72,6 +72,14 @@ where
 
 	pub fn total(&self) -> Balance {
 		self.total
+	}
+
+	pub fn unlocking(&self) -> sp_std::vec::Vec<(Balance, Moment)> {
+		self.unlocking
+			.iter()
+			.cloned()
+			.map(|chunk| (chunk.value, chunk.unlock_at))
+			.collect()
 	}
 
 	pub fn unlocking_len(&self) -> usize {

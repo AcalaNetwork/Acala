@@ -1,19 +1,16 @@
-import { expect } from "chai";
+import { expect, beforeAll, it } from "vitest";
 
 import { describeWithAcala } from "./util";
 import { BodhiSigner, SubstrateSigner } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
 import { Keyring } from "@polkadot/keyring";
 import { createTestKeyring } from "@polkadot/keyring/testing";
-import { Signer } from '@polkadot/api/types';
 
 describeWithAcala("Acala RPC (Claim Account Eip712)", (context) => {
 	let alice: BodhiSigner;
 	let signer: Wallet;
 
-	before("init", async function () {
-		this.timeout(15000);
-
+	beforeAll(async function () {
 		// need to manually get key as the getWallets method claims accounts in evm
 		const test_keyring = createTestKeyring();
 		const alice_keyring = test_keyring.pairs[0];
@@ -28,8 +25,6 @@ describeWithAcala("Acala RPC (Claim Account Eip712)", (context) => {
 	});
 
 	it("claim evm account", async function () {
-		this.timeout(150000);
-
 		const domain = {
 			name: "Acala EVM claim",
 			version: "1",

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@ use crate::{evm::EvmAddress, *};
 use bstringify::bstringify;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 pub use nutsfinance_stable_asset::StableAssetPoolId;
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -402,7 +402,7 @@ create_currency_id! {
 	// 128 - 147: Karura & Kusama native tokens
 	// 148 - 167: Reserved for future usage
 	// 168 - 255: Kusama parachain tokens
-	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Serialize, Deserialize)]
+	#[derive(Encode, Decode, DecodeWithMemTracking, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Serialize, Deserialize)]
 	#[repr(u8)]
 	pub enum TokenSymbol {
 		// 0 - 19: Acala & Polkadot native tokens
@@ -443,6 +443,7 @@ pub type Lease = BlockNumber;
 #[derive(
 	Encode,
 	Decode,
+	DecodeWithMemTracking,
 	Eq,
 	PartialEq,
 	Copy,
@@ -467,6 +468,7 @@ pub enum DexShare {
 #[derive(
 	Encode,
 	Decode,
+	DecodeWithMemTracking,
 	Eq,
 	PartialEq,
 	Copy,
@@ -612,19 +614,43 @@ impl Into<CurrencyId> for DexShare {
 
 /// H160 CurrencyId Type enum
 #[derive(
-	Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TryFromPrimitive, IntoPrimitive, TypeInfo,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	Copy,
+	Clone,
+	RuntimeDebug,
+	PartialOrd,
+	Ord,
+	TryFromPrimitive,
+	IntoPrimitive,
+	TypeInfo,
 )]
 #[repr(u8)]
 pub enum CurrencyIdType {
 	Token = 1, // 0 is prefix of precompile and predeploy
-	DexShare,
-	StableAsset,
-	LiquidCrowdloan,
-	ForeignAsset,
+	DexShare = 2,
+	StableAsset = 3,
+	LiquidCrowdloan = 4,
+	ForeignAsset = 5,
 }
 
 #[derive(
-	Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TryFromPrimitive, IntoPrimitive, TypeInfo,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	Copy,
+	Clone,
+	RuntimeDebug,
+	PartialOrd,
+	Ord,
+	TryFromPrimitive,
+	IntoPrimitive,
+	TypeInfo,
 )]
 #[repr(u8)]
 pub enum DexShareType {
@@ -650,7 +676,7 @@ impl Into<DexShareType> for DexShare {
 /// The first batch of lcDOT that expires at end of least 13
 pub const LCDOT: CurrencyId = CurrencyId::LiquidCrowdloan(13);
 
-#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
+#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 pub enum AssetIds {
 	Erc20(EvmAddress),
 	StableAssetId(StableAssetPoolId),
@@ -658,7 +684,7 @@ pub enum AssetIds {
 	NativeAssetId(CurrencyId),
 }
 
-#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
+#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 pub struct AssetMetadata<Balance> {
 	pub name: Vec<u8>,
 	pub symbol: Vec<u8>,

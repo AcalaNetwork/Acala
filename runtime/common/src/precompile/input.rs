@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -315,7 +315,7 @@ where
 
 fn decode_i128(bytes: &[u8]) -> Option<i128> {
 	if bytes[0..HALF_PARAM_BYTES] == [0xff; HALF_PARAM_BYTES] {
-		if let Ok(v) = i128::try_from(!U256::from(bytes)) {
+		if let Ok(v) = i128::try_from(!U256::from_big_endian(bytes)) {
 			if let Some(v) = v.checked_neg() {
 				return v.checked_sub(1);
 			}

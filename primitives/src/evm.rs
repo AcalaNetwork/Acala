@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -55,7 +55,7 @@ const STORAGE_MASK: u64 = 100u64;
 // GAS LIMIT CHUNK
 const GAS_LIMIT_CHUNK: u64 = 30_000u64;
 // MAX GAS_LIMIT CC, log2(BLOCK_STORAGE_LIMIT)
-pub const MAX_GAS_LIMIT_CC: u32 = 21u32;
+pub const MAX_GAS_LIMIT_CC: u32 = 22u32;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -173,7 +173,6 @@ pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
 ///                                   ^^^^^^^^ CurrencyId Type is 3-StableAsset, StableAssetPoolId
 ///                                   ^^^^^^^^ CurrencyId Type is 4-LiquidCrowdloan, Lease
 ///                                       ^^^^ CurrencyId Type is 5-ForeignAsset, ForeignAssetId
-
 /// Check if the given `address` is a system contract.
 ///
 /// It's system contract if the address starts with SYSTEM_CONTRACT_ADDRESS_PREFIX.

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -63,6 +63,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 parameter_type_with_key! {
@@ -72,7 +73,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -98,7 +98,6 @@ impl orml_currencies::Config for Runtime {
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ChainId = ();
 	type AddressMapping = EvmAddressMapping<Runtime>;
@@ -134,6 +133,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: vec![(bob_account_id(), 100000)],
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

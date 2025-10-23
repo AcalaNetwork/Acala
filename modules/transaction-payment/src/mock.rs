@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -93,7 +93,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -120,6 +119,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
@@ -130,7 +130,6 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -159,11 +158,11 @@ parameter_types! {
 }
 
 impl module_dex::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
@@ -197,7 +196,7 @@ parameter_types! {
 
 pub struct DealWithFees;
 impl OnUnbalanced<pallet_balances::NegativeImbalance<Runtime>> for DealWithFees {
-	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = pallet_balances::NegativeImbalance<Runtime>>) {
+	fn on_unbalanceds(mut fees_then_tips: impl Iterator<Item = pallet_balances::NegativeImbalance<Runtime>>) {
 		if let Some(fees) = fees_then_tips.next() {
 			FeeUnbalancedAmount::mutate(|a| *a += fees.peek());
 			if let Some(tips) = fees_then_tips.next() {
@@ -255,7 +254,6 @@ impl WeightToFeeT for TransactionByteFee {
 }
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type AlternativeFeeSwapDeposit = ConstU128<1000>;
@@ -369,6 +367,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self.native_balances,
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

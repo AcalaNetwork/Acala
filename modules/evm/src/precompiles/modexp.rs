@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -246,7 +246,7 @@ pub trait ModexpImpl {
 		// output of length and value 1.
 		if bytes.len() as u64 <= mod_len {
 			let mut ret = Vec::with_capacity(mod_len as usize);
-			ret.extend(core::iter::repeat(0).take(mod_len as usize - bytes.len()));
+			ret.extend(core::iter::repeat_n(0, mod_len as usize - bytes.len()));
 			ret.extend_from_slice(&bytes[..]);
 			ret.to_vec()
 		} else {
@@ -279,8 +279,12 @@ impl Precompile for IstanbulModexp {
 			});
 		}
 		let cost = ModexpPricer::cost(Self::DIVISOR, input);
+		let cost = TryInto::<u64>::try_into(cost).map_err(|_| PrecompileFailure::Error {
+			exit_status: ExitError::OutOfGas,
+		})?;
+
 		if let Some(target_gas) = target_gas {
-			if cost > U256::from(u64::MAX) || target_gas < cost.as_u64() {
+			if target_gas < cost {
 				return Err(PrecompileFailure::Error {
 					exit_status: ExitError::OutOfGas,
 				});
@@ -288,7 +292,7 @@ impl Precompile for IstanbulModexp {
 		}
 
 		let output = Self::execute_modexp(input);
-		handle.record_cost(cost.as_u64())?;
+		handle.record_cost(cost)?;
 
 		Ok(PrecompileOutput {
 			exit_status: ExitSucceed::Returned,
@@ -527,7 +531,7 @@ mod tests {
 		// 59999 ^ 21 % 14452 = 10055
 
 		let mut output = [0u8; 32];
-		U256::from(10055u64).to_big_endian(&mut output);
+		U256::from(10055u64).write_as_big_endian(&mut output);
 
 		assert_eq!(
 			IstanbulModexp::execute(&mut MockPrecompileHandle::new(
@@ -568,7 +572,7 @@ mod tests {
 		"};
 
 		let mut output = [0u8; 32];
-		U256::from(1u64).to_big_endian(&mut output);
+		U256::from(1u64).write_as_big_endian(&mut output);
 
 		assert_eq!(
 			IstanbulModexp::execute(&mut MockPrecompileHandle::new(

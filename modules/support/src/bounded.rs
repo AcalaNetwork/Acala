@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 use super::Rate;
 
 use frame_support::traits::Get;
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use primitives::{Balance, BlockNumber};
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -46,13 +46,16 @@ pub enum Error {
 #[cfg_attr(feature = "std", derive(Serialize), serde(transparent))]
 #[derive(Encode, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[scale_info(skip_type_params(Range, MaxChangeAbs))]
-pub struct BoundedType<T: Encode + Decode, Range, MaxChangeAbs>(
+pub struct BoundedType<T: Encode + Decode + DecodeWithMemTracking, Range, MaxChangeAbs>(
 	T,
 	#[cfg_attr(feature = "std", serde(skip_serializing))] PhantomData<(Range, MaxChangeAbs)>,
 );
 
-impl<T: Encode + Decode + CheckedSub + PartialOrd, Range: Get<(T, T)>, MaxChangeAbs: Get<T>> Decode
-	for BoundedType<T, Range, MaxChangeAbs>
+impl<
+		T: Encode + Decode + DecodeWithMemTracking + CheckedSub + PartialOrd,
+		Range: Get<(T, T)>,
+		MaxChangeAbs: Get<T>,
+	> Decode for BoundedType<T, Range, MaxChangeAbs>
 {
 	fn decode<I: parity_scale_codec::Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error> {
 		let inner = T::decode(input)?;
@@ -60,10 +63,18 @@ impl<T: Encode + Decode + CheckedSub + PartialOrd, Range: Get<(T, T)>, MaxChange
 	}
 }
 
+impl<
+		T: Encode + Decode + DecodeWithMemTracking + CheckedSub + PartialOrd,
+		Range: Get<(T, T)>,
+		MaxChangeAbs: Get<T>,
+	> DecodeWithMemTracking for BoundedType<T, Range, MaxChangeAbs>
+{
+}
+
 #[cfg(feature = "std")]
 impl<'de, T, Range, MaxChangeAbs> Deserialize<'de> for BoundedType<T, Range, MaxChangeAbs>
 where
-	T: Encode + Decode + CheckedSub + PartialOrd + Deserialize<'de>,
+	T: Encode + Decode + DecodeWithMemTracking + CheckedSub + PartialOrd + Deserialize<'de>,
 	Range: Get<(T, T)>,
 	MaxChangeAbs: Get<T>,
 {
@@ -76,7 +87,7 @@ where
 	}
 }
 
-impl<T: Default + Encode + Decode, Range: Get<(T, T)>, MaxChangeAbs: Get<T>> Default
+impl<T: Default + Encode + Decode + DecodeWithMemTracking, Range: Get<(T, T)>, MaxChangeAbs: Get<T>> Default
 	for BoundedType<T, Range, MaxChangeAbs>
 {
 	fn default() -> Self {
@@ -87,7 +98,7 @@ impl<T: Default + Encode + Decode, Range: Get<(T, T)>, MaxChangeAbs: Get<T>> Def
 
 impl<T, Range, MaxChangeAbs> BoundedType<T, Range, MaxChangeAbs>
 where
-	T: Encode + Decode + CheckedSub + PartialOrd,
+	T: Encode + Decode + DecodeWithMemTracking + CheckedSub + PartialOrd,
 	Range: Get<(T, T)>,
 	MaxChangeAbs: Get<T>,
 {

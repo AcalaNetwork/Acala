@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::pallet_prelude::*;
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement};
 use frame_system::pallet_prelude::*;
 
 use primitives::{currency::KUSD, evm::EvmAddress, Balance, CurrencyId};
@@ -43,8 +43,6 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Multi-currency support for asset management
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
@@ -133,10 +131,22 @@ pub mod module {
 				Self::bridged_stable_coin_currency_id().ok_or(Error::<T>::BridgedStableCoinCurrencyIdNotSet)?;
 
 			// transfer amount of StableCoinCurrencyId to PalletId account
-			T::Currency::transfer(T::StableCoinCurrencyId::get(), &who, &pallet_account, amount)?;
+			T::Currency::transfer(
+				T::StableCoinCurrencyId::get(),
+				&who,
+				&pallet_account,
+				amount,
+				ExistenceRequirement::AllowDeath,
+			)?;
 
 			// transfer amount of BridgedStableCoinCurrencyId from PalletId account to origin
-			T::Currency::transfer(bridged_stable_coin_currency_id, &pallet_account, &who, amount)?;
+			T::Currency::transfer(
+				bridged_stable_coin_currency_id,
+				&pallet_account,
+				&who,
+				amount,
+				ExistenceRequirement::AllowDeath,
+			)?;
 
 			Self::deposit_event(Event::<T>::ToBridged { who, amount });
 			Ok(())
@@ -156,10 +166,22 @@ pub mod module {
 				Self::bridged_stable_coin_currency_id().ok_or(Error::<T>::BridgedStableCoinCurrencyIdNotSet)?;
 
 			// transfer amount of BridgedStableCoinCurrencyId to PalletId account
-			T::Currency::transfer(bridged_stable_coin_currency_id, &who, &pallet_account, amount)?;
+			T::Currency::transfer(
+				bridged_stable_coin_currency_id,
+				&who,
+				&pallet_account,
+				amount,
+				ExistenceRequirement::AllowDeath,
+			)?;
 
 			// transfer amount of StableCoinCurrencyId from PalletId account to origin
-			T::Currency::transfer(T::StableCoinCurrencyId::get(), &pallet_account, &who, amount)?;
+			T::Currency::transfer(
+				T::StableCoinCurrencyId::get(),
+				&pallet_account,
+				&who,
+				amount,
+				ExistenceRequirement::AllowDeath,
+			)?;
 
 			Self::deposit_event(Event::<T>::FromBridged { who, amount });
 			Ok(())

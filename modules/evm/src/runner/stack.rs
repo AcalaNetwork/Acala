@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -33,7 +33,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 use module_evm_utility::{
-	ethereum::Log,
+	ethereum::{AuthorizationList, Log},
 	evm::{self, backend::Backend as BackendT, ExitError, ExitReason, Transfer},
 };
 use module_support::{AddressMapping, EVMManager, EVM};
@@ -100,10 +100,7 @@ impl<T: Config> Runner<T> {
 			Pallet::<T>::reserve_storage(&origin, storage_limit).map_err(|e| {
 				log::debug!(
 					target: "evm",
-					"ReserveStorageFailed {:?} [source: {:?}, storage_limit: {:?}]",
-					e,
-					origin,
-					storage_limit
+					"ReserveStorageFailed {e:?} [source: {origin:?}, storage_limit: {storage_limit:?}]",
 				);
 				Error::<T>::ReserveStorageFailed
 			})?;
@@ -115,12 +112,7 @@ impl<T: Config> Runner<T> {
 		let used_gas = U256::from(executor.used_gas());
 		log::debug!(
 			target: "evm",
-			"Execution {:?} [source: {:?}, value: {}, gas_limit: {}, used_gas: {}]",
-			reason,
-			source,
-			value,
-			gas_limit,
-			used_gas,
+			"Execution {reason:?} [source: {source:?}, value: {value}, gas_limit: {gas_limit}, used_gas: {used_gas}]",
 		);
 
 		let state = executor.into_state();
@@ -135,7 +127,8 @@ impl<T: Config> Runner<T> {
 		let refunded_storage = state.metadata().storage_meter().total_refunded();
 		log::debug!(
 			target: "evm",
-			"Storage logs: {:?}",
+			"Storage limit: {:?}, actual storage: {actual_storage:?}, used storage: {used_storage:?}, refunded storage: {refunded_storage:?}, storage logs: {:?}",
+			state.metadata().storage_meter().storage_limit(),
 			state.substate.storage_logs
 		);
 		let mut sum_storage: i32 = 0;
@@ -152,11 +145,7 @@ impl<T: Config> Runner<T> {
 				Pallet::<T>::charge_storage(&origin, target, *storage).map_err(|e| {
 					log::debug!(
 						target: "evm",
-						"ChargeStorageFailed {:?} [source: {:?}, target: {:?}, storage: {:?}]",
-						e,
-						origin,
-						target,
-						storage
+						"ChargeStorageFailed {e:?} [source: {origin:?}, target: {target:?}, storage: {storage:?}]",
 					);
 					Error::<T>::ChargeStorageFailed
 				})?;
@@ -166,8 +155,7 @@ impl<T: Config> Runner<T> {
 		if actual_storage != sum_storage {
 			log::debug!(
 				target: "evm",
-				"ChargeStorageFailed [actual_storage: {:?}, sum_storage: {:?}]",
-				actual_storage, sum_storage
+				"ChargeStorageFailed [actual_storage: {actual_storage:?}, sum_storage: {sum_storage:?}]",
 			);
 			return Err(Error::<T>::ChargeStorageFailed.into());
 		}
@@ -176,12 +164,7 @@ impl<T: Config> Runner<T> {
 			Pallet::<T>::unreserve_storage(&origin, storage_limit, used_storage, refunded_storage).map_err(|e| {
 				log::debug!(
 					target: "evm",
-					"UnreserveStorageFailed {:?} [source: {:?}, storage_limit: {:?}, used_storage: {:?}, refunded_storage: {:?}]",
-					e,
-					origin,
-					storage_limit,
-					used_storage,
-					refunded_storage
+					"UnreserveStorageFailed {e:?} [source: {origin:?}, storage_limit: {storage_limit:?}, used_storage: {used_storage:?}, refunded_storage: {refunded_storage:?}]",
 				);
 				Error::<T>::UnreserveStorageFailed
 			})?;
@@ -190,15 +173,12 @@ impl<T: Config> Runner<T> {
 		for address in state.substate.deletes {
 			log::debug!(
 				target: "evm",
-				"Deleting account at {:?}",
-				address
+				"Deleting account at {address:?}",
 			);
 			Pallet::<T>::remove_contract(&origin, &address).map_err(|e| {
 				log::debug!(
 					target: "evm",
-					"CannotKillContract address {:?}, reason: {:?}",
-					address,
-					e
+					"CannotKillContract address {address:?}, reason: {e:?}",
 				);
 				Error::<T>::CannotKillContract
 			})?;
@@ -232,6 +212,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
 		// if the contract not published, the caller must be developer or contract or maintainer.
@@ -240,6 +221,11 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			Pallet::<T>::can_call_contract(&target, &source),
 			Error::<T>::NoPermission
 		);
+
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
 
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
@@ -252,7 +238,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			config,
 			false,
 			&precompiles,
-			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list),
+			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list, authorization_list),
 		)
 	}
 
@@ -265,8 +251,14 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
+
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(
@@ -282,7 +274,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 				let address = executor
 					.create_address(evm::CreateScheme::Legacy { caller: source })
 					.unwrap_or_default(); // transact_create will check the address
-				let (reason, _) = executor.transact_create(source, value, init, gas_limit, access_list);
+				let (reason, _) =
+					executor.transact_create(source, value, init, gas_limit, access_list, authorization_list);
 				(reason, address)
 			},
 		)
@@ -298,8 +291,14 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
+
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let code_hash = H256::from(sp_io::hashing::keccak_256(&init));
@@ -320,7 +319,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 						salt,
 					})
 					.unwrap_or_default(); // transact_create2 will check the address
-				let (reason, _) = executor.transact_create2(source, value, init, salt, gas_limit, access_list);
+				let (reason, _) =
+					executor.transact_create2(source, value, init, salt, gas_limit, access_list, authorization_list);
 				(reason, address)
 			},
 		)
@@ -336,8 +336,14 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
+
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(
@@ -350,8 +356,15 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			false,
 			&precompiles,
 			|executor| {
-				let (reason, _) =
-					executor.transact_create_at_address(source, address, value, init, gas_limit, access_list);
+				let (reason, _) = executor.transact_create_at_address(
+					source,
+					address,
+					value,
+					init,
+					gas_limit,
+					access_list,
+					authorization_list,
+				);
 				(reason, address)
 			},
 		)
@@ -370,11 +383,17 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
 		// Ensure eth_call has evm origin, otherwise xcm charge rent fee will fail.
 		Pallet::<T>::set_origin(T::AddressMapping::get_account_id(&origin));
 		defer!(Pallet::<T>::kill_origin());
+
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
 
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
@@ -387,7 +406,7 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 			config,
 			true,
 			&precompiles,
-			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list),
+			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list, authorization_list),
 		)
 	}
 
@@ -400,8 +419,14 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let authorization_list = authorization_list
+			.iter()
+			.map(|d| (U256::from(d.chain_id), d.address, d.nonce, d.authorizing_address().ok()))
+			.collect::<Vec<(U256, sp_core::H160, U256, Option<sp_core::H160>)>>();
+
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(
@@ -417,7 +442,8 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 				let address = executor
 					.create_address(evm::CreateScheme::Legacy { caller: source })
 					.unwrap_or_default(); // transact_create will check the address
-				let (reason, _) = executor.transact_create(source, value, init, gas_limit, access_list);
+				let (reason, _) =
+					executor.transact_create(source, value, init, gas_limit, access_list, authorization_list);
 				(reason, address)
 			},
 		)
@@ -427,6 +453,7 @@ impl<T: Config> RunnerExtended<T> for Runner<T> {
 struct SubstrateStackSubstate<'config> {
 	metadata: StackSubstateMetadata<'config>,
 	deletes: BTreeSet<H160>,
+	creates: BTreeSet<H160>,
 	logs: Vec<Log>,
 	storage_logs: Vec<(H160, i32)>,
 	parent: Option<Box<SubstrateStackSubstate<'config>>>,
@@ -447,6 +474,7 @@ impl<'config> SubstrateStackSubstate<'config> {
 			metadata: self.metadata.spit_child(gas_limit, is_static),
 			parent: None,
 			deletes: BTreeSet::new(),
+			creates: BTreeSet::new(),
 			logs: Vec::new(),
 			storage_logs: Vec::new(),
 			known_original_storage: BTreeMap::new(),
@@ -465,9 +493,8 @@ impl<'config> SubstrateStackSubstate<'config> {
 		let target = self.metadata().target().expect("Storage target is none");
 		let storage = exited.metadata().storage_meter().used_storage();
 
-		self.metadata.swallow_commit(exited.metadata).map_err(|e| {
+		self.metadata.swallow_commit(exited.metadata).inspect_err(|_e| {
 			sp_io::storage::rollback_transaction();
-			e
 		})?;
 		self.logs.append(&mut exited.logs);
 		self.deletes.append(&mut exited.deletes);
@@ -482,9 +509,8 @@ impl<'config> SubstrateStackSubstate<'config> {
 	pub fn exit_revert(&mut self) -> Result<(), ExitError> {
 		let mut exited = *self.parent.take().expect("Cannot discard on root substate");
 		mem::swap(&mut exited, self);
-		self.metadata.swallow_revert(exited.metadata).map_err(|e| {
+		self.metadata.swallow_revert(exited.metadata).inspect_err(|_e| {
 			sp_io::storage::rollback_transaction();
-			e
 		})?;
 
 		sp_io::storage::rollback_transaction();
@@ -494,9 +520,8 @@ impl<'config> SubstrateStackSubstate<'config> {
 	pub fn exit_discard(&mut self) -> Result<(), ExitError> {
 		let mut exited = *self.parent.take().expect("Cannot discard on root substate");
 		mem::swap(&mut exited, self);
-		self.metadata.swallow_discard(exited.metadata).map_err(|e| {
+		self.metadata.swallow_discard(exited.metadata).inspect_err(|_e| {
 			sp_io::storage::rollback_transaction();
-			e
 		})?;
 
 		sp_io::storage::rollback_transaction();
@@ -515,8 +540,24 @@ impl<'config> SubstrateStackSubstate<'config> {
 		false
 	}
 
+	pub fn created(&self, address: H160) -> bool {
+		if self.creates.contains(&address) {
+			return true;
+		}
+
+		if let Some(parent) = self.parent.as_ref() {
+			return parent.created(address);
+		}
+
+		false
+	}
+
 	pub fn set_deleted(&mut self, address: H160) {
 		self.deletes.insert(address);
+	}
+
+	pub fn set_created(&mut self, address: H160) {
+		self.creates.insert(address);
 	}
 
 	pub fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) {
@@ -571,10 +612,17 @@ impl<'config> SubstrateStackSubstate<'config> {
 	}
 }
 
+#[derive(Default, Clone, Eq, PartialEq)]
+pub struct Recorded {
+	account_codes: Vec<H160>,
+	account_storages: BTreeMap<(H160, H256), bool>,
+}
+
 /// Substrate backend for EVM.
 pub struct SubstrateStackState<'vicinity, 'config, T> {
 	vicinity: &'vicinity Vicinity,
 	substate: SubstrateStackSubstate<'config>,
+	transient_storage: BTreeMap<(H160, H256), H256>,
 	_marker: PhantomData<T>,
 }
 
@@ -586,11 +634,13 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 			substate: SubstrateStackSubstate {
 				metadata,
 				deletes: BTreeSet::new(),
+				creates: BTreeSet::new(),
 				logs: Vec::new(),
 				storage_logs: Vec::new(),
 				parent: None,
 				known_original_storage: BTreeMap::new(),
 			},
+			transient_storage: BTreeMap::new(),
 			_marker: PhantomData,
 		}
 	}
@@ -613,7 +663,7 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 	}
 }
 
-impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 'config, T> {
+impl<T: Config> BackendT for SubstrateStackState<'_, '_, T> {
 	fn gas_price(&self) -> U256 {
 		self.vicinity.gas_price
 	}
@@ -632,11 +682,11 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_hash(&self, number: U256) -> H256 {
-		if number > U256::from(u32::MAX) {
-			H256::default()
-		} else {
-			let number = BlockNumberFor::<T>::from(number.as_u32());
+		if let Ok(number) = TryInto::<u32>::try_into(number) {
+			let number = BlockNumberFor::<T>::from(number);
 			H256::from_slice(frame_system::Pallet::<T>::block_hash(number).as_ref())
+		} else {
+			H256::default()
 		}
 	}
 
@@ -693,6 +743,13 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 		AccountStorages::<T>::get(address, index)
 	}
 
+	fn transient_storage(&self, address: H160, index: H256) -> H256 {
+		self.transient_storage
+			.get(&(address, index))
+			.copied()
+			.unwrap_or_default()
+	}
+
 	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
 		if let Some(value) = self.substate.known_original_storage(address, index) {
 			Some(value)
@@ -706,7 +763,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 }
 
-impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState<'vicinity, 'config, T> {
+impl<'config, T: Config> StackStateT<'config> for SubstrateStackState<'_, 'config, T> {
 	fn metadata(&self) -> &StackSubstateMetadata<'config> {
 		self.substate.metadata()
 	}
@@ -739,6 +796,10 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		self.substate.deleted(address)
 	}
 
+	fn created(&self, address: H160) -> bool {
+		self.substate.created(address)
+	}
+
 	fn inc_nonce(&mut self, address: H160) -> Result<(), ExitError> {
 		Pallet::<T>::inc_nonce(&address);
 		Ok(())
@@ -755,9 +816,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		if value == H256::default() {
 			log::debug!(
 				target: "evm",
-				"Removing storage for {:?} [index: {:?}]",
-				address,
-				index,
+				"Removing storage for {address:?} [index: {index:?}]",
 			);
 			<AccountStorages<T>>::remove(address, index);
 
@@ -769,10 +828,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		} else {
 			log::debug!(
 				target: "evm",
-				"Updating storage for {:?} [index: {:?}, value: {:?}]",
-				address,
-				index,
-				value,
+				"Updating storage for {address:?} [index: {index:?}, value: {value:?}]",
 			);
 			<AccountStorages<T>>::insert(address, index, value);
 
@@ -782,6 +838,10 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 				self.substate.metadata.storage_meter_mut().charge(STORAGE_SIZE);
 			}
 		}
+	}
+
+	fn set_transient_storage(&mut self, address: H160, key: H256, value: H256) {
+		self.transient_storage.insert((address, key), value);
 	}
 
 	fn reset_storage(&mut self, address: H160) {
@@ -797,12 +857,15 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		self.substate.set_deleted(address)
 	}
 
-	fn set_code(&mut self, address: H160, code: Vec<u8>) {
+	fn set_created(&mut self, address: H160) {
+		self.substate.set_created(address);
+	}
+
+	fn set_code(&mut self, address: H160, code: Vec<u8>, _caller: Option<H160>) -> Result<(), ExitError> {
 		log::debug!(
 			target: "evm",
-			"Inserting code ({} bytes) at {:?}",
+			"Inserting code ({} bytes) at {address:?}",
 			code.len(),
-			address
 		);
 
 		// get maintainer from parent caller `enter_substate` will do `spit_child`
@@ -811,11 +874,10 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			None => {
 				log::error!(
 					target: "evm",
-					"get parent's maintainer failed. address: {:?}",
-					address
+					"get parent's maintainer failed. address: {address:?}",
 				);
 				debug_assert!(false);
-				return;
+				return Ok(());
 			}
 		};
 
@@ -824,11 +886,10 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			None => {
 				log::error!(
 					target: "evm",
-					"get parent's caller failed. address: {:?}",
-					address
+					"get parent's caller failed. address: {address:?}",
 				);
 				debug_assert!(false);
-				return;
+				return Ok(());
 			}
 		};
 
@@ -840,17 +901,13 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			},
 			|addr| {
 				// inherent the published status from origin code address
-				Pallet::<T>::accounts(addr)
-					.map_or(false, |account| account.contract_info.map_or(false, |v| v.published))
+				Pallet::<T>::accounts(addr).is_some_and(|account| account.contract_info.is_some_and(|v| v.published))
 			},
 		);
 
 		log::debug!(
 			target: "evm",
-			"set_code: address: {:?}, maintainer: {:?}, publish: {:?}",
-			address,
-			caller,
-			is_published
+			"set_code: address: {address:?}, maintainer: {caller:?}, publish: {is_published:?}",
 		);
 
 		let code_size = code.len() as u32;
@@ -859,6 +916,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		let used_storage = code_size.saturating_add(T::NewContractExtraBytes::get());
 		Pallet::<T>::update_contract_storage_size(&address, used_storage as i32);
 		self.substate.metadata.storage_meter_mut().charge(used_storage);
+		Ok(())
 	}
 
 	fn transfer(&mut self, transfer: Transfer) -> Result<(), ExitError> {
@@ -875,10 +933,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 
 		log::debug!(
 			target: "evm",
-			"transfer [source: {:?}, target: {:?}, amount: {:?}]",
-			source,
-			target,
-			amount
+			"transfer [source: {source:?}, target: {target:?}, amount: {amount:?}]",
 		);
 
 		if T::Currency::free_balance(&source) < amount {
@@ -903,8 +958,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			) {
 				debug_assert!(
 					false,
-					"Failed to transfer remaining balance to treasury with error: {:?}",
-					e
+					"Failed to transfer remaining balance to treasury with error: {e:?}",
 				);
 			}
 		}

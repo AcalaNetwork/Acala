@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -229,6 +229,144 @@ fn rebond_works() {
 		System::set_block_number(4);
 
 		assert_ok!(Earning::withdraw_unbonded(RuntimeOrigin::signed(ALICE)));
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			900
+		);
+
+		assert_no_handler_events();
+	});
+}
+
+#[test]
+fn earning_manager_getter_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(<Earning as EarningManager<_, _, _>>::bond(ALICE, 1000), Ok(1000));
+		assert_eq!(<Earning as EarningManager<_, _, _>>::unbond(ALICE, 200), Ok(200));
+
+		assert_eq!(
+			<Earning as EarningManager<_, _, _>>::get_bonding_ledger(ALICE).total(),
+			1000
+		);
+		assert_eq!(
+			<Earning as EarningManager<_, _, _>>::get_bonding_ledger(ALICE).active(),
+			800
+		);
+		assert_eq!(
+			<Earning as EarningManager<_, _, _>>::get_bonding_ledger(ALICE).unlocking(),
+			vec![(200, 4)]
+		);
+
+		assert_eq!(
+			<Earning as EarningManager<_, _, _>>::get_instant_unstake_fee(),
+			Some(Permill::from_percent(10))
+		);
+
+		assert_eq!(<Earning as EarningManager<_, _, _>>::get_min_bond(), 100);
+
+		assert_eq!(<Earning as EarningManager<_, _, _>>::get_unbonding_period(), 3);
+
+		assert_eq!(<Earning as EarningManager<_, _, _>>::get_max_unbonding_chunks(), 3);
+	});
+}
+
+#[test]
+fn earning_manager_handler_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			<Earning as EarningManager<_, _, _>>::unbond(ALICE, 1000),
+			Error::<Runtime>::NotBonded
+		);
+		assert_eq!(<Earning as EarningManager<_, _, _>>::bond(ALICE, 1000), Ok(1000));
+
+		assert_noop!(
+			<Earning as EarningManager<_, _, _>>::unbond(ALICE, 999),
+			Error::<Runtime>::BelowMinBondThreshold
+		);
+
+		clear_handler_events();
+
+		// Won't unbond before unbonding period passes
+		assert_eq!(<Earning as EarningManager<_, _, _>>::unbond(ALICE, 1001), Ok(1000));
+		System::assert_last_event(
+			Event::Unbonded {
+				who: ALICE,
+				amount: 1000,
+			}
+			.into(),
+		);
+		OnUnbonded::assert_eq_and_clear(vec![(ALICE, 1000)]);
+		System::reset_events();
+		assert_eq!(<Earning as EarningManager<_, _, _>>::withdraw_unbonded(ALICE), Ok(0));
+		assert_eq!(System::events(), vec![]);
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			0
+		);
+
+		System::set_block_number(4);
+
+		assert_eq!(<Earning as EarningManager<_, _, _>>::withdraw_unbonded(ALICE), Ok(1000));
+		System::assert_last_event(
+			Event::Withdrawn {
+				who: ALICE,
+				amount: 1000,
+			}
+			.into(),
+		);
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			1000
+		);
+
+		assert_noop!(
+			<Earning as EarningManager<_, _, _>>::unbond_instant(ALICE, 1000),
+			Error::<Runtime>::NotBonded
+		);
+
+		assert_no_handler_events();
+
+		assert_eq!(<Earning as EarningManager<_, _, _>>::bond(ALICE, 1000), Ok(1000));
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			0
+		);
+		assert_eq!(<Earning as EarningManager<_, _, _>>::unbond(ALICE, 1000), Ok(1000));
+
+		System::reset_events();
+		clear_handler_events();
+
+		// unbond instant will not work on pending unbond funds
+		assert_eq!(<Earning as EarningManager<_, _, _>>::unbond_instant(ALICE, 1001), Ok(0));
+		assert_eq!(System::events(), vec![]);
+		clear_handler_events();
+
+		assert_eq!(<Earning as EarningManager<_, _, _>>::rebond(ALICE, 1000), Ok(1000));
+		OnBonded::assert_eq_and_clear(vec![(ALICE, 1000)]);
+		assert_eq!(
+			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
+			0
+		);
+
+		assert_noop!(
+			<Earning as EarningManager<_, _, _>>::unbond_instant(ALICE, 999),
+			Error::<Runtime>::BelowMinBondThreshold
+		);
+		assert_eq!(
+			<Earning as EarningManager<_, _, _>>::unbond_instant(ALICE, 1001),
+			Ok(1000)
+		);
+		System::assert_last_event(
+			Event::InstantUnbonded {
+				who: ALICE,
+				amount: 900,
+				fee: 100,
+			}
+			.into(),
+		);
+		OnUnbonded::assert_eq_and_clear(vec![(ALICE, 1000)]);
+		OnUnstakeFee::assert_eq_and_clear(vec![100]);
+		// takes instant unbonding fee
 		assert_eq!(
 			Balances::reducible_balance(&ALICE, Preservation::Expendable, Fortitude::Polite),
 			900

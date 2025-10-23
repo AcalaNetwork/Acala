@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 //! The data from Oracle cannot be used in business, prices module will do some
 //! process and feed prices for Acala. Process include:
 //!   - specify a fixed price for stable currency
-//!   - feed price in USD or related price bewteen two currencies
+//!   - feed price in USD or related price between two currencies
 //!   - lock/unlock the price data get from oracle
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -54,8 +54,6 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// The data source, such as Oracle.
 		type Source: DataProvider<CurrencyId, Price> + DataFeeder<CurrencyId, Price, Self::AccountId>;
 

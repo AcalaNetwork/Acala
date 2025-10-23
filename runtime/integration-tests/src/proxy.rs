@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -178,7 +178,7 @@ fn proxy_permissions_correct() {
 				stake_increment_share: false,
 			}));
 
-			// Proxy calls do not bypass root permision
+			// Proxy calls do not bypass root permission
 			assert_ok!(Proxy::proxy(
 				RuntimeOrigin::signed(AccountId::from(ALICE)),
 				MultiAddress::Id(AccountId::from(BOB)),
@@ -206,7 +206,7 @@ fn proxy_permissions_correct() {
 				gov_call.clone()
 			));
 			let hash = BlakeTwo256::hash_of(&(BlakeTwo256::hash(b"bob is awesome"), AccountId::from(BOB)));
-			// last event was sucessful tip call
+			// last event was successful tip call
 			assert_eq!(
 				System::events()
 					.into_iter()
@@ -299,7 +299,7 @@ fn proxy_permissions_correct() {
 				.into(),
 			);
 
-			// Tests that adding more ProxyType permssions does not effect others
+			// Tests that adding more ProxyType permissions does not effect others
 			assert_ok!(Proxy::proxy(
 				RuntimeOrigin::signed(AccountId::from(BOB)),
 				MultiAddress::Id(AccountId::from(ALICE)),

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -37,15 +37,16 @@ pub type AccountId = u128;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CAROL: AccountId = 3;
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::TAP);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 
 parameter_types! {
 	pub static AUSDBTCPair: TradingPair = TradingPair::from_currency_ids(AUSD, BTC).unwrap();
 	pub static AUSDDOTPair: TradingPair = TradingPair::from_currency_ids(AUSD, DOT).unwrap();
 	pub static DOTBTCPair: TradingPair = TradingPair::from_currency_ids(DOT, BTC).unwrap();
+	pub static ACABTCPair: TradingPair = TradingPair::from_currency_ids(ACA, BTC).unwrap();
 }
 
 mod dex {
@@ -61,13 +62,15 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Default::default()
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match *currency_id {
+			ACA => 1,
+			_ => Default::default(),
+		}
 	};
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -99,6 +102,7 @@ ord_parameter_types! {
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
 		vec![DOT],
 	];
@@ -119,11 +123,11 @@ impl Happened<(TradingPair, Balance, Balance)> for MockOnLiquidityPoolUpdated {
 }
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<3>;
 	type PalletId = DEXPalletId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Erc20InfoMapping = MockErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
@@ -179,7 +183,12 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn initialize_enabled_trading_pairs(mut self) -> Self {
-		self.initial_enabled_trading_pairs = vec![AUSDDOTPair::get(), AUSDBTCPair::get(), DOTBTCPair::get()];
+		self.initial_enabled_trading_pairs = vec![
+			AUSDDOTPair::get(),
+			AUSDBTCPair::get(),
+			DOTBTCPair::get(),
+			ACABTCPair::get(),
+		];
 		self
 	}
 
@@ -190,6 +199,7 @@ impl ExtBuilder {
 				(AUSDDOTPair::get(), (1_000_000u128, 2_000_000u128)),
 				(AUSDBTCPair::get(), (1_000_000u128, 2_000_000u128)),
 				(DOTBTCPair::get(), (1_000_000u128, 2_000_000u128)),
+				(ACABTCPair::get(), (1_000_000u128, 2_000_000u128)),
 			],
 		)];
 		self

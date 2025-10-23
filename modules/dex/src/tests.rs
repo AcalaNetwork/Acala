@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -1992,4 +1992,126 @@ fn specific_joint_swap_work() {
 				Ok((10204, 10000)),
 			);
 		});
+}
+
+#[test]
+fn do_swap_should_keep_alive_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+
+			assert_ok!(DexModule::add_liquidity(
+				RuntimeOrigin::signed(ALICE),
+				ACA,
+				BTC,
+				1_000_000_000_000_000,
+				2_000_000_000_000_000,
+				0,
+				false,
+			));
+
+			assert_ok!(Tokens::transfer(
+				RuntimeOrigin::signed(ALICE),
+				CAROL,
+				ACA,
+				100_000_000_000_000
+			));
+
+			assert_eq!(Tokens::free_balance(ACA, &CAROL), 100_000_000_000_000);
+
+			assert_noop!(
+				DexModule::do_swap_with_exact_supply(&CAROL, &[ACA, BTC], 100_000_000_000_000, 1,),
+				orml_tokens::Error::<Runtime>::KeepAlive
+			);
+
+			assert_ok!(DexModule::do_swap_with_exact_supply(
+				&CAROL,
+				&[ACA, BTC],
+				10_000_000_000_000,
+				1
+			));
+
+			assert_ok!(DexModule::do_swap_with_exact_target(
+				&CAROL,
+				&[ACA, BTC],
+				10_000_000_000_000,
+				20_000_000_000_000
+			));
+		});
+}
+
+#[test]
+fn not_allow_claim_dex_share_after_abort() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
+		assert_ok!(DexModule::list_provisioning(
+			RuntimeOrigin::signed(ListingOrigin::get()),
+			AUSD,
+			DOT,
+			1_000_000_000_000u128,
+			1_000_000_000_000u128,
+			5_000_000_000_000u128,
+			2_000_000_000_000u128,
+			1000,
+		));
+
+		// Alice initial balance
+		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 1000000000000000000);
+		assert_eq!(Tokens::free_balance(DOT, &ALICE), 1000000000000000000);
+
+		// Alice adds provision
+		assert_ok!(DexModule::add_provision(
+			RuntimeOrigin::signed(ALICE),
+			AUSD,
+			DOT,
+			1_000_000_000_000u128,
+			1_000_000_000_000u128
+		));
+
+		// expired, the provision for AUSD-DOT could be aborted
+		System::set_block_number(3001);
+
+		// Check balances and status of the pool
+		assert_eq!(
+			DexModule::provisioning_pool(AUSDDOTPair::get(), ALICE),
+			(1_000_000_000_000u128, 1_000_000_000_000u128)
+		);
+		assert_eq!(
+			Tokens::free_balance(AUSD, &DexModule::account_id()),
+			1_000_000_000_000u128
+		);
+		assert_eq!(
+			Tokens::free_balance(DOT, &DexModule::account_id()),
+			1_000_000_000_000u128
+		);
+		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 999999000000000000);
+		assert_eq!(Tokens::free_balance(DOT, &ALICE), 999999000000000000);
+
+		// Bob aborts provisioning
+		assert_ok!(DexModule::abort_provisioning(RuntimeOrigin::signed(BOB), AUSD, DOT));
+		System::assert_last_event(RuntimeEvent::DexModule(crate::Event::ProvisioningAborted {
+			trading_pair: AUSDDOTPair::get(),
+			accumulated_provision_0: 1_000_000_000_000u128,
+			accumulated_provision_1: 1_000_000_000_000u128,
+		}));
+
+		// Not possible to claim dex share
+		assert_noop!(
+			DexModule::claim_dex_share(RuntimeOrigin::signed(ALICE), ALICE, AUSD, DOT),
+			Error::<Runtime>::InvalidClaim
+		);
+
+		// Still able to refund provision
+		assert_ok!(DexModule::refund_provision(
+			RuntimeOrigin::signed(ALICE),
+			ALICE,
+			AUSD,
+			DOT
+		));
+		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 1000000000000000000);
+		assert_eq!(Tokens::free_balance(DOT, &ALICE), 1000000000000000000);
+	});
 }

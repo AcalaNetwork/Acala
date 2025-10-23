@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -65,7 +65,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -92,6 +91,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
 
@@ -131,7 +131,6 @@ parameter_types! {
 }
 
 impl module_loans::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type RiskManager = MockRiskManager;
 	type CDPTreasury = CDPTreasuryModule;
@@ -190,7 +189,6 @@ parameter_types! {
 }
 
 impl module_cdp_treasury::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
@@ -209,7 +207,6 @@ ord_parameter_types! {
 }
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type CollateralCurrencyIds = MockCollateralCurrencyIds;
 	type PriceSource = MockLockablePrice;
 	type CDPTreasury = CDPTreasuryModule;

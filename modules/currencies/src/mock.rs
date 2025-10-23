@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -88,7 +88,6 @@ where
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = i64;
 	type CurrencyId = CurrencyId;
@@ -109,7 +108,20 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
 }
 
-#[derive(Encode, Decode, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, MaxEncodedLen, TypeInfo, RuntimeDebug)]
+#[derive(
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Copy,
+	Clone,
+	Eq,
+	PartialEq,
+	Ord,
+	PartialOrd,
+	MaxEncodedLen,
+	TypeInfo,
+	RuntimeDebug,
+)]
 pub enum TestId {
 	Foo,
 }
@@ -132,6 +144,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 pub type PalletBalances = pallet_balances::Pallet<Runtime>;
@@ -171,7 +184,6 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = ConstU32<1>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
-	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = GasToWeight;
@@ -201,7 +213,6 @@ parameter_types! {
 }
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -294,12 +305,12 @@ pub fn deploy_contracts() {
 			],
 			data: {
 				let mut buf = [0u8; 32];
-				U256::from(ALICE_BALANCE).to_big_endian(&mut buf);
+				U256::from(ALICE_BALANCE).write_as_big_endian(&mut buf);
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1215220,
-		used_storage: 4996,
+		used_gas: 1013342,
+		used_storage: 4028,
 	}));
 }
 
@@ -341,6 +352,7 @@ impl ExtBuilder {
 				.filter(|(_, currency_id, _)| *currency_id == NATIVE_CURRENCY_ID)
 				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
 				.collect::<Vec<_>>(),
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -32,14 +32,14 @@
 //!
 //! Rewards accumulation:
 //! 1. Incentives: periodicly(AccumulatePeriod), accumulate fixed amount according to Incentive.
-//! Rewards come from RewardsSource, please transfer enough tokens to RewardsSource before
-//! start incentive plan.
+//!    Rewards come from RewardsSource, please transfer enough tokens to RewardsSource before start
+//!    incentive plan.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use frame_support::{pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use module_support::{DEXIncentives, EmergencyShutdown, FractionalRate, IncentivesManager, PoolId, Rate};
 use orml_traits::{Handler, MultiCurrency, RewardHandler};
@@ -66,8 +66,6 @@ pub mod module {
 		frame_system::Config
 		+ orml_rewards::Config<Share = Balance, Balance = Balance, PoolId = PoolId, CurrencyId = CurrencyId>
 	{
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// The period to accumulate rewards
 		#[pallet::constant]
 		type AccumulatePeriod: Get<BlockNumberFor<Self>>;
@@ -198,8 +196,7 @@ pub mod module {
 							PoolId::Loans(_) if shutdown => {
 								log::debug!(
 									target: "incentives",
-									"on_initialize: skip accumulate incentives for pool {:?} after shutdown",
-									pool_id
+									"on_initialize: skip accumulate incentives for pool {pool_id:?} after shutdown",
 								);
 							}
 							_ => {
@@ -389,8 +386,7 @@ impl<T: Config> Pallet<T> {
 				Self::transfer_rewards_and_update_records(pool_id, reward_currency_id, reward_amount).map_err(|e| {
 					log::warn!(
 						target: "incentives",
-						"accumulate_incentives: failed to accumulate {:?} {:?} rewards for pool {:?} : {:?}",
-						reward_amount, reward_currency_id, pool_id, e
+						"accumulate_incentives: failed to accumulate {reward_amount:?} {reward_currency_id:?} rewards for pool {pool_id:?} : {e:?}",
 					);
 				});
 		}
@@ -408,6 +404,7 @@ impl<T: Config> Pallet<T> {
 			&T::RewardsSource::get(),
 			&Self::account_id(),
 			reward_amount,
+			ExistenceRequirement::AllowDeath,
 		)?;
 		<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, reward_currency_id, reward_amount)?;
 		Ok(())
@@ -470,8 +467,7 @@ impl<T: Config> Pallet<T> {
 						Err(e) => {
 							log::error!(
 								target: "incentives",
-								"payout_reward_and_reaccumulate_reward: failed to payout {:?} to {:?} and re-accumulate {:?} {:?} to pool {:?}: {:?}",
-								payout_amount, who, deduction_amount, currency_id, pool_id, e
+								"payout_reward_and_reaccumulate_reward: failed to payout {payout_amount:?} to {who:?} and re-accumulate {deduction_amount:?} {currency_id:?} to pool {pool_id:?}: {e:?}",
 							);
 						}
 					};
@@ -502,7 +498,13 @@ impl<T: Config> Pallet<T> {
 		if !reaccumulate_amount.is_zero() {
 			<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, reward_currency_id, reaccumulate_amount)?;
 		}
-		T::Currency::transfer(reward_currency_id, &Self::account_id(), who, payout_amount)?;
+		T::Currency::transfer(
+			reward_currency_id,
+			&Self::account_id(),
+			who,
+			payout_amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 		Ok(())
 	}
 }
@@ -511,7 +513,13 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	fn do_deposit_dex_share(who: &T::AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
 		ensure!(lp_currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 
-		T::Currency::transfer(lp_currency_id, who, &Self::account_id(), amount)?;
+		T::Currency::transfer(
+			lp_currency_id,
+			who,
+			&Self::account_id(),
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into())?;
 
 		Self::deposit_event(Event::DepositDexShare {
@@ -529,7 +537,13 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 			Error::<T>::NotEnough,
 		);
 
-		T::Currency::transfer(lp_currency_id, &Self::account_id(), who, amount)?;
+		T::Currency::transfer(
+			lp_currency_id,
+			&Self::account_id(),
+			who,
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into())?;
 
 		Self::deposit_event(Event::WithdrawDexShare {

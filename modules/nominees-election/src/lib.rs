@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -48,9 +48,6 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config<I: 'static = ()>: frame_system::Config {
-		/// The overarching event type.
-		type RuntimeEvent: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// The token as vote.
 		type Currency: BasicLockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>, Balance = Balance>;
 

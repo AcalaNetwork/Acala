@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -84,8 +84,7 @@ impl StorageMeter {
 		let total_refunded = self.total_refunded();
 		log::trace!(
 			target: "evm",
-			"StorageMeter: finish: used {:?} refunded {:?}",
-			total_used, total_refunded
+			"StorageMeter: finish: used {total_used:?} refunded {total_refunded:?}",
 		);
 		if self.limit < total_used.saturating_sub(total_refunded) {
 			// OutOfStorage
@@ -102,8 +101,7 @@ impl StorageMeter {
 	pub fn charge(&mut self, storage: u32) {
 		log::trace!(
 			target: "evm",
-			"StorageMeter: charge: storage {:?}",
-			storage
+			"StorageMeter: charge: storage {storage:?}",
 		);
 		self.used = self.used.saturating_add(storage);
 	}
@@ -111,8 +109,7 @@ impl StorageMeter {
 	pub fn uncharge(&mut self, storage: u32) {
 		log::trace!(
 			target: "evm",
-			"StorageMeter: uncharge: storage {:?}",
-			storage
+			"StorageMeter: uncharge: storage {storage:?}",
 		);
 		self.used = self.used.saturating_sub(storage);
 	}
@@ -120,8 +117,7 @@ impl StorageMeter {
 	pub fn refund(&mut self, storage: u32) {
 		log::trace!(
 			target: "evm",
-			"StorageMeter: refund: storage {:?}",
-			storage
+			"StorageMeter: refund: storage {storage:?}",
 		);
 		self.refunded = self.refunded.saturating_add(storage);
 	}

@@ -1,0 +1,22 @@
+{
+	"name": "Acala Dev",
+	"id": "acala-dev",
+	"chainType": "Development",
+	"properties": {
+	  "ss58Format": 10,
+	  "tokenDecimals": [
+		12,
+		12,
+		10,
+		10
+	  ],
+	  "tokenSymbol": [
+		"ACA",
+		"AUSD",
+		"DOT",
+		"LDOT"
+	  ]
+	},
+	"relayChain": "dev",
+	"paraId": 2000
+  }

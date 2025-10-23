@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,14 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Rate;
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use primitives::CurrencyId;
 use scale_info::TypeInfo;
 use sp_runtime::{DispatchResult, RuntimeDebug};
 use sp_std::prelude::*;
 
 /// PoolId for various rewards pools
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub enum PoolId {
 	/// Rewards and shares pool for users who open CDP(CollateralCurrencyId)
 	Loans(CurrencyId),
@@ -48,7 +48,7 @@ pub trait IncentivesManager<AccountId, Balance, CurrencyId, PoolId> {
 	fn withdraw_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
 	/// Claim all available rewards for specific `PoolId`
 	fn claim_rewards(who: AccountId, pool_id: PoolId) -> DispatchResult;
-	/// Gets deduction reate for claiming reward early
+	/// Gets deduction rate for claiming reward early
 	fn get_claim_reward_deduction_rate(pool_id: PoolId) -> Rate;
 	/// Gets the pending rewards for a pool, for an account
 	fn get_pending_rewards(pool_id: PoolId, who: AccountId, reward_currency: Vec<CurrencyId>) -> Vec<Balance>;

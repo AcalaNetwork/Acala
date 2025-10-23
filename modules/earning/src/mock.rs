@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -54,6 +54,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 parameter_types! {
@@ -93,7 +94,6 @@ impl ParameterStore<Parameters> for ParameterStoreImpl {
 }
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ParameterStore = ParameterStoreImpl;
 	type OnBonded = OnBonded;
@@ -134,6 +134,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: vec![(ALICE, 1000)],
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

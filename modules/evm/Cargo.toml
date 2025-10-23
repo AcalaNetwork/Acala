@@ -1,8 +1,8 @@
 [package]
 name = "module-evm"
-version = "2.25.0"
-authors = ["Acala Developers"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [[bench]]
 name = "orml_benches"
@@ -52,6 +52,7 @@ xcm-builder = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
+insta = { workspace = true }
 hex = { workspace = true, features = ["std"] }
 env_logger = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }

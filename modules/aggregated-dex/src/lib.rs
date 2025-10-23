@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -282,10 +282,8 @@ impl<T: Config> Pallet<T> {
 					match path {
 						SwapPath::Dex(dex_path) => {
 							// calculate the supply amount
-							let (supply_amount, _) = T::DEX::get_swap_amount(
-								dex_path,
-								SwapLimit::ExactTarget(Balance::max_value(), input_amount),
-							)?;
+							let (supply_amount, _) =
+								T::DEX::get_swap_amount(dex_path, SwapLimit::ExactTarget(Balance::MAX, input_amount))?;
 
 							input_amount = supply_amount;
 						}
@@ -436,7 +434,7 @@ impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for DexSwap<T> {
 /// Swap by Taiga pool.
 pub struct TaigaSwap<T>(PhantomData<T>);
 impl<T: Config> Swap<T::AccountId, Balance, CurrencyId> for TaigaSwap<T> {
-	// !!! Note: if ths limit is `ExactTarget` and the `max_supply_amount` will cause overflow in
+	// !!! Note: if the limit is `ExactTarget` and the `max_supply_amount` will cause overflow in
 	// StableAsset, will return `None`. Because the `get_best_route` of StableAsset treats it as the
 	// actual input amount. However, it will fail so will not cause loss. Maybe need to modiry
 	// StableAsset impl to avoid this risk.

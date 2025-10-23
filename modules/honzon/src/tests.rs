@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -266,7 +266,7 @@ fn transfer_debit_works() {
 			HonzonModule::transfer_debit(RuntimeOrigin::signed(BOB), BTC, DOT, 1000),
 			ArithmeticError::Underflow
 		);
-		// Won't work when transfering more debit than is present
+		// Won't work when transferring more debit than is present
 		assert_noop!(
 			HonzonModule::transfer_debit(RuntimeOrigin::signed(ALICE), BTC, DOT, 10_000),
 			ArithmeticError::Underflow

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,12 +22,6 @@ use crate::setup::*;
 fn treasury_should_take_xcm_execution_revenue() {
 	ExtBuilder::default().build().execute_with(|| {
 		let dot_amount = 1000 * dollar(RELAY_CHAIN_CURRENCY);
-		#[cfg(feature = "with-mandala-runtime")] // Mandala uses DOT, which has 10 d.p. accuracy.
-		let actual_amount = 9999999758890;
-		#[cfg(feature = "with-karura-runtime")] // Karura uses KSM, which has 12 d.p. accuracy.
-		let actual_amount = 999999903556000;
-		#[cfg(feature = "with-acala-runtime")] // Acala uses DOT, which has 10 d.p. accuracy.
-		let actual_amount = 9999999035560;
 
 		#[cfg(feature = "with-mandala-runtime")]
 		let shallow_weight = 3_000_000;
@@ -35,7 +29,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 		let shallow_weight = 600_000_000;
 		#[cfg(feature = "with-acala-runtime")]
 		let shallow_weight = 600_000_000;
-		let origin = Location::parent();
+		let origin = AssetHubLocation::get();
 
 		// receive relay chain token
 		let asset: Asset = (Location::parent(), dot_amount).into();
@@ -55,7 +49,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 			},
 		]);
 		use xcm_executor::traits::WeightBounds;
-		let debt = <XcmConfig as xcm_executor::Config>::Weigher::weight(&mut msg).unwrap_or_default();
+		let debt = <XcmConfig as xcm_executor::Config>::Weigher::weight(&mut msg, Weight::MAX).unwrap_or_default();
 		assert_eq!(debt, Weight::from_parts(shallow_weight, 0));
 
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), 0);
@@ -70,7 +64,14 @@ fn treasury_should_take_xcm_execution_revenue() {
 			}
 		);
 
-		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), actual_amount);
+		let actual_amount = Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into());
+		#[cfg(feature = "with-mandala-runtime")]
+		assert_debug_snapshot!(actual_amount, @"9999999722650");
+		#[cfg(feature = "with-karura-runtime")]
+		assert_debug_snapshot!(actual_amount, @"999999889060000");
+		#[cfg(feature = "with-acala-runtime")]
+		assert_debug_snapshot!(actual_amount, @"9999998890600");
+
 		assert_eq!(
 			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
 			dot_amount - actual_amount
@@ -119,7 +120,7 @@ fn treasury_handles_dust_correctly() {
 			let liquid_ed = ExistentialDeposits::get(&LIQUID_CURRENCY);
 			let usd_ed = ExistentialDeposits::get(&USD_CURRENCY);
 
-			// Test empty treasury recieves dust tokens of relay
+			// Test empty treasury receives dust tokens of relay
 			assert_eq!(
 				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
 				0
@@ -135,7 +136,7 @@ fn treasury_handles_dust_correctly() {
 				relay_ed + 1
 			);
 
-			// ALICE account is reaped and treasury recieves dust tokens
+			// ALICE account is reaped and treasury receives dust tokens
 			assert_eq!(
 				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(ALICE)),
 				0
@@ -200,7 +201,7 @@ fn treasury_handles_dust_correctly() {
 				relay_ed - 1
 			);
 
-			// Test empty treasury recieves dust tokens of Liquid Currency
+			// Test empty treasury receives dust tokens of Liquid Currency
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &TreasuryAccount::get()), 0);
 			assert_ok!(Currencies::transfer(
 				RuntimeOrigin::signed(AccountId::from(ALICE)),
@@ -218,7 +219,7 @@ fn treasury_handles_dust_correctly() {
 				liquid_ed - 1
 			);
 
-			// Test empty treasury recieves dust tokens of USD Currency using Tokens pallet
+			// Test empty treasury receives dust tokens of USD Currency using Tokens pallet
 			assert_eq!(Tokens::free_balance(USD_CURRENCY, &TreasuryAccount::get()), 0);
 			assert_ok!(Tokens::transfer(
 				RuntimeOrigin::signed(AccountId::from(ALICE)),

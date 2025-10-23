@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -41,6 +41,7 @@ mod aggregated_dex {
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
@@ -61,7 +62,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -81,15 +81,16 @@ ord_parameter_types! {
 parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![];
 }
 
 impl module_dex::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<4>;
 	type PalletId = DEXPalletId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
@@ -149,7 +150,6 @@ parameter_types! {
 }
 
 impl nutsfinance_stable_asset::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type AssetId = CurrencyId;
 	type Balance = Balance;
 	type Assets = RebaseTokens;

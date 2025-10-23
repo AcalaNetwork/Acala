@@ -40,10 +40,7 @@ where
 	fn deposit_asset(what: &Asset, who: &Location, context: Option<&XcmContext>) -> XcmResult {
 		log::trace!(
 			target: LOG_TARGET,
-			"deposit_asset what: {:?}, who: {:?}, context: {:?}",
-			what,
-			who,
-			context,
+			"deposit_asset what: {what:?}, who: {who:?}, context: {context:?}",
 		);
 
 		let Fungibility::NonFungible(asset_instance) = what.fun else {
@@ -67,10 +64,7 @@ where
 	) -> Result<AssetsInHolding, XcmError> {
 		log::trace!(
 			target: LOG_TARGET,
-			"withdraw_asset what: {:?}, who: {:?}, maybe_context: {:?}",
-			what,
-			who,
-			maybe_context,
+			"withdraw_asset what: {what:?}, who: {who:?}, maybe_context: {maybe_context:?}",
 		);
 
 		let Fungibility::NonFungible(asset_instance) = what.fun else {
@@ -97,11 +91,7 @@ where
 	) -> Result<AssetsInHolding, XcmError> {
 		log::trace!(
 			target: LOG_TARGET,
-			"internal_transfer_asset: {:?}, from: {:?}, to: {:?}, context: {:?}",
-			asset,
-			from,
-			to,
-			context
+			"internal_transfer_asset: {asset:?}, from: {from:?}, to: {to:?}, context: {context:?}",
 		);
 
 		let Fungibility::NonFungible(asset_instance) = asset.fun else {

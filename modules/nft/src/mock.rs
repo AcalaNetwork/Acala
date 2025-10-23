@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -23,12 +23,12 @@ use super::*;
 use crate as nft;
 use frame_support::{
 	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
-	traits::{ConstU128, ConstU32, Contains, InstanceFilter, Nothing},
+	traits::{ConstU128, ConstU32, InstanceFilter, Nothing},
 };
 use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{crypto::AccountId32, H160};
 use sp_runtime::{
@@ -60,7 +60,9 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
+
 impl pallet_utility::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
@@ -68,7 +70,20 @@ impl pallet_utility::Config for Runtime {
 	type WeightInfo = ();
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+#[derive(
+	Copy,
+	Clone,
+	Eq,
+	PartialEq,
+	Ord,
+	PartialOrd,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	MaxEncodedLen,
+	TypeInfo,
+)]
 pub enum ProxyType {
 	Any,
 	JustTransfer,
@@ -94,17 +109,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 		self == &ProxyType::Any || self == o
 	}
 }
-pub struct BaseFilter;
-impl Contains<RuntimeCall> for BaseFilter {
-	fn contains(c: &RuntimeCall) -> bool {
-		match *c {
-			// Remark is used as a no-op call in the benchmarking
-			RuntimeCall::System(SystemCall::remark { .. }) => true,
-			RuntimeCall::System(_) => false,
-			_ => true,
-		}
-	}
-}
 
 impl pallet_proxy::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -119,6 +123,7 @@ impl pallet_proxy::Config for Runtime {
 	type MaxPending = ConstU32<2>;
 	type AnnouncementDepositBase = ConstU128<1>;
 	type AnnouncementDepositFactor = ConstU128<1>;
+	type BlockNumberProvider = System;
 }
 
 pub type NativeCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, u64>;
@@ -134,7 +139,6 @@ ord_parameter_types! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -155,7 +159,6 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = NativeCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -176,7 +179,6 @@ pub const CREATE_TOKEN_DEPOSIT: u128 = 100;
 pub const DATA_DEPOSIT_PER_BYTE: u128 = 10;
 pub const MAX_ATTRIBUTES_BYTES: u32 = 10;
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CreateClassDeposit = ConstU128<CREATE_CLASS_DEPOSIT>;
 	type CreateTokenDeposit = ConstU128<CREATE_TOKEN_DEPOSIT>;
@@ -194,8 +196,6 @@ impl orml_nft::Config for Runtime {
 	type MaxClassMetadata = ConstU32<1024>;
 	type MaxTokenMetadata = ConstU32<1024>;
 }
-
-use frame_system::Call as SystemCall;
 
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -234,6 +234,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: vec![(ALICE, 100000)],
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

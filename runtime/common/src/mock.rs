@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ use module_support::{
 	DispatchableTask,
 };
 use orml_traits::parameter_type_with_key;
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use primitives::{
 	define_combined_task, evm::convert_decimals_to_evm, task::TaskResult, Amount, BlockNumber, CurrencyId, Nonce,
 	ReserveIdentifier, TokenSymbol,
@@ -73,6 +73,7 @@ impl pallet_balances::Config for TestRuntime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 impl pallet_timestamp::Config for TestRuntime {
@@ -89,7 +90,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for TestRuntime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -115,7 +115,7 @@ impl orml_currencies::Config for TestRuntime {
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<TestRuntime, Balances, Amount, BlockNumber>;
 
 define_combined_task! {
-	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[derive(Clone, Encode, Decode, DecodeWithMemTracking, PartialEq, RuntimeDebug, TypeInfo)]
 	pub enum ScheduledTasks {
 		EvmTask(EvmTask<TestRuntime>),
 	}
@@ -136,7 +136,6 @@ parameter_types! {
 }
 
 impl module_idle_scheduler::Config for TestRuntime {
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Index = Nonce;
 	type Task = ScheduledTasks;
@@ -175,7 +174,6 @@ ord_parameter_types! {
 }
 
 impl module_evm_accounts::Config for TestRuntime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<TestRuntime>;
 	type TransferAll = Currencies;
@@ -191,7 +189,6 @@ impl module_evm::Config for TestRuntime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<20_000_000>;
 
-	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = GasToWeight;

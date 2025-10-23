@@ -1,0 +1,34 @@
+[package]
+name = "module-assethub"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+parity-scale-codec = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+module-support = { workspace = true }
+primitives = { workspace = true }
+xcm = { workspace = true }
+cumulus-primitives-core = { workspace = true }
+
+[dev-dependencies]
+sp-core = { workspace = true, features = ["std"] }
+sp-io = { workspace = true, features = ["std"] }
+
+[features]
+default = ["std"]
+std = [
+	"parity-scale-codec/std",
+	"cumulus-primitives-core/std",
+	"frame-support/std",
+	"frame-system/std",
+	"module-support/std",
+	"primitives/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"xcm/std",
+]

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #![allow(clippy::unnecessary_cast)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::useless_conversion)]
 
 use frame_support::{
 	pallet_prelude::*,
@@ -55,7 +56,9 @@ pub mod weights;
 pub use module::*;
 pub use weights::WeightInfo;
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, Serialize, Deserialize)]
+#[derive(
+	Encode, Decode, DecodeWithMemTracking, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, Serialize, Deserialize,
+)]
 pub struct ClassData<Balance> {
 	/// Deposit reserved to create token class
 	pub deposit: Balance,
@@ -65,7 +68,9 @@ pub struct ClassData<Balance> {
 	pub attributes: Attributes,
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, Serialize, Deserialize)]
+#[derive(
+	Encode, Decode, DecodeWithMemTracking, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo, Serialize, Deserialize,
+)]
 pub struct TokenData<Balance> {
 	/// Deposit reserved to create token
 	pub deposit: Balance,
@@ -90,8 +95,6 @@ pub mod module {
 		+ orml_nft::Config<ClassData = ClassData<BalanceOf<Self>>, TokenData = TokenData<BalanceOf<Self>>>
 		+ pallet_proxy::Config
 	{
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Currency type for reserve balance.
 		type Currency: NamedReservableCurrency<
 			Self::AccountId,
@@ -563,9 +566,8 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 	}
 
 	fn can_transfer(class: &Self::CollectionId, _: &Self::ItemId) -> bool {
-		orml_nft::Pallet::<T>::classes(class).map_or(false, |class_info| {
-			class_info.data.properties.0.contains(ClassProperty::Transferable)
-		})
+		orml_nft::Pallet::<T>::classes(class)
+			.is_some_and(|class_info| class_info.data.properties.0.contains(ClassProperty::Transferable))
 	}
 }
 

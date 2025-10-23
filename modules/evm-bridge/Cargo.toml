@@ -1,8 +1,8 @@
 [package]
 name = "module-evm-bridge"
-version = "2.25.0"
-authors = ["Acala Developers"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -27,6 +27,7 @@ module-support = { workspace = true }
 primitives = { workspace = true }
 
 [dev-dependencies]
+insta = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }
 hex = { workspace = true, features = ["std"] }
 pallet-balances = { workspace = true, features = ["std"] }

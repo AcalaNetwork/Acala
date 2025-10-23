@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -255,7 +255,7 @@ impl Precompile for Bn128Pairing {
 		handle.record_cost(gas_cost)?;
 
 		let mut buf = [0u8; 32];
-		ret_val.to_big_endian(&mut buf);
+		ret_val.write_as_big_endian(&mut buf);
 
 		Ok(PrecompileOutput {
 			exit_status: ExitSucceed::Returned,

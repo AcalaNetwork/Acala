@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -24,36 +24,25 @@ pub use frame_support::{
 };
 pub use frame_system::RawOrigin;
 pub use parity_scale_codec::{Decode, Encode};
-pub use primitives::TradingPair;
 use runtime_common::evm_genesis;
-pub use runtime_common::{
-	cent, dollar, millicent, FixedRateOfAsset, MaxTipsOfPriority, ProxyType, Ratio, TipPerWeightStep, ACA, AUSD, DOT,
-	LDOT,
-};
-pub use xcm::v4::{prelude::*, Weight as XcmWeight};
+pub use runtime_common::{cent, dollar, MaxTipsOfPriority, ProxyType, Ratio, TipPerWeightStep, ACA, AUSD, DOT};
+pub use xcm::v5::prelude::*;
 pub use xcm_executor::XcmExecutor;
 
 pub use module_support::{
 	mocks::MockAddressMapping, AddressMapping, CDPTreasury, DEXManager, Price, Rate, RiskManager,
 };
 
-pub use cumulus_pallet_parachain_system::RelaychainDataProvider;
 pub use orml_traits::{location::RelativeLocations, Change, GetByKey, MultiCurrency};
 
-pub use primitives::{
-	currency::*,
-	evm::{
-		CHAIN_ID_ACALA_MAINNET, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_MAINNET, CHAIN_ID_KARURA_TESTNET,
-		CHAIN_ID_MANDALA,
-	},
-};
+pub use insta::assert_debug_snapshot;
+pub use primitives::currency::*;
 use sp_consensus_aura::AURA_ENGINE_ID;
 pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Zero},
-	BuildStorage, Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress,
-	Perbill, Permill,
+	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Header, TransactionExtension, Zero},
+	BuildStorage, Digest, DigestItem, DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
 
 #[cfg(feature = "with-mandala-runtime")]
@@ -63,20 +52,22 @@ mod mandala_imports {
 	pub use mandala_runtime::xcm_config::*;
 	use mandala_runtime::AlternativeFeeSurplus;
 	pub use mandala_runtime::{
-		create_x2_parachain_location, get_all_module_accounts, AcalaOracle, AcalaSwap, AccountId, AggregatedDex,
-		AssetRegistry, AuctionManager, Aura, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber,
-		CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CollatorSelection, CreateClassDeposit,
-		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DealWithFees, DefaultDebitExchangeRate,
-		DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil,
-		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MinRewardDistributeAmount, MinimumDebitValue,
-		NativeTokenExistentialDeposit, NftPalletId, OneDay, OriginCaller, ParachainInfo, ParachainSystem, Proxy,
-		Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Scheduler, Session, SessionKeys, SessionManager, SevenDays,
-		StableAsset, StableAssetPalletId, System, Timestamp, TokenSymbol, Tokens, TransactionPayment,
-		TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic, Utility, Vesting,
-		XcmInterface, EVM, NFT,
+		get_all_module_accounts, AcalaOracle, AcalaSwap, AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura,
+		AuraExt, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId,
+		CdpEngine, CdpTreasury, CollatorSelection, ConvertEthereumTx, CreateClassDeposit, CreateTokenDeposit,
+		Currencies, CurrencyId, DataDepositPerByte, DealWithFees, DefaultDebitExchangeRate, DefaultExchangeRate, Dex,
+		EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil, GetNativeCurrencyId, Homa, Honzon,
+		IdleScheduler, Loans, MinRewardDistributeAmount, MinimumDebitValue, NativeTokenExistentialDeposit, NftPalletId,
+		OneDay, OriginCaller, ParachainInfo, ParachainSystem, Proxy, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
+		Scheduler, Session, SessionKeys, SessionManager, SevenDays, StableAsset, StableAssetPalletId,
+		StorageDepositPerByte, SubAccountIndexAccountIdConvertor, System, Timestamp, TokenSymbol, Tokens,
+		TransactionPayment, TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, TxFeePerGas, Vesting, EVM,
+		NFT,
 	};
+	pub use primitives::evm::CHAIN_ID_MANDALA;
 	use primitives::TradingPair;
 	use runtime_common::{ACA, AUSD, DOT, LDOT};
+	pub use sp_runtime::transaction_validity::TransactionSource::External;
 	use sp_runtime::Percent;
 
 	parameter_types! {
@@ -109,17 +100,19 @@ mod karura_imports {
 	pub use karura_runtime::xcm_config::*;
 	use karura_runtime::AlternativeFeeSurplus;
 	pub use karura_runtime::{
-		constants::parachains, create_x2_parachain_location, get_all_module_accounts, AcalaOracle, AcalaSwap,
-		AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, Authority, AuthoritysOriginId, Balance,
-		Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, CreateClassDeposit,
+		constants::parachains, get_all_module_accounts, AcalaOracle, AcalaSwap, AccountId, AggregatedDex,
+		AssetRegistry, AuctionManager, Aura, AuraExt, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber,
+		CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, ConvertEthereumTx, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DefaultDebitExchangeRate, DefaultExchangeRate,
 		Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil, GetNativeCurrencyId, Homa, Honzon,
 		IdleScheduler, KaruraFoundationAccounts, Loans, MinimumDebitValue, NativeTokenExistentialDeposit, NftPalletId,
 		OneDay, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, Runtime,
 		RuntimeCall, RuntimeEvent, RuntimeOrigin, Scheduler, Session, SessionManager, SevenDays, StableAsset,
-		StableAssetPalletId, System, Timestamp, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId,
-		TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM, NFT,
+		StableAssetPalletId, StorageDepositPerByte, SubAccountIndexAccountIdConvertor, System, Timestamp, TokenSymbol,
+		Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, TxExtension, TxFeePerGas, Utility,
+		Vesting, XTokens, XcmInterface, EVM, NFT,
 	};
+	pub use primitives::evm::CHAIN_ID_KARURA_TESTNET;
 	use primitives::TradingPair;
 	use runtime_common::{KAR, KSM, KUSD, LKSM};
 	use sp_runtime::{traits::AccountIdConversion, Percent};
@@ -153,19 +146,20 @@ mod acala_imports {
 	pub use acala_runtime::xcm_config::*;
 	use acala_runtime::AlternativeFeeSurplus;
 	pub use acala_runtime::{
-		constants::parachains, create_x2_parachain_location, get_all_module_accounts, AcalaFoundationAccounts,
-		AcalaOracle, AcalaSwap, AccountId, AggregatedDex, AssetRegistry, AuctionManager, Aura, Authority,
-		AuthoritysOriginId, Balance, Balances, BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine,
-		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte,
-		DefaultDebitExchangeRate, DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits,
-		FinancialCouncil, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MinimumDebitValue,
-		NativeTokenExistentialDeposit, NftPalletId, OneDay, OriginCaller, ParachainAccount, ParachainInfo,
-		ParachainSystem, PolkadotXcm, Proxy, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Scheduler, Session,
-		SessionManager, SevenDays, StableAsset, StableAssetPalletId, System, Timestamp, TokenSymbol, Tokens,
-		TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM,
-		NFT,
+		constants::parachains, get_all_module_accounts, AcalaFoundationAccounts, AcalaOracle, AcalaSwap, AccountId,
+		AggregatedDex, AssetRegistry, AuctionManager, Aura, AuraExt, Authority, AuthoritysOriginId, Balance, Balances,
+		BlockNumber, CDPEnginePalletId, CDPTreasuryPalletId, CdpEngine, CdpTreasury, ConvertEthereumTx,
+		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DefaultDebitExchangeRate,
+		DefaultExchangeRate, Dex, EmergencyShutdown, EvmAccounts, ExistentialDeposits, FinancialCouncil,
+		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MinimumDebitValue, NativeTokenExistentialDeposit,
+		NftPalletId, OneDay, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy,
+		Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Scheduler, Session, SessionManager, SevenDays, StableAsset,
+		StableAssetPalletId, StorageDepositPerByte, SubAccountIndexAccountIdConvertor, System, Timestamp, TokenSymbol,
+		Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, TxExtension, TxFeePerGas, Utility,
+		Vesting, XTokens, XcmInterface, EVM, NFT,
 	};
 	use frame_support::parameter_types;
+	pub use primitives::evm::CHAIN_ID_ACALA_TESTNET;
 	use primitives::TradingPair;
 	use runtime_common::{ACA, AUSD, DOT, LCDOT, LDOT};
 	use sp_runtime::traits::AccountIdConversion;
@@ -233,9 +227,27 @@ pub fn run_to_block(n: u32) {
 }
 
 pub fn set_relaychain_block_number(number: BlockNumber) {
+	AuraExt::on_initialize(number);
 	ParachainSystem::on_initialize(number);
 
-	let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();
+	let mut sproof_builder = RelayStateSproofBuilder::default();
+
+	let parent_head_data = {
+		let header = cumulus_primitives_core::relay_chain::Header::new(
+			number,
+			sp_core::H256::from_low_u64_be(0),
+			sp_core::H256::from_low_u64_be(0),
+			Default::default(),
+			Default::default(),
+		);
+		cumulus_primitives_core::relay_chain::HeadData(header.encode())
+	};
+
+	sproof_builder.para_id = ParachainInfo::get().into();
+	sproof_builder.current_slot = (number as u64).into();
+	sproof_builder.included_para_head = Some(parent_head_data.clone());
+
+	let (relay_storage_root, proof) = sproof_builder.into_state_root_and_proof();
 
 	assert_ok!(ParachainSystem::set_validation_data(
 		RuntimeOrigin::none(),
@@ -249,6 +261,8 @@ pub fn set_relaychain_block_number(number: BlockNumber) {
 			relay_chain_state: proof,
 			downward_messages: Default::default(),
 			horizontal_messages: Default::default(),
+			relay_parent_descendants: Default::default(),
+			collator_peer_id: None,
 		}
 	));
 }
@@ -330,6 +344,7 @@ impl ExtBuilder {
 						.map(|x| (x.clone(), existential_deposit)),
 				)
 				.collect::<Vec<_>>(),
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

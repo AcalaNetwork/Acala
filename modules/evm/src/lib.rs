@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::useless_conversion)]
 
 pub use crate::runner::{
 	stack::SubstrateStackState,
@@ -58,7 +59,7 @@ pub use module_support::{
 	EVM as EVMTrait,
 };
 pub use orml_traits::{currency::TransferAll, MultiCurrency};
-use parity_scale_codec::{Decode, Encode, FullCodec, MaxEncodedLen};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, FullCodec, MaxEncodedLen};
 pub use primitives::{
 	evm::{
 		convert_decimals_from_evm, convert_decimals_to_evm, decode_gas_limit, is_system_contract, CallInfo, CreateInfo,
@@ -72,7 +73,10 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::{
-	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto, Zero},
+	traits::{
+		Convert, DispatchInfoOf, DispatchOriginOf, One, PostDispatchInfoOf, TransactionExtension, UniqueSaturatedInto,
+		Zero,
+	},
 	transaction_validity::TransactionValidityError,
 	DispatchError, Either, RuntimeDebug, SaturatedConversion, Saturating, TransactionOutcome,
 };
@@ -197,9 +201,6 @@ pub mod module {
 		#[pallet::constant]
 		type TxFeePerGas: Get<BalanceOf<Self>>;
 
-		/// The overarching event type.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Precompiles associated with this EVM engine.
 		type PrecompilesType: PrecompileSet;
 		type PrecompilesValue: Get<Self::PrecompilesType>;
@@ -254,14 +255,14 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 	}
 
-	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
+	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 	pub struct ContractInfo {
 		pub code_hash: H256,
 		pub maintainer: EvmAddress,
 		pub published: bool,
 	}
 
-	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
+	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 	pub struct AccountInfo<Nonce> {
 		pub nonce: Nonce,
 		pub contract_info: Option<ContractInfo>,
@@ -273,13 +274,27 @@ pub mod module {
 		}
 	}
 
-	#[derive(Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+	#[derive(
+		Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, MaxEncodedLen, TypeInfo,
+	)]
 	pub struct CodeInfo {
 		pub code_size: u32,
 		pub ref_count: u32,
 	}
 
-	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Serialize, Deserialize)]
+	#[derive(
+		Clone,
+		Eq,
+		PartialEq,
+		Encode,
+		Decode,
+		DecodeWithMemTracking,
+		RuntimeDebug,
+		TypeInfo,
+		Default,
+		Serialize,
+		Deserialize,
+	)]
 	/// Account definition used for genesis block construction.
 	pub struct GenesisAccount<Balance, Nonce> {
 		/// Account nonce.
@@ -428,8 +443,7 @@ pub mod module {
 
 					assert!(
 						reason.is_succeed(),
-						"Genesis contract failed to execute, error: {:?}",
-						reason
+						"Genesis contract failed to execute, error: {reason:?}",
 					);
 
 					let out = runtime.machine().return_value();
@@ -643,6 +657,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			);
 
@@ -719,14 +734,14 @@ pub mod module {
 			ensure_root(origin)?;
 
 			let _from_account = T::AddressMapping::get_account_id(&from);
-			let _payed: NegativeImbalanceOf<T>;
+			let _paid: NegativeImbalanceOf<T>;
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			{
 				// unreserve the transaction fee for gas_limit
 				let weight = T::GasToWeight::convert(gas_limit);
 				let (_, imbalance) = T::ChargeTransactionPayment::unreserve_and_charge_fee(&_from_account, weight)
 					.map_err(|_| Error::<T>::ChargeFeeFailed)?;
-				_payed = imbalance;
+				_paid = imbalance;
 			}
 
 			match T::Runner::call(
@@ -738,6 +753,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			) {
 				Err(e) => {
@@ -786,7 +802,7 @@ pub mod module {
 							let res = T::ChargeTransactionPayment::refund_fee(
 								&_from_account,
 								T::GasToWeight::convert(refund_gas),
-								_payed,
+								_paid,
 							);
 							debug_assert!(res.is_ok());
 						}
@@ -829,6 +845,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			);
 
@@ -910,6 +927,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			);
 
@@ -1001,6 +1019,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			) {
 				Err(e) => {
@@ -1091,6 +1110,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			) {
 				Err(e) => {
@@ -1274,6 +1294,7 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				vec![], // TODO
 				T::config(),
 			) {
 				Err(e) => Err(DispatchErrorWithPostInfo {
@@ -1299,8 +1320,8 @@ pub mod module {
 					} else {
 						log::debug!(
 							target: "evm",
-							"batch_call failed: [from: {:?}, contract: {:?}, exit_reason: {:?}, output: {:?}, logs: {:?}, used_gas: {:?}]",
-							source, target, info.exit_reason, info.value, info.logs, used_gas
+							"batch_call failed: [from: {source:?}, contract: {target:?}, exit_reason: {:?}, output: {:?}, logs: {:?}, used_gas: {used_gas:?}]",
+							info.exit_reason, info.value, info.logs
 						);
 						Err(DispatchErrorWithPostInfo {
 							post_info: PostDispatchInfo {
@@ -1346,9 +1367,8 @@ impl<T: Config> Pallet<T> {
 			return false;
 		}
 
-		Self::accounts(address).map_or(true, |account_info| {
-			account_info.contract_info.is_none() && account_info.nonce.is_zero()
-		})
+		Self::accounts(address)
+			.is_none_or(|account_info| account_info.contract_info.is_none() && account_info.nonce.is_zero())
 	}
 
 	/// Remove an account if its empty.
@@ -1436,8 +1456,7 @@ impl<T: Config> Pallet<T> {
 					// so this should never happen
 					log::warn!(
 						target: "evm",
-						"remove_account: removed account {:?} while is still linked to contract info",
-						address
+						"remove_account: removed account {address:?} while is still linked to contract info",
 					);
 					debug_assert!(false, "removed account while is still linked to contract info");
 				}
@@ -1788,8 +1807,7 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(
 			target: "evm",
-			"reserve_storage: [from: {:?}, account: {:?}, limit: {:?}, amount: {:?}]",
-			caller, user, limit, amount
+			"reserve_storage: [from: {caller:?}, account: {user:?}, limit: {limit:?}, amount: {amount:?}]",
 		);
 
 		T::ChargeTransactionPayment::reserve_fee(&user, amount, Some(RESERVE_ID_STORAGE_DEPOSIT))?;
@@ -1808,8 +1826,7 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(
 			target: "evm",
-			"unreserve_storage: [from: {:?}, account: {:?}, used: {:?}, refunded: {:?}, unused: {:?}, amount: {:?}]",
-			caller, user, used, refunded, unused, amount
+			"unreserve_storage: [from: {caller:?}, account: {user:?}, used: {used:?}, refunded: {refunded:?}, unused: {unused:?}, amount: {amount:?}]",
 		);
 
 		// should always be able to unreserve the amount
@@ -1830,8 +1847,7 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(
 			target: "evm",
-			"charge_storage: [from: {:?}, account: {:?}, contract: {:?}, contract_acc: {:?}, storage: {:?}, amount: {:?}]",
-			caller, user, contract, contract_acc, storage, amount
+			"charge_storage: [from: {caller:?}, account: {user:?}, contract: {contract:?}, contract_acc: {contract_acc:?}, storage: {storage:?}, amount: {amount:?}]",
 		);
 
 		if storage.is_positive() {
@@ -1869,8 +1885,7 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(
 			target: "evm",
-			"refund_storage: [from: {:?}, account: {:?}, contract: {:?}, contract_acc: {:?}, maintainer: {:?}, maintainer_acc: {:?}, amount: {:?}]",
-			caller, user, contract, contract_acc, maintainer, maintainer_acc, amount
+			"refund_storage: [from: {caller:?}, account: {user:?}, contract: {contract:?}, contract_acc: {contract_acc:?}, maintainer: {maintainer:?}, maintainer_acc: {maintainer_acc:?}, amount: {amount:?}]",
 		);
 
 		// user can't be a dead account
@@ -1939,6 +1954,7 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 				gas_limit,
 				storage_limit,
 				vec![],
+				vec![], // TODO
 				&config,
 			);
 
@@ -2096,12 +2112,12 @@ fn encode_revert_message(msg: &[u8]) -> Vec<u8> {
 	// (32) should contain a utf-8 encoded revert reason.
 	let mut data = Vec::with_capacity(68 + msg.len());
 	data.extend_from_slice(&[0u8; 68]);
-	U256::from(msg.len()).to_big_endian(&mut data[36..68]);
+	U256::from(msg.len()).write_as_big_endian(&mut data[36..68]);
 	data.extend_from_slice(msg);
 	data
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, Eq, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct SetEvmOrigin<T: Config + Send + Sync>(PhantomData<T>);
 
@@ -2129,53 +2145,70 @@ impl<T: Config + Send + Sync> Default for SetEvmOrigin<T> {
 	}
 }
 
-impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
+/// The info passed between the validate and prepare steps for the `ChargeAssetTxPayment` extension.
+#[derive(RuntimeDebugNoBound)]
+pub enum Val<T: Config> {
+	Sender { sender: T::AccountId },
+	NoSender,
+}
+
+impl<T: Config + Send + Sync> TransactionExtension<T::RuntimeCall> for SetEvmOrigin<T> {
 	const IDENTIFIER: &'static str = "SetEvmOrigin";
-	type AccountId = T::AccountId;
-	type Call = T::RuntimeCall;
-	type AdditionalSigned = ();
+	type Implicit = ();
+	type Val = Val<T>;
 	type Pre = ();
 
-	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
-		Ok(())
+	fn weight(&self, _: &T::RuntimeCall) -> Weight {
+		Weight::zero()
 	}
 
 	fn validate(
 		&self,
-		who: &Self::AccountId,
-		_call: &Self::Call,
-		_info: &DispatchInfoOf<Self::Call>,
+		origin: DispatchOriginOf<T::RuntimeCall>,
+		_call: &T::RuntimeCall,
+		_info: &DispatchInfoOf<T::RuntimeCall>,
 		_len: usize,
-	) -> TransactionValidity {
-		ExtrinsicOrigin::<T>::set(Some(who.clone()));
-		Ok(ValidTransaction::default())
+		_self_implicit: Self::Implicit,
+		_inherited_implication: &impl Encode,
+		_source: TransactionSource,
+	) -> Result<(ValidTransaction, Self::Val, DispatchOriginOf<T::RuntimeCall>), TransactionValidityError> {
+		let who = frame_system::ensure_signed(origin.clone())
+			.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::BadSigner))?;
+
+		Ok((ValidTransaction::default(), Val::Sender { sender: who }, origin))
 	}
 
-	fn pre_dispatch(
+	fn prepare(
 		self,
-		who: &Self::AccountId,
-		_call: &Self::Call,
-		_info: &DispatchInfoOf<Self::Call>,
+		val: Self::Val,
+		_origin: &DispatchOriginOf<T::RuntimeCall>,
+		_call: &T::RuntimeCall,
+		_info: &DispatchInfoOf<T::RuntimeCall>,
 		_len: usize,
-	) -> Result<(), TransactionValidityError> {
-		ExtrinsicOrigin::<T>::set(Some(who.clone()));
-		Ok(())
+	) -> Result<Self::Pre, TransactionValidityError> {
+		match val {
+			Val::Sender { sender } => {
+				ExtrinsicOrigin::<T>::set(Some(sender.clone()));
+				Ok(())
+			}
+			Val::NoSender => Ok(()),
+		}
 	}
 
-	fn post_dispatch(
-		_pre: Option<Self::Pre>,
-		_info: &DispatchInfoOf<Self::Call>,
-		_post_info: &PostDispatchInfoOf<Self::Call>,
+	fn post_dispatch_details(
+		_pre: Self::Pre,
+		_info: &DispatchInfoOf<T::RuntimeCall>,
+		_post_info: &PostDispatchInfoOf<T::RuntimeCall>,
 		_len: usize,
 		_result: &DispatchResult,
-	) -> Result<(), TransactionValidityError> {
+	) -> Result<Weight, TransactionValidityError> {
 		ExtrinsicOrigin::<T>::kill();
 		XcmOrigin::<T>::kill();
-		Ok(())
+		Ok(Weight::zero())
 	}
 }
 
-#[derive(Clone, RuntimeDebug, PartialEq, Encode, Decode, TypeInfo)]
+#[derive(Clone, RuntimeDebug, PartialEq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 pub enum EvmTask<T: Config> {
 	// TODO: update
 	Schedule {
@@ -2230,8 +2263,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 				);
 				log::debug!(
 					target: "evm",
-					"EvmTask remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",
-					caller, contract, maintainer, count
+					"EvmTask remove: [from: {caller:?}, contract: {contract:?}, maintainer: {maintainer:?}, count: {count:?}]",
 				);
 				if r.maybe_cursor.is_none() {
 					// AllRemoved
@@ -2240,8 +2272,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 					debug_assert!(result.is_ok());
 					log::debug!(
 						target: "evm",
-						"EvmTask refund_storage: [from: {:?}, contract: {:?}, maintainer: {:?}, result: {:?}]",
-						caller, contract, maintainer, result
+						"EvmTask refund_storage: [from: {caller:?}, contract: {contract:?}, maintainer: {maintainer:?}, result: {result:?}]",
 					);
 
 					// Remove account after all of the storages are cleared.

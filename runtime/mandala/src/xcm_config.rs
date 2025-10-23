@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,21 +17,23 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{
-	constants::fee::*, AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert,
-	Currencies, CurrencyId, EvmAddressMapping, ExistentialDeposits, GetNativeCurrencyId, MessageQueue,
-	NativeTokenExistentialDeposit, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeOrigin, TreasuryAccount, UnknownTokens, XcmpQueue, ACA,
+	AccountId, AllPalletsWithSystem, AssetIdMapping, AssetIdMaps, Balance, Balances, Convert, Currencies, CurrencyId,
+	EvmAddressMapping, ExistentialDeposits, GetNativeCurrencyId, MessageQueue, NativeTokenExistentialDeposit,
+	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, TreasuryAccount,
+	UnknownTokens, XcmpQueue, ACA,
+	{constants::fee::*, parachains},
 };
 pub use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 pub use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Everything, Get, Nothing, TransformOrigin},
+	traits::{ConstU32, Disabled, Equals, Everything, Get, Nothing, TransformOrigin},
 	weights::Weight,
 };
 use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfStableAsset};
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
+use orml_traits::parameter_type_with_key;
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+use orml_xtokens::AbsoluteReserveProvider;
 
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 use parity_scale_codec::{Decode, Encode};
@@ -132,6 +134,11 @@ impl xcm_executor::Config for XcmConfig {
 	type SafeCallFilter = Everything;
 	type Aliasers = Nothing;
 	type TransactionalProcessor = FrameTransactionalProcessor;
+	type HrmpNewChannelOpenRequestHandler = ();
+	type HrmpChannelAcceptedHandler = ();
+	type HrmpChannelClosingHandler = ();
+	type XcmRecorder = ();
+	type XcmEventEmitter = ();
 }
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
@@ -178,6 +185,7 @@ impl pallet_xcm::Config for Runtime {
 	type AdminOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type MaxRemoteLockConsumers = ConstU32<0>;
 	type RemoteLockConsumerIdentifier = ();
+	type AuthorizedAliasConsideration = Disabled;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
@@ -199,10 +207,15 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ControllerOriginConverter = XcmOriginToCallOrigin;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
 	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
+	type MaxActiveOutboundChannels = ConstU32<128>;
+	// Most on-chain HRMP channels are configured to use 102400 bytes of max message size, so we
+	// need to set the page size larger than that until we reduce the channel size on-chain.
+	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
 }
 
 parameter_types! {
 	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
+	pub MessageQueueIdleServiceWeight: Weight = Perbill::from_percent(40) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_message_queue::Config for Runtime {
@@ -219,6 +232,7 @@ impl pallet_message_queue::Config for Runtime {
 	type HeapSize = sp_core::ConstU32<{ 64 * 1024 }>;
 	type MaxStale = sp_core::ConstU32<8>;
 	type ServiceWeight = MessageQueueServiceWeight;
+	type IdleMaxServiceWeight = MessageQueueIdleServiceWeight;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
@@ -320,6 +334,7 @@ impl Convert<AccountId, Location> for AccountIdToLocation {
 
 parameter_types! {
 	pub SelfLocation: Location = Location::new(1, Parachain(ParachainInfo::get().into()));
+	pub AssetHubLocation: Location = Location::new(1, [Parachain(parachains::asset_hub_polkadot::ID)]);
 	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_parts(100_000_000, 0);
 	pub const MaxAssetsForTransfer: usize = 2;
 }
@@ -331,7 +346,6 @@ parameter_type_with_key! {
 }
 
 impl orml_xtokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;

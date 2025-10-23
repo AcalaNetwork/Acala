@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@ use frame_support::{
 };
 use module_support::AggregatedSwapPath;
 use sp_runtime::{
-	traits::{AccountIdConversion, SignedExtension, UniqueSaturatedInto},
+	traits::{AccountIdConversion, DispatchTransaction, UniqueSaturatedInto},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	MultiAddress, Percent,
 };
@@ -103,7 +103,8 @@ const CALL: <Runtime as frame_system::Config>::RuntimeCall =
 		amount: 12,
 	});
 pub const INFO: DispatchInfo = DispatchInfo {
-	weight: Weight::from_parts(100, 0),
+	call_weight: Weight::from_parts(100, 0),
+	extension_weight: Weight::zero(),
 	class: DispatchClass::Normal,
 	pays_fee: Pays::Yes,
 };
@@ -273,22 +274,24 @@ fn charge_transaction_payment_and_threshold_works() {
 			let fee = fee + surplus;
 
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&CALL,
 					&INFO,
 					len as usize,
+					0
 				)
 			);
 			let balance1 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
 			let relay1 = Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1);
 
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&CALL,
 					&INFO,
 					len as usize,
+					0
 				)
 			);
 			let balance2 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
@@ -297,14 +300,8 @@ fn charge_transaction_payment_and_threshold_works() {
 			assert_eq!(relay_exchange_rate.saturating_mul_int(fee), relay2 - relay1);
 
 			for i in 0..38 {
-				assert_ok!(
-					<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-						&AccountId::from(BOB),
-						&CALL,
-						&INFO,
-						len as usize,
-					)
-				);
+				assert_ok!(<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0)
+					.validate_and_prepare(Some(AccountId::from(BOB)).into(), &CALL, &INFO, len as usize, 0));
 				assert_eq!(
 					pool_size - fee * (i + 3),
 					Currencies::free_balance(NATIVE_CURRENCY, &sub_account1)
@@ -324,11 +321,12 @@ fn charge_transaction_payment_and_threshold_works() {
 			// before execute this tx, the balance of fee pool is equal to threshold,
 			// so it wouldn't trigger swap from dex.
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&CALL,
 					&INFO,
 					len as usize,
+					0
 				)
 			);
 			let balance2 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
@@ -338,11 +336,12 @@ fn charge_transaction_payment_and_threshold_works() {
 
 			// this tx cause swap from dex, but the fee calculation still use the old rate.
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&CALL,
 					&INFO,
 					len as usize,
+					0
 				)
 			);
 			let balance1 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
@@ -356,11 +355,12 @@ fn charge_transaction_payment_and_threshold_works() {
 				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(RELAY_CHAIN_CURRENCY).unwrap();
 
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&CALL,
 					&INFO,
 					len as usize,
+					0
 				)
 			);
 			let balance2 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
@@ -372,15 +372,27 @@ fn charge_transaction_payment_and_threshold_works() {
 
 #[test]
 fn with_fee_currency_call_works() {
-	with_fee_call_works(with_fee_currency_call(LIQUID_CURRENCY), false);
+	let amount = with_fee_call_works(with_fee_currency_call(LIQUID_CURRENCY), false);
+	#[cfg(feature = "with-mandala-runtime")]
+	assert_debug_snapshot!(amount, @"12701470464");
+	#[cfg(feature = "with-karura-runtime")]
+	assert_debug_snapshot!(amount, @"12726949843");
+	#[cfg(feature = "with-acala-runtime")]
+	assert_debug_snapshot!(amount, @"12726949843");
 }
 
 #[test]
 fn with_fee_path_call_works() {
-	with_fee_call_works(
+	let amount = with_fee_call_works(
 		with_fee_path_call(vec![LIQUID_CURRENCY, USD_CURRENCY, NATIVE_CURRENCY]),
 		false,
 	);
+	#[cfg(feature = "with-mandala-runtime")]
+	assert_debug_snapshot!(amount, @"12701470464");
+	#[cfg(feature = "with-karura-runtime")]
+	assert_debug_snapshot!(amount, @"12726949843");
+	#[cfg(feature = "with-acala-runtime")]
+	assert_debug_snapshot!(amount, @"12726949843");
 }
 
 #[test]
@@ -389,16 +401,22 @@ fn with_fee_aggregated_path_call_works() {
 		AggregatedSwapPath::<CurrencyId>::Taiga(0, 0, 1),
 		AggregatedSwapPath::<CurrencyId>::Dex(vec![LIQUID_CURRENCY, USD_CURRENCY, NATIVE_CURRENCY]),
 	];
-	with_fee_call_works(with_fee_aggregated_path_call(aggregated_path), true);
+	let amount = with_fee_call_works(with_fee_aggregated_path_call(aggregated_path), true);
+	#[cfg(feature = "with-mandala-runtime")]
+	assert_debug_snapshot!(amount, @"12701470464");
+	#[cfg(feature = "with-karura-runtime")]
+	assert_debug_snapshot!(amount, @"12726949843");
+	#[cfg(feature = "with-acala-runtime")]
+	assert_debug_snapshot!(amount, @"12726949843");
 }
 
 fn with_fee_call_works(
 	with_fee_call: <Runtime as module_transaction_payment::Config>::RuntimeCall,
 	is_aggregated_call: bool,
-) {
+) -> Balance {
 	let init_amount = 100 * dollar(LIQUID_CURRENCY);
 	let ausd_acc: AccountId = TransactionPaymentPalletId::get().into_sub_account_truncating(USD_CURRENCY);
-	ExtBuilder::default()
+	return ExtBuilder::default()
 		.balances(vec![
 			// ALICE for stable asset, BOB and CHARLIE for transaction payment
 			(
@@ -440,21 +458,19 @@ fn with_fee_call_works(
 
 			// un-wrapped call use dex swap only `AlternativeFeeSwapPath` is set, otherwise use fee pool.
 			// user don't have USD(which use fee pool), and also don't have native token, then failed.
-			assert_noop!(
-				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
-					&CALL,
-					&INFO,
-					50,
-				),
+			assert_eq!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0)
+					.validate_and_prepare(Some(AccountId::from(BOB)).into(), &CALL, &INFO, 50, 0)
+					.unwrap_err(),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(BOB)).into(),
 					&with_fee_call,
 					&INFO,
-					50
+					50,
+					0
 				)
 			);
 			if is_aggregated_call {
@@ -475,37 +491,52 @@ fn with_fee_call_works(
 				RuntimeEvent::Dex(module_dex::Event::Swap { .. })
 			)));
 			// Bob don't have any USD currency.
-			assert_noop!(
-				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-					&AccountId::from(BOB),
-					&with_fee_currency_call(USD_CURRENCY),
-					&INFO,
-					50
-				),
+			assert_eq!(
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0)
+					.validate_and_prepare(
+						Some(AccountId::from(BOB)).into(),
+						&with_fee_currency_call(USD_CURRENCY),
+						&INFO,
+						50,
+						0
+					)
+					.unwrap_err(),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 
 			// Charlie have USD currency.
 			assert_ok!(
-				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate(
-					&AccountId::from(CHARLIE),
+				<module_transaction_payment::ChargeTransactionPayment::<Runtime>>::from(0).validate_and_prepare(
+					Some(AccountId::from(CHARLIE)).into(),
 					&with_fee_currency_call(USD_CURRENCY),
 					&INFO,
-					50
+					50,
+					0
 				)
 			);
-			#[cfg(feature = "with-karura-runtime")]
-			let amount = 12726949827u128;
-			#[cfg(feature = "with-acala-runtime")]
-			let amount = 12726949827u128;
-			#[cfg(feature = "with-mandala-runtime")]
-			let amount = 12701470448u128;
 
-			System::assert_has_event(RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
-				currency_id: USD_CURRENCY,
-				from: AccountId::from(CHARLIE),
-				to: ausd_acc.clone(),
-				amount,
-			}));
+			let amount = System::events()
+				.iter()
+				.filter_map(|r| {
+					if let RuntimeEvent::Tokens(orml_tokens::Event::Transfer {
+						ref currency_id,
+						ref from,
+						ref to,
+						amount,
+					}) = r.event
+					{
+						if *currency_id == USD_CURRENCY && *from == AccountId::from(CHARLIE) && *to == ausd_acc {
+							Some(amount)
+						} else {
+							None
+						}
+					} else {
+						None
+					}
+				})
+				.next()
+				.unwrap();
+
+			return amount;
 		});
 }

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -45,6 +45,7 @@ pub type Amount = i64;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CAROL: AccountId = 3;
+pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::ForeignAsset(255);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
@@ -68,7 +69,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -82,7 +82,6 @@ impl orml_tokens::Config for Runtime {
 }
 
 impl orml_auction::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type AuctionId = AuctionId;
 	type Handler = AuctionManagerModule;
@@ -104,7 +103,6 @@ parameter_types! {
 }
 
 impl module_cdp_treasury::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = AuctionManagerModule;
@@ -141,6 +139,7 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::from_currency_ids(AUSD, BTC).unwrap(),
 		TradingPair::from_currency_ids(DOT, BTC).unwrap(),
@@ -149,11 +148,11 @@ parameter_types! {
 }
 
 impl module_dex::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = ConstU32<4>;
 	type PalletId = DEXPalletId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
@@ -182,7 +181,6 @@ parameter_types! {
 }
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type Auction = AuctionModule;
 	type MinimumIncrementSize = MinimumIncrementSize;
@@ -212,12 +210,21 @@ construct_runtime!(
 
 pub type Extrinsic = TestXt<RuntimeCall, ()>;
 
-impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
+impl<LocalCall> frame_system::offchain::CreateTransactionBase<LocalCall> for Runtime
 where
 	RuntimeCall: From<LocalCall>,
 {
-	type OverarchingCall = RuntimeCall;
+	type RuntimeCall = RuntimeCall;
 	type Extrinsic = Extrinsic;
+}
+
+impl<LocalCall> frame_system::offchain::CreateBare<LocalCall> for Runtime
+where
+	RuntimeCall: From<LocalCall>,
+{
+	fn create_bare(call: Self::RuntimeCall) -> Self::Extrinsic {
+		Extrinsic::new_bare(call)
+	}
 }
 
 pub struct ExtBuilder {

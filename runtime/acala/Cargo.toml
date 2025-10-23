@@ -1,8 +1,8 @@
 [package]
 name = "acala-runtime"
-version = "2.25.0"
-authors = ["Acala Developers"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 build = "build.rs"
 
 [dependencies]
@@ -16,6 +16,7 @@ hex-literal = { workspace = true }
 
 # substrate
 frame-executive = { workspace = true }
+frame-metadata-hash-extension = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 frame-system-rpc-runtime-api = { workspace = true }
@@ -70,6 +71,7 @@ polkadot-parachain-primitives = { workspace = true }
 xcm = { workspace = true }
 xcm-executor = { workspace = true }
 xcm-builder = { workspace = true }
+xcm-runtime-apis = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-benchmarks = { workspace = true, optional = true }
 polkadot-runtime-common = { workspace = true }
@@ -119,7 +121,7 @@ module-liquid-crowdloan = { workspace = true }
 module-loans = { workspace = true }
 module-nft = { workspace = true }
 module-prices = { workspace = true }
-module-relaychain = { workspace = true }
+module-assethub = { workspace = true }
 module-session-manager = { workspace = true }
 module-support = { workspace = true }
 module-transaction-pause = { workspace = true }
@@ -137,6 +139,9 @@ nutsfinance-stable-asset = { workspace = true }
 libsecp256k1 = { workspace = true, optional = true }
 frame-benchmarking = { workspace = true, optional = true }
 
+# genesis builder
+sp-genesis-builder = { workspace = true, optional = true }
+
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, optional = true }
 
@@ -153,6 +158,7 @@ std = [
 	"serde_json/std",
 
 	"frame-benchmarking/std",
+	"frame-metadata-hash-extension/std",
 	"frame-executive/std",
 	"frame-support/std",
 	"frame-system-rpc-runtime-api/std",
@@ -208,6 +214,7 @@ std = [
 	"polkadot-parachain-primitives/std",
 	"xcm-builder/std",
 	"xcm-executor/std",
+	"xcm-runtime-apis/std",
 	"xcm/std",
 	"polkadot-runtime-common/std",
 	"parachains-common/std",
@@ -254,7 +261,7 @@ std = [
 	"module-loans/std",
 	"module-nft/std",
 	"module-prices/std",
-	"module-relaychain/std",
+	"module-assethub/std",
 	"module-session-manager/std",
 	"module-support/std",
 	"module-transaction-pause/std",
@@ -294,9 +301,10 @@ runtime-benchmarks = [
 	"cumulus-pallet-parachain-system/runtime-benchmarks",
 	"cumulus-pallet-xcmp-queue/runtime-benchmarks",
 	"cumulus-primitives-utility/runtime-benchmarks",
-	"pallet-xcm/runtime-benchmarks",
 	"pallet-xcm-benchmarks/runtime-benchmarks",
+	"pallet-xcm/runtime-benchmarks",
 	"polkadot-parachain-primitives/runtime-benchmarks",
+	"polkadot-runtime-common/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
 
@@ -318,12 +326,6 @@ runtime-benchmarks = [
 
 	"sp-api/disable-logging",
 ]
-# When enabled, the runtime api will not be build.
-#
-# This is required by Cumulus to access certain types of the
-# runtime without clashing with the runtime api exported functions
-# in WASM.
-disable-runtime-api = []
 
 # A feature that should be enabled when the runtime should be build for on-chain
 # deployment. This will disable stuff that shouldn't be part of the on-chain wasm
@@ -411,13 +413,14 @@ try-runtime = [
 # By default some types have documentation, `no-metadata-docs` allows to reduce the documentation
 # in the metadata.
 no-metadata-docs = ["frame-support/no-metadata-docs"]
-# By default some types have documentation, `full-metadata-docs` allows to add documentation to
-# more types in the metadata.
-full-metadata-docs = ["frame-support/full-metadata-docs"]
 
 tracing = [
 	"module-evm/tracing",
 	"module-evm-bridge/tracing",
 	"module-evm-rpc-runtime-api/tracing",
 	"runtime-common/tracing"
+]
+
+genesis-builder = [
+	"sp-genesis-builder",
 ]

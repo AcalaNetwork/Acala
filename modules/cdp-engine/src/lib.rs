@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -27,10 +27,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::useless_conversion)]
 
-use frame_support::{pallet_prelude::*, traits::UnixTime, transactional, BoundedVec, PalletId};
+use frame_support::{
+	pallet_prelude::*, traits::ExistenceRequirement, traits::UnixTime, transactional, BoundedVec, PalletId,
+};
 use frame_system::{
-	offchain::{SendTransactionTypes, SubmitTransaction},
+	offchain::{CreateBare, SubmitTransaction},
 	pallet_prelude::*,
 };
 use module_support::{
@@ -80,7 +83,9 @@ pub type LoansOf<T> = module_loans::Pallet<T>;
 pub type CurrencyOf<T> = <T as Config>::Currency;
 
 /// Risk management params
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Encode, Decode, DecodeWithMemTracking, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo, MaxEncodedLen,
+)]
 pub struct RiskManagementParams {
 	/// Maximum total debit value generated from it, when reach the hard
 	/// cap, CDP's owner cannot issue more stablecoin under the collateral
@@ -113,7 +118,7 @@ type ChangeOptionRatio = Change<Option<Ratio>>;
 type ChangeBalance = Change<Balance>;
 
 /// Status of CDP
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum CDPStatus {
 	Safe,
 	Unsafe,
@@ -125,9 +130,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + module_loans::Config + SendTransactionTypes<Call<Self>> {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
+	pub trait Config: frame_system::Config + module_loans::Config + CreateBare<Call<Self>> {
 		/// The origin which may update risk management parameters. Root can
 		/// always do this.
 		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
@@ -416,15 +419,12 @@ pub mod module {
 			if let Err(e) = Self::_offchain_worker() {
 				log::info!(
 					target: "cdp-engine offchain worker",
-					"cannot run offchain worker at {:?}: {:?}",
-					now,
-					e,
+					"cannot run offchain worker at {now:?}: {e:?}",
 				);
 			} else {
 				log::debug!(
 					target: "cdp-engine offchain worker",
-					"offchain worker start at block: {:?} already done!",
-					now,
+					"offchain worker start at block: {now:?} already done!",
 				);
 			}
 		}
@@ -647,9 +647,8 @@ impl<T: Config> Pallet<T> {
 							Err(e) => {
 								log::warn!(
 									target: "cdp-engine",
-									"on_system_surplus: failed to on system surplus {:?}: {:?}. \
+									"on_system_surplus: failed to on system surplus {issued_stable_coin_balance:?}: {e:?}. \
 									This is unexpected but should be safe",
-									issued_stable_coin_balance, e
 								);
 							}
 						}
@@ -670,11 +669,11 @@ impl<T: Config> Pallet<T> {
 			currency_id,
 			who: who.clone(),
 		};
-		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
+		let xt = T::create_bare(call.into());
+		if SubmitTransaction::<T, Call<T>>::submit_transaction(xt).is_err() {
 			log::info!(
 				target: "cdp-engine offchain worker",
-				"submit unsigned liquidation tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
-				who, currency_id,
+				"submit unsigned liquidation tx for \nCDP - AccountId {who:?} CurrencyId {currency_id:?} \nfailed!",
 			);
 		}
 	}
@@ -685,11 +684,11 @@ impl<T: Config> Pallet<T> {
 			currency_id,
 			who: who.clone(),
 		};
-		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
+		let xt = T::create_bare(call.into());
+		if SubmitTransaction::<T, Call<T>>::submit_transaction(xt).is_err() {
 			log::info!(
 				target: "cdp-engine offchain worker",
-				"submit unsigned settlement tx for \nCDP - AccountId {:?} CurrencyId {:?} \nfailed!",
-				who, currency_id,
+				"submit unsigned settlement tx for \nCDP - AccountId {who:?} CurrencyId {currency_id:?} \nfailed!",
 			);
 		}
 	}
@@ -733,9 +732,7 @@ impl<T: Config> Pallet<T> {
 			None => {
 				log::debug!(
 					target: "cdp-engine offchain worker",
-					"collateral_currency was removed, need to reset the offchain worker: collateral_position is {:?}, collateral_currency_ids: {:?}",
-					collateral_position,
-					collateral_currency_ids
+					"collateral_currency was removed, need to reset the offchain worker: collateral_position is {collateral_position:?}, collateral_currency_ids: {collateral_currency_ids:?}",
 				);
 				to_be_continue.set(&(0, Option::<Vec<u8>>::None));
 				return Ok(());
@@ -780,13 +777,7 @@ impl<T: Config> Pallet<T> {
 		let iteration_end_time = sp_io::offchain::timestamp();
 		log::debug!(
 			target: "cdp-engine offchain worker",
-			"iteration info:\n max iterations is {:?}\n currency id: {:?}, start key: {:?}, iterate count: {:?}\n iteration start at: {:?}, end at: {:?}, execution time: {:?}\n",
-			max_iterations,
-			currency_id,
-			start_key,
-			iteration_count,
-			iteration_start_time,
-			iteration_end_time,
+			"iteration info:\n max iterations is {max_iterations:?}\n currency id: {currency_id:?}, start key: {start_key:?}, iterate count: {iteration_count:?}\n iteration start at: {iteration_start_time:?}, end at: {iteration_end_time:?}, execution time: {:?}\n",
 			iteration_end_time.diff(&iteration_start_time)
 		);
 
@@ -971,7 +962,7 @@ impl<T: Config> Pallet<T> {
 	/// and the collateral ratio will be reduced but CDP must still be at valid risk.
 	/// For single token collateral, try to swap collateral by DEX. For lp token collateral,
 	/// try to swap lp components by DEX first, then add liquidity to obtain lp token,
-	/// CDP owner may receive some remainer assets.
+	/// CDP owner may receive some remainder assets.
 	#[transactional]
 	pub fn expand_position_collateral(
 		who: &T::AccountId,
@@ -1013,11 +1004,23 @@ impl<T: Config> Pallet<T> {
 				)?;
 
 				// refund unused lp component tokens
-				if let Some(remainer) = available_0.checked_sub(consumption_0) {
-					<T as Config>::Currency::transfer(token_0, &loans_module_account, who, remainer)?;
+				if let Some(remainder) = available_0.checked_sub(consumption_0) {
+					<T as Config>::Currency::transfer(
+						token_0,
+						&loans_module_account,
+						who,
+						remainder,
+						ExistenceRequirement::AllowDeath,
+					)?;
 				}
-				if let Some(remainer) = available_1.checked_sub(consumption_1) {
-					<T as Config>::Currency::transfer(token_1, &loans_module_account, who, remainer)?;
+				if let Some(remainder) = available_1.checked_sub(consumption_1) {
+					<T as Config>::Currency::transfer(
+						token_1,
+						&loans_module_account,
+						who,
+						remainder,
+						ExistenceRequirement::AllowDeath,
+					)?;
 				}
 
 				actual_increase_lp
@@ -1119,6 +1122,7 @@ impl<T: Config> Pallet<T> {
 				&loans_module_account,
 				who,
 				actual_stable_amount.saturating_sub(previous_debit_value),
+				ExistenceRequirement::AllowDeath,
 			)?;
 
 			(previous_debit_value, debit)
@@ -1448,9 +1452,8 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 						log::error!(
 							target: "cdp-engine",
 							"LiquidateViaContracts: transfer collateral to contract failed. \
-							Collateral: {:?}, amount: {:?} contract: {:?}, error: {:?}. \
+							Collateral: {currency_id:?}, amount: {collateral_supply:?} contract: {contract:?}, error: {e:?}. \
 							This is unexpected, need extra action.",
-							currency_id, collateral_supply, contract, e,
 						);
 					} else {
 						// notify liquidation success
@@ -1475,16 +1478,21 @@ impl<T: Config> LiquidateCollateral<T::AccountId> for LiquidateViaContracts<T> {
 							log::error!(
 								target: "cdp-engine",
 								"LiquidateViaContracts: refund rest collateral to CDP owner failed. \
-								Collateral: {:?}, amount: {:?} error: {:?}. \
+								Collateral: {currency_id:?}, amount: {refund_collateral_amount:?} error: {e:?}. \
 								This is unexpected, need extra action.",
-								currency_id, refund_collateral_amount, e,
 							);
 						}
 					}
 					return Ok(());
 				} else if repayment > 0 {
 					// insufficient repayment, refund
-					CurrencyOf::<T>::transfer(stable_coin, &repay_dest_account_id, &contract_account_id, repayment)?;
+					CurrencyOf::<T>::transfer(
+						stable_coin,
+						&repay_dest_account_id,
+						&contract_account_id,
+						repayment,
+						ExistenceRequirement::AllowDeath,
+					)?;
 					// notify liquidation failed
 					T::LiquidationEvmBridge::on_repayment_refund(
 						InvokeContext {

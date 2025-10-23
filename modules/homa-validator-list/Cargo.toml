@@ -1,8 +1,8 @@
 [package]
 name = "module-homa-validator-list"
-version = "2.25.0"
-authors = ["Acala Developers"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 serde = { workspace = true, features = ["std"], optional = true }

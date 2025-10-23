@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -25,7 +25,8 @@ use crate::runner::{
 	stack::SubstrateStackState,
 	state::{StackExecutor, StackState, StackSubstateMetadata},
 };
-use frame_support::{assert_noop, assert_ok, dispatch::DispatchErrorWithPostInfo};
+use frame_support::{assert_noop, assert_ok};
+use insta::assert_debug_snapshot;
 use module_support::{mocks::MockAddressMapping, AddressMapping};
 use sp_core::{
 	bytes::{from_hex, to_hex},
@@ -159,6 +160,7 @@ fn should_create_and_call_contract() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
@@ -184,10 +186,11 @@ fn should_create_and_call_contract() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 		assert_eq!(
-			U256::from(result.value.as_slice()),
+			U256::from_big_endian(result.value.as_slice()),
 			6.into(),
 		);
 
@@ -234,6 +237,7 @@ fn create_reverts_with_message() {
 			12_000_000,
 			12_000_000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -268,6 +272,7 @@ fn call_reverts_with_message() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 
@@ -289,6 +294,7 @@ fn call_reverts_with_message() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
@@ -339,6 +345,7 @@ fn should_publish_payable_contract() {
 			1000000,
 			100000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -360,6 +367,7 @@ fn should_publish_payable_contract() {
 			convert_decimals_to_evm(amount),
 			100000,
 			100000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -428,6 +436,7 @@ fn should_transfer_from_contract() {
 			10000000,
 			10000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.expect("create shouldn't fail");
@@ -455,6 +464,7 @@ fn should_transfer_from_contract() {
 			convert_decimals_to_evm(amount),
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -485,6 +495,7 @@ fn should_transfer_from_contract() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -513,6 +524,7 @@ fn should_transfer_from_contract() {
 			convert_decimals_to_evm(amount),
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -544,6 +556,7 @@ fn should_transfer_from_contract() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -573,12 +586,13 @@ fn should_transfer_from_contract() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(
-			U256::from(result.value.as_slice()),
+			U256::from_big_endian(result.value.as_slice()),
 			U256::from(convert_decimals_to_evm(balance(charlie())))
 		);
 	})
@@ -609,6 +623,7 @@ fn contract_should_publish_contracts() {
 			1000000000,
 			1000000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -637,6 +652,7 @@ fn contract_should_publish_contracts() {
 			convert_decimals_to_evm(amount),
 			1000000000,
 			1000000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -687,6 +703,7 @@ fn contract_should_publish_contracts_without_payable() {
 			1000000000,
 			1000000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -709,6 +726,7 @@ fn contract_should_publish_contracts_without_payable() {
 			0,
 			1000000000,
 			1000000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -754,6 +772,7 @@ fn publish_factory() {
 			0,
 			2_000_000,
 			5000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -945,6 +964,7 @@ fn should_transfer_maintainer() {
 			12_000_000,
 			12_000_000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1016,13 +1036,14 @@ fn should_publish() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 		assert_eq!(result.used_storage, 0);
 
 		// create contract
-		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![],<Runtime as Config>::config()).unwrap();
+		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![], vec![], <Runtime as Config>::config()).unwrap();
 		let contract_address = result.value;
 
 		assert_eq!(result.used_storage, 284);
@@ -1044,6 +1065,7 @@ fn should_publish() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		));
@@ -1079,6 +1101,7 @@ fn should_publish() {
 			1000000,
 			1000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		));
 
@@ -1103,6 +1126,7 @@ fn should_publish() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		));
@@ -1134,7 +1158,7 @@ fn should_publish_free() {
 		assert_ok!(EVM::enable_account_contract_development(&alice_account_id));
 
 		// create contract
-		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![], <Runtime as Config>::config()).unwrap();
+		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![], vec![], <Runtime as Config>::config()).unwrap();
 		let contract_address = result.value;
 
 		// multiply(2, 3)
@@ -1174,6 +1198,7 @@ fn should_publish_free() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		));
@@ -1264,6 +1289,7 @@ fn should_set_code() {
 			0,
 			21_000_000,
 			21_000_000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -1417,6 +1443,7 @@ fn should_selfdestruct_without_schedule_task() {
 			1000000,
 			100000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1516,6 +1543,7 @@ fn should_selfdestruct_with_schedule_task() {
 			1000000,
 			100000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1557,7 +1585,7 @@ fn should_selfdestruct_with_schedule_task() {
 			let mut input: Vec<u8> = from_hex("0x7b8d56e3").unwrap();
 
 			let mut buf = [0u8; 32];
-			U256::from(i).to_big_endian(&mut buf);
+			U256::from(i).write_as_big_endian(&mut buf);
 			input.append(&mut H256::from_slice(&buf).as_bytes().to_vec()); // key
 			input.append(&mut H256::from_slice(&buf).as_bytes().to_vec()); // value
 
@@ -1669,6 +1697,7 @@ fn storage_limit_should_work() {
 			200_000,
 			1000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1730,6 +1759,7 @@ fn storage_limit_should_work() {
 			1000000000,
 			1000000000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1784,6 +1814,7 @@ fn storage_limit_should_work() {
 			1000000000,
 			452,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1826,6 +1857,7 @@ fn evm_execute_mode_should_work() {
 			0,
 			1000000000,
 			1000000000,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -2038,6 +2070,7 @@ fn should_update_storage() {
 			500000,
 			100000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -2091,6 +2124,7 @@ fn should_update_storage() {
 			1000000,
 			STORAGE_SIZE,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -2109,6 +2143,7 @@ fn should_update_storage() {
 			0,
 			1000000,
 			STORAGE_SIZE,
+			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
@@ -2483,6 +2518,7 @@ fn reserve_deposit_makes_user_developer() {
 			&<Runtime as Config>::AddressMapping::get_account_id(&alice()),
 			&who,
 			DEVELOPER_DEPOSIT,
+			ExistenceRequirement::AllowDeath
 		));
 
 		assert_ok!(<Runtime as Config>::Currency::ensure_reserved_named(
@@ -2529,77 +2565,120 @@ fn strict_call_works() {
 			500000,
 			100000,
 			vec![],
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
 
 		let contract_address = result.value;
 
-		assert_eq!(
-			Utility::batch_all(
-				RuntimeOrigin::signed(bob_account_id.clone()),
-				vec![
-					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-						dest: bob_account_id.clone(),
-						value: 5
-					}),
-					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-						dest: bob_account_id.clone(),
-						value: 6
-					}),
-					// call method `set(123)`
-					RuntimeCall::EVM(evm_mod::Call::strict_call {
-						target: contract_address,
-						input: from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b")
-							.unwrap(),
-						value: 0,
-						gas_limit: 1000000,
-						storage_limit: 0,
-						access_list: vec![],
-					})
-				]
-			),
-			Err(DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1441274680, 7186)),
-					pays_fee: Pays::Yes
-				},
-				error: Error::<Runtime>::NoPermission.into(),
-			})
+		let res1 = Utility::batch_all(
+			RuntimeOrigin::signed(bob_account_id.clone()),
+			vec![
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+					dest: bob_account_id.clone(),
+					value: 5,
+				}),
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+					dest: bob_account_id.clone(),
+					value: 6,
+				}),
+				// call method `set(123)`
+				RuntimeCall::EVM(evm_mod::Call::strict_call {
+					target: contract_address,
+					input: from_hex("0x60fe47b1000000000000000000000000000000000000000000000000000000000000007b")
+						.unwrap(),
+					value: 0,
+					gas_limit: 1000000,
+					storage_limit: 0,
+					access_list: vec![],
+				}),
+			],
 		);
 
-		assert_eq!(
-			Utility::batch_all(
-				RuntimeOrigin::signed(alice_account_id.clone()),
-				vec![
-					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-						dest: bob_account_id.clone(),
-						value: 5
-					}),
-					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-						dest: bob_account_id.clone(),
-						value: 6
-					}),
-					// call undefined method
-					RuntimeCall::EVM(evm_mod::Call::strict_call {
-						target: contract_address,
-						input: from_hex("0x00000000000000000000000000000000000000000000000000000000000000000000007b")
-							.unwrap(),
-						value: 0,
-						gas_limit: 1000000,
-						storage_limit: 0,
-						access_list: vec![],
-					})
-				]
-			),
-			Err(DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: Some(Weight::from_parts(1440318382, 7186)),
-					pays_fee: Pays::Yes
-				},
-				error: Error::<Runtime>::StrictCallFailed.into(),
-			})
+		assert_debug_snapshot!(res1, @r###"
+  Err(
+      DispatchErrorWithPostInfo {
+          post_info: PostDispatchInfo {
+              actual_weight: Some(
+                  Weight {
+                      ref_time: 1482966087,
+                      proof_size: 11183,
+                  },
+              ),
+              pays_fee: Yes,
+          },
+          error: Module(
+              ModuleError {
+                  index: 2,
+                  error: [
+                      2,
+                      0,
+                      0,
+                      0,
+                  ],
+                  message: Some(
+                      "NoPermission",
+                  ),
+              },
+          ),
+      },
+  )
+  "###);
+
+		let res2 = Utility::batch_all(
+			RuntimeOrigin::signed(alice_account_id.clone()),
+			vec![
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+					dest: bob_account_id.clone(),
+					value: 5,
+				}),
+				RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+					dest: bob_account_id.clone(),
+					value: 6,
+				}),
+				// call undefined method
+				RuntimeCall::EVM(evm_mod::Call::strict_call {
+					target: contract_address,
+					input: from_hex("0x00000000000000000000000000000000000000000000000000000000000000000000007b")
+						.unwrap(),
+					value: 0,
+					gas_limit: 1000000,
+					storage_limit: 0,
+					access_list: vec![],
+				}),
+			],
 		);
+
+		assert_debug_snapshot!(res2, @r###"
+  Err(
+      DispatchErrorWithPostInfo {
+          post_info: PostDispatchInfo {
+              actual_weight: Some(
+                  Weight {
+                      ref_time: 1482009789,
+                      proof_size: 11183,
+                  },
+              ),
+              pays_fee: Yes,
+          },
+          error: Module(
+              ModuleError {
+                  index: 2,
+                  error: [
+                      15,
+                      0,
+                      0,
+                      0,
+                  ],
+                  message: Some(
+                      "StrictCallFailed",
+                  ),
+              },
+          ),
+      },
+  )
+  "###);
 
 		assert_ok!(Utility::batch_all(
 			RuntimeOrigin::signed(alice_account_id.clone()),
@@ -2677,7 +2756,8 @@ fn aggregated_storage_logs_works() {
 		let cost_per_byte = convert_decimals_from_evm(StorageDepositPerByte::get()).unwrap_or_default();
 
 		// create contract
-		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 500000, 100000, vec![], config).unwrap();
+		let result =
+			<Runtime as Config>::Runner::create(alice(), contract, 0, 500000, 100000, vec![], vec![], config).unwrap();
 
 		let contract_address = result.value;
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
@@ -2690,6 +2770,7 @@ fn aggregated_storage_logs_works() {
 			0,
 			30000,
 			0,
+			vec![],
 			vec![],
 			config,
 		)
@@ -3021,6 +3102,7 @@ fn tracer_works() {
 				0,
 				500000,
 				100000,
+				vec![],
 				vec![],
 				<Runtime as Config>::config(),
 			).unwrap()

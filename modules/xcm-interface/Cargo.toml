@@ -1,8 +1,8 @@
 [package]
 name = "module-xcm-interface"
-version = "2.25.0"
-authors = ["Acala Developers"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 log = { workspace = true }
@@ -16,20 +16,19 @@ sp-core = { workspace = true }
 sp-std = { workspace = true }
 pallet-xcm = { workspace = true }
 xcm = { workspace = true }
+xcm-executor = { workspace = true }
 primitives = { workspace = true }
-orml-traits = { workspace = true }
 module-support = { workspace = true }
 
 [dev-dependencies]
-insta = { version = "1.31.0" }
+insta = { workspace = true }
 cumulus-primitives-core = { workspace = true, features = ["std"] }
 pallet-balances = { workspace = true, features = ["std"] }
 sp-io = { workspace = true, features = ["std"] }
 xcm-builder = { workspace = true, features = ["std"] }
 xcm-executor = { workspace = true, features = ["std"] }
-orml-tokens = { workspace = true, features = ["std"] }
 module-currencies = { workspace = true, features = ["std"] }
-module-relaychain = { workspace = true, features = ["std"] }
+module-assethub = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
@@ -39,7 +38,6 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"module-support/std",
-	"orml-traits/std",
 	"pallet-xcm/std",
 	"primitives/std",
 	"scale-info/std",
@@ -47,6 +45,7 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 	"xcm/std",
+	"xcm-executor/std"
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",

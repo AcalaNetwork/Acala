@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -67,7 +67,6 @@ parameter_type_with_key! {
 	};
 }
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -94,6 +93,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -111,7 +111,6 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -140,7 +139,6 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = ConstU32<1>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<10>;
-	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = ();
@@ -166,7 +164,6 @@ impl module_evm_bridge::Config for Runtime {
 }
 
 impl module_evm_accounts::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ChainId = ();
 	type AddressMapping = EvmAddressMapping<Runtime>;
@@ -181,7 +178,6 @@ parameter_types! {
 }
 
 impl module_honzon_bridge::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type StableCoinCurrencyId = StableCoinCurrencyId;
 	type HonzonBridgeAccount = HonzonBridgeAccount;
@@ -243,12 +239,12 @@ pub fn deploy_contracts() {
 			],
 			data: {
 				let mut buf = [0u8; 32];
-				U256::from(ALICE_BALANCE).to_big_endian(&mut buf);
+				U256::from(ALICE_BALANCE).write_as_big_endian(&mut buf);
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
-		used_gas: 1215220,
-		used_storage: 4996,
+		used_gas: 1013342,
+		used_storage: 4028,
 	}));
 }
 
@@ -275,6 +271,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self.native_balances,
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

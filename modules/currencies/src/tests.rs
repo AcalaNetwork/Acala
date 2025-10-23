@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -471,7 +471,12 @@ fn native_currency_should_work() {
 			assert_eq!(NativeCurrency::free_balance(&alice()), 50);
 			assert_eq!(NativeCurrency::free_balance(&bob()), 150);
 
-			assert_ok!(NativeCurrency::transfer(&alice(), &bob(), 10));
+			assert_ok!(NativeCurrency::transfer(
+				&alice(),
+				&bob(),
+				10,
+				ExistenceRequirement::AllowDeath
+			));
 			assert_eq!(NativeCurrency::free_balance(&alice()), 40);
 			assert_eq!(NativeCurrency::free_balance(&bob()), 160);
 
@@ -505,12 +510,22 @@ fn basic_currency_adapting_pallet_balances_transfer() {
 		.one_hundred_for_alice_n_bob()
 		.build()
 		.execute_with(|| {
-			assert_ok!(AdaptedBasicCurrency::transfer(&alice(), &bob(), 50));
+			assert_ok!(AdaptedBasicCurrency::transfer(
+				&alice(),
+				&bob(),
+				50,
+				ExistenceRequirement::AllowDeath
+			));
 			assert_eq!(PalletBalances::total_balance(&alice()), 50);
 			assert_eq!(PalletBalances::total_balance(&bob()), 150);
 
 			// creation fee
-			assert_ok!(AdaptedBasicCurrency::transfer(&alice(), &eva(), 10));
+			assert_ok!(AdaptedBasicCurrency::transfer(
+				&alice(),
+				&eva(),
+				10,
+				ExistenceRequirement::AllowDeath
+			));
 			assert_eq!(PalletBalances::total_balance(&alice()), 40);
 			assert_eq!(PalletBalances::total_balance(&eva()), 10);
 		});
@@ -554,7 +569,11 @@ fn basic_currency_adapting_pallet_balances_withdraw() {
 		.one_hundred_for_alice_n_bob()
 		.build()
 		.execute_with(|| {
-			assert_ok!(AdaptedBasicCurrency::withdraw(&alice(), 100));
+			assert_ok!(AdaptedBasicCurrency::withdraw(
+				&alice(),
+				100,
+				ExistenceRequirement::AllowDeath
+			));
 			assert_eq!(PalletBalances::total_balance(&alice()), 0);
 			assert_eq!(PalletBalances::total_issuance(), 100);
 		});
@@ -645,7 +664,8 @@ fn call_event_should_work() {
 				X_TOKEN_ID,
 				&alice(),
 				&bob(),
-				10
+				10,
+				ExistenceRequirement::AllowDeath
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 40);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 160);
@@ -677,7 +697,8 @@ fn call_event_should_work() {
 			assert_ok!(<Currencies as MultiCurrency<AccountId>>::withdraw(
 				X_TOKEN_ID,
 				&alice(),
-				20
+				20,
+				ExistenceRequirement::AllowDeath
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 120);
 			System::assert_last_event(RuntimeEvent::Tokens(orml_tokens::Event::Withdrawn {
@@ -1231,7 +1252,12 @@ fn erc20_withdraw_deposit_works() {
 			);
 
 			// withdraw: sender to erc20 holding account
-			assert_ok!(Currencies::withdraw(CurrencyId::Erc20(erc20_address()), &alice(), 100));
+			assert_ok!(Currencies::withdraw(
+				CurrencyId::Erc20(erc20_address()),
+				&alice(),
+				100,
+				ExistenceRequirement::AllowDeath
+			));
 			assert_eq!(
 				200,
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &erc20_holding_account)
@@ -1299,11 +1325,11 @@ fn fungible_inspect_trait_should_work() {
 			// Test for Inspect::balance and Inspect::total_balance
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(NATIVE_CURRENCY_ID, &alice()),
-				150040
+				159720
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::total_balance(NATIVE_CURRENCY_ID, &alice()),
-				150040
+				159720
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::balance(X_TOKEN_ID, &alice()),
@@ -1313,10 +1339,10 @@ fn fungible_inspect_trait_should_work() {
 				<Currencies as fungibles::Inspect<_>>::balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				ALICE_BALANCE
 			);
-			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 150040);
+			assert_eq!(<NativeCurrency as fungible::Inspect<_>>::balance(&alice()), 159720);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::balance(&alice()),
-				150040
+				159720
 			);
 
 			// Test for Inspect::reducible_balance. No locks or reserves
@@ -1328,7 +1354,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				150038
+				159718
 			);
 			assert_eq!(
 				<NativeCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1336,7 +1362,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				150038
+				159718
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1344,7 +1370,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				150038
+				159718
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1374,7 +1400,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				150040
+				159720
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1400,7 +1426,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				150040
+				159720
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1408,7 +1434,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				150040
+				159720
 			);
 
 			// Set some locks
@@ -1423,7 +1449,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1449,7 +1475,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1457,7 +1483,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Preserve,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 
 			assert_eq!(
@@ -1467,7 +1493,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 			assert_eq!(
 				<Currencies as fungibles::Inspect<_>>::reducible_balance(
@@ -1493,7 +1519,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 			assert_eq!(
 				<AdaptedBasicCurrency as fungible::Inspect<_>>::reducible_balance(
@@ -1501,7 +1527,7 @@ fn fungible_inspect_trait_should_work() {
 					Preservation::Expendable,
 					Fortitude::Polite
 				),
-				149040
+				158720
 			);
 
 			// Test for Inspect::can_deposit
@@ -1626,11 +1652,11 @@ fn fungible_inspect_trait_should_work() {
 			);
 
 			assert_eq!(
-				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 149040 + 1),
+				<Currencies as fungibles::Inspect<_>>::can_withdraw(NATIVE_CURRENCY_ID, &alice(), 158720 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(
-				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 149040 + 1),
+				<AdaptedBasicCurrency as fungible::Inspect<_>>::can_withdraw(&alice(), 158720 + 1),
 				WithdrawConsequence::Frozen
 			);
 			assert_eq!(
@@ -1815,6 +1841,7 @@ fn fungible_mutate_trait_should_work() {
 				NATIVE_CURRENCY_ID,
 				&alice(),
 				1000,
+				Preservation::Expendable,
 				Precision::Exact,
 				Fortitude::Force,
 			));
@@ -1843,6 +1870,7 @@ fn fungible_mutate_trait_should_work() {
 				X_TOKEN_ID,
 				&alice(),
 				1000,
+				Preservation::Expendable,
 				Precision::Exact,
 				Fortitude::Force,
 			));
@@ -1864,6 +1892,7 @@ fn fungible_mutate_trait_should_work() {
 				CurrencyId::Erc20(erc20_address()),
 				&alice(),
 				0,
+				Preservation::Expendable,
 				Precision::Exact,
 				Fortitude::Force,
 			));
@@ -1873,6 +1902,7 @@ fn fungible_mutate_trait_should_work() {
 					CurrencyId::Erc20(erc20_address()),
 					&alice(),
 					1,
+					Preservation::Expendable,
 					Precision::Exact,
 					Fortitude::Force,
 				),
@@ -1887,6 +1917,7 @@ fn fungible_mutate_trait_should_work() {
 			assert_ok!(<AdaptedBasicCurrency as fungible::Mutate<_>>::burn_from(
 				&alice(),
 				1000,
+				Preservation::Expendable,
 				Precision::Exact,
 				Fortitude::Force,
 			));
@@ -1902,6 +1933,7 @@ fn fungible_mutate_trait_should_work() {
 					NATIVE_CURRENCY_ID,
 					&alice(),
 					99_999,
+					Preservation::Expendable,
 					Precision::Exact,
 					Fortitude::Force,
 				),
@@ -2914,7 +2946,7 @@ fn sweep_dust_native_currency_works() {
 			},
 		));
 
-		// TODO: seems the insert directly does not work now, it's probably because of the new machanism of
+		// TODO: seems the insert directly does not work now, it's probably because of the new mechanism of
 		// provider and consumer: https://github.com/paritytech/substrate/blob/569aae5341ea0c1d10426fa1ec13a36c0b64393b/frame/system/src/lib.rs#L1692
 		// consider deposit_creating alive account, then decrease the ED to fix this test!
 		assert_eq!(
@@ -3012,7 +3044,7 @@ fn transfer_erc20_will_charge_gas() {
 		}
 		.get_dispatch_info();
 		assert_eq!(
-			dispatch_info.weight,
+			dispatch_info.call_weight,
 			<Runtime as module::Config>::WeightInfo::transfer_non_native_currency()
 				+ Weight::from_parts(module_support::evm::limits::erc20::TRANSFER.gas, 0) // mock GasToWeight is 1:1
 		);
@@ -3024,7 +3056,7 @@ fn transfer_erc20_will_charge_gas() {
 		}
 		.get_dispatch_info();
 		assert_eq!(
-			dispatch_info.weight,
+			dispatch_info.call_weight,
 			<Runtime as module::Config>::WeightInfo::transfer_non_native_currency()
 		);
 	});

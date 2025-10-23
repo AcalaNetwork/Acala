@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -1702,7 +1702,7 @@ fn offchain_worker_works_cdp() {
 		if let MockCall::CDPEngineModule(crate::Call::liquidate {
 			currency_id: currency_call,
 			who: who_call,
-		}) = tx.call
+		}) = tx.function
 		{
 			assert_ok!(CDPEngineModule::liquidate(
 				RuntimeOrigin::none(),
@@ -1728,7 +1728,7 @@ fn offchain_worker_works_cdp() {
 		if let MockCall::CDPEngineModule(crate::Call::settle {
 			currency_id: currency_call,
 			who: who_call,
-		}) = tx.call
+		}) = tx.function
 		{
 			assert_ok!(CDPEngineModule::settle(RuntimeOrigin::none(), currency_call, who_call));
 		}
@@ -1779,7 +1779,7 @@ fn offchain_worker_iteration_limit_works() {
 		if let MockCall::CDPEngineModule(crate::Call::liquidate {
 			currency_id: currency_call,
 			who: who_call,
-		}) = tx.call
+		}) = tx.function
 		{
 			assert_ok!(CDPEngineModule::liquidate(
 				RuntimeOrigin::none(),
@@ -1800,7 +1800,7 @@ fn offchain_worker_iteration_limit_works() {
 		if let MockCall::CDPEngineModule(crate::Call::liquidate {
 			currency_id: currency_call,
 			who: who_call,
-		}) = tx.call
+		}) = tx.function
 		{
 			assert_ok!(CDPEngineModule::liquidate(
 				RuntimeOrigin::none(),

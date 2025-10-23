@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -30,9 +30,9 @@
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::unnecessary_unwrap)]
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional};
 use frame_system::{
-	offchain::{SendTransactionTypes, SubmitTransaction},
+	offchain::{CreateBare, SubmitTransaction},
 	pallet_prelude::*,
 };
 use module_support::{
@@ -133,9 +133,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + SendTransactionTypes<Call<Self>> {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
+	pub trait Config: frame_system::Config + CreateBare<Call<Self>> {
 		/// The minimum increment size of each bid compared to the previous one
 		#[pallet::constant]
 		type MinimumIncrementSize: Get<Rate>;
@@ -268,14 +266,12 @@ pub mod module {
 				if let Err(e) = Self::_offchain_worker() {
 					log::info!(
 						target: "auction-manager",
-						"offchain worker: cannot run offchain worker at {:?}: {:?}",
-						now, e,
+						"offchain worker: cannot run offchain worker at {now:?}: {e:?}",
 					);
 				} else {
 					log::debug!(
 						target: "auction-manager",
-						"offchain worker: offchain worker start at block: {:?} already done!",
-						now,
+						"offchain worker: offchain worker start at block: {now:?} already done!",
 					);
 				}
 			}
@@ -338,11 +334,11 @@ impl<T: Config> Pallet<T> {
 
 	fn submit_cancel_auction_tx(auction_id: AuctionId) {
 		let call = Call::<T>::cancel { id: auction_id };
-		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
+		let xt = T::create_bare(call.into());
+		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(xt) {
 			log::info!(
 				target: "auction-manager",
-				"offchain worker: submit unsigned auction cancel tx for AuctionId {:?} failed: {:?}",
-				auction_id, err,
+				"offchain worker: submit unsigned auction cancel tx for AuctionId {auction_id:?} failed: {err:?}",
 			);
 		}
 	}
@@ -356,7 +352,7 @@ impl<T: Config> Pallet<T> {
 		let mut to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
 
 		// get to_be_continue record,
-		// if it exsits, iterator map storage start with previous key
+		// if it exists, iterator map storage start with previous key
 		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
 
 		// get the max iterationns config
@@ -367,8 +363,7 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(
 			target: "auction-manager",
-			"offchain worker: max iterations is {:?}",
-			max_iterations
+			"offchain worker: max iterations is {max_iterations:?}",
 		);
 
 		// start iterations to cancel collateral auctions
@@ -554,7 +549,13 @@ impl<T: Config> Pallet<T> {
 				// if there's bid before, return stablecoin from new bidder to last bidder
 				if let Some(last_bidder) = last_bidder {
 					let refund = collateral_auction.payment_amount(last_bid_price);
-					T::Currency::transfer(T::GetStableCurrencyId::get(), &new_bidder, last_bidder, refund)?;
+					T::Currency::transfer(
+						T::GetStableCurrencyId::get(),
+						&new_bidder,
+						last_bidder,
+						refund,
+						ExistenceRequirement::AllowDeath,
+					)?;
 
 					payment = payment
 						.checked_sub(refund)
@@ -689,9 +690,9 @@ impl<T: Config> Pallet<T> {
 			if let Err(e) = res {
 				log::warn!(
 					target: "auction-manager",
-					"issue_debit: failed to issue stable {:?} to {:?}: {:?}. \
+					"issue_debit: failed to issue stable {:?} to {bidder:?}: {e:?}. \
 					This is unexpected but should be safe",
-					collateral_auction.payment_amount(bid_price), bidder, e
+					collateral_auction.payment_amount(bid_price)
 				);
 				debug_assert!(false);
 			}
@@ -707,9 +708,8 @@ impl<T: Config> Pallet<T> {
 			if let Err(e) = res {
 				log::warn!(
 					target: "auction-manager",
-					"withdraw_collateral: failed to withdraw {:?} {:?} from CDP treasury to {:?}: {:?}. \
+					"withdraw_collateral: failed to withdraw {refund_collateral:?} {collateral_type:?} from CDP treasury to {refund_recipient:?}: {e:?}. \
 					This is unexpected but should be safe",
-					refund_collateral, collateral_type, refund_recipient, e
 				);
 				debug_assert!(false);
 			}

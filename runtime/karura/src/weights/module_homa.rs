@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -111,14 +111,16 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	// Proof: `Homa::Unbondings` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	// Storage: `Homa::TotalVoidLiquid` (r:0 w:1)
 	// Proof: `Homa::TotalVoidLiquid` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn on_initialize_with_bump_era() -> Weight {
+	fn on_initialize_with_bump_era(n: u32,) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2962`
 		//  Estimated: `13852`
 		// Minimum execution time: 314_492 nanoseconds.
 		Weight::from_parts(320_994_000, 13852)
 			.saturating_add(T::DbWeight::get().reads(34))
+			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(19))
+			.saturating_add(T::DbWeight::get().writes((2_u64).saturating_mul(n.into())))
 	}
 	// Storage: `Homa::TotalStakingBonded` (r:1 w:0)
 	// Proof: `Homa::TotalStakingBonded` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)

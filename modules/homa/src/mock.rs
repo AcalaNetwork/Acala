@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{
 	derive_impl, ord_parameter_types, parameter_types,
-	traits::{ConstU128, Nothing},
+	traits::{ConstU128, ConstU32, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_support::mocks::MockAddressMapping;
@@ -31,7 +31,7 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::H160;
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage};
-use xcm::v4::prelude::*;
+use xcm::v5::prelude::*;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -56,10 +56,15 @@ pub const VALIDATOR_D: AccountId = AccountId32::new([203u8; 32]);
 /// mock XCM transfer.
 pub struct MockHomaSubAccountXcm;
 impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
-	type RelayChainAccountId = AccountId;
+	type NomineeId = AccountId;
 
 	fn transfer_staking_to_sub_account(sender: &AccountId, _: u16, amount: Balance) -> DispatchResult {
-		Currencies::withdraw(StakingCurrencyId::get(), sender, amount)
+		Currencies::withdraw(
+			StakingCurrencyId::get(),
+			sender,
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn withdraw_unbonded_from_sub_account(_: u16, _: Balance) -> DispatchResult {
@@ -74,7 +79,7 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 		Ok(())
 	}
 
-	fn nominate_on_sub_account(_: u16, _: Vec<Self::RelayChainAccountId>) -> DispatchResult {
+	fn nominate_on_sub_account(_: u16, _: Vec<Self::NomineeId>) -> DispatchResult {
 		Ok(())
 	}
 
@@ -102,7 +107,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -129,6 +133,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
@@ -139,7 +144,6 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -200,7 +204,6 @@ impl NomineesProvider<AccountId> for MockNominationsProvider {
 }
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GovernanceOrigin = EnsureSignedBy<HomaAdmin, AccountId>;
 	type StakingCurrencyId = StakingCurrencyId;
@@ -216,6 +219,7 @@ impl Config for Runtime {
 	type XcmInterface = MockHomaSubAccountXcm;
 	type WeightInfo = ();
 	type NominationsProvider = MockNominationsProvider;
+	type ProcessRedeemRequestsLimit = ConstU32<3>;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -259,6 +263,7 @@ impl ExtBuilder {
 				.filter(|(_, currency_id, _)| *currency_id == NATIVE_CURRENCY_ID)
 				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
 				.collect::<Vec<_>>(),
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -33,7 +33,7 @@ use frame_support::{
 };
 use frame_system::{limits, pallet_prelude::BlockNumberFor, EnsureRoot};
 use orml_traits::{currency::MutationHooks, GetByKey};
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use polkadot_parachain_primitives::primitives::RelayChainBlockNumber;
 use primitives::{
 	evm::{is_system_contract, CHAIN_ID_ACALA_TESTNET, CHAIN_ID_KARURA_TESTNET, CHAIN_ID_MANDALA},
@@ -150,11 +150,7 @@ impl<EvmChainID: Get<u64>, RelayNumberStrictlyIncreases: CheckAssociatedRelayNum
 		match EvmChainID::get() {
 			CHAIN_ID_MANDALA | CHAIN_ID_KARURA_TESTNET | CHAIN_ID_ACALA_TESTNET => {
 				if current <= previous {
-					log::warn!(
-						"Relay chain block number was reset, current: {:?}, previous: {:?}",
-						current,
-						previous
-					);
+					log::warn!("Relay chain block number was reset, current: {current:?}, previous: {previous:?}",);
 				}
 			}
 			_ => RelayNumberStrictlyIncreases::check_associated_relay_number(current, previous),
@@ -171,7 +167,7 @@ pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
 	WEIGHT_REF_TIME_PER_SECOND.saturating_div(2),
 	// TODO: drop `* 10` after https://github.com/paritytech/substrate/issues/13501
 	// and the benchmarked size is not 10x of the measured size
-	polkadot_primitives::v6::MAX_POV_SIZE as u64 * 10,
+	polkadot_primitives::v8::MAX_POV_SIZE as u64 * 10,
 );
 
 const_assert!(NORMAL_DISPATCH_RATIO.deconstruct() >= AVERAGE_ON_INITIALIZE_RATIO.deconstruct());
@@ -359,7 +355,20 @@ pub type EnsureRootOrOneTechnicalCommittee =
 	EitherOfDiverse<EnsureRoot<AccountId>, pallet_collective::EnsureMember<AccountId, TechnicalCommitteeInstance>>;
 
 /// The type used to represent the kinds of proxying allowed.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+#[derive(
+	Copy,
+	Clone,
+	Eq,
+	PartialEq,
+	Ord,
+	PartialOrd,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	MaxEncodedLen,
+	TypeInfo,
+)]
 pub enum ProxyType {
 	Any,
 	CancelProxy,
@@ -427,10 +436,10 @@ where
 		// ValidationData is removed at on_initialize and set at the inherent, this means it could be empty
 		// in the on_initialize hook for some pallets and some other inherents so this could fail when
 		// invoked by scheduler or some other pallet's on_initialize hook
-		if let Some(validation_data) = cumulus_pallet_parachain_system::Pallet::<T>::validation_data() {
+		if let Some(validation_data) = cumulus_pallet_parachain_system::ValidationData::<T>::get() {
 			let relay_storage_root = validation_data.relay_parent_storage_root;
 
-			if let Some(relay_state_proof) = cumulus_pallet_parachain_system::Pallet::<T>::relay_state_proof() {
+			if let Some(relay_state_proof) = cumulus_pallet_parachain_system::RelayStateProof::<T>::get() {
 				if let Ok(relay_chain_state_proof) = RelayChainStateProof::new(
 					parachain_info::Pallet::<T>::get(),
 					relay_storage_root,
@@ -496,6 +505,22 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 
 	accounts
 }
+
+/// Maximum number of blocks simultaneously accepted by the Runtime, not yet included
+/// into the relay chain.
+pub const UNINCLUDED_SEGMENT_CAPACITY: u32 = 1;
+/// How many parachain blocks are processed by the relay chain per parent. Limits the
+/// number of blocks authored per slot.
+pub const BLOCK_PROCESSING_VELOCITY: u32 = 1;
+/// Relay chain slot duration, in milliseconds.
+pub const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = 6000;
+
+pub type ConsensusHook<Runtime> = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
+	Runtime,
+	RELAY_CHAIN_SLOT_DURATION_MILLIS,
+	BLOCK_PROCESSING_VELOCITY,
+	UNINCLUDED_SEGMENT_CAPACITY,
+>;
 
 #[cfg(test)]
 mod tests {

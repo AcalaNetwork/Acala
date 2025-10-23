@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -647,7 +647,7 @@ fn offchain_worker_cancels_auction_in_shutdown() {
 		run_to_block_offchain(3);
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		if let MockCall::AuctionManagerModule(crate::Call::cancel { id: auction_id }) = tx.call {
+		if let MockCall::AuctionManagerModule(crate::Call::cancel { id: auction_id }) = tx.function {
 			assert_ok!(AuctionManagerModule::cancel(RuntimeOrigin::none(), auction_id));
 		}
 
@@ -681,7 +681,7 @@ fn offchain_worker_max_iterations_check() {
 		// now offchain worker will cancel one auction but the other one will cancel next block
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		if let MockCall::AuctionManagerModule(crate::Call::cancel { id: auction_id }) = tx.call {
+		if let MockCall::AuctionManagerModule(crate::Call::cancel { id: auction_id }) = tx.function {
 			assert_ok!(AuctionManagerModule::cancel(RuntimeOrigin::none(), auction_id));
 		}
 		assert!(
@@ -695,7 +695,7 @@ fn offchain_worker_max_iterations_check() {
 		// now offchain worker will cancel the next auction
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		if let MockCall::AuctionManagerModule(crate::Call::cancel { id: auction_id }) = tx.call {
+		if let MockCall::AuctionManagerModule(crate::Call::cancel { id: auction_id }) = tx.function {
 			assert_ok!(AuctionManagerModule::cancel(RuntimeOrigin::none(), auction_id));
 		}
 		assert!(AuctionManagerModule::collateral_auctions(1).is_none());

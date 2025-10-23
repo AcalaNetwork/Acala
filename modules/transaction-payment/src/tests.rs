@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -37,10 +37,11 @@ use pallet_balances::ReserveData;
 use primitives::currency::*;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	testing::TestXt,
-	traits::{One, UniqueSaturatedInto},
+	generic::UncheckedExtrinsic,
+	traits::{DispatchTransaction, One, UniqueSaturatedInto},
+	transaction_validity::{InvalidTransaction, TransactionSource::External},
 };
-use xcm::v4::prelude::*;
+use xcm::v5::prelude::*;
 
 const CALL: <Runtime as frame_system::Config>::RuntimeCall =
 	RuntimeCall::Currencies(module_currencies::Call::transfer {
@@ -53,13 +54,15 @@ const CALL2: <Runtime as frame_system::Config>::RuntimeCall =
 	RuntimeCall::Currencies(module_currencies::Call::transfer_native_currency { dest: BOB, amount: 12 });
 
 const INFO: DispatchInfo = DispatchInfo {
-	weight: Weight::from_parts(1000, 0),
+	call_weight: Weight::from_parts(1000, 0),
+	extension_weight: Weight::zero(),
 	class: DispatchClass::Normal,
 	pays_fee: Pays::Yes,
 };
 
 const INFO2: DispatchInfo = DispatchInfo {
-	weight: Weight::from_parts(100, 0),
+	call_weight: Weight::from_parts(100, 0),
+	extension_weight: Weight::zero(),
 	class: DispatchClass::Normal,
 	pays_fee: Pays::Yes,
 };
@@ -213,27 +216,30 @@ fn charges_fee_when_native_is_enough_but_cannot_keep_alive() {
 			fee.unique_saturated_into(),
 		));
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), fee);
-		assert_noop!(
-			ChargeTransactionPayment::<Runtime>::from(0).validate(&ALICE, &CALL, &INFO, 5000),
+		assert_eq!(
+			ChargeTransactionPayment::<Runtime>::from(0)
+				.validate_and_prepare(Some(ALICE).into(), &CALL, &INFO, 5000, 0)
+				.unwrap_err(),
 			TransactionValidityError::Invalid(InvalidTransaction::Payment)
 		);
 
 		// after charge fee, balance=fee-fee2=ED, equal to ED, keep alive
 		let fee2 = 5000 * 2 + 990;
 		let info = DispatchInfo {
-			weight: Weight::from_parts(990, 0),
+			call_weight: Weight::from_parts(990, 0),
+			extension_weight: Weight::zero(),
 			class: DispatchClass::Normal,
 			pays_fee: Pays::Yes,
 		};
 		let expect_priority = ChargeTransactionPayment::<Runtime>::get_priority(&info, 5000, fee2, fee2);
 		assert_eq!(1000, expect_priority);
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&ALICE, &CALL, &info, 5000)
-				.unwrap()
-				.priority,
-			1
-		);
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+			Some(ALICE).into(),
+			&CALL,
+			&info,
+			5000,
+			0
+		));
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), Currencies::minimum_balance(ACA));
 	});
 }
@@ -243,23 +249,23 @@ fn charges_fee_when_validate_native_is_enough() {
 	// Alice init 100000 ACA(native asset)
 	builder_with_dex_and_fee_pool(false).execute_with(|| {
 		let fee = 23 * 2 + 1000; // len * byte + weight
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&ALICE, &CALL, &INFO, 23)
-				.unwrap()
-				.priority,
-			1
-		);
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+			Some(ALICE).into(),
+			&CALL,
+			&INFO,
+			23,
+			0
+		));
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
 
 		let fee2 = 18 * 2 + 1000; // len * byte + weight
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&ALICE, &CALL2, &INFO, 18)
-				.unwrap()
-				.priority,
-			1
-		);
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+			Some(ALICE).into(),
+			&CALL2,
+			&INFO,
+			18,
+			0
+		));
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - fee2);
 	});
 }
@@ -274,8 +280,10 @@ fn charges_fee_when_locked_transfer_not_enough() {
 		assert_ok!(<Currencies as MultiLockableCurrency<AccountId>>::set_lock(
 			[0u8; 8], ACA, &BOB, 1025
 		));
-		assert_noop!(
-			ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL, &INFO, 12),
+		assert_eq!(
+			ChargeTransactionPayment::<Runtime>::from(0)
+				.validate_and_prepare(Some(BOB).into(), &CALL, &INFO, 12, 0)
+				.unwrap_err(),
 			TransactionValidityError::Invalid(InvalidTransaction::Payment)
 		);
 
@@ -283,7 +291,13 @@ fn charges_fee_when_locked_transfer_not_enough() {
 		assert_ok!(<Currencies as MultiLockableCurrency<AccountId>>::remove_lock(
 			[0u8; 8], ACA, &BOB
 		));
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL, &INFO, 12));
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+			Some(BOB).into(),
+			&CALL,
+			&INFO,
+			12,
+			0
+		));
 		assert_eq!(Currencies::free_balance(ACA, &BOB), 2048 - fee);
 	});
 }
@@ -293,15 +307,16 @@ fn pre_post_dispatch_and_refund_native_is_enough() {
 	builder_with_dex_and_fee_pool(false).execute_with(|| {
 		let fee = 23 * 2 + 1000; // len * byte + weight
 		let pre = ChargeTransactionPayment::<Runtime>::from(0)
-			.pre_dispatch(&ALICE, &CALL, &INFO, 23)
-			.unwrap();
+			.validate_and_prepare(Some(ALICE).into(), &CALL, &INFO, 23, 0)
+			.unwrap()
+			.0;
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
 
 		let actual_fee = TransactionPayment::compute_actual_fee(23, &INFO, &POST_INFO, 0);
 		assert_eq!(actual_fee, 23 * 2 + 800);
 
-		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			Some(pre),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch_details(
+			pre,
 			&INFO,
 			&POST_INFO,
 			23,
@@ -327,13 +342,14 @@ fn pre_post_dispatch_and_refund_native_is_enough() {
 
 		let tip: Balance = 5;
 		let pre = ChargeTransactionPayment::<Runtime>::from(tip)
-			.pre_dispatch(&CHARLIE, &CALL, &INFO, 23)
-			.unwrap();
+			.validate_and_prepare(Some(CHARLIE).into(), &CALL, &INFO, 23, 0)
+			.unwrap()
+			.0;
 		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 100000 - fee - tip);
 		let actual_fee = TransactionPayment::compute_actual_fee(23, &INFO, &POST_INFO, tip);
 		assert_eq!(actual_fee, 23 * 2 + 800 + 5);
-		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			Some(pre),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch_details(
+			pre,
 			&INFO,
 			&POST_INFO,
 			23,
@@ -388,12 +404,16 @@ fn pre_post_dispatch_and_refund_with_fee_currency_call(token: CurrencyId, surplu
 		assert_eq!(89000, aca_init);
 
 		let pre = ChargeTransactionPayment::<Runtime>::from(0)
-			.pre_dispatch(&ALICE, &with_fee_currency_call(token), &INFO, 500)
-			.unwrap();
-		assert_eq!(pre.2, Some(pallet_balances::NegativeImbalance::new(fee_surplus)));
-		assert_eq!(pre.3, fee_surplus);
+			.validate_and_prepare(Some(ALICE).into(), &with_fee_currency_call(token), &INFO, 500, 0)
+			.unwrap()
+			.0;
+		assert_eq!(
+			pre.imbalance(),
+			Some(&pallet_balances::NegativeImbalance::new(fee_surplus))
+		);
+		assert_eq!(pre.fee(), Some(&fee_surplus));
 
-		// with_fee_currency will set OverrideChargeFeeMethod when pre_dispatch
+		// with_fee_currency will set OverrideChargeFeeMethod when validate_and_prepare
 		assert_eq!(
 			OverrideChargeFeeMethod::<Runtime>::get(),
 			Some(ChargeFeeMethod::FeeCurrency(token))
@@ -420,15 +440,15 @@ fn pre_post_dispatch_and_refund_with_fee_currency_call(token: CurrencyId, surplu
 		let actual_fee = TransactionPayment::compute_actual_fee(500, &INFO, &POST_INFO, 0);
 		assert_eq!(actual_fee, 500 * 2 + 800);
 
-		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			Some(pre),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch_details(
+			pre,
 			&INFO,
 			&POST_INFO,
 			500,
 			&Ok(())
 		));
 
-		// always clear OverrideChargeFeeMethod when post_dispatch
+		// always clear OverrideChargeFeeMethod when post_dispatch_details
 		assert_eq!(OverrideChargeFeeMethod::<Runtime>::get(), None);
 
 		let refund = 200; // 1000 - 800
@@ -467,12 +487,16 @@ fn pre_post_dispatch_and_refund_with_fee_currency_call(token: CurrencyId, surplu
 		let token_transfer = token_rate.saturating_mul_int(fee_surplus);
 
 		let pre = ChargeTransactionPayment::<Runtime>::from(tip)
-			.pre_dispatch(&CHARLIE, &with_fee_currency_call(token), &INFO, 500)
-			.unwrap();
-		assert_eq!(pre.2, Some(pallet_balances::NegativeImbalance::new(fee_surplus)));
-		assert_eq!(pre.3, fee_surplus);
+			.validate_and_prepare(Some(CHARLIE).into(), &with_fee_currency_call(token), &INFO, 500, 0)
+			.unwrap()
+			.0;
+		assert_eq!(
+			pre.imbalance(),
+			Some(&pallet_balances::NegativeImbalance::new(fee_surplus))
+		);
+		assert_eq!(pre.fee(), Some(&fee_surplus));
 
-		// with_fee_currency will set OverrideChargeFeeMethod when pre_dispatch
+		// with_fee_currency will set OverrideChargeFeeMethod when validate_and_prepare
 		assert_eq!(
 			OverrideChargeFeeMethod::<Runtime>::get(),
 			Some(ChargeFeeMethod::FeeCurrency(token))
@@ -495,15 +519,15 @@ fn pre_post_dispatch_and_refund_with_fee_currency_call(token: CurrencyId, surplu
 		assert_eq!(Currencies::free_balance(token, &CHARLIE), token_init - token_transfer);
 		let actual_fee = TransactionPayment::compute_actual_fee(500, &INFO, &POST_INFO, tip);
 		assert_eq!(actual_fee, 500 * 2 + 800 + 200);
-		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			Some(pre),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch_details(
+			pre,
 			&INFO,
 			&POST_INFO,
 			500,
 			&Ok(())
 		));
 
-		// always clear OverrideChargeFeeMethod when post_dispatch
+		// always clear OverrideChargeFeeMethod when post_dispatch_details
 		assert_eq!(OverrideChargeFeeMethod::<Runtime>::get(), None);
 
 		assert_eq!(
@@ -547,10 +571,14 @@ fn pre_post_dispatch_and_refund_with_fee_call_use_dex(with_fee_call: <Runtime as
 
 		assert_ok!(Currencies::update_balance(RuntimeOrigin::root(), ALICE, token, 500));
 		let pre = ChargeTransactionPayment::<Runtime>::from(0)
-			.pre_dispatch(&ALICE, &with_fee_call, &INFO2, 50)
-			.unwrap();
-		assert_eq!(pre.2, Some(pallet_balances::NegativeImbalance::new(fee_surplus)));
-		assert_eq!(pre.3, fee_surplus);
+			.validate_and_prepare(Some(ALICE).into(), &with_fee_call, &INFO2, 50, 0)
+			.unwrap()
+			.0;
+		assert_eq!(
+			pre.imbalance(),
+			Some(&pallet_balances::NegativeImbalance::new(fee_surplus))
+		);
+		assert_eq!(pre.fee(), Some(&fee_surplus));
 		System::assert_has_event(crate::mock::RuntimeEvent::DEXModule(module_dex::Event::Swap {
 			trader: ALICE,
 			path: vec![LDOT, ACA],
@@ -562,8 +590,8 @@ fn pre_post_dispatch_and_refund_with_fee_call_use_dex(with_fee_call: <Runtime as
 		let actual_fee = TransactionPayment::compute_actual_fee(50, &INFO2, &POST_INFO2, 0);
 		assert_eq!(actual_fee, 50 * 2 + 80);
 
-		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			Some(pre),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch_details(
+			pre,
 			&INFO2,
 			&POST_INFO2,
 			50,
@@ -592,13 +620,17 @@ fn pre_post_dispatch_and_refund_with_fee_call_use_dex(with_fee_call: <Runtime as
 		assert_eq!(fee_surplus, 330);
 
 		let pre = ChargeTransactionPayment::<Runtime>::from(tip)
-			.pre_dispatch(&CHARLIE, &with_fee_call, &INFO2, 50)
-			.unwrap();
-		assert_eq!(pre.2, Some(pallet_balances::NegativeImbalance::new(fee_surplus)));
-		assert_eq!(pre.3, fee_surplus);
+			.validate_and_prepare(Some(CHARLIE).into(), &with_fee_call, &INFO2, 50, 0)
+			.unwrap()
+			.0;
+		assert_eq!(
+			pre.imbalance(),
+			Some(&pallet_balances::NegativeImbalance::new(fee_surplus))
+		);
+		assert_eq!(pre.fee(), Some(&fee_surplus));
 
-		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			Some(pre),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch_details(
+			pre,
 			&INFO2,
 			&POST_INFO2,
 			50,
@@ -625,10 +657,16 @@ fn pre_post_dispatch_and_refund_with_fee_call_use_dex(with_fee_call: <Runtime as
 }
 
 #[test]
-fn charges_fee_when_pre_dispatch_and_native_currency_is_enough() {
+fn charges_fee_when_validate_and_prepare_and_native_currency_is_enough() {
 	builder_with_dex_and_fee_pool(false).execute_with(|| {
 		let fee = 23 * 2 + 1000; // len * byte + weight
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(&ALICE, &CALL, &INFO, 23));
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+			Some(ALICE).into(),
+			&CALL,
+			&INFO,
+			23,
+			0
+		));
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
 	});
 }
@@ -638,13 +676,14 @@ fn refund_fee_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 	builder_with_dex_and_fee_pool(false).execute_with(|| {
 		let fee = 23 * 2 + 1000; // len * byte + weight
 		let pre = ChargeTransactionPayment::<Runtime>::from(0)
-			.pre_dispatch(&ALICE, &CALL, &INFO, 23)
-			.unwrap();
+			.validate_and_prepare(Some(ALICE).into(), &CALL, &INFO, 23, 0)
+			.unwrap()
+			.0;
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
 
 		let refund = 200; // 1000 - 800
-		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			Some(pre),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch_details(
+			pre,
 			&INFO,
 			&POST_INFO,
 			23,
@@ -669,13 +708,14 @@ fn refund_tip_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 		// tip = 0
 		let fee = 23 * 2 + 1000; // len * byte + weight
 		let pre = ChargeTransactionPayment::<Runtime>::from(0)
-			.pre_dispatch(&ALICE, &CALL, &INFO, 23)
-			.unwrap();
+			.validate_and_prepare(Some(ALICE).into(), &CALL, &INFO, 23, 0)
+			.unwrap()
+			.0;
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
 
 		let refund = 200; // 1000 - 800
-		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			Some(pre),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch_details(
+			pre,
 			&INFO,
 			&POST_INFO,
 			23,
@@ -696,14 +736,15 @@ fn refund_tip_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 		let fee = 23 * 2 + 1000; // len * byte + weight
 		let tip = 1000;
 		let pre = ChargeTransactionPayment::<Runtime>::from(tip)
-			.pre_dispatch(&CHARLIE, &CALL, &INFO, 23)
-			.unwrap();
+			.validate_and_prepare(Some(CHARLIE).into(), &CALL, &INFO, 23, 0)
+			.unwrap()
+			.0;
 		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 100000 - fee - tip);
 
 		let refund_fee = 200; // 1000 - 800
 		let refund_tip = 200; // 1000 - 800
-		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			Some(pre),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch_details(
+			pre,
 			&INFO,
 			&POST_INFO,
 			23,
@@ -731,18 +772,19 @@ fn refund_should_not_works() {
 		let tip = 1000;
 		let fee = 23 * 2 + 1000; // len * byte + weight
 		let pre = ChargeTransactionPayment::<Runtime>::from(tip)
-			.pre_dispatch(&ALICE, &CALL, &INFO, 23)
-			.unwrap();
+			.validate_and_prepare(Some(ALICE).into(), &CALL, &INFO, 23, 0)
+			.unwrap()
+			.0;
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - tip);
 
 		// actual_weight > weight
 		const POST_INFO: PostDispatchInfo = PostDispatchInfo {
-			actual_weight: Some(INFO.weight.add_ref_time(1)),
+			actual_weight: Some(INFO.call_weight.add_ref_time(1)),
 			pays_fee: Pays::Yes,
 		};
 
-		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			Some(pre),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch_details(
+			pre,
 			&INFO,
 			&POST_INFO,
 			23,
@@ -784,7 +826,13 @@ fn charges_fee_when_validate_with_fee_call_use_swap(with_fee_call: <Runtime as C
 		assert_eq!(315, fee_surplus);
 		assert_ok!(Currencies::update_balance(RuntimeOrigin::root(), BOB, LDOT, 1000));
 
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &with_fee_call, &INFO2, 50));
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).dispatch_transaction(
+			Some(BOB).into(),
+			with_fee_call.clone(),
+			&INFO2,
+			50,
+			0
+		));
 		System::assert_has_event(crate::mock::RuntimeEvent::DEXModule(module_dex::Event::Swap {
 			trader: BOB,
 			path: vec![LDOT, ACA],
@@ -799,7 +847,13 @@ fn charges_fee_when_validate_with_fee_call_use_swap(with_fee_call: <Runtime as C
 		let fee_surplus2 = fee + CustomFeeSurplus::get().mul_ceil(fee);
 		assert_eq!(300, fee_surplus2); // refund 200*1.5=300 ACA
 
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &with_fee_call, &INFO2, 50));
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).dispatch_transaction(
+			Some(BOB).into(),
+			with_fee_call,
+			&INFO2,
+			50,
+			0
+		));
 		System::assert_has_event(crate::mock::RuntimeEvent::DEXModule(module_dex::Event::Swap {
 			trader: BOB,
 			path: vec![LDOT, ACA],
@@ -831,11 +885,12 @@ fn charges_fee_when_validate_with_fee_currency_call_use_pool() {
 
 		assert_ok!(Currencies::update_balance(RuntimeOrigin::root(), BOB, AUSD, 10000));
 		assert_eq!(0, Currencies::free_balance(ACA, &BOB));
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(
-			&BOB,
-			&with_fee_currency_call(AUSD),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).dispatch_transaction(
+			Some(BOB).into(),
+			with_fee_currency_call(AUSD),
 			&INFO2,
-			50
+			50,
+			0
 		));
 		assert_eq!(10, Currencies::free_balance(ACA, &BOB)); // ED
 		assert_eq!(7370, Currencies::free_balance(AUSD, &BOB));
@@ -869,11 +924,12 @@ fn charges_fee_when_validate_with_fee_currency_call_use_pool() {
 
 		assert_ok!(Currencies::update_balance(RuntimeOrigin::root(), BOB, DOT, 10000));
 		assert_eq!(10, Currencies::free_balance(ACA, &BOB)); // ED
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(
-			&BOB,
-			&with_fee_currency_call(DOT),
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).dispatch_transaction(
+			Some(BOB).into(),
+			with_fee_currency_call(DOT),
 			&INFO2,
-			50
+			50,
+			0
 		));
 		assert_eq!(sub_dot_aca - fee_amount, Currencies::free_balance(ACA, &dot_acc));
 		assert_eq!(sub_dot_dot + fee_amount / 10, Currencies::free_balance(DOT, &dot_acc));
@@ -894,7 +950,13 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 
 		// transfer token to Bob, and use Bob as tx sender to test
 		// Bob do not have enough native asset(ACA), but he has AUSD
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 4000));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			AUSD,
+			&ALICE,
+			&BOB,
+			4000,
+			ExistenceRequirement::AllowDeath
+		));
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 		assert_eq!(Currencies::total_balance(ACA, &BOB), 0);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
@@ -908,13 +970,13 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 		let surplus1 = AlternativeFeeSurplus::get().mul_ceil(fee);
 		let expect_priority = ChargeTransactionPayment::<Runtime>::get_priority(&INFO2, 50, fee, fee);
 		assert_eq!(expect_priority, 2010);
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&BOB, &CALL2, &INFO2, 50)
-				.unwrap()
-				.priority,
-			10
-		);
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).dispatch_transaction(
+			Some(BOB).into(),
+			CALL2,
+			&INFO2,
+			50,
+			0
+		));
 
 		assert_eq!(Currencies::total_balance(ACA, &BOB), ed);
 		assert_eq!(Currencies::free_balance(ACA, &BOB), ed);
@@ -935,7 +997,13 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 		// fee: 112, ed: 10, surplus=110*0.25=28, swap_out:112+28=140ACA, swap_in=260*10=1400AUSD
 		let fee2 = 6 * 2 + 100; // len * byte + weight
 		let surplus2 = AlternativeFeeSurplus::get().mul_ceil(fee2);
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL2, &INFO2, 6));
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).dispatch_transaction(
+			Some(BOB).into(),
+			CALL2,
+			&INFO2,
+			6,
+			0
+		));
 		assert_eq!(Currencies::total_balance(ACA, &BOB), ed);
 		assert_eq!(Currencies::free_balance(ACA, &BOB), ed);
 		assert_eq!(
@@ -953,8 +1021,10 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 		);
 
 		// Bob only has ED of native asset, but has not enough AUSD, validate failed.
-		assert_noop!(
-			ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL2, &INFO2, 1),
+		assert_eq!(
+			ChargeTransactionPayment::<Runtime>::from(0)
+				.validate_and_prepare(Some(BOB).into(), &CALL2, &INFO2, 1, 0)
+				.unwrap_err(),
 			TransactionValidityError::Invalid(InvalidTransaction::Payment)
 		);
 		assert_eq!(Currencies::total_balance(ACA, &BOB), 10);
@@ -986,7 +1056,13 @@ fn payment_reserve_fee() {
 		assert_eq!(reserve_data, *reserves.get(0).unwrap());
 
 		// Bob has not enough native token, but have enough none native token
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 4000));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			AUSD,
+			&ALICE,
+			&BOB,
+			4000,
+			ExistenceRequirement::AllowDeath
+		));
 		let fee = <ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::reserve_fee(
 			&BOB, 100, None,
 		);
@@ -997,7 +1073,13 @@ fn payment_reserve_fee() {
 
 		// reserve fee not consider multiplier
 		NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &DAVE, 4000));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			AUSD,
+			&ALICE,
+			&DAVE,
+			4000,
+			ExistenceRequirement::AllowDeath
+		));
 		let fee = <ChargeTransactionPayment<Runtime> as TransactionPaymentT<AccountId, Balance, _>>::reserve_fee(
 			&DAVE, 100, None,
 		);
@@ -1020,7 +1102,13 @@ fn payment_reserve_fee() {
 #[test]
 fn charges_fee_failed_by_slippage_limit() {
 	builder_with_dex_and_fee_pool(true).execute_with(|| {
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 1000));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			AUSD,
+			&ALICE,
+			&BOB,
+			1000,
+			ExistenceRequirement::AllowDeath
+		));
 
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 		assert_eq!(Currencies::total_balance(ACA, &BOB), 0);
@@ -1046,8 +1134,10 @@ fn charges_fee_failed_by_slippage_limit() {
 			DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactSupply(1000, 0)),
 			Some((1000, 5000))
 		);
-		assert_noop!(
-			ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL2, &INFO, 500),
+		assert_eq!(
+			ChargeTransactionPayment::<Runtime>::from(0)
+				.validate_and_prepare(Some(BOB).into(), &CALL2, &INFO, 500, 0)
+				.unwrap_err(),
 			TransactionValidityError::Invalid(InvalidTransaction::Payment)
 		);
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
@@ -1129,7 +1219,13 @@ fn charge_fee_by_alternative_swap_first_priority() {
 		);
 
 		// charge fee token use `DefaultFeeTokens` as `AlternativeFeeSwapPath` condition is failed.
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 300));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			DOT,
+			&ALICE,
+			&BOB,
+			300,
+			ExistenceRequirement::AllowDeath
+		));
 		assert_eq!(
 			<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB),
 			PalletBalances::minimum_balance()
@@ -1141,13 +1237,13 @@ fn charge_fee_by_alternative_swap_first_priority() {
 		// fee=500*2+1000=2000ACA, surplus=2000*0.25=500ACA, fee_amount=2500ACA
 		let surplus: u128 = AlternativeFeeSurplus::get().mul_ceil(2000);
 		let fee_surplus: u128 = 2000 + surplus;
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&BOB, &CALL2, &INFO, 500)
-				.unwrap()
-				.priority,
-			1
-		);
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).dispatch_transaction(
+			Some(BOB).into(),
+			CALL2,
+			&INFO,
+			500,
+			0
+		));
 		System::assert_has_event(crate::mock::RuntimeEvent::DEXModule(module_dex::Event::Swap {
 			trader: BOB,
 			path: vec![DOT, AUSD, ACA],
@@ -1199,7 +1295,13 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 		);
 
 		// charge fee token use `AlternativeFeeSwapPath`, although the swap path is invalid.
-		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 300));
+		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(
+			DOT,
+			&ALICE,
+			&BOB,
+			300,
+			ExistenceRequirement::AllowDeath
+		));
 		assert_eq!(
 			<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB),
 			PalletBalances::minimum_balance()
@@ -1213,13 +1315,13 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 		// fee=500*2+1000=2000ACA, surplus=2000*0.25=500ACA, fee_amount=2500ACA
 		let surplus: u128 = AlternativeFeeSurplus::get().mul_ceil(2000);
 		let fee_surplus = 2000 + surplus;
-		assert_eq!(
-			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(&BOB, &CALL2, &INFO, 500)
-				.unwrap()
-				.priority,
-			1
-		);
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).dispatch_transaction(
+			Some(BOB).into(),
+			CALL2,
+			&INFO,
+			500,
+			0
+		));
 		// Alternative fee swap directly from dex, not from fee pool.
 		System::assert_has_event(crate::mock::RuntimeEvent::DEXModule(module_dex::Event::Swap {
 			trader: BOB,
@@ -1252,7 +1354,7 @@ fn query_info_works() {
 			});
 			let origin = 111111;
 			let extra = ();
-			let xt = TestXt::new(call, Some((origin, extra)));
+			let xt = UncheckedExtrinsic::new_signed(call.clone(), origin, (), extra);
 			let info = xt.get_dispatch_info();
 			let ext = xt.encode();
 			let len = ext.len() as u32;
@@ -1263,11 +1365,11 @@ fn query_info_works() {
 			assert_eq!(
 				TransactionPayment::query_info(xt, len),
 				RuntimeDispatchInfo {
-					weight: info.weight,
+					weight: info.call_weight,
 					class: info.class,
 					partial_fee: 5 * 2 /* base_weight * weight_fee */
 						+ len as u128  /* len * byte_fee */
-						+ info.weight.ref_time().min(BlockWeights::get().max_block.ref_time()) as u128 * 2 * 3 / 2 /* weight */
+						+ info.call_weight.ref_time().min(BlockWeights::get().max_block.ref_time()) as u128 * 2 * 3 / 2 /* weight */
 				},
 			);
 		});
@@ -1285,14 +1387,16 @@ fn compute_fee_works_without_multiplier() {
 
 			// Tip only, no fees works
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_parts(0, 0),
+				call_weight: Weight::from_parts(0, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::No,
 			};
 			assert_eq!(Pallet::<Runtime>::compute_fee(0, &dispatch_info, 10), 10);
 			// No tip, only base fee works
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_parts(0, 0),
+				call_weight: Weight::from_parts(0, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1303,7 +1407,8 @@ fn compute_fee_works_without_multiplier() {
 			assert_eq!(Pallet::<Runtime>::compute_fee(42, &dispatch_info, 0), 520);
 			// Weight fee + base fee works
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_parts(1000, 0),
+				call_weight: Weight::from_parts(1000, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1322,7 +1427,8 @@ fn compute_fee_works_with_multiplier() {
 			NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
 			// Base fee is unaffected by multiplier
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_parts(0, 0),
+				call_weight: Weight::from_parts(0, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1330,7 +1436,8 @@ fn compute_fee_works_with_multiplier() {
 
 			// Everything works together :)
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_parts(123, 0),
+				call_weight: Weight::from_parts(123, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1354,7 +1461,8 @@ fn compute_fee_works_with_negative_multiplier() {
 
 			// Base fee is unaffected by multiplier.
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_parts(0, 0),
+				call_weight: Weight::from_parts(0, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1362,7 +1470,8 @@ fn compute_fee_works_with_negative_multiplier() {
 
 			// Everything works together.
 			let dispatch_info = DispatchInfo {
-				weight: Weight::from_parts(123, 0),
+				call_weight: Weight::from_parts(123, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1383,7 +1492,8 @@ fn compute_fee_does_not_overflow() {
 		.execute_with(|| {
 			// Overflow is handled
 			let dispatch_info = DispatchInfo {
-				weight: Weight::MAX,
+				call_weight: Weight::MAX,
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
@@ -1404,20 +1514,23 @@ fn should_alter_operational_priority() {
 		.build()
 		.execute_with(|| {
 			let normal = DispatchInfo {
-				weight: Weight::from_parts(100, 0),
+				call_weight: Weight::from_parts(100, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};
 			let priority = ChargeTransactionPayment::<Runtime>(tip)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 
 			assert_eq!(priority, 60);
 
 			let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 
 			assert_eq!(priority, 110);
@@ -1428,13 +1541,15 @@ fn should_alter_operational_priority() {
 		.build()
 		.execute_with(|| {
 			let op = DispatchInfo {
-				weight: Weight::from_parts(100, 0),
+				call_weight: Weight::from_parts(100, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
 			let priority = ChargeTransactionPayment::<Runtime>(tip)
-				.validate(&ALICE, &CALL, &op, len)
+				.validate_only(Some(ALICE).into(), &CALL, &op, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// final_fee = base_fee + len_fee + adjusted_weight_fee + tip = 0 + 20 + 100 + 5 = 125
 			// priority = final_fee * fee_multiplier * max_tx_per_block + (tip + 1) * max_tx_per_block
@@ -1442,8 +1557,9 @@ fn should_alter_operational_priority() {
 			assert_eq!(priority, 6310);
 
 			let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
-				.validate(&ALICE, &CALL, &op, len)
+				.validate_only(Some(ALICE).into(), &CALL, &op, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// final_fee = base_fee + len_fee + adjusted_weight_fee + tip = 0 + 20 + 100 + 10 = 130
 			// priority = final_fee * fee_multiplier * max_tx_per_block + (tip + 1) * max_tx_per_block
@@ -1462,13 +1578,15 @@ fn no_tip_has_some_priority() {
 		.build()
 		.execute_with(|| {
 			let normal = DispatchInfo {
-				weight: Weight::from_parts(100, 0),
+				call_weight: Weight::from_parts(100, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};
 			let priority = ChargeTransactionPayment::<Runtime>(tip)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// max_tx_per_block = 10
 			assert_eq!(priority, 10);
@@ -1479,13 +1597,15 @@ fn no_tip_has_some_priority() {
 		.build()
 		.execute_with(|| {
 			let op = DispatchInfo {
-				weight: Weight::from_parts(100, 0),
+				call_weight: Weight::from_parts(100, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Operational,
 				pays_fee: Pays::Yes,
 			};
 			let priority = ChargeTransactionPayment::<Runtime>(tip)
-				.validate(&ALICE, &CALL, &op, len)
+				.validate_only(Some(ALICE).into(), &CALL, &op, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// final_fee = base_fee + len_fee + adjusted_weight_fee + tip = 0 + 20 + 100 + 0 = 120
 			// priority = final_fee * fee_multiplier * max_tx_per_block + (tip + 1) * max_tx_per_block
@@ -1505,55 +1625,63 @@ fn min_tip_has_same_priority() {
 		.build()
 		.execute_with(|| {
 			let normal = DispatchInfo {
-				weight: Weight::from_parts(100, 0),
+				call_weight: Weight::from_parts(100, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};
 			let priority = ChargeTransactionPayment::<Runtime>(0)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// max_tx_per_block = 10
 			assert_eq!(priority, 0);
 
 			let priority = ChargeTransactionPayment::<Runtime>(tip - 2)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// max_tx_per_block = 10
 			assert_eq!(priority, 0);
 
 			let priority = ChargeTransactionPayment::<Runtime>(tip - 1)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// max_tx_per_block = 10
 			assert_eq!(priority, 10);
 
 			let priority = ChargeTransactionPayment::<Runtime>(tip)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// max_tx_per_block = 10
 			assert_eq!(priority, 10);
 
 			let priority = ChargeTransactionPayment::<Runtime>(2 * tip - 2)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// max_tx_per_block = 10
 			assert_eq!(priority, 10);
 
 			let priority = ChargeTransactionPayment::<Runtime>(2 * tip - 1)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// max_tx_per_block = 10
 			assert_eq!(priority, 20);
 
 			let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// max_tx_per_block = 10
 			assert_eq!(priority, 20);
@@ -1570,20 +1698,23 @@ fn max_tip_has_same_priority() {
 		.build()
 		.execute_with(|| {
 			let normal = DispatchInfo {
-				weight: Weight::from_parts(100, 0),
+				call_weight: Weight::from_parts(100, 0),
+				extension_weight: Weight::zero(),
 				class: DispatchClass::Normal,
 				pays_fee: Pays::Yes,
 			};
 			let priority = ChargeTransactionPayment::<Runtime>(tip)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// max_tx_per_block = 10
 			assert_eq!(priority, 10_000);
 
 			let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
-				.validate(&ALICE, &CALL, &normal, len)
+				.validate_only(Some(ALICE).into(), &CALL, &normal, len, External, 0)
 				.unwrap()
+				.0
 				.priority;
 			// max_tx_per_block = 10
 			assert_eq!(priority, 10_000);
@@ -1893,8 +2024,10 @@ fn charge_fee_failed_when_disable_dex() {
 		));
 
 		// tx failed because of dex not enabled even though user has enough AUSD
-		assert_noop!(
-			ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL2, &INFO2, 50),
+		assert_eq!(
+			ChargeTransactionPayment::<Runtime>::from(0)
+				.validate_and_prepare(Some(BOB).into(), &CALL2, &INFO2, 50, 0)
+				.unwrap_err(),
 			TransactionValidityError::Invalid(InvalidTransaction::Payment)
 		);
 
@@ -1903,7 +2036,13 @@ fn charge_fee_failed_when_disable_dex() {
 		// after runtime upgrade, tx success because of dex enabled and has enough token balance
 		// fee=50*2+100=200, ED=10, surplus=200*0.25=50, fee_amount=260, ausd_swap=260*10=2600
 		let surplus = AlternativeFeeSurplus::get().mul_ceil(200);
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL2, &INFO2, 50));
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+			Some(BOB).into(),
+			&CALL2,
+			&INFO2,
+			50,
+			0
+		));
 		assert_eq!(100000 - (210 + surplus) * 10, Currencies::free_balance(AUSD, &BOB));
 
 		// update threshold, next tx will trigger swap
@@ -1930,7 +2069,13 @@ fn charge_fee_failed_when_disable_dex() {
 			Currencies::free_balance(AUSD, &fee_account)
 		);
 		assert_eq!(9790 - surplus, Currencies::free_balance(ACA, &fee_account));
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL2, &INFO2, 50));
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+			Some(BOB).into(),
+			&CALL2,
+			&INFO2,
+			50,
+			0
+		));
 		// AlternativeFeeSurplus=25%, swap 2600 AUSD with 6388 ACA, pool_size=9740+6388=16128
 		// fee=50*2+100=200, surplus=200*0.25=50, fee_amount=250, ausd_swap=250*10=2500
 		let fee_aca = Currencies::free_balance(ACA, &fee_account);
@@ -1998,7 +2143,13 @@ fn charge_fee_failed_when_disable_dex() {
 		// but `swap_from_pool_or_dex` still can work, because tx fee pool is not disabled.
 		// after swap, the balance gt threshold, tx still success because not trigger swap.
 		// the rate is using new exchange rate, but swap native asset still keep 250 ACA.
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL2, &INFO2, 50));
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+			Some(BOB).into(),
+			&CALL2,
+			&INFO2,
+			50,
+			0
+		));
 
 		let fee_balance = Currencies::free_balance(ACA, &fee_account);
 		assert_eq!(fee_aca - (200 + surplus), fee_balance);
@@ -2008,7 +2159,13 @@ fn charge_fee_failed_when_disable_dex() {
 		SwapBalanceThreshold::<Runtime>::insert(AUSD, swap_balance_threshold);
 
 		// this tx success because before execution, native_balance > threshold
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL2, &INFO2, 50));
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+			Some(BOB).into(),
+			&CALL2,
+			&INFO2,
+			50,
+			0
+		));
 		// assert_eq!(15378, Currencies::free_balance(ACA, &fee_account));
 		assert_eq!(
 			fee_aca - (200 + surplus) * 2,
@@ -2017,7 +2174,13 @@ fn charge_fee_failed_when_disable_dex() {
 		assert_eq!(ed, Currencies::free_balance(ACA, &BOB));
 
 		// this tx failed because when execute, native_balance < threshold, the dex swap failed
-		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL2, &INFO2, 50));
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+			Some(BOB).into(),
+			&CALL2,
+			&INFO2,
+			50,
+			0
+		));
 	});
 }
 
@@ -2163,26 +2326,30 @@ fn with_fee_call_validation_works() {
 			assert_eq!(OverrideChargeFeeMethod::<Runtime>::get(), None);
 
 			// CHARLIE has enough native token, default charge fee succeed
-			assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(&CHARLIE, &CALL, &INFO, 10));
-			// default charge fee will not set OverrideChargeFeeMethod
+			assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+				Some(CHARLIE).into(),
+				&CALL,
+				&INFO,
+				10,
+				0
+			)); // default charge fee will not set OverrideChargeFeeMethod
 			assert_eq!(OverrideChargeFeeMethod::<Runtime>::get(), None);
 
 			// BOB has not enough native token, default charge fee fail
-			assert_noop!(
-				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(&BOB, &CALL, &INFO, 10),
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>::from(0)
+					.validate_and_prepare(Some(BOB).into(), &CALL, &INFO, 10, 0)
+					.unwrap_err(),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 
 			// dex swap not enabled, validate failed.
 			// with_fee_currency test
 			for token in vec![DOT, AUSD] {
-				assert_noop!(
-					ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-						&CHARLIE,
-						&with_fee_currency_call(token),
-						&INFO,
-						10
-					),
+				assert_eq!(
+					ChargeTransactionPayment::<Runtime>::from(0)
+						.validate_and_prepare(Some(CHARLIE).into(), &with_fee_currency_call(token), &INFO, 10, 0)
+						.unwrap_err(),
 					TransactionValidityError::Invalid(InvalidTransaction::Payment)
 				);
 
@@ -2201,13 +2368,10 @@ fn with_fee_call_validation_works() {
 
 			// with_fee_path test
 			for path in vec![vec![DOT, AUSD, ACA], vec![AUSD, ACA]] {
-				assert_noop!(
-					ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-						&CHARLIE,
-						&with_fee_path_call(path.clone()),
-						&INFO,
-						10
-					),
+				assert_eq!(
+					ChargeTransactionPayment::<Runtime>::from(0)
+						.validate_and_prepare(Some(CHARLIE).into(), &with_fee_path_call(path.clone()), &INFO, 10, 0)
+						.unwrap_err(),
 					TransactionValidityError::Invalid(InvalidTransaction::Payment)
 				);
 
@@ -2226,37 +2390,46 @@ fn with_fee_call_validation_works() {
 
 			// with_fee_aggregated_path test
 			let aggregated_path = vec![AggregatedSwapPath::Dex(vec![DOT, AUSD])];
-			assert_noop!(
-				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-					&ALICE,
-					&with_fee_aggregated_path_by_call(aggregated_path.clone()),
-					&INFO,
-					10
-				),
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>::from(0)
+					.validate_and_prepare(
+						Some(ALICE).into(),
+						&with_fee_aggregated_path_by_call(aggregated_path.clone()),
+						&INFO,
+						10,
+						0
+					)
+					.unwrap_err(),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 
 			let aggregated_path = vec![AggregatedSwapPath::Dex(vec![DOT, ACA])];
-			assert_noop!(
-				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-					&CHARLIE,
-					&with_fee_aggregated_path_by_call(aggregated_path.clone()),
-					&INFO,
-					10
-				),
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>::from(0)
+					.validate_and_prepare(
+						Some(CHARLIE).into(),
+						&with_fee_aggregated_path_by_call(aggregated_path.clone()),
+						&INFO,
+						10,
+						0
+					)
+					.unwrap_err(),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 			// ensure_can_charge_fee_with_call failed, dot not set OverrideChargeFeeMethod
 			assert_eq!(OverrideChargeFeeMethod::<Runtime>::get(), None);
 
 			let aggregated_path = vec![AggregatedSwapPath::Taiga(0, 0, 0)];
-			assert_noop!(
-				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-					&CHARLIE,
-					&with_fee_aggregated_path_by_call(aggregated_path.clone()),
-					&INFO,
-					10
-				),
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>::from(0)
+					.validate_and_prepare(
+						Some(CHARLIE).into(),
+						&with_fee_aggregated_path_by_call(aggregated_path.clone()),
+						&INFO,
+						10,
+						0
+					)
+					.unwrap_err(),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 			// ensure_can_charge_fee_with_call failed, dot not set OverrideChargeFeeMethod
@@ -2276,11 +2449,12 @@ fn with_fee_call_validation_works() {
 
 			// with_fee_currency test
 			for token in vec![DOT, AUSD] {
-				assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-					&CHARLIE,
+				assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+					Some(CHARLIE).into(),
 					&with_fee_currency_call(token),
 					&INFO,
-					10
+					10,
+					0
 				));
 
 				// OverrideChargeFeeMethod will be set
@@ -2291,22 +2465,20 @@ fn with_fee_call_validation_works() {
 			}
 
 			// LDOT is not enabled fee pool, cannot charge fee by with_fee_currency
-			assert_noop!(
-				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-					&CHARLIE,
-					&with_fee_currency_call(LDOT),
-					&INFO,
-					10
-				),
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>::from(0)
+					.validate_and_prepare(Some(CHARLIE).into(), &with_fee_currency_call(LDOT), &INFO, 10, 0)
+					.unwrap_err(),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 
 			for path in vec![vec![DOT, AUSD, ACA], vec![AUSD, ACA]] {
-				assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-					&CHARLIE,
+				assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+					Some(CHARLIE).into(),
 					&with_fee_path_call(path.clone()),
 					&INFO,
-					10
+					10,
+					0
 				));
 
 				// OverrideChargeFeeMethod will be set
@@ -2317,15 +2489,145 @@ fn with_fee_call_validation_works() {
 			}
 
 			let aggregated_path = vec![AggregatedSwapPath::Dex(vec![DOT, AUSD, ACA])];
-			assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
-				&CHARLIE,
+			assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate_and_prepare(
+				Some(CHARLIE).into(),
 				&with_fee_aggregated_path_by_call(aggregated_path.clone()),
 				&INFO,
-				10
+				10,
+				0
 			));
 			assert_eq!(
 				OverrideChargeFeeMethod::<Runtime>::get(),
 				Some(ChargeFeeMethod::FeeAggregatedPath(aggregated_path))
+			);
+		});
+}
+
+#[test]
+fn query_info_and_fee_details_works() {
+	let call = RuntimeCall::PalletBalances(pallet_balances::Call::transfer_allow_death { dest: BOB, value: 69 });
+	let origin = ALICE;
+	let extra = ();
+	let xt = UncheckedExtrinsic::new_signed(call.clone(), origin, (), extra);
+	let info = xt.get_dispatch_info();
+	let ext = xt.encode();
+	let len = ext.len() as u32;
+
+	let unsigned_xt = UncheckedExtrinsic::<u64, _, (), ()>::new_bare(call);
+	let unsigned_xt_info = unsigned_xt.get_dispatch_info();
+
+	ExtBuilder::default()
+		.base_weight(Weight::from_parts(5, 0))
+		.weight_fee(2)
+		.build()
+		.execute_with(|| {
+			// all fees should be x1.5
+			NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
+
+			assert_eq!(
+				TransactionPayment::query_info(xt.clone(), len),
+				RuntimeDispatchInfo {
+					weight: info.total_weight(),
+					class: info.class,
+					partial_fee: 5 * 2 /* base * weight_fee */
+					+ len as u128 * 2 /* len * 2 */
+					+ info.total_weight().min(BlockWeights::get().max_block).ref_time() as u128 * 2 * 3 / 2 /* weight */
+				},
+			);
+
+			assert_eq!(
+				TransactionPayment::query_info(unsigned_xt.clone(), len),
+				RuntimeDispatchInfo {
+					weight: unsigned_xt_info.call_weight,
+					class: unsigned_xt_info.class,
+					partial_fee: 0,
+				},
+			);
+
+			assert_eq!(
+				TransactionPayment::query_fee_details(xt, len),
+				FeeDetails {
+					inclusion_fee: Some(InclusionFee {
+						base_fee: 5 * 2,
+						len_fee: len as u128 * 2,
+						adjusted_weight_fee: info.total_weight().min(BlockWeights::get().max_block).ref_time() as u128
+							* 2 * 3 / 2
+					}),
+					tip: 0,
+				},
+			);
+
+			assert_eq!(
+				TransactionPayment::query_fee_details(unsigned_xt, len),
+				FeeDetails {
+					inclusion_fee: None,
+					tip: 0
+				},
+			);
+		});
+}
+
+#[test]
+fn query_call_info_and_fee_details_works() {
+	let call = RuntimeCall::PalletBalances(pallet_balances::Call::transfer_allow_death { dest: BOB, value: 69 });
+	let info = call.get_dispatch_info();
+	let encoded_call = call.encode();
+	let len = encoded_call.len() as u32;
+
+	ExtBuilder::default()
+		.base_weight(Weight::from_parts(5, 0))
+		.weight_fee(2)
+		.build()
+		.execute_with(|| {
+			// all fees should be x1.5
+			NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
+
+			assert_eq!(
+				TransactionPayment::query_call_info(call.clone(), len),
+				RuntimeDispatchInfo {
+					weight: info.total_weight(),
+					class: info.class,
+					partial_fee: 5 * 2 /* base * weight_fee */
+					+ len as u128 * 2  /* len * 2 */
+					+ info.total_weight().min(BlockWeights::get().max_block).ref_time() as u128 * 2 * 3 / 2 /* weight */
+				},
+			);
+
+			assert_eq!(
+				TransactionPayment::query_call_fee_details(call, len),
+				FeeDetails {
+					inclusion_fee: Some(InclusionFee {
+						base_fee: 5 * 2,          /* base * weight_fee */
+						len_fee: len as u128 * 2, /* len * 2 */
+						adjusted_weight_fee: info.total_weight().min(BlockWeights::get().max_block).ref_time() as u128
+							* 2 * 3 / 2  /* weight * weight_fee * multiplier */
+					}),
+					tip: 0,
+				},
+			);
+		});
+}
+
+#[test]
+fn balance_not_enough_should_return_invalid_transaction() {
+	let tip = 1000;
+	let len = 10;
+
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let normal = DispatchInfo {
+				call_weight: Weight::from_parts(100, 0),
+				extension_weight: Weight::zero(),
+				class: DispatchClass::Normal,
+				pays_fee: Pays::Yes,
+			};
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>(tip)
+					.validate_only(Some(BOB).into(), &CALL, &normal, len, External, 0)
+					.unwrap_err(),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 		});
 }

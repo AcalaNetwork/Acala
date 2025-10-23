@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -1057,7 +1057,7 @@ fn process_redeem_requests_works() {
 			);
 
 			// total_bonded is enough to process all redeem requests
-			assert_ok!(Homa::process_redeem_requests(1));
+			assert_eq!(Homa::process_redeem_requests(1), Ok(1));
 			System::assert_has_event(RuntimeEvent::Homa(crate::Event::RedeemedByUnbond {
 				redeemer: ALICE,
 				era_index_when_unbond: 1,
@@ -1106,7 +1106,7 @@ fn process_redeem_requests_works() {
 			);
 
 			// total_bonded is not enough to process all redeem requests
-			assert_ok!(Homa::process_redeem_requests(2));
+			assert_eq!(Homa::process_redeem_requests(2), Ok(2));
 			System::assert_has_event(RuntimeEvent::Homa(crate::Event::RedeemedByUnbond {
 				redeemer: BOB,
 				era_index_when_unbond: 2,
@@ -1276,7 +1276,7 @@ fn bump_current_era_works() {
 			// bump era to #1,
 			// will process to_bond_pool.
 			MockRelayBlockNumberProvider::set(100);
-			assert_ok!(Homa::bump_current_era(1));
+			assert_eq!(Homa::bump_current_era(1), Ok(0));
 			System::assert_has_event(RuntimeEvent::Homa(crate::Event::CurrentEraBumped { new_era_index: 1 }));
 			assert_eq!(Homa::last_era_bumped_block(), 100);
 			assert_eq!(Homa::relay_chain_current_era(), 1);
@@ -1307,7 +1307,7 @@ fn bump_current_era_works() {
 			// bump era to #2,
 			// accumulate staking reward and draw commission
 			MockRelayBlockNumberProvider::set(200);
-			assert_ok!(Homa::bump_current_era(1));
+			assert_eq!(Homa::bump_current_era(1), Ok(0));
 			System::assert_has_event(RuntimeEvent::Homa(crate::Event::CurrentEraBumped { new_era_index: 2 }));
 			assert_eq!(Homa::last_era_bumped_block(), 200);
 			assert_eq!(Homa::relay_chain_current_era(), 2);
@@ -1358,7 +1358,7 @@ fn bump_current_era_works() {
 			// bump era to #3,
 			// will process redeem requests
 			MockRelayBlockNumberProvider::set(300);
-			assert_ok!(Homa::bump_current_era(1));
+			assert_eq!(Homa::bump_current_era(1), Ok(1));
 			System::assert_has_event(RuntimeEvent::Homa(crate::Event::CurrentEraBumped { new_era_index: 3 }));
 			System::assert_has_event(RuntimeEvent::Homa(crate::Event::RedeemedByUnbond {
 				redeemer: ALICE,
@@ -1404,7 +1404,7 @@ fn bump_current_era_works() {
 			// bump era to #31,
 			// will process scheduled unbonded
 			MockRelayBlockNumberProvider::set(3100);
-			assert_ok!(Homa::bump_current_era(28));
+			assert_eq!(Homa::bump_current_era(28), Ok(0));
 			System::assert_has_event(RuntimeEvent::Homa(crate::Event::CurrentEraBumped { new_era_index: 31 }));
 			assert_eq!(Homa::last_era_bumped_block(), 3100);
 			assert_eq!(Homa::relay_chain_current_era(), 31);
@@ -1482,4 +1482,71 @@ fn last_era_bumped_block_config_check_works() {
 		assert_eq!(Homa::bump_era_frequency(), 50);
 		assert_eq!(MockRelayBlockNumberProvider::current_block_number(), 100);
 	});
+}
+
+#[test]
+fn process_redeem_requests_under_limit_works() {
+	ExtBuilder::default()
+		.balances(vec![
+			(ALICE, LIQUID_CURRENCY_ID, 10_000_000),
+			(BOB, LIQUID_CURRENCY_ID, 10_000_000),
+			(CHARLIE, LIQUID_CURRENCY_ID, 10_000_000),
+			(DAVE, LIQUID_CURRENCY_ID, 10_000_000),
+		])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Homa::reset_ledgers(
+				RuntimeOrigin::signed(HomaAdmin::get()),
+				vec![(0, Some(4_000_000), None)]
+			));
+			ToBondPool::<Runtime>::put(4_000_000);
+
+			assert_ok!(Homa::request_redeem(RuntimeOrigin::signed(ALICE), 5_000_000, false));
+			assert_ok!(Homa::request_redeem(RuntimeOrigin::signed(BOB), 5_000_000, false));
+			assert_ok!(Homa::request_redeem(RuntimeOrigin::signed(CHARLIE), 5_000_000, false));
+			assert_ok!(Homa::request_redeem(RuntimeOrigin::signed(DAVE), 5_000_000, false));
+			assert_eq!(Homa::redeem_requests(&ALICE), Some((5_000_000, false)));
+			assert_eq!(Homa::redeem_requests(&BOB), Some((5_000_000, false)));
+			assert_eq!(Homa::redeem_requests(&CHARLIE), Some((5_000_000, false)));
+			assert_eq!(Homa::redeem_requests(&DAVE), Some((5_000_000, false)));
+			assert_eq!(Homa::unbondings(&ALICE, 1 + BondingDuration::get()), 0);
+			assert_eq!(Homa::unbondings(&BOB, 1 + BondingDuration::get()), 0);
+			assert_eq!(Homa::unbondings(&CHARLIE, 1 + BondingDuration::get()), 0);
+			assert_eq!(Homa::unbondings(&DAVE, 1 + BondingDuration::get()), 0);
+			assert_eq!(Homa::get_total_bonded(), 4_000_000);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 40_000_000);
+
+			// total_bonded is enough to process all redeem requests, but excceed limit
+			assert_eq!(Homa::process_redeem_requests(1), Ok(3));
+			System::assert_has_event(RuntimeEvent::Homa(crate::Event::RedeemedByUnbond {
+				redeemer: ALICE,
+				era_index_when_unbond: 1,
+				liquid_amount: 5_000_000,
+				unbonding_staking_amount: 1_000_000,
+			}));
+			System::assert_has_event(RuntimeEvent::Homa(crate::Event::RedeemedByUnbond {
+				redeemer: BOB,
+				era_index_when_unbond: 1,
+				liquid_amount: 5_000_000,
+				unbonding_staking_amount: 1_000_000,
+			}));
+			System::assert_has_event(RuntimeEvent::Homa(crate::Event::RedeemedByUnbond {
+				redeemer: CHARLIE,
+				era_index_when_unbond: 1,
+				liquid_amount: 5_000_000,
+				unbonding_staking_amount: 1_000_000,
+			}));
+			System::assert_has_event(RuntimeEvent::Homa(crate::Event::HomaUnbond {
+				sub_account_index: 0,
+				amount: 3_000_000,
+			}));
+			assert_eq!(Homa::redeem_requests(&ALICE), None);
+			assert_eq!(Homa::redeem_requests(&BOB), None);
+			assert_eq!(Homa::redeem_requests(&CHARLIE), None);
+			assert_eq!(Homa::redeem_requests(&DAVE), Some((5_000_000, false)));
+			assert_eq!(Homa::unbondings(&ALICE, 1 + BondingDuration::get()), 1_000_000);
+			assert_eq!(Homa::unbondings(&BOB, 1 + BondingDuration::get()), 1_000_000);
+			assert_eq!(Homa::unbondings(&CHARLIE, 1 + BondingDuration::get()), 1_000_000);
+			assert_eq!(Homa::unbondings(&DAVE, 1 + BondingDuration::get()), 0);
+		});
 }

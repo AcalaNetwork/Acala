@@ -1,8 +1,8 @@
 [package]
 name = "acala-primitives"
-version = "2.25.0"
-authors = ["Acala Developers"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 log = { workspace = true }

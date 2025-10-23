@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -76,7 +76,7 @@ where
 					}
 				};
 
-				let maybe_adjustment_multiplier = 10u128.checked_pow((18 - decimals).into());
+				let maybe_adjustment_multiplier = 10u128.checked_pow((18u8.saturating_sub(decimals)).into());
 				let adjustment_multiplier = match maybe_adjustment_multiplier {
 					Some(adjustment_multiplier) => adjustment_multiplier,
 					None => {
@@ -89,7 +89,7 @@ where
 
 				let output = price.into_inner().wrapping_div(adjustment_multiplier);
 
-				log::debug!(target: "evm", "oracle: getPrice currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}, output: {:?}", currency_id, price, adjustment_multiplier, output);
+				log::debug!(target: "evm", "oracle: getPrice currency_id: {currency_id:?}, price: {price:?}, adjustment_multiplier: {adjustment_multiplier:?}, output: {output:?}");
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					output: Output::encode_uint(output),

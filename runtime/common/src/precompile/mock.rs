@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,24 +22,25 @@ use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, Weight};
 use frame_support::{
 	derive_impl, ord_parameter_types, parameter_types,
 	traits::{
-		ConstU128, ConstU32, ConstU64, EqualPrivilegeOnly, Everything, InstanceFilter, Nothing, OnFinalize,
-		OnInitialize, SortedMembers,
+		ConstU128, ConstU32, ConstU64, EqualPrivilegeOnly, Everything, ExistenceRequirement, InstanceFilter,
+		LockIdentifier, Nothing, OnFinalize, OnInitialize, SortedMembers,
 	},
 	weights::{ConstantMultiplier, IdentityFee},
 	PalletId,
 };
-use frame_system::{offchain::SendTransactionTypes, EnsureRoot, EnsureSignedBy};
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_cdp_engine::CollateralCurrencyIds;
 use module_evm::{EvmChainId, EvmTask};
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{
 	mocks::{MockStableAsset, TestRandomness},
-	AddressMapping as AddressMappingT, AuctionManager, CrowdloanVaultXcm, DEXIncentives, DispatchableTask,
-	EmergencyShutdown, ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId, PriceProvider,
-	Rate, SpecificJointsSwap,
+	AddressMapping as AddressMappingT, AuctionManager, DEXIncentives, DispatchableTask, EmergencyShutdown,
+	ExchangeRate, ExchangeRateProvider, FractionalRate, HomaSubAccountXcm, PoolId, PriceProvider, Rate,
+	SpecificJointsSwap,
 };
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use orml_traits::{parameter_type_with_key, MultiCurrency, MultiReservableCurrency};
+use orml_xtokens::AbsoluteReserveProvider;
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 pub use primitives::{
 	define_combined_task,
 	evm::{convert_decimals_to_evm, EvmAddress},
@@ -54,7 +55,7 @@ use sp_runtime::{
 	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent, RuntimeDebug,
 };
 use sp_std::prelude::*;
-use xcm::{prelude::*, v4::Xcm};
+use xcm::{prelude::*, v5::Xcm};
 use xcm_builder::FixedWeightBounds;
 
 pub type AccountId = AccountId32;
@@ -72,7 +73,7 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const ExistenceRequirement: u128 = 1;
+	pub const ExistentialDeposit: u128 = 1;
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: u32 = 600;
 	pub const RootOperatorAccountId: AccountId = ALICE;
@@ -88,7 +89,7 @@ impl SortedMembers<AccountId> for Members {
 }
 
 parameter_types! {
-	pub const MaxFeedValues: u32 = 10; // max 10 values allowd to feed in one call.
+	pub const MaxFeedValues: u32 = 10; // max 10 values allowed to feed in one call.
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -101,7 +102,6 @@ impl orml_oracle::BenchmarkHelper<Key, Price, MaxFeedValues> for BenchmarkHelper
 }
 
 impl orml_oracle::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type OnNewData = ();
 	type CombineData = orml_oracle::DefaultCombineData<Self, MinimumCount, ExpiresIn>;
 	type Time = Timestamp;
@@ -130,7 +130,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -147,7 +146,7 @@ impl pallet_balances::Config for Test {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
-	type ExistentialDeposit = ExistenceRequirement;
+	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = module_support::SystemAccountStore<Test>;
 	type WeightInfo = ();
 	type MaxLocks = ();
@@ -157,6 +156,7 @@ impl pallet_balances::Config for Test {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -173,7 +173,6 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -191,7 +190,6 @@ impl module_evm_bridge::Config for Test {
 }
 
 impl module_asset_registry::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type StakingCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
@@ -200,7 +198,7 @@ impl module_asset_registry::Config for Test {
 }
 
 define_combined_task! {
-	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[derive(Clone, Encode, Decode, DecodeWithMemTracking, PartialEq, RuntimeDebug, TypeInfo)]
 	pub enum ScheduledTasks {
 		EvmTask(EvmTask<Test>),
 	}
@@ -221,7 +219,6 @@ parameter_types! {
 }
 
 impl module_idle_scheduler::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Index = Nonce;
 	type Task = ScheduledTasks;
@@ -234,7 +231,6 @@ parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 }
 impl module_nft::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type CreateClassDeposit = ConstU128<200>;
 	type CreateTokenDeposit = ConstU128<100>;
@@ -265,7 +261,6 @@ parameter_types! {
 }
 
 impl module_transaction_payment::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
@@ -274,7 +269,7 @@ impl module_transaction_payment::Config for Test {
 	type OperationalFeeMultiplier = ConstU64<5>;
 	type TipPerWeightStep = ConstU128<1>;
 	type MaxTipsOfPriority = ConstU128<1000>;
-	type AlternativeFeeSwapDeposit = ExistenceRequirement;
+	type AlternativeFeeSwapDeposit = ExistentialDeposit;
 	type WeightToFee = IdentityFee<Balance>;
 	type LengthToFee = ConstantMultiplier<Balance, ConstU128<10>>;
 	type FeeMultiplierUpdate = ();
@@ -291,7 +286,20 @@ impl module_transaction_payment::Config for Test {
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+#[derive(
+	Copy,
+	Clone,
+	Eq,
+	PartialEq,
+	Ord,
+	PartialOrd,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	MaxEncodedLen,
+	TypeInfo,
+)]
 pub enum ProxyType {
 	Any,
 	JustTransfer,
@@ -331,6 +339,7 @@ impl pallet_proxy::Config for Test {
 	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = ConstU128<1>;
 	type AnnouncementDepositFactor = ConstU128<1>;
+	type BlockNumberProvider = System;
 }
 
 impl pallet_utility::Config for Test {
@@ -355,6 +364,7 @@ impl pallet_scheduler::Config for Test {
 	type MaxScheduledPerBlock = ConstU32<50>;
 	type WeightInfo = ();
 	type Preimages = ();
+	type BlockNumberProvider = System;
 }
 
 pub struct MockDEXIncentives;
@@ -380,11 +390,11 @@ parameter_types! {
 }
 
 impl module_dex::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Erc20InfoMapping = EvmErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
@@ -398,7 +408,6 @@ parameter_types! {
 }
 
 impl module_loans::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type RiskManager = CDPEngine;
 	type CDPTreasury = CDPTreasury;
@@ -433,7 +442,6 @@ parameter_types! {
 }
 
 impl module_cdp_engine::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type PriceSource = MockPriceSource;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
@@ -505,7 +513,6 @@ parameter_types! {
 }
 
 impl module_cdp_treasury::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
@@ -520,7 +527,6 @@ impl module_cdp_treasury::Config for Test {
 }
 
 impl module_honzon::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type DepositPerAuthorization = ConstU128<100>;
 	type CollateralCurrencyIds = CollateralCurrencyIds<Test>;
@@ -539,7 +545,6 @@ impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoo
 }
 
 impl nutsfinance_stable_asset::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type AssetId = CurrencyId;
 	type Balance = Balance;
 	type Assets = Tokens;
@@ -556,7 +561,6 @@ impl nutsfinance_stable_asset::Config for Test {
 }
 
 impl module_transaction_pause::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type WeightInfo = ();
 }
@@ -591,7 +595,6 @@ impl module_evm::Config for Test {
 	type NewContractExtraBytes = ConstU32<100>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<10>;
-	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = AllPrecompiles<Self, module_transaction_pause::PausedPrecompileFilter<Self>, ()>;
 	type PrecompilesValue = PrecompilesValue;
 	type GasToWeight = GasToWeight;
@@ -611,7 +614,6 @@ impl module_evm::Config for Test {
 }
 
 impl module_evm_accounts::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Test>;
 	type ChainId = EvmChainId<Test>;
@@ -659,7 +661,6 @@ ord_parameter_types! {
 }
 
 impl module_prices::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Source = Oracle;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type StableCurrencyFixedPrice = StableCurrencyFixedPrice;
@@ -680,9 +681,14 @@ impl module_prices::Config for Test {
 /// mock XCM transfer.
 pub struct MockHomaSubAccountXcm;
 impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
-	type RelayChainAccountId = AccountId;
+	type NomineeId = AccountId;
 	fn transfer_staking_to_sub_account(sender: &AccountId, _: u16, amount: Balance) -> DispatchResult {
-		Currencies::withdraw(StakingCurrencyId::get(), sender, amount)
+		Currencies::withdraw(
+			StakingCurrencyId::get(),
+			sender,
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn withdraw_unbonded_from_sub_account(_: u16, _: Balance) -> DispatchResult {
@@ -697,7 +703,7 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 		Ok(())
 	}
 
-	fn nominate_on_sub_account(_: u16, _: Vec<Self::RelayChainAccountId>) -> DispatchResult {
+	fn nominate_on_sub_account(_: u16, _: Vec<Self::NomineeId>) -> DispatchResult {
 		Ok(())
 	}
 
@@ -727,7 +733,6 @@ parameter_types! {
 }
 
 impl module_homa::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type GovernanceOrigin = EnsureSignedBy<HomaAdmin, AccountId>;
 	type StakingCurrencyId = StakingCurrencyId;
@@ -743,6 +748,7 @@ impl module_homa::Config for Test {
 	type XcmInterface = MockHomaSubAccountXcm;
 	type WeightInfo = ();
 	type NominationsProvider = ();
+	type ProcessRedeemRequestsLimit = ConstU32<2_000>;
 }
 
 parameter_type_with_key! {
@@ -769,7 +775,6 @@ ord_parameter_types! {
 }
 
 impl module_incentives::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = ConstU32<10>;
 	type NativeCurrencyId = GetNativeCurrencyId;
@@ -849,7 +854,7 @@ pub struct MockExec;
 impl ExecuteXcm<RuntimeCall> for MockExec {
 	type Prepared = Weightless;
 
-	fn prepare(_message: Xcm<RuntimeCall>) -> Result<Self::Prepared, Xcm<RuntimeCall>> {
+	fn prepare(_message: Xcm<RuntimeCall>, _weight_limit: Weight) -> Result<Self::Prepared, InstructionError> {
 		unreachable!()
 	}
 
@@ -868,23 +873,28 @@ impl ExecuteXcm<RuntimeCall> for MockExec {
 			(
 				1,
 				Some(Transact {
-					require_weight_at_most, ..
+					fallback_max_weight: Some(fallback_max_weight),
+					..
 				}),
 			) => {
-				if require_weight_at_most.all_lte(weight_limit) {
+				if fallback_max_weight.all_lte(weight_limit) {
 					Outcome::Complete {
-						used: *require_weight_at_most,
+						used: *fallback_max_weight,
 					}
 				} else {
-					Outcome::Error {
-						error: XcmError::WeightLimitReached(*require_weight_at_most),
-					}
+					Outcome::Error(InstructionError {
+						index: 0,
+						error: XcmError::WeightLimitReached(*fallback_max_weight),
+					})
 				}
 			}
 			// use 1000 to decide that it's not supported.
 			_ => Outcome::Incomplete {
 				used: Weight::from_parts(1000, 1000).min(weight_limit),
-				error: XcmError::Unimplemented,
+				error: InstructionError {
+					index: 0,
+					error: XcmError::Unimplemented,
+				},
 			},
 		};
 		o
@@ -904,7 +914,6 @@ parameter_types! {
 }
 
 impl orml_xtokens::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
@@ -923,31 +932,56 @@ impl orml_xtokens::Config for Test {
 }
 
 parameter_types!(
-	pub CrowdloanVault: AccountId = AccountId::new([0u8; 32]);
 	pub const LiquidCrowdloanCurrencyId: CurrencyId = LCDOT;
 	pub LiquidCrowdloanPalletId: PalletId = PalletId(*b"aca/lqcl");
 );
 
-pub struct MockXcmTransfer;
-impl CrowdloanVaultXcm<AccountId, Balance> for MockXcmTransfer {
-	fn transfer_to_liquid_crowdloan_module_account(
-		_vault: AccountId,
-		_recipient: AccountId,
-		_amount: Balance,
-	) -> DispatchResult {
-		Ok(())
-	}
-}
-
 impl module_liquid_crowdloan::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type LiquidCrowdloanCurrencyId = LiquidCrowdloanCurrencyId;
 	type RelayChainCurrencyId = GetStakingCurrencyId;
 	type PalletId = LiquidCrowdloanPalletId;
 	type GovernanceOrigin = EnsureRoot<AccountId>;
-	type CrowdloanVault = CrowdloanVault;
-	type XcmTransfer = MockXcmTransfer;
+	type WeightInfo = ();
+}
+
+pub struct ParameterStoreImpl;
+impl orml_traits::parameters::ParameterStore<module_earning::Parameters> for ParameterStoreImpl {
+	fn get<K>(key: K) -> Option<K::Value>
+	where
+		K: orml_traits::parameters::Key
+			+ Into<<module_earning::Parameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedKey>,
+		<module_earning::Parameters as orml_traits::parameters::AggregratedKeyValue>::AggregratedValue:
+			TryInto<K::WrappedValue>,
+	{
+		let key = key.into();
+		match key {
+			module_earning::ParametersKey::InstantUnstakeFee(_) => Some(
+				module_earning::ParametersValue::InstantUnstakeFee(sp_runtime::Permill::from_percent(10))
+					.try_into()
+					.ok()?
+					.into(),
+			),
+		}
+	}
+}
+
+parameter_types! {
+	pub const MinBond: Balance = 1_000_000_000;
+	pub const UnbondingPeriod: BlockNumber = 10_000;
+	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
+}
+
+impl module_earning::Config for Test {
+	type Currency = Balances;
+	type ParameterStore = ParameterStoreImpl;
+	type OnBonded = module_incentives::OnEarningBonded<Test>;
+	type OnUnbonded = module_incentives::OnEarningUnbonded<Test>;
+	type OnUnstakeFee = ();
+	type MinBond = MinBond;
+	type UnbondingPeriod = UnbondingPeriod;
+	type MaxUnbondingChunks = ConstU32<10>;
+	type LockIdentifier = EarningLockIdentifier;
 	type WeightInfo = ();
 }
 
@@ -1026,15 +1060,25 @@ frame_support::construct_runtime!(
 		XTokens: orml_xtokens,
 		StableAsset: nutsfinance_stable_asset,
 		LiquidCrowdloan: module_liquid_crowdloan,
+		Earning: module_earning,
 	}
 );
 
-impl<LocalCall> SendTransactionTypes<LocalCall> for Test
+impl<C> frame_system::offchain::CreateTransactionBase<C> for Test
 where
-	RuntimeCall: From<LocalCall>,
+	RuntimeCall: From<C>,
 {
-	type OverarchingCall = RuntimeCall;
 	type Extrinsic = UncheckedExtrinsic;
+	type RuntimeCall = RuntimeCall;
+}
+
+impl<C> frame_system::offchain::CreateBare<C> for Test
+where
+	RuntimeCall: From<C>,
+{
+	fn create_bare(call: Self::RuntimeCall) -> Self::Extrinsic {
+		UncheckedExtrinsic::new_bare(call)
+	}
 }
 
 #[cfg(test)]
@@ -1078,7 +1122,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut storage)
 	.unwrap();
 	module_asset_registry::GenesisConfig::<Test> {
-		assets: vec![(ACA, ExistenceRequirement::get()), (DOT, 0)],
+		assets: vec![(ACA, ExistentialDeposit::get()), (DOT, 0)],
 	}
 	.assimilate_storage(&mut storage)
 	.unwrap();

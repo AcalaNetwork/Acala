@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,49 +18,56 @@
 
 use crate::{AccountId, Authority, AuthoritysOriginId, BlockNumber, Runtime, RuntimeCall, RuntimeOrigin, System};
 
+use parity_scale_codec::Encode;
 use sp_runtime::traits::Hash;
 use sp_std::prelude::*;
 
 use frame_support::{
 	dispatch::GetDispatchInfo,
-	traits::{schedule::DispatchTime, OriginTrait},
+	traits::{schedule::DispatchTime, Bounded, OriginTrait},
 };
 use frame_system::RawOrigin;
 use orml_benchmarking::{runtime_benchmarks, whitelisted_caller};
+
+fn runtime_call() -> Box<RuntimeCall> {
+	let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
+	Box::new(call)
+}
+
+fn bounded_call(call: RuntimeCall) -> Box<Bounded<RuntimeCall, <Runtime as frame_system::Config>::Hashing>> {
+	let encoded_call = call.encode();
+	Box::new(Bounded::Inline(encoded_call.try_into().unwrap()))
+}
 
 runtime_benchmarks! {
 	{ Runtime, orml_authority }
 
 	// dispatch a dispatchable as other origin
 	dispatch_as {
-		let ensure_root_call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
-	}: _(RawOrigin::Root, AuthoritysOriginId::Root, Box::new(ensure_root_call.clone()))
+	}: _(RawOrigin::Root, AuthoritysOriginId::Root, runtime_call())
 
-	// schdule a dispatchable to be dispatched at later block.
+	// schedule a dispatchable to be dispatched at later block.
 	schedule_dispatch_without_delay {
-		let ensure_root_call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 			as_origin: AuthoritysOriginId::Root,
-			call: Box::new(ensure_root_call.clone()),
+			call: runtime_call(),
 		});
-	}: schedule_dispatch(RawOrigin::Root, DispatchTime::At(2), 0, false, Box::new(call.clone()))
+	}: schedule_dispatch(RawOrigin::Root, DispatchTime::At(2), 0, false, bounded_call(call))
 
-	// schdule a dispatchable to be dispatched at later block.
+	// schedule a dispatchable to be dispatched at later block.
 	// ensure that the delay is reached when scheduling
 	schedule_dispatch_with_delay {
-		let ensure_root_call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 			as_origin: AuthoritysOriginId::Root,
-			call: Box::new(ensure_root_call.clone()),
+			call: runtime_call(),
 		});
-	}: schedule_dispatch(RawOrigin::Root, DispatchTime::At(2), 0, true, Box::new(call.clone()))
+	}: schedule_dispatch(RawOrigin::Root, DispatchTime::At(2), 0, true, bounded_call(call))
 
 	// fast track a scheduled dispatchable.
 	fast_track_scheduled_dispatch {
-		let ensure_root_call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 			as_origin: AuthoritysOriginId::Root,
-			call: Box::new(ensure_root_call.clone()),
+			call: runtime_call(),
 		});
 		System::set_block_number(1u32);
 		Authority::schedule_dispatch(
@@ -68,7 +75,7 @@ runtime_benchmarks! {
 			DispatchTime::At(2),
 			0,
 			true,
-			Box::new(call.clone())
+			bounded_call(call)
 		)?;
 		let schedule_origin = {
 			let origin: <Runtime as frame_system::Config>::RuntimeOrigin = From::from(RuntimeOrigin::root());
@@ -85,10 +92,9 @@ runtime_benchmarks! {
 
 	// delay a scheduled dispatchable.
 	delay_scheduled_dispatch {
-		let ensure_root_call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 			as_origin: AuthoritysOriginId::Root,
-			call: Box::new(ensure_root_call.clone()),
+			call: runtime_call(),
 		});
 		System::set_block_number(1u32);
 		Authority::schedule_dispatch(
@@ -96,7 +102,7 @@ runtime_benchmarks! {
 			DispatchTime::At(2),
 			0,
 			true,
-			Box::new(call.clone())
+			bounded_call(call)
 		)?;
 		let schedule_origin = {
 			let origin: <Runtime as frame_system::Config>::RuntimeOrigin = From::from(RuntimeOrigin::root());
@@ -113,10 +119,9 @@ runtime_benchmarks! {
 
 	// cancel a scheduled dispatchable
 	cancel_scheduled_dispatch {
-		let ensure_root_call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 		let call = RuntimeCall::Authority(orml_authority::Call::dispatch_as {
 			as_origin: AuthoritysOriginId::Root,
-			call: Box::new(ensure_root_call.clone()),
+			call: runtime_call(),
 		});
 		System::set_block_number(1u32);
 		Authority::schedule_dispatch(
@@ -124,7 +129,7 @@ runtime_benchmarks! {
 			DispatchTime::At(2),
 			0,
 			true,
-			Box::new(call.clone())
+			bounded_call(call)
 		)?;
 		let schedule_origin = {
 			let origin: <Runtime as frame_system::Config>::RuntimeOrigin = From::from(RuntimeOrigin::root());
@@ -165,7 +170,7 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
-		let call_weight_bound = call.get_dispatch_info().weight;
+		let call_weight_bound = call.get_dispatch_info().call_weight;
 		System::set_block_number(1u32);
 		Authority::authorize_call(RuntimeOrigin::root(), Box::new(call.clone()), Some(caller.clone()))?;
 	}: _(RawOrigin::Signed(caller), hash, call_weight_bound)

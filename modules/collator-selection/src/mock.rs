@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -68,6 +68,7 @@ impl pallet_balances::Config for Test {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 pub struct Author4;
@@ -97,6 +98,7 @@ impl pallet_aura::Config for Test {
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<32>;
 	type AllowMultipleBlocksPerSlot = ConstBool<false>;
+	type SlotDuration = ConstU64<12000>;
 }
 
 sp_runtime::impl_opaque_keys! {
@@ -143,6 +145,7 @@ impl pallet_session::Config for Test {
 	type SessionHandler = TestSessionHandler;
 	type Keys = MockSessionKeys;
 	type WeightInfo = ();
+	type DisablingStrategy = ();
 }
 
 ord_parameter_types! {
@@ -155,7 +158,6 @@ parameter_types! {
 }
 
 impl Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureSignedBy<RootAccount, u64>;
@@ -188,13 +190,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	let balances = pallet_balances::GenesisConfig::<Test> {
 		balances: vec![(1, 100), (2, 100), (3, 100), (4, 100), (5, 100), (33, 5)],
+		..Default::default()
 	};
 	let collator_selection = collator_selection::GenesisConfig::<Test> {
 		desired_candidates: 2,
 		candidacy_bond: 10,
 		invulnerables,
 	};
-	let session = pallet_session::GenesisConfig::<Test> { keys };
+	let session = pallet_session::GenesisConfig::<Test> {
+		keys,
+		..Default::default()
+	};
 	balances.assimilate_storage(&mut t).unwrap();
 	// collator selection must be initialized before session.
 	collator_selection.assimilate_storage(&mut t).unwrap();

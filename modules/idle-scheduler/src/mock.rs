@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,7 @@ use primitives::{define_combined_task, task::TaskResult, Nonce};
 use sp_runtime::BuildStorage;
 
 use super::*;
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use scale_info::TypeInfo;
 
 pub const BASE_WEIGHT: Weight = Weight::from_parts(1_000_000, 0);
@@ -59,7 +59,6 @@ parameter_types! {
 }
 
 impl module_idle_scheduler::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Index = Nonce;
 	type Task = ScheduledTasks;
@@ -69,7 +68,7 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 // Mock dispatachable tasks
-#[derive(Clone, Debug, PartialEq, Encode, Decode, TypeInfo)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 pub enum BalancesTask {
 	#[codec(index = 0)]
 	OnIdle,
@@ -84,7 +83,7 @@ impl DispatchableTask for BalancesTask {
 	}
 }
 
-#[derive(Clone, Debug, PartialEq, Encode, Decode, TypeInfo)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 pub enum HomaLiteTask {
 	#[codec(index = 0)]
 	OnIdle,
@@ -100,7 +99,7 @@ impl DispatchableTask for HomaLiteTask {
 }
 
 define_combined_task! {
-	#[derive(Clone, Debug, PartialEq, Encode, Decode, TypeInfo)]
+	#[derive(Clone, Debug, PartialEq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 	pub enum ScheduledTasks {
 		BalancesTask(BalancesTask),
 		HomaLiteTask(HomaLiteTask),

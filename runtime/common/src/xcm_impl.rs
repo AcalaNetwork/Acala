@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,10 @@
 
 //! Common xcm implementation
 
-use frame_support::{traits::Get, weights::constants::WEIGHT_REF_TIME_PER_SECOND};
+use frame_support::{
+	traits::{ContainsPair, Get},
+	weights::constants::WEIGHT_REF_TIME_PER_SECOND,
+};
 use module_support::BuyWeightRate;
 use orml_traits::GetByKey;
 use parity_scale_codec::Encode;
@@ -26,10 +29,10 @@ use primitives::{evm::EvmAddress, Balance, CurrencyId};
 use sp_core::bounded::BoundedVec;
 use sp_runtime::{traits::Convert, FixedPointNumber, FixedU128};
 use sp_std::{marker::PhantomData, prelude::*};
-use xcm::v4::{prelude::*, Assets, Weight as XcmWeight};
+use xcm::v5::{prelude::*, Assets, Weight as XcmWeight};
 use xcm_builder::TakeRevenue;
 use xcm_executor::{
-	traits::{DropAssets, WeightTrader, XcmAssetTransfers},
+	traits::{DropAssets, FeeManager, FeeReason, WeightTrader, XcmAssetTransfers},
 	AssetsInHolding,
 };
 
@@ -70,7 +73,7 @@ where
 	}
 }
 
-/// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.
+/// `DropAssets` implementation support asset amount lower that ED handled by `TakeRevenue`.
 ///
 /// parameters type:
 /// - `NC`: native currency_id type.
@@ -117,8 +120,8 @@ where
 
 /// Simple fee calculator that requires payment in a single fungible at a fixed rate.
 ///
-/// - The `FixedRate` constant should be the concrete fungible ID and the amount of it
-/// required for one second of weight.
+/// - The `FixedRate` constant should be the concrete fungible ID and the amount of it required for
+///   one second of weight.
 /// - The `TakeRevenue` trait is used to collecting xcm execution fee.
 /// - The `BuyWeightRate` trait is used to calculate ratio by location.
 pub struct FixedRateOfAsset<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> {
@@ -146,7 +149,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		payment: AssetsInHolding,
 		_context: &XcmContext,
 	) -> Result<AssetsInHolding, XcmError> {
-		log::trace!(target: "xcm::weight", "buy_weight weight: {:?}, payment: {:?}", weight, payment);
+		log::trace!(target: "xcm::weight", "buy_weight weight: {weight:?}, payment: {payment:?}");
 
 		// only support first fungible assets now.
 		let asset_id = payment
@@ -156,7 +159,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 			.map_or(Err(XcmError::TooExpensive), |v| Ok(v.0))?;
 
 		let AssetId(ref location) = asset_id;
-		log::debug!(target: "xcm::weight", "buy_weight location: {:?}", location);
+		log::debug!(target: "xcm::weight", "buy_weight location: {location:?}");
 
 		if let Some(ratio) = M::calculate_rate(location.clone()) {
 			// The WEIGHT_REF_TIME_PER_SECOND is non-zero.
@@ -170,8 +173,8 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 			};
 
 			log::trace!(
-				target: "xcm::weight", "buy_weight payment: {:?}, required: {:?}, fixed_rate: {:?}, ratio: {:?}, weight_ratio: {:?}",
-				payment, required, FixedRate::get(), ratio, weight_ratio
+				target: "xcm::weight", "buy_weight payment: {payment:?}, required: {required:?}, fixed_rate: {:?}, ratio: {ratio:?}, weight_ratio: {weight_ratio:?}",
+				FixedRate::get(),
 			);
 			let unused = payment
 				.clone()
@@ -190,8 +193,8 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 
 	fn refund_weight(&mut self, weight: XcmWeight, _context: &XcmContext) -> Option<Asset> {
 		log::trace!(
-			target: "xcm::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, ratio: {:?}, location: {:?}",
-			weight, self.weight, self.amount, self.ratio, self.location
+			target: "xcm::weight", "refund_weight weight: {weight:?}, weight: {:?}, amount: {:?}, ratio: {:?}, location: {:?}",
+			self.weight, self.amount, self.ratio, self.location
 		);
 		let weight = weight.min(self.weight);
 		let weight_ratio =
@@ -203,7 +206,7 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		self.weight = self.weight.saturating_sub(weight);
 		self.amount = self.amount.saturating_sub(amount);
 
-		log::trace!(target: "xcm::weight", "refund_weight amount: {:?}", amount);
+		log::trace!(target: "xcm::weight", "refund_weight amount: {amount:?}");
 		if amount > 0 && self.location.is_some() {
 			Some((self.location.clone().expect("checked is non-empty; qed"), amount).into())
 		} else {
@@ -235,8 +238,8 @@ impl<
 {
 	type Prepared = <xcm_executor::XcmExecutor<Config> as ExecuteXcm<Config::RuntimeCall>>::Prepared;
 
-	fn prepare(message: Xcm<Config::RuntimeCall>) -> Result<Self::Prepared, Xcm<Config::RuntimeCall>> {
-		xcm_executor::XcmExecutor::<Config>::prepare(message)
+	fn prepare(message: Xcm<Config::RuntimeCall>, weight_limit: Weight) -> Result<Self::Prepared, InstructionError> {
+		xcm_executor::XcmExecutor::<Config>::prepare(message, weight_limit)
 	}
 
 	fn execute(
@@ -275,6 +278,18 @@ impl<Config: xcm_executor::Config, AccountId, Balance, AccountIdConvert, EVMBrid
 	type AssetTransactor = Config::AssetTransactor;
 }
 
+// https://github.com/paritytech/polkadot-sdk/pull/5363
+// We have not configured `xcm_executor::Config::FeeManager`, there is no logic here.
+impl<Config: xcm_executor::Config, AccountId, Balance, AccountIdConvert, EVMBridge> FeeManager
+	for XcmExecutor<Config, AccountId, Balance, AccountIdConvert, EVMBridge>
+{
+	fn is_waived(_origin: Option<&Location>, _: FeeReason) -> bool {
+		false
+	}
+
+	fn handle_fee(_assets: Assets, _: Option<&XcmContext>, _: FeeReason) {}
+}
+
 /// Convert `AccountKey20` to `AccountId`
 pub struct AccountKey20Aliases<Network, AccountId, AddressMapping>(PhantomData<(Network, AccountId, AddressMapping)>);
 impl<Network, AccountId, AddressMapping> xcm_executor::traits::ConvertLocation<AccountId>
@@ -292,6 +307,26 @@ where
 		};
 
 		Some(AddressMapping::get_account_id(&EvmAddress::from(key)))
+	}
+}
+
+/// Matches foreign assets from a given origin.
+/// Foreign assets are assets bridged from other consensus systems. i.e parents > 1.
+pub struct IsBridgedConcreteAssetFrom<Origin>(PhantomData<Origin>);
+impl<Origin> ContainsPair<Asset, Location> for IsBridgedConcreteAssetFrom<Origin>
+where
+	Origin: Get<Location>,
+{
+	fn contains(asset: &Asset, origin: &Location) -> bool {
+		let loc = Origin::get();
+		&loc == origin
+			&& matches!(
+				asset,
+				Asset {
+					id: AssetId(Location { parents: 2, .. }),
+					fun: Fungibility::Fungible(_)
+				},
+			)
 	}
 }
 

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -23,13 +23,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, traits::EnsureOrigin, PalletId};
+use frame_support::{pallet_prelude::*, traits::EnsureOrigin, traits::ExistenceRequirement, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::AccountIdConversion, ArithmeticError};
-
-use module_support::CrowdloanVaultXcm;
 
 mod mock;
 mod tests;
@@ -44,8 +42,6 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Liquid crowdloan currency Id, i.e. LCDOT for Polkadot.
@@ -64,13 +60,6 @@ pub mod module {
 		/// transfer DOT from relay chain crowdloan vault to liquid crowdloan module account.
 		type GovernanceOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-		/// The crowdloan vault account on relay chain.
-		#[pallet::constant]
-		type CrowdloanVault: Get<Self::AccountId>;
-
-		/// XCM transfer impl.
-		type XcmTransfer: CrowdloanVaultXcm<Self::AccountId, Balance>;
-
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -80,8 +69,6 @@ pub mod module {
 	pub enum Event<T: Config> {
 		/// Liquid Crowdloan asset was redeemed.
 		Redeemed { currency_id: CurrencyId, amount: Balance },
-		/// The transfer from relay chain crowdloan vault was requested.
-		TransferFromCrowdloanVaultRequested { amount: Balance },
 		/// The redeem currency id was updated.
 		RedeemCurrencyIdUpdated { currency_id: CurrencyId },
 	}
@@ -105,28 +92,9 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Send an XCM message to cross-chain transfer DOT from relay chain crowdloan vault to
-		/// liquid crowdloan module account.
-		///
-		/// This call requires `GovernanceOrigin`.
-		#[pallet::call_index(1)]
-		#[pallet::weight(<T as Config>::WeightInfo::transfer_from_crowdloan_vault())]
-		pub fn transfer_from_crowdloan_vault(
-			origin: OriginFor<T>,
-			#[pallet::compact] amount: Balance,
-		) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
-
-			T::XcmTransfer::transfer_to_liquid_crowdloan_module_account(
-				T::CrowdloanVault::get(),
-				Self::account_id(),
-				amount,
-			)?;
-
-			Self::deposit_event(Event::TransferFromCrowdloanVaultRequested { amount });
-
-			Ok(())
-		}
+		// removed because it is no longer needed
+		// #[pallet::call_index(1)]
+		// pub fn transfer_from_crowdloan_vault
 
 		/// Set the redeem currency id.
 		///
@@ -171,8 +139,19 @@ impl<T: Config> Pallet<T> {
 			(currency_id, amount)
 		};
 
-		T::Currency::withdraw(T::LiquidCrowdloanCurrencyId::get(), who, amount)?;
-		T::Currency::transfer(currency_id, &Self::account_id(), who, redeem_amount)?;
+		T::Currency::withdraw(
+			T::LiquidCrowdloanCurrencyId::get(),
+			who,
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
+		T::Currency::transfer(
+			currency_id,
+			&Self::account_id(),
+			who,
+			redeem_amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
 
 		Self::deposit_event(Event::Redeemed {
 			currency_id,

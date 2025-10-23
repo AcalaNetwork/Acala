@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -48,8 +48,6 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
@@ -123,9 +121,7 @@ pub mod module {
 			{
 				log::debug!(
 					target: "idle-scheduler",
-					"Relaychain produced blocks without finalizing parachain blocks. Idle-scheduler will not execute.\ncurrent relay block number: {:?}\nprevious relay block number: {:?}",
-					current_relay_block_number,
-					previous_relay_block_number
+					"Relaychain produced blocks without finalizing parachain blocks. Idle-scheduler will not execute.\ncurrent relay block number: {current_relay_block_number:?}\nprevious relay block number: {previous_relay_block_number:?}",
 				);
 				// something is not correct so exhaust all remaining weight (note: any on_idle hooks after
 				// IdleScheduler won't execute)

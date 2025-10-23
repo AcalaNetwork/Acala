@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -44,7 +44,6 @@ pub const LCDOT: CurrencyId = CurrencyId::LiquidCrowdloan(13);
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
-pub const VAULT: AccountId = AccountId32::new([3u8; 32]);
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
@@ -61,7 +60,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -88,6 +86,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
@@ -95,7 +94,6 @@ pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime,
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub Erc20HoldingAccount: H160 = H160::from_low_u64_be(1);
-	pub CrowdloanVault: AccountId = VAULT;
 	pub LiquidCrowdloanPalletId: PalletId = PalletId(*b"aca/lqcl");
 	pub const GetLDOT: CurrencyId = LDOT;
 	pub const GetDOT: CurrencyId = DOT;
@@ -103,7 +101,6 @@ parameter_types! {
 }
 
 impl module_currencies::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -118,23 +115,6 @@ impl module_currencies::Config for Runtime {
 
 parameter_types! {
 	pub static TransferRecord: Option<(AccountId, AccountId, Balance)> = None;
-	pub static TransferOk: bool = true;
-}
-
-pub struct MockXcmTransfer;
-impl CrowdloanVaultXcm<AccountId, Balance> for MockXcmTransfer {
-	fn transfer_to_liquid_crowdloan_module_account(
-		vault: AccountId,
-		recipient: AccountId,
-		amount: Balance,
-	) -> DispatchResult {
-		if TransferOk::get() {
-			TransferRecord::mutate(|v| *v = Some((vault, recipient, amount)));
-			Ok(())
-		} else {
-			Err(DispatchError::Other("transfer failed"))
-		}
-	}
 }
 
 ord_parameter_types! {
@@ -142,14 +122,11 @@ ord_parameter_types! {
 }
 
 impl liquid_crowdloan::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Currencies;
 	type LiquidCrowdloanCurrencyId = GetLCDOT;
 	type RelayChainCurrencyId = GetDOT;
 	type PalletId = LiquidCrowdloanPalletId;
 	type GovernanceOrigin = EnsureSignedBy<Alice, AccountId>;
-	type CrowdloanVault = CrowdloanVault;
-	type XcmTransfer = MockXcmTransfer;
 	type WeightInfo = ();
 }
 
@@ -167,15 +144,11 @@ construct_runtime!(
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
-	transfer_ok: bool,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			balances: vec![],
-			transfer_ok: true,
-		}
+		Self { balances: vec![] }
 	}
 }
 
@@ -185,14 +158,8 @@ impl ExtBuilder {
 		self
 	}
 
-	pub fn transfer_ok(mut self, transfer_ok: bool) -> Self {
-		self.transfer_ok = transfer_ok;
-		self
-	}
-
 	pub fn build(self) -> sp_io::TestExternalities {
 		TransferRecord::mutate(|v| *v = None);
-		TransferOk::mutate(|v| *v = self.transfer_ok);
 
 		let mut t = frame_system::GenesisConfig::<Runtime>::default()
 			.build_storage()
@@ -206,6 +173,7 @@ impl ExtBuilder {
 				.filter(|(_, currency_id, _)| *currency_id == ACA)
 				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
 				.collect::<Vec<_>>(),
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

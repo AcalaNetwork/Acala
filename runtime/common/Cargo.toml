@@ -1,8 +1,8 @@
 [package]
 name = "runtime-common"
-version = "2.25.0"
-authors = ["Acala Developers"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [[bench]]
 name = "precompile"
@@ -35,6 +35,7 @@ sp-std = { workspace = true }
 sp-io = { workspace = true }
 
 # cumulus
+cumulus-pallet-aura-ext = { workspace = true }
 cumulus-pallet-parachain-system = { workspace = true }
 cumulus-pallet-xcm = { workspace = true }
 
@@ -58,6 +59,7 @@ module-prices = { workspace = true }
 module-transaction-payment = { workspace = true }
 module-nft = { workspace = true }
 module-dex = { workspace = true }
+module-earning = { workspace = true }
 module-evm-accounts = { workspace = true }
 module-homa = { workspace = true }
 module-asset-registry = { workspace = true, optional = true }
@@ -81,6 +83,7 @@ wasm-bencher = { workspace = true, optional = true }
 orml-nft = { workspace = true, optional = true }
 orml-currencies = { workspace = true, optional = true }
 orml-rewards = { workspace = true, optional = true }
+orml-parameters = { workspace = true }
 
 [dev-dependencies]
 orml-utilities = { workspace = true, features = ["std"] }
@@ -109,6 +112,7 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 
+	"cumulus-pallet-aura-ext/std",
 	"cumulus-pallet-parachain-system/std",
 
 	"pallet-xcm/std",
@@ -128,12 +132,14 @@ std = [
 	"orml-tokens/std",
 	"orml-traits/std",
 	"orml-xtokens/std",
+	"orml-parameters/std",
 
 	"module-asset-registry/std",
 	"module-cdp-engine/std",
 	"module-cdp-treasury/std",
 	"module-currencies/std",
 	"module-dex/std",
+	"module-earning/std",
 	"module-evm-accounts/std",
 	"module-evm-bridge/std",
 	"module-evm/std",
@@ -164,6 +170,7 @@ wasm-bench = [
 	"pallet-utility/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
+	"cumulus-pallet-parachain-system/runtime-benchmarks",
 
 	"module-asset-registry",
 	"module-cdp-treasury",

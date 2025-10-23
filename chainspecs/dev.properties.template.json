@@ -1,0 +1,43 @@
+{
+	"name": "Mandala Dev",
+	"id": "mandala-dev",
+	"chainType": "Development",
+	"properties": {
+	  "tokenDecimals": [
+		12,
+		12,
+		10,
+		10,
+		12,
+		12,
+		12,
+		12,
+		12,
+		12,
+		12,
+		12,
+		12,
+		12,
+		8
+	  ],
+	  "tokenSymbol": [
+		"ACA",
+		"AUSD",
+		"DOT",
+		"LDOT",
+		"TAP",
+		"KAR",
+		"KUSD",
+		"KSM",
+		"LKSM",
+		"TAI",
+		"BNC",
+		"VSKSM",
+		"PHA",
+		"KINT",
+		"KBTC"
+	  ]
+	},
+	"relayChain": "rococo-local",
+	"paraId": 2000
+  }

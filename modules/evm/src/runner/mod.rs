@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -25,7 +25,7 @@ pub mod tagged_runtime;
 pub mod tracing;
 
 use crate::{BalanceOf, CallInfo, Config, CreateInfo};
-use module_evm_utility::evm;
+use module_evm_utility::{ethereum::AuthorizationList, evm};
 pub use primitives::evm::{EvmAddress, Vicinity};
 use sp_core::{H160, H256};
 use sp_runtime::DispatchError;
@@ -41,6 +41,7 @@ pub trait Runner<T: Config> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError>;
 
@@ -51,6 +52,7 @@ pub trait Runner<T: Config> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError>;
 
@@ -62,6 +64,7 @@ pub trait Runner<T: Config> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError>;
 
@@ -73,6 +76,7 @@ pub trait Runner<T: Config> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError>;
 }
@@ -87,6 +91,7 @@ pub trait RunnerExtended<T: Config>: Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError>;
 
@@ -97,6 +102,7 @@ pub trait RunnerExtended<T: Config>: Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		access_list: Vec<(H160, Vec<H256>)>,
+		authorization_list: AuthorizationList,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError>;
 }

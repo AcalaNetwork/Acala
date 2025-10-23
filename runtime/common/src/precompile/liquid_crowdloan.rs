@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -67,7 +67,7 @@ where
 						}
 					})?;
 
-				log::debug!(target: "evm", "liuqid_crowdloan: Redeem who: {:?}, amount: {:?}, output: {:?}", who, amount, redeem_amount);
+				log::debug!(target: "evm", "liuqid_crowdloan: Redeem who: {who:?}, amount: {amount:?}, output: {redeem_amount:?}");
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					output: Output::encode_uint(redeem_amount),
@@ -78,7 +78,7 @@ where
 				let address = <Runtime as module_prices::Config>::Erc20InfoMapping::encode_evm_address(currency_id)
 					.unwrap_or_default();
 
-				log::debug!(target: "evm", "liuqid_crowdloan: GetRedeemCurrency output: {:?}", address);
+				log::debug!(target: "evm", "liuqid_crowdloan: GetRedeemCurrency output: {address:?}");
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					output: Output::encode_address(address),

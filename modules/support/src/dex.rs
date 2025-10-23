@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,15 +18,15 @@
 
 use frame_support::{ensure, traits::Get};
 use nutsfinance_stable_asset::{PoolTokenIndex, StableAssetPoolId};
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::H160;
-use sp_runtime::{DispatchError, RuntimeDebug};
+use sp_runtime::{DispatchError, DispatchResult, RuntimeDebug};
 use sp_std::{cmp::PartialEq, prelude::*, result::Result};
 
-#[derive(RuntimeDebug, Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo)]
+#[derive(RuntimeDebug, Encode, Decode, DecodeWithMemTracking, Clone, Copy, PartialEq, Eq, TypeInfo)]
 pub enum SwapLimit<Balance> {
 	/// use exact amount supply amount to swap. (exact_supply_amount, minimum_target_amount)
 	ExactSupply(Balance, Balance),
@@ -34,7 +34,7 @@ pub enum SwapLimit<Balance> {
 	ExactTarget(Balance, Balance),
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Eq, PartialEq, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AggregatedSwapPath<CurrencyId> {
 	Dex(Vec<CurrencyId>),
@@ -80,6 +80,34 @@ pub trait DEXManager<AccountId, Balance, CurrencyId> {
 		min_withdrawn_b: Balance,
 		by_unstake: bool,
 	) -> Result<(Balance, Balance), DispatchError>;
+}
+
+pub trait DEXBootstrap<AccountId, Balance, CurrencyId>: DEXManager<AccountId, Balance, CurrencyId> {
+	fn get_provision_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance);
+
+	fn get_provision_pool_of(
+		who: &AccountId,
+		currency_id_a: CurrencyId,
+		currency_id_b: CurrencyId,
+	) -> (Balance, Balance);
+
+	fn get_initial_share_exchange_rate(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance);
+
+	fn add_provision(
+		who: &AccountId,
+		currency_id_a: CurrencyId,
+		currency_id_b: CurrencyId,
+		contribution_a: Balance,
+		contribution_b: Balance,
+	) -> DispatchResult;
+
+	fn claim_dex_share(
+		who: &AccountId,
+		currency_id_a: CurrencyId,
+		currency_id_b: CurrencyId,
+	) -> Result<Balance, DispatchError>;
+
+	fn refund_provision(who: &AccountId, currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> DispatchResult;
 }
 
 pub trait Swap<AccountId, Balance, CurrencyId>
@@ -248,5 +276,49 @@ where
 		_by_unstake: bool,
 	) -> Result<(Balance, Balance), DispatchError> {
 		Ok(Default::default())
+	}
+}
+
+#[cfg(feature = "std")]
+impl<AccountId, CurrencyId, Balance> DEXBootstrap<AccountId, Balance, CurrencyId> for ()
+where
+	Balance: Default,
+{
+	fn get_provision_pool(_currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> (Balance, Balance) {
+		Default::default()
+	}
+
+	fn get_provision_pool_of(
+		_who: &AccountId,
+		_currency_id_a: CurrencyId,
+		_currency_id_b: CurrencyId,
+	) -> (Balance, Balance) {
+		Default::default()
+	}
+
+	fn get_initial_share_exchange_rate(_currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> (Balance, Balance) {
+		Default::default()
+	}
+
+	fn add_provision(
+		_who: &AccountId,
+		_currency_id_a: CurrencyId,
+		_currency_id_b: CurrencyId,
+		_contribution_a: Balance,
+		_contribution_b: Balance,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn claim_dex_share(
+		_who: &AccountId,
+		_currency_id_a: CurrencyId,
+		_currency_id_b: CurrencyId,
+	) -> Result<Balance, DispatchError> {
+		Ok(Default::default())
+	}
+
+	fn refund_provision(_who: &AccountId, _currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> DispatchResult {
+		Ok(())
 	}
 }

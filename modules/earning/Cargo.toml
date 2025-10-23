@@ -1,8 +1,8 @@
 [package]
 name = "module-earning"
-version = "2.25.0"
-authors = ["Acala Developers"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 parity-scale-codec = { workspace = true }
@@ -15,6 +15,7 @@ sp-std = { workspace = true }
 
 orml-traits = { workspace = true }
 primitives = { workspace = true }
+module-support = { workspace = true }
 
 [dev-dependencies]
 sp-io = { workspace = true, features = ["std"] }
@@ -32,6 +33,7 @@ std = [
 	"sp-core/std",
 	"sp-runtime/std",
 	"sp-std/std",
+	"module-support/std",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

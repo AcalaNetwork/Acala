@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -28,8 +28,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::needless_range_loop)]
+#![allow(clippy::useless_conversion)]
 
-use frame_support::{pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use module_support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio, Swap, SwapLimit};
 use nutsfinance_stable_asset::traits::StableAsset;
@@ -55,8 +56,6 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// The origin which may update parameters and handle
 		/// surplus/collateral.
 		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
@@ -194,6 +193,7 @@ pub mod module {
 				&Self::account_id(),
 				&T::TreasuryAccount::get(),
 				amount,
+				ExistenceRequirement::AllowDeath,
 			)?;
 			Ok(())
 		}
@@ -205,10 +205,10 @@ pub mod module {
 		/// - `currency_id`: collateral type
 		/// - `amount`: collateral amount
 		/// - `target`: target amount
-		/// - `splited`: split collateral to multiple auction according to the config size
+		/// - `split`: split collateral to multiple auction according to the config size
 		#[pallet::call_index(1)]
 		#[pallet::weight(
-			if *splited {
+			if *split {
 				T::WeightInfo::auction_collateral(T::MaxAuctionsCount::get())
 			} else {
 				T::WeightInfo::auction_collateral(1)
@@ -219,7 +219,7 @@ pub mod module {
 			currency_id: CurrencyId,
 			#[pallet::compact] amount: Balance,
 			#[pallet::compact] target: Balance,
-			splited: bool,
+			split: bool,
 		) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			let created_auctions = <Self as CDPTreasuryExtended<T::AccountId>>::create_collateral_auctions(
@@ -227,7 +227,7 @@ pub mod module {
 				amount,
 				target,
 				Self::account_id(),
-				splited,
+				split,
 			)?;
 			Ok(Some(T::WeightInfo::auction_collateral(created_auctions)).into())
 		}
@@ -337,8 +337,7 @@ impl<T: Config> Pallet<T> {
 				Err(e) => {
 					log::warn!(
 						target: "cdp-treasury",
-						"get_swap_supply_amount: Attempt to burn surplus {:?} failed: {:?}, this is unexpected but should be safe",
-						offset_amount, e
+						"get_swap_supply_amount: Attempt to burn surplus {offset_amount:?} failed: {e:?}, this is unexpected but should be safe",
 					);
 				}
 			}
@@ -391,23 +390,52 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 
 	/// This should be the only function in the system that burns stable coin
 	fn burn_debit(who: &T::AccountId, debit: Self::Balance) -> DispatchResult {
-		T::Currency::withdraw(T::GetStableCurrencyId::get(), who, debit)
+		T::Currency::withdraw(
+			T::GetStableCurrencyId::get(),
+			who,
+			debit,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn deposit_surplus(from: &T::AccountId, surplus: Self::Balance) -> DispatchResult {
-		T::Currency::transfer(T::GetStableCurrencyId::get(), from, &Self::account_id(), surplus)
+		T::Currency::transfer(
+			T::GetStableCurrencyId::get(),
+			from,
+			&Self::account_id(),
+			surplus,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn withdraw_surplus(to: &T::AccountId, surplus: Self::Balance) -> DispatchResult {
-		T::Currency::transfer(T::GetStableCurrencyId::get(), &Self::account_id(), to, surplus)
+		T::Currency::transfer(
+			T::GetStableCurrencyId::get(),
+			&Self::account_id(),
+			to,
+			surplus,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn deposit_collateral(from: &T::AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
-		T::Currency::transfer(currency_id, from, &Self::account_id(), amount)
+		T::Currency::transfer(
+			currency_id,
+			from,
+			&Self::account_id(),
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 
 	fn withdraw_collateral(to: &T::AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
-		T::Currency::transfer(currency_id, &Self::account_id(), to, amount)
+		T::Currency::transfer(
+			currency_id,
+			&Self::account_id(),
+			to,
+			amount,
+			ExistenceRequirement::AllowDeath,
+		)
 	}
 }
 
@@ -495,7 +523,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 		amount: Balance,
 		target: Balance,
 		refund_receiver: T::AccountId,
-		splited: bool,
+		split: bool,
 	) -> Result<u32, DispatchError> {
 		ensure!(
 			Self::total_collaterals_not_in_auction(currency_id) >= amount,
@@ -506,7 +534,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 		let mut unhandled_target = target;
 		let expected_collateral_auction_size = Self::expected_collateral_auction_size(currency_id);
 		let max_auctions_count: Balance = T::MaxAuctionsCount::get().into();
-		let lots_count = if !splited
+		let lots_count = if !split
 			|| max_auctions_count.is_zero()
 			|| expected_collateral_auction_size.is_zero()
 			|| amount <= expected_collateral_auction_size

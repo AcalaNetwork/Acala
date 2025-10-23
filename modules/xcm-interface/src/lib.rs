@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 
 //! Xcm Interface module.
 //!
-//! This module interfaces Acala native modules with the Relaychain / parachains via the use of XCM.
+//! This module interfaces Acala native modules with the AssetHub / parachains via the use of XCM.
 //! Functions in this module will create XCM messages that performs the requested functions and
 //! send the messages out to the intended destination.
 //!
@@ -29,27 +29,29 @@
 
 use frame_support::{pallet_prelude::*, traits::Get};
 use frame_system::pallet_prelude::*;
-use module_support::{relaychain::CallBuilder, CrowdloanVaultXcm, HomaSubAccountXcm};
-use orml_traits::XcmTransfer;
-use primitives::{Balance, CurrencyId, EraIndex};
+use module_support::{assethub::CallBuilder, HomaSubAccountXcm};
+use primitives::{Balance, EraIndex};
 use scale_info::TypeInfo;
+use sp_core::hashing;
 use sp_runtime::traits::Convert;
 use sp_std::{convert::From, prelude::*, vec, vec::Vec};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
+use xcm_executor::traits::WeightBounds;
 
 mod mocks;
-mod tests;
 
 pub use module::*;
+
+const LOG_TARGET: &str = "xcm-interface";
 
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
 
-	#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, TypeInfo)]
+	#[derive(Encode, Decode, DecodeWithMemTracking, Eq, PartialEq, Clone, RuntimeDebug, TypeInfo)]
 	pub enum XcmInterfaceOperation {
-		// XTokens
-		XtokensTransfer,
+		// PalletXcm transfer
+		XcmTransfer,
 		// Homa
 		HomaWithdrawUnbonded,
 		HomaBondExtra,
@@ -63,36 +65,27 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_xcm::Config {
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Origin represented Governance
 		type UpdateOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
-		/// The currency id of the Staking asset
-		#[pallet::constant]
-		type StakingCurrencyId: Get<CurrencyId>;
-
-		/// The account of parachain on the relaychain.
+		/// The account of parachain on the assethub.
 		#[pallet::constant]
 		type ParachainAccount: Get<Self::AccountId>;
 
-		/// Unbonding slashing spans for unbonding on the relaychain.
+		/// Unbonding slashing spans for unbonding on the assethub.
 		#[pallet::constant]
-		type RelayChainUnbondingSlashingSpans: Get<EraIndex>;
+		type AssetHubUnbondingSlashingSpans: Get<EraIndex>;
 
-		/// The convert for convert sovereign subacocunt index to the Location where the
+		/// The convert for convert sovereign subacocunt index to the account where the
 		/// staking currencies are sent to.
-		type SovereignSubAccountLocationConvert: Convert<u16, Location>;
+		type SovereignSubAccountIdConvert: Convert<u16, Self::AccountId>;
 
-		/// The Call builder for communicating with RelayChain via XCM messaging.
-		type RelayChainCallBuilder: CallBuilder<RelayChainAccountId = Self::AccountId, Balance = Balance>;
+		/// The Call builder for communicating with AssetHub via XCM messaging.
+		type AssetHubCallBuilder: CallBuilder<AssetHubAccountId = Self::AccountId, Balance = Balance>;
 
-		/// The interface to Cross-chain transfer.
-		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
-
-		/// Self parachain location.
+		/// AssetHub location.
 		#[pallet::constant]
-		type SelfLocation: Get<Location>;
+		type AssetHubLocation: Get<Location>;
 
 		/// Convert AccountId to Location to build XCM message.
 		type AccountIdToLocation: Convert<Self::AccountId, Location>;
@@ -120,7 +113,7 @@ pub mod module {
 	}
 
 	/// The dest weight limit and fee for execution XCM msg sended by XcmInterface. Must be
-	/// sufficient, otherwise the execution of XCM msg on relaychain will fail.
+	/// sufficient, otherwise the execution of XCM msg on assethub will fail.
 	///
 	/// XcmDestWeightAndFee: map: XcmInterfaceOperation => (Weight, Balance)
 	#[pallet::storage]
@@ -172,79 +165,69 @@ pub mod module {
 		}
 	}
 
-	impl<T: Config> Pallet<T> {
-		pub fn build_transfer_to_liquid_crowdloan_module_account(
-			vault: T::AccountId,
-			recipient: T::AccountId,
-			amount: Balance,
-		) -> Result<Xcm<()>, DispatchError> {
-			let (xcm_dest_weight, xcm_fee) =
-				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ProxyReserveTransferAssets);
-
-			// self location is relative to self
-			let loc = T::SelfLocation::get();
-			// we need to reanchor it to the parent because the call is dispatched on parent
-			let loc = loc
-				.reanchored(&Location::new(1, Here), &Here)
-				.map_err(|_| Error::<T>::XcmFailed)?;
-
-			let proxy_call = T::RelayChainCallBuilder::proxy_call(
-				vault,
-				T::RelayChainCallBuilder::xcm_pallet_reserve_transfer_assets(
-					loc,
-					T::AccountIdToLocation::convert(recipient),
-					// Note this message is executed in the relay chain context.
-					vec![(Here, amount).into()].into(),
-					0,
-				),
-			);
-			let xcm_message =
-				T::RelayChainCallBuilder::finalize_call_into_xcm_message(proxy_call, xcm_fee, xcm_dest_weight);
-
-			Ok(xcm_message)
-		}
-	}
-
 	impl<T: Config> HomaSubAccountXcm<T::AccountId, Balance> for Pallet<T> {
-		type RelayChainAccountId = T::AccountId;
+		type NomineeId = T::AccountId;
 
-		/// Cross-chain transfer staking currency to sub account on relaychain.
+		/// Cross-chain transfer staking currency to sub account on assethub.
 		fn transfer_staking_to_sub_account(
 			sender: &T::AccountId,
 			sub_account_index: u16,
 			amount: Balance,
 		) -> DispatchResult {
-			T::XcmTransfer::transfer(
-				sender.clone(),
-				T::StakingCurrencyId::get(),
-				amount,
-				T::SovereignSubAccountLocationConvert::convert(sub_account_index),
-				WeightLimit::Limited(Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0),
-			)
-			.map(|_| ())
+			let (xcm_dest_weight, _xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XcmTransfer);
+			let to = T::SovereignSubAccountIdConvert::convert(sub_account_index);
+			let reserve = T::AssetHubLocation::get();
+
+			let mut xcm_message =
+				T::AssetHubCallBuilder::finalize_transfer_asset_xcm_message(to, amount, reserve, xcm_dest_weight)
+					.into();
+
+			let origin_location = T::AccountIdToLocation::convert(sender.clone());
+			let mut hash = xcm_message.using_encoded(hashing::blake2_256);
+			let weight = T::Weigher::weight(&mut xcm_message, Weight::MAX).map_err(|e| {
+				log::error!(
+					target: LOG_TARGET,
+					"failed to weigh XCM message: {e:?}"
+				);
+				Error::<T>::XcmFailed
+			})?;
+
+			log::debug!(
+				target: LOG_TARGET,
+				"origin_location {origin_location:?} send XCM to transfer staking currency {amount:?} to subaccount {sub_account_index:?}, message: {xcm_message:?}",
+			);
+			T::XcmExecutor::prepare_and_execute(origin_location, xcm_message, &mut hash, weight, weight)
+				.ensure_complete()
+				.map_err(|e| {
+					log::error!(
+						target: LOG_TARGET,
+						"XcmExecutor failed to execute XCM message: {e:?}"
+					);
+					Error::<T>::XcmFailed
+				})?;
+
+			Ok(())
 		}
 
-		/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency
+		/// Send XCM message to the assethub for sub account to withdraw_unbonded staking currency
 		/// and send it back.
 		fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaWithdrawUnbonded);
 
-			// TODO: config xcm_dest_weight and fee for withdraw_unbonded and transfer seperately.
-			// Temperarily use double fee.
-			let xcm_message = T::RelayChainCallBuilder::finalize_multiple_calls_into_xcm_message(
+			// TODO: config xcm_dest_weight and fee for withdraw_unbonded and transfer separately.
+			// Temporarily use double fee.
+			let xcm_message = T::AssetHubCallBuilder::finalize_multiple_calls_into_xcm_message(
 				vec![
 					(
-						T::RelayChainCallBuilder::utility_as_derivative_call(
-							T::RelayChainCallBuilder::staking_withdraw_unbonded(
-								T::RelayChainUnbondingSlashingSpans::get(),
-							),
+						T::AssetHubCallBuilder::utility_as_derivative_call(
+							T::AssetHubCallBuilder::staking_withdraw_unbonded(T::AssetHubUnbondingSlashingSpans::get()),
 							sub_account_index,
 						),
 						xcm_dest_weight,
 					),
 					(
-						T::RelayChainCallBuilder::utility_as_derivative_call(
-							T::RelayChainCallBuilder::balances_transfer_keep_alive(T::ParachainAccount::get(), amount),
+						T::AssetHubCallBuilder::utility_as_derivative_call(
+							T::AssetHubCallBuilder::balances_transfer_keep_alive(T::ParachainAccount::get(), amount),
 							sub_account_index,
 						),
 						xcm_dest_weight,
@@ -253,77 +236,73 @@ pub mod module {
 				xcm_fee.saturating_mul(2),
 			);
 
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
-				target: "xcm-interface",
-				"subaccount {:?} send XCM to withdraw unbonded {:?}, result: {:?}",
-				sub_account_index, amount, result
+				target: LOG_TARGET,
+				"subaccount {sub_account_index:?} send XCM to withdraw unbonded {amount:?}, result: {result:?}",
 			);
 
 			ensure!(result.is_ok(), Error::<T>::XcmFailed);
 			Ok(())
 		}
 
-		/// Send XCM message to the relaychain for sub account to bond extra.
+		/// Send XCM message to the assethub for sub account to bond extra.
 		fn bond_extra_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaBondExtra);
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
-				T::RelayChainCallBuilder::utility_as_derivative_call(
-					T::RelayChainCallBuilder::staking_bond_extra(amount),
+			let xcm_message = T::AssetHubCallBuilder::finalize_call_into_xcm_message(
+				T::AssetHubCallBuilder::utility_as_derivative_call(
+					T::AssetHubCallBuilder::staking_bond_extra(amount),
 					sub_account_index,
 				),
 				xcm_fee,
 				xcm_dest_weight,
 			);
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
-				target: "xcm-interface",
-				"subaccount {:?} send XCM to bond {:?}, result: {:?}",
-				sub_account_index, amount, result,
+				target: LOG_TARGET,
+				"subaccount {sub_account_index:?} send XCM to bond {amount:?}, result: {result:?}",
 			);
 
 			ensure!(result.is_ok(), Error::<T>::XcmFailed);
 			Ok(())
 		}
 
-		/// Send XCM message to the relaychain for sub account to unbond.
+		/// Send XCM message to the assethub for sub account to unbond.
 		fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaUnbond);
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
-				T::RelayChainCallBuilder::utility_as_derivative_call(
-					T::RelayChainCallBuilder::staking_unbond(amount),
+			let xcm_message = T::AssetHubCallBuilder::finalize_call_into_xcm_message(
+				T::AssetHubCallBuilder::utility_as_derivative_call(
+					T::AssetHubCallBuilder::staking_unbond(amount),
 					sub_account_index,
 				),
 				xcm_fee,
 				xcm_dest_weight,
 			);
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
-				target: "xcm-interface",
-				"subaccount {:?} send XCM to unbond {:?}, result: {:?}",
-				sub_account_index, amount, result
+				target: LOG_TARGET,
+				"subaccount {sub_account_index:?} send XCM to unbond {amount:?}, result: {result:?}",
 			);
 
 			ensure!(result.is_ok(), Error::<T>::XcmFailed);
 			Ok(())
 		}
 
-		/// Send XCM message to the relaychain for sub account to nominate.
-		fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<Self::RelayChainAccountId>) -> DispatchResult {
+		/// Send XCM message to the assethub for sub account to nominate.
+		fn nominate_on_sub_account(sub_account_index: u16, targets: Vec<Self::NomineeId>) -> DispatchResult {
 			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaNominate);
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
-				T::RelayChainCallBuilder::utility_as_derivative_call(
-					T::RelayChainCallBuilder::staking_nominate(targets.clone()),
+			let xcm_message = T::AssetHubCallBuilder::finalize_call_into_xcm_message(
+				T::AssetHubCallBuilder::utility_as_derivative_call(
+					T::AssetHubCallBuilder::staking_nominate(targets.clone()),
 					sub_account_index,
 				),
 				xcm_fee,
 				xcm_dest_weight,
 			);
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, T::AssetHubLocation::get(), xcm_message);
 			log::debug!(
-				target: "xcm-interface",
-				"subaccount {:?} send XCM to nominate {:?}, result: {:?}",
-				sub_account_index, targets, result
+				target: LOG_TARGET,
+				"subaccount {sub_account_index:?} send XCM to nominate {targets:?}, result: {result:?}",
 			);
 
 			ensure!(result.is_ok(), Error::<T>::XcmFailed);
@@ -332,34 +311,12 @@ pub mod module {
 
 		/// The fee of cross-chain transfer is deducted from the recipient.
 		fn get_xcm_transfer_fee() -> Balance {
-			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).1
+			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XcmTransfer).1
 		}
 
 		/// The fee of parachain transfer.
 		fn get_parachain_fee(location: Location) -> Balance {
 			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ParachainFee(Box::new(location))).1
-		}
-	}
-
-	impl<T: Config> CrowdloanVaultXcm<T::AccountId, Balance> for Pallet<T> {
-		fn transfer_to_liquid_crowdloan_module_account(
-			vault: T::AccountId,
-			recipient: T::AccountId,
-			amount: Balance,
-		) -> DispatchResult {
-			let xcm_message =
-				Self::build_transfer_to_liquid_crowdloan_module_account(vault.clone(), recipient.clone(), amount)?;
-
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
-			log::debug!(
-				target: "xcm-interface",
-				"Send {:?} planck DOT from crowdloan vault {:?} to {:?}, result: {:?}",
-				amount, vault, recipient, result,
-			);
-
-			ensure!(result.is_ok(), Error::<T>::XcmFailed);
-
-			Ok(())
 		}
 	}
 }

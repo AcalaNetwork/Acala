@@ -1,18 +1,15 @@
-import { expect } from "chai";
-import { step } from "mocha-steps";
-import { describeWithAcala } from "./util";
+import { expect, beforeAll, it } from "vitest";
+import { describeWithAcala, nextBlock } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
-import { submitExtrinsic } from "./util";
-import { BigNumber } from "ethers";
 
 describeWithAcala("Acala RPC (EVM call fill block)", (context) => {
     let alice: BodhiSigner;
 
-    before("init wallets", async function () {
+    beforeAll(async function () {
         [alice] = context.wallets;
     });
 
-    step("evm call fill block", async function () {
+    it("evm call fill block", async function () {
         const input = "0xa9059cbb0000000000000000000000001000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000174876e800";
 
         // transfer 100000000000 ACA
@@ -32,15 +29,7 @@ describeWithAcala("Acala RPC (EVM call fill block)", (context) => {
             await tx.signAndSend(alice.substrateAddress, { nonce: nonce++ });
         }
 
-        while (true) {
-            const currentHeight = await context.provider.api.query.system.number();
-
-            if (currentHeight.toNumber() > beforeHeight) {
-                break;
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+        await nextBlock(context);
 
         let currentBlockHash = await context.provider.api.rpc.chain.getBlockHash(beforeHeight + 1);
 

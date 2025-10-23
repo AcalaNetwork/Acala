@@ -1,5 +1,4 @@
-import { expect } from "chai";
-
+import { expect, beforeAll, it } from "vitest";
 import { describeWithAcala } from "./util";
 import { deployContract } from "ethereum-waffle";
 import ExplicitRevertReason from "../build/ExplicitRevertReason.json"
@@ -10,13 +9,12 @@ describeWithAcala("Acala RPC (Revert Reason)", (context) => {
 	let alice: BodhiSigner;
 	let contract: Contract;
 
-	before("create the contract", async function () {
-		this.timeout(15000);
+	beforeAll(async function () {
 		[alice] = context.wallets;
 		contract = await deployContract(alice, ExplicitRevertReason);
 	});
 
 	it("should fail with revert reason", async function () {
-		await expect(contract.max10(30)).to.be.rejectedWith({ message: '-32603: VM Exception while processing transaction: execution revert: Value must not be greater than 10.'});
+		await expect(contract.max10(30)).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: execution reverted: Value must not be greater than 10.]`);
 	});
 });

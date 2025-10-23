@@ -1,18 +1,18 @@
 [package]
 name = "module-evm-utility"
-version = "2.25.0"
-authors = ["Acala Developers"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 sha3 = { workspace = true }
 
 sp-std = { workspace = true }
 
-evm = { version = "0.41.1", default-features = false, features = ["with-codec"] }
-evm-gasometer = { version = "0.41.0", default-features = false }
-evm-runtime = { version = "0.41.0", default-features = false }
-ethereum = { version = "0.15.0", default-features = false, features = ["with-codec"] }
+evm = { version = "0.43.4", default-features = false, features = ["with-codec"] }
+evm-gasometer = { version = "0.43.0", default-features = false }
+evm-runtime = { version = "0.43.0", default-features = false }
+ethereum = { version = "0.18.2", default-features = false, features = ["with-scale", "with-serde"] }
 
 [features]
 default = ["std"]
@@ -23,7 +23,7 @@ std = [
 	"evm/with-serde",
 	"evm-runtime/std",
 	"evm-gasometer/std",
-	"ethereum/with-serde",
+	"ethereum/std",
 ]
 tracing = [
 	"evm/tracing",

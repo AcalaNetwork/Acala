@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -91,6 +91,12 @@ pub mod fee {
 	}
 }
 
+pub mod parachains {
+	pub mod asset_hub_polkadot {
+		pub const ID: u32 = 1000;
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use crate::{constants::fee::base_tx_in_aca, Balance};
@@ -102,6 +108,6 @@ mod tests {
 		let q = Balance::from(ExtrinsicBaseWeight::get().ref_time());
 
 		assert_eq!(p, 1_000_000_000);
-		assert_eq!(q, 124_414_000);
+		assert_eq!(q, 108_157_000);
 	}
 }

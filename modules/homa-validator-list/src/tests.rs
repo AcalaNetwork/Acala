@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -449,15 +449,15 @@ fn rebond_work() {
 		assert_ok!(HomaValidatorListModule::unbond(
 			RuntimeOrigin::signed(ALICE),
 			VALIDATOR_1,
-			100
+			200
 		));
 
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
 				total: 200,
-				bonded: 100,
-				unbonding: Some((100, 29))
+				bonded: 0,
+				unbonding: Some((200, 29))
 			}
 		);
 		assert_eq!(OrmlTokens::accounts(ALICE, LDOT).frozen, 200);
@@ -472,17 +472,29 @@ fn rebond_work() {
 			200
 		);
 
+		assert_noop!(
+			HomaValidatorListModule::rebond(RuntimeOrigin::signed(ALICE), VALIDATOR_1, 99),
+			Error::<Runtime>::BelowMinBondAmount
+		);
+
 		assert_ok!(HomaValidatorListModule::rebond(
 			RuntimeOrigin::signed(ALICE),
 			VALIDATOR_1,
-			50
+			100
+		));
+		System::assert_has_event(mock::RuntimeEvent::HomaValidatorListModule(
+			crate::Event::RebondGuarantee {
+				who: ALICE,
+				validator: VALIDATOR_1,
+				bond: 100,
+			},
 		));
 		assert_eq!(
 			HomaValidatorListModule::guarantees(VALIDATOR_1, ALICE).unwrap_or_default(),
 			Guarantee {
 				total: 200,
-				bonded: 150,
-				unbonding: Some((50, 29))
+				bonded: 100,
+				unbonding: Some((100, 29))
 			}
 		);
 		assert_eq!(OrmlTokens::accounts(ALICE, LDOT).frozen, 200);
@@ -689,11 +701,11 @@ fn slash_work() {
 				vec![
 					SlashInfo {
 						validator: VALIDATOR_1,
-						relaychain_token_amount: 90
+						token_amount: 90
 					},
 					SlashInfo {
 						validator: VALIDATOR_2,
-						relaychain_token_amount: 50
+						token_amount: 50
 					},
 				]
 			),
@@ -705,11 +717,11 @@ fn slash_work() {
 			vec![
 				SlashInfo {
 					validator: VALIDATOR_1,
-					relaychain_token_amount: 90
+					token_amount: 90
 				},
 				SlashInfo {
 					validator: VALIDATOR_2,
-					relaychain_token_amount: 50
+					token_amount: 50
 				},
 			]
 		));

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -74,6 +74,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
+	type DoneSlashHandler = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -90,7 +91,6 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
@@ -116,7 +116,7 @@ impl orml_currencies::Config for Runtime {
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 define_combined_task! {
-	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[derive(Clone, Encode, Decode, DecodeWithMemTracking, PartialEq, RuntimeDebug, TypeInfo)]
 	pub enum ScheduledTasks {
 		EvmTask(EvmTask<Runtime>),
 	}
@@ -136,7 +136,6 @@ parameter_types! {
 }
 
 impl module_idle_scheduler::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Index = Nonce;
 	type Task = ScheduledTasks;
@@ -181,7 +180,6 @@ impl Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = ConstU128<20_000_000>;
 
-	type RuntimeEvent = RuntimeEvent;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
 	type GasToWeight = GasToWeight;
@@ -230,7 +228,6 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 impl module_transaction_payment::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type Currency = Balances;
@@ -274,11 +271,11 @@ parameter_types! {
 }
 
 impl module_dex::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Erc20InfoMapping = MockErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;

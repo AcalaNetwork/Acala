@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -150,7 +150,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
 		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
-		let value: u8 = U256::from(info.value.as_slice())
+		let value: u8 = U256::from_big_endian(info.value.as_slice())
 			.try_into()
 			.map_err(|_| ArithmeticError::Overflow)?;
 		Ok(value)
@@ -174,7 +174,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
 		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
-		let value: u128 = U256::from(info.value.as_slice())
+		let value: u128 = U256::from_big_endian(info.value.as_slice())
 			.try_into()
 			.map_err(|_| ArithmeticError::Overflow)?;
 		let supply = value.try_into().map_err(|_| ArithmeticError::Overflow)?;
@@ -200,7 +200,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
-		let value: u128 = U256::from(info.value.as_slice())
+		let value: u128 = U256::from_big_endian(info.value.as_slice())
 			.try_into()
 			.map_err(|_| ArithmeticError::Overflow)?;
 		let balance = value.try_into().map_err(|_| ArithmeticError::Overflow)?;
@@ -235,7 +235,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 
 		// return value is true.
 		let mut bytes = [0u8; 32];
-		U256::from(1).to_big_endian(&mut bytes);
+		U256::from(1).write_as_big_endian(&mut bytes);
 
 		// Check return value to make sure not calling on empty contracts.
 		ensure!(
@@ -368,16 +368,20 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::InvalidReturnValue
 		);
 
-		let offset = U256::from_big_endian(&output[0..32]);
-		let length = U256::from_big_endian(&output[offset.as_usize()..offset.as_usize() + 32]);
+		let offset = U256::from_big_endian(output.get(0..32).unwrap_or_default());
+		let offset: usize = offset.try_into().map_err(|_| Error::<T>::InvalidReturnValue)?;
+		let offset_end = offset.checked_add(32).ok_or(Error::<T>::InvalidReturnValue)?;
+		let length = U256::from_big_endian(output.get(offset..offset_end).unwrap_or_default());
+		let length: usize = length.try_into().map_err(|_| Error::<T>::InvalidReturnValue)?;
+		let length_end = offset_end.checked_add(length).ok_or(Error::<T>::InvalidReturnValue)?;
 		ensure!(
 			// output is 32-byte aligned. ensure total_length >= offset + string length + string data length.
-			output.len() >= offset.as_usize() + 32 + length.as_usize(),
+			output.len() >= length_end,
 			Error::<T>::InvalidReturnValue
 		);
 
 		let mut data = Vec::new();
-		data.extend_from_slice(&output[offset.as_usize() + 32..offset.as_usize() + 32 + length.as_usize()]);
+		data.extend_from_slice(output.get(offset_end..length_end).unwrap_or_default());
 
 		Ok(data.to_vec())
 	}

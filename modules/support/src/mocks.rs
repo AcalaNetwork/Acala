@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -126,11 +126,7 @@ impl<AccountId, Balance: Default + Copy, NegativeImbalance: Imbalance<Balance>>
 		Ok((Default::default(), Imbalance::zero()))
 	}
 
-	fn refund_fee(
-		_who: &AccountId,
-		_weight: Weight,
-		_payed: NegativeImbalance,
-	) -> Result<(), TransactionValidityError> {
+	fn refund_fee(_who: &AccountId, _weight: Weight, _paid: NegativeImbalance) -> Result<(), TransactionValidityError> {
 		Ok(())
 	}
 
@@ -185,11 +181,7 @@ impl<
 		Ok((Default::default(), Imbalance::zero()))
 	}
 
-	fn refund_fee(
-		_who: &AccountId,
-		_weight: Weight,
-		_payed: NegativeImbalance,
-	) -> Result<(), TransactionValidityError> {
+	fn refund_fee(_who: &AccountId, _weight: Weight, _paid: NegativeImbalance) -> Result<(), TransactionValidityError> {
 		Ok(())
 	}
 

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2024 Acala Foundation.
+// Copyright (C) 2020-2025 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -26,25 +26,27 @@ use super::{
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Everything, Get, Nothing, TransformOrigin},
+	traits::{ConstU32, Disabled, Everything, Get, Nothing, TransformOrigin},
 };
 use module_asset_registry::{BuyWeightRateOfErc20, BuyWeightRateOfForeignAsset, BuyWeightRateOfStableAsset};
 use module_support::HomaSubAccountXcm;
 use module_transaction_payment::BuyWeightRateOfTransactionFeePool;
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
+use orml_traits::parameter_type_with_key;
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+use orml_xtokens::AbsoluteReserveProvider;
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 use parity_scale_codec::{Decode, Encode};
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use primitives::evm::is_system_contract;
 use runtime_common::{
-	local_currency_location, native_currency_location, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
+	local_currency_location, native_currency_location, xcm_config::RelayLocationFilter,
+	xcm_impl::IsBridgedConcreteAssetFrom, AcalaDropAssets, EnsureRootOrHalfGeneralCouncil,
 	EnsureRootOrThreeFourthsGeneralCouncil, FixedRateOfAsset, RuntimeBlockWeights,
 };
 use sp_runtime::Perbill;
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::{
-	EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FrameTransactionalProcessor, SignedToAccountId32,
+	Case, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FrameTransactionalProcessor, SignedToAccountId32,
 };
 
 parameter_types! {
@@ -136,7 +138,23 @@ parameter_types! {
 	);
 
 	pub BaseRate: u128 = kar_per_second();
+
+	/// Location of Asset Hub
+	pub AssetHubLocation: Location = Location::new(1, [Parachain(parachains::asset_hub_kusama::ID)]);
+	pub RelayChainNativeAssetFromAssetHub: (AssetFilter, Location) = (
+		RelayLocationFilter::get(),
+		AssetHubLocation::get()
+	);
 }
+
+type Reserves = (
+	// Assets bridged from different consensus systems held in reserve on Asset Hub.
+	IsBridgedConcreteAssetFrom<AssetHubLocation>,
+	// Relaychain (KSM) from Asset Hub
+	Case<RelayChainNativeAssetFromAssetHub>,
+	// Assets which the reserve is the same as the origin.
+	MultiNativeAsset<AbsoluteReserveProvider>,
+);
 
 pub type Trader = (
 	FixedRateOfAsset<BaseRate, ToTreasury, BuyWeightRateOfTransactionFeePool<Runtime, CurrencyIdConvert>>,
@@ -162,7 +180,7 @@ impl xcm_executor::Config for XcmConfig {
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = LocalAssetTransactor;
 	type OriginConverter = XcmOriginToCallOrigin;
-	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
+	type IsReserve = Reserves;
 	type IsTeleporter = runtime_common::xcm_config::TrustedTeleporters;
 	type UniversalLocation = UniversalLocation;
 	type Barrier = Barrier;
@@ -190,6 +208,11 @@ impl xcm_executor::Config for XcmConfig {
 	type SafeCallFilter = Everything;
 	type Aliasers = Nothing;
 	type TransactionalProcessor = FrameTransactionalProcessor;
+	type HrmpNewChannelOpenRequestHandler = ();
+	type HrmpChannelAcceptedHandler = ();
+	type HrmpChannelClosingHandler = ();
+	type XcmRecorder = ();
+	type XcmEventEmitter = ();
 }
 
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
@@ -235,6 +258,7 @@ impl pallet_xcm::Config for Runtime {
 	type AdminOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type MaxRemoteLockConsumers = ConstU32<0>;
 	type RemoteLockConsumerIdentifier = ();
+	type AuthorizedAliasConsideration = Disabled;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
@@ -256,10 +280,15 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ControllerOriginConverter = XcmOriginToCallOrigin;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
 	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
+	type MaxActiveOutboundChannels = ConstU32<128>;
+	// Most on-chain HRMP channels are configured to use 102400 bytes of max message size, so we
+	// need to set the page size larger than that until we reduce the channel size on-chain.
+	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
 }
 
 parameter_types! {
 	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
+	pub MessageQueueIdleServiceWeight: Weight = Perbill::from_percent(40) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_message_queue::Config for Runtime {
@@ -276,6 +305,7 @@ impl pallet_message_queue::Config for Runtime {
 	type HeapSize = sp_core::ConstU32<{ 64 * 1024 }>;
 	type MaxStale = sp_core::ConstU32<8>;
 	type ServiceWeight = MessageQueueServiceWeight;
+	type IdleMaxServiceWeight = MessageQueueIdleServiceWeight;
 }
 
 parameter_types! {
@@ -295,7 +325,6 @@ parameter_type_with_key! {
 }
 
 impl orml_xtokens::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
