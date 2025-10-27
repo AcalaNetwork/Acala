@@ -791,7 +791,21 @@ pub struct BenchmarkHelper;
 #[cfg(feature = "runtime-benchmarks")]
 impl orml_oracle::BenchmarkHelper<CurrencyId, Price, MaxFeedValues> for BenchmarkHelper {
 	fn get_currency_id_value_pairs() -> sp_runtime::BoundedVec<(CurrencyId, Price), MaxFeedValues> {
-		sp_runtime::BoundedVec::default()
+		sp_runtime::BoundedVec::try_from(vec![
+			(
+				CurrencyId::Token(TokenSymbol::KSM),
+				sp_runtime::FixedU128::saturating_from_rational(1, 1),
+			),
+			(
+				CurrencyId::Token(TokenSymbol::KAR),
+				sp_runtime::FixedU128::saturating_from_rational(1, 1),
+			),
+			(
+				CurrencyId::Token(TokenSymbol::KUSD),
+				sp_runtime::FixedU128::saturating_from_rational(1, 1),
+			),
+		])
+		.unwrap()
 	}
 }
 
@@ -2053,7 +2067,6 @@ mod benches {
 	// frame_benchmarking::define_benchmarks!(
 	// 	// XCM
 	// 	[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>]
-	// // TODO: add oracle
 	// );
 }
 
@@ -2443,12 +2456,12 @@ impl_runtime_apis! {
 		) {
 			use frame_benchmarking::{list_benchmark as frame_list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
-			use module_nft::benchmarking::Pallet as NftBench;
 			// use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
-			frame_list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
+			frame_list_benchmark!(list, extra, module_nft, module_nft::benchmarking::Pallet::<Runtime>);
+			frame_list_benchmark!(list, extra, orml_oracle, orml_oracle::benchmarking::Pallet::<Runtime, orml_oracle::Instance1>);
 			list_benchmarks!(list, extra);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
@@ -2460,7 +2473,6 @@ impl_runtime_apis! {
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, alloc::string::String> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, BenchmarkError, add_benchmark as frame_add_benchmark};
-			use module_nft::benchmarking::Pallet as NftBench;
 			use frame_support::traits::{WhitelistedStorageKeys, TrackedStorageKey};
 
 			// const UNITS: Balance = 1_000_000_000_000;
@@ -2551,7 +2563,8 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			frame_add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
+			frame_add_benchmark!(params, batches, module_nft, module_nft::benchmarking::Pallet::<Runtime>);
+			frame_add_benchmark!(list, extra, orml_oracle, orml_oracle::benchmarking::Pallet::<Runtime, orml_oracle::Instance1>);
 			add_benchmarks!(params, batches);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
