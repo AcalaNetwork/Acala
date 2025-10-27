@@ -128,6 +128,8 @@ use runtime_common::{
 mod authority;
 mod benchmarking;
 pub mod constants;
+#[cfg(feature = "genesis-builder")]
+mod genesis_config_presets;
 /// Weights for pallets used in the runtime.
 mod weights;
 pub mod xcm_config;
@@ -2559,11 +2561,11 @@ sp_api::impl_runtime_apis! {
 		}
 
 		fn get_preset(id: &Option<sp_genesis_builder::PresetId>) -> Option<Vec<u8>> {
-			frame_support::genesis_builder_helper::get_preset::<RuntimeGenesisConfig>(id, |_| None)
+			frame_support::genesis_builder_helper::get_preset::<RuntimeGenesisConfig>(id, &genesis_config_presets::get_preset)
 		}
 
 		fn preset_names() -> Vec<sp_genesis_builder::PresetId> {
-			vec![]
+			genesis_config_presets::preset_names()
 		}
 	}
 }

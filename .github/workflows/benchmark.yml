@@ -11,7 +11,7 @@ jobs:
     if: ${{ github.event.issue.pull_request && contains(fromJson('["MEMBER", "OWNER"]'), github.event.comment.author_association) && startsWith(github.event.comment.body, '/bench ') }}
     runs-on: [self-hosted, linux]
     steps:
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v7
         name: Get PR branch
         id: issue
         with:
@@ -30,7 +30,7 @@ jobs:
         with:
           submodules: recursive
           ref: ${{ fromJson(steps.issue.outputs.result).sha }}
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v7
         name: Prepare command
         id: command
         with:
@@ -54,7 +54,7 @@ jobs:
               default:
                 throw new Error('Invalid command')
             }
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v7
         name: Post comment
         id: comment
         with:
@@ -82,13 +82,15 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
       - name: Install weight-gen
-        run: cargo install --git https://github.com/open-web3-stack/wasm-bencher.git --bin weight-gen --force
+        run: cargo install --git https://github.com/open-web3-stack/wasm-bencher.git --bin weight-gen
+      - name: Install omni-bencher
+        run: cargo install frame-omni-bencher
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: 22.x
       - name: Run benchmarks
         run: ${{steps.command.outputs.result}} > ${{runner.temp}}/out.txt
       - name: Commit
@@ -98,7 +100,7 @@ jobs:
           git add .
           git commit -m '${{github.event.comment.body}}' --allow-empty
           git push origin HEAD:${{ fromJson(steps.issue.outputs.result).ref }}
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v7
         name: Update comment
         with:
           script: |
