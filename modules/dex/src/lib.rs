@@ -47,6 +47,8 @@ use sp_runtime::{
 };
 use sp_std::{prelude::*, vec};
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
@@ -516,7 +518,7 @@ pub mod module {
 			#[pallet::compact] target_provision_b: Balance,
 			#[pallet::compact] not_before: BlockNumberFor<T>,
 		) -> DispatchResult {
-			T::ListingOrigin::ensure_origin(origin)?;
+			T::ListingOrigin::ensure_origin_or_root(origin)?;
 
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
@@ -583,7 +585,7 @@ pub mod module {
 			#[pallet::compact] target_provision_b: Balance,
 			#[pallet::compact] not_before: BlockNumberFor<T>,
 		) -> DispatchResult {
-			T::ListingOrigin::ensure_origin(origin)?;
+			T::ListingOrigin::ensure_origin_or_root(origin)?;
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 
@@ -703,7 +705,7 @@ pub mod module {
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
 		) -> DispatchResult {
-			T::ListingOrigin::ensure_origin(origin)?;
+			T::ListingOrigin::ensure_origin_or_root(origin)?;
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 			match Self::trading_pair_statuses(trading_pair) {
@@ -731,7 +733,7 @@ pub mod module {
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
 		) -> DispatchResult {
-			T::ListingOrigin::ensure_origin(origin)?;
+			T::ListingOrigin::ensure_origin_or_root(origin)?;
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
