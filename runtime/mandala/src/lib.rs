@@ -129,7 +129,6 @@ use runtime_common::{
 pub use nutsfinance_stable_asset;
 
 mod authority;
-mod benchmarking;
 pub mod constants;
 #[cfg(feature = "genesis-builder")]
 mod genesis_config_presets;
@@ -2198,47 +2197,61 @@ construct_runtime!(
 );
 
 #[cfg(feature = "runtime-benchmarks")]
-#[macro_use]
-extern crate orml_benchmarking;
+mod benches {
+	// use super::*;
+	// use alloc::boxed::Box;
+	// use frame_support::assert_ok;
+	// use kusama_runtime_constants::system_parachain::PeopleParaId;
+	// use system_parachains_constants::kusama::locations::PeopleLocation;
+
+	// define_benchmarks!(
+	// 	[module_dex, benchmarking::dex]
+	// 	[module_dex_oracle, benchmarking::dex_oracle]
+	// 	[module_asset_registry, benchmarking::asset_registry]
+	// 	[module_auction_manager, benchmarking::auction_manager]
+	// 	[module_cdp_engine, benchmarking::cdp_engine]
+	// 	[module_earning, benchmarking::earning]
+	// 	[module_emergency_shutdown, benchmarking::emergency_shutdown]
+	// 	[module_evm, benchmarking::evm]
+	// 	[module_homa, benchmarking::homa]
+	// 	[module_homa_validator_list, benchmarking::homa_validator_list]
+	// 	[module_honzon, benchmarking::honzon]
+	// 	[module_cdp_treasury, benchmarking::cdp_treasury]
+	// 	[module_collator_selection, benchmarking::collator_selection]
+	// 	[module_nominees_election, benchmarking::nominees_election]
+	// 	[module_transaction_pause, benchmarking::transaction_pause]
+	// 	[module_transaction_payment, benchmarking::transaction_payment]
+	// 	[module_incentives, benchmarking::incentives]
+	// 	[module_prices, benchmarking::prices]
+	// 	[module_evm_accounts, benchmarking::evm_accounts]
+	// 	[module_currencies, benchmarking::currencies]
+	// 	[module_session_manager, benchmarking::session_manager]
+	// 	[module_liquid_crowdloan, benchmarking::liquid_crowdloan]
+	// 	[orml_tokens, benchmarking::tokens]
+	// 	[orml_vesting, benchmarking::vesting]
+	// 	[orml_auction, benchmarking::auction]
+	// 	[orml_authority, benchmarking::authority]
+	// 	[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
+	// 	[module_idle_scheduler, benchmarking::idle_scheduler]
+	// 	[module_aggregated_dex, benchmarking::aggregated_dex]
+	// );
+	frame_benchmarking::define_benchmarks!(
+		[module_dex, Dex]
+		[orml_oracle, AcalaOracle]
+		// XCM
+		/* 	[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>] */
+	);
+
+	pub use frame_benchmarking::{BenchmarkBatch, BenchmarkList};
+	pub use frame_support::traits::{StorageInfoTrait, WhitelistedStorageKeys};
+	// pub use frame_system_benchmarking::{
+	//     extensions::Pallet as SystemExtensionsBench, Pallet as SystemBench,
+	// };
+	pub use sp_storage::TrackedStorageKey;
+}
 
 #[cfg(feature = "runtime-benchmarks")]
-mod benches {
-	define_benchmarks!(
-		[module_dex, benchmarking::dex]
-		[module_dex_oracle, benchmarking::dex_oracle]
-		[module_asset_registry, benchmarking::asset_registry]
-		[module_auction_manager, benchmarking::auction_manager]
-		[module_cdp_engine, benchmarking::cdp_engine]
-		[module_earning, benchmarking::earning]
-		[module_emergency_shutdown, benchmarking::emergency_shutdown]
-		[module_evm, benchmarking::evm]
-		[module_homa, benchmarking::homa]
-		[module_homa_validator_list, benchmarking::homa_validator_list]
-		[module_honzon, benchmarking::honzon]
-		[module_cdp_treasury, benchmarking::cdp_treasury]
-		[module_collator_selection, benchmarking::collator_selection]
-		[module_nominees_election, benchmarking::nominees_election]
-		[module_transaction_pause, benchmarking::transaction_pause]
-		[module_transaction_payment, benchmarking::transaction_payment]
-		[module_incentives, benchmarking::incentives]
-		[module_prices, benchmarking::prices]
-		[module_evm_accounts, benchmarking::evm_accounts]
-		[module_currencies, benchmarking::currencies]
-		[module_session_manager, benchmarking::session_manager]
-		[module_liquid_crowdloan, benchmarking::liquid_crowdloan]
-		[orml_tokens, benchmarking::tokens]
-		[orml_vesting, benchmarking::vesting]
-		[orml_auction, benchmarking::auction]
-		[orml_authority, benchmarking::authority]
-		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
-		[module_idle_scheduler, benchmarking::idle_scheduler]
-		[module_aggregated_dex, benchmarking::aggregated_dex]
-	);
-	// frame_benchmarking::define_benchmarks!(
-	// 	// XCM
-	// 	[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>]
-	// );
-}
+use benches::*;
 
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
@@ -2624,105 +2637,16 @@ impl_runtime_apis! {
 			Vec<frame_benchmarking::BenchmarkList>,
 			Vec<frame_support::traits::StorageInfo>,
 		) {
-			use frame_benchmarking::{list_benchmark as frame_list_benchmark, Benchmarking, BenchmarkList};
-			use frame_support::traits::StorageInfoTrait;
-
-			// use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
-
 			let mut list = Vec::<BenchmarkList>::new();
-
-			frame_list_benchmark!(list, extra, module_nft, module_nft::benchmarking::Pallet::<Runtime>);
-			frame_list_benchmark!(list, extra, orml_oracle, orml_oracle::benchmarking::Pallet::<Runtime, orml_oracle::Instance1>);
 			list_benchmarks!(list, extra);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
-
 			return (list, storage_info)
 		}
 
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, alloc::string::String> {
-			use frame_benchmarking::{Benchmarking, BenchmarkBatch, BenchmarkError, add_benchmark as frame_add_benchmark};
-			use frame_support::traits::{WhitelistedStorageKeys, TrackedStorageKey};
-
-			// const UNITS: Balance = 1_000_000_000_000;
-			// const CENTS: Balance = UNITS / 100;
-
-			// parameter_types! {
-			// 	pub FeeAssetId: AssetId = AssetId(Location::parent());
-			// 	pub const BaseDeliveryFee: u128 = CENTS.saturating_mul(3);
-			// }
-			// pub type PriceForParentDelivery = polkadot_runtime_common::xcm_sender::ExponentialPrice<
-			// 	FeeAssetId,
-			// 	BaseDeliveryFee,
-			// 	TransactionByteFee,
-			// 	ParachainSystem,
-			// >;
-
-			// use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
-			// impl pallet_xcm::benchmarking::Config for Runtime {
-			// 	type DeliveryHelper = cumulus_primitives_utility::ToParentDeliveryHelper<
-			// 		xcm_config::XcmConfig,
-			// 		ExistentialDepositAsset,
-			// 		PriceForParentDelivery,
-			// 	>;
-			// 	fn reachable_dest() -> Option<Location> {
-			// 		Some(Parent.into())
-			// 	}
-
-			// 	fn teleportable_asset_and_dest() -> Option<(Asset, Location)> {
-			// 		Some((
-			// 			Asset {
-			// 				fun: Fungible(NativeTokenExistentialDeposit::get()),
-			// 				id: AssetId(Parent.into())
-			// 			},
-			// 			Parent.into(),
-			// 		))
-			// 	}
-
-			// 	fn reserve_transferable_asset_and_dest() -> Option<(Asset, Location)> {
-			// 		None
-			// 	}
-
-			// 	fn get_asset() -> Asset {
-			// 		Asset {
-			// 			id: AssetId(Location::parent()),
-			// 			fun: Fungible(UNITS),
-			// 		}
-			// 	}
-			// }
-
-			// parameter_types! {
-			// 	pub ExistentialDepositAsset: Option<Asset> = Some((
-			// 		Location::parent(),
-			// 		NativeTokenExistentialDeposit::get()
-			// 	).into());
-			// }
-
-			// impl pallet_xcm_benchmarks::Config for Runtime {
-			// 	type XcmConfig = xcm_config::XcmConfig;
-			// 	type AccountIdConverter = xcm_config::LocationToAccountId;
-			// 	type DeliveryHelper = cumulus_primitives_utility::ToParentDeliveryHelper<
-			// 		xcm_config::XcmConfig,
-			// 		ExistentialDepositAsset,
-			// 		PriceForParentDelivery,
-			// 	>;
-			// 	fn valid_destination() -> Result<Location, BenchmarkError> {
-			// 		Ok(Location::parent())
-			// 	}
-			// 	fn worst_case_holding(_depositable_count: u32) -> Assets {
-			// 		// just concrete assets according to relay chain.
-			// 		let assets: Vec<Asset> = vec![
-			// 			Asset {
-			// 				id: AssetId(Location::parent()),
-			// 				fun: Fungible(1_000_000 * UNITS),
-			// 			}
-			// 		];
-			// 		assets.into()
-			// 	}
-			// }
-
 			let mut whitelist: Vec<TrackedStorageKey> = AllPalletsWithSystem::whitelisted_storage_keys();
 
 			// Treasury Account
@@ -2734,8 +2658,6 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			frame_add_benchmark!(params, batches, module_nft, module_nft::benchmarking::Pallet::<Runtime>);
-			frame_add_benchmark!(params, batches, orml_oracle, orml_oracle::benchmarking::Pallet::<Runtime, orml_oracle::Instance1>);
 			add_benchmarks!(params, batches);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
