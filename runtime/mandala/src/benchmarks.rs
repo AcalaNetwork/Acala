@@ -21,8 +21,9 @@
 use crate::{
 	dollar, AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, Balance, CdpTreasury, Currencies,
 	CurrencyId, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Price, RawOrigin,
-	System, TreasuryPalletId,
+	System, TreasuryPalletId, ACA, DOT, LDOT,
 };
+use alloc::vec::Vec;
 use frame_benchmarking::account;
 use frame_support::assert_ok;
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -31,6 +32,14 @@ use orml_traits::MultiCurrencyExtended;
 use primitives::AuthoritysOriginId;
 use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedU128, SaturatedConversion};
 use sp_std::vec;
+
+fn get_vesting_account() -> super::AccountId {
+	super::TreasuryPalletId::get().into_account_truncating()
+}
+
+fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
+	vec![ACA, DOT, LDOT, CurrencyId::StableAssetPoolToken(0)]
+}
 
 pub const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 pub const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
@@ -80,7 +89,7 @@ where
 	T: frame_system::Config<AccountId = AccountId> + pallet_balances::Config<Balance = Balance> + orml_vesting::Config,
 {
 	fn get_vesting_account_and_amount() -> Option<(T::AccountId, <T as pallet_balances::Config>::Balance)> {
-		Some((TreasuryPalletId::get().into_account_truncating(), dollar(NATIVE)))
+		Some((get_vesting_account(), dollar(NATIVE)))
 	}
 }
 

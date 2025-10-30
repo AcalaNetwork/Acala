@@ -4796,7 +4796,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
- "module-dex",
  "module-support",
  "orml-traits",
  "pallet-timestamp",
