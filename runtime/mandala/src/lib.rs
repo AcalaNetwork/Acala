@@ -732,6 +732,8 @@ impl orml_auction::Config for Runtime {
 	type AuctionId = AuctionId;
 	type Handler = AuctionManager;
 	type WeightInfo = weights::orml_auction::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = runtime_common::benchmarks::BenchmarkHelper<Runtime>;
 }
 
 impl orml_authority::Config for Runtime {
@@ -742,6 +744,8 @@ impl orml_authority::Config for Runtime {
 	type AsOriginId = AuthoritysOriginId;
 	type AuthorityConfig = AuthorityConfigImpl;
 	type WeightInfo = weights::orml_authority::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = runtime_common::benchmarks::BenchmarkHelper<Runtime>;
 }
 
 pub struct PaymentsDisputeResolver;
@@ -820,29 +824,6 @@ parameter_types! {
 	pub const MaxFeedValues: u32 = 10; // max 10 values allowed to feed in one call.
 }
 
-#[cfg(feature = "runtime-benchmarks")]
-pub struct BenchmarkHelper;
-#[cfg(feature = "runtime-benchmarks")]
-impl orml_oracle::BenchmarkHelper<CurrencyId, Price, MaxFeedValues> for BenchmarkHelper {
-	fn get_currency_id_value_pairs() -> sp_runtime::BoundedVec<(CurrencyId, Price), MaxFeedValues> {
-		sp_runtime::BoundedVec::try_from(vec![
-			(
-				CurrencyId::Token(TokenSymbol::DOT),
-				sp_runtime::FixedU128::saturating_from_rational(1, 1),
-			),
-			(
-				CurrencyId::Token(TokenSymbol::ACA),
-				sp_runtime::FixedU128::saturating_from_rational(1, 1),
-			),
-			(
-				CurrencyId::Token(TokenSymbol::AUSD),
-				sp_runtime::FixedU128::saturating_from_rational(1, 1),
-			),
-		])
-		.unwrap()
-	}
-}
-
 type AcalaDataProvider = orml_oracle::Instance1;
 impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type OnNewData = ();
@@ -856,7 +837,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 	type MaxFeedValues = MaxFeedValues;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = BenchmarkHelper;
+	type BenchmarkHelper = runtime_common::benchmarks::BenchmarkInstanceHelper<Runtime, orml_oracle::Instance1>;
 }
 
 create_median_value_data_provider!(
@@ -944,6 +925,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = DustRemovalWhitelist;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = runtime_common::benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_type_with_key! {
@@ -1037,6 +1020,8 @@ impl orml_vesting::Config for Runtime {
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 	type MaxVestingSchedules = ConstU32<100>;
 	type BlockNumberProvider = RelaychainDataProvider<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = runtime_common::benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -2237,7 +2222,11 @@ mod benches {
 	// );
 	frame_benchmarking::define_benchmarks!(
 		[module_dex, Dex]
+		[orml_auction, Auction]
+		[orml_authority, Authority]
 		[orml_oracle, AcalaOracle]
+		[orml_tokens, Tokens]
+		[orml_vesting, Vesting]
 		// XCM
 		/* 	[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>] */
 	);

@@ -4796,6 +4796,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
+ "module-dex",
  "module-support",
  "orml-traits",
  "pallet-timestamp",
@@ -5600,6 +5601,7 @@ dependencies = [
 name = "orml-auction"
 version = "1.5.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "orml-traits",
@@ -5616,6 +5618,7 @@ dependencies = [
 name = "orml-authority"
 version = "1.5.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "pallet-preimage",
@@ -5783,6 +5786,7 @@ dependencies = [
 name = "orml-tokens"
 version = "1.5.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
@@ -5867,6 +5871,7 @@ dependencies = [
 name = "orml-vesting"
 version = "1.5.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "pallet-balances",
@@ -8003,6 +8008,7 @@ dependencies = [
  "module-transaction-payment",
  "num_enum",
  "nutsfinance-stable-asset",
+ "orml-authority",
  "orml-currencies",
  "orml-nft",
  "orml-oracle",
@@ -8011,6 +8017,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "orml-utilities",
+ "orml-vesting",
  "orml-xtokens",
  "pallet-balances",
  "pallet-collective",
@@ -8018,6 +8025,7 @@ dependencies = [
  "pallet-proxy",
  "pallet-scheduler",
  "pallet-timestamp",
+ "pallet-treasury",
  "pallet-utility",
  "pallet-xcm",
  "parachains-common",

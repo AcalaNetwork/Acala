@@ -323,6 +323,7 @@ runtime-benchmarks = [
 	"xcm-builder/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
 
+	"orml-auction/runtime-benchmarks",
 	"orml-authority/runtime-benchmarks",
 	"orml-oracle/runtime-benchmarks",
 	"orml-parameters/runtime-benchmarks",
@@ -337,6 +338,8 @@ runtime-benchmarks = [
 	"module-homa/runtime-benchmarks",
 	"module-nft/runtime-benchmarks",
 	"module-xcm-interface/runtime-benchmarks",
+
+	"runtime-common/runtime-benchmarks",
 
 	"nutsfinance-stable-asset/runtime-benchmarks",
 

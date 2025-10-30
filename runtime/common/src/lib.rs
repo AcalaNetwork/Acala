@@ -69,6 +69,7 @@ use sp_core::bytes::from_hex;
 use std::{collections::btree_map::BTreeMap, str::FromStr};
 
 pub mod bench;
+pub mod benchmarks;
 pub mod check_nonce;
 pub mod precompile;
 pub mod xcm_config;
