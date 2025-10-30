@@ -339,8 +339,6 @@ runtime-benchmarks = [
 	"module-nft/runtime-benchmarks",
 	"module-xcm-interface/runtime-benchmarks",
 
-	"runtime-common/runtime-benchmarks",
-
 	"nutsfinance-stable-asset/runtime-benchmarks",
 
 	"sp-api/disable-logging",

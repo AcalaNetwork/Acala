@@ -27,7 +27,6 @@ pallet-collective = { workspace = true }
 pallet-membership = { workspace = true }
 pallet-balances = { workspace = true, optional = true }
 pallet-timestamp = { workspace = true, optional = true }
-pallet-treasury = { workspace = true, optional = true }
 pallet-proxy = { workspace = true, optional = true }
 pallet-utility = { workspace = true, optional = true }
 sp-core = { workspace = true }
@@ -81,10 +80,8 @@ orml-traits = { workspace = true }
 orml-tokens = { workspace = true }
 orml-xtokens = { workspace = true }
 wasm-bencher = { workspace = true, optional = true }
-orml-authority = { workspace = true, optional = true }
 orml-nft = { workspace = true, optional = true }
 orml-currencies = { workspace = true, optional = true }
-orml-vesting = { workspace = true, optional = true }
 orml-rewards = { workspace = true, optional = true }
 orml-parameters = { workspace = true }
 
@@ -109,7 +106,6 @@ std = [
 	"pallet-proxy/std",
 	"pallet-scheduler/std",
 	"pallet-timestamp/std",
-	"pallet-treasury/std",
 	"pallet-utility/std",
 	"sp-core/std",
 	"sp-io/std",
@@ -132,7 +128,6 @@ std = [
 	"orml-currencies/std",
 	"orml-nft/std",
 	"orml-oracle/std",
-	"orml-vesting/std",
 	"orml-rewards/std",
 	"orml-tokens/std",
 	"orml-traits/std",
@@ -172,7 +167,6 @@ wasm-bench = [
 	"pallet-collective/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
-	"pallet-treasury/runtime-benchmarks",
 	"pallet-utility/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
@@ -184,17 +178,12 @@ wasm-bench = [
 
 	"orml-currencies",
 	"orml-nft",
-	"orml-vesting",
 	"orml-rewards",
 	"orml-tokens/runtime-benchmarks",
 
 	"xcm-builder/runtime-benchmarks",
 ]
 runtime-benchmarks = [
-	"pallet-balances/runtime-benchmarks",
-	"pallet-treasury/runtime-benchmarks",
-	"orml-authority/runtime-benchmarks",
-	"orml-oracle/runtime-benchmarks",
-	"orml-vesting/runtime-benchmarks"
+	"orml-oracle/runtime-benchmarks"
 ]
 tracing = []

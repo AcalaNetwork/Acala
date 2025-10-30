@@ -129,6 +129,8 @@ use runtime_common::{
 pub use nutsfinance_stable_asset;
 
 mod authority;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarks;
 pub mod constants;
 #[cfg(feature = "genesis-builder")]
 mod genesis_config_presets;
@@ -733,7 +735,7 @@ impl orml_auction::Config for Runtime {
 	type Handler = AuctionManager;
 	type WeightInfo = weights::orml_auction::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = runtime_common::benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 impl orml_authority::Config for Runtime {
@@ -745,7 +747,7 @@ impl orml_authority::Config for Runtime {
 	type AuthorityConfig = AuthorityConfigImpl;
 	type WeightInfo = weights::orml_authority::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = runtime_common::benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 pub struct PaymentsDisputeResolver;
@@ -837,7 +839,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 	type MaxFeedValues = MaxFeedValues;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = runtime_common::benchmarks::BenchmarkInstanceHelper<Runtime, orml_oracle::Instance1>;
+	type BenchmarkHelper = benchmarks::BenchmarkInstanceHelper<Runtime, orml_oracle::Instance1>;
 }
 
 create_median_value_data_provider!(
@@ -926,7 +928,7 @@ impl orml_tokens::Config for Runtime {
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = DustRemovalWhitelist;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = runtime_common::benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_type_with_key! {
@@ -1021,7 +1023,7 @@ impl orml_vesting::Config for Runtime {
 	type MaxVestingSchedules = ConstU32<100>;
 	type BlockNumberProvider = RelaychainDataProvider<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = runtime_common::benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
