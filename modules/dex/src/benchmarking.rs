@@ -22,7 +22,7 @@ use super::*;
 use crate::Pallet;
 use frame_benchmarking::v2::*;
 use frame_support::assert_ok;
-use frame_system::{EventRecord, RawOrigin};
+use frame_system::RawOrigin;
 use primitives::TokenSymbol;
 
 const NATIVE: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -32,14 +32,6 @@ const STAKING: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 const BNC: CurrencyId = CurrencyId::Token(TokenSymbol::BNC);
 const VSKSM: CurrencyId = CurrencyId::Token(TokenSymbol::VSKSM);
 const CURRENCY_LIST: [CurrencyId; 6] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC, VSKSM];
-
-fn assert_last_event<T: Config>(generic_event: <T as frame_system::Config>::RuntimeEvent) {
-	let events = frame_system::Pallet::<T>::events();
-	let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
-	// compare to the last event record
-	let EventRecord { event, .. } = &events[events.len() - 1];
-	assert_eq!(event, &system_event);
-}
 
 fn dollar(_currency_id: CurrencyId) -> Balance {
 	10u128.saturating_pow(12)
@@ -101,7 +93,7 @@ mod benchmarks {
 		#[extrinsic_call]
 		_(RawOrigin::Root, trading_pair.first(), trading_pair.second());
 
-		assert_last_event::<T>(
+		frame_system::Pallet::<T>::assert_last_event(
 			Event::<T>::EnableTradingPair {
 				trading_pair: trading_pair,
 			}
@@ -124,7 +116,7 @@ mod benchmarks {
 		#[extrinsic_call]
 		_(RawOrigin::Root, trading_pair.first(), trading_pair.second());
 
-		assert_last_event::<T>(
+		frame_system::Pallet::<T>::assert_last_event(
 			Event::<T>::DisableTradingPair {
 				trading_pair: trading_pair,
 			}
@@ -156,7 +148,7 @@ mod benchmarks {
 			10u32.into(),
 		);
 
-		assert_last_event::<T>(
+		frame_system::Pallet::<T>::assert_last_event(
 			Event::<T>::ListProvisioning {
 				trading_pair: trading_pair,
 			}
@@ -248,7 +240,7 @@ mod benchmarks {
 		#[extrinsic_call]
 		_(RawOrigin::Signed(founder), trading_pair.first(), trading_pair.second());
 
-		assert_last_event::<T>(
+		frame_system::Pallet::<T>::assert_last_event(
 			Event::<T>::ProvisioningToEnabled {
 				trading_pair: trading_pair,
 				pool_0: 100 * dollar(trading_pair.first()),
@@ -302,7 +294,7 @@ mod benchmarks {
 			dollar(trading_pair.second()),
 		);
 
-		assert_last_event::<T>(
+		frame_system::Pallet::<T>::assert_last_event(
 			Event::<T>::AddProvision {
 				who: founder,
 				currency_0: trading_pair.first(),

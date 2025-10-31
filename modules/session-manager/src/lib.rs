@@ -36,6 +36,8 @@ use sp_runtime::{
 };
 use sp_staking::SessionIndex;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;

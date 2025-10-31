@@ -5221,6 +5221,7 @@ dependencies = [
 name = "module-session-manager"
 version = "2.31.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",

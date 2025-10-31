@@ -19,17 +19,9 @@
 use super::*;
 use frame_benchmarking::v2::*;
 use frame_support::assert_ok;
-use frame_system::{EventRecord, RawOrigin};
+use frame_system::RawOrigin;
 
 type BalanceOf<T> = <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::Balance;
-
-fn assert_last_event<T: Config>(generic_event: <T as frame_system::Config>::RuntimeEvent) {
-	let events = frame_system::Pallet::<T>::events();
-	let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
-	// compare to the last event record
-	let EventRecord { event, .. } = &events[events.len() - 1];
-	assert_eq!(event, &system_event);
-}
 
 #[benchmarks]
 mod benchmarks {
@@ -54,7 +46,7 @@ mod benchmarks {
 		#[extrinsic_call]
 		_(RawOrigin::Signed(caller), amount);
 
-		assert_last_event::<T>(
+		frame_system::Pallet::<T>::assert_last_event(
 			Event::<T>::Redeemed {
 				currency_id: T::RelayChainCurrencyId::get(),
 				amount,
@@ -68,7 +60,7 @@ mod benchmarks {
 		#[extrinsic_call]
 		_(RawOrigin::Root, T::RelayChainCurrencyId::get());
 
-		assert_last_event::<T>(
+		frame_system::Pallet::<T>::assert_last_event(
 			Event::<T>::RedeemCurrencyIdUpdated {
 				currency_id: T::RelayChainCurrencyId::get(),
 			}

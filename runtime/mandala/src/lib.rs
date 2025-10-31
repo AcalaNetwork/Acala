@@ -2213,7 +2213,6 @@ mod benches {
 	// 	[module_transaction_payment, benchmarking::transaction_payment]
 	// 	[module_incentives, benchmarking::incentives]
 	// 	[module_currencies, benchmarking::currencies]
-	// 	[module_session_manager, benchmarking::session_manager]
 	// 	[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 	// 	[module_aggregated_dex, benchmarking::aggregated_dex]
 	// );
@@ -2225,6 +2224,7 @@ mod benches {
 		[module_liquid_crowdloan, LiquidCrowdloan]
 		[module_nft, NFT]
 		[module_prices, Prices]
+		[module_session_manager, SessionManager]
 		[module_transaction_pause, TransactionPause]
 		[orml_auction, Auction]
 		[orml_authority, Authority]
