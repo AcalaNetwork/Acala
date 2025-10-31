@@ -2232,6 +2232,7 @@ mod benches {
 		[module_evm_accounts, EvmAccounts]
 		[module_nft, NFT]
 		[module_prices, Prices]
+		[module_transaction_pause, TransactionPause]
 		[orml_auction, Auction]
 		[orml_authority, Authority]
 		[orml_oracle, AcalaOracle]
