@@ -2227,6 +2227,7 @@ mod benches {
 	frame_benchmarking::define_benchmarks!(
 		[module_dex, Dex]
 		[module_dex_oracle, DexOracle]
+		[module_nft, NFT]
 		[orml_auction, Auction]
 		[orml_authority, Authority]
 		[orml_oracle, AcalaOracle]

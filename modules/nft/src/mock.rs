@@ -177,7 +177,7 @@ parameter_types! {
 pub const CREATE_CLASS_DEPOSIT: u128 = 200;
 pub const CREATE_TOKEN_DEPOSIT: u128 = 100;
 pub const DATA_DEPOSIT_PER_BYTE: u128 = 10;
-pub const MAX_ATTRIBUTES_BYTES: u32 = 10;
+pub const MAX_ATTRIBUTES_BYTES: u32 = 2048;
 impl Config for Runtime {
 	type Currency = Balances;
 	type CreateClassDeposit = ConstU128<CREATE_CLASS_DEPOSIT>;

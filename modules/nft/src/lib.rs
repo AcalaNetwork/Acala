@@ -48,6 +48,7 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 
+#[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
 mod mock;
 mod tests;
