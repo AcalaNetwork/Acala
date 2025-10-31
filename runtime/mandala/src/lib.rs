@@ -968,6 +968,8 @@ impl module_prices::Config for Runtime {
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type PricingPegged = PricingPegged;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -2229,6 +2231,7 @@ mod benches {
 		[module_dex_oracle, DexOracle]
 		[module_evm_accounts, EvmAccounts]
 		[module_nft, NFT]
+		[module_prices, Prices]
 		[orml_auction, Auction]
 		[orml_authority, Authority]
 		[orml_oracle, AcalaOracle]

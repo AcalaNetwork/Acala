@@ -230,6 +230,15 @@ parameter_types! {
 	pub RewardRatePerRelaychainBlock: Rate = Rate::saturating_from_rational(1, 1000);
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<CurrencyId> for MockBenchmarkHelper {
+	fn setup_feed_price() -> Option<CurrencyId> {
+		Some(AUSD)
+	}
+}
+
 impl Config for Runtime {
 	type Source = MockDataProvider;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -246,6 +255,8 @@ impl Config for Runtime {
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type PricingPegged = PricingPegged;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;
