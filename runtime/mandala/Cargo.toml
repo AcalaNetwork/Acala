@@ -337,6 +337,7 @@ runtime-benchmarks = [
 	"module-evm-accounts/runtime-benchmarks",
 	"module-evm-bridge/runtime-benchmarks",
 	"module-homa/runtime-benchmarks",
+	"module-idle-scheduler/runtime-benchmarks",
 	"module-liquid-crowdloan/runtime-benchmarks",
 	"module-nft/runtime-benchmarks",
 	"module-prices/runtime-benchmarks",

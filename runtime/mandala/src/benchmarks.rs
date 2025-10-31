@@ -20,10 +20,10 @@
 
 use crate::{
 	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Auction, AuctionId, AuctionManager, AuctionTimeToClose, Aura,
-	Balance, CdpTreasury, Currencies, CurrencyId, Dex, DexOracle, ExistentialDeposits, GetLiquidCurrencyId,
+	Balance, CdpTreasury, Currencies, CurrencyId, Dex, DexOracle, EvmTask, ExistentialDeposits, GetLiquidCurrencyId,
 	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumCount, Moment,
-	NativeTokenExistentialDeposit, OperatorMembershipAcala, Price, RawOrigin, Runtime, RuntimeOrigin, StableAsset,
-	System, Timestamp, TradingPair, ACA, DOT, LCDOT, LDOT,
+	NativeTokenExistentialDeposit, OperatorMembershipAcala, Price, RawOrigin, Runtime, RuntimeOrigin, ScheduledTasks,
+	StableAsset, System, Timestamp, TradingPair, ACA, DOT, LCDOT, LDOT,
 };
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -124,6 +124,19 @@ where
 		));
 
 		Some((NATIVE, STABLECOIN, 24000))
+	}
+}
+
+impl<T> module_idle_scheduler::BenchmarkHelper<ScheduledTasks> for BenchmarkHelper<T>
+where
+	T: module_idle_scheduler::Config,
+{
+	fn setup_schedule_task() -> Option<ScheduledTasks> {
+		Some(ScheduledTasks::EvmTask(EvmTask::Remove {
+			caller: Default::default(),
+			contract: Default::default(),
+			maintainer: Default::default(),
+		}))
 	}
 }
 

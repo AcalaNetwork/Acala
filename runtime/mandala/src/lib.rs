@@ -1875,6 +1875,8 @@ impl module_idle_scheduler::Config for Runtime {
 	// Number of relay chain blocks produced with no parachain blocks finalized,
 	// once this number is reached idle scheduler is disabled as block production is slow
 	type DisableBlockThreshold = ConstU32<6>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
@@ -2213,13 +2215,13 @@ mod benches {
 	// 	[module_currencies, benchmarking::currencies]
 	// 	[module_session_manager, benchmarking::session_manager]
 	// 	[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
-	// 	[module_idle_scheduler, benchmarking::idle_scheduler]
 	// 	[module_aggregated_dex, benchmarking::aggregated_dex]
 	// );
 	frame_benchmarking::define_benchmarks!(
 		[module_dex, Dex]
 		[module_dex_oracle, DexOracle]
 		[module_evm_accounts, EvmAccounts]
+		[module_idle_scheduler, IdleScheduler]
 		[module_liquid_crowdloan, LiquidCrowdloan]
 		[module_nft, NFT]
 		[module_prices, Prices]
