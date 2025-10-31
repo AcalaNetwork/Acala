@@ -1282,6 +1282,8 @@ impl module_dex_oracle::Config for Runtime {
 	type Time = Timestamp;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_dex_oracle::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -2224,6 +2226,7 @@ mod benches {
 	// );
 	frame_benchmarking::define_benchmarks!(
 		[module_dex, Dex]
+		[module_dex_oracle, DexOracle]
 		[orml_auction, Auction]
 		[orml_authority, Authority]
 		[orml_oracle, AcalaOracle]

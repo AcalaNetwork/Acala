@@ -19,40 +19,23 @@
 //! Common runtime benchmarking code.
 
 use crate::{
-	dollar, AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, Balance, CdpTreasury, Currencies,
-	CurrencyId, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Price, RawOrigin,
-	System, TreasuryPalletId, ACA, DOT, LDOT,
+	dollar, AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, Aura, Balance, CdpTreasury, Currencies,
+	CurrencyId, Dex, DexOracle, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId,
+	Moment, Price, RawOrigin, System, Timestamp, TradingPair, ACA, DOT, LDOT,
 };
 use alloc::vec::Vec;
 use frame_benchmarking::account;
 use frame_support::assert_ok;
+use frame_support::traits::OnInitialize;
 use frame_system::pallet_prelude::BlockNumberFor;
 use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};
 use orml_traits::MultiCurrencyExtended;
 use primitives::AuthoritysOriginId;
-use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedU128, SaturatedConversion};
+use sp_runtime::{
+	traits::{AccountIdConversion, UniqueSaturatedInto},
+	FixedPointNumber, FixedU128, SaturatedConversion,
+};
 use sp_std::vec;
-
-fn get_vesting_account() -> super::AccountId {
-	super::TreasuryPalletId::get().into_account_truncating()
-}
-
-fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
-	vec![ACA, DOT, LDOT, CurrencyId::StableAssetPoolToken(0)]
-}
-
-pub const NATIVE: CurrencyId = GetNativeCurrencyId::get();
-pub const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-pub const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
-pub const STAKING: CurrencyId = GetStakingCurrencyId::get();
-
-pub fn set_balance(currency_id: CurrencyId, who: &AccountId, balance: Balance) {
-	assert_ok!(<Currencies as MultiCurrencyExtended<_>>::update_balance(
-		currency_id,
-		who,
-		balance.saturated_into()
-	));
-}
 
 /// Helper struct for benchmarking.
 pub struct BenchmarkHelper<T>(sp_std::marker::PhantomData<T>);
@@ -72,6 +55,64 @@ where
 			(STABLECOIN, FixedU128::saturating_from_rational(3, 1)),
 		])
 		.unwrap()
+	}
+}
+
+impl<T> module_dex_oracle::BenchmarkHelper<CurrencyId, Moment> for BenchmarkHelper<T>
+where
+	T: module_dex_oracle::Config,
+{
+	fn setup_on_initialize(n: u32, u: u32) {
+		let caller: AccountId = account("caller", 0, 0);
+
+		let trading_pair_list = vec![
+			TradingPair::from_currency_ids(NATIVE, STABLECOIN).unwrap(),
+			TradingPair::from_currency_ids(NATIVE, STAKING).unwrap(),
+			TradingPair::from_currency_ids(STAKING, STABLECOIN).unwrap(),
+		];
+
+		for i in 0..n {
+			let trading_pair = trading_pair_list[i as usize];
+			assert_ok!(inject_liquidity(
+				caller.clone(),
+				trading_pair.first(),
+				trading_pair.second(),
+				dollar(trading_pair.first()) * 100,
+				dollar(trading_pair.second()) * 1000,
+				false,
+			));
+			assert_ok!(DexOracle::enable_average_price(
+				RawOrigin::Root.into(),
+				trading_pair.first(),
+				trading_pair.second(),
+				240000
+			));
+		}
+		for j in 0..u.min(n) {
+			let update_pair = trading_pair_list[j as usize];
+			assert_ok!(DexOracle::update_average_price_interval(
+				RawOrigin::Root.into(),
+				update_pair.first(),
+				update_pair.second(),
+				24000
+			));
+		}
+		set_block_number_timestamp(1, 24000);
+	}
+
+	fn setup_inject_liquidity() -> Option<(CurrencyId, CurrencyId, Moment)> {
+		let caller: AccountId = account("caller", 0, 0);
+
+		assert_ok!(inject_liquidity(
+			caller.clone(),
+			NATIVE,
+			STABLECOIN,
+			dollar(NATIVE) * 100,
+			dollar(STABLECOIN) * 1000,
+			false,
+		));
+
+		Some((NATIVE, STABLECOIN, 24000))
 	}
 }
 
@@ -169,4 +210,69 @@ where
 	fn get_as_origin_id() -> Option<T::AsOriginId> {
 		Some(AuthoritysOriginId::Root)
 	}
+}
+
+pub const NATIVE: CurrencyId = GetNativeCurrencyId::get();
+pub const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
+pub const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
+pub const STAKING: CurrencyId = GetStakingCurrencyId::get();
+
+fn get_vesting_account() -> super::AccountId {
+	super::TreasuryPalletId::get().into_account_truncating()
+}
+
+fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
+	vec![ACA, DOT, LDOT, CurrencyId::StableAssetPoolToken(0)]
+}
+
+pub fn set_balance(currency_id: CurrencyId, who: &AccountId, balance: Balance) {
+	assert_ok!(<Currencies as MultiCurrencyExtended<_>>::update_balance(
+		currency_id,
+		who,
+		balance.saturated_into()
+	));
+}
+
+pub fn inject_liquidity(
+	maker: AccountId,
+	currency_id_a: CurrencyId,
+	currency_id_b: CurrencyId,
+	max_amount_a: Balance,
+	max_amount_b: Balance,
+	deposit: bool,
+) -> Result<(), &'static str> {
+	// set balance
+	<Currencies as MultiCurrencyExtended<_>>::update_balance(
+		currency_id_a,
+		&maker,
+		max_amount_a.unique_saturated_into(),
+	)?;
+	<Currencies as MultiCurrencyExtended<_>>::update_balance(
+		currency_id_b,
+		&maker,
+		max_amount_b.unique_saturated_into(),
+	)?;
+
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
+
+	Dex::add_liquidity(
+		RawOrigin::Signed(maker.clone()).into(),
+		currency_id_a,
+		currency_id_b,
+		max_amount_a,
+		max_amount_b,
+		Default::default(),
+		deposit,
+	)?;
+	Ok(())
+}
+
+pub fn set_block_number_timestamp(block_number: u32, timestamp: u64) {
+	// let slot = timestamp / Aura::slot_duration();
+	// let digest = Digest {
+	// 	logs: vec![DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode())],
+	// };
+	System::initialize(&block_number, &Default::default(), &Default::default());
+	Aura::on_initialize(block_number);
+	Timestamp::set_timestamp(timestamp);
 }
