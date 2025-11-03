@@ -334,6 +334,7 @@ runtime-benchmarks = [
 	"module-collator-selection/runtime-benchmarks",
 	"module-dex/runtime-benchmarks",
 	"module-dex-oracle/runtime-benchmarks",
+	"module-earning/runtime-benchmarks",
 	"module-evm-accounts/runtime-benchmarks",
 	"module-evm-bridge/runtime-benchmarks",
 	"module-homa/runtime-benchmarks",

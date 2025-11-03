@@ -1365,17 +1365,24 @@ impl module_transaction_payment::Config for Runtime {
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
+parameter_types! {
+	pub MinBond: Balance = 10 * dollar(ACA);
+	pub const UnbondingPeriod: BlockNumber = 8 * DAYS;
+}
+
 impl module_earning::Config for Runtime {
 	type Currency = Balances;
 	type ParameterStore = ParameterStoreAdapter<Parameters, module_earning::Parameters>;
 	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
 	type OnUnbonded = module_incentives::OnEarningUnbonded<Runtime>;
 	type OnUnstakeFee = Treasury; // fee goes to treasury
-	type MinBond = ConstU128<100>;
-	type UnbondingPeriod = ConstU32<3>;
+	type MinBond = MinBond;
+	type UnbondingPeriod = UnbondingPeriod;
 	type MaxUnbondingChunks = ConstU32<3>;
 	type LockIdentifier = EarningLockIdentifier;
 	type WeightInfo = weights::module_earning::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -2201,7 +2208,6 @@ mod benches {
 	// 	[module_asset_registry, benchmarking::asset_registry]
 	// 	[module_auction_manager, benchmarking::auction_manager]
 	// 	[module_cdp_engine, benchmarking::cdp_engine]
-	// 	[module_earning, benchmarking::earning]
 	// 	[module_emergency_shutdown, benchmarking::emergency_shutdown]
 	// 	[module_evm, benchmarking::evm]
 	// 	[module_homa, benchmarking::homa]
@@ -2219,6 +2225,7 @@ mod benches {
 	frame_benchmarking::define_benchmarks!(
 		[module_dex, Dex]
 		[module_dex_oracle, DexOracle]
+		[module_earning, Earning]
 		[module_evm_accounts, EvmAccounts]
 		[module_idle_scheduler, IdleScheduler]
 		[module_liquid_crowdloan, LiquidCrowdloan]

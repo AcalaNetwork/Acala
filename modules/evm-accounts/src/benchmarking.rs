@@ -55,6 +55,14 @@ mod benchmarks {
 			Pallet::<T>::eth_sign(&alice(), &caller),
 		);
 
+		frame_system::Pallet::<T>::assert_last_event(
+			Event::ClaimAccount {
+				account_id: caller.clone(),
+				evm_address: Pallet::<T>::eth_address(&alice()),
+			}
+			.into(),
+		);
+
 		assert_eq!(<<T as Config>::Currency as Currency<_>>::free_balance(&caller), amount);
 	}
 

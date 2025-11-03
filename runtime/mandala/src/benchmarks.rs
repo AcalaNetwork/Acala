@@ -22,8 +22,9 @@ use crate::{
 	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Auction, AuctionId, AuctionManager, AuctionTimeToClose, Aura,
 	Balance, CdpTreasury, Currencies, CurrencyId, Dex, DexOracle, EvmTask, ExistentialDeposits, GetLiquidCurrencyId,
 	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumCount, Moment,
-	NativeTokenExistentialDeposit, OperatorMembershipAcala, Price, RawOrigin, Runtime, RuntimeOrigin, ScheduledTasks,
-	StableAsset, System, Timestamp, TradingPair, ACA, DOT, LCDOT, LDOT,
+	NativeTokenExistentialDeposit, OperatorMembershipAcala, Parameters, Permill, Price, RawOrigin, Runtime,
+	RuntimeOrigin, RuntimeParameters, ScheduledTasks, StableAsset, System, Timestamp, TradingPair, ACA, DOT, LCDOT,
+	LDOT,
 };
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -124,6 +125,21 @@ where
 		));
 
 		Some((NATIVE, STABLECOIN, 24000))
+	}
+}
+
+impl<T> module_earning::BenchmarkHelper for BenchmarkHelper<T>
+where
+	T: module_earning::Config,
+{
+	fn setup_parameter_store() {
+		assert_ok!(Parameters::set_parameter(
+			RawOrigin::Root.into(),
+			RuntimeParameters::Earning(module_earning::Parameters::InstantUnstakeFee(
+				module_earning::InstantUnstakeFee,
+				Some(Permill::from_percent(10))
+			))
+		));
 	}
 }
 
