@@ -20,8 +20,8 @@
 
 use crate::{
 	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Auction, AuctionId, AuctionManager, AuctionTimeToClose, Aura,
-	Balance, CdpTreasury, Currencies, CurrencyId, Dex, DexOracle, EvmTask, ExistentialDeposits, GetLiquidCurrencyId,
-	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumCount, Moment,
+	Balance, CdpTreasury, Currencies, CurrencyId, Dex, DexOracle, EmergencyShutdown, EvmTask, ExistentialDeposits,
+	GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumCount, Moment,
 	NativeTokenExistentialDeposit, OperatorMembershipAcala, Parameters, Permill, Price, RawOrigin, Runtime,
 	RuntimeOrigin, RuntimeParameters, ScheduledTasks, StableAsset, System, Timestamp, TradingPair, ACA, DOT, LCDOT,
 	LDOT,
@@ -29,23 +29,17 @@ use crate::{
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use frame_benchmarking::account;
-use frame_support::assert_ok;
-use frame_support::traits::fungibles;
-use frame_support::traits::Contains;
-use frame_support::traits::OnInitialize;
+use frame_support::{assert_ok, traits::fungibles, traits::Contains, traits::OnInitialize};
 use frame_system::pallet_prelude::BlockNumberFor;
 use module_aggregated_dex::SwapPath;
 use module_support::Erc20InfoMapping;
 use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};
-use orml_traits::GetByKey;
-use orml_traits::MultiCurrencyExtended;
-use primitives::currency::AssetMetadata;
-use primitives::AuthoritysOriginId;
+use orml_traits::{GetByKey, MultiCurrency, MultiCurrencyExtended};
+use primitives::{currency::AssetMetadata, AuthoritysOriginId};
 use runtime_common::TokenInfo;
-use sp_runtime::MultiAddress;
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto},
-	FixedPointNumber, FixedU128, SaturatedConversion,
+	FixedPointNumber, FixedU128, MultiAddress, SaturatedConversion,
 };
 use sp_std::vec;
 
@@ -67,6 +61,46 @@ where
 			(STABLECOIN, FixedU128::saturating_from_rational(3, 1)),
 		])
 		.unwrap()
+	}
+}
+
+impl<T> module_auction_manager::BenchmarkHelper for BenchmarkHelper<T>
+where
+	T: module_auction_manager::Config,
+{
+	fn setup() -> Option<AuctionId> {
+		let auction_id: AuctionId = 0;
+		let bidder: AccountId = account("bidder", 0, 0);
+		let funder: AccountId = account("funder", 0, 0);
+
+		// set balance
+		assert_ok!(Currencies::deposit(STABLECOIN, &bidder, 80 * dollar(STABLECOIN)));
+		assert_ok!(Currencies::deposit(STAKING, &funder, dollar(STAKING)));
+		assert_ok!(CdpTreasury::deposit_collateral(&funder, STAKING, dollar(STAKING)));
+
+		// feed price
+		feed_price(vec![(STAKING, Price::saturating_from_integer(120))]);
+
+		// create collateral auction
+		assert_ok!(AuctionManager::new_collateral_auction(
+			&funder,
+			STAKING,
+			dollar(STAKING),
+			100 * dollar(STABLECOIN)
+		));
+
+		// bid collateral auction
+		assert_ok!(AuctionManager::collateral_auction_bid_handler(
+			1,
+			auction_id,
+			(bidder, 80 * dollar(STABLECOIN)),
+			None
+		));
+
+		// shutdown
+		assert_ok!(EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into()));
+
+		Some(auction_id)
 	}
 }
 

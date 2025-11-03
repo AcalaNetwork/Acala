@@ -1083,6 +1083,8 @@ impl module_auction_manager::Config for Runtime {
 	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type WeightInfo = weights::module_auction_manager::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 impl module_loans::Config for Runtime {
@@ -2206,7 +2208,6 @@ mod benches {
 
 	// define_benchmarks!(
 	// 	[module_asset_registry, benchmarking::asset_registry]
-	// 	[module_auction_manager, benchmarking::auction_manager]
 	// 	[module_cdp_engine, benchmarking::cdp_engine]
 	// 	[module_emergency_shutdown, benchmarking::emergency_shutdown]
 	// 	[module_evm, benchmarking::evm]
@@ -2223,6 +2224,7 @@ mod benches {
 	// 	[module_aggregated_dex, benchmarking::aggregated_dex]
 	// );
 	frame_benchmarking::define_benchmarks!(
+		[module_auction_manager, AuctionManager]
 		[module_dex, Dex]
 		[module_dex_oracle, DexOracle]
 		[module_earning, Earning]

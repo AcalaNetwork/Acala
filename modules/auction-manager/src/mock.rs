@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{
-	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	assert_ok, construct_runtime, derive_impl, ord_parameter_types, parameter_types,
 	traits::{ConstU32, ConstU64, Nothing},
 	PalletId,
 };
@@ -180,6 +180,20 @@ parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper for MockBenchmarkHelper {
+	fn setup() -> Option<AuctionId> {
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
+
+		assert_ok!(AuctionModule::bid(RuntimeOrigin::signed(BOB), 0, 80));
+
+		mock_shutdown();
+		Some(0)
+	}
+}
+
 impl Config for Runtime {
 	type Currency = Tokens;
 	type Auction = AuctionModule;
@@ -192,6 +206,8 @@ impl Config for Runtime {
 	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
