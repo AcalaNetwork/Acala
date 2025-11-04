@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{
-	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	assert_ok, construct_runtime, derive_impl, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, EitherOfDiverse, Nothing},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
@@ -183,6 +183,34 @@ parameter_types! {
 	];
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBehchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<AccountId, CurrencyId> for MockBehchmarkHelper {
+	fn setup_dex_pools(caller: AccountId) -> Option<CurrencyId> {
+		let amount = 1_000_000_000_000_000u128;
+		assert_ok!(Currencies::deposit(DOT, &caller, 1000 * amount));
+		assert_ok!(Currencies::deposit(AUSD, &caller, 1000 * amount));
+		assert_ok!(Currencies::deposit(
+			DOT,
+			&CDPTreasuryModule::account_id(),
+			1000 * amount
+		));
+
+		assert_ok!(DEXModule::add_liquidity(
+			RuntimeOrigin::signed(caller),
+			DOT,
+			AUSD,
+			1000 * amount,
+			1000 * amount,
+			0,
+			false
+		));
+
+		Some(DOT)
+	}
+}
+
 impl Config for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
@@ -195,6 +223,8 @@ impl Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBehchmarkHelper;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;

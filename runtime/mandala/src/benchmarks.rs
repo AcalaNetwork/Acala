@@ -104,6 +104,16 @@ where
 	}
 }
 
+impl<T> module_cdp_treasury::BenchmarkHelper<AccountId, CurrencyId> for BenchmarkHelper<T>
+where
+	T: module_cdp_treasury::Config,
+{
+	fn setup_dex_pools(caller: AccountId) -> Option<CurrencyId> {
+		assert_ok!(initialize_swap_pools(caller));
+		Some(STAKING)
+	}
+}
+
 impl<T> module_dex_oracle::BenchmarkHelper<CurrencyId, Moment> for BenchmarkHelper<T>
 where
 	T: module_dex_oracle::Config,

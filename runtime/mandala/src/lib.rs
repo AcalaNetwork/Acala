@@ -1308,6 +1308,8 @@ impl module_cdp_treasury::Config for Runtime {
 	type TreasuryAccount = HonzonTreasuryAccount;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 	type StableAsset = RebasedStableAsset;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 impl module_transaction_pause::Config for Runtime {
@@ -2218,7 +2220,6 @@ mod benches {
 	// 	[module_evm, benchmarking::evm]
 	// 	[module_homa, benchmarking::homa]
 	// 	[module_honzon, benchmarking::honzon]
-	// 	[module_cdp_treasury, benchmarking::cdp_treasury]
 	// 	[module_collator_selection, benchmarking::collator_selection]
 	// 	[module_transaction_payment, benchmarking::transaction_payment]
 	// 	[module_incentives, benchmarking::incentives]
@@ -2228,6 +2229,7 @@ mod benches {
 	// );
 	frame_benchmarking::define_benchmarks!(
 		[module_auction_manager, AuctionManager]
+		[module_cdp_treasury, CdpTreasury]
 		[module_dex, Dex]
 		[module_dex_oracle, DexOracle]
 		[module_earning, Earning]
