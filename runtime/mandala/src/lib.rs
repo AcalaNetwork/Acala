@@ -1231,6 +1231,8 @@ impl module_emergency_shutdown::Config for Runtime {
 	type AuctionManagerHandler = AuctionManager;
 	type ShutdownOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_emergency_shutdown::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -2213,7 +2215,6 @@ mod benches {
 	// define_benchmarks!(
 	// 	[module_asset_registry, benchmarking::asset_registry]
 	// 	[module_cdp_engine, benchmarking::cdp_engine]
-	// 	[module_emergency_shutdown, benchmarking::emergency_shutdown]
 	// 	[module_evm, benchmarking::evm]
 	// 	[module_homa, benchmarking::homa]
 	// 	[module_honzon, benchmarking::honzon]
@@ -2230,6 +2231,7 @@ mod benches {
 		[module_dex, Dex]
 		[module_dex_oracle, DexOracle]
 		[module_earning, Earning]
+		[module_emergency_shutdown, EmergencyShutdown]
 		[module_evm_accounts, EvmAccounts]
 		[module_homa_validator_list, HomaValidatorList]
 		[module_idle_scheduler, IdleScheduler]

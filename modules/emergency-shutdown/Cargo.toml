@@ -7,6 +7,7 @@ edition = { workspace = true }
 [dependencies]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
+frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 sp-runtime = { workspace = true }
@@ -28,6 +29,7 @@ module-cdp-treasury = { workspace = true, features = ["std"] }
 default = ["std"]
 std = [
 	"parity-scale-codec/std",
+	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
 	"module-loans/std",
@@ -36,6 +38,11 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 	"module-support/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

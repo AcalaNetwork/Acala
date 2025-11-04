@@ -213,6 +213,8 @@ impl Config for Runtime {
 	type AuctionManagerHandler = MockAuctionManager;
 	type ShutdownOrigin = EnsureSignedBy<One, AccountId>;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;

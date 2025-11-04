@@ -38,7 +38,7 @@ use orml_traits::{GetByKey, MultiCurrency, MultiCurrencyExtended};
 use primitives::{currency::AssetMetadata, AuthoritysOriginId};
 use runtime_common::TokenInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, UniqueSaturatedInto},
+	traits::{AccountIdConversion, One, UniqueSaturatedInto},
 	FixedPointNumber, FixedU128, MultiAddress, SaturatedConversion,
 };
 use sp_std::vec;
@@ -174,6 +174,33 @@ where
 				Some(Permill::from_percent(10))
 			))
 		));
+	}
+}
+
+impl<T> module_emergency_shutdown::BenchmarkHelper for BenchmarkHelper<T>
+where
+	T: module_emergency_shutdown::Config,
+{
+	fn setup_feed_price(c: u32) {
+		let currency_ids = get_benchmarking_collateral_currency_ids();
+
+		let funder: AccountId = account("funder", 0, 0);
+		let mut values = vec![];
+
+		for i in 0..c.min(currency_ids.len() as u32) {
+			let currency_id = currency_ids[i as usize];
+			if matches!(currency_id, CurrencyId::StableAssetPoolToken(_)) {
+				continue;
+			}
+			values.push((currency_id, Price::one()));
+			set_balance(currency_id, &funder, 100 * dollar(currency_id));
+			assert_ok!(CdpTreasury::deposit_collateral(
+				&funder,
+				currency_id,
+				100 * dollar(currency_id)
+			));
+		}
+		feed_price(values);
 	}
 }
 
