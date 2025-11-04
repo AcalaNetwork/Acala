@@ -45,10 +45,14 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, vec, vec::Vec};
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -167,6 +171,9 @@ pub mod module {
 		type CurrentEra: Get<EraIndex>;
 
 		type WeightInfo: WeightInfo;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<EraIndex>;
 	}
 
 	#[pallet::error]

@@ -1494,6 +1494,8 @@ impl module_homa_validator_list::Config for Runtime {
 	type LiquidStakingExchangeRateProvider = Homa;
 	type CurrentEra = Homa;
 	type WeightInfo = weights::module_homa_validator_list::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -2214,11 +2216,9 @@ mod benches {
 	// 	[module_emergency_shutdown, benchmarking::emergency_shutdown]
 	// 	[module_evm, benchmarking::evm]
 	// 	[module_homa, benchmarking::homa]
-	// 	[module_homa_validator_list, benchmarking::homa_validator_list]
 	// 	[module_honzon, benchmarking::honzon]
 	// 	[module_cdp_treasury, benchmarking::cdp_treasury]
 	// 	[module_collator_selection, benchmarking::collator_selection]
-	// 	[module_nominees_election, benchmarking::nominees_election]
 	// 	[module_transaction_payment, benchmarking::transaction_payment]
 	// 	[module_incentives, benchmarking::incentives]
 	// 	[module_currencies, benchmarking::currencies]
@@ -2231,6 +2231,7 @@ mod benches {
 		[module_dex_oracle, DexOracle]
 		[module_earning, Earning]
 		[module_evm_accounts, EvmAccounts]
+		[module_homa_validator_list, HomaValidatorList]
 		[module_idle_scheduler, IdleScheduler]
 		[module_liquid_crowdloan, LiquidCrowdloan]
 		[module_nft, NFT]

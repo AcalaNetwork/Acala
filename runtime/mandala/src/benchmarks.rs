@@ -177,6 +177,15 @@ where
 	}
 }
 
+impl<T> module_homa_validator_list::BenchmarkHelper<EraIndex> for BenchmarkHelper<T>
+where
+	T: module_homa_validator_list::Config,
+{
+	fn setup_homa_bump_era(era_index: EraIndex) {
+		assert_ok!(Homa::force_bump_current_era(RawOrigin::Root.into(), era_index));
+	}
+}
+
 impl<T> module_idle_scheduler::BenchmarkHelper<ScheduledTasks> for BenchmarkHelper<T>
 where
 	T: module_idle_scheduler::Config,

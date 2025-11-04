@@ -119,6 +119,15 @@ parameter_types! {
 	pub const BondingDuration: EraIndex = 28;
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<EraIndex> for MockBenchmarkHelper {
+	fn setup_homa_bump_era(era_index: EraIndex) {
+		MockCurrentEra::set(era_index);
+	}
+}
+
 impl Config for Runtime {
 	type ValidatorId = AccountId;
 	type LiquidTokenCurrency = LDOTCurrency;
@@ -129,6 +138,8 @@ impl Config for Runtime {
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 	type CurrentEra = MockCurrentEra;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;
