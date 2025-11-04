@@ -171,6 +171,16 @@ impl Contains<AccountId> for InvalidNominees {
 	}
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<EraIndex, AccountId, AccountId> for MockBenchmarkHelper {
+	fn setup_homa_bump_era(era: EraIndex) {
+		MockCurrentEra::set(era);
+	}
+	fn setup_homa_validators(_caller: AccountId, _targets: Vec<AccountId>) {}
+}
+
 impl Config for Runtime {
 	type Currency = LDOTCurrency;
 	type NomineeId = AccountId;
@@ -185,6 +195,8 @@ impl Config for Runtime {
 	type OnUnbonded = MockOnUnbonded;
 	type CurrentEra = MockCurrentEra;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;

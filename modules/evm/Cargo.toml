@@ -46,8 +46,6 @@ module-idle-scheduler = { workspace = true, optional = true }
 module-transaction-payment = { workspace = true }
 module-dex = { workspace = true, optional = true }
 
-xcm-builder = { workspace = true }
-
 # we don't directly depends on this but need frame-benchmarking/std to fix build
 frame-benchmarking = { workspace = true, optional = true }
 
@@ -86,7 +84,6 @@ std = [
 	"sp-io/std",
 	"sp-runtime/std",
 	"sp-std/std",
-	"xcm-builder/std",
 	"frame-benchmarking/std",
 ]
 with-ethereum-compatibility = []
@@ -112,7 +109,6 @@ wasm-bench = [
 	"pallet-balances",
 	"serde_json",
 	"sp-runtime/runtime-benchmarks",
-	"xcm-builder/runtime-benchmarks",
 ]
 evm-tests = [
 	"primitives/evm-tests"

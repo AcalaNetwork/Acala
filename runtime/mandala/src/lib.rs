@@ -1515,6 +1515,8 @@ impl module_nominees_election::Config for Runtime {
 	type OnUnbonded = module_incentives::OnNomineesElectionUnbonded<Runtime>;
 	type CurrentEra = Homa;
 	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -2232,6 +2234,7 @@ mod benches {
 		[module_idle_scheduler, IdleScheduler]
 		[module_liquid_crowdloan, LiquidCrowdloan]
 		[module_nft, NFT]
+		[module_nominees_election, NomineesElection]
 		[module_prices, Prices]
 		[module_session_manager, SessionManager]
 		[module_transaction_pause, TransactionPause]

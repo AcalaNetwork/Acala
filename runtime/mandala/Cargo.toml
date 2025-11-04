@@ -342,6 +342,7 @@ runtime-benchmarks = [
 	"module-idle-scheduler/runtime-benchmarks",
 	"module-liquid-crowdloan/runtime-benchmarks",
 	"module-nft/runtime-benchmarks",
+	"module-nominees-election/runtime-benchmarks",
 	"module-prices/runtime-benchmarks",
 	"module-session-manager/runtime-benchmarks",
 	"module-transaction-pause/runtime-benchmarks",

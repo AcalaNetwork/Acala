@@ -4738,6 +4738,7 @@ name = "module-currencies"
 version = "2.31.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "hex",
@@ -4886,7 +4887,6 @@ dependencies = [
  "sp-io 41.0.1",
  "sp-runtime 42.0.0",
  "sp-std",
- "staging-xcm-builder",
  "substrate-bn",
  "tiny-keccak",
  "wasm-bencher",
@@ -5184,6 +5184,7 @@ name = "module-nominees-election"
 version = "2.31.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",

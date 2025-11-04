@@ -20,11 +20,11 @@
 
 use crate::{
 	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Auction, AuctionId, AuctionManager, AuctionTimeToClose, Aura,
-	Balance, CdpTreasury, Currencies, CurrencyId, Dex, DexOracle, EmergencyShutdown, EvmTask, ExistentialDeposits,
-	GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumCount, Moment,
-	NativeTokenExistentialDeposit, OperatorMembershipAcala, Parameters, Permill, Price, RawOrigin, Runtime,
-	RuntimeOrigin, RuntimeParameters, ScheduledTasks, StableAsset, System, Timestamp, TradingPair, ACA, DOT, LCDOT,
-	LDOT,
+	Balance, CdpTreasury, Currencies, CurrencyId, Dex, DexOracle, EmergencyShutdown, EraIndex, EvmTask,
+	ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Homa,
+	HomaValidatorList, MinimumCount, Moment, NativeTokenExistentialDeposit, OperatorMembershipAcala, Parameters,
+	Permill, Price, RawOrigin, Runtime, RuntimeOrigin, RuntimeParameters, ScheduledTasks, StableAsset, System,
+	Timestamp, TradingPair, ACA, DOT, LCDOT, LDOT,
 };
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -187,6 +187,24 @@ where
 			contract: Default::default(),
 			maintainer: Default::default(),
 		}))
+	}
+}
+
+impl<T> module_nominees_election::BenchmarkHelper<EraIndex, AccountId, AccountId> for BenchmarkHelper<T>
+where
+	T: module_nominees_election::Config,
+{
+	fn setup_homa_bump_era(era_index: EraIndex) {
+		assert_ok!(Homa::force_bump_current_era(RawOrigin::Root.into(), era_index));
+	}
+	fn setup_homa_validators(caller: AccountId, targets: Vec<AccountId>) {
+		for validator in targets.iter() {
+			assert_ok!(HomaValidatorList::bond(
+				RawOrigin::Signed(caller.clone()).into(),
+				validator.clone(),
+				<Runtime as module_homa_validator_list::Config>::ValidatorInsuranceThreshold::get()
+			));
+		}
 	}
 }
 
