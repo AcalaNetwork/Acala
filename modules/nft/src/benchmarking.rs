@@ -46,7 +46,7 @@ fn test_attr() -> Attributes {
 
 fn create_token_class<T: Config>(caller: T::AccountId) -> T::AccountId {
 	let base_currency_amount = dollar(1000);
-	<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+	<T as Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 	let module_account: T::AccountId =
 		T::PalletId::get().into_sub_account_truncating(orml_nft::Pallet::<T>::next_class_id());
@@ -63,10 +63,7 @@ fn create_token_class<T: Config>(caller: T::AccountId) -> T::AccountId {
 		test_attr(),
 	));
 
-	<T as module::Config>::Currency::make_free_balance_be(
-		&module_account,
-		base_currency_amount.unique_saturated_into(),
-	);
+	<T as Config>::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
 
 	module_account
 }
@@ -81,7 +78,7 @@ mod benchmarks {
 		let caller: T::AccountId = account("caller", 0, 0);
 		let base_currency_amount = dollar(1000);
 
-		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+		<T as Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		#[extrinsic_call]
 		_(

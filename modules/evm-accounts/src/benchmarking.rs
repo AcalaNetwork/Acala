@@ -46,7 +46,7 @@ mod benchmarks {
 
 		let amount: BalanceOf<T> = 1_000_000_000_000_000_000u128.into();
 
-		let _ = <<T as Config>::Currency as Currency<_>>::deposit_creating(&alice_account_id, amount);
+		let _ = T::Currency::make_free_balance_be(&alice_account_id, amount);
 
 		#[extrinsic_call]
 		_(
@@ -63,7 +63,7 @@ mod benchmarks {
 			.into(),
 		);
 
-		assert_eq!(<<T as Config>::Currency as Currency<_>>::free_balance(&caller), amount);
+		assert_eq!(T::Currency::free_balance(&caller), amount);
 	}
 
 	#[benchmark]

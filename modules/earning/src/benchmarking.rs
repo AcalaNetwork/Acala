@@ -56,7 +56,7 @@ mod benchmarks {
 		let caller: T::AccountId = account("caller", 0, 0);
 		let amount = T::MinBond::get();
 
-		let _ = <<T as Config>::Currency as Currency<_>>::make_free_balance_be(&caller, amount);
+		let _ = T::Currency::make_free_balance_be(&caller, amount);
 
 		#[extrinsic_call]
 		_(RawOrigin::Signed(caller.clone()), amount);
@@ -77,7 +77,7 @@ mod benchmarks {
 		let caller: T::AccountId = account("caller", 0, 0);
 		let amount = T::MinBond::get();
 
-		let _ = <<T as Config>::Currency as Currency<_>>::make_free_balance_be(&caller, amount);
+		let _ = T::Currency::make_free_balance_be(&caller, amount);
 
 		assert_ok!(Pallet::<T>::bond(RawOrigin::Signed(caller.clone()).into(), amount));
 
@@ -100,7 +100,7 @@ mod benchmarks {
 		let caller: T::AccountId = account("caller", 0, 0);
 		let amount = T::MinBond::get();
 
-		let _ = <<T as Config>::Currency as Currency<_>>::make_free_balance_be(&caller, amount);
+		let _ = T::Currency::make_free_balance_be(&caller, amount);
 
 		assert_ok!(Pallet::<T>::bond(RawOrigin::Signed(caller.clone()).into(), amount));
 
@@ -126,7 +126,7 @@ mod benchmarks {
 		let caller: T::AccountId = account("caller", 0, 0);
 		let amount = T::MinBond::get();
 
-		let _ = <<T as Config>::Currency as Currency<_>>::make_free_balance_be(&caller, 100 * amount);
+		let _ = T::Currency::make_free_balance_be(&caller, 100 * amount);
 
 		make_max_unbonding_chunk::<T>(caller.clone(), amount);
 
@@ -149,7 +149,7 @@ mod benchmarks {
 		let caller: T::AccountId = account("caller", 0, 0);
 		let amount = T::MinBond::get();
 
-		let _ = <<T as Config>::Currency as Currency<_>>::make_free_balance_be(&caller, 100 * amount);
+		let _ = T::Currency::make_free_balance_be(&caller, 100 * amount);
 
 		make_max_unbonding_chunk::<T>(caller.clone(), amount);
 
