@@ -2220,7 +2220,6 @@ mod benches {
 	// 	[module_evm, benchmarking::evm]
 	// 	[module_homa, benchmarking::homa]
 	// 	[module_honzon, benchmarking::honzon]
-	// 	[module_collator_selection, benchmarking::collator_selection]
 	// 	[module_transaction_payment, benchmarking::transaction_payment]
 	// 	[module_incentives, benchmarking::incentives]
 	// 	[module_currencies, benchmarking::currencies]
@@ -2230,6 +2229,7 @@ mod benches {
 	frame_benchmarking::define_benchmarks!(
 		[module_auction_manager, AuctionManager]
 		[module_cdp_treasury, CdpTreasury]
+		[module_collator_selection, CollatorSelection]
 		[module_dex, Dex]
 		[module_dex_oracle, DexOracle]
 		[module_earning, Earning]
