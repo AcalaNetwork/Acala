@@ -162,6 +162,11 @@ impl BlockNumberProvider for MockRelayBlockNumberProvider {
 	fn current_block_number() -> Self::BlockNumber {
 		Self::get()
 	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn set_block_number(block: Self::BlockNumber) {
+		Self::set(block)
+	}
 }
 
 ord_parameter_types! {

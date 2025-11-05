@@ -28,19 +28,6 @@ use pallet_authorship::EventHandler;
 use pallet_session::SessionManager;
 use sp_std::{vec, vec::Vec};
 
-/// Helper trait for benchmarking.
-pub trait BenchmarkHelper<CurrencyId, Moment> {
-	fn setup_on_initialize(n: u32, u: u32);
-	fn setup_inject_liquidity() -> Option<(CurrencyId, CurrencyId, Moment)>;
-}
-
-impl<CurrencyId, Moment> BenchmarkHelper<CurrencyId, Moment> for () {
-	fn setup_on_initialize(_n: u32, _u: u32) {}
-	fn setup_inject_liquidity() -> Option<(CurrencyId, CurrencyId, Moment)> {
-		None
-	}
-}
-
 fn register_candidates<T>(count: u32)
 where
 	T: Config + pallet_session::Config,
@@ -186,7 +173,8 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn withdraw_bond(c: Liner<{ T::MinCandidates::get() + 1 }, { T::MaxCandidates::get() }>) {
+	fn withdraw_bond() {
+		let c = T::MaxCandidates::get();
 		CandidacyBond::<T>::put(T::Currency::minimum_balance());
 		DesiredCandidates::<T>::put(c);
 		register_candidates::<T>(c);
