@@ -2006,13 +2006,8 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
-parameter_types! {
-	pub const XTokensPallet: &'static str = "XTokens";
-	pub const MigrationStatus: &'static str = "MigrationStatus";
-}
-
 #[allow(unused_parens)]
-type Migrations = (frame_support::migrations::RemoveStorage<XTokensPallet, MigrationStatus, RocksDbWeight>,);
+type Migrations = ();
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
