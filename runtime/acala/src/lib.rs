@@ -1999,13 +1999,25 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
-parameter_types! {
-	pub const XTokensPallet: &'static str = "XTokens";
-	pub const MigrationStatus: &'static str = "MigrationStatus";
+pub struct RemoveXTokensMigrationStatus<T>(frame_support::pallet_prelude::PhantomData<T>);
+
+impl<T: frame_system::Config> frame_support::traits::OnRuntimeUpgrade for RemoveXTokensMigrationStatus<T> {
+	fn on_runtime_upgrade() -> Weight {
+		let key = frame_support::storage::storage_prefix(b"XTokens", b"MigrationStatus");
+		log::info!(
+			"key: {:?}, exists: {:?}",
+			key,
+			frame_support::storage::unhashed::exists(&key)
+		);
+
+		frame_support::storage::unhashed::kill(&key);
+
+		T::DbWeight::get().writes(1)
+	}
 }
 
 #[allow(unused_parens)]
-type Migrations = (frame_support::migrations::RemoveStorage<XTokensPallet, MigrationStatus, RocksDbWeight>,);
+type Migrations = (RemoveXTokensMigrationStatus<Runtime>);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
