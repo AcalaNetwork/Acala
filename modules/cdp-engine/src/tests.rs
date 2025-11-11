@@ -46,18 +46,6 @@ fn run_to_block_offchain(n: u64) {
 	}
 }
 
-fn setup_default_collateral(currency_id: CurrencyId) {
-	assert_ok!(CDPEngineModule::set_collateral_params(
-		RuntimeOrigin::signed(ALICE),
-		currency_id,
-		Change::NewValue(Some(Default::default())),
-		Change::NoChange,
-		Change::NoChange,
-		Change::NoChange,
-		Change::NewValue(10000),
-	));
-}
-
 #[test]
 fn check_cdp_status_work() {
 	ExtBuilder::default().build().execute_with(|| {

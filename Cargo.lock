@@ -4657,6 +4657,7 @@ name = "module-cdp-engine"
 version = "2.31.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",

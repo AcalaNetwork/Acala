@@ -1211,6 +1211,8 @@ impl module_cdp_engine::Config for Runtime {
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type SettleErc20EvmOrigin = SettleErc20EvmOrigin;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -2216,7 +2218,6 @@ mod benches {
 
 	// define_benchmarks!(
 	// 	[module_asset_registry, benchmarking::asset_registry]
-	// 	[module_cdp_engine, benchmarking::cdp_engine]
 	// 	[module_evm, benchmarking::evm]
 	// 	[module_honzon, benchmarking::honzon]
 	// 	[module_transaction_payment, benchmarking::transaction_payment]
@@ -2227,6 +2228,7 @@ mod benches {
 	// );
 	frame_benchmarking::define_benchmarks!(
 		[module_auction_manager, AuctionManager]
+		[module_cdp_engine, CdpEngine]
 		[module_cdp_treasury, CdpTreasury]
 		[module_collator_selection, CollatorSelection]
 		[module_dex, Dex]

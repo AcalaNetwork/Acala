@@ -19,12 +19,13 @@
 //! Common runtime benchmarking code.
 
 use crate::{
-	AcalaOracle, AccountId, AggregatedDex, AssetRegistry, Auction, AuctionId, AuctionManager, AuctionTimeToClose, Aura,
-	Balance, CdpTreasury, Currencies, CurrencyId, Dex, DexOracle, EmergencyShutdown, EraIndex, EvmTask,
-	ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Homa,
-	HomaValidatorList, MinimumCount, Moment, NativeTokenExistentialDeposit, OperatorMembershipAcala, Parameters,
-	Permill, Price, RawOrigin, Runtime, RuntimeOrigin, RuntimeParameters, ScheduledTasks, StableAsset, System,
-	Timestamp, TradingPair, ACA, DOT, LCDOT, LDOT,
+	AcalaOracle, AccountId, AccountIndex, AggregatedDex, Amount, AssetRegistry, Auction, AuctionId, AuctionManager,
+	AuctionTimeToClose, Aura, Balance, CdpEngine, CdpTreasury, Currencies, CurrencyId, Dex, DexOracle,
+	EmergencyShutdown, EraIndex, EvmTask, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId,
+	GetStableCurrencyId, GetStakingCurrencyId, Homa, HomaValidatorList, MinimumCount, MinimumDebitValue, Moment,
+	NativeTokenExistentialDeposit, OperatorMembershipAcala, Parameters, Permill, Price, Rate, Ratio, RawOrigin,
+	Runtime, RuntimeOrigin, RuntimeParameters, ScheduledTasks, StableAsset, System, Timestamp, TradingPair, ACA, DOT,
+	LCDOT, LDOT, MILLISECS_PER_BLOCK,
 };
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -34,12 +35,16 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use module_aggregated_dex::SwapPath;
 use module_support::Erc20InfoMapping;
 use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};
+use orml_traits::Change;
 use orml_traits::{GetByKey, MultiCurrency, MultiCurrencyExtended};
+use parity_scale_codec::Encode;
 use primitives::{currency::AssetMetadata, AuthoritysOriginId};
 use runtime_common::TokenInfo;
+use sp_consensus_aura::AURA_ENGINE_ID;
+use sp_core::Get;
 use sp_runtime::{
-	traits::{AccountIdConversion, One, UniqueSaturatedInto},
-	FixedPointNumber, FixedU128, MultiAddress, SaturatedConversion,
+	traits::{AccountIdConversion, AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
+	Digest, DigestItem, FixedPointNumber, FixedU128, MultiAddress, SaturatedConversion,
 };
 use sp_std::vec;
 
@@ -101,6 +106,251 @@ where
 		assert_ok!(EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into()));
 
 		Some(auction_id)
+	}
+}
+
+impl<T> module_cdp_engine::BenchmarkHelper<CurrencyId, BlockNumberFor<T>, MultiAddress<AccountId, AccountIndex>>
+	for BenchmarkHelper<T>
+where
+	T: module_cdp_engine::Config,
+{
+	fn setup_on_initialize(c: u32) -> Option<BlockNumberFor<T>> {
+		let owner: AccountId = account("owner", 0, 0);
+		let currency_ids = get_benchmarking_collateral_currency_ids();
+		let min_debit_value = T::MinimumDebitValue::get();
+		let debit_exchange_rate = T::DefaultDebitExchangeRate::get();
+		let min_debit_amount = debit_exchange_rate
+			.reciprocal()
+			.unwrap()
+			.saturating_mul_int(min_debit_value);
+		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
+		let collateral_value = 2 * min_debit_value;
+
+		// feed price
+		let mut feed_data: Vec<(CurrencyId, Price)> = vec![];
+		for i in 0..c.min(currency_ids.len() as u32) {
+			let currency_id = currency_ids[i as usize];
+			let collateral_price = Price::one();
+			feed_data.push((currency_id, collateral_price));
+		}
+		feed_price(feed_data);
+
+		for i in 0..c.min(currency_ids.len() as u32) {
+			let currency_id = currency_ids[i as usize];
+			if matches!(currency_id, CurrencyId::StableAssetPoolToken(_)) {
+				continue;
+			}
+			let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN))
+				.saturating_mul_int(collateral_value);
+
+			let ed = if currency_id == NATIVE {
+				NativeTokenExistentialDeposit::get()
+			} else {
+				ExistentialDeposits::get(&currency_id)
+			};
+
+			// set balance
+			set_balance(currency_id, &owner, collateral_amount + ed);
+
+			assert_ok!(CdpEngine::set_collateral_params(
+				RawOrigin::Root.into(),
+				currency_id,
+				Change::NoChange,
+				Change::NewValue(Some(Ratio::saturating_from_rational(0, 100))),
+				Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(0, 100))),
+				Change::NewValue(min_debit_value * 100),
+			));
+
+			// adjust position
+			assert_ok!(CdpEngine::adjust_position(
+				&owner,
+				currency_id,
+				collateral_amount.try_into().unwrap(),
+				min_debit_amount
+			));
+		}
+
+		set_block_number_timestamp(2, MILLISECS_PER_BLOCK);
+		CdpEngine::on_initialize(2);
+
+		set_block_number_timestamp(3, MILLISECS_PER_BLOCK * 2);
+		Some(3u32.into())
+	}
+	fn setup_liquidate_by_auction(b: u32) -> Option<(CurrencyId, MultiAddress<AccountId, AccountIndex>)> {
+		let owner: AccountId = account("owner", 0, 0);
+		let owner_lookup = AccountIdLookup::unlookup(owner.clone());
+		let min_debit_value = MinimumDebitValue::get();
+		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(STAKING);
+		let collateral_price = Price::one(); // 1 USD
+		let min_debit_amount = debit_exchange_rate
+			.reciprocal()
+			.unwrap()
+			.saturating_mul_int(min_debit_value);
+		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
+		let collateral_value = 2 * min_debit_value;
+		let collateral_amount =
+			Price::saturating_from_rational(dollar(STAKING), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
+
+		// set balance
+		set_balance(STAKING, &owner, collateral_amount + ExistentialDeposits::get(&STAKING));
+
+		// feed price
+		feed_price(vec![(STAKING, collateral_price)]);
+
+		// set risk params
+		assert_ok!(CdpEngine::set_collateral_params(
+			RawOrigin::Root.into(),
+			STAKING,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(min_debit_value * 100),
+		));
+
+		let auction_size = collateral_amount / b as u128;
+		// adjust auction size so we hit MaxAuctionCount
+		assert_ok!(CdpTreasury::set_expected_collateral_auction_size(
+			RawOrigin::Root.into(),
+			STAKING,
+			auction_size
+		));
+		// adjust position
+		assert_ok!(CdpEngine::adjust_position(
+			&owner,
+			STAKING,
+			collateral_amount.try_into().unwrap(),
+			min_debit_amount
+		));
+
+		// modify liquidation rate to make the cdp unsafe
+		assert_ok!(CdpEngine::set_collateral_params(
+			RawOrigin::Root.into(),
+			STAKING,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(1000, 100))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+		Some((STAKING, owner_lookup))
+	}
+	fn setup_liquidate_by_dex() -> Option<(CurrencyId, MultiAddress<AccountId, AccountIndex>)> {
+		let owner: AccountId = account("owner", 0, 0);
+		let owner_lookup = AccountIdLookup::unlookup(owner.clone());
+		let funder: AccountId = account("funder", 0, 0);
+		let debit_value = 100 * dollar(STABLECOIN);
+		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(LIQUID);
+		let debit_amount = debit_exchange_rate
+			.reciprocal()
+			.unwrap()
+			.saturating_mul_int(debit_value);
+		let debit_amount: Amount = debit_amount.unique_saturated_into();
+		let collateral_value = 2 * debit_value;
+		let collateral_amount =
+			Price::saturating_from_rational(dollar(LIQUID), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
+		let collateral_price = Price::one(); // 1 USD
+
+		set_balance(
+			LIQUID,
+			&owner,
+			(10 * collateral_amount) + ExistentialDeposits::get(&LIQUID),
+		);
+		assert_ok!(inject_liquidity(
+			funder.clone(),
+			LIQUID,
+			STAKING,
+			10_000 * dollar(LIQUID),
+			10_000 * dollar(STAKING),
+			false,
+		));
+		assert_ok!(inject_liquidity(
+			funder,
+			STAKING,
+			STABLECOIN,
+			10_000 * dollar(STAKING),
+			10_000 * dollar(STABLECOIN),
+			false,
+		));
+
+		// feed price
+		feed_price(vec![(STAKING, collateral_price)]);
+
+		// set risk params
+		assert_ok!(CdpEngine::set_collateral_params(
+			RawOrigin::Root.into(),
+			LIQUID,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(debit_value * 100),
+		));
+
+		// adjust position
+		assert_ok!(CdpEngine::adjust_position(
+			&owner,
+			LIQUID,
+			(10 * collateral_amount).try_into().unwrap(),
+			debit_amount
+		));
+
+		// modify liquidation rate to make the cdp unsafe
+		assert_ok!(CdpEngine::set_collateral_params(
+			RawOrigin::Root.into(),
+			LIQUID,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(1000, 100))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+		Some((LIQUID, owner_lookup))
+	}
+	fn setup_settle() -> Option<(CurrencyId, MultiAddress<AccountId, AccountIndex>)> {
+		let owner: AccountId = account("owner", 0, 0);
+		let owner_lookup = AccountIdLookup::unlookup(owner.clone());
+		let min_debit_value = MinimumDebitValue::get();
+		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(STAKING);
+		let collateral_price = Price::one(); // 1 USD
+		let min_debit_amount = debit_exchange_rate
+			.reciprocal()
+			.unwrap()
+			.saturating_mul_int(min_debit_value);
+		let min_debit_amount: Amount = min_debit_amount.unique_saturated_into();
+		let collateral_value = 2 * min_debit_value;
+		let collateral_amount = Price::saturating_from_rational(1_000 * dollar(STAKING), 1000 * dollar(STABLECOIN))
+			.saturating_mul_int(collateral_value);
+
+		// set balance
+		set_balance(STAKING, &owner, collateral_amount + ExistentialDeposits::get(&STAKING));
+
+		// feed price
+		feed_price(vec![(STAKING, collateral_price)]);
+
+		// set risk params
+		assert_ok!(CdpEngine::set_collateral_params(
+			RawOrigin::Root.into(),
+			STAKING,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
+			Change::NewValue(min_debit_value * 100),
+		));
+
+		// adjust position
+		assert_ok!(CdpEngine::adjust_position(
+			&owner,
+			STAKING,
+			collateral_amount.try_into().unwrap(),
+			min_debit_amount
+		));
+
+		// shutdown
+		assert_ok!(EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into()));
+		Some((STAKING, owner_lookup))
 	}
 }
 
@@ -418,7 +668,11 @@ pub fn feed_price(prices: Vec<(CurrencyId, Price)>) {
 }
 
 pub fn set_block_number_timestamp(block_number: u32, timestamp: u64) {
-	System::initialize(&block_number, &Default::default(), &Default::default());
+	let slot = timestamp / Aura::slot_duration();
+	let digest = Digest {
+		logs: vec![DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode())],
+	};
+	System::initialize(&block_number, &Default::default(), &digest);
 	Aura::on_initialize(block_number);
 	Timestamp::set_timestamp(timestamp);
 }
