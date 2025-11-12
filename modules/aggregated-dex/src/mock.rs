@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{
-	derive_impl, match_types, ord_parameter_types, parameter_types,
+	assert_ok, derive_impl, match_types, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Nothing},
 	PalletId,
 };
@@ -88,7 +88,7 @@ parameter_types! {
 impl module_dex::Config for Runtime {
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
-	type TradingPathLimit = ConstU32<4>;
+	type TradingPathLimit = ConstU32<3>;
 	type PalletId = DEXPalletId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type Erc20InfoMapping = ();
@@ -170,6 +170,41 @@ parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<AccountId, CurrencyId, Balance> for MockBenchmarkHelper {
+	fn setup_currency_lists() -> Vec<CurrencyId> {
+		[DOT, LDOT, AUSD].to_vec()
+	}
+	fn setup_dex(u: u32, taker: AccountId) -> Option<(Vec<CurrencyId>, Balance, Balance)> {
+		let currency_list = Self::setup_currency_lists();
+		let mut path: Vec<CurrencyId> = vec![];
+
+		for i in 1..u {
+			if i == 1 {
+				let cur0 = currency_list[0];
+				let cur1 = currency_list[1];
+				path.push(cur0);
+				path.push(cur1);
+				assert_ok!(inject_liquidity(cur0, cur1, 10_000, 10_000));
+			} else {
+				path.push(currency_list[i as usize]);
+				assert_ok!(inject_liquidity(
+					currency_list[i as usize - 1],
+					currency_list[i as usize],
+					10_000,
+					10_000
+				));
+			}
+		}
+
+		assert_ok!(Tokens::deposit(path[0], &taker, 1000));
+
+		Some((path, 1000, 10))
+	}
+}
+
 impl Config for Runtime {
 	type DEX = Dex;
 	type StableAsset = StableAssetWrapper;
@@ -177,6 +212,8 @@ impl Config for Runtime {
 	type DexSwapJointList = DexSwapJointList;
 	type SwapPathLimit = ConstU32<3>;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 pub type StableAssetWrapper =
@@ -225,4 +262,28 @@ impl ExtBuilder {
 
 		t.into()
 	}
+}
+
+pub fn inject_liquidity(
+	currency_id_a: CurrencyId,
+	currency_id_b: CurrencyId,
+	max_amount_a: Balance,
+	max_amount_b: Balance,
+) -> Result<(), &'static str> {
+	// set balance
+	Tokens::deposit(currency_id_a, &BOB, max_amount_a)?;
+	Tokens::deposit(currency_id_b, &BOB, max_amount_b)?;
+
+	let _ = Dex::enable_trading_pair(RuntimeOrigin::signed(BOB.clone()), currency_id_a, currency_id_b);
+	Dex::add_liquidity(
+		RuntimeOrigin::signed(BOB),
+		currency_id_a,
+		currency_id_b,
+		max_amount_a,
+		max_amount_b,
+		Default::default(),
+		false,
+	)?;
+
+	Ok(())
 }

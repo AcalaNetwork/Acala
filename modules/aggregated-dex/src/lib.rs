@@ -30,10 +30,14 @@ use primitives::{Balance, CurrencyId};
 use sp_runtime::traits::{Convert, Zero};
 use sp_std::{marker::PhantomData, vec::Vec};
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -69,6 +73,9 @@ pub mod module {
 		type SwapPathLimit: Get<u32>;
 
 		type WeightInfo: WeightInfo;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<Self::AccountId, CurrencyId, Balance>;
 	}
 
 	#[pallet::error]
@@ -157,7 +164,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			updates: Vec<((CurrencyId, CurrencyId), Option<Vec<SwapPath>>)>,
 		) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
+			T::GovernanceOrigin::ensure_origin_or_root(origin)?;
 
 			for (key, maybe_paths) in updates {
 				if let Some(paths) = maybe_paths {

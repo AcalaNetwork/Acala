@@ -69,6 +69,53 @@ where
 	}
 }
 
+impl<T> module_aggregated_dex::BenchmarkHelper<AccountId, CurrencyId, Balance> for BenchmarkHelper<T>
+where
+	T: module_aggregated_dex::Config,
+{
+	fn setup_currency_lists() -> Vec<CurrencyId> {
+		[NATIVE, STABLECOIN, LIQUID, STAKING].to_vec()
+	}
+	// return (path, supply_amount, target_amount)
+	fn setup_dex(u: u32, taker: AccountId) -> Option<(Vec<CurrencyId>, Balance, Balance)> {
+		let maker: AccountId = account("maker", 0, 0);
+
+		let currency_list = Self::setup_currency_lists();
+		let mut path: Vec<CurrencyId> = vec![];
+
+		for i in 1..u {
+			if i == 1 {
+				let cur0 = currency_list[0];
+				let cur1 = currency_list[1];
+				path.push(cur0);
+				path.push(cur1);
+				assert_ok!(inject_liquidity(
+					maker.clone(),
+					cur0,
+					cur1,
+					10_000 * dollar(cur0),
+					10_000 * dollar(cur1),
+					false,
+				));
+			} else {
+				path.push(currency_list[i as usize]);
+				assert_ok!(inject_liquidity(
+					maker.clone(),
+					currency_list[i as usize - 1],
+					currency_list[i as usize],
+					10_000 * dollar(currency_list[i as usize - 1]),
+					10_000 * dollar(currency_list[i as usize]),
+					false,
+				));
+			}
+		}
+
+		set_balance(path[0], &taker, 10_000 * dollar(path[0]));
+
+		Some((path.clone(), 1_000 * dollar(path[0]), 10 * dollar(path[path.len() - 1])))
+	}
+}
+
 impl<T> module_auction_manager::BenchmarkHelper for BenchmarkHelper<T>
 where
 	T: module_auction_manager::Config,

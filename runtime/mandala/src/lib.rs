@@ -1275,6 +1275,8 @@ impl module_aggregated_dex::Config for Runtime {
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
 	type WeightInfo = weights::module_aggregated_dex::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 pub type RebasedStableAsset = module_support::RebasedStableAsset<
@@ -2224,34 +2226,33 @@ mod benches {
 	// 	[module_incentives, benchmarking::incentives]
 	// 	[module_currencies, benchmarking::currencies]
 	// 	[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
-	// 	[module_aggregated_dex, benchmarking::aggregated_dex]
 	// );
 	frame_benchmarking::define_benchmarks!(
-		[module_auction_manager, AuctionManager]
-		[module_cdp_engine, CdpEngine]
-		[module_cdp_treasury, CdpTreasury]
-		[module_collator_selection, CollatorSelection]
-		[module_dex, Dex]
-		[module_dex_oracle, DexOracle]
-		[module_earning, Earning]
-		[module_emergency_shutdown, EmergencyShutdown]
-		[module_evm_accounts, EvmAccounts]
-		[module_homa, Homa]
-		[module_homa_validator_list, HomaValidatorList]
-		[module_idle_scheduler, IdleScheduler]
-		[module_liquid_crowdloan, LiquidCrowdloan]
-		[module_nft, NFT]
-		[module_nominees_election, NomineesElection]
-		[module_prices, Prices]
-		[module_session_manager, SessionManager]
-		[module_transaction_pause, TransactionPause]
-		[orml_auction, Auction]
-		[orml_authority, Authority]
-		[orml_oracle, AcalaOracle]
-		[orml_tokens, Tokens]
-		[orml_vesting, Vesting]
-		// XCM
-		/* 	[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>] */
+		[module_aggregated_dex, AggregatedDex] /* [module_auction_manager, AuctionManager]
+												* [module_cdp_engine, CdpEngine]
+												* [module_cdp_treasury, CdpTreasury]
+												* [module_collator_selection, CollatorSelection]
+												* [module_dex, Dex]
+												* [module_dex_oracle, DexOracle]
+												* [module_earning, Earning]
+												* [module_emergency_shutdown, EmergencyShutdown]
+												* [module_evm_accounts, EvmAccounts]
+												* [module_homa, Homa]
+												* [module_homa_validator_list, HomaValidatorList]
+												* [module_idle_scheduler, IdleScheduler]
+												* [module_liquid_crowdloan, LiquidCrowdloan]
+												* [module_nft, NFT]
+												* [module_nominees_election, NomineesElection]
+												* [module_prices, Prices]
+												* [module_session_manager, SessionManager]
+												* [module_transaction_pause, TransactionPause]
+												* [orml_auction, Auction]
+												* [orml_authority, Authority]
+												* [orml_oracle, AcalaOracle]
+												* [orml_tokens, Tokens]
+												* [orml_vesting, Vesting]
+												* XCM */
+												* [pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>] */
 	);
 
 	pub use frame_benchmarking::{BenchmarkBatch, BenchmarkList};
