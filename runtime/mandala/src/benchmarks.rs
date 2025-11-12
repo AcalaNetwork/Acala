@@ -25,20 +25,22 @@ use crate::{
 	GetStableCurrencyId, GetStakingCurrencyId, Homa, HomaValidatorList, MinimumCount, MinimumDebitValue, Moment,
 	NativeTokenExistentialDeposit, OperatorMembershipAcala, Parameters, Permill, Price, Rate, Ratio, RawOrigin,
 	Runtime, RuntimeOrigin, RuntimeParameters, ScheduledTasks, StableAsset, System, Timestamp, TradingPair, ACA, DOT,
-	LCDOT, LDOT, MILLISECS_PER_BLOCK,
+	EVM, LCDOT, LDOT, MILLISECS_PER_BLOCK,
 };
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use core::str::FromStr;
 use frame_benchmarking::account;
 use frame_support::{assert_ok, traits::fungibles, traits::Contains, traits::OnInitialize};
 use frame_system::pallet_prelude::BlockNumberFor;
 use module_aggregated_dex::SwapPath;
+use module_support::AddressMapping;
 use module_support::Erc20InfoMapping;
 use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};
 use orml_traits::Change;
 use orml_traits::{GetByKey, MultiCurrency, MultiCurrencyExtended};
 use parity_scale_codec::Encode;
-use primitives::{currency::AssetMetadata, AuthoritysOriginId};
+use primitives::{currency::AssetMetadata, evm::EvmAddress, AuthoritysOriginId};
 use runtime_common::TokenInfo;
 use sp_consensus_aura::AURA_ENGINE_ID;
 use sp_core::Get;
@@ -113,6 +115,16 @@ where
 		set_balance(path[0], &taker, 10_000 * dollar(path[0]));
 
 		Some((path.clone(), 1_000 * dollar(path[0]), 10 * dollar(path[path.len() - 1])))
+	}
+}
+
+impl<T> module_asset_registry::BenchmarkHelper for BenchmarkHelper<T>
+where
+	T: module_asset_registry::Config,
+{
+	fn setup_deploy_contract() -> Option<EvmAddress> {
+		deploy_contract();
+		Some(erc20_address())
 	}
 }
 
@@ -882,4 +894,33 @@ pub fn initialize_swap_pools(maker: AccountId) -> Result<(), &'static str> {
 	)?;
 
 	Ok(())
+}
+
+pub fn alice() -> AccountId {
+	<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr())
+}
+pub fn alice_evm_addr() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
+}
+
+pub fn erc20_address() -> EvmAddress {
+	EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap()
+}
+
+pub fn deploy_contract() {
+	//let alice_account = alice_account_id();
+	set_balance(NATIVE, &alice(), 1_000_000 * dollar(NATIVE));
+
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
+	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
+
+	assert_ok!(EVM::create(
+		RuntimeOrigin::signed(alice()),
+		code,
+		0,
+		2_100_000,
+		1_000_000,
+		vec![]
+	));
 }

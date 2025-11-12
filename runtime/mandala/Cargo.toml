@@ -332,6 +332,7 @@ runtime-benchmarks = [
 	"orml-xtokens/runtime-benchmarks",
 
 	"module-aggregated-dex/runtime-benchmarks",
+	"module-asset-registry/runtime-benchmarks",
 	"module-auction-manager/runtime-benchmarks",
 	"module-cdp-engine/runtime-benchmarks",
 	"module-cdp-treasury/runtime-benchmarks",
