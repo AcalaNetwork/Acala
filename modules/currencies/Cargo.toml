@@ -12,9 +12,13 @@ sp-runtime = { workspace = true }
 sp-io = { workspace = true }
 sp-std = { workspace = true }
 
+frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 
+pallet-balances = { workspace = true, optional = true }
+
+orml-tokens = { workspace = true, optional = true }
 orml-traits = { workspace = true }
 
 primitives = { workspace = true }
@@ -25,9 +29,7 @@ serde_json = { workspace = true, features = ["std"] }
 hex = { workspace = true, features = ["std"] }
 hex-literal = { workspace = true }
 sp-core = { workspace = true, features = ["std"] }
-pallet-balances = { workspace = true, features = ["std"] }
 pallet-timestamp = { workspace = true, features = ["std"] }
-orml-tokens = { workspace = true, features = ["std"] }
 module-evm = { workspace = true, features = ["std"] }
 module-evm-bridge = { workspace = true, features = ["std"] }
 
@@ -35,8 +37,11 @@ module-evm-bridge = { workspace = true, features = ["std"] }
 default = ["std"]
 std = [
 	"parity-scale-codec/std",
+	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
+	"pallet-balances?/std",
+	"orml-tokens?/std",
 	"orml-traits/std",
 	"primitives/std",
 	"scale-info/std",
@@ -45,6 +50,13 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 	"module-support/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

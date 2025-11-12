@@ -989,6 +989,8 @@ impl module_currencies::Config for Runtime {
 	type GasToWeight = GasToWeight;
 	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type OnDust = module_currencies::TransferDust<Runtime, TreasuryAccount>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 pub struct EnsureRootOrTreasury;
@@ -2225,7 +2227,6 @@ mod benches {
 	// 	[module_honzon, benchmarking::honzon]
 	// 	[module_transaction_payment, benchmarking::transaction_payment]
 	// 	[module_incentives, benchmarking::incentives]
-	// 	[module_currencies, benchmarking::currencies]
 	// 	[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 	// );
 	frame_benchmarking::define_benchmarks!(
@@ -2235,6 +2236,7 @@ mod benches {
 		[module_cdp_engine, CdpEngine]
 		[module_cdp_treasury, CdpTreasury]
 		[module_collator_selection, CollatorSelection]
+		[module_currencies, Currencies]
 		[module_dex, Dex]
 		[module_dex_oracle, DexOracle]
 		[module_earning, Earning]

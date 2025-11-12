@@ -337,6 +337,7 @@ runtime-benchmarks = [
 	"module-cdp-engine/runtime-benchmarks",
 	"module-cdp-treasury/runtime-benchmarks",
 	"module-collator-selection/runtime-benchmarks",
+	"module-currencies/runtime-benchmarks",
 	"module-dex-oracle/runtime-benchmarks",
 	"module-dex/runtime-benchmarks",
 	"module-earning/runtime-benchmarks",

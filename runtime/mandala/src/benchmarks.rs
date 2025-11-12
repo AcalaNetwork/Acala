@@ -24,8 +24,8 @@ use crate::{
 	EmergencyShutdown, EraIndex, EvmTask, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId,
 	GetStableCurrencyId, GetStakingCurrencyId, Homa, HomaValidatorList, MinimumCount, MinimumDebitValue, Moment,
 	NativeTokenExistentialDeposit, OperatorMembershipAcala, Parameters, Permill, Price, Rate, Ratio, RawOrigin,
-	Runtime, RuntimeOrigin, RuntimeParameters, ScheduledTasks, StableAsset, System, Timestamp, TradingPair, ACA, DOT,
-	EVM, LCDOT, LDOT, MILLISECS_PER_BLOCK,
+	Runtime, RuntimeOrigin, RuntimeParameters, ScheduledTasks, StableAsset, System, Timestamp, TradingPair,
+	TreasuryAccount, ACA, DOT, EVM, LCDOT, LDOT, MILLISECS_PER_BLOCK,
 };
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -420,6 +420,18 @@ where
 	fn setup_dex_pools(caller: AccountId) -> Option<CurrencyId> {
 		assert_ok!(initialize_swap_pools(caller));
 		Some(STAKING)
+	}
+}
+
+impl<T> module_currencies::BenchmarkHelper<AccountId, CurrencyId, Balance> for BenchmarkHelper<T>
+where
+	T: module_currencies::Config,
+{
+	fn setup_get_staking_currency_id_and_amount() -> Option<(CurrencyId, Balance)> {
+		Some((STAKING, 100 * dollar(STAKING)))
+	}
+	fn setup_get_treasury_account() -> Option<AccountId> {
+		Some(TreasuryAccount::get())
 	}
 }
 
