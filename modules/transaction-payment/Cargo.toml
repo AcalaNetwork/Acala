@@ -9,21 +9,22 @@ log = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-runtime = { workspace = true }
+frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 sp-std = { workspace = true }
 sp-io= { workspace = true }
+pallet-balances = { workspace = true, optional = true }
 pallet-transaction-payment = { workspace = true }
 pallet-transaction-payment-rpc-runtime-api = { workspace = true }
 primitives = { workspace = true }
 module-support = { workspace = true }
+orml-tokens = { workspace = true, optional = true }
 orml-traits = { workspace = true }
 xcm = { workspace = true }
 
 [dev-dependencies]
 sp-core = { workspace = true, features = ["std"] }
-pallet-balances = { workspace = true, features = ["std"] }
-orml-tokens = { workspace = true, features = ["std"] }
 module-currencies = { workspace = true, features = ["std"] }
 module-dex = { workspace = true, features = ["std"] }
 module-aggregated-dex = { workspace = true, features = ["std"] }
@@ -33,9 +34,12 @@ smallvec = { workspace = true }
 default = ["std"]
 std = [
 	"parity-scale-codec/std",
+	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
+	"orml-tokens?/std",
 	"orml-traits/std",
+	"pallet-balances?/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
 	"primitives/std",
@@ -45,6 +49,13 @@ std = [
 	"sp-std/std",
 	"module-support/std",
 	"xcm/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

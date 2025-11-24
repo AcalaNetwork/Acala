@@ -1375,6 +1375,8 @@ impl module_transaction_payment::Config for Runtime {
 	type CustomFeeSurplus = CustomFeeSurplus;
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -2225,7 +2227,6 @@ mod benches {
 	// define_benchmarks!(
 	// 	[module_evm, benchmarking::evm]
 	// 	[module_honzon, benchmarking::honzon]
-	// 	[module_transaction_payment, benchmarking::transaction_payment]
 	// 	[module_incentives, benchmarking::incentives]
 	// 	[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 	// );
@@ -2251,6 +2252,7 @@ mod benches {
 		[module_prices, Prices]
 		[module_session_manager, SessionManager]
 		[module_transaction_pause, TransactionPause]
+		[module_transaction_payment, TransactionPayment]
 		[orml_auction, Auction]
 		[orml_authority, Authority]
 		[orml_oracle, AcalaOracle]

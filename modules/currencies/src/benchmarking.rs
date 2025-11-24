@@ -20,7 +20,6 @@ use super::*;
 use frame_benchmarking::v2::*;
 use frame_support::{assert_ok, traits::fungibles::Mutate};
 use frame_system::RawOrigin;
-use orml_traits::GetByKey;
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::vec;
 
@@ -73,7 +72,7 @@ mod benchmarks {
 		let from: T::AccountId = account("from", 0, 0);
 		let who_lookup = T::Lookup::unlookup(from.clone());
 
-		let existential_deposit = <T as pallet_balances::Config>::ExistentialDeposit::get();
+		let existential_deposit = pallet_balances::Pallet::<T>::minimum_balance();
 		let amount = existential_deposit.saturating_mul(1000u32.into());
 		let update_amount: AmountOf<T> = amount.unique_saturated_into();
 
@@ -122,7 +121,7 @@ mod benchmarks {
 		let who: T::AccountId = account("who", 0, 0);
 		let who_lookup = T::Lookup::unlookup(who.clone());
 
-		let existential_deposit = <T as pallet_balances::Config>::ExistentialDeposit::get();
+		let existential_deposit = pallet_balances::Pallet::<T>::minimum_balance();
 		let balance = existential_deposit.saturating_mul(1000u32.into());
 		let update_amount = balance.unique_saturated_into();
 
@@ -144,7 +143,7 @@ mod benchmarks {
 		let who: T::AccountId = account("who", 0, 0);
 		let who_lookup = T::Lookup::unlookup(who.clone());
 
-		let existential_deposit = <T as pallet_balances::Config>::ExistentialDeposit::get();
+		let existential_deposit = pallet_balances::Pallet::<T>::minimum_balance();
 		let balance = existential_deposit.saturating_mul(1000u32.into());
 		let update_amount: AmountOf<T> = balance.unique_saturated_into();
 
@@ -180,7 +179,7 @@ mod benchmarks {
 			.map(|x| account(x, 0, 0))
 			.collect();
 
-		let staking_currency_id_ed = <T as orml_tokens::Config>::ExistentialDeposits::get(&staking_currency_id);
+		let staking_currency_id_ed = orml_tokens::Pallet::<T>::minimum_balance(staking_currency_id);
 		let dust_balance = staking_currency_id_ed.saturating_sub(1u32.into());
 
 		accounts.iter().for_each(|account| {

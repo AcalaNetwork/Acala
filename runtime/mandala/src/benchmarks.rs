@@ -25,7 +25,7 @@ use crate::{
 	GetStableCurrencyId, GetStakingCurrencyId, Homa, HomaValidatorList, MinimumCount, MinimumDebitValue, Moment,
 	NativeTokenExistentialDeposit, OperatorMembershipAcala, Parameters, Permill, Price, Rate, Ratio, RawOrigin,
 	Runtime, RuntimeOrigin, RuntimeParameters, ScheduledTasks, StableAsset, System, Timestamp, TradingPair,
-	TreasuryAccount, ACA, DOT, EVM, LCDOT, LDOT, MILLISECS_PER_BLOCK,
+	TreasuryAccount, TreasuryPalletId, ACA, DOT, EVM, LCDOT, LDOT, MILLISECS_PER_BLOCK,
 };
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -35,7 +35,9 @@ use frame_support::{assert_ok, traits::fungibles, traits::Contains, traits::OnIn
 use frame_system::pallet_prelude::BlockNumberFor;
 use module_aggregated_dex::SwapPath;
 use module_support::AddressMapping;
+use module_support::DEXManager;
 use module_support::Erc20InfoMapping;
+use module_support::SwapLimit;
 use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};
 use orml_traits::Change;
 use orml_traits::{GetByKey, MultiCurrency, MultiCurrencyExtended};
@@ -585,29 +587,121 @@ where
 	}
 }
 
-impl<T> orml_tokens::BenchmarkHelper<T::CurrencyId, T::Balance> for BenchmarkHelper<T>
+impl<T> module_transaction_payment::BenchmarkHelper<AccountId, CurrencyId, Balance> for BenchmarkHelper<T>
+where
+	T: module_transaction_payment::Config,
+{
+	fn setup_stable_currency_id() -> Option<CurrencyId> {
+		Some(STABLECOIN)
+	}
+	fn setup_liquid_currency_id() -> Option<CurrencyId> {
+		Some(LIQUID)
+	}
+	fn setup_enable_fee_pool() -> Option<(AccountId, Balance, Balance, Balance)> {
+		let funder: AccountId = account("funder", 0, 0);
+		let treasury_account: AccountId = TreasuryPalletId::get().into_account_truncating();
+		let sub_account: AccountId =
+			<Runtime as module_transaction_payment::Config>::PalletId::get().into_sub_account_truncating(STABLECOIN);
+		let native_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(NATIVE);
+		let stable_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(STABLECOIN);
+		let pool_size: Balance = native_ed * 50;
+		let swap_threshold: Balance = native_ed * 2;
+
+		assert_ok!(inject_liquidity(
+			funder.clone(),
+			STABLECOIN,
+			NATIVE,
+			1_000 * dollar(STABLECOIN),
+			10_000 * dollar(NATIVE),
+			false,
+		));
+		assert!(Dex::get_swap_amount(
+			&vec![STABLECOIN, NATIVE],
+			SwapLimit::ExactTarget(Balance::MAX, native_ed)
+		)
+		.is_some());
+		assert_eq!(
+			Dex::get_liquidity_pool(STABLECOIN, NATIVE),
+			(1_000 * dollar(STABLECOIN), 10_000 * dollar(NATIVE))
+		);
+
+		set_balance(NATIVE, &treasury_account, pool_size * 10);
+		set_balance(STABLECOIN, &treasury_account, stable_ed * 10);
+		Some((sub_account, stable_ed, pool_size, swap_threshold))
+	}
+	fn setup_enable_stable_asset() {
+		let funder: AccountId = account("funder", 0, 0);
+
+		set_balance(STAKING, &funder, 1000 * dollar(STAKING));
+		set_balance(LIQUID, &funder, 1000 * dollar(LIQUID));
+		set_balance(NATIVE, &funder, 1000 * dollar(NATIVE));
+
+		// create stable asset pool
+		let pool_asset = CurrencyId::StableAssetPoolToken(0);
+		assert_ok!(StableAsset::create_pool(
+			RuntimeOrigin::root(),
+			pool_asset,
+			vec![STAKING, LIQUID],
+			vec![1u128, 1u128],
+			10_000_000u128,
+			20_000_000u128,
+			50_000_000u128,
+			1_000u128,
+			funder.clone(),
+			funder.clone(),
+			1_000_000_000_000u128,
+		));
+		let asset_metadata = AssetMetadata {
+			name: b"Token Name".to_vec(),
+			symbol: b"TN".to_vec(),
+			decimals: 12,
+			minimal_balance: 1,
+		};
+		assert_ok!(AssetRegistry::register_stable_asset(
+			RawOrigin::Root.into(),
+			Box::new(asset_metadata.clone())
+		));
+		assert_ok!(StableAsset::mint(
+			RuntimeOrigin::signed(funder.clone()),
+			0,
+			vec![100 * dollar(STAKING), 100 * dollar(LIQUID)],
+			0u128
+		));
+
+		assert_ok!(inject_liquidity(
+			funder.clone(),
+			LIQUID,
+			NATIVE,
+			100 * dollar(LIQUID),
+			100 * dollar(NATIVE),
+			false,
+		));
+	}
+}
+
+impl<T> orml_tokens::BenchmarkHelper<CurrencyId, Balance> for BenchmarkHelper<T>
 where
 	T: orml_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>,
 {
-	fn get_currency_id_and_amount() -> Option<(T::CurrencyId, T::Balance)> {
+	fn get_currency_id_and_amount() -> Option<(CurrencyId, Balance)> {
 		Some((STAKING, dollar(STAKING)))
 	}
 }
 
-impl<T> orml_vesting::BenchmarkHelper<T::AccountId, <T as pallet_balances::Config>::Balance> for BenchmarkHelper<T>
+impl<T> orml_vesting::BenchmarkHelper<AccountId, <T as pallet_balances::Config>::Balance> for BenchmarkHelper<T>
 where
 	T: frame_system::Config<AccountId = AccountId> + pallet_balances::Config<Balance = Balance> + orml_vesting::Config,
 {
-	fn get_vesting_account_and_amount() -> Option<(T::AccountId, <T as pallet_balances::Config>::Balance)> {
+	fn get_vesting_account_and_amount() -> Option<(AccountId, <T as pallet_balances::Config>::Balance)> {
 		Some((get_vesting_account(), dollar(NATIVE)))
 	}
 }
 
-impl<T> orml_auction::BenchmarkHelper<BlockNumberFor<T>, T::AccountId, T::Balance> for BenchmarkHelper<T>
+impl<T> orml_auction::BenchmarkHelper<BlockNumberFor<T>, AccountId, Balance> for BenchmarkHelper<T>
 where
 	T: orml_auction::Config<AccountId = AccountId, Balance = Balance>,
 {
-	fn setup_bid() -> Option<(T::AccountId, T::Balance)> {
+	fn setup_bid() -> Option<(AccountId, Balance)> {
 		let bidder: AccountId = account("bidder", 0, 0);
 		let previous_bidder: AccountId = account("previous_bidder", 0, 0);
 		let funder: AccountId = account("funder", 0, 0);

@@ -4868,8 +4868,10 @@ dependencies = [
  "hex",
  "hex-literal",
  "insta",
+ "libsecp256k1",
  "log",
  "module-dex",
+ "module-evm-accounts",
  "module-evm-utility",
  "module-idle-scheduler",
  "module-support",
@@ -5292,6 +5294,7 @@ name = "module-transaction-payment"
 version = "2.31.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
