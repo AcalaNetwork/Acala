@@ -344,6 +344,7 @@ runtime-benchmarks = [
 	"module-emergency-shutdown/runtime-benchmarks",
 	"module-evm-accounts/runtime-benchmarks",
 	"module-evm-bridge/runtime-benchmarks",
+	"module-evm/runtime-benchmarks",
 	"module-homa/runtime-benchmarks",
 	"module-homa-validator-list/runtime-benchmarks",
 	"module-idle-scheduler/runtime-benchmarks",

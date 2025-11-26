@@ -39,6 +39,7 @@ wasm-bencher = { workspace = true, optional = true }
 orml-currencies = { workspace = true, optional = true }
 orml-tokens = { workspace = true, optional = true }
 
+module-evm-accounts = { workspace = true, optional = true }
 module-support = { workspace = true }
 module-evm-utility = { workspace = true }
 primitives = { workspace = true }
@@ -48,6 +49,7 @@ module-dex = { workspace = true, optional = true }
 
 # we don't directly depends on this but need frame-benchmarking/std to fix build
 frame-benchmarking = { workspace = true, optional = true }
+libsecp256k1 = { workspace = true, optional = true }
 
 [dev-dependencies]
 insta = { workspace = true }
@@ -61,6 +63,7 @@ default = ["std"]
 std = [
 	"serde/std",
 	"parity-scale-codec/std",
+	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
 	"module-dex/std",
@@ -87,6 +90,11 @@ std = [
 	"frame-benchmarking/std",
 ]
 with-ethereum-compatibility = []
+runtime-benchmarks = [
+	"libsecp256k1/hmac",
+	"frame-benchmarking/runtime-benchmarks",
+	"module-evm-accounts/runtime-benchmarks",
+]
 try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",

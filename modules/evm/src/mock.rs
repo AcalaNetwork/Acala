@@ -26,6 +26,7 @@ use frame_support::{
 	ConsensusEngineId,
 };
 use frame_system::EnsureSignedBy;
+use module_evm_accounts::EvmAddressMapping;
 use module_support::mocks::{MockAddressMapping, TestRandomness};
 use orml_traits::parameter_type_with_key;
 use primitives::{define_combined_task, Amount, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
@@ -204,6 +205,14 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl module_evm_accounts::Config for Runtime {
+	type Currency = Balances;
+	type AddressMapping = EvmAddressMapping<Runtime>;
+	type ChainId = ConstU64<1>;
+	type TransferAll = ();
+	type WeightInfo = ();
+}
+
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
@@ -211,6 +220,7 @@ construct_runtime!(
 		System: frame_system,
 		Timestamp: pallet_timestamp,
 		EVM: evm_mod,
+		EvmAccounts: module_evm_accounts,
 		Tokens: orml_tokens,
 		Balances: pallet_balances,
 		Currencies: orml_currencies,

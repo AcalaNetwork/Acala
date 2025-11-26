@@ -17,12 +17,12 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use core::str::FromStr;
 use frame_benchmarking::v2::*;
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use module_support::EVMAccountsManager;
 use sp_io::hashing::keccak_256;
-use std::str::FromStr;
 
 fn contract_addr() -> H160 {
 	H160::from_str("0x5e0b4bfa0b55932a3587e648c3552a6515ba56b1").unwrap()
