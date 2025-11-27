@@ -24,6 +24,7 @@ use frame_system::RawOrigin;
 /// Helper trait for benchmarking.
 pub trait BenchmarkHelper<CurrencyId, BlockNumber, LookupSource> {
 	fn setup_on_initialize(c: u32) -> Option<BlockNumber>;
+	fn setup_collateral_currency_ids() -> Vec<CurrencyId>;
 	fn setup_liquidate_by_auction(b: u32) -> Option<(CurrencyId, LookupSource)>;
 	fn setup_liquidate_by_dex() -> Option<(CurrencyId, LookupSource)>;
 	fn setup_settle() -> Option<(CurrencyId, LookupSource)>;
@@ -32,6 +33,9 @@ pub trait BenchmarkHelper<CurrencyId, BlockNumber, LookupSource> {
 impl<CurrencyId, BlockNumber, LookupSource> BenchmarkHelper<CurrencyId, BlockNumber, LookupSource> for () {
 	fn setup_on_initialize(_c: u32) -> Option<BlockNumber> {
 		None
+	}
+	fn setup_collateral_currency_ids() -> Vec<CurrencyId> {
+		vec![]
 	}
 	fn setup_liquidate_by_auction(_b: u32) -> Option<(CurrencyId, LookupSource)> {
 		None
@@ -51,7 +55,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn on_initialize(c: Linear<0, 10>) {
+	fn on_initialize(c: Linear<0, { <T as Config>::BenchmarkHelper::setup_collateral_currency_ids().len() as u32 }>) {
 		let block_number = <T as Config>::BenchmarkHelper::setup_on_initialize(c).unwrap();
 
 		#[block]

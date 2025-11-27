@@ -189,14 +189,14 @@ where
 
 		// feed price
 		let mut feed_data: Vec<(CurrencyId, Price)> = vec![];
-		for i in 0..c.min(currency_ids.len() as u32) {
+		for i in 0..c {
 			let currency_id = currency_ids[i as usize];
 			let collateral_price = Price::one();
 			feed_data.push((currency_id, collateral_price));
 		}
 		feed_price(feed_data);
 
-		for i in 0..c.min(currency_ids.len() as u32) {
+		for i in 0..c {
 			let currency_id = currency_ids[i as usize];
 			if matches!(currency_id, CurrencyId::StableAssetPoolToken(_)) {
 				continue;
@@ -237,6 +237,9 @@ where
 
 		set_block_number_timestamp(3, MILLISECS_PER_BLOCK * 2);
 		Some(3u32.into())
+	}
+	fn setup_collateral_currency_ids() -> Vec<CurrencyId> {
+		get_benchmarking_collateral_currency_ids()
 	}
 	fn setup_liquidate_by_auction(b: u32) -> Option<(CurrencyId, MultiAddress<AccountId, AccountIndex>)> {
 		let owner: AccountId = account("owner", 0, 0);
@@ -520,7 +523,7 @@ where
 		let funder: AccountId = account("funder", 0, 0);
 		let mut values = vec![];
 
-		for i in 0..c.min(currency_ids.len() as u32) {
+		for i in 0..c {
 			let currency_id = currency_ids[i as usize];
 			if matches!(currency_id, CurrencyId::StableAssetPoolToken(_)) {
 				continue;
@@ -534,6 +537,9 @@ where
 			));
 		}
 		feed_price(values);
+	}
+	fn setup_collateral_currency_ids() -> Vec<CurrencyId> {
+		get_benchmarking_collateral_currency_ids()
 	}
 }
 

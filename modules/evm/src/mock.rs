@@ -174,7 +174,7 @@ ord_parameter_types! {
 	pub const StorageDepositPerByte: Balance = convert_decimals_to_evm(10);
 }
 
-pub const NEW_CONTRACT_EXTRA_BYTES: u32 = 100;
+pub const NEW_CONTRACT_EXTRA_BYTES: u32 = 10000;
 pub const DEVELOPER_DEPOSIT: u128 = 1000;
 pub const PUBLICATION_FEE: u128 = 200;
 impl Config for Runtime {

@@ -2243,7 +2243,7 @@ mod benches {
 		[module_earning, Earning]
 		[module_emergency_shutdown, EmergencyShutdown]
 		[module_evm_accounts, EvmAccounts]
-		// [module_evm, EVM]
+		[module_evm, EVM]
 		[module_homa, Homa]
 		[module_homa_validator_list, HomaValidatorList]
 		[module_idle_scheduler, IdleScheduler]

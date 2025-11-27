@@ -24,10 +24,14 @@ use frame_system::RawOrigin;
 /// Helper trait for benchmarking.
 pub trait BenchmarkHelper {
 	fn setup_feed_price(c: u32);
+	fn setup_collateral_currency_ids() -> Vec<CurrencyId>;
 }
 
 impl BenchmarkHelper for () {
 	fn setup_feed_price(_c: u32) {}
+	fn setup_collateral_currency_ids() -> Vec<CurrencyId> {
+		vec![]
+	}
 }
 
 #[benchmarks]
@@ -35,7 +39,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn emergency_shutdown(c: Linear<0, 10>) {
+	fn emergency_shutdown(c: Linear<0, { T::BenchmarkHelper::setup_collateral_currency_ids().len() as u32 }>) {
 		T::BenchmarkHelper::setup_feed_price(c);
 
 		#[extrinsic_call]
@@ -58,7 +62,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn refund_collaterals(c: Linear<0, 10>) {
+	fn refund_collaterals(c: Linear<0, { T::BenchmarkHelper::setup_collateral_currency_ids().len() as u32 }>) {
 		T::BenchmarkHelper::setup_feed_price(c);
 
 		let caller: T::AccountId = account("caller", 0, 0);

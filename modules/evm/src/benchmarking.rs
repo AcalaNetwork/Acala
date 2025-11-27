@@ -50,7 +50,7 @@ where
 		FACTORY_CONTRACT.to_vec(),
 		0,
 		1000000000,
-		1000000000,
+		20_000,
 		vec![],
 	));
 
@@ -60,7 +60,7 @@ where
 			contract: contract_addr(),
 			logs: vec![],
 			used_gas: 132225,
-			used_storage: 467,
+			used_storage: 10367,
 		}
 		.into(),
 	);
@@ -145,7 +145,7 @@ mod benchmarks {
 			EMPTY_CONTRACT.to_vec(),
 			0,
 			21_000_000,
-			100_000,
+			20_000,
 			vec![],
 		);
 
@@ -167,7 +167,7 @@ mod benchmarks {
 			salt,
 			0,
 			21_000_000,
-			100_000,
+			20_000,
 			vec![],
 		);
 
@@ -229,7 +229,7 @@ mod benchmarks {
 			STORAGE_CONTRACT.to_vec(),
 			0,
 			21_000_000,
-			100_000,
+			20_000,
 			vec![]
 		));
 
@@ -247,7 +247,7 @@ mod benchmarks {
 			input,
 			0,
 			21_000_000,
-			100_000,
+			20_000,
 			vec![],
 		);
 

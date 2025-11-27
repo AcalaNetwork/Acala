@@ -410,6 +410,9 @@ impl BenchmarkHelper<CurrencyId, BlockNumber, AccountId> for MockBenchmarkHelper
 	fn setup_on_initialize(_c: u32) -> Option<BlockNumber> {
 		Some(1u64)
 	}
+	fn setup_collateral_currency_ids() -> Vec<CurrencyId> {
+		vec![BTC, AUSD]
+	}
 	fn setup_liquidate_by_auction(_b: u32) -> Option<(CurrencyId, AccountId)> {
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			RuntimeOrigin::signed(ALICE),
