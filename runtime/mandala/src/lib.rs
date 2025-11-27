@@ -1226,6 +1226,8 @@ impl module_honzon::Config for Runtime {
 	type DepositPerAuthorization = DepositPerAuthorization;
 	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type WeightInfo = weights::module_honzon::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 impl module_emergency_shutdown::Config for Runtime {
@@ -2227,7 +2229,6 @@ mod benches {
 	// use system_parachains_constants::kusama::locations::PeopleLocation;
 
 	// define_benchmarks!(
-	// 	[module_honzon, benchmarking::honzon]
 	// 	[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 	// );
 	frame_benchmarking::define_benchmarks!(
@@ -2246,6 +2247,7 @@ mod benches {
 		[module_evm, EVM]
 		[module_homa, Homa]
 		[module_homa_validator_list, HomaValidatorList]
+		[module_honzon, Honzon]
 		[module_idle_scheduler, IdleScheduler]
 		[module_incentives, Incentives]
 		[module_liquid_crowdloan, LiquidCrowdloan]

@@ -552,6 +552,30 @@ where
 	}
 }
 
+impl<T> module_honzon::BenchmarkHelper<CurrencyId, AccountId> for BenchmarkHelper<T>
+where
+	T: module_honzon::Config,
+{
+	fn setup_collateral_currency_ids() -> Vec<CurrencyId> {
+		get_benchmarking_collateral_currency_ids()
+	}
+	fn setup_stable_currency_id_and_amount() -> Option<(CurrencyId, Balance)> {
+		Some((GetStableCurrencyId::get(), dollar(STABLECOIN)))
+	}
+	fn setup_staking_currency_id_and_amount() -> Option<(CurrencyId, Balance)> {
+		Some((GetStakingCurrencyId::get(), dollar(STAKING)))
+	}
+	fn setup_liquid_currency_id_and_amount() -> Option<(CurrencyId, Balance)> {
+		Some((GetLiquidCurrencyId::get(), dollar(LIQUID)))
+	}
+	fn setup_dex_pools(maker: AccountId) {
+		assert_ok!(initialize_swap_pools(maker));
+	}
+	fn setup_feed_price(currency_id: CurrencyId, price: Price) {
+		feed_price(vec![(currency_id, price)]);
+	}
+}
+
 impl<T> module_idle_scheduler::BenchmarkHelper<ScheduledTasks> for BenchmarkHelper<T>
 where
 	T: module_idle_scheduler::Config,

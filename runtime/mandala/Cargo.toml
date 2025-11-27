@@ -347,6 +347,7 @@ runtime-benchmarks = [
 	"module-evm/runtime-benchmarks",
 	"module-homa/runtime-benchmarks",
 	"module-homa-validator-list/runtime-benchmarks",
+	"module-honzon/runtime-benchmarks",
 	"module-idle-scheduler/runtime-benchmarks",
 	"module-incentives/runtime-benchmarks",
 	"module-liquid-crowdloan/runtime-benchmarks",
