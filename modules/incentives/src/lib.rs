@@ -50,10 +50,14 @@ use sp_runtime::{
 };
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -93,6 +97,9 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<CurrencyId, Balance>;
 	}
 
 	#[pallet::error]
@@ -278,7 +285,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			updates: Vec<(PoolId, Vec<(CurrencyId, Balance)>)>,
 		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			for (pool_id, update_list) in updates {
 				if let PoolId::Dex(currency_id) = pool_id {
 					ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidPoolId);
@@ -318,7 +325,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			updates: Vec<(PoolId, Rate)>,
 		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			for (pool_id, deduction_rate) in updates {
 				if let PoolId::Dex(currency_id) = pool_id {
 					ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidPoolId);
@@ -354,7 +361,7 @@ pub mod module {
 			pool_id: PoolId,
 			currency_id: Option<CurrencyId>,
 		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			ClaimRewardDeductionCurrency::<T>::mutate_exists(pool_id, |c| *c = currency_id);
 			Self::deposit_event(Event::ClaimRewardDeductionCurrencyUpdated {
 				pool: pool_id,

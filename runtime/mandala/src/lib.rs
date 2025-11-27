@@ -1456,6 +1456,8 @@ impl module_incentives::Config for Runtime {
 	type EmergencyShutdown = EmergencyShutdown;
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -2225,9 +2227,7 @@ mod benches {
 	// use system_parachains_constants::kusama::locations::PeopleLocation;
 
 	// define_benchmarks!(
-	// 	[module_evm, benchmarking::evm]
 	// 	[module_honzon, benchmarking::honzon]
-	// 	[module_incentives, benchmarking::incentives]
 	// 	[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 	// );
 	frame_benchmarking::define_benchmarks!(
@@ -2243,9 +2243,11 @@ mod benches {
 		[module_earning, Earning]
 		[module_emergency_shutdown, EmergencyShutdown]
 		[module_evm_accounts, EvmAccounts]
+		// [module_evm, EVM]
 		[module_homa, Homa]
 		[module_homa_validator_list, HomaValidatorList]
 		[module_idle_scheduler, IdleScheduler]
+		[module_incentives, Incentives]
 		[module_liquid_crowdloan, LiquidCrowdloan]
 		[module_nft, NFT]
 		[module_nominees_election, NomineesElection]

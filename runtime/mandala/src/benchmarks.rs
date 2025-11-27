@@ -559,6 +559,22 @@ where
 	}
 }
 
+impl<T> module_incentives::BenchmarkHelper<CurrencyId, Balance> for BenchmarkHelper<T>
+where
+	T: module_incentives::Config,
+{
+	fn setup_stable_currency_id_and_amount() -> Option<(CurrencyId, Balance)> {
+		Some((STABLECOIN, dollar(STABLECOIN)))
+	}
+	fn setup_collateral_currency_ids() -> Vec<(CurrencyId, Balance)> {
+		let currency_ids = get_benchmarking_collateral_currency_ids();
+		currency_ids
+			.iter()
+			.map(|currency_id| (*currency_id, dollar(NATIVE)))
+			.collect()
+	}
+}
+
 impl<T> module_nominees_election::BenchmarkHelper<EraIndex, AccountId, AccountId> for BenchmarkHelper<T>
 where
 	T: module_nominees_election::Config,
