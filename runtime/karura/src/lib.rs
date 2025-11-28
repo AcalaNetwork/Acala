@@ -354,7 +354,7 @@ impl module_collator_selection::Config for Runtime {
 	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type PotId = CollatorPotId;
-	type MinCandidates = ConstU32<4>;
+	type MinCandidates = ConstU32<1>;
 	type MaxCandidates = ConstU32<50>;
 	type MaxInvulnerables = ConstU32<10>;
 	type KickPenaltySessionLength = ConstU32<8>;
