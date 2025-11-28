@@ -132,7 +132,7 @@ mod benchmarks {
 	// adjust both collateral and debit
 	#[benchmark]
 	fn adjust_loan() {
-		let (stable_currency_id, stable_amount) =
+		let (_stable_currency_id, stable_amount) =
 			<T as Config>::BenchmarkHelper::setup_stable_currency_id_and_amount().unwrap();
 		let (staking_currency_id, staking_amount) =
 			<T as Config>::BenchmarkHelper::setup_staking_currency_id_and_amount().unwrap();
@@ -181,7 +181,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn transfer_loan_from() {
-		let (stable_currency_id, stable_amount) =
+		let (_stable_currency_id, stable_amount) =
 			<T as Config>::BenchmarkHelper::setup_stable_currency_id_and_amount().unwrap();
 		let (staking_currency_id, staking_amount) =
 			<T as Config>::BenchmarkHelper::setup_staking_currency_id_and_amount().unwrap();
@@ -247,7 +247,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn close_loan_has_debit_by_dex() {
-		let (stable_currency_id, stable_amount) =
+		let (_stable_currency_id, stable_amount) =
 			<T as Config>::BenchmarkHelper::setup_stable_currency_id_and_amount().unwrap();
 		let (staking_currency_id, staking_amount) =
 			<T as Config>::BenchmarkHelper::setup_staking_currency_id_and_amount().unwrap();
@@ -301,7 +301,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn expand_position_collateral() {
-		let (stable_currency_id, stable_amount) =
+		let (_stable_currency_id, stable_amount) =
 			<T as Config>::BenchmarkHelper::setup_stable_currency_id_and_amount().unwrap();
 		let (staking_currency_id, staking_amount) =
 			<T as Config>::BenchmarkHelper::setup_staking_currency_id_and_amount().unwrap();
@@ -354,7 +354,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn shrink_position_debit() {
-		let (stable_currency_id, stable_amount) =
+		let (_stable_currency_id, stable_amount) =
 			<T as Config>::BenchmarkHelper::setup_stable_currency_id_and_amount().unwrap();
 		let (staking_currency_id, staking_amount) =
 			<T as Config>::BenchmarkHelper::setup_staking_currency_id_and_amount().unwrap();
@@ -407,7 +407,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn transfer_debit() {
-		let (stable_currency_id, stable_amount) =
+		let (_stable_currency_id, stable_amount) =
 			<T as Config>::BenchmarkHelper::setup_stable_currency_id_and_amount().unwrap();
 		let (staking_currency_id, staking_amount) =
 			<T as Config>::BenchmarkHelper::setup_staking_currency_id_and_amount().unwrap();
@@ -471,9 +471,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn precompile_get_current_collateral_ratio() {
-		let (stable_currency_id, stable_amount) =
+		let (_stable_currency_id, stable_amount) =
 			<T as Config>::BenchmarkHelper::setup_stable_currency_id_and_amount().unwrap();
-		let (staking_currency_id, staking_amount) =
+		let (staking_currency_id, _staking_amount) =
 			<T as Config>::BenchmarkHelper::setup_staking_currency_id_and_amount().unwrap();
 		let (liquid_currency_id, liquid_amount) =
 			<T as Config>::BenchmarkHelper::setup_liquid_currency_id_and_amount().unwrap();

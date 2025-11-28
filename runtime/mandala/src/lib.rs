@@ -1883,6 +1883,8 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
 }
 
 define_combined_task! {
@@ -2228,9 +2230,6 @@ mod benches {
 	// use kusama_runtime_constants::system_parachain::PeopleParaId;
 	// use system_parachains_constants::kusama::locations::PeopleLocation;
 
-	// define_benchmarks!(
-	// 	[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
-	// );
 	frame_benchmarking::define_benchmarks!(
 		[module_aggregated_dex, AggregatedDex]
 		[module_asset_registry, AssetRegistry]
@@ -2262,6 +2261,8 @@ mod benches {
 		[orml_oracle, AcalaOracle]
 		[orml_tokens, Tokens]
 		[orml_vesting, Vesting]
+		// Acala Ecosystem Modules
+		[nutsfinance_stable_asset, StableAsset]
 		// XCM
 		/* 	[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>] */
 	);

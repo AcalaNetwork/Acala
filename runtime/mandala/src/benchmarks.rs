@@ -821,6 +821,41 @@ where
 	}
 }
 
+impl<T> nutsfinance_stable_asset::BenchmarkHelper<CurrencyId, u128> for BenchmarkHelper<T>
+where
+	T: nutsfinance_stable_asset::Config,
+{
+	fn setup_assets_and_pool_asset(u: u32) -> Option<(Vec<CurrencyId>, Vec<u128>, CurrencyId)> {
+		let currency_list = vec![
+			NATIVE,
+			STABLECOIN,
+			LIQUID,
+			STAKING,
+			CurrencyId::join_dex_share_currency_id(LIQUID, STAKING).unwrap(),
+		];
+
+		let pool_asset = CurrencyId::StableAssetPoolToken(0);
+		let mut assets = vec![];
+		let mut precisions = vec![];
+		for i in 0..u {
+			let i_idx: usize = usize::try_from(i).unwrap();
+			let currency_id = currency_list[i_idx];
+			assets.push(currency_id);
+			precisions.push(1u128);
+		}
+
+		Some((assets, precisions, pool_asset))
+	}
+	fn setup_create_stable_pool(
+		assets: Vec<CurrencyId>,
+		precisions: Vec<u128>,
+		_pool_asset: CurrencyId,
+	) -> Option<u32> {
+		create_stable_pools(assets, precisions, 10000u128);
+		Some(0)
+	}
+}
+
 pub const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 pub const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 pub const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
