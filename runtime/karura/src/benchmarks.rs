@@ -16,18 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CurrencyId, TreasuryPalletId, ACA, DOT, LDOT};
-use sp_runtime::traits::AccountIdConversion;
+use crate::{AccountId, CurrencyId, KaruraFoundationAccounts, KAR, KSM, LKSM};
 use sp_std::{vec, vec::Vec};
 
 pub mod common {
-	include!("./benchmark_common.rs");
+	include!("../../mandala/src/benchmark_common.rs");
 }
 
-fn get_vesting_account() -> AccountId {
-	TreasuryPalletId::get().into_account_truncating()
+pub fn get_vesting_account() -> AccountId {
+	KaruraFoundationAccounts::get()[0].clone()
 }
 
-fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
-	vec![ACA, DOT, LDOT, CurrencyId::StableAssetPoolToken(0)]
+pub fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
+	vec![KSM, LKSM, KAR, CurrencyId::StableAssetPoolToken(0)]
 }

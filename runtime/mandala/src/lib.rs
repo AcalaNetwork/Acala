@@ -735,7 +735,7 @@ impl orml_auction::Config for Runtime {
 	type Handler = AuctionManager;
 	type WeightInfo = weights::orml_auction::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 impl orml_authority::Config for Runtime {
@@ -747,7 +747,7 @@ impl orml_authority::Config for Runtime {
 	type AuthorityConfig = AuthorityConfigImpl;
 	type WeightInfo = weights::orml_authority::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 pub struct PaymentsDisputeResolver;
@@ -839,7 +839,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 	type MaxFeedValues = MaxFeedValues;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkInstanceHelper<Runtime, orml_oracle::Instance1>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkInstanceHelper<Runtime, AcalaDataProvider>;
 }
 
 create_median_value_data_provider!(
@@ -928,7 +928,7 @@ impl orml_tokens::Config for Runtime {
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = DustRemovalWhitelist;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 parameter_type_with_key! {
@@ -969,7 +969,7 @@ impl module_prices::Config for Runtime {
 	type PricingPegged = PricingPegged;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -990,7 +990,7 @@ impl module_currencies::Config for Runtime {
 	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type OnDust = module_currencies::TransferDust<Runtime, TreasuryAccount>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 pub struct EnsureRootOrTreasury;
@@ -1027,7 +1027,7 @@ impl orml_vesting::Config for Runtime {
 	type MaxVestingSchedules = ConstU32<100>;
 	type BlockNumberProvider = RelaychainDataProvider<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -1086,7 +1086,7 @@ impl module_auction_manager::Config for Runtime {
 	type EmergencyShutdown = EmergencyShutdown;
 	type WeightInfo = weights::module_auction_manager::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 impl module_loans::Config for Runtime {
@@ -1214,7 +1214,7 @@ impl module_cdp_engine::Config for Runtime {
 	type SettleErc20EvmOrigin = SettleErc20EvmOrigin;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -1227,7 +1227,7 @@ impl module_honzon::Config for Runtime {
 	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type WeightInfo = weights::module_honzon::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 impl module_emergency_shutdown::Config for Runtime {
@@ -1238,7 +1238,7 @@ impl module_emergency_shutdown::Config for Runtime {
 	type ShutdownOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_emergency_shutdown::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -1280,7 +1280,7 @@ impl module_aggregated_dex::Config for Runtime {
 	type SwapPathLimit = ConstU32<3>;
 	type WeightInfo = weights::module_aggregated_dex::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 pub type RebasedStableAsset = module_support::RebasedStableAsset<
@@ -1297,7 +1297,7 @@ impl module_dex_oracle::Config for Runtime {
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_dex_oracle::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -1317,7 +1317,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 	type StableAsset = RebasedStableAsset;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 impl module_transaction_pause::Config for Runtime {
@@ -1378,7 +1378,7 @@ impl module_transaction_payment::Config for Runtime {
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -1398,7 +1398,7 @@ impl module_earning::Config for Runtime {
 	type LockIdentifier = EarningLockIdentifier;
 	type WeightInfo = weights::module_earning::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1416,7 +1416,7 @@ impl module_asset_registry::Config for Runtime {
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 parameter_type_with_key! {
@@ -1459,7 +1459,7 @@ impl module_incentives::Config for Runtime {
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -1513,7 +1513,7 @@ impl module_homa_validator_list::Config for Runtime {
 	type CurrentEra = Homa;
 	type WeightInfo = weights::module_homa_validator_list::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -1536,7 +1536,7 @@ impl module_nominees_election::Config for Runtime {
 	type CurrentEra = Homa;
 	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 parameter_types! {
@@ -1884,7 +1884,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 define_combined_task! {
@@ -1909,7 +1909,7 @@ impl module_idle_scheduler::Config for Runtime {
 	// once this number is reached idle scheduler is disabled as block production is slow
 	type DisableBlockThreshold = ConstU32<6>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = benchmarks::BenchmarkHelper<Runtime>;
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
