@@ -1230,6 +1230,8 @@ impl module_dex::Config for Runtime {
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = benchmarks::common::BenchmarkHelper<Runtime>;
 }
 
 impl module_aggregated_dex::Config for Runtime {

@@ -53,6 +53,8 @@ mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -137,6 +139,9 @@ pub mod module {
 
 		/// Event handler which calls when update liquidity pool.
 		type OnLiquidityPoolUpdated: Happened<(TradingPair, Balance, Balance)>;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<CurrencyId>;
 	}
 
 	#[pallet::error]

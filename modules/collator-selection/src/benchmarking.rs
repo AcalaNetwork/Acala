@@ -185,8 +185,10 @@ mod benchmarks {
 		assert_ok!(Pallet::<T>::leave_intent(RawOrigin::Signed(leaving.clone()).into()));
 
 		let session_duration = <T as pallet_session::Config>::NextSessionRotation::average_session_length();
-		pallet_session::Pallet::<T>::on_initialize(session_duration);
-		pallet_session::Pallet::<T>::on_initialize(session_duration * 2u32.into());
+
+		for i in 0..SESSION_DELAY {
+			pallet_session::Pallet::<T>::on_initialize(session_duration * i.into());
+		}
 
 		#[extrinsic_call]
 		_(RawOrigin::Signed(leaving));
@@ -259,8 +261,8 @@ mod benchmarks {
 
 	#[benchmark]
 	fn end_session(
-		r: Liner<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>,
 		c: Liner<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>,
+		r: Liner<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>,
 	) {
 		CandidacyBond::<T>::put(T::Currency::minimum_balance());
 		DesiredCandidates::<T>::put(c);

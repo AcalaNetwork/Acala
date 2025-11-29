@@ -122,6 +122,18 @@ impl Happened<(TradingPair, Balance, Balance)> for MockOnLiquidityPoolUpdated {
 	}
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<CurrencyId> for MockBenchmarkHelper {
+	fn setup_stable_currency_id() -> Option<CurrencyId> {
+		Some(AUSD)
+	}
+	fn setup_currency_lists() -> Vec<CurrencyId> {
+		vec![ACA, AUSD, DOT, BTC]
+	}
+}
+
 impl Config for Runtime {
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
@@ -134,6 +146,8 @@ impl Config for Runtime {
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<2000>;
 	type OnLiquidityPoolUpdated = MockOnLiquidityPoolUpdated;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 parameter_types! {

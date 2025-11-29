@@ -154,7 +154,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
-	pub const CollatorKickThreshold: Permill = Permill::from_percent(100);
+	pub const CollatorKickThreshold: Permill = Permill::from_percent(90);
 }
 
 impl Config for Test {

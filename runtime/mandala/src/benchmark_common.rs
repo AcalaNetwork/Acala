@@ -439,6 +439,18 @@ where
 	}
 }
 
+impl<T> module_dex::BenchmarkHelper<CurrencyId> for BenchmarkHelper<T>
+where
+	T: module_dex::Config,
+{
+	fn setup_stable_currency_id() -> Option<CurrencyId> {
+		Some(STABLECOIN)
+	}
+	fn setup_currency_lists() -> Vec<CurrencyId> {
+		super::get_benchmarking_collateral_currency_ids()
+	}
+}
+
 impl<T> module_dex_oracle::BenchmarkHelper<CurrencyId, Moment> for BenchmarkHelper<T>
 where
 	T: module_dex_oracle::Config,

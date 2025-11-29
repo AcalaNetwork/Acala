@@ -140,7 +140,7 @@ mod benchmarks {
 	fn fast_match_redeems(n: Liner<1, 50>) {
 		let caller: T::AccountId = account("caller", 0, 0);
 		let minter: T::AccountId = account("minter", 0, 0);
-		let mint_amount = T::MintThreshold::get();
+		let mint_amount = 1_000_000_000_000_000;
 
 		assert_ok!(T::Currency::deposit(
 			T::StakingCurrencyId::get(),
@@ -159,7 +159,7 @@ mod benchmarks {
 		assert_ok!(Pallet::<T>::mint(RawOrigin::Signed(minter.clone()).into(), mint_amount));
 
 		let mut redeem_request_list: Vec<T::AccountId> = vec![];
-		let redeem_amount = T::RedeemThreshold::get();
+		let redeem_amount = 10_000_000_000_000;
 
 		for i in 0..n {
 			let redeemer = account("redeemer", i, 0);

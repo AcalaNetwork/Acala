@@ -48,7 +48,8 @@ mod benchmarks {
 	fn swap_with_exact_supply(u: Liner<2, { <T as module_dex::Config>::TradingPathLimit::get() }>) {
 		let taker: T::AccountId = account("taker", 0, 0);
 
-		let (path, supply_amount, _target_amount) = T::BenchmarkHelper::setup_dex(u, taker.clone()).unwrap();
+		let (path, supply_amount, _target_amount) =
+			<T as Config>::BenchmarkHelper::setup_dex(u, taker.clone()).unwrap();
 
 		#[extrinsic_call]
 		_(
@@ -63,7 +64,7 @@ mod benchmarks {
 	fn swap_with_exact_target(u: Liner<2, { <T as module_dex::Config>::TradingPathLimit::get() }>) {
 		let taker: T::AccountId = account("taker", 0, 0);
 
-		let (path, supply_amount, target_amount) = T::BenchmarkHelper::setup_dex(u, taker.clone()).unwrap();
+		let (path, supply_amount, target_amount) = <T as Config>::BenchmarkHelper::setup_dex(u, taker.clone()).unwrap();
 
 		#[extrinsic_call]
 		_(
@@ -75,8 +76,10 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn update_aggregated_swap_paths(n: Linear<0, { T::BenchmarkHelper::setup_currency_lists().len() as u32 }>) {
-		let currency_lists = T::BenchmarkHelper::setup_currency_lists();
+	fn update_aggregated_swap_paths(
+		n: Linear<0, { <T as Config>::BenchmarkHelper::setup_currency_lists().len() as u32 }>,
+	) {
+		let currency_lists = <T as Config>::BenchmarkHelper::setup_currency_lists();
 		let mut updates: Vec<((CurrencyId, CurrencyId), Option<Vec<SwapPath>>)> = vec![];
 		for i in 1..n {
 			let token_a = currency_lists[i as usize];

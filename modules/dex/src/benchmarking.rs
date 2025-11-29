@@ -23,15 +23,21 @@ use crate::Pallet;
 use frame_benchmarking::v2::*;
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
-use primitives::TokenSymbol;
 
-const NATIVE: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-const STABLECOIN: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-const LIQUID: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-const STAKING: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-const BNC: CurrencyId = CurrencyId::Token(TokenSymbol::BNC);
-const VSKSM: CurrencyId = CurrencyId::Token(TokenSymbol::VSKSM);
-const CURRENCY_LIST: [CurrencyId; 6] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC, VSKSM];
+/// Helper trait for benchmarking.
+pub trait BenchmarkHelper<CurrencyId> {
+	fn setup_stable_currency_id() -> Option<CurrencyId>;
+	fn setup_currency_lists() -> Vec<CurrencyId>;
+}
+
+impl<CurrencyId> BenchmarkHelper<CurrencyId> for () {
+	fn setup_stable_currency_id() -> Option<CurrencyId> {
+		None
+	}
+	fn setup_currency_lists() -> Vec<CurrencyId> {
+		vec![]
+	}
+}
 
 fn dollar(_currency_id: CurrencyId) -> Balance {
 	10u128.saturating_pow(12)
@@ -81,7 +87,8 @@ mod benchmarks {
 	// enable a Disabled trading pair
 	#[benchmark]
 	fn enable_trading_pair() {
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 		if let TradingPairStatus::Enabled = Pallet::<T>::trading_pair_statuses(trading_pair) {
 			assert_ok!(Pallet::<T>::disable_trading_pair(
 				RawOrigin::Root.into(),
@@ -104,7 +111,8 @@ mod benchmarks {
 	// disable a Enabled trading pair
 	#[benchmark]
 	fn disable_trading_pair() {
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 		if let TradingPairStatus::Disabled = Pallet::<T>::trading_pair_statuses(trading_pair) {
 			assert_ok!(Pallet::<T>::enable_trading_pair(
 				RawOrigin::Root.into(),
@@ -127,7 +135,8 @@ mod benchmarks {
 	// list a Provisioning trading pair
 	#[benchmark]
 	fn list_provisioning() {
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 		if let TradingPairStatus::Enabled = Pallet::<T>::trading_pair_statuses(trading_pair) {
 			assert_ok!(Pallet::<T>::disable_trading_pair(
 				RawOrigin::Root.into(),
@@ -159,7 +168,8 @@ mod benchmarks {
 	// update parameters of a Provisioning trading pair
 	#[benchmark]
 	fn update_provisioning_parameters() {
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 		if let TradingPairStatus::Enabled = Pallet::<T>::trading_pair_statuses(trading_pair) {
 			assert_ok!(Pallet::<T>::disable_trading_pair(
 				RawOrigin::Root.into(),
@@ -196,7 +206,8 @@ mod benchmarks {
 	#[benchmark]
 	fn end_provisioning() {
 		let founder: T::AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 		if let TradingPairStatus::Enabled = Pallet::<T>::trading_pair_statuses(trading_pair) {
 			assert_ok!(Pallet::<T>::disable_trading_pair(
 				RawOrigin::Root.into(),
@@ -254,7 +265,8 @@ mod benchmarks {
 	#[benchmark]
 	fn add_provision() {
 		let founder: T::AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 		if let TradingPairStatus::Enabled = Pallet::<T>::trading_pair_statuses(trading_pair) {
 			assert_ok!(Pallet::<T>::disable_trading_pair(
 				RawOrigin::Root.into(),
@@ -309,7 +321,8 @@ mod benchmarks {
 	#[benchmark]
 	fn claim_dex_share() {
 		let founder: T::AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 		if let TradingPairStatus::Enabled = Pallet::<T>::trading_pair_statuses(trading_pair) {
 			assert_ok!(Pallet::<T>::disable_trading_pair(
 				RawOrigin::Root.into(),
@@ -372,7 +385,8 @@ mod benchmarks {
 	fn add_liquidity() {
 		let first_maker: T::AccountId = account("first_maker", 0, 0);
 		let second_maker: T::AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 		let amount_a = 100 * dollar(trading_pair.first());
 		let amount_b = 10_000 * dollar(trading_pair.second());
 
@@ -415,7 +429,8 @@ mod benchmarks {
 	fn add_liquidity_and_stake() {
 		let first_maker: T::AccountId = account("first_maker", 0, 0);
 		let second_maker: T::AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 		let amount_a = 100 * dollar(trading_pair.first());
 		let amount_b = 10_000 * dollar(trading_pair.second());
 
@@ -457,7 +472,8 @@ mod benchmarks {
 	#[benchmark]
 	fn remove_liquidity() {
 		let maker: T::AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 
 		inject_liquidity::<T>(
 			maker.clone(),
@@ -484,7 +500,8 @@ mod benchmarks {
 	#[benchmark]
 	fn remove_liquidity_by_unstake() {
 		let maker: T::AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 
 		inject_liquidity::<T>(
 			maker.clone(),
@@ -512,11 +529,13 @@ mod benchmarks {
 		let maker: T::AccountId = account("maker", 0, 0);
 		let taker: T::AccountId = whitelisted_caller();
 
+		let currency_lists = T::BenchmarkHelper::setup_currency_lists();
+
 		let mut path: Vec<CurrencyId> = vec![];
 		for i in 1..u {
 			if i == 1 {
-				let cur0 = CURRENCY_LIST[0];
-				let cur1 = CURRENCY_LIST[1];
+				let cur0 = currency_lists[0];
+				let cur1 = currency_lists[1];
 				path.push(cur0);
 				path.push(cur1);
 				inject_liquidity::<T>(
@@ -528,13 +547,13 @@ mod benchmarks {
 					false,
 				);
 			} else {
-				path.push(CURRENCY_LIST[i as usize]);
+				path.push(currency_lists[i as usize]);
 				inject_liquidity::<T>(
 					maker.clone(),
-					CURRENCY_LIST[i as usize - 1],
-					CURRENCY_LIST[i as usize],
-					10_000 * dollar(CURRENCY_LIST[i as usize - 1]),
-					10_000 * dollar(CURRENCY_LIST[i as usize]),
+					currency_lists[i as usize - 1],
+					currency_lists[i as usize],
+					10_000 * dollar(currency_lists[i as usize - 1]),
+					10_000 * dollar(currency_lists[i as usize]),
 					false,
 				);
 			}
@@ -549,9 +568,9 @@ mod benchmarks {
 		#[extrinsic_call]
 		swap_with_exact_supply(RawOrigin::Signed(taker.clone()), path.clone(), 100 * dollar(path[0]), 0);
 
-		// would panic the benchmark anyways, must add new currencies to CURRENCY_LIST for benchmarking to
+		// would panic the benchmark anyways, must add new currencies to currency_lists for benchmarking to
 		// work
-		assert!(T::TradingPathLimit::get() < CURRENCY_LIST.len() as u32);
+		assert!(T::TradingPathLimit::get() < currency_lists.len() as u32);
 	}
 
 	#[benchmark]
@@ -559,11 +578,13 @@ mod benchmarks {
 		let maker: T::AccountId = account("maker", 0, 0);
 		let taker: T::AccountId = whitelisted_caller();
 
+		let currency_lists = T::BenchmarkHelper::setup_currency_lists();
+
 		let mut path: Vec<CurrencyId> = vec![];
 		for i in 1..u {
 			if i == 1 {
-				let cur0 = CURRENCY_LIST[0];
-				let cur1 = CURRENCY_LIST[1];
+				let cur0 = currency_lists[0];
+				let cur1 = currency_lists[1];
 				path.push(cur0);
 				path.push(cur1);
 				inject_liquidity::<T>(
@@ -575,13 +596,13 @@ mod benchmarks {
 					false,
 				);
 			} else {
-				path.push(CURRENCY_LIST[i as usize]);
+				path.push(currency_lists[i as usize]);
 				inject_liquidity::<T>(
 					maker.clone(),
-					CURRENCY_LIST[i as usize - 1],
-					CURRENCY_LIST[i as usize],
-					10_000 * dollar(CURRENCY_LIST[i as usize - 1]),
-					10_000 * dollar(CURRENCY_LIST[i as usize]),
+					currency_lists[i as usize - 1],
+					currency_lists[i as usize],
+					10_000 * dollar(currency_lists[i as usize - 1]),
+					10_000 * dollar(currency_lists[i as usize]),
 					false,
 				);
 			}
@@ -601,15 +622,16 @@ mod benchmarks {
 			100 * dollar(path[0]),
 		);
 
-		// would panic the benchmark anyways, must add new currencies to CURRENCY_LIST for benchmarking to
+		// would panic the benchmark anyways, must add new currencies to currency_lists for benchmarking to
 		// work
-		assert!(T::TradingPathLimit::get() < CURRENCY_LIST.len() as u32);
+		assert!(T::TradingPathLimit::get() < currency_lists.len() as u32);
 	}
 
 	#[benchmark]
 	fn refund_provision() {
 		let founder: T::AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 		if let TradingPairStatus::Enabled = Pallet::<T>::trading_pair_statuses(trading_pair) {
 			assert_ok!(Pallet::<T>::disable_trading_pair(
 				RawOrigin::Root.into(),
@@ -667,7 +689,8 @@ mod benchmarks {
 	#[benchmark]
 	fn abort_provisioning() {
 		let founder: T::AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let stable_currency_id = T::BenchmarkHelper::setup_stable_currency_id().unwrap();
+		let trading_pair = TradingPair::from_currency_ids(stable_currency_id, T::GetNativeCurrencyId::get()).unwrap();
 		if let TradingPairStatus::Enabled = Pallet::<T>::trading_pair_statuses(trading_pair) {
 			assert_ok!(Pallet::<T>::disable_trading_pair(
 				RawOrigin::Root.into(),

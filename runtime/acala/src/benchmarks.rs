@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AcalaFoundationAccounts, AccountId, CurrencyId, ACA, DOT, LCDOT, LDOT};
+use crate::{AcalaFoundationAccounts, AccountId, CurrencyId, ACA, AUSD, DOT, LCDOT, LDOT};
 use sp_std::{vec, vec::Vec};
 
 pub mod common {
@@ -28,5 +28,5 @@ pub fn get_vesting_account() -> AccountId {
 }
 
 pub fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
-	vec![ACA, DOT, LCDOT, LDOT]
+	vec![ACA, AUSD, DOT, LCDOT, LDOT]
 }

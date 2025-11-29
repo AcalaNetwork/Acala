@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CurrencyId, TreasuryPalletId, ACA, DOT, LDOT};
+use crate::{AccountId, CurrencyId, TreasuryPalletId, ACA, AUSD, DOT, LDOT};
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::{vec, vec::Vec};
 
@@ -29,5 +29,5 @@ fn get_vesting_account() -> AccountId {
 }
 
 fn get_benchmarking_collateral_currency_ids() -> Vec<CurrencyId> {
-	vec![ACA, DOT, LDOT, CurrencyId::StableAssetPoolToken(0)]
+	vec![ACA, AUSD, DOT, LDOT, CurrencyId::StableAssetPoolToken(0)]
 }
