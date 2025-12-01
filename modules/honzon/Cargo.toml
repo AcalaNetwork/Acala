@@ -26,6 +26,7 @@ pallet-balances = { workspace = true, features = ["std"] }
 pallet-timestamp = { workspace = true, features = ["std"] }
 orml-currencies = { workspace = true, features = ["std"] }
 orml-traits = { workspace = true, features = ["std"] }
+orml-tokens = { workspace = true, features = ["std"] }
 module-cdp-treasury = { workspace = true, features = ["std"] }
 module-evm-accounts = { workspace = true, features = ["std"] }
 module-evm = { workspace = true, features = ["std"] }
@@ -46,7 +47,6 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 	"module-support/std",
-	"orml-tokens?/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",

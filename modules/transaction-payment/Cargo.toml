@@ -25,6 +25,8 @@ xcm = { workspace = true }
 
 [dev-dependencies]
 sp-core = { workspace = true, features = ["std"] }
+pallet-balances = { workspace = true, features = ["std"] }
+orml-tokens = { workspace = true, features = ["std"] }
 module-currencies = { workspace = true, features = ["std"] }
 module-dex = { workspace = true, features = ["std"] }
 module-aggregated-dex = { workspace = true, features = ["std"] }
@@ -37,9 +39,7 @@ std = [
 	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
-	"orml-tokens?/std",
 	"orml-traits/std",
-	"pallet-balances?/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
 	"primitives/std",
