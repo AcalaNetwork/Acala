@@ -60,7 +60,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn set_invulnerables(b: Liner<1, { T::MaxInvulnerables::get() }>) {
+	fn set_invulnerables(b: Linear<1, { T::MaxInvulnerables::get() }>) {
 		let new_invulnerables = (0..b).map(|c| account("candidate", c, 0)).collect::<Vec<_>>();
 
 		#[extrinsic_call]
@@ -107,7 +107,7 @@ mod benchmarks {
 	// worse case is when we have all the max-candidate slots filled except one, and we fill that
 	// one.
 	#[benchmark]
-	fn register_as_candidate(c: Liner<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>) {
+	fn register_as_candidate(c: Linear<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>) {
 		CandidacyBond::<T>::put(T::Currency::minimum_balance());
 		DesiredCandidates::<T>::put(c);
 		register_candidates::<T>(c - 1);
@@ -132,7 +132,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn register_candidate(c: Liner<1, { T::MaxCandidates::get() }>) {
+	fn register_candidate(c: Linear<1, { T::MaxCandidates::get() }>) {
 		CandidacyBond::<T>::put(T::Currency::minimum_balance());
 		DesiredCandidates::<T>::put(c);
 		register_candidates::<T>(c - 1);
@@ -158,7 +158,7 @@ mod benchmarks {
 
 	// worse case is the last candidate leaving.
 	#[benchmark]
-	fn leave_intent(c: Liner<{ T::MinCandidates::get() + 1 }, { T::MaxCandidates::get() }>) {
+	fn leave_intent(c: Linear<{ T::MinCandidates::get() + 1 }, { T::MaxCandidates::get() }>) {
 		CandidacyBond::<T>::put(T::Currency::minimum_balance());
 		DesiredCandidates::<T>::put(c);
 		register_candidates::<T>(c);
@@ -236,8 +236,8 @@ mod benchmarks {
 
 	#[benchmark]
 	fn start_session(
-		r: Liner<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>,
-		c: Liner<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>,
+		r: Linear<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>,
+		c: Linear<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>,
 	) {
 		CandidacyBond::<T>::put(T::Currency::minimum_balance());
 		DesiredCandidates::<T>::put(c);
@@ -261,8 +261,8 @@ mod benchmarks {
 
 	#[benchmark]
 	fn end_session(
-		c: Liner<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>,
-		r: Liner<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>,
+		c: Linear<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>,
+		r: Linear<{ T::MinCandidates::get() }, { T::MaxCandidates::get() }>,
 	) {
 		CandidacyBond::<T>::put(T::Currency::minimum_balance());
 		DesiredCandidates::<T>::put(c);

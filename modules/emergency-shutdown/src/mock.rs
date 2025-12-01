@@ -75,6 +75,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -200,6 +202,8 @@ impl module_cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 ord_parameter_types! {

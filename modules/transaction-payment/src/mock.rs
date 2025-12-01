@@ -142,6 +142,8 @@ impl module_currencies::Config for Runtime {
 	type GasToWeight = ();
 	type SweepOrigin = EnsureSignedBy<Zero, AccountId>;
 	type OnDust = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 ord_parameter_types! {
@@ -171,6 +173,8 @@ impl module_dex::Config for Runtime {
 	type ListingOrigin = EnsureSignedBy<Zero, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
 	type OnLiquidityPoolUpdated = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl module_aggregated_dex::Config for Runtime {
@@ -180,6 +184,8 @@ impl module_aggregated_dex::Config for Runtime {
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {

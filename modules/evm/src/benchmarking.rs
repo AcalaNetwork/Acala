@@ -322,7 +322,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn set_code(c: Liner<0, { MaxCodeSize::get() }>) {
+	fn set_code(c: Linear<0, { MaxCodeSize::get() }>) {
 		let alice_account = alice_account_id::<T>();
 		let _ = <T as Config>::Currency::deposit_creating(&alice_account, 1_000_000_000_000_000);
 

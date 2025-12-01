@@ -120,7 +120,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn update_incentive_rewards(c: Liner<0, { T::BenchmarkHelper::setup_collateral_currency_ids().len() as u32 }>) {
+	fn update_incentive_rewards(c: Linear<0, { T::BenchmarkHelper::setup_collateral_currency_ids().len() as u32 }>) {
 		let currency_ids = T::BenchmarkHelper::setup_collateral_currency_ids();
 		let mut updates = vec![];
 

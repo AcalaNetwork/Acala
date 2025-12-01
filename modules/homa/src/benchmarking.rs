@@ -34,7 +34,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn on_initialize_with_bump_era(n: Liner<1, 50>) {
+	fn on_initialize_with_bump_era(n: Linear<1, 50>) {
 		let minter: T::AccountId = account("minter", 0, 0);
 		let sub_account_index = T::ActiveSubAccountsIndexList::get().first().unwrap().clone();
 		let mint_amount = T::MintThreshold::get();
@@ -137,7 +137,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn fast_match_redeems(n: Liner<1, 50>) {
+	fn fast_match_redeems(n: Linear<1, 50>) {
 		let caller: T::AccountId = account("caller", 0, 0);
 		let minter: T::AccountId = account("minter", 0, 0);
 		let mint_amount = 1_000_000_000_000_000;
@@ -226,7 +226,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn reset_ledgers(n: Liner<0, 10>) {
+	fn reset_ledgers(n: Linear<0, 10>) {
 		let mut updates: Vec<(u16, Option<Balance>, Option<Vec<UnlockChunk>>)> = vec![];
 		for i in 0..n {
 			updates.push((

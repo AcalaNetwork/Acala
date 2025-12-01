@@ -57,6 +57,7 @@ hex = { workspace = true, features = ["std"] }
 env_logger = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }
 pallet-utility = { workspace = true, features = ["std"] }
+module-evm-accounts = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
@@ -94,6 +95,8 @@ runtime-benchmarks = [
 	"libsecp256k1/hmac",
 	"frame-benchmarking/runtime-benchmarks",
 	"module-evm-accounts/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
+	"module-idle-scheduler/runtime-benchmarks",
 ]
 try-runtime = [
 	"frame-support/try-runtime",
@@ -113,7 +116,7 @@ wasm-bench = [
 	"module-dex",
 	"module-idle-scheduler",
 	"orml-currencies",
-	"orml-tokens",
+	"orml-tokens/runtime-benchmarks",
 	"pallet-balances",
 	"serde_json",
 	"sp-runtime/runtime-benchmarks",

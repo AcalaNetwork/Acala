@@ -45,7 +45,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn swap_with_exact_supply(u: Liner<2, { <T as module_dex::Config>::TradingPathLimit::get() }>) {
+	fn swap_with_exact_supply(u: Linear<2, { <T as module_dex::Config>::TradingPathLimit::get() }>) {
 		let taker: T::AccountId = account("taker", 0, 0);
 
 		let (path, supply_amount, _target_amount) =
@@ -61,7 +61,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn swap_with_exact_target(u: Liner<2, { <T as module_dex::Config>::TradingPathLimit::get() }>) {
+	fn swap_with_exact_target(u: Linear<2, { <T as module_dex::Config>::TradingPathLimit::get() }>) {
 		let taker: T::AccountId = account("taker", 0, 0);
 
 		let (path, supply_amount, target_amount) = <T as Config>::BenchmarkHelper::setup_dex(u, taker.clone()).unwrap();

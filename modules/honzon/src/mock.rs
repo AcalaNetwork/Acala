@@ -210,6 +210,8 @@ impl module_cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -310,6 +312,8 @@ impl module_cdp_engine::Config for Runtime {
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type SettleErc20EvmOrigin = SettleErc20EvmOrigin;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

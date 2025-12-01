@@ -72,6 +72,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 ord_parameter_types! {
@@ -97,6 +99,8 @@ impl module_dex::Config for Runtime {
 	type ListingOrigin = EnsureSignedBy<Admin, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
 	type OnLiquidityPoolUpdated = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 pub struct EnsurePoolAssetId;
@@ -163,6 +167,8 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<Admin, AccountId>;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {

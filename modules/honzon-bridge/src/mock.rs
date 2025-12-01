@@ -77,6 +77,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -121,6 +123,8 @@ impl module_currencies::Config for Runtime {
 	type GasToWeight = ();
 	type SweepOrigin = EnsureRoot<AccountId>;
 	type OnDust = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {

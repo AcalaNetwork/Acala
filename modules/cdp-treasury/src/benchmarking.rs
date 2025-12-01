@@ -37,7 +37,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn auction_collateral(b: Liner<1, { T::MaxAuctionsCount::get() }>) {
+	fn auction_collateral(b: Linear<1, { T::MaxAuctionsCount::get() }>) {
 		let amount = 1_000_000_000_000_000u128;
 		let auction_size = (1_000 * amount) / b as u128;
 
