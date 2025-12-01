@@ -1,0 +1,46 @@
+name: Polka Codes Review PR Handler
+
+on:
+  pull_request:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: review-pr-${{ github.event.inputs.pr_number || github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  handle:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Process PR
+        uses: polka-codes/action@master
+        with:
+          pr_number: ${{ github.event.inputs.pr_number || github.event.number }}
+          review: true
+          config: .github/review.polkacodes.yml
+        env:
+          POLKA_API_PROVIDER: google-vertex
+          POLKA_MODEL: gemini-3-pro-preview
+          GITHUB_TOKEN: ${{ github.token }}
+          GOOGLE_VERTEX_LOCATION: us-central1
+          GOOGLE_VERTEX_PROJECT: ${{ secrets.GOOGLE_VERTEX_PROJECT }}
