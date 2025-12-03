@@ -49,10 +49,14 @@ use sp_std::{boxed::Box, vec::Vec};
 
 use xcm::{v3, v4, v5::prelude::*, VersionedLocation};
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -80,6 +84,9 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper;
 	}
 
 	#[pallet::error]
@@ -201,7 +208,7 @@ pub mod module {
 			location: Box<VersionedLocation>,
 			metadata: Box<AssetMetadata<BalanceOf<T>>>,
 		) -> DispatchResult {
-			T::RegisterOrigin::ensure_origin(origin)?;
+			T::RegisterOrigin::ensure_origin_or_root(origin)?;
 
 			let location: Location = (*location).try_into().map_err(|()| Error::<T>::BadLocation)?;
 			let foreign_asset_id = Self::do_register_foreign_asset(&location, &metadata)?;
@@ -222,7 +229,7 @@ pub mod module {
 			location: Box<VersionedLocation>,
 			metadata: Box<AssetMetadata<BalanceOf<T>>>,
 		) -> DispatchResult {
-			T::RegisterOrigin::ensure_origin(origin)?;
+			T::RegisterOrigin::ensure_origin_or_root(origin)?;
 
 			let location: Location = (*location).try_into().map_err(|()| Error::<T>::BadLocation)?;
 			Self::do_update_foreign_asset(foreign_asset_id, &location, &metadata)?;
@@ -241,7 +248,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			metadata: Box<AssetMetadata<BalanceOf<T>>>,
 		) -> DispatchResult {
-			T::RegisterOrigin::ensure_origin(origin)?;
+			T::RegisterOrigin::ensure_origin_or_root(origin)?;
 
 			let stable_asset_id = Self::do_register_stable_asset(&metadata)?;
 
@@ -259,7 +266,7 @@ pub mod module {
 			stable_asset_id: StableAssetPoolId,
 			metadata: Box<AssetMetadata<BalanceOf<T>>>,
 		) -> DispatchResult {
-			T::RegisterOrigin::ensure_origin(origin)?;
+			T::RegisterOrigin::ensure_origin_or_root(origin)?;
 
 			Self::do_update_stable_asset(&stable_asset_id, &metadata)?;
 
@@ -277,7 +284,7 @@ pub mod module {
 			contract: EvmAddress,
 			minimal_balance: BalanceOf<T>,
 		) -> DispatchResult {
-			T::RegisterOrigin::ensure_origin(origin)?;
+			T::RegisterOrigin::ensure_origin_or_root(origin)?;
 
 			let metadata = Self::do_register_erc20_asset(contract, minimal_balance)?;
 
@@ -295,7 +302,7 @@ pub mod module {
 			contract: EvmAddress,
 			metadata: Box<AssetMetadata<BalanceOf<T>>>,
 		) -> DispatchResult {
-			T::RegisterOrigin::ensure_origin(origin)?;
+			T::RegisterOrigin::ensure_origin_or_root(origin)?;
 
 			Self::do_update_erc20_asset(contract, &metadata)?;
 
@@ -313,7 +320,7 @@ pub mod module {
 			currency_id: CurrencyId,
 			metadata: Box<AssetMetadata<BalanceOf<T>>>,
 		) -> DispatchResult {
-			T::RegisterOrigin::ensure_origin(origin)?;
+			T::RegisterOrigin::ensure_origin_or_root(origin)?;
 
 			Self::do_register_native_asset(currency_id, &metadata)?;
 
@@ -331,7 +338,7 @@ pub mod module {
 			currency_id: CurrencyId,
 			metadata: Box<AssetMetadata<BalanceOf<T>>>,
 		) -> DispatchResult {
-			T::RegisterOrigin::ensure_origin(origin)?;
+			T::RegisterOrigin::ensure_origin_or_root(origin)?;
 
 			Self::do_update_native_asset(currency_id, &metadata)?;
 

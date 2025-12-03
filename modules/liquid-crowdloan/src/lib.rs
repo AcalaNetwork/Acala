@@ -29,6 +29,8 @@ use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::AccountIdConversion, ArithmeticError};
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
@@ -102,7 +104,7 @@ pub mod module {
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_redeem_currency_id())]
 		pub fn set_redeem_currency_id(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
+			T::GovernanceOrigin::ensure_origin_or_root(origin)?;
 
 			<RedeemCurrencyId<T>>::put(currency_id);
 

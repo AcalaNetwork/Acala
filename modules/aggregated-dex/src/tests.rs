@@ -30,30 +30,6 @@ fn set_dex_swap_joint_list(joints: Vec<Vec<CurrencyId>>) {
 	DexSwapJointList::set(joints);
 }
 
-fn inject_liquidity(
-	currency_id_a: CurrencyId,
-	currency_id_b: CurrencyId,
-	max_amount_a: Balance,
-	max_amount_b: Balance,
-) -> Result<(), &'static str> {
-	// set balance
-	Tokens::deposit(currency_id_a, &BOB, max_amount_a)?;
-	Tokens::deposit(currency_id_b, &BOB, max_amount_b)?;
-
-	let _ = Dex::enable_trading_pair(RuntimeOrigin::signed(BOB.clone()), currency_id_a, currency_id_b);
-	Dex::add_liquidity(
-		RuntimeOrigin::signed(BOB),
-		currency_id_a,
-		currency_id_b,
-		max_amount_a,
-		max_amount_b,
-		Default::default(),
-		false,
-	)?;
-
-	Ok(())
-}
-
 fn initial_taiga_dot_ldot_pool() -> DispatchResult {
 	StableAssetWrapper::create_pool(
 		STABLE_ASSET,

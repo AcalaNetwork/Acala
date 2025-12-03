@@ -140,6 +140,8 @@ impl orml_tokens::Config for Test {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(any(feature = "wasm-bench", feature = "runtime-benchmarks"))]
+	type BenchmarkHelper = ();
 }
 
 impl pallet_balances::Config for Test {
@@ -183,6 +185,8 @@ impl module_currencies::Config for Test {
 	type GasToWeight = ();
 	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type OnDust = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl module_evm_bridge::Config for Test {
@@ -195,6 +199,8 @@ impl module_asset_registry::Config for Test {
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
 	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 define_combined_task! {
@@ -225,6 +231,8 @@ impl module_idle_scheduler::Config for Test {
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
 	type DisableBlockThreshold = ConstU32<6>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {
@@ -284,6 +292,8 @@ impl module_transaction_payment::Config for Test {
 	type CustomFeeSurplus = CustomFeeSurplus;
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 #[derive(
@@ -401,6 +411,8 @@ impl module_dex::Config for Test {
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU32<0>;
 	type OnLiquidityPoolUpdated = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {
@@ -467,6 +479,8 @@ impl module_cdp_engine::Config for Test {
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
 	type SettleErc20EvmOrigin = SettleErc20EvmOrigin;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 pub struct MockAuctionManager;
@@ -524,6 +538,8 @@ impl module_cdp_treasury::Config for Test {
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 	type Swap = SpecificJointsSwap<DexModule, AlternativeSwapPathJointList>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl module_honzon::Config for Test {
@@ -531,6 +547,8 @@ impl module_honzon::Config for Test {
 	type DepositPerAuthorization = ConstU128<100>;
 	type CollateralCurrencyIds = CollateralCurrencyIds<Test>;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {
@@ -558,6 +576,8 @@ impl nutsfinance_stable_asset::Config for Test {
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl module_transaction_pause::Config for Test {
@@ -676,6 +696,8 @@ impl module_prices::Config for Test {
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type PricingPegged = PricingPegged;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 /// mock XCM transfer.
@@ -783,6 +805,8 @@ impl module_incentives::Config for Test {
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {
@@ -983,6 +1007,8 @@ impl module_earning::Config for Test {
 	type MaxUnbondingChunks = ConstU32<10>;
 	type LockIdentifier = EarningLockIdentifier;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);

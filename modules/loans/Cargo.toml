@@ -39,6 +39,13 @@ std = [
 	"sp-std/std",
 	"module-support/std",
 ]
+runtime-benchmarks = [
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
+	"module-cdp-treasury/runtime-benchmarks",
+]
 try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",

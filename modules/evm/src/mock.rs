@@ -26,6 +26,7 @@ use frame_support::{
 	ConsensusEngineId,
 };
 use frame_system::EnsureSignedBy;
+use module_evm_accounts::EvmAddressMapping;
 use module_support::mocks::{MockAddressMapping, TestRandomness};
 use orml_traits::parameter_type_with_key;
 use primitives::{define_combined_task, Amount, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
@@ -91,6 +92,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(any(feature = "wasm-bench", feature = "runtime-benchmarks"))]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {
@@ -133,6 +136,8 @@ impl module_idle_scheduler::Config for Runtime {
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
 	type DisableBlockThreshold = ConstU32<6>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl pallet_utility::Config for Runtime {
@@ -173,7 +178,7 @@ ord_parameter_types! {
 	pub const StorageDepositPerByte: Balance = convert_decimals_to_evm(10);
 }
 
-pub const NEW_CONTRACT_EXTRA_BYTES: u32 = 100;
+pub const NEW_CONTRACT_EXTRA_BYTES: u32 = 10000;
 pub const DEVELOPER_DEPOSIT: u128 = 1000;
 pub const PUBLICATION_FEE: u128 = 200;
 impl Config for Runtime {
@@ -204,6 +209,14 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl module_evm_accounts::Config for Runtime {
+	type Currency = Balances;
+	type AddressMapping = EvmAddressMapping<Runtime>;
+	type ChainId = ConstU64<1>;
+	type TransferAll = ();
+	type WeightInfo = ();
+}
+
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
@@ -211,6 +224,7 @@ construct_runtime!(
 		System: frame_system,
 		Timestamp: pallet_timestamp,
 		EVM: evm_mod,
+		EvmAccounts: module_evm_accounts,
 		Tokens: orml_tokens,
 		Balances: pallet_balances,
 		Currencies: orml_currencies,

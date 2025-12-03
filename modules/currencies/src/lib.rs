@@ -51,10 +51,14 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, marker, result, vec::Vec};
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -111,6 +115,9 @@ pub mod module {
 
 		/// Handler to burn or transfer account's dust
 		type OnDust: OnDust<Self::AccountId, CurrencyId, BalanceOf<Self>>;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<Self::AccountId, CurrencyId, BalanceOf<Self>>;
 	}
 
 	#[pallet::error]
@@ -231,7 +238,7 @@ pub mod module {
 			currency_id: CurrencyId,
 			accounts: Vec<T::AccountId>,
 		) -> DispatchResult {
-			T::SweepOrigin::ensure_origin(origin)?;
+			T::SweepOrigin::ensure_origin_or_root(origin)?;
 			if let CurrencyId::Erc20(_) = currency_id {
 				return Err(Error::<T>::Erc20InvalidOperation.into());
 			}

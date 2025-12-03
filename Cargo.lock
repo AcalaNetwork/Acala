@@ -96,7 +96,6 @@ dependencies = [
  "nutsfinance-stable-asset",
  "orml-auction",
  "orml-authority",
- "orml-benchmarking",
  "orml-nft",
  "orml-oracle",
  "orml-oracle-runtime-api",
@@ -154,6 +153,7 @@ dependencies = [
  "sp-session",
  "sp-staking 39.0.0",
  "sp-std",
+ "sp-storage",
  "sp-transaction-pool",
  "sp-version 40.0.0",
  "staging-parachain-info",
@@ -3899,7 +3899,6 @@ dependencies = [
  "nutsfinance-stable-asset",
  "orml-auction",
  "orml-authority",
- "orml-benchmarking",
  "orml-nft",
  "orml-oracle",
  "orml-oracle-runtime-api",
@@ -3957,6 +3956,7 @@ dependencies = [
  "sp-session",
  "sp-staking 39.0.0",
  "sp-std",
+ "sp-storage",
  "sp-transaction-pool",
  "sp-version 40.0.0",
  "staging-parachain-info",
@@ -4361,7 +4361,6 @@ dependencies = [
  "nutsfinance-stable-asset",
  "orml-auction",
  "orml-authority",
- "orml-benchmarking",
  "orml-nft",
  "orml-oracle",
  "orml-oracle-runtime-api",
@@ -4424,6 +4423,7 @@ dependencies = [
  "sp-session",
  "sp-staking 39.0.0",
  "sp-std",
+ "sp-storage",
  "sp-transaction-pool",
  "sp-trie 40.0.0",
  "sp-version 40.0.0",
@@ -4570,6 +4570,7 @@ name = "module-aggregated-dex"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "module-dex",
@@ -4591,6 +4592,7 @@ name = "module-asset-registry"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "hex",
@@ -4632,6 +4634,7 @@ name = "module-auction-manager"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
@@ -4656,6 +4659,7 @@ name = "module-cdp-engine"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
@@ -4688,6 +4692,7 @@ name = "module-cdp-treasury"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
@@ -4737,6 +4742,7 @@ name = "module-currencies"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "hex",
@@ -4772,6 +4778,7 @@ name = "module-dex"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
@@ -4811,6 +4818,7 @@ name = "module-earning"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "module-support",
@@ -4829,6 +4837,7 @@ name = "module-emergency-shutdown"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "module-cdp-treasury",
@@ -4859,8 +4868,10 @@ dependencies = [
  "hex",
  "hex-literal",
  "insta",
+ "libsecp256k1",
  "log",
  "module-dex",
+ "module-evm-accounts",
  "module-evm-utility",
  "module-idle-scheduler",
  "module-support",
@@ -4883,7 +4894,6 @@ dependencies = [
  "sp-io 41.0.1",
  "sp-runtime 42.0.0",
  "sp-std",
- "staging-xcm-builder",
  "substrate-bn",
  "tiny-keccak",
  "wasm-bencher",
@@ -4894,6 +4904,7 @@ name = "module-evm-accounts"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "libsecp256k1",
@@ -4999,6 +5010,7 @@ name = "module-homa-validator-list"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "module-support",
@@ -5020,6 +5032,7 @@ name = "module-honzon"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "module-cdp-engine",
@@ -5047,6 +5060,7 @@ name = "module-honzon-bridge"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "hex",
@@ -5073,6 +5087,7 @@ name = "module-idle-scheduler"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
@@ -5090,6 +5105,7 @@ name = "module-incentives"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
@@ -5111,6 +5127,7 @@ name = "module-liquid-crowdloan"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "module-currencies",
@@ -5178,6 +5195,7 @@ name = "module-nominees-election"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
@@ -5199,6 +5217,7 @@ name = "module-prices"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "module-support",
@@ -5216,6 +5235,7 @@ dependencies = [
 name = "module-session-manager"
 version = "2.32.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
@@ -5254,6 +5274,7 @@ name = "module-transaction-pause"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "hex-literal",
@@ -5276,6 +5297,7 @@ name = "module-transaction-payment"
 version = "2.32.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
@@ -5510,6 +5532,7 @@ dependencies = [
 name = "nutsfinance-stable-asset"
 version = "0.1.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "pallet-balances",
@@ -5599,6 +5622,7 @@ dependencies = [
 name = "orml-auction"
 version = "1.5.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "orml-traits",
@@ -5615,6 +5639,7 @@ dependencies = [
 name = "orml-authority"
 version = "1.5.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "pallet-preimage",
@@ -5782,6 +5807,7 @@ dependencies = [
 name = "orml-tokens"
 version = "1.5.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "log",
@@ -5866,6 +5892,7 @@ dependencies = [
 name = "orml-vesting"
 version = "1.5.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support 41.0.0",
  "frame-system",
  "pallet-balances",

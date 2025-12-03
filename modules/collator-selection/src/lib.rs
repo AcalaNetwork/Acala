@@ -65,9 +65,10 @@
 
 pub use pallet::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod mock;
-
 #[cfg(test)]
 mod tests;
 
@@ -287,7 +288,7 @@ pub mod pallet {
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::set_invulnerables(new.len() as u32))]
 		pub fn set_invulnerables(origin: OriginFor<T>, new: Vec<T::AccountId>) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			let bounded_new: BoundedVec<T::AccountId, T::MaxInvulnerables> =
 				new.try_into().map_err(|_| Error::<T>::MaxInvulnerablesExceeded)?;
 			<Invulnerables<T>>::put(&bounded_new);
@@ -300,7 +301,7 @@ pub mod pallet {
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::set_desired_candidates())]
 		pub fn set_desired_candidates(origin: OriginFor<T>, #[pallet::compact] max: u32) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			if max > T::MaxCandidates::get() {
 				Err(Error::<T>::MaxCandidatesExceeded)?;
 			}
@@ -314,7 +315,7 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::set_candidacy_bond())]
 		pub fn set_candidacy_bond(origin: OriginFor<T>, #[pallet::compact] bond: BalanceOf<T>) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			<CandidacyBond<T>>::put(bond);
 			Self::deposit_event(Event::NewCandidacyBond {
 				new_candidacy_bond: bond,
@@ -344,7 +345,7 @@ pub mod pallet {
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::register_candidate(T::MaxCandidates::get()))]
 		pub fn register_candidate(origin: OriginFor<T>, new_candidate: T::AccountId) -> DispatchResultWithPostInfo {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 
 			let bounded_candidates_len = Self::do_register_candidate(&new_candidate, Zero::zero())?;
 

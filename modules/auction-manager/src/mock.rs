@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{
-	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	assert_ok, construct_runtime, derive_impl, ord_parameter_types, parameter_types,
 	traits::{ConstU32, ConstU64, Nothing},
 	PalletId,
 };
@@ -79,6 +79,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl orml_auction::Config for Runtime {
@@ -86,6 +88,8 @@ impl orml_auction::Config for Runtime {
 	type AuctionId = AuctionId;
 	type Handler = AuctionManagerModule;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 ord_parameter_types! {
@@ -114,6 +118,8 @@ impl module_cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {
@@ -159,6 +165,8 @@ impl module_dex::Config for Runtime {
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
 	type OnLiquidityPoolUpdated = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {
@@ -180,6 +188,20 @@ parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(1, 20);
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper for MockBenchmarkHelper {
+	fn setup() -> Option<AuctionId> {
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
+
+		assert_ok!(AuctionModule::bid(RuntimeOrigin::signed(BOB), 0, 80));
+
+		mock_shutdown();
+		Some(0)
+	}
+}
+
 impl Config for Runtime {
 	type Currency = Tokens;
 	type Auction = AuctionModule;
@@ -192,6 +214,8 @@ impl Config for Runtime {
 	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;

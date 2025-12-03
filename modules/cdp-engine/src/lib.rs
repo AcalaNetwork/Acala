@@ -66,10 +66,14 @@ use sp_runtime::{
 };
 use sp_std::{marker::PhantomData, prelude::*};
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -219,6 +223,9 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<CurrencyId, BlockNumberFor<Self>, <Self::Lookup as StaticLookup>::Source>;
 	}
 
 	#[pallet::error]
@@ -497,7 +504,7 @@ pub mod module {
 			required_collateral_ratio: ChangeOptionRatio,
 			maximum_total_debit_value: ChangeBalance,
 		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 
 			let mut collateral_params = Self::collateral_params(currency_id).unwrap_or_default();
 			if let Change::NewValue(maybe_rate) = interest_rate_per_sec {
@@ -556,7 +563,7 @@ pub mod module {
 		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::register_liquidation_contract())]
 		pub fn register_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
-			T::LiquidationContractsUpdateOrigin::ensure_origin(origin)?;
+			T::LiquidationContractsUpdateOrigin::ensure_origin_or_root(origin)?;
 			LiquidationContracts::<T>::try_append(address).map_err(|()| Error::<T>::TooManyLiquidationContracts)?;
 			Self::deposit_event(Event::LiquidationContractRegistered { address });
 			Ok(())
@@ -565,7 +572,7 @@ pub mod module {
 		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::deregister_liquidation_contract())]
 		pub fn deregister_liquidation_contract(origin: OriginFor<T>, address: EvmAddress) -> DispatchResult {
-			T::LiquidationContractsUpdateOrigin::ensure_origin(origin)?;
+			T::LiquidationContractsUpdateOrigin::ensure_origin_or_root(origin)?;
 			LiquidationContracts::<T>::mutate(|contracts| {
 				contracts.retain(|c| c != &address);
 			});

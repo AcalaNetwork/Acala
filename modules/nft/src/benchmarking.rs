@@ -18,22 +18,18 @@
 
 //! Benchmarks for the nft module.
 
-#![cfg(feature = "runtime-benchmarks")]
-
-use sp_std::vec;
-
-use frame_benchmarking::{account, benchmarks};
-use frame_support::{dispatch::DispatchClass, dispatch::DispatchErrorWithPostInfo, traits::Get};
+use super::*;
+use frame_benchmarking::v2::*;
+use frame_support::assert_ok;
+use frame_support::{dispatch::DispatchClass, traits::Get};
 use frame_system::RawOrigin;
 use sp_runtime::traits::{AccountIdConversion, StaticLookup, UniqueSaturatedInto};
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::vec;
 
-pub use crate::*;
 use primitives::Balance;
 
 pub struct Module<T: Config>(crate::Pallet<T>);
-
-const SEED: u32 = 0;
 
 fn dollar(d: u32) -> Balance {
 	let d: Balance = d.into();
@@ -48,13 +44,14 @@ fn test_attr() -> Attributes {
 	attr
 }
 
-fn create_token_class<T: Config>(caller: T::AccountId) -> Result<T::AccountId, DispatchErrorWithPostInfo> {
+fn create_token_class<T: Config>(caller: T::AccountId) -> T::AccountId {
 	let base_currency_amount = dollar(1000);
-	<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+	<T as Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 	let module_account: T::AccountId =
 		T::PalletId::get().into_sub_account_truncating(orml_nft::Pallet::<T>::next_class_id());
-	crate::Pallet::<T>::create_class(
+
+	assert_ok!(Pallet::<T>::create_class(
 		RawOrigin::Signed(caller).into(),
 		vec![1],
 		Properties(
@@ -64,260 +61,147 @@ fn create_token_class<T: Config>(caller: T::AccountId) -> Result<T::AccountId, D
 				| ClassProperty::ClassPropertiesMutable,
 		),
 		test_attr(),
-	)?;
+	));
 
-	<T as module::Config>::Currency::make_free_balance_be(
-		&module_account,
-		base_currency_amount.unique_saturated_into(),
-	);
+	<T as Config>::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
 
-	Ok(module_account)
+	module_account
 }
 
-benchmarks! {
+#[benchmarks]
+mod benchmarks {
+	use super::*;
+
 	// create NFT class
-	create_class {
-		let caller: T::AccountId = account("caller", 0, SEED);
+	#[benchmark]
+	fn create_class() {
+		let caller: T::AccountId = account("caller", 0, 0);
 		let base_currency_amount = dollar(1000);
 
-		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
-	}: _(RawOrigin::Signed(caller), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable), test_attr())
+		<T as Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+
+		#[extrinsic_call]
+		_(
+			RawOrigin::Signed(caller),
+			vec![1],
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+			test_attr(),
+		);
+	}
 
 	// mint NFT token
-	mint {
-		let i in 1 .. 1000;
-
-		let caller: T::AccountId = account("caller", 0, SEED);
-		let to: T::AccountId = account("to", 0, SEED);
+	#[benchmark]
+	fn mint(i: Linear<1, 1000>) {
+		let caller: T::AccountId = account("caller", 0, 0);
+		let to: T::AccountId = account("to", 0, 0);
 		let to_lookup = T::Lookup::unlookup(to);
 
-		let module_account = create_token_class::<T>(caller)?;
-	}: _(RawOrigin::Signed(module_account), to_lookup, 0u32.into(), vec![1], test_attr(), i)
+		let module_account = create_token_class::<T>(caller);
+
+		#[extrinsic_call]
+		_(
+			RawOrigin::Signed(module_account),
+			to_lookup,
+			0u32.into(),
+			vec![1],
+			test_attr(),
+			i,
+		);
+	}
 
 	// transfer NFT token to another account
-	transfer {
-		let caller: T::AccountId = account("caller", 0, SEED);
+	#[benchmark]
+	fn transfer() {
+		let caller: T::AccountId = account("caller", 0, 0);
 		let caller_lookup = T::Lookup::unlookup(caller.clone());
-		let to: T::AccountId = account("to", 0, SEED);
+		let to: T::AccountId = account("to", 0, 0);
 		let to_lookup = T::Lookup::unlookup(to.clone());
 
-		let module_account = create_token_class::<T>(caller)?;
+		let module_account = create_token_class::<T>(caller);
 
-		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], test_attr(), 1)?;
-	}: _(RawOrigin::Signed(to), caller_lookup, (0u32.into(), 0u32.into()))
+		assert_ok!(Pallet::<T>::mint(
+			RawOrigin::Signed(module_account).into(),
+			to_lookup,
+			0u32.into(),
+			vec![1],
+			test_attr(),
+			1
+		));
+
+		#[extrinsic_call]
+		_(RawOrigin::Signed(to), caller_lookup, (0u32.into(), 0u32.into()));
+	}
 
 	// burn NFT token
-	burn {
-		let caller: T::AccountId = account("caller", 0, SEED);
-		let to: T::AccountId = account("to", 0, SEED);
+	#[benchmark]
+	fn burn() {
+		let caller: T::AccountId = account("caller", 0, 0);
+		let to: T::AccountId = account("to", 0, 0);
 		let to_lookup = T::Lookup::unlookup(to.clone());
 
-		let module_account = create_token_class::<T>(caller)?;
+		let module_account = create_token_class::<T>(caller);
 
-		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], test_attr(), 1)?;
-	}: _(RawOrigin::Signed(to), (0u32.into(), 0u32.into()))
+		assert_ok!(Pallet::<T>::mint(
+			RawOrigin::Signed(module_account).into(),
+			to_lookup,
+			0u32.into(),
+			vec![1],
+			test_attr(),
+			1
+		));
+
+		#[extrinsic_call]
+		_(RawOrigin::Signed(to), (0u32.into(), 0u32.into()));
+	}
 
 	// burn NFT token with remark
-	burn_with_remark {
-		let b in 0 .. *T::BlockLength::get().max.get(DispatchClass::Normal) as u32;
+	#[benchmark]
+	fn burn_with_remark(b: Linear<0, { *T::BlockLength::get().max.get(DispatchClass::Normal) as u32 }>) {
 		let remark_message = vec![1; b as usize];
-		let caller: T::AccountId = account("caller", 0, SEED);
-		let to: T::AccountId = account("to", 0, SEED);
+		let caller: T::AccountId = account("caller", 0, 0);
+		let to: T::AccountId = account("to", 0, 0);
 		let to_lookup = T::Lookup::unlookup(to.clone());
 
-		let module_account = create_token_class::<T>(caller)?;
+		let module_account = create_token_class::<T>(caller);
 
-		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], test_attr(), 1)?;
-	}: _(RawOrigin::Signed(to), (0u32.into(), 0u32.into()), remark_message)
+		assert_ok!(Pallet::<T>::mint(
+			RawOrigin::Signed(module_account).into(),
+			to_lookup,
+			0u32.into(),
+			vec![1],
+			test_attr(),
+			1
+		));
+
+		#[extrinsic_call]
+		_(RawOrigin::Signed(to), (0u32.into(), 0u32.into()), remark_message);
+	}
 
 	// destroy NFT class
-	destroy_class {
-		let caller: T::AccountId = account("caller", 0, SEED);
+	#[benchmark]
+	fn destroy_class() {
+		let caller: T::AccountId = account("caller", 0, 0);
 		let caller_lookup = T::Lookup::unlookup(caller.clone());
 
-		let base_currency_amount = dollar(1000);
+		let module_account = create_token_class::<T>(caller);
 
-		let module_account = create_token_class::<T>(caller)?;
-
-	}: _(RawOrigin::Signed(module_account), 0u32.into(), caller_lookup)
-
-	update_class_properties {
-		let caller: T::AccountId = account("caller", 0, SEED);
-		let to: T::AccountId = account("to", 0, SEED);
-		let to_lookup = T::Lookup::unlookup(to);
-
-		let module_account = create_token_class::<T>(caller)?;
-	}: _(RawOrigin::Signed(module_account), 0u32.into(), Properties(ClassProperty::Transferable.into()))
-}
-
-#[cfg(test)]
-mod mock {
-	use super::*;
-	use crate as nft;
-
-	use frame_support::{
-		derive_impl, parameter_types,
-		traits::{ConstU128, ConstU32, Contains, InstanceFilter},
-		PalletId,
-	};
-	use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
-	use sp_core::crypto::AccountId32;
-	use sp_runtime::{
-		traits::{BlakeTwo256, IdentityLookup},
-		BuildStorage, RuntimeDebug,
-	};
-
-	pub type AccountId = AccountId32;
-
-	#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
-	impl frame_system::Config for Runtime {
-		type AccountId = AccountId;
-		type Lookup = IdentityLookup<Self::AccountId>;
-		type Block = Block;
-		type AccountData = pallet_balances::AccountData<Balance>;
-	}
-	impl pallet_balances::Config for Runtime {
-		type Balance = Balance;
-		type RuntimeEvent = RuntimeEvent;
-		type DustRemoval = ();
-		type ExistentialDeposit = ConstU128<1>;
-		type AccountStore = frame_system::Pallet<Runtime>;
-		type MaxLocks = ();
-		type MaxReserves = ConstU32<50>;
-		type ReserveIdentifier = ReserveIdentifier;
-		type WeightInfo = ();
-		type RuntimeHoldReason = RuntimeHoldReason;
-		type RuntimeFreezeReason = RuntimeFreezeReason;
-		type FreezeIdentifier = ();
-		type MaxFreezes = ();
-		type DoneSlashHandler = ();
-	}
-	impl pallet_utility::Config for Runtime {
-		type RuntimeEvent = RuntimeEvent;
-		type RuntimeCall = RuntimeCall;
-		type PalletsOrigin = OriginCaller;
-		type WeightInfo = ();
-	}
-	#[derive(
-		Copy,
-		Clone,
-		Eq,
-		PartialEq,
-		Ord,
-		PartialOrd,
-		Encode,
-		Decode,
-		DecodeWithMemTracking,
-		RuntimeDebug,
-		MaxEncodedLen,
-		TypeInfo,
-	)]
-	pub enum ProxyType {
-		Any,
-		JustTransfer,
-		JustUtility,
-	}
-	impl Default for ProxyType {
-		fn default() -> Self {
-			Self::Any
-		}
-	}
-	impl InstanceFilter<RuntimeCall> for ProxyType {
-		fn filter(&self, c: &RuntimeCall) -> bool {
-			match self {
-				ProxyType::Any => true,
-				ProxyType::JustTransfer => matches!(
-					c,
-					RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death { .. })
-				),
-				ProxyType::JustUtility => matches!(c, RuntimeCall::Utility(..)),
-			}
-		}
-		fn is_superset(&self, o: &Self) -> bool {
-			self == &ProxyType::Any || self == o
-		}
-	}
-	pub struct BaseFilter;
-	impl Contains<RuntimeCall> for BaseFilter {
-		fn contains(c: &RuntimeCall) -> bool {
-			match *c {
-				// Remark is used as a no-op call in the benchmarking
-				RuntimeCall::System(SystemCall::remark { .. }) => true,
-				RuntimeCall::System(_) => false,
-				_ => true,
-			}
-		}
-	}
-	impl pallet_proxy::Config for Runtime {
-		type RuntimeEvent = RuntimeEvent;
-		type RuntimeCall = RuntimeCall;
-		type Currency = Balances;
-		type ProxyType = ProxyType;
-		type ProxyDepositBase = ConstU128<1>;
-		type ProxyDepositFactor = ConstU128<1>;
-		type MaxProxies = ConstU32<4>;
-		type WeightInfo = ();
-		type CallHasher = BlakeTwo256;
-		type MaxPending = ConstU32<2>;
-		type AnnouncementDepositBase = ConstU128<1>;
-		type AnnouncementDepositFactor = ConstU128<1>;
-		type BlockNumberProvider = System;
+		#[extrinsic_call]
+		_(RawOrigin::Signed(module_account), 0u32.into(), caller_lookup);
 	}
 
-	parameter_types! {
-		pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
+	#[benchmark]
+	fn update_class_properties() {
+		let caller: T::AccountId = account("caller", 0, 0);
+
+		let module_account = create_token_class::<T>(caller);
+
+		#[extrinsic_call]
+		_(
+			RawOrigin::Signed(module_account),
+			0u32.into(),
+			Properties(ClassProperty::Transferable.into()),
+		);
 	}
 
-	impl crate::Config for Runtime {
-		type Currency = Balances;
-		type CreateClassDeposit = ConstU128<200>;
-		type CreateTokenDeposit = ConstU128<100>;
-		type DataDepositPerByte = ConstU128<10>;
-		type PalletId = NftPalletId;
-		type MaxAttributesBytes = ConstU32<2048>;
-		type WeightInfo = ();
-	}
-
-	impl orml_nft::Config for Runtime {
-		type ClassId = u32;
-		type TokenId = u64;
-		type ClassData = ClassData<Balance>;
-		type TokenData = TokenData<Balance>;
-		type MaxClassMetadata = ConstU32<1024>;
-		type MaxTokenMetadata = ConstU32<1024>;
-	}
-
-	type Block = frame_system::mocking::MockBlock<Runtime>;
-
-	frame_support::construct_runtime!(
-		pub enum Runtime {
-			System: frame_system,
-			Utility: pallet_utility,
-			Balances: pallet_balances,
-			Proxy: pallet_proxy,
-			OrmlNFT: orml_nft,
-			NFT: nft,
-		}
-	);
-
-	use frame_system::Call as SystemCall;
-
-	pub fn new_test_ext() -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::<Runtime>::default()
-			.build_storage()
-			.unwrap();
-
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
-		ext
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::mock::*;
-	use super::*;
-	use frame_benchmarking::impl_benchmark_test_suite;
-
-	impl_benchmark_test_suite!(Pallet, super::new_test_ext(), super::Runtime,);
+	impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime);
 }

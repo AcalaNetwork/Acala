@@ -101,6 +101,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(feature = "wasm-bench")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {

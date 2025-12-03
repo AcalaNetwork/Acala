@@ -43,10 +43,14 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -100,6 +104,9 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<Self::AccountId, CurrencyId>;
 	}
 
 	#[pallet::error]
@@ -187,7 +194,7 @@ pub mod module {
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::extract_surplus_to_treasury())]
 		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			T::Currency::transfer(
 				T::GetStableCurrencyId::get(),
 				&Self::account_id(),
@@ -221,7 +228,7 @@ pub mod module {
 			#[pallet::compact] target: Balance,
 			split: bool,
 		) -> DispatchResultWithPostInfo {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			let created_auctions = <Self as CDPTreasuryExtended<T::AccountId>>::create_collateral_auctions(
 				currency_id,
 				amount,
@@ -245,7 +252,7 @@ pub mod module {
 			currency_id: CurrencyId,
 			swap_limit: SwapLimit<Balance>,
 		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			// the supply collateral must not be occupied by the auction.
 			Self::swap_collateral_to_stable(currency_id, swap_limit, false)?;
 			Ok(())
@@ -265,7 +272,7 @@ pub mod module {
 			currency_id: CurrencyId,
 			#[pallet::compact] size: Balance,
 		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			ExpectedCollateralAuctionSize::<T>::insert(currency_id, size);
 			Self::deposit_event(Event::ExpectedCollateralAuctionSizeUpdated {
 				collateral_type: currency_id,
@@ -282,7 +289,7 @@ pub mod module {
 		#[pallet::call_index(4)]
 		#[pallet::weight((T::WeightInfo::set_expected_collateral_auction_size(), DispatchClass::Operational))]
 		pub fn set_debit_offset_buffer(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			DebitOffsetBuffer::<T>::mutate(|v| {
 				if *v != amount {
 					*v = amount;

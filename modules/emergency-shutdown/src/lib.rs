@@ -39,10 +39,14 @@ use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Zero, FixedPointNumber};
 use sp_std::prelude::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -71,6 +75,9 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper;
 	}
 
 	#[pallet::error]
@@ -130,7 +137,7 @@ pub mod module {
 		#[pallet::call_index(0)]
 		#[pallet::weight((T::WeightInfo::emergency_shutdown(T::CollateralCurrencyIds::get().len() as u32), DispatchClass::Operational))]
 		pub fn emergency_shutdown(origin: OriginFor<T>) -> DispatchResult {
-			T::ShutdownOrigin::ensure_origin(origin)?;
+			T::ShutdownOrigin::ensure_origin_or_root(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
 			// get all collateral types
@@ -155,7 +162,7 @@ pub mod module {
 		#[pallet::call_index(1)]
 		#[pallet::weight((T::WeightInfo::open_collateral_refund(), DispatchClass::Operational))]
 		pub fn open_collateral_refund(origin: OriginFor<T>) -> DispatchResult {
-			T::ShutdownOrigin::ensure_origin(origin)?;
+			T::ShutdownOrigin::ensure_origin_or_root(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown); // must after shutdown
 
 			// Ensure all debits of CDPs have been settled, and all collateral auction has

@@ -39,6 +39,7 @@ wasm-bencher = { workspace = true, optional = true }
 orml-currencies = { workspace = true, optional = true }
 orml-tokens = { workspace = true, optional = true }
 
+module-evm-accounts = { workspace = true, optional = true }
 module-support = { workspace = true }
 module-evm-utility = { workspace = true }
 primitives = { workspace = true }
@@ -46,10 +47,9 @@ module-idle-scheduler = { workspace = true, optional = true }
 module-transaction-payment = { workspace = true }
 module-dex = { workspace = true, optional = true }
 
-xcm-builder = { workspace = true }
-
 # we don't directly depends on this but need frame-benchmarking/std to fix build
 frame-benchmarking = { workspace = true, optional = true }
+libsecp256k1 = { workspace = true, optional = true }
 
 [dev-dependencies]
 insta = { workspace = true }
@@ -57,12 +57,14 @@ hex = { workspace = true, features = ["std"] }
 env_logger = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }
 pallet-utility = { workspace = true, features = ["std"] }
+module-evm-accounts = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
 std = [
 	"serde/std",
 	"parity-scale-codec/std",
+	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
 	"module-dex/std",
@@ -86,10 +88,16 @@ std = [
 	"sp-io/std",
 	"sp-runtime/std",
 	"sp-std/std",
-	"xcm-builder/std",
 	"frame-benchmarking/std",
 ]
 with-ethereum-compatibility = []
+runtime-benchmarks = [
+	"libsecp256k1/hmac",
+	"frame-benchmarking/runtime-benchmarks",
+	"module-evm-accounts/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
+	"module-idle-scheduler/runtime-benchmarks",
+]
 try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
@@ -108,11 +116,10 @@ wasm-bench = [
 	"module-dex",
 	"module-idle-scheduler",
 	"orml-currencies",
-	"orml-tokens",
+	"orml-tokens/runtime-benchmarks",
 	"pallet-balances",
 	"serde_json",
 	"sp-runtime/runtime-benchmarks",
-	"xcm-builder/runtime-benchmarks",
 ]
 evm-tests = [
 	"primitives/evm-tests"

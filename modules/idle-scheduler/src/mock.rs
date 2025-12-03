@@ -58,6 +58,15 @@ parameter_types! {
 	pub MinimumWeightRemainInBlock: Weight = Weight::from_parts(100_000_000_000, 0);
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<ScheduledTasks> for MockBenchmarkHelper {
+	fn setup_schedule_task() -> Option<ScheduledTasks> {
+		Some(ScheduledTasks::BalancesTask(BalancesTask::OnIdle))
+	}
+}
+
 impl module_idle_scheduler::Config for Runtime {
 	type WeightInfo = ();
 	type Index = Nonce;
@@ -65,6 +74,8 @@ impl module_idle_scheduler::Config for Runtime {
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
 	type DisableBlockThreshold = ConstU32<6>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 // Mock dispatachable tasks

@@ -42,6 +42,8 @@ use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
 pub use module::*;
 pub use weights::WeightInfo;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
@@ -515,7 +517,7 @@ pub mod module {
 			fast_match_fee_rate: Option<Rate>,
 			nominate_interval_era: Option<EraIndex>,
 		) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
+			T::GovernanceOrigin::ensure_origin_or_root(origin)?;
 
 			if let Some(cap_amount) = soft_bonded_cap_per_sub_account {
 				SoftBondedCapPerSubAccount::<T>::put(cap_amount);
@@ -562,7 +564,7 @@ pub mod module {
 			last_era_bumped_block: Option<BlockNumberFor<T>>,
 			frequency: Option<BlockNumberFor<T>>,
 		) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
+			T::GovernanceOrigin::ensure_origin_or_root(origin)?;
 
 			if let Some(change) = frequency {
 				BumpEraFrequency::<T>::put(change);
@@ -606,7 +608,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			updates: Vec<(u16, Option<Balance>, Option<Vec<UnlockChunk>>)>,
 		) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
+			T::GovernanceOrigin::ensure_origin_or_root(origin)?;
 
 			for (sub_account_index, bonded_change, unlocking_change) in updates {
 				Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
@@ -646,7 +648,7 @@ pub mod module {
 		#[pallet::call_index(7)]
 		#[pallet::weight(< T as Config >::WeightInfo::reset_current_era())]
 		pub fn reset_current_era(origin: OriginFor<T>, era_index: EraIndex) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
+			T::GovernanceOrigin::ensure_origin_or_root(origin)?;
 
 			RelayChainCurrentEra::<T>::mutate(|current_era| {
 				if *current_era != era_index {
@@ -663,7 +665,7 @@ pub mod module {
 		#[pallet::call_index(8)]
 		#[pallet::weight(< T as Config >::WeightInfo::on_initialize_with_bump_era(T::ProcessRedeemRequestsLimit::get()))]
 		pub fn force_bump_current_era(origin: OriginFor<T>, bump_era: EraIndex) -> DispatchResultWithPostInfo {
-			T::GovernanceOrigin::ensure_origin(origin)?;
+			T::GovernanceOrigin::ensure_origin_or_root(origin)?;
 
 			let res = Self::bump_current_era(bump_era);
 			Ok(Some(T::WeightInfo::on_initialize_with_bump_era(res.unwrap_or_default())).into())

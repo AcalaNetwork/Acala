@@ -35,10 +35,14 @@ use primitives::{
 use sp_runtime::traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero};
 use sp_std::{fmt::Debug, prelude::*};
 
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -90,6 +94,9 @@ pub mod module {
 		type CurrentEra: Get<EraIndex>;
 
 		type WeightInfo: WeightInfo;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<EraIndex, Self::AccountId, Self::NomineeId>;
 	}
 
 	pub type BondingLedgerOf<T, I> = bonding::BondingLedgerOf<Pallet<T, I>>;

@@ -99,7 +99,7 @@ fn create_class_should_fail() {
 		);
 
 		let mut large_attr: Attributes = BTreeMap::new();
-		large_attr.insert(vec![1, 2, 3, 4, 5], vec![6, 7, 8, 9, 10, 11]);
+		large_attr.insert(vec![0; 2048], vec![1]);
 
 		assert_noop!(
 			NFTModule::create_class(

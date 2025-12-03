@@ -37,12 +37,15 @@ use sp_runtime::{
 	DispatchError, Permill,
 };
 
-pub use module::*;
-
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
+pub use module::*;
 pub use weights::WeightInfo;
 
 define_parameters! {
@@ -76,6 +79,9 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper;
 	}
 
 	pub type BondingLedgerOf<T> = bonding::BondingLedgerOf<Pallet<T>>;

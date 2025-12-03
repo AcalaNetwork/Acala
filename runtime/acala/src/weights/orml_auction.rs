@@ -59,7 +59,7 @@ impl<T: frame_system::Config> orml_auction::WeightInfo for WeightInfo<T> {
 	// Proof: `EvmAccounts::EvmAddresses` (`max_values`: None, `max_size`: Some(60), added: 2535, mode: `MaxEncodedLen`)
 	// Storage: `Auction::AuctionEndTime` (r:0 w:2)
 	// Proof: `Auction::AuctionEndTime` (`max_values`: None, `max_size`: Some(32), added: 2507, mode: `MaxEncodedLen`)
-	fn bid_collateral_auction() -> Weight {
+	fn bid() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2500`
 		//  Estimated: `8856`

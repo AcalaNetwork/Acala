@@ -28,6 +28,8 @@ use sp_core::H160;
 use sp_runtime::DispatchResult;
 use sp_std::{prelude::*, vec::Vec};
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
@@ -101,7 +103,7 @@ pub mod module {
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::pause_transaction())]
 		pub fn pause_transaction(origin: OriginFor<T>, pallet_name: Vec<u8>, function_name: Vec<u8>) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 
 			// not allowed to pause calls of this pallet to ensure safe
 			let pallet_name_string = sp_std::str::from_utf8(&pallet_name).map_err(|_| Error::<T>::InvalidCharacter)?;
@@ -129,7 +131,7 @@ pub mod module {
 			pallet_name: Vec<u8>,
 			function_name: Vec<u8>,
 		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			if PausedTransactions::<T>::take((&pallet_name, &function_name)).is_some() {
 				Self::deposit_event(Event::TransactionUnpaused {
 					pallet_name_bytes: pallet_name,
@@ -142,7 +144,7 @@ pub mod module {
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::pause_evm_precompile())]
 		pub fn pause_evm_precompile(origin: OriginFor<T>, address: H160) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			PausedEvmPrecompiles::<T>::mutate_exists(address, |maybe_paused| {
 				if maybe_paused.is_none() {
 					*maybe_paused = Some(());
@@ -155,7 +157,7 @@ pub mod module {
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::unpause_evm_precompile())]
 		pub fn unpause_evm_precompile(origin: OriginFor<T>, address: H160) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			if PausedEvmPrecompiles::<T>::take(address).is_some() {
 				Self::deposit_event(Event::EvmPrecompileUnpaused { address });
 			};

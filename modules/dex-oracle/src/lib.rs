@@ -34,10 +34,14 @@ use sp_runtime::{
 };
 use sp_std::marker::PhantomData;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -60,6 +64,9 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<CurrencyId, MomentOf<Self>>;
 	}
 
 	#[pallet::error]
@@ -173,7 +180,7 @@ pub mod module {
 			currency_id_b: CurrencyId,
 			interval: MomentOf<T>,
 		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
@@ -218,7 +225,7 @@ pub mod module {
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
 		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
@@ -243,7 +250,7 @@ pub mod module {
 			currency_id_b: CurrencyId,
 			new_interval: MomentOf<T>,
 		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 
