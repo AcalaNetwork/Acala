@@ -518,7 +518,7 @@ mod mandala_only_tests {
 					).unwrap().0,
 					@r###"
     ValidTransaction {
-        priority: 60975980945150000,
+        priority: 72934097558400000,
         requires: [],
         provides: [],
         longevity: 18446744073709551615,

@@ -78,7 +78,7 @@ describeWithAcala("Acala RPC (Mempool Priority Order)", (context) => {
           {
             "ok": {
               "longevity": 31,
-              "priority": "0x010543655f7f0900",
+              "priority": "0x012f5e1ae66220c0",
               "propagate": true,
               "provides": [
                 "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d03000000",
