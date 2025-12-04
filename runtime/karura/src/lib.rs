@@ -2109,7 +2109,7 @@ mod benches {
 	const DOT_CENTS: Balance = DOT_UNITS / 100;
 
 	parameter_types! {
-		pub AssetHubParaId: ParaId = ParaId::from(parachains::asset_hub_polkadot::ID);
+		pub AssetHubParaId: ParaId = ParaId::from(parachains::asset_hub_kusama::ID);
 		pub FeeAssetId: AssetId = AssetId(Location::parent());
 		pub const ToSiblingBaseDeliveryFee: u128 = DOT_CENTS.saturating_mul(3);
 	}
@@ -2204,7 +2204,7 @@ mod benches {
 			let asset_amount = 1_000_000_000_000u128;
 			let asset_balance = asset_amount * 10;
 			let kusd_encoded = KUSD.encode();
-			let mut ausd_data = [0u8; 32];
+			let mut kusd_data = [0u8; 32];
 			let len = kusd_encoded.len().min(32);
 			kusd_data[..len].copy_from_slice(&kusd_encoded[..len]);
 			let asset_location = Location::new(
@@ -2222,10 +2222,10 @@ mod benches {
 			// Give some multiple of the existential deposit
 			let native_balance = NativeTokenExistentialDeposit::get() * 1000;
 			let _ = <Balances as frame_support::traits::Currency<_>>::make_free_balance_be(&who, native_balance);
-			let _ = Tokens::deposit(AUSD, &who, asset_balance);
+			let _ = Tokens::deposit(KUSD, &who, asset_balance);
 			// verify initial balance
 			assert_eq!(Balances::free_balance(&who), native_balance);
-			assert_eq!(Tokens::free_balance(AUSD, &who), asset_balance);
+			assert_eq!(Tokens::free_balance(KUSD, &who), asset_balance);
 
 			// let assets: Assets = vec![transfer_asset].into();
 			let fee_index = if assets.get(0).unwrap().eq(&fee_asset) { 0 } else { 1 };
@@ -2236,7 +2236,7 @@ mod benches {
 				// (plus transport fees)
 				assert!(Balances::free_balance(&who) <= native_balance - fee_amount);
 				// verify asset balance after transfer, decreased by transferred asset amount
-				assert_eq!(Tokens::free_balance(AUSD, &who), asset_balance - asset_amount);
+				assert_eq!(Tokens::free_balance(KUSD, &who), asset_balance - asset_amount);
 			});
 			Some((assets, fee_index as u32, dest, verify))
 		}
