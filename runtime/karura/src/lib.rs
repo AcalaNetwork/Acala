@@ -2105,13 +2105,13 @@ mod benches {
 	use cumulus_primitives_core::{Asset, Assets, Fungible, GeneralKey, Location, ParaId, Parachain, ParentThen};
 	use frame_benchmarking::BenchmarkError;
 
-	const DOT_UNITS: Balance = 1_000_000_000_000;
-	const DOT_CENTS: Balance = DOT_UNITS / 100;
+	const KSM_UNITS: Balance = 100_000_000_000_000;
+	const KSM_CENTS: Balance = KSM_UNITS / 100;
 
 	parameter_types! {
 		pub AssetHubParaId: ParaId = ParaId::from(parachains::asset_hub_kusama::ID);
 		pub FeeAssetId: AssetId = AssetId(Location::parent());
-		pub const ToSiblingBaseDeliveryFee: u128 = DOT_CENTS.saturating_mul(3);
+		pub const ToSiblingBaseDeliveryFee: u128 = KSM_CENTS.saturating_mul(3);
 	}
 
 	pub type PriceForSiblingParachainDelivery = polkadot_runtime_common::xcm_sender::ExponentialPrice<
@@ -2227,7 +2227,6 @@ mod benches {
 			assert_eq!(Balances::free_balance(&who), native_balance);
 			assert_eq!(Tokens::free_balance(KUSD, &who), asset_balance);
 
-			// let assets: Assets = vec![transfer_asset].into();
 			let fee_index = if assets.get(0).unwrap().eq(&fee_asset) { 0 } else { 1 };
 
 			// verify transferred successfully
@@ -2244,7 +2243,7 @@ mod benches {
 		fn get_asset() -> Asset {
 			Asset {
 				id: AssetId(Location::parent()),
-				fun: Fungible(DOT_UNITS),
+				fun: Fungible(KSM_UNITS),
 			}
 		}
 	}
@@ -2265,7 +2264,7 @@ mod benches {
 		fn worst_case_holding(_depositable_count: u32) -> Assets {
 			let assets: Vec<Asset> = vec![Asset {
 				id: AssetId(Location::parent()),
-				fun: Fungible(1_000_000_000_000 * DOT_UNITS),
+				fun: Fungible(1_000 * KSM_UNITS),
 			}];
 			assets.into()
 		}

@@ -2270,7 +2270,7 @@ mod benches {
 	use cumulus_primitives_core::{Asset, Assets, Fungible, GeneralKey, Location, ParaId, Parachain, ParentThen};
 	use frame_benchmarking::BenchmarkError;
 
-	const DOT_UNITS: Balance = 1_000_000_000_000;
+	const DOT_UNITS: Balance = 10_000_000_000;
 	const DOT_CENTS: Balance = DOT_UNITS / 100;
 
 	parameter_types! {
@@ -2392,7 +2392,6 @@ mod benches {
 			assert_eq!(Balances::free_balance(&who), native_balance);
 			assert_eq!(Tokens::free_balance(AUSD, &who), asset_balance);
 
-			// let assets: Assets = vec![transfer_asset].into();
 			let fee_index = if assets.get(0).unwrap().eq(&fee_asset) { 0 } else { 1 };
 
 			// verify transferred successfully
@@ -2430,7 +2429,7 @@ mod benches {
 		fn worst_case_holding(_depositable_count: u32) -> Assets {
 			let assets: Vec<Asset> = vec![Asset {
 				id: AssetId(Location::parent()),
-				fun: Fungible(1_000_000_000_000 * DOT_UNITS),
+				fun: Fungible(1_000 * DOT_UNITS),
 			}];
 			assets.into()
 		}
