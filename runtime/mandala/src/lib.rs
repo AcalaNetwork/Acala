@@ -2226,11 +2226,8 @@ construct_runtime!(
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
-	// use super::*;
-	// use alloc::boxed::Box;
-	// use frame_support::assert_ok;
-	// use kusama_runtime_constants::system_parachain::PeopleParaId;
-	// use system_parachains_constants::kusama::locations::PeopleLocation;
+	use super::*;
+	use alloc::boxed::Box;
 
 	frame_benchmarking::define_benchmarks!(
 		[module_aggregated_dex, AggregatedDex]
@@ -2266,14 +2263,182 @@ mod benches {
 		// Acala Ecosystem Modules
 		[nutsfinance_stable_asset, StableAsset]
 		// XCM
-		/* 	[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>] */
+		[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>]
 	);
+
+	use crate::xcm_config::AssetHubLocation;
+	use cumulus_primitives_core::{Asset, Assets, Fungible, GeneralKey, Location, ParaId, Parachain, ParentThen};
+	use frame_benchmarking::BenchmarkError;
+
+	const DOT_UNITS: Balance = 1_000_000_000_000;
+	const DOT_CENTS: Balance = DOT_UNITS / 100;
+
+	parameter_types! {
+		pub AssetHubParaId: ParaId = ParaId::from(parachains::asset_hub_polkadot::ID);
+		pub FeeAssetId: AssetId = AssetId(Location::parent());
+		pub const ToSiblingBaseDeliveryFee: u128 = DOT_CENTS.saturating_mul(3);
+	}
+
+	pub type PriceForSiblingParachainDelivery = polkadot_runtime_common::xcm_sender::ExponentialPrice<
+		FeeAssetId,
+		ToSiblingBaseDeliveryFee,
+		TransactionByteFee,
+		XcmpQueue,
+	>;
+
+	parameter_types! {
+		pub ExistentialDepositAsset: Option<Asset> = Some((
+			Location::parent(),
+			NativeTokenExistentialDeposit::get()
+		).into());
+		pub const RandomParaId: ParaId = ParaId::new(43211234);
+	}
+
+	impl pallet_xcm::benchmarking::Config for Runtime {
+		type DeliveryHelper = (
+			polkadot_runtime_common::xcm_sender::ToParachainDeliveryHelper<
+				xcm_config::XcmConfig,
+				ExistentialDepositAsset,
+				PriceForSiblingParachainDelivery,
+				RandomParaId,
+				ParachainSystem,
+			>,
+			polkadot_runtime_common::xcm_sender::ToParachainDeliveryHelper<
+				xcm_config::XcmConfig,
+				ExistentialDepositAsset,
+				PriceForSiblingParachainDelivery,
+				AssetHubParaId,
+				ParachainSystem,
+			>,
+		);
+
+		fn reachable_dest() -> Option<Location> {
+			Some(AssetHubLocation::get())
+		}
+
+		fn teleportable_asset_and_dest() -> Option<(Asset, Location)> {
+			// XcmTeleportFilter is Nothing
+			None
+		}
+
+		fn reserve_transferable_asset_and_dest() -> Option<(Asset, Location)> {
+			ParachainSystem::open_outbound_hrmp_channel_for_benchmarks_or_tests(RandomParaId::get());
+
+			let encoded = ACA.encode();
+			let mut data = [0u8; 32];
+			let len = encoded.len().min(32);
+			data[..len].copy_from_slice(&encoded[..len]);
+
+			Some((
+				Asset {
+					id: AssetId(Location::new(
+						0,
+						GeneralKey {
+							data: data,
+							length: encoded.len() as u8,
+						},
+					)),
+					fun: Fungible(NativeTokenExistentialDeposit::get() * 100),
+				},
+				ParentThen(Parachain(RandomParaId::get().into()).into()).into(),
+			))
+		}
+
+		fn set_up_complex_asset_transfer() -> Option<(Assets, u32, Location, Box<dyn FnOnce()>)> {
+			// transfer AUSD from this parachain to RandomParaId parachain
+			ParachainSystem::open_outbound_hrmp_channel_for_benchmarks_or_tests(RandomParaId::get());
+
+			let dest = Location::new(1, Parachain(RandomParaId::get().into()));
+
+			// fee asset
+			let fee_amount = NativeTokenExistentialDeposit::get();
+			let aca_encoded = ACA.encode();
+			let mut aca_data = [0u8; 32];
+			let len = aca_encoded.len().min(32);
+			aca_data[..len].copy_from_slice(&aca_encoded[..len]);
+			let fee_location = Location::new(
+				0,
+				GeneralKey {
+					data: aca_data,
+					length: aca_encoded.len() as u8,
+				},
+			);
+			let fee_asset: Asset = (fee_location, fee_amount).into();
+
+			// asset to transfer
+			let asset_amount = 1_000_000_000_000u128;
+			let asset_balance = asset_amount * 10;
+			let ausd_encoded = AUSD.encode();
+			let mut ausd_data = [0u8; 32];
+			let len = ausd_encoded.len().min(32);
+			ausd_data[..len].copy_from_slice(&ausd_encoded[..len]);
+			let asset_location = Location::new(
+				0,
+				GeneralKey {
+					data: ausd_data,
+					length: ausd_encoded.len() as u8,
+				},
+			);
+			let transfer_asset: Asset = (asset_location, asset_amount).into();
+
+			let assets: Assets = vec![fee_asset.clone(), transfer_asset].into();
+
+			let who = frame_benchmarking::whitelisted_caller();
+			// Give some multiple of the existential deposit
+			let native_balance = NativeTokenExistentialDeposit::get() * 1000;
+			let _ = <Balances as frame_support::traits::Currency<_>>::make_free_balance_be(&who, native_balance);
+			let _ = Tokens::deposit(AUSD, &who, asset_balance);
+			// verify initial balance
+			assert_eq!(Balances::free_balance(&who), native_balance);
+			assert_eq!(Tokens::free_balance(AUSD, &who), asset_balance);
+
+			// let assets: Assets = vec![transfer_asset].into();
+			let fee_index = if assets.get(0).unwrap().eq(&fee_asset) { 0 } else { 1 };
+
+			// verify transferred successfully
+			let verify = Box::new(move || {
+				// verify native balance after transfer, decreased by transferred fee amount
+				// (plus transport fees)
+				assert!(Balances::free_balance(&who) <= native_balance - fee_amount);
+				// verify asset balance after transfer, decreased by transferred asset amount
+				assert_eq!(Tokens::free_balance(AUSD, &who), asset_balance - asset_amount);
+			});
+			Some((assets, fee_index as u32, dest, verify))
+		}
+
+		fn get_asset() -> Asset {
+			Asset {
+				id: AssetId(Location::parent()),
+				fun: Fungible(DOT_UNITS),
+			}
+		}
+	}
+
+	impl pallet_xcm_benchmarks::Config for Runtime {
+		type XcmConfig = xcm_config::XcmConfig;
+		type AccountIdConverter = xcm_config::LocationToAccountId;
+		type DeliveryHelper = polkadot_runtime_common::xcm_sender::ToParachainDeliveryHelper<
+			xcm_config::XcmConfig,
+			ExistentialDepositAsset,
+			PriceForSiblingParachainDelivery,
+			AssetHubParaId,
+			ParachainSystem,
+		>;
+		fn valid_destination() -> Result<Location, BenchmarkError> {
+			Ok(AssetHubLocation::get())
+		}
+		fn worst_case_holding(_depositable_count: u32) -> Assets {
+			let assets: Vec<Asset> = vec![Asset {
+				id: AssetId(Location::parent()),
+				fun: Fungible(1_000_000_000_000 * DOT_UNITS),
+			}];
+			assets.into()
+		}
+	}
 
 	pub use frame_benchmarking::{BenchmarkBatch, BenchmarkList};
 	pub use frame_support::traits::{StorageInfoTrait, WhitelistedStorageKeys};
-	// pub use frame_system_benchmarking::{
-	//     extensions::Pallet as SystemExtensionsBench, Pallet as SystemBench,
-	// };
+	pub use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
 	pub use sp_storage::TrackedStorageKey;
 }
 
