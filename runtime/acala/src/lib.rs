@@ -141,7 +141,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: Cow::Borrowed("acala"),
 	impl_name: Cow::Borrowed("acala"),
 	authoring_version: 1,
-	spec_version: 2320,
+	spec_version: 2330,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 3,
